@@ -12,7 +12,14 @@ export default function Sidebar() {
     if (role) {
       fetch(`http://localhost:8080/menu/${role}`)
         .then(res => res.json())
-        .then(data => setMenus(data))
+        .then(data => {
+          if (Array.isArray(data)) {
+            setMenus(data)
+          } else {
+            console.error("❌ Bukan array:", data)
+            setMenus([]) // fallback agar tidak error
+          }
+        })
     }
   }, [])
 
@@ -26,6 +33,19 @@ export default function Sidebar() {
             </Link>
           </li>
         ))}
+
+        {/* Tombol Logout */}
+        <li>
+          <button
+            onClick={() => {
+              localStorage.clear()
+              window.location.href = "/login"
+            }}
+            className="block w-full text-left py-2 px-3 rounded hover:bg-red-100 text-red-600"
+          >
+            Logout
+          </button>
+        </li>
       </ul>
     </aside>
   )
