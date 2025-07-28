@@ -1,94 +1,127 @@
 'use client'
 
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
-const formSchema = z.object({
-  username: z.string().min(1, "Username wajib diisi"),
-  password: z.string().min(1, "Password wajib diisi"),
-})
-
-export default function LoginPage() {
+export default function Login() {
   const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(formSchema),
-  })
+  useEffect(() => {
+    // Check if user is already logged in
+    const kr_id = localStorage.getItem("kr_id")
+    if (kr_id) {
+      router.replace("/dashboard")
+    } else {
+      setLoading(false)
+    }
+  }, [router])
 
-  const onSubmit = async (data) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     setError("")
-    setSuccess("")
+    setIsSubmitting(true)
 
     try {
+      console.log("📤 Sending login request...")
       const res = await fetch("http://localhost:8080/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: data.username,
-          password: data.password,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
       })
 
-      const result = await res.json()
+      const data = await res.json()
+      console.log("📥 Received response:", res.status)
 
-      if (!res.ok) {
-        throw new Error(result.error || "Login gagal")
-      }
-
-      // Simpan ke localStorage
-      localStorage.setItem("kr_id", result.user_id)
-      localStorage.setItem("role", result.role)
-      localStorage.setItem("user_role", result.role)
-
-      setSuccess("Login berhasil ✅")
-
-      setTimeout(() => {
+      if (res.ok) {
+        console.log("✅ Login successful")
+        localStorage.setItem("kr_id", data.user_id)
+        localStorage.setItem("user_role", data.role)
         router.push("/dashboard")
-      }, 800)
+      } else {
+        console.log("❌ Login failed:", data.error)
+        setError(data.error || "Login gagal")
+      }
     } catch (err) {
-      setError(err.message)
+      console.error("❌ Login error:", err)
+      setError("Terjadi kesalahan saat login")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
+  if (loading) {
+    return <p className="p-6">Memuat...</p>
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardContent className="p-6 space-y-4">
-          <h1 className="text-2xl font-semibold text-center">Login Admin Sekolah</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded-lg shadow-md w-96">
+        {/* Image Container */}
+        <div className="flex justify-center mb-8">
+          <Image
+            src="/images/login-logo.jpg"
+            alt="School Logo"
+            width={120}
+            height={120}
+            className="rounded-full shadow-sm"
+            priority
+          />
+        </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" {...register("username")} />
-              {errors.username && <p className="text-sm text-red-500">{errors.username.message}</p>}
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" {...register("password")} />
-              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
-            </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Memproses..." : "Masuk"}
-            </Button>
-          </form>
+        <h1 className="text-2xl font-bold mb-6 text-center">Sistem Administrasi Sekolah</h1>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {error}
+          </div>
+        )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {success && <p className="text-sm text-green-600">{success}</p>}
-        </CardContent>
-      </Card>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-700 mb-2">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-gray-700 mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full p-2 rounded text-white ${
+              isSubmitting 
+                ? 'bg-blue-300 cursor-not-allowed' 
+                : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+          >
+            {isSubmitting ? 'Memproses...' : 'Masuk'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

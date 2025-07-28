@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Sidebar from "@/components/sidebar"
 
-export default function DashboardLayout({ children }) {
+export default function SettingsLayout({ children }) {
   const router = useRouter()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
@@ -19,10 +19,8 @@ export default function DashboardLayout({ children }) {
     <div className="min-h-screen bg-gray-100">
       <div className="flex h-screen">
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-        <main className="flex-1 p-4 transition-all duration-300 overflow-y-auto">
-          <div className="max-w-7xl">
-            {children}
-          </div>
+        <main className="flex-1 transition-all duration-300 overflow-y-auto p-4">
+          {children}
         </main>
       </div>
     </div>
