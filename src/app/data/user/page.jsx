@@ -11,6 +11,7 @@ import NotificationModal from '@/components/ui/notification-modal';
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -21,6 +22,7 @@ export default function UserManagement() {
     user_username: '',
     user_password: '',
     user_role_id: '',
+    user_unit_id: '',
     is_active: true
   });
   const [formErrors, setFormErrors] = useState({});
@@ -51,6 +53,7 @@ export default function UserManagement() {
   useEffect(() => {
     fetchUsers();
     fetchRoles();
+    fetchUnits();
   }, []);
 
   // Show notification helper
@@ -208,6 +211,7 @@ export default function UserManagement() {
         user_username: '',
         user_password: '',
         user_role_id: '',
+        user_unit_id: '',
         is_active: true
       };
 
@@ -252,6 +256,20 @@ export default function UserManagement() {
         } else {
           validRow.user_role_id = role.role_id;
         }
+      }
+
+      // Find unit ID by unit name
+      const unitName = (row.unit || row.unit_name || row.user_unit || '').trim();
+      if (unitName) {
+        const unit = units.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
+        if (!unit) {
+          rowErrors.push(`Unit "${unitName}" not found. Available units: ${units.map(u => u.unit_name).join(', ')}`);
+        } else {
+          validRow.user_unit_id = unit.unit_id;
+        }
+      } else {
+        // Unit is optional, set to null if not provided
+        validRow.user_unit_id = null;
       }
 
       // Handle status
@@ -320,6 +338,7 @@ export default function UserManagement() {
           user_username: String(userData.user_username || '').trim(),
           user_password: String(userData.user_password || '').trim(),
           user_role_id: Number(userData.user_role_id),
+          user_unit_id: userData.user_unit_id ? Number(userData.user_unit_id) : null,
           is_active: Boolean(userData.is_active)
         };
 
@@ -414,12 +433,15 @@ export default function UserManagement() {
   const downloadTemplate = (withSemicolon = false) => {
     const delimiter = withSemicolon ? ';' : ',';
     
-    // Get available roles for template
+    // Get available roles and units for template
     const availableRoles = roles.length > 0 ? roles.map(r => r.role_name) : ['Admin', 'User'];
+    const availableUnits = units.length > 0 ? units.map(u => u.unit_name) : ['PYP', 'MYP'];
     const sampleRole1 = availableRoles[0] || 'Admin';
     const sampleRole2 = availableRoles.length > 1 ? availableRoles[1] : availableRoles[0] || 'User';
+    const sampleUnit1 = availableUnits[0] || 'PYP';
+    const sampleUnit2 = availableUnits.length > 1 ? availableUnits[1] : availableUnits[0] || 'MYP';
     
-    const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}password${delimiter}role${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}password123${delimiter}${sampleRole1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}password456${delimiter}${sampleRole2}${delimiter}active`;
+    const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}password${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}password123${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}password456${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -458,6 +480,19 @@ export default function UserManagement() {
       }
     } catch (err) {
       console.error('Error fetching roles:', err);
+    }
+  };
+
+  const fetchUnits = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/units');
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setUnits(data.units || []);
+      }
+    } catch (err) {
+      console.error('Error fetching units:', err);
     }
   };
 
@@ -517,6 +552,13 @@ export default function UserManagement() {
         submitData.user_role_id = Number(submitData.user_role_id);
       }
 
+      // Ensure unit_id is a number or null
+      if (submitData.user_unit_id) {
+        submitData.user_unit_id = Number(submitData.user_unit_id);
+      } else {
+        submitData.user_unit_id = null;
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -568,6 +610,7 @@ export default function UserManagement() {
       user_username: user.user_username,
       user_password: '', // Don't fill password for editing
       user_role_id: user.user_role_id,
+      user_unit_id: user.user_unit_id || '',
       is_active: user.is_active
     });
     setShowForm(true);
@@ -583,6 +626,7 @@ export default function UserManagement() {
       user_username: '',
       user_password: '',
       user_role_id: '',
+      user_unit_id: '',
       is_active: true
     });
     setEditingUser(null);
@@ -754,8 +798,30 @@ export default function UserManagement() {
               )}
             </div>
 
+            <div>
+              <Label htmlFor="user_unit_id">Unit</Label>
+              <select
+                id="user_unit_id"
+                name="user_unit_id"
+                value={formData.user_unit_id}
+                onChange={handleInputChange}
+                disabled={submitting}
+                className={`w-full px-3 py-2 border rounded-md ${formErrors.user_unit_id ? 'border-red-500' : 'border-gray-300'}`}
+              >
+                <option value="">Pilih Unit (Opsional)</option>
+                {units.map(unit => (
+                  <option key={unit.unit_id} value={unit.unit_id}>
+                    {unit.unit_name}
+                  </option>
+                ))}
+              </select>
+              {formErrors.user_unit_id && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.user_unit_id}</p>
+              )}
+            </div>
+
             {editingUser && (
-              <div className="flex items-center space-x-2 md:col-span-1">
+              <div className="flex items-center space-x-2 md:col-span-2">
                 <input
                   id="is_active"
                   name="is_active"
@@ -827,6 +893,7 @@ export default function UserManagement() {
               <li>• <strong>username</strong> (required, must be unique)</li>
               <li>• <strong>password</strong> (required, min 6 characters)</li>
               <li>• <strong>role</strong> (required, available: {roles.map(r => r.role_name).join(', ') || 'Loading...'})</li>
+              <li>• <strong>unit</strong> (optional, available: {units.map(u => u.unit_name).join(', ') || 'Loading...'})</li>
               <li>• <strong>status</strong> (optional: active/inactive, default: active)</li>
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -878,6 +945,7 @@ export default function UserManagement() {
                       <th className="text-left py-1">Name</th>
                       <th className="text-left py-1">Username</th>
                       <th className="text-left py-1">Role</th>
+                      <th className="text-left py-1">Unit</th>
                       <th className="text-left py-1">Status</th>
                     </tr>
                   </thead>
@@ -889,12 +957,15 @@ export default function UserManagement() {
                         <td className="py-1">
                           {roles.find(r => r.role_id === user.user_role_id)?.role_name}
                         </td>
+                        <td className="py-1">
+                          {user.user_unit_id ? units.find(u => u.unit_id === user.user_unit_id)?.unit_name || '-' : '-'}
+                        </td>
                         <td className="py-1">{user.is_active ? 'Active' : 'Inactive'}</td>
                       </tr>
                     ))}
                     {importPreview.length > 5 && (
                       <tr>
-                        <td colSpan="4" className="py-1 text-gray-500 text-center">
+                        <td colSpan="5" className="py-1 text-gray-500 text-center">
                           ... and {importPreview.length - 5} more users
                         </td>
                       </tr>
@@ -1069,6 +1140,11 @@ export default function UserManagement() {
                     <span className={`px-2 py-1 rounded text-xs ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
                       {user.role_name}
                     </span>
+                    {user.unit_name && (
+                      <span className="px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">
+                        {user.unit_name}
+                      </span>
+                    )}
                     <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                       {user.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -1097,6 +1173,7 @@ export default function UserManagement() {
                   <th className="border border-gray-300 px-4 py-2 text-left">Nama Lengkap</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Username</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Role</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">Unit</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Status</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
                 </tr>
@@ -1104,7 +1181,7 @@ export default function UserManagement() {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
+                    <td colSpan="7" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
                       {(filters.role || filters.status) ? 'No users match the selected filters' : 'No users found'}
                     </td>
                   </tr>
@@ -1119,6 +1196,11 @@ export default function UserManagement() {
                       <td className="border border-gray-300 px-4 py-2">
                         <span className={`px-2 py-1 rounded text-xs ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
                           {user.role_name}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2">
+                        <span className="text-sm text-gray-600">
+                          {user.unit_name || '-'}
                         </span>
                       </td>
                       <td className="border border-gray-300 px-4 py-2">
