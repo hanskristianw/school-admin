@@ -39,7 +39,8 @@ export default function UserManagement() {
   // Filter states
   const [filters, setFilters] = useState({
     role: '',
-    status: ''
+    status: '',
+    unit: ''
   });
 
   // Import states
@@ -138,8 +139,9 @@ export default function UserManagement() {
       const statusMatch = !filters.status || 
         (filters.status === 'active' && user.is_active) ||
         (filters.status === 'inactive' && !user.is_active);
+      const unitMatch = !filters.unit || user.unit_name === filters.unit;
       
-      return roleMatch && statusMatch;
+      return roleMatch && statusMatch && unitMatch;
     });
   };
 
@@ -147,6 +149,12 @@ export default function UserManagement() {
   const getUniqueRoles = () => {
     const roleSet = new Set(users.map(user => user.role_name));
     return Array.from(roleSet).sort();
+  };
+
+  // Get unique units from users for filter dropdown
+  const getUniqueUnits = () => {
+    const unitSet = new Set(users.map(user => user.unit_name).filter(Boolean));
+    return Array.from(unitSet).sort();
   };
 
   // Handle filter changes
@@ -161,7 +169,8 @@ export default function UserManagement() {
   const clearFilters = () => {
     setFilters({
       role: '',
-      status: ''
+      status: '',
+      unit: ''
     });
   };
 
@@ -1021,7 +1030,7 @@ export default function UserManagement() {
       <Card className="mb-4">
         <CardContent className="pt-4">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Role Filter */}
               <div>
                 <Label htmlFor="role-filter" className="text-sm font-medium">
@@ -1037,6 +1046,26 @@ export default function UserManagement() {
                   {getUniqueRoles().map(role => (
                     <option key={role} value={role}>
                       {role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Unit Filter */}
+              <div>
+                <Label htmlFor="unit-filter" className="text-sm font-medium">
+                  Filter by Unit
+                </Label>
+                <select
+                  id="unit-filter"
+                  value={filters.unit}
+                  onChange={(e) => handleFilterChange('unit', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">Semua Unit</option>
+                  {getUniqueUnits().map(unit => (
+                    <option key={unit} value={unit}>
+                      {unit}
                     </option>
                   ))}
                 </select>
@@ -1061,7 +1090,7 @@ export default function UserManagement() {
             </div>
 
             {/* Clear Filters Button */}
-            {(filters.role || filters.status) && (
+            {(filters.role || filters.status || filters.unit) && (
               <Button 
                 onClick={clearFilters}
                 variant="outline"
@@ -1074,7 +1103,7 @@ export default function UserManagement() {
           </div>
 
           {/* Filter Summary */}
-          {(filters.role || filters.status) && (
+          {(filters.role || filters.status || filters.unit) && (
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="text-sm text-gray-600">Active filters:</span>
               {filters.role && (
@@ -1083,6 +1112,17 @@ export default function UserManagement() {
                   <button
                     onClick={() => handleFilterChange('role', '')}
                     className="ml-1 text-blue-600 hover:text-blue-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {filters.unit && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                  Unit: {filters.unit}
+                  <button
+                    onClick={() => handleFilterChange('unit', '')}
+                    className="ml-1 text-purple-600 hover:text-purple-800"
                   >
                     ×
                   </button>
@@ -1109,7 +1149,7 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle>
             Users List ({filteredUsers.length} of {users.length} users)
-            {(filters.role || filters.status) && (
+            {(filters.role || filters.status || filters.unit) && (
               <span className="text-sm font-normal text-gray-500 ml-2">
                 (filtered)
               </span>
@@ -1121,7 +1161,7 @@ export default function UserManagement() {
           <div className="block md:hidden space-y-3">
             {filteredUsers.length === 0 ? (
               <div className="text-center text-gray-500 py-6">
-                {(filters.role || filters.status) ? 'No users match the selected filters' : 'No users found'}
+                {(filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
               </div>
             ) : (
               filteredUsers.map(user => (
@@ -1182,7 +1222,7 @@ export default function UserManagement() {
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
-                      {(filters.role || filters.status) ? 'No users match the selected filters' : 'No users found'}
+                      {(filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
                     </td>
                   </tr>
                 ) : (
