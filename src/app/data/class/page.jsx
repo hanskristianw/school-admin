@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
+import { supabase } from '@/lib/supabase';
 
 export default function ClassManagement() {
   const [classes, setClasses] = useState([]);
@@ -57,15 +58,58 @@ export default function ClassManagement() {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8080/classes');
-      if (response.ok) {
-        const data = await response.json();
-        setClasses(data.classes || data || []);
-      } else {
-        throw new Error('Failed to fetch classes');
+      setError('');
+      
+      // Fetch classes terlebih dahulu
+      const { data: classesData, error: classesError } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id')
+        .order('kelas_id');
+
+      if (classesError) {
+        throw new Error(classesError.message);
       }
+
+      // Fetch users untuk mendapatkan nama user
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang');
+
+      if (usersError) {
+        throw new Error(usersError.message);
+      }
+
+      // Fetch units untuk mendapatkan nama unit
+      const { data: unitsData, error: unitsError } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name');
+
+      if (unitsError) {
+        throw new Error(unitsError.message);
+      }
+
+      // Transform data dengan menggabungkan informasi dari ketiga tabel
+      const transformedData = classesData.map(kelas => {
+        const user = usersData.find(u => u.user_id === kelas.kelas_user_id);
+        const unit = unitsData.find(u => u.unit_id === kelas.kelas_unit_id);
+        
+        return {
+          kelas_id: kelas.kelas_id,
+          kelas_nama: kelas.kelas_nama,
+          kelas_user_id: kelas.kelas_user_id,
+          kelas_unit_id: kelas.kelas_unit_id,
+          user_nama_depan: user?.user_nama_depan || '',
+          user_nama_belakang: user?.user_nama_belakang || '',
+          unit_name: unit?.unit_name || ''
+        };
+      });
+
+      console.log('Fetched classes from Supabase:', transformedData);
+      setClasses(transformedData);
     } catch (err) {
+      console.error('Error fetching classes:', err);
       setError('Error fetching classes: ' + err.message);
+      setClasses([]);
     } finally {
       setLoading(false);
     }
@@ -73,11 +117,37 @@ export default function ClassManagement() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:8080/users');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || data || []);
+      // Fetch users terlebih dahulu
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_role_id')
+        .eq('is_active', true)
+        .order('user_nama_depan');
+
+      if (usersError) {
+        throw new Error(usersError.message);
       }
+
+      // Fetch roles untuk mendapatkan nama role
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('role')
+        .select('role_id, role_name');
+
+      if (rolesError) {
+        throw new Error(rolesError.message);
+      }
+
+      // Transform data dengan menggabungkan informasi role
+      const usersWithRoles = usersData.map(user => {
+        const role = rolesData.find(r => r.role_id === user.user_role_id);
+        
+        return {
+          ...user,
+          role_name: role?.role_name || 'Unknown Role'
+        };
+      });
+
+      setUsers(usersWithRoles || []);
     } catch (err) {
       console.error('Error fetching users:', err);
     }
@@ -85,11 +155,17 @@ export default function ClassManagement() {
 
   const fetchUnits = async () => {
     try {
-      const response = await fetch('http://localhost:8080/units');
-      if (response.ok) {
-        const data = await response.json();
-        setUnits(data.units || data || []);
+      // Menggunakan Supabase untuk fetch units
+      const { data, error } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name')
+        .order('unit_name');
+
+      if (error) {
+        throw new Error(error.message);
       }
+
+      setUnits(data || []);
     } catch (err) {
       console.error('Error fetching units:', err);
     }
@@ -175,58 +251,46 @@ export default function ClassManagement() {
 
     setSubmitting(true);
     try {
-      const url = editingClass 
-        ? `http://localhost:8080/classes/${editingClass.kelas_id}`
-        : 'http://localhost:8080/classes';
-      
-      const method = editingClass ? 'PUT' : 'POST';
-      
       const submitData = {
-        ...formData,
+        kelas_nama: formData.kelas_nama.trim(),
         kelas_user_id: Number(formData.kelas_user_id),
         kelas_unit_id: Number(formData.kelas_unit_id)
       };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData),
-      });
+      let result;
 
-      let data;
-      try {
-        const responseText = await response.text();
-        if (responseText) {
-          data = JSON.parse(responseText);
-        } else {
-          data = {};
-        }
-      } catch (jsonError) {
-        data = { message: await response.text() };
-      }
-
-      if (response.ok && (data.status === 'success' || response.status === 200 || response.status === 201)) {
-        await fetchClasses();
-        setShowForm(false);
-        setEditingClass(null);
-        setFormData({
-          kelas_nama: '',
-          kelas_user_id: '',
-          kelas_unit_id: ''
-        });
-        setError('');
-        showNotification(
-          'Berhasil!',
-          editingClass ? 'Data kelas berhasil diupdate!' : 'Kelas baru berhasil ditambahkan!',
-          'success'
-        );
+      if (editingClass) {
+        // Update existing class
+        result = await supabase
+          .from('kelas')
+          .update(submitData)
+          .eq('kelas_id', editingClass.kelas_id);
       } else {
-        const rawErrorMessage = data.message || data.error || `Server error: ${response.status} ${response.statusText}`;
-        const friendlyErrorMessage = processErrorMessage(rawErrorMessage);
-        setError(friendlyErrorMessage);
+        // Create new class
+        result = await supabase
+          .from('kelas')
+          .insert([submitData]);
       }
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      // Success
+      await fetchClasses();
+      setShowForm(false);
+      setEditingClass(null);
+      setFormData({
+        kelas_nama: '',
+        kelas_user_id: '',
+        kelas_unit_id: ''
+      });
+      setError('');
+      showNotification(
+        'Berhasil!',
+        editingClass ? 'Data kelas berhasil diupdate!' : 'Kelas baru berhasil ditambahkan!',
+        'success'
+      );
     } catch (err) {
       const friendlyErrorMessage = processErrorMessage(err.message);
       setError('Error: ' + friendlyErrorMessage);
@@ -253,26 +317,21 @@ export default function ClassManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/classes/${kelas.kelas_id}`, {
-        method: 'DELETE',
-      });
+      const { error } = await supabase
+        .from('kelas')
+        .delete()
+        .eq('kelas_id', kelas.kelas_id);
 
-      if (response.ok) {
-        await fetchClasses();
-        showNotification(
-          'Berhasil!',
-          'Kelas berhasil dihapus!',
-          'success'
-        );
-      } else {
-        const errorData = await response.text();
-        const friendlyErrorMessage = processErrorMessage(errorData);
-        showNotification(
-          'Error!',
-          friendlyErrorMessage,
-          'error'
-        );
+      if (error) {
+        throw new Error(error.message);
       }
+
+      await fetchClasses();
+      showNotification(
+        'Berhasil!',
+        'Kelas berhasil dihapus!',
+        'success'
+      );
     } catch (err) {
       const friendlyErrorMessage = processErrorMessage(err.message);
       showNotification(

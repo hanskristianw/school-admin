@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
+import { supabase } from '@/lib/supabase';
 
 export default function SubjectManagement() {
   const [subjects, setSubjects] = useState([]);
@@ -57,21 +58,47 @@ export default function SubjectManagement() {
   const fetchSubjects = async () => {
     try {
       setLoading(true);
-      setError(''); // Clear previous errors
-      const response = await fetch('http://localhost:8080/subjects');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Fetched subjects data:', data); // Debug log
-        const subjectsArray = data.subjects || data || [];
-        console.log('Setting subjects array:', subjectsArray); // Debug log
-        setSubjects(Array.isArray(subjectsArray) ? subjectsArray : []);
-      } else {
-        throw new Error(`Failed to fetch subjects: ${response.status} ${response.statusText}`);
+      setError('');
+      
+      // Menggunakan Supabase langsung tanpa Go API
+      const { data, error } = await supabase
+        .from('subject')
+        .select(`
+          subject_id,
+          subject_name,
+          subject_user_id,
+          subject_unit_id,
+          users:subject_user_id (
+            user_nama_depan,
+            user_nama_belakang
+          ),
+          unit:subject_unit_id (
+            unit_name
+          )
+        `)
+        .order('subject_id');
+
+      if (error) {
+        throw new Error(error.message);
       }
+
+      // Transform data untuk kompatibilitas dengan UI yang ada
+      const transformedData = data.map(subject => ({
+        subject_id: subject.subject_id,
+        subject_name: subject.subject_name,
+        subject_user_id: subject.subject_user_id,
+        subject_unit_id: subject.subject_unit_id,
+        user_nama_depan: subject.users?.user_nama_depan || '',
+        user_nama_belakang: subject.users?.user_nama_belakang || '',
+        unit_name: subject.unit?.unit_name || ''
+      }));
+
+      console.log('Fetched subjects from Supabase:', transformedData);
+      setSubjects(transformedData);
     } catch (err) {
-      console.error('Error fetching subjects:', err); // Debug log
+      console.error('Error fetching subjects:', err);
       setError('Error fetching subjects: ' + err.message);
-      setSubjects([]); // Ensure subjects is always an array
+      setSubjects([]);
     } finally {
       setLoading(false);
     }
@@ -79,11 +106,18 @@ export default function SubjectManagement() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:8080/users');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || data || []);
+      // Menggunakan Supabase untuk fetch users
+      const { data, error } = await supabase
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_username')
+        .eq('is_active', true)
+        .order('user_nama_depan');
+
+      if (error) {
+        throw new Error(error.message);
       }
+
+      setUsers(data || []);
     } catch (err) {
       console.error('Error fetching users:', err);
     }
@@ -91,11 +125,17 @@ export default function SubjectManagement() {
 
   const fetchUnits = async () => {
     try {
-      const response = await fetch('http://localhost:8080/units');
-      if (response.ok) {
-        const data = await response.json();
-        setUnits(data.units || data || []);
+      // Menggunakan Supabase untuk fetch units
+      const { data, error } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name')
+        .order('unit_name');
+
+      if (error) {
+        throw new Error(error.message);
       }
+
+      setUnits(data || []);
     } catch (err) {
       console.error('Error fetching units:', err);
     }
@@ -189,58 +229,46 @@ export default function SubjectManagement() {
 
     setSubmitting(true);
     try {
-      const url = editingSubject 
-        ? `http://localhost:8080/subjects/${editingSubject.subject_id}`
-        : 'http://localhost:8080/subjects';
-      
-      const method = editingSubject ? 'PUT' : 'POST';
-      
       const submitData = {
-        ...formData,
+        subject_name: formData.subject_name,
         subject_user_id: Number(formData.subject_user_id),
         subject_unit_id: Number(formData.subject_unit_id)
       };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData),
-      });
-
-      let data;
-      try {
-        const responseText = await response.text();
-        if (responseText) {
-          data = JSON.parse(responseText);
-        } else {
-          data = {};
-        }
-      } catch (jsonError) {
-        data = { message: await response.text() };
-      }
-
-      if (response.ok && (data.status === 'success' || response.status === 200 || response.status === 201)) {
-        await fetchSubjects();
-        setShowForm(false);
-        setEditingSubject(null);
-        setFormData({
-          subject_name: '',
-          subject_user_id: '',
-          subject_unit_id: ''
-        });
-        setError('');
-        showNotification(
-          'Berhasil!',
-          editingSubject ? 'Data subject berhasil diupdate!' : 'Subject baru berhasil ditambahkan!',
-          'success'
-        );
+      let result;
+      
+      if (editingSubject) {
+        // Update existing subject menggunakan Supabase
+        result = await supabase
+          .from('subject')
+          .update(submitData)
+          .eq('subject_id', editingSubject.subject_id);
       } else {
-        const rawErrorMessage = data.message || data.error || `Server error: ${response.status} ${response.statusText}`;
-        const friendlyErrorMessage = processErrorMessage(rawErrorMessage);
-        setError(friendlyErrorMessage);
+        // Create new subject menggunakan Supabase
+        result = await supabase
+          .from('subject')
+          .insert([submitData]);
       }
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      // Success
+      await fetchSubjects();
+      setShowForm(false);
+      setEditingSubject(null);
+      setFormData({
+        subject_name: '',
+        subject_user_id: '',
+        subject_unit_id: ''
+      });
+      setError('');
+      showNotification(
+        'Berhasil!',
+        editingSubject ? 'Data subject berhasil diupdate!' : 'Subject baru berhasil ditambahkan!',
+        'success'
+      );
     } catch (err) {
       const friendlyErrorMessage = processErrorMessage(err.message);
       setError('Error: ' + friendlyErrorMessage);
@@ -267,26 +295,22 @@ export default function SubjectManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/subjects/${subject.subject_id}`, {
-        method: 'DELETE',
-      });
+      // Delete menggunakan Supabase
+      const { error } = await supabase
+        .from('subject')
+        .delete()
+        .eq('subject_id', subject.subject_id);
 
-      if (response.ok) {
-        await fetchSubjects();
-        showNotification(
-          'Berhasil!',
-          'Subject berhasil dihapus!',
-          'success'
-        );
-      } else {
-        const errorData = await response.text();
-        const friendlyErrorMessage = processErrorMessage(errorData);
-        showNotification(
-          'Error!',
-          friendlyErrorMessage,
-          'error'
-        );
+      if (error) {
+        throw new Error(error.message);
       }
+
+      await fetchSubjects();
+      showNotification(
+        'Berhasil!',
+        'Subject berhasil dihapus!',
+        'success'
+      );
     } catch (err) {
       const friendlyErrorMessage = processErrorMessage(err.message);
       showNotification(

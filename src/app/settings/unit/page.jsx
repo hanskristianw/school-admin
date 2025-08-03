@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
+import { supabase } from '@/lib/supabase';
 
 export default function UnitManagement() {
   const [units, setUnits] = useState([]);
@@ -90,29 +91,24 @@ export default function UnitManagement() {
   const fetchUnits = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8080/units');
+      setError('');
       
-      // Check if response is ok first
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Menggunakan Supabase untuk fetch units
+      const { data, error } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name')
+        .order('unit_name');
+
+      if (error) {
+        throw new Error(error.message);
       }
-      
-      const responseText = await response.text();
-      
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (jsonError) {
-        throw new Error(`Invalid JSON response: ${responseText}`);
-      }
-      
-      if (data.status === 'success') {
-        setUnits(data.units || []);
-      } else {
-        setError(data.message || 'Failed to load units');
-      }
+
+      console.log('Fetched units from Supabase:', data);
+      setUnits(data || []);
     } catch (err) {
-      setError('Error connecting to server: ' + err.message);
+      console.error('Error fetching units:', err);
+      setError('Error fetching units: ' + err.message);
+      setUnits([]);
     } finally {
       setLoading(false);
     }
@@ -140,51 +136,38 @@ export default function UnitManagement() {
 
     setSubmitting(true);
     try {
-      const url = editingUnit 
-        ? `http://localhost:8080/units/${editingUnit.unit_id}`
-        : 'http://localhost:8080/units';
-      
-      const method = editingUnit ? 'PUT' : 'POST';
-      
       const submitData = {
         unit_name: formData.unit_name.trim()
       };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData),
-      });
-      
-      const responseText = await response.text();
-      
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (jsonError) {
-        // If response is not JSON, treat the text as the error message
-        const friendlyErrorMessage = processErrorMessage(responseText);
-        setError(friendlyErrorMessage);
-        return;
-      }
-      
-      if (response.ok && data.status === 'success') {
-        await fetchUnits(); // Refresh the list
-        resetForm();
-        setError('');
-        showNotification(
-          'Berhasil!',
-          editingUnit ? 'Data unit berhasil diupdate!' : 'Unit baru berhasil ditambahkan!',
-          'success'
-        );
+      let result;
+
+      if (editingUnit) {
+        // Update existing unit
+        result = await supabase
+          .from('unit')
+          .update(submitData)
+          .eq('unit_id', editingUnit.unit_id);
       } else {
-        // Handle error response
-        const rawErrorMessage = data.message || data.error || `Server error: ${response.status} ${response.statusText}`;
-        const friendlyErrorMessage = processErrorMessage(rawErrorMessage);
-        setError(friendlyErrorMessage);
+        // Create new unit
+        result = await supabase
+          .from('unit')
+          .insert([submitData]);
       }
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      // Success
+      await fetchUnits(); // Refresh the list
+      resetForm();
+      setError('');
+      showNotification(
+        'Berhasil!',
+        editingUnit ? 'Data unit berhasil diupdate!' : 'Unit baru berhasil ditambahkan!',
+        'success'
+      );
     } catch (err) {
       const friendlyErrorMessage = processErrorMessage(err.message);
       setError('Error: ' + friendlyErrorMessage);
@@ -208,33 +191,21 @@ export default function UnitManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/units/${unit.unit_id}`, {
-        method: 'DELETE',
-      });
+      const { error } = await supabase
+        .from('unit')
+        .delete()
+        .eq('unit_id', unit.unit_id);
 
-      const responseText = await response.text();
-      
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (jsonError) {
-        const friendlyErrorMessage = processErrorMessage(responseText);
-        showNotification('Error!', friendlyErrorMessage, 'error');
-        return;
+      if (error) {
+        throw new Error(error.message);
       }
 
-      if (response.ok && data.status === 'success') {
-        await fetchUnits(); // Refresh the list
-        showNotification(
-          'Berhasil!',
-          'Unit berhasil dihapus!',
-          'success'
-        );
-      } else {
-        const rawErrorMessage = data.message || data.error || `Server error: ${response.status} ${response.statusText}`;
-        const friendlyErrorMessage = processErrorMessage(rawErrorMessage);
-        showNotification('Error!', friendlyErrorMessage, 'error');
-      }
+      await fetchUnits(); // Refresh the list
+      showNotification(
+        'Berhasil!',
+        'Unit berhasil dihapus!',
+        'success'
+      );
     } catch (err) {
       const friendlyErrorMessage = processErrorMessage(err.message);
       showNotification('Error!', friendlyErrorMessage, 'error');

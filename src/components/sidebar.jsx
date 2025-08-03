@@ -16,28 +16,29 @@ import {
   faBars, 
   faXmark,
   faChevronDown,
-  faChevronRight
+  faChevronRight,
+  faTachometerAlt,
+  faEye,
+  faGraduationCap,
+  faBook,
+  faSchool,
+  faChalkboardTeacher,
+  faUserGraduate,
+  faHouse
 } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
 const iconMap = {
-  'layout-dashboard': faGaugeHigh,
-  'user': faUser,
-  'user-plus': faUserPlus,
-  'users': faUsers,
-  'database': faDatabase,
-  'table': faTable,
-  'cogs': faCogs,
-  'key': faKey,
+  // Format FontAwesome lengkap (dari database lama)
+  'fas fa-tachometer-alt': faTachometerAlt,
+  'fas fa-database': faDatabase,
+  'fas fa-user': faUser,
+  'fas fa-eye': faEye,
+  'fas fa-users': faUsers,
+  'fas fa-graduation-cap': faGraduationCap,
+  'fas fa-book': faBook,
+  'fas fa-house': faHouse
 }
-
-// Mock data untuk fallback jika API gagal
-const mockMenuData = [
-  { id: 1, name: 'Dashboard', path: '/dashboard', icon: 'layout-dashboard', parentId: null, order: 1 },
-  { id: 2, name: 'Data Management', path: '#', icon: 'database', parentId: null, order: 2 },
-  { id: 3, name: 'User Access', path: '/data/akses', icon: 'user', parentId: 2, order: 1 },
-  { id: 4, name: 'View Data', path: '/data/lihat', icon: 'table', parentId: 2, order: 2 },
-]
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {
   const [menus, setMenus] = useState([])
@@ -52,67 +53,87 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
         setIsLoading(true)
         setError(null)
         
-        // Ensure we have a role - set default for testing
+        // Get user data from localStorage
+        const userData = localStorage.getItem("user_data")
         let role = localStorage.getItem("user_role")
-        if (!role) {
-          console.log("🔧 No role found, setting default admin role for testing")
-          localStorage.setItem("user_role", "admin")
-          role = "admin"
+        let isAdmin = false
+        
+        if (userData) {
+          try {
+            const user = JSON.parse(userData)
+            role = user.roleName
+            isAdmin = user.isAdmin
+            console.log("👤 User data from localStorage:", { role, isAdmin, user })
+          } catch (e) {
+            console.warn("⚠️ Failed to parse user data:", e)
+          }
         }
         
-        console.log("🔍 Fetching menus for role:", role)
-        console.log("🌐 Connecting to Neon database...")
-
-        // WAJIB menggunakan data dari database - NO FALLBACK TO MOCK
-        const res = await fetch(`http://localhost:8080/menu/${role}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          // Add timeout
-          signal: AbortSignal.timeout(10000) // 10 second timeout
-        })
-
-        console.log("📡 Response status:", res.status)
-
-        if (!res.ok) {
-          const errorText = await res.text()
-          throw new Error(`Server returned ${res.status}: ${errorText}`)
+        // Fallback: jika role tidak ada atau role adalah 'admin', set as admin
+        if (!role) {
+          console.log("🔧 No role found, setting default admin role for testing")
+          role = "admin"
+          isAdmin = true
         }
+        
+        // Override: jika role name adalah 'admin', force isAdmin = true
+        if (role === "admin" || role === "Admin") {
+          isAdmin = true
+        }
+        
+        console.log("🔍 Final values - role:", role, "isAdmin:", isAdmin)
+        console.log("🌐 Connecting to Supabase...")
 
-        const data = await res.json()
-        console.log("✅ Raw API Response:", data)
+        // Menggunakan Supabase langsung tanpa Go API
+        const { customAuth } = await import('@/lib/supabase')
+        const result = await customAuth.getMenusByRole(role, isAdmin)
 
-        if (data.status === 'success' && data.menus && Array.isArray(data.menus)) {
-          // Transform data from database - handle nullable values properly
-          const transformedData = data.menus.map(item => ({
+        console.log("📥 Menu result:", result)
+
+        if (result.success && result.menus && Array.isArray(result.menus)) {
+          // Transform data from Supabase
+          const transformedData = result.menus.map(item => ({
             id: item.menu_id,
             name: item.menu_name,
-            path: item.menu_path || '#',        // Handle null path
-            icon: item.menu_icon || '',         // Handle null icon  
-            parentId: item.menu_parent_id,      // Can be null
+            path: item.menu_path || '#',        
+            icon: item.menu_icon || '',         
+            parentId: item.menu_parent_id,      
             order: item.menu_order || 0
           }))
 
-          console.log("🔄 Transformed database data:", transformedData)
-          console.log("📊 Total menus from database:", transformedData.length)
+          console.log("🔄 Transformed Supabase data:", transformedData)
+          console.log("📊 Total menus from Supabase:", transformedData.length)
+          
+          // Debug: Log semua icon names dari database
+          transformedData.forEach(menu => {
+            console.log(`🎯 Menu "${menu.name}" has icon: "${menu.icon}"`)
+          })
+          
+          setMenus(transformedData)
+          setError(null)
+          console.log("✅ Successfully loaded menus from Supabase!")
           
           if (transformedData.length === 0) {
-            throw new Error("No menus found in database for role: " + role)
+            console.warn("⚠️ No menus found for role:", role)
+            setError(`No menus configured for role: ${role}. Please check database setup.`)
           }
-
-          setMenus(transformedData) // Use REAL database data ONLY!
-          setError(null)
-          console.log("✅ Successfully loaded menus from Neon database!")
         } else {
-          throw new Error(`Invalid response format: ${JSON.stringify(data)}`)
+          throw new Error(`Failed to fetch menus: ${result.message || 'Unknown error'}`)
         }
         
       } catch (error) {
-        console.error("❌ CRITICAL ERROR - Failed to load menus from database:", error)
-        setError(`Failed to connect to database: ${error.message}`)
-        setMenus([]) // NO MOCK DATA - show error instead
+        console.error("❌ Failed to load menus from Supabase:", error)
+        setError(`Database error: ${error.message}`)
+        setMenus([])
+        
+        // Debug info for development
+        if (process.env.NODE_ENV === 'development') {
+          console.log("🔧 Debug info:")
+          console.log("- Error:", error.message)
+          console.log("- Check /debug/supabase for detailed testing")
+          console.log("- Verify environment variables")
+          console.log("- Check Supabase dashboard for RLS policies")
+        }
       } finally {
         setIsLoading(false)
       }
@@ -149,10 +170,21 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
     }))
   }
 
-  // Fungsi helper untuk render icon
+  // Fungsi helper untuk render icon - langsung gunakan nama dari database
   const renderIcon = (iconName) => {
+    if (!iconName) {
+      console.warn('⚠️ No icon name provided')
+      return <FontAwesomeIcon icon={faTable} className="w-4 h-4" /> // Default icon
+    }
+    
+    // Langsung gunakan nama icon dari database sebagai key untuk mapping
     const icon = iconMap[iconName]
-    if (!icon) return null
+    if (!icon) {
+      console.warn(`⚠️ Icon not found in iconMap: "${iconName}"`)
+      console.log('📋 Available icons in iconMap:', Object.keys(iconMap))
+      console.log('🔍 Icon name from database:', iconName)
+      return <FontAwesomeIcon icon={faTable} className="w-4 h-4" /> // Default icon
+    }
     
     return <FontAwesomeIcon icon={icon} className="w-4 h-4" />
   }

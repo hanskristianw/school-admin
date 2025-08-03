@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { customAuth } from "@/lib/supabase"
 
 export default function Login() {
   const router = useRouter()
@@ -28,26 +29,23 @@ export default function Login() {
     setIsSubmitting(true)
 
     try {
-      console.log("📤 Sending login request...")
-      const res = await fetch("http://localhost:8080/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      })
+      console.log("📤 Logging in with Supabase...")
+      
+      // Menggunakan Supabase langsung tanpa Go API
+      const result = await customAuth.login(username, password)
+      
+      console.log("📥 Login result:", result)
 
-      const data = await res.json()
-      console.log("📥 Received response:", res.status)
-
-      if (res.ok) {
-        console.log("✅ Login successful")
-        localStorage.setItem("kr_id", data.user_id)
-        localStorage.setItem("user_role", data.role)
+      if (result.success) {
+        console.log("✅ Login successful with Supabase")
+        // Simpan data user ke localStorage
+        localStorage.setItem("kr_id", result.user.userID)
+        localStorage.setItem("user_role", result.user.roleName)
+        localStorage.setItem("user_data", JSON.stringify(result.user))
         router.push("/dashboard")
       } else {
-        console.log("❌ Login failed:", data.error)
-        setError(data.error || "Login gagal")
+        console.log("❌ Login failed:", result.message)
+        setError(result.message || "Login gagal")
       }
     } catch (err) {
       console.error("❌ Login error:", err)

@@ -23,6 +23,7 @@ import {
   faChartBar,
   faCog
 } from '@fortawesome/free-solid-svg-icons'
+import { supabase } from '@/lib/supabase'
 
 export default function ImprovedMenuManagement() {
   const [menus, setMenus] = useState([])
@@ -85,14 +86,20 @@ export default function ImprovedMenuManagement() {
   const fetchRoles = async () => {
     try {
       // Fetch all roles for general use
-      const allRolesResponse = await fetch('http://localhost:8080/roles')
-      const allRoles = await allRolesResponse.json()
-      setRoles(allRoles)
+      const { data: allRoles, error: allRolesError } = await supabase
+        .from('role')
+        .select('role_id, role_name, is_admin')
+        .order('role_name');
+
+      if (allRolesError) {
+        throw new Error(allRolesError.message);
+      }
+
+      setRoles(allRoles || []);
       
-      // Fetch non-admin roles specifically for permission management
-      const nonAdminResponse = await fetch('http://localhost:8080/non-admin-roles')
-      const nonAdminData = await nonAdminResponse.json()
-      setNonAdminRoles(nonAdminData)
+      // Filter non-admin roles for permission management
+      const nonAdminData = allRoles?.filter(role => !role.is_admin) || [];
+      setNonAdminRoles(nonAdminData);
     } catch (error) {
       console.error('Error fetching roles:', error)
     }
@@ -100,10 +107,52 @@ export default function ImprovedMenuManagement() {
 
   const fetchMenus = async () => {
     try {
-      // Fetch with permission details for non-admin roles
-      const response = await fetch('http://localhost:8080/menus-with-permissions')
-      const data = await response.json()
-      setMenus(data)
+      // Fetch menus terlebih dahulu
+      const { data: menusData, error: menusError } = await supabase
+        .from('menus')
+        .select('menu_id, menu_name, menu_url, menu_icon, menu_order, menu_parent_id, is_active')
+        .order('menu_order');
+
+      if (menusError) {
+        throw new Error(menusError.message);
+      }
+
+      // Fetch menu permissions
+      const { data: permissionsData, error: permissionsError } = await supabase
+        .from('menu_permissions')
+        .select('menu_id, role_id');
+
+      if (permissionsError) {
+        throw new Error(permissionsError.message);
+      }
+
+      // Fetch roles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('role')
+        .select('role_id, role_name, is_admin');
+
+      if (rolesError) {
+        throw new Error(rolesError.message);
+      }
+
+      // Transform data dengan menggabungkan informasi permissions
+      const transformedMenus = menusData.map(menu => {
+        const menuPermissions = permissionsData.filter(p => p.menu_id === menu.menu_id);
+        const permissions = menuPermissions.map(perm => {
+          const role = rolesData.find(r => r.role_id === perm.role_id);
+          return {
+            role_id: perm.role_id,
+            role: role
+          };
+        });
+
+        return {
+          ...menu,
+          permissions: permissions
+        };
+      });
+
+      setMenus(transformedMenus);
     } catch (error) {
       console.error('Error fetching menus:', error)
     } finally {
@@ -113,9 +162,19 @@ export default function ImprovedMenuManagement() {
 
   const fetchParentMenus = async () => {
     try {
-      const response = await fetch('http://localhost:8080/parent-menus')
-      const data = await response.json()
-      setParentMenus(data)
+      // Fetch parent menus (menus that can have children) from Supabase
+      const { data, error } = await supabase
+        .from('menus')
+        .select('menu_id, menu_name')
+        .is('menu_parent_id', null) // Only top-level menus can be parents
+        .eq('is_active', true)
+        .order('menu_name');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setParentMenus(data || []);
     } catch (error) {
       console.error('Error fetching parent menus:', error)
     }
@@ -166,29 +225,41 @@ export default function ImprovedMenuManagement() {
     }
 
     try {
-      const endpoint = editingMenu 
-        ? `http://localhost:8080/menus/${editingMenu.menu_id}`
-        : 'http://localhost:8080/menus'
-      
-      const method = editingMenu ? 'PUT' : 'POST'
-      
-      const response = await fetch(endpoint, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
+      // Prepare menu data for Supabase
+      const menuData = {
+        menu_name: formData.menu_name,
+        menu_url: formData.menu_path,
+        menu_icon: formData.menu_icon,
+        menu_order: formData.menu_order,
+        menu_parent_id: formData.menu_parent_id || null,
+        is_active: formData.is_active
+      };
 
-      if (response.ok) {
-        fetchMenus()
-        setShowModal(false)
-        resetForm()
+      let result;
+
+      if (editingMenu) {
+        // Update existing menu
+        result = await supabase
+          .from('menus')
+          .update(menuData)
+          .eq('menu_id', editingMenu.menu_id);
       } else {
-        const error = await response.json()
-        alert(error.error || 'Terjadi kesalahan')
+        // Create new menu
+        result = await supabase
+          .from('menus')
+          .insert([menuData]);
       }
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      fetchMenus()
+      setShowModal(false)
+      resetForm()
     } catch (error) {
       console.error('Error saving menu:', error)
-      alert('Terjadi kesalahan saat menyimpan')
+      alert('Terjadi kesalahan saat menyimpan: ' + error.message)
     }
   }
 
@@ -223,15 +294,16 @@ export default function ImprovedMenuManagement() {
 
   const toggleMenuStatus = async (menuId, field, currentValue) => {
     try {
-      const response = await fetch(`http://localhost:8080/menus/${menuId}/toggle`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: !currentValue })
-      })
+      const { error } = await supabase
+        .from('menus')
+        .update({ [field]: !currentValue })
+        .eq('menu_id', menuId);
 
-      if (response.ok) {
-        fetchMenus()
+      if (error) {
+        throw new Error(error.message);
       }
+
+      fetchMenus()
     } catch (error) {
       console.error('Error toggling menu status:', error)
     }

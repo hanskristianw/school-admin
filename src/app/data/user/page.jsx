@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
+import { supabase } from '@/lib/supabase';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -358,37 +359,15 @@ export default function UserManagement() {
           throw new Error('Missing required fields after cleaning');
         }
 
-        const response = await fetch('http://localhost:8080/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(cleanedUserData),
-        });
+        const result = await supabase
+          .from('users')
+          .insert([cleanedUserData]);
 
-        const responseText = await response.text();
-        
-        let data;
-        try {
-          data = JSON.parse(responseText);
-        } catch (jsonError) {
-          throw new Error(`Invalid JSON response: ${responseText}`);
+        if (result.error) {
+          throw new Error(result.error.message);
         }
-        
-        if (response.ok && data.status === 'success') {
-          results.success++;
-        } else {
-          results.failed++;
-          let errorMsg = data.message || data.error || `HTTP ${response.status}`;
-          
-          // Process error message to be more user-friendly
-          errorMsg = processErrorMessage(errorMsg);
-          
-          results.errors.push({
-            username: cleanedUserData.user_username,
-            error: errorMsg
-          });
-        }
+
+        results.success++;
       } catch (err) {
         results.failed++;
         let errorMsg = err.message;
@@ -464,16 +443,61 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8080/users');
-      const data = await response.json();
+      setError('');
       
-      if (data.status === 'success') {
-        setUsers(data.users || []);
-      } else {
-        setError('Failed to load users');
+      // Fetch users terlebih dahulu
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_role_id, user_unit_id, is_active')
+        .order('user_id');
+
+      if (usersError) {
+        throw new Error(usersError.message);
       }
+
+      // Fetch roles untuk mendapatkan nama role dan info admin
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('role')
+        .select('role_id, role_name, is_admin');
+
+      if (rolesError) {
+        throw new Error(rolesError.message);
+      }
+
+      // Fetch units untuk mendapatkan nama unit
+      const { data: unitsData, error: unitsError } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name');
+
+      if (unitsError) {
+        throw new Error(unitsError.message);
+      }
+
+      // Transform data dengan menggabungkan informasi dari ketiga tabel
+      const transformedData = usersData.map(user => {
+        const role = rolesData.find(r => r.role_id === user.user_role_id);
+        const unit = unitsData.find(u => u.unit_id === user.user_unit_id);
+        
+        return {
+          user_id: user.user_id,
+          user_nama_depan: user.user_nama_depan,
+          user_nama_belakang: user.user_nama_belakang,
+          user_username: user.user_username,
+          user_role_id: user.user_role_id,
+          user_unit_id: user.user_unit_id,
+          role_name: role?.role_name || '',
+          is_admin: role?.is_admin || false,
+          unit_name: unit?.unit_name || '',
+          is_active: user.is_active
+        };
+      });
+
+      console.log('Fetched users from Supabase:', transformedData);
+      setUsers(transformedData);
     } catch (err) {
-      setError('Error connecting to server: ' + err.message);
+      console.error('Error fetching users:', err);
+      setError('Error fetching users: ' + err.message);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -481,12 +505,17 @@ export default function UserManagement() {
 
   const fetchRoles = async () => {
     try {
-      const response = await fetch('http://localhost:8080/roles');
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        setRoles(data.roles || []);
+      // Menggunakan Supabase untuk fetch roles
+      const { data, error } = await supabase
+        .from('role')
+        .select('role_id, role_name, is_admin')
+        .order('role_id');
+
+      if (error) {
+        throw new Error(error.message);
       }
+
+      setRoles(data || []);
     } catch (err) {
       console.error('Error fetching roles:', err);
     }
@@ -494,12 +523,17 @@ export default function UserManagement() {
 
   const fetchUnits = async () => {
     try {
-      const response = await fetch('http://localhost:8080/units');
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        setUnits(data.units || []);
+      // Menggunakan Supabase untuk fetch units
+      const { data, error } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name')
+        .order('unit_name');
+
+      if (error) {
+        throw new Error(error.message);
       }
+
+      setUnits(data || []);
     } catch (err) {
       console.error('Error fetching units:', err);
     }
@@ -545,17 +579,8 @@ export default function UserManagement() {
 
     setSubmitting(true);
     try {
-      const url = editingUser 
-        ? `http://localhost:8080/users/${editingUser.user_id}`
-        : 'http://localhost:8080/users';
-      
-      const method = editingUser ? 'PUT' : 'POST';
-      
       const submitData = { ...formData };
-      if (editingUser && !submitData.user_password) {
-        delete submitData.user_password; // Don't send empty password for updates
-      }
-
+      
       // Ensure role_id is a number
       if (submitData.user_role_id) {
         submitData.user_role_id = Number(submitData.user_role_id);
@@ -568,44 +593,48 @@ export default function UserManagement() {
         submitData.user_unit_id = null;
       }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData),
-      });
-      
-      const responseText = await response.text();
-      
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (jsonError) {
-        // If response is not JSON, treat the text as the error message
-        const friendlyErrorMessage = processErrorMessage(responseText);
-        setError(friendlyErrorMessage);
-        return;
-      }
-      
-      if (response.ok && data.status === 'success') {
-        await fetchUsers(); // Refresh the list
-        resetForm();
-        setError('');
-        showNotification(
-          'Berhasil!',
-          editingUser ? 'Data user berhasil diupdate!' : 'User baru berhasil ditambahkan!',
-          'success'
-        );
+      let result;
+
+      if (editingUser) {
+        // Update existing user
+        const updateData = { ...submitData };
+        
+        // Don't send password if empty for updates
+        if (!updateData.user_password) {
+          delete updateData.user_password;
+        } else {
+          // TODO: Hash password properly in production
+          // For now, store as is (not secure for production)
+        }
+
+        result = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('user_id', editingUser.user_id);
       } else {
-        // Handle error response - bisa dari status !== 'success' atau HTTP error status
-        const rawErrorMessage = data.message || data.error || `Server error: ${response.status} ${response.statusText}`;
-        const friendlyErrorMessage = processErrorMessage(rawErrorMessage);
-        setError(friendlyErrorMessage);
+        // Create new user
+        // TODO: Hash password properly in production
+        result = await supabase
+          .from('users')
+          .insert([submitData]);
       }
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      // Success
+      await fetchUsers(); // Refresh the list
+      resetForm();
+      setError('');
+      showNotification(
+        'Berhasil!',
+        editingUser ? 'Data user berhasil diupdate!' : 'User baru berhasil ditambahkan!',
+        'success'
+      );
     } catch (err) {
-      const friendlyErrorMessage = processErrorMessage(err.message);
-      setError('Error: ' + friendlyErrorMessage);
+      const errorMessage = processErrorMessage(err.message);
+      setError('Error: ' + errorMessage);
     } finally {
       setSubmitting(false);
     }
