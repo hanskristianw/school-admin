@@ -24,7 +24,9 @@ import {
   faSchool,
   faChalkboardTeacher,
   faUserGraduate,
-  faHouse
+  faHouse,
+  faClipboardCheck,
+  faPaperPlane
 } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
@@ -37,7 +39,10 @@ const iconMap = {
   'fas fa-users': faUsers,
   'fas fa-graduation-cap': faGraduationCap,
   'fas fa-book': faBook,
-  'fas fa-house': faHouse
+  'fas fa-house': faHouse,
+  'fas fa-chalkboard-teacher': faChalkboardTeacher,
+  'fas fa-clipboard-check': faClipboardCheck,
+  'fas fa-paper-plane': faPaperPlane
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {
