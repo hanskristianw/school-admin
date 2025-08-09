@@ -15,7 +15,9 @@ async function updateIconNames() {
       { old: 'fas fa-eye', new: 'faEye' },
       { old: 'users', new: 'faUsers' },
       { old: 'graduation-cap', new: 'faGraduationCap' },
-      { old: 'book', new: 'faBook' }
+      { old: 'book', new: 'faBook' },
+      { old: 'fas fa-edit', new: 'faEdit' },
+      { old: 'fas fa-trash', new: 'faTrash' }
     ]
     
     for (const update of updates) {

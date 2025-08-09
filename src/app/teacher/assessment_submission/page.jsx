@@ -8,8 +8,19 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
+import { useI18n } from '@/lib/i18n';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faPlus,
+  faBook,
+  faClipboardList,
+  faInfoCircle,
+  faSpinner,
+  faPaperPlane
+} from '@fortawesome/free-solid-svg-icons';
 
 export default function AssessmentSubmission() {
+  const { t, lang } = useI18n();
   const [assessments, setAssessments] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +60,7 @@ export default function AssessmentSubmission() {
       fetchUserSubjects(parseInt(kr_id));
       fetchUserAssessments(parseInt(kr_id));
     } else {
-      setError('User tidak terautentikasi');
+  setError(t('teacherSubmission.unauth'));
       setLoading(false);
     }
   }, []);
@@ -80,8 +91,8 @@ export default function AssessmentSubmission() {
       setSubjects(subjectsData || []);
       
     } catch (err) {
-      console.error('Error fetching user subjects:', err);
-      setError('Gagal memuat mata pelajaran: ' + err.message);
+  console.error('Error fetching user subjects:', err);
+  setError(t('teacherSubmission.notifErrorSubjects') + err.message);
     }
   };
 
@@ -104,38 +115,44 @@ export default function AssessmentSubmission() {
       setAssessments(assessmentsData || []);
       
     } catch (err) {
-      console.error('Error fetching user assessments:', err);
-      setError('Gagal memuat data assessment: ' + err.message);
-      showNotification('Error', 'Gagal memuat data assessment: ' + err.message, 'error');
+  console.error('Error fetching user assessments:', err);
+  setError(t('teacherSubmission.notifErrorLoad') + err.message);
+  showNotification(t('teacherSubmission.notifErrorTitle'), t('teacherSubmission.notifErrorLoad') + err.message, 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
+  switch (status) {
       case 0:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            Menunggu Persetujuan
+      {t('teacherSubmission.statusWaiting')}
+          </span>
+        );
+      case 3:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+      {t('teacherSubmission.statusWaitingPrincipal')}
           </span>
         );
       case 1:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            Disetujui
+      {t('teacherSubmission.statusApproved')}
           </span>
         );
       case 2:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            Ditolak
+      {t('teacherSubmission.statusRejected')}
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-            Tidak Diketahui
+      {t('teacherSubmission.statusBadgeUnknown')}
           </span>
         );
     }
@@ -146,29 +163,65 @@ export default function AssessmentSubmission() {
     return subject ? subject.subject_name : 'Unknown Subject';
   };
 
+  // Helper function untuk menghitung perbedaan hari
+  const getDaysDifference = (date1, date2) => {
+    const diffTime = Math.abs(date2 - date1);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  // Helper function untuk validasi tanggal minimum
+  const getMinimumDate = () => {
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() + 2); // Minimal 2 hari ke depan
+    return minDate;
+  };
+
   const validateForm = () => {
     const errors = {};
     
     if (!formData.assessment_nama.trim()) {
-      errors.assessment_nama = 'Nama assessment wajib diisi';
+  errors.assessment_nama = t('teacherSubmission.validation.nameRequired');
     }
     
     if (!formData.assessment_tanggal) {
-      errors.assessment_tanggal = 'Tanggal assessment wajib diisi';
+  errors.assessment_tanggal = t('teacherSubmission.validation.dateRequired');
     }
     
     if (!formData.assessment_subject_id) {
-      errors.assessment_subject_id = 'Mata pelajaran wajib dipilih';
+  errors.assessment_subject_id = t('teacherSubmission.validation.subjectRequired');
     }
     
-    // Validasi tanggal tidak boleh di masa lalu
+    // Validasi tanggal 
     if (formData.assessment_tanggal) {
       const selectedDate = new Date(formData.assessment_tanggal);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
       
+      // Cek apakah tanggal di masa lalu
       if (selectedDate < today) {
-        errors.assessment_tanggal = 'Tanggal assessment tidak boleh di masa lalu';
+        errors.assessment_tanggal = t('teacherSubmission.validation.datePast');
+      }
+      // Cek apakah tanggal hanya beda 1 hari (besok)
+      else {
+        const daysDiff = getDaysDifference(today, selectedDate);
+        if (daysDiff === 1) {
+          const todayStr = today.toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+          const selectedStr = selectedDate.toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+          
+          errors.assessment_tanggal = t('teacherSubmission.validation.dateTomorrow', { date: selectedStr })
+        }
       }
     }
     
@@ -184,18 +237,26 @@ export default function AssessmentSubmission() {
     }
     
     if (!currentUserId) {
-      showNotification('Error', 'User tidak terautentikasi', 'error');
+  showNotification(t('teacherSubmission.notifErrorTitle'), t('teacherSubmission.unauth'), 'error');
       return;
     }
 
     try {
       setSubmitting(true);
       
+      // Determine status based on date difference: 2-6 days => waiting for principal approval (3)
+      const selectedDate = new Date(formData.assessment_tanggal);
+      selectedDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const diffDays = getDaysDifference(today, selectedDate);
+      const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0;
+
       const assessmentData = {
         assessment_nama: formData.assessment_nama.trim(),
         assessment_tanggal: formData.assessment_tanggal,
         assessment_keterangan: formData.assessment_keterangan.trim() || null,
-        assessment_status: 0, // Status awal: menunggu persetujuan
+        assessment_status: computedStatus, // 0: waiting, 3: waiting for principal approval
         assessment_user_id: currentUserId,
         assessment_subject_id: parseInt(formData.assessment_subject_id)
       };
@@ -225,14 +286,14 @@ export default function AssessmentSubmission() {
       setShowForm(false);
 
       showNotification(
-        'Berhasil', 
-        'Assessment berhasil disubmit dan menunggu persetujuan', 
+        t('teacherSubmission.notifSuccessTitle'), 
+        t('teacherSubmission.notifSuccessMsg'), 
         'success'
       );
       
     } catch (err) {
-      console.error('Error submitting assessment:', err);
-      showNotification('Error', 'Gagal submit assessment: ' + err.message, 'error');
+  console.error('Error submitting assessment:', err);
+  showNotification(t('teacherSubmission.notifErrorTitle'), t('teacherSubmission.notifErrorSubmit') + err.message, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -252,6 +313,43 @@ export default function AssessmentSubmission() {
         [name]: ''
       }));
     }
+    
+    // Real-time validation untuk tanggal
+    if (name === 'assessment_tanggal' && value) {
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate < today) {
+        setFormErrors(prev => ({
+          ...prev,
+          assessment_tanggal: t('teacherSubmission.validation.datePast')
+        }));
+      } else {
+        const daysDiff = getDaysDifference(today, selectedDate);
+        if (daysDiff === 1) {
+          const selectedStr = selectedDate.toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+          
+          setFormErrors(prev => ({
+            ...prev,
+            assessment_tanggal: t('teacherSubmission.validation.dateTomorrowShort', { date: selectedStr })
+          }));
+          
+          // Show notification juga
+          showNotification(
+            t('teacherSubmission.notifWarnTitle'), 
+            t('teacherSubmission.validation.dateTomorrow', { date: selectedStr }), 
+            'warning'
+          );
+        }
+      }
+    }
   };
 
   const filteredAssessments = assessments.filter(assessment => {
@@ -264,7 +362,7 @@ export default function AssessmentSubmission() {
   });
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
+    return new Date(dateString).toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -283,16 +381,16 @@ export default function AssessmentSubmission() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Assessment Submission</h1>
-          <p className="text-gray-600">Submit assessment untuk mata pelajaran yang Anda ajar</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('teacherSubmission.title')}</h1>
+          <p className="text-gray-600">{t('teacherSubmission.subtitle')}</p>
         </div>
         <Button
           onClick={() => setShowForm(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white"
           disabled={subjects.length === 0}
         >
-          <i className="fas fa-plus mr-2"></i>
-          Submit Assessment Baru
+          <FontAwesomeIcon icon={faPlus} className="mr-2" />
+          {t('teacherSubmission.newButton')}
         </Button>
       </div>
 
@@ -306,7 +404,7 @@ export default function AssessmentSubmission() {
         <Card>
           <CardContent className="text-center py-8">
             <div className="text-gray-500 mb-4">
-              <i className="fas fa-book text-4xl mb-2"></i>
+              <FontAwesomeIcon icon={faBook} className="text-4xl mb-2" />
               <p>Anda belum memiliki mata pelajaran yang diajar.</p>
               <p className="text-sm">Hubungi administrator untuk menambahkan mata pelajaran.</p>
             </div>
@@ -319,36 +417,37 @@ export default function AssessmentSubmission() {
           {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Filter Assessment</CardTitle>
+      <CardTitle>{t('teacherSubmission.filtersTitle')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
+        {t('teacherSubmission.status')}
                   </label>
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters({...filters, status: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Semua Status</option>
-                    <option value="0">Menunggu Persetujuan</option>
-                    <option value="1">Disetujui</option>
-                    <option value="2">Ditolak</option>
+        <option value="">{t('teacherSubmission.allStatus')}</option>
+        <option value="0">{t('teacherSubmission.statusWaiting')}</option>
+  <option value="3">{t('teacherSubmission.statusWaitingPrincipal')}</option>
+        <option value="1">{t('teacherSubmission.statusApproved')}</option>
+        <option value="2">{t('teacherSubmission.statusRejected')}</option>
                   </select>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mata Pelajaran
+        {t('teacherSubmission.subject')}
                   </label>
                   <select
                     value={filters.subject}
                     onChange={(e) => setFilters({...filters, subject: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Semua Mata Pelajaran</option>
+        <option value="">{t('teacherSubmission.subjectLabel')}</option>
                     {subjects.map(subject => (
                       <option key={subject.subject_id} value={subject.subject_id}>
                         {subject.subject_name}
@@ -359,7 +458,7 @@ export default function AssessmentSubmission() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dari Tanggal
+        {t('teacherSubmission.fromDate')}
                   </label>
                   <input
                     type="date"
@@ -371,7 +470,7 @@ export default function AssessmentSubmission() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sampai Tanggal
+        {t('teacherSubmission.toDate')}
                   </label>
                   <input
                     type="date"
@@ -387,19 +486,19 @@ export default function AssessmentSubmission() {
           {/* Assessment List */}
           <Card>
             <CardHeader>
-              <CardTitle>Assessment Saya ({filteredAssessments.length})</CardTitle>
+              <CardTitle>{t('teacherSubmission.myAssessments', { count: filteredAssessments.length })}</CardTitle>
             </CardHeader>
             <CardContent>
               {filteredAssessments.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   {assessments.length === 0 ? (
                     <>
-                      <i className="fas fa-clipboard-list text-4xl mb-4"></i>
-                      <p className="text-lg mb-2">Belum ada assessment yang disubmit</p>
-                      <p className="text-sm">Klik tombol "Submit Assessment Baru" untuk memulai</p>
+                      <FontAwesomeIcon icon={faClipboardList} className="text-4xl mb-4" />
+                      <p className="text-lg mb-2">{t('teacherSubmission.emptyNone')}</p>
+                      <p className="text-sm">{t('teacherSubmission.emptyHint')}</p>
                     </>
                   ) : (
-                    <p>Tidak ada assessment yang sesuai dengan filter</p>
+                    <p>{t('teacherSubmission.emptyAny')}</p>
                   )}
                 </div>
               ) : (
@@ -408,19 +507,19 @@ export default function AssessmentSubmission() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Nama Assessment
+                          {t('teacherSubmission.thName')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tanggal
+                          {t('teacherSubmission.thDate')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Mata Pelajaran
+                          {t('teacherSubmission.thSubject')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
+                          {t('teacherSubmission.thStatus')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tanggal Submit
+                          {t('teacherSubmission.thSubmittedAt')}
                         </th>
                       </tr>
                     </thead>
@@ -449,7 +548,7 @@ export default function AssessmentSubmission() {
                             {getStatusBadge(assessment.assessment_status)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date().toLocaleDateString('id-ID')}
+                            {new Date().toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID')}
                           </td>
                         </tr>
                       ))}
@@ -475,18 +574,37 @@ export default function AssessmentSubmission() {
           });
           setFormErrors({});
         }}
-        title="Submit Assessment Baru"
+  title={t('teacherSubmission.modalTitle')}
       >
+        {/* Info Panel Aturan Tanggal */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-start">
+            <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5 mr-2" />
+            <div className="text-sm text-blue-700">
+              <p className="font-medium mb-1">{t('teacherSubmission.rulesTitle')}</p>
+              <ul className="text-xs space-y-1">
+                <li>{t('teacherSubmission.rules1')}</li>
+                <li>
+                  {t('teacherSubmission.rules2Prefix')}
+                  {getMinimumDate().toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {t('teacherSubmission.rules2Suffix')}
+                </li>
+                <li>{t('teacherSubmission.rules3')}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="assessment_nama">Nama Assessment *</Label>
+            <Label htmlFor="assessment_nama">{t('teacherSubmission.nameLabel')}</Label>
             <Input
               id="assessment_nama"
               name="assessment_nama"
               type="text"
               value={formData.assessment_nama}
               onChange={handleInputChange}
-              placeholder="Contoh: Ujian Tengah Semester"
+              placeholder={t('teacherSubmission.namePlaceholder')}
               className={formErrors.assessment_nama ? 'border-red-500' : ''}
             />
             {formErrors.assessment_nama && (
@@ -495,23 +613,29 @@ export default function AssessmentSubmission() {
           </div>
 
           <div>
-            <Label htmlFor="assessment_tanggal">Tanggal Assessment *</Label>
+            <Label htmlFor="assessment_tanggal">{t('teacherSubmission.dateLabel')}</Label>
             <Input
               id="assessment_tanggal"
               name="assessment_tanggal"
               type="date"
               value={formData.assessment_tanggal}
               onChange={handleInputChange}
-              min={new Date().toISOString().split('T')[0]}
+              min={getMinimumDate().toISOString().split('T')[0]}
               className={formErrors.assessment_tanggal ? 'border-red-500' : ''}
             />
             {formErrors.assessment_tanggal && (
               <p className="text-red-500 text-sm mt-1">{formErrors.assessment_tanggal}</p>
             )}
+            <p className="text-xs text-gray-500 mt-1">
+              <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
+              {t('teacherSubmission.dateHintPrefix')}
+              {getMinimumDate().toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {t('teacherSubmission.dateHintSuffix')}
+            </p>
           </div>
 
           <div>
-            <Label htmlFor="assessment_subject_id">Mata Pelajaran *</Label>
+            <Label htmlFor="assessment_subject_id">{t('teacherSubmission.subjectLabel')}</Label>
             <select
               id="assessment_subject_id"
               name="assessment_subject_id"
@@ -521,7 +645,7 @@ export default function AssessmentSubmission() {
                 formErrors.assessment_subject_id ? 'border-red-500' : 'border-gray-300'
               }`}
             >
-              <option value="">Pilih Mata Pelajaran</option>
+              <option value="">{t('teacherSubmission.subjectPlaceholder')}</option>
               {subjects.map(subject => (
                 <option key={subject.subject_id} value={subject.subject_id}>
                   {subject.subject_name}
@@ -534,13 +658,13 @@ export default function AssessmentSubmission() {
           </div>
 
           <div>
-            <Label htmlFor="assessment_keterangan">Keterangan (Opsional)</Label>
+            <Label htmlFor="assessment_keterangan">{t('teacherSubmission.noteLabel')}</Label>
             <textarea
               id="assessment_keterangan"
               name="assessment_keterangan"
               value={formData.assessment_keterangan}
               onChange={handleInputChange}
-              placeholder="Deskripsi atau catatan tambahan tentang assessment"
+              placeholder={t('teacherSubmission.notePlaceholder')}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -562,7 +686,7 @@ export default function AssessmentSubmission() {
               disabled={submitting}
               className="bg-gray-500 hover:bg-gray-600 text-white"
             >
-              Batal
+              {t('teacherSubmission.cancel')}
             </Button>
             <Button
               type="submit"
@@ -571,13 +695,13 @@ export default function AssessmentSubmission() {
             >
               {submitting ? (
                 <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                  Submitting...
+                  <FontAwesomeIcon icon={faSpinner} spin className="mr-2" />
+                  {t('teacherSubmission.submitting')}
                 </>
               ) : (
                 <>
-                  <i className="fas fa-paper-plane mr-2"></i>
-                  Submit Assessment
+                  <FontAwesomeIcon icon={faPaperPlane} className="mr-2" />
+                  {t('teacherSubmission.submit')}
                 </>
               )}
             </Button>

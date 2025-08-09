@@ -4,9 +4,15 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { customAuth } from "@/lib/supabase"
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 
 export default function Login() {
   const router = useRouter()
+  const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -45,80 +51,76 @@ export default function Login() {
         router.push("/dashboard")
       } else {
         console.log("❌ Login failed:", result.message)
-        setError(result.message || "Login gagal")
+        setError(result.message || t('login.failed'))
       }
     } catch (err) {
       console.error("❌ Login error:", err)
-      setError("Terjadi kesalahan saat login")
+      setError(t('login.error'))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   if (loading) {
-    return <p className="p-6">Memuat...</p>
+    return <p className="p-6">{t('login.loading')}</p>
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-96">
-        {/* Image Container */}
-        <div className="flex justify-center mb-8">
-          <Image
-            src="/images/login-logo.jpg"
-            alt="School Logo"
-            width={120}
-            height={120}
-            className="rounded-full shadow-sm"
-            priority
-          />
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 px-4">
+      <div className="w-full max-w-md">
+        <Card className="shadow-lg">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <Image
+                src="/images/login-logo.jpg"
+                alt="School Logo"
+                width={96}
+                height={96}
+                className="rounded-full shadow-sm"
+                priority
+              />
+            </div>
+            <CardTitle className="text-xl">{t('login.title')}</CardTitle>
+            <p className="text-sm text-gray-500">{t('login.subtitle')}</p>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded">
+                {error}
+              </div>
+            )}
 
-        <h1 className="text-2xl font-bold mb-6 text-center">Sistem Administrasi Sekolah</h1>
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-            {error}
-          </div>
-        )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="username">{t('login.username')}</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-2">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              disabled={isSubmitting}
-              required
-            />
-          </div>
+              <div>
+                <Label htmlFor="password">{t('login.password')}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
 
-          <div className="mb-6">
-            <label className="block text-gray-700 mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              disabled={isSubmitting}
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`w-full p-2 rounded text-white ${
-              isSubmitting 
-                ? 'bg-blue-300 cursor-not-allowed' 
-                : 'bg-blue-500 hover:bg-blue-600'
-            }`}
-          >
-            {isSubmitting ? 'Memproses...' : 'Masuk'}
-          </button>
-        </form>
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? t('login.processing') : t('login.submit')}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

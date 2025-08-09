@@ -13,6 +13,7 @@ export default function ClassManagement() {
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
   const [units, setUnits] = useState([]);
+  const [years, setYears] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -20,7 +21,8 @@ export default function ClassManagement() {
   const [formData, setFormData] = useState({
     kelas_nama: '',
     kelas_user_id: '',
-    kelas_unit_id: ''
+    kelas_unit_id: '',
+    kelas_year_id: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -43,6 +45,7 @@ export default function ClassManagement() {
     fetchClasses();
     fetchUsers();
     fetchUnits();
+    fetchYears();
   }, []);
 
   // Show notification helper
@@ -60,10 +63,10 @@ export default function ClassManagement() {
       setLoading(true);
       setError('');
       
-      // Fetch classes terlebih dahulu
+      // Fetch classes terlebih dahulu dengan year_id
       const { data: classesData, error: classesError } = await supabase
         .from('kelas')
-        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id')
+        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id')
         .order('kelas_id');
 
       if (classesError) {
@@ -88,19 +91,32 @@ export default function ClassManagement() {
         throw new Error(unitsError.message);
       }
 
-      // Transform data dengan menggabungkan informasi dari ketiga tabel
+      // Fetch years untuk mendapatkan nama year
+      const { data: yearsData, error: yearsError } = await supabase
+        .from('year')
+        .select('year_id, year_name');
+
+      if (yearsError) {
+        throw new Error(yearsError.message);
+      }
+
+      // Transform data dengan menggabungkan informasi dari keempat tabel
       const transformedData = classesData.map(kelas => {
         const user = usersData.find(u => u.user_id === kelas.kelas_user_id);
         const unit = unitsData.find(u => u.unit_id === kelas.kelas_unit_id);
+        const year = yearsData.find(y => y.year_id === kelas.kelas_year_id);
         
         return {
           kelas_id: kelas.kelas_id,
           kelas_nama: kelas.kelas_nama,
           kelas_user_id: kelas.kelas_user_id,
           kelas_unit_id: kelas.kelas_unit_id,
+          kelas_year_id: kelas.kelas_year_id,
+          kelas_year_id: kelas.kelas_year_id,
           user_nama_depan: user?.user_nama_depan || '',
           user_nama_belakang: user?.user_nama_belakang || '',
-          unit_name: unit?.unit_name || ''
+          unit_name: unit?.unit_name || '',
+          year_name: year?.year_name || ''
         };
       });
 
@@ -171,6 +187,24 @@ export default function ClassManagement() {
     }
   };
 
+  const fetchYears = async () => {
+    try {
+      // Menggunakan Supabase untuk fetch years
+      const { data, error } = await supabase
+        .from('year')
+        .select('year_id, year_name')
+        .order('year_name');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setYears(data || []);
+    } catch (err) {
+      console.error('Error fetching years:', err);
+    }
+  };
+
   const processErrorMessage = (errorMessage) => {
     const message = errorMessage?.toLowerCase() || '';
     
@@ -238,6 +272,10 @@ export default function ClassManagement() {
       errors.kelas_unit_id = 'Unit wajib dipilih';
     }
 
+    if (!formData.kelas_year_id) {
+      errors.kelas_year_id = 'Tahun ajaran wajib dipilih';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -254,7 +292,8 @@ export default function ClassManagement() {
       const submitData = {
         kelas_nama: formData.kelas_nama.trim(),
         kelas_user_id: Number(formData.kelas_user_id),
-        kelas_unit_id: Number(formData.kelas_unit_id)
+        kelas_unit_id: Number(formData.kelas_unit_id),
+        kelas_year_id: Number(formData.kelas_year_id)
       };
 
       let result;
@@ -304,7 +343,8 @@ export default function ClassManagement() {
     setFormData({
       kelas_nama: kelas.kelas_nama,
       kelas_user_id: kelas.kelas_user_id,
-      kelas_unit_id: kelas.kelas_unit_id
+      kelas_unit_id: kelas.kelas_unit_id,
+      kelas_year_id: kelas.kelas_year_id
     });
     setShowForm(true);
     setFormErrors({});
@@ -347,7 +387,8 @@ export default function ClassManagement() {
     setFormData({
       kelas_nama: '',
       kelas_user_id: '',
-      kelas_unit_id: ''
+      kelas_unit_id: '',
+      kelas_year_id: ''
     });
     setShowForm(true);
     setFormErrors({});
@@ -484,6 +525,9 @@ export default function ClassManagement() {
                       Unit
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tahun Ajaran
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
@@ -502,6 +546,9 @@ export default function ClassManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {kelas.unit_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {kelas.year_name || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <Button
@@ -599,6 +646,28 @@ export default function ClassManagement() {
               </select>
               {formErrors.kelas_unit_id && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.kelas_unit_id}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="kelas_year_id">Tahun Ajaran *</Label>
+              <select
+                id="kelas_year_id"
+                value={formData.kelas_year_id}
+                onChange={(e) => setFormData(prev => ({ ...prev, kelas_year_id: e.target.value }))}
+                className={`w-full h-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
+                  formErrors.kelas_year_id ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                <option value="">Pilih Tahun Ajaran</option>
+                {years.map((year) => (
+                  <option key={year.year_id} value={year.year_id}>
+                    {year.year_name}
+                  </option>
+                ))}
+              </select>
+              {formErrors.kelas_year_id && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.kelas_year_id}</p>
               )}
             </div>
           </div>

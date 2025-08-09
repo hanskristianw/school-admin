@@ -6,8 +6,12 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
+import { useI18n } from '@/lib/i18n';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 export default function AssessmentApproval() {
+  const { t, lang } = useI18n();
   const [assessments, setAssessments] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -32,6 +36,60 @@ export default function AssessmentApproval() {
     subject: '',
     user: ''
   });
+
+  // Role: detect if current user is principal
+  const [isPrincipal, setIsPrincipal] = useState(false);
+
+  useEffect(() => {
+    const detectPrincipal = async () => {
+      try {
+        // Try localStorage user_data first
+        const raw = typeof window !== 'undefined' ? localStorage.getItem('user_data') : null;
+        if (raw) {
+          try {
+            const ud = JSON.parse(raw);
+            if (typeof ud?.isPrincipal === 'boolean') {
+              setIsPrincipal(ud.isPrincipal);
+              if (ud.isPrincipal) setFilters(prev => ({ ...prev, status: '3' }));
+              return;
+            }
+            if (ud?.roleID) {
+              const { data: roleData, error: roleErr } = await supabase
+                .from('role')
+                .select('is_principal')
+                .eq('role_id', ud.roleID)
+                .single();
+              if (!roleErr && roleData) {
+                const principal = !!roleData.is_principal;
+                setIsPrincipal(principal);
+                if (principal) setFilters(prev => ({ ...prev, status: '3' }));
+              }
+              return;
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
+        // Fallback: use stored role name if available
+        const roleName = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
+        if (roleName) {
+          const { data: roleDataByName } = await supabase
+            .from('role')
+            .select('is_principal')
+            .eq('role_name', roleName)
+            .maybeSingle();
+          if (roleDataByName) {
+            const principal = !!roleDataByName.is_principal;
+            setIsPrincipal(principal);
+            if (principal) setFilters(prev => ({ ...prev, status: '3' }));
+          }
+        }
+      } catch (e) {
+        // silent fail
+      }
+    };
+    detectPrincipal();
+  }, []);
 
   useEffect(() => {
     fetchAssessments();
@@ -69,7 +127,7 @@ export default function AssessmentApproval() {
     } catch (err) {
       console.error('Error fetching assessments:', err);
       setError(err.message);
-      showNotification('Error', 'Gagal memuat data assessment: ' + err.message, 'error');
+  showNotification(t('assessmentApproval.notifErrorTitle'), t('assessmentApproval.notifErrorLoad') + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -117,25 +175,31 @@ export default function AssessmentApproval() {
       case 0:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            Menunggu Persetujuan
+            {t('assessmentApproval.statusWaiting')}
+          </span>
+        );
+      case 3:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            {t('assessmentApproval.statusWaitingPrincipal')}
           </span>
         );
       case 1:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            Disetujui
+            {t('assessmentApproval.statusApproved')}
           </span>
         );
       case 2:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            Ditolak
+            {t('assessmentApproval.statusRejected')}
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-            Tidak Diketahui
+            {t('assessmentApproval.statusUnknown')}
           </span>
         );
     }
@@ -143,17 +207,18 @@ export default function AssessmentApproval() {
 
   const getUserName = (userId) => {
     const user = users.find(u => u.user_id === userId);
-    return user ? `${user.user_nama_depan} ${user.user_nama_belakang}` : 'Unknown User';
+  return user ? `${user.user_nama_depan} ${user.user_nama_belakang}` : t('assessmentApproval.unknownUser');
   };
 
   const getSubjectName = (subjectId) => {
     const subject = subjects.find(s => s.subject_id === subjectId);
-    return subject ? subject.subject_name : 'Unknown Subject';
+  return subject ? subject.subject_name : t('assessmentApproval.unknownSubject');
   };
 
   const handleApprovalAction = (assessment, action) => {
-    if (assessment.assessment_status !== 0) {
-      showNotification('Peringatan', 'Assessment ini sudah diproses sebelumnya', 'warning');
+    const requiredStatus = isPrincipal ? 3 : 0;
+    if (assessment.assessment_status !== requiredStatus) {
+      showNotification(t('assessmentApproval.warningAlreadyProcessedTitle'), t('assessmentApproval.warningAlreadyProcessed'), 'warning');
       return;
     }
     
@@ -168,7 +233,8 @@ export default function AssessmentApproval() {
     try {
       setSubmitting(true);
       
-      const newStatus = actionType === 'approve' ? 1 : 2;
+      // Principal approves -> back to waiting (0); others -> approved (1)
+      const newStatus = actionType === 'approve' ? (isPrincipal ? 0 : 1) : 2;
       
       const { error } = await supabase
         .from('assessment')
@@ -186,12 +252,11 @@ export default function AssessmentApproval() {
           : assessment
       ));
 
-      const actionText = actionType === 'approve' ? 'disetujui' : 'ditolak';
-      showNotification(
-        'Berhasil', 
-        `Assessment "${selectedAssessment.assessment_nama}" berhasil ${actionText}`, 
-        'success'
-      );
+      if (actionType === 'approve') {
+        showNotification(t('assessmentApproval.notifSuccessTitle'), t('assessmentApproval.notifApproved', { name: selectedAssessment.assessment_nama }), 'success');
+      } else {
+        showNotification(t('assessmentApproval.notifSuccessTitle'), t('assessmentApproval.notifRejected', { name: selectedAssessment.assessment_nama }), 'success');
+      }
 
       setShowConfirmModal(false);
       setSelectedAssessment(null);
@@ -199,7 +264,7 @@ export default function AssessmentApproval() {
       
     } catch (err) {
       console.error('Error processing approval:', err);
-      showNotification('Error', 'Gagal memproses persetujuan: ' + err.message, 'error');
+  showNotification(t('assessmentApproval.notifErrorTitle'), t('assessmentApproval.notifErrorProcess') + err.message, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -207,6 +272,8 @@ export default function AssessmentApproval() {
 
   const filteredAssessments = assessments.filter(assessment => {
     return (
+      // Principals only see status = 3 items
+      (!isPrincipal || assessment.assessment_status === 3) &&
       (!filters.status || assessment.assessment_status.toString() === filters.status) &&
       (!filters.subject || assessment.assessment_subject_id.toString() === filters.subject) &&
       (!filters.user || assessment.assessment_user_id.toString() === filters.user)
@@ -214,7 +281,7 @@ export default function AssessmentApproval() {
   });
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
+  return new Date(dateString).toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -233,8 +300,8 @@ export default function AssessmentApproval() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Assessment Approval</h1>
-          <p className="text-gray-600">Kelola persetujuan assessment</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('assessmentApproval.title')}</h1>
+          <p className="text-gray-600">{t('assessmentApproval.subtitle')}</p>
         </div>
       </div>
 
@@ -247,36 +314,41 @@ export default function AssessmentApproval() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Filter</CardTitle>
+          <CardTitle>{t('assessmentApproval.filtersTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('assessmentApproval.status')}</label>
               <select
                 value={filters.status}
                 onChange={(e) => setFilters({...filters, status: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Semua Status</option>
-                <option value="0">Menunggu Persetujuan</option>
-                <option value="1">Disetujui</option>
-                <option value="2">Ditolak</option>
+                {isPrincipal ? (
+                  <>
+                    <option value="3">{t('assessmentApproval.statusWaitingPrincipal')}</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="">{t('assessmentApproval.allStatus')}</option>
+                    <option value="0">{t('assessmentApproval.statusWaiting')}</option>
+                    <option value="3">{t('assessmentApproval.statusWaitingPrincipal')}</option>
+                    <option value="1">{t('assessmentApproval.statusApproved')}</option>
+                    <option value="2">{t('assessmentApproval.statusRejected')}</option>
+                  </>
+                )}
               </select>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mata Pelajaran
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('assessmentApproval.subject')}</label>
               <select
                 value={filters.subject}
                 onChange={(e) => setFilters({...filters, subject: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Semua Mata Pelajaran</option>
+                <option value="">{t('assessmentApproval.allSubjects')}</option>
                 {subjects.map(subject => (
                   <option key={subject.subject_id} value={subject.subject_id}>
                     {subject.subject_name}
@@ -286,15 +358,13 @@ export default function AssessmentApproval() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pengajar
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('assessmentApproval.teacher')}</label>
               <select
                 value={filters.user}
                 onChange={(e) => setFilters({...filters, user: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Semua Pengajar</option>
+                <option value="">{t('assessmentApproval.allTeachers')}</option>
                 {users.map(user => (
                   <option key={user.user_id} value={user.user_id}>
                     {user.user_nama_depan} {user.user_nama_belakang}
@@ -309,35 +379,33 @@ export default function AssessmentApproval() {
       {/* Assessment List */}
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Assessment</CardTitle>
+          <CardTitle>{t('assessmentApproval.listTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredAssessments.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              Tidak ada data assessment yang ditemukan
-            </div>
+            <div className="text-center py-8 text-gray-500">{t('assessmentApproval.empty')}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nama Assessment
+                      {t('assessmentApproval.thName')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tanggal
+                      {t('assessmentApproval.thDate')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mata Pelajaran
+                      {t('assessmentApproval.thSubject')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pengajar
+                      {t('assessmentApproval.thTeacher')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      {t('assessmentApproval.thStatus')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
+                      {t('assessmentApproval.thActions')}
                     </th>
                   </tr>
                 </thead>
@@ -369,29 +437,27 @@ export default function AssessmentApproval() {
                         {getStatusBadge(assessment.assessment_status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {assessment.assessment_status === 0 && (
+                        {(!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3) ? (
                           <div className="flex space-x-2">
                             <Button
                               onClick={() => handleApprovalAction(assessment, 'approve')}
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm"
                             >
-                              <i className="fas fa-check mr-1"></i>
-                              Setujui
+                              <FontAwesomeIcon icon={faCheck} className="mr-1" />
+                              {t('assessmentApproval.approve')}
                             </Button>
                             <Button
                               onClick={() => handleApprovalAction(assessment, 'reject')}
                               className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-sm"
                             >
-                              <i className="fas fa-times mr-1"></i>
-                              Tolak
+                              <FontAwesomeIcon icon={faTimes} className="mr-1" />
+                {t('assessmentApproval.reject')}
                             </Button>
                           </div>
-                        )}
-                        {assessment.assessment_status !== 0 && (
-                          <span className="text-gray-400 text-sm">
-                            Sudah diproses
-                          </span>
-                        )}
+                        ) : null}
+                        {(!isPrincipal && assessment.assessment_status !== 0) || (isPrincipal && assessment.assessment_status !== 3) ? (
+              <span className="text-gray-400 text-sm">{t('assessmentApproval.processed')}</span>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -410,21 +476,26 @@ export default function AssessmentApproval() {
           setSelectedAssessment(null);
           setActionType(null);
         }}
-        title={`Konfirmasi ${actionType === 'approve' ? 'Persetujuan' : 'Penolakan'}`}
+  title={actionType === 'approve' ? t('assessmentApproval.confirmTitleApprove') : t('assessmentApproval.confirmTitleReject')}
       >
         <div className="space-y-4">
           <p className="text-gray-700">
-            Apakah Anda yakin ingin {actionType === 'approve' ? 'menyetujui' : 'menolak'} assessment "{selectedAssessment?.assessment_nama}"?
+            {
+              t('assessmentApproval.confirmQuestion', {
+                action: actionType === 'approve' ? t('assessmentApproval.confirmActionApprove') : t('assessmentApproval.confirmActionReject'),
+                name: selectedAssessment?.assessment_nama || ''
+              })
+            }
           </p>
           
           <div className="bg-gray-50 p-4 rounded-md">
             <div className="text-sm space-y-2">
-              <div><strong>Nama Assessment:</strong> {selectedAssessment?.assessment_nama}</div>
-              <div><strong>Tanggal:</strong> {selectedAssessment && formatDate(selectedAssessment.assessment_tanggal)}</div>
-              <div><strong>Mata Pelajaran:</strong> {selectedAssessment && getSubjectName(selectedAssessment.assessment_subject_id)}</div>
-              <div><strong>Pengajar:</strong> {selectedAssessment && getUserName(selectedAssessment.assessment_user_id)}</div>
+              <div><strong>{t('assessmentApproval.labelName')}:</strong> {selectedAssessment?.assessment_nama}</div>
+              <div><strong>{t('assessmentApproval.labelDate')}:</strong> {selectedAssessment && formatDate(selectedAssessment.assessment_tanggal)}</div>
+              <div><strong>{t('assessmentApproval.labelSubject')}:</strong> {selectedAssessment && getSubjectName(selectedAssessment.assessment_subject_id)}</div>
+              <div><strong>{t('assessmentApproval.labelTeacher')}:</strong> {selectedAssessment && getUserName(selectedAssessment.assessment_user_id)}</div>
               {selectedAssessment?.assessment_keterangan && (
-                <div><strong>Keterangan:</strong> {selectedAssessment.assessment_keterangan}</div>
+                <div><strong>{t('assessmentApproval.labelNote')}:</strong> {selectedAssessment.assessment_keterangan}</div>
               )}
             </div>
           </div>
@@ -439,7 +510,7 @@ export default function AssessmentApproval() {
               disabled={submitting}
               className="bg-gray-500 hover:bg-gray-600 text-white"
             >
-              Batal
+              {t('assessmentApproval.btnCancel')}
             </Button>
             <Button
               onClick={processApproval}
@@ -451,13 +522,13 @@ export default function AssessmentApproval() {
             >
               {submitting ? (
                 <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                  Memproses...
+                  <FontAwesomeIcon icon={faSpinner} spin className="mr-2" />
+                  {t('assessmentApproval.processing')}
                 </>
               ) : (
                 <>
-                  <i className={`fas ${actionType === 'approve' ? 'fa-check' : 'fa-times'} mr-2`}></i>
-                  {actionType === 'approve' ? 'Ya, Setujui' : 'Ya, Tolak'}
+                  <FontAwesomeIcon icon={actionType === 'approve' ? faCheck : faTimes} className="mr-2" />
+                  {actionType === 'approve' ? t('assessmentApproval.btnYesApprove') : t('assessmentApproval.btnYesReject')}
                 </>
               )}
             </Button>

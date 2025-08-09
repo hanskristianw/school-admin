@@ -106,20 +106,100 @@ export default function SubjectManagement() {
 
   const fetchUsers = async () => {
     try {
-      // Menggunakan Supabase untuk fetch users
-      const { data, error } = await supabase
+      console.log('Fetching teacher users...');
+      
+      // Alternatif 1: Coba menggunakan RPC function (jika sudah dibuat)
+      try {
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_teacher_users');
+
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          console.log('Successfully fetched teachers using RPC:', rpcData);
+          setUsers(rpcData.map(user => ({
+            ...user,
+            role: {
+              role_name: user.role_name,
+              is_teacher: user.is_teacher
+            }
+          })));
+          return;
+        }
+      } catch (rpcErr) {
+        console.log('RPC function not available, using manual JOIN');
+      }
+
+      // Alternatif 2: Manual JOIN menggunakan dua query terpisah
+      console.log('Using manual JOIN approach...');
+      
+      // Query 1: Ambil semua users aktif
+      const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_username')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_role_id')
         .eq('is_active', true)
         .order('user_nama_depan');
 
-      if (error) {
-        throw new Error(error.message);
+      if (usersError) {
+        throw new Error('Error fetching users: ' + usersError.message);
       }
 
-      setUsers(data || []);
+      // Query 2: Ambil roles yang is_teacher = true
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('role')
+        .select('role_id, role_name, is_teacher')
+        .eq('is_teacher', true);
+
+      if (rolesError) {
+        throw new Error('Error fetching roles: ' + rolesError.message);
+      }
+
+      // Manual JOIN: Filter users yang role_id nya ada di rolesData
+      const teacherRoleIds = rolesData.map(role => role.role_id);
+      const teacherUsers = usersData.filter(user => 
+        teacherRoleIds.includes(user.user_role_id)
+      );
+
+      // Tambahkan info role ke setiap teacher user
+      const enrichedUsers = teacherUsers.map(user => {
+        const role = rolesData.find(role => role.role_id === user.user_role_id);
+        return {
+          ...user,
+          role: role || null
+        };
+      });
+
+      console.log('Teacher roles found:', rolesData);
+      console.log('Filtered teacher users:', enrichedUsers);
+      
+      if (enrichedUsers.length === 0) {
+        console.warn('No teacher users found. Check if role.is_teacher is set correctly.');
+        showNotification('Warning', 'Tidak ada teacher yang ditemukan. Pastikan role teacher sudah dikonfigurasi dengan benar.', 'warning');
+      }
+      
+      setUsers(enrichedUsers);
     } catch (err) {
-      console.error('Error fetching users:', err);
+      console.error('Error fetching teacher users:', err);
+      
+      // Fallback: Ambil semua user aktif tanpa filter role
+      try {
+        console.log('Using fallback: fetching all users...');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_role_id')
+          .eq('is_active', true)
+          .order('user_nama_depan');
+
+        if (fallbackError) {
+          throw new Error(fallbackError.message);
+        }
+
+        console.log('Fallback: Using all active users');
+        setUsers(fallbackData || []);
+        showNotification('Warning', 'Menggunakan semua user karena filter teacher tidak tersedia', 'warning');
+      } catch (fallbackErr) {
+        console.error('Error in fallback fetch users:', fallbackErr);
+        setUsers([]);
+        showNotification('Error', 'Gagal memuat data teacher: ' + fallbackErr.message, 'error');
+      }
     }
   };
 
@@ -550,7 +630,8 @@ export default function SubjectManagement() {
                 <option value="">Pilih Teacher</option>
                 {users.map((user) => (
                   <option key={user.user_id} value={user.user_id}>
-                    {user.user_nama_depan} {user.user_nama_belakang} ({user.role_name})
+                    {user.user_nama_depan} {user.user_nama_belakang} 
+                    {user.role?.role_name && ` (${user.role.role_name})`}
                   </option>
                 ))}
               </select>

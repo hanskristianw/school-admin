@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, memo } from "react"
+import { useI18n } from '@/lib/i18n'
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
@@ -26,7 +27,10 @@ import {
   faUserGraduate,
   faHouse,
   faClipboardCheck,
-  faPaperPlane
+  faPaperPlane,
+  faCalendarAlt,
+  faEdit,
+  faTrash
 } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
@@ -42,7 +46,10 @@ const iconMap = {
   'fas fa-house': faHouse,
   'fas fa-chalkboard-teacher': faChalkboardTeacher,
   'fas fa-clipboard-check': faClipboardCheck,
-  'fas fa-paper-plane': faPaperPlane
+  'fas fa-paper-plane': faPaperPlane,
+  'fas fa-calendar-alt': faCalendarAlt,
+  'fas fa-edit': faEdit,
+  'fas fa-trash': faTrash
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {
@@ -51,6 +58,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [expandedMenus, setExpandedMenus] = useState({})
   const pathname = usePathname()
+  const { translateMenu, t } = useI18n()
 
   useEffect(() => {
     const fetchMenus = async () => {
@@ -149,16 +157,24 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
 
   const organizeMenus = (items) => {
     if (!Array.isArray(items)) return []
-    
-    const mainMenus = items.filter(item => !item.parentId)
+
+    // Helper: coerce order to a safe number
+    const num = (v) => {
+      const n = typeof v === 'number' ? v : parseInt(v ?? 0, 10)
+      return Number.isFinite(n) ? n : 0
+    }
+
+    // Root menus are those with menu_parent_id NULL/undefined per documentation
+    const rootMenus = items.filter(item => item.parentId == null)
+
     const findChildren = (parentId) => {
       return items
         .filter(item => item.parentId === parentId)
-        .sort((a, b) => a.order - b.order)
+        .sort((a, b) => num(a.order) - num(b.order))
     }
-    
-    return mainMenus
-      .sort((a, b) => a.order - b.order)
+
+    return rootMenus
+      .sort((a, b) => num(a.order) - num(b.order))
       .map(menu => ({
         ...menu,
         children: findChildren(menu.id)
@@ -253,7 +269,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                         {renderIcon(menu.icon)}
                       </span>
                     )}
-                    <span>{menu.name}</span>
+                    <span>{translateMenu(menu.name, menu.name)}</span>
                   </div>
                   <FontAwesomeIcon 
                     icon={expandedMenus[menu.id] ? faChevronDown : faChevronRight} 
@@ -278,7 +294,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                             {renderIcon(child.icon)}
                           </span>
                         )}
-                        <span>{child.name}</span>
+                        <span>{translateMenu(child.name, child.name)}</span>
                       </Link>
                     ))}
                   </div>
@@ -316,7 +332,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
             <span className="mr-3 inline-flex items-center justify-center w-4 h-4">
               <FontAwesomeIcon icon={faUser} />
             </span>
-            <span>Logout</span>
+            <span>{t('common.logout')}</span>
           </button>
         </div>
       </nav>
@@ -353,7 +369,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
       >
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex-shrink-0">
-          <h1 className="text-xl font-bold text-gray-800">Admin Dashboard</h1>
+          <h1 className="text-xl font-bold text-gray-800">School System</h1>
         </div>
         
         {/* Content */}
