@@ -8,18 +8,20 @@ import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
 import { useI18n } from '@/lib/i18n';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faTimes, faSpinner, faTrash } from '@fortawesome/free-solid-svg-icons';
 
 export default function AssessmentApproval() {
   const { t, lang } = useI18n();
   const [assessments, setAssessments] = useState([]);
-  const [subjects, setSubjects] = useState([]);
+  // detail_kelas options across system for filtering/display
+  const [detailKelasOptions, setDetailKelasOptions] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [actionType, setActionType] = useState(null); // 'approve' or 'reject'
+  // actionType can also be 'delete'
   const [submitting, setSubmitting] = useState(false);
   
   // Notification modal states
@@ -93,7 +95,7 @@ export default function AssessmentApproval() {
 
   useEffect(() => {
     fetchAssessments();
-    fetchSubjects();
+  fetchDetailKelasOptions();
     fetchUsers();
   }, []);
 
@@ -115,7 +117,7 @@ export default function AssessmentApproval() {
       // Fetch assessments
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from('assessment')
-        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_subject_id')
+        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id')
         .order('assessment_tanggal', { ascending: false });
 
       if (assessmentsError) {
@@ -133,21 +135,53 @@ export default function AssessmentApproval() {
     }
   };
 
-  const fetchSubjects = async () => {
+  const fetchDetailKelasOptions = async () => {
     try {
+      // Step 1: fetch all detail_kelas rows
+      const { data: details, error: detailsErr } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id');
+      if (detailsErr) throw new Error(detailsErr.message);
+
+      if (!details || details.length === 0) {
+        setDetailKelasOptions([]);
+        return;
+      }
+
+      const subjectIds = Array.from(new Set(details.map(d => d.detail_kelas_subject_id)));
+      const kelasIds = Array.from(new Set(details.map(d => d.detail_kelas_kelas_id)));
+
+      // Step 2: fetch subject names
       const { data: subjectsData, error: subjectsError } = await supabase
         .from('subject')
         .select('subject_id, subject_name')
-        .order('subject_name');
+        .in('subject_id', subjectIds);
+      if (subjectsError) throw new Error(subjectsError.message);
 
-      if (subjectsError) {
-        throw new Error(subjectsError.message);
-      }
+      // Step 3: fetch kelas names
+      const { data: kelasData, error: kelasErr } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama')
+        .in('kelas_id', kelasIds);
+      if (kelasErr) throw new Error(kelasErr.message);
 
-      setSubjects(subjectsData || []);
-      
+      const subjectMap = new Map((subjectsData || []).map(s => [s.subject_id, s.subject_name]));
+      const kelasMap = new Map((kelasData || []).map(k => [k.kelas_id, k.kelas_nama]));
+
+      const options = (details || []).map(d => ({
+        detail_kelas_id: d.detail_kelas_id,
+        subject_id: d.detail_kelas_subject_id,
+        subject_name: subjectMap.get(d.detail_kelas_subject_id) || '',
+        kelas_id: d.detail_kelas_kelas_id,
+        kelas_nama: kelasMap.get(d.detail_kelas_kelas_id) || ''
+      }));
+
+      // Sort for nicer dropdown
+      options.sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '') || (a.subject_name || '').localeCompare(b.subject_name || ''));
+
+      setDetailKelasOptions(options);
     } catch (err) {
-      console.error('Error fetching subjects:', err);
+      console.error('Error fetching detail_kelas options:', err);
     }
   };
 
@@ -210,9 +244,10 @@ export default function AssessmentApproval() {
   return user ? `${user.user_nama_depan} ${user.user_nama_belakang}` : t('assessmentApproval.unknownUser');
   };
 
-  const getSubjectName = (subjectId) => {
-    const subject = subjects.find(s => s.subject_id === subjectId);
-  return subject ? subject.subject_name : t('assessmentApproval.unknownSubject');
+  const getSubjectName = (detailKelasId) => {
+    const opt = detailKelasOptions.find(o => o.detail_kelas_id === detailKelasId);
+    if (!opt) return t('assessmentApproval.unknownSubject');
+    return `${opt.subject_name} - ${opt.kelas_nama}`;
   };
 
   const handleApprovalAction = (assessment, action) => {
@@ -227,14 +262,83 @@ export default function AssessmentApproval() {
     setShowConfirmModal(true);
   };
 
+  const handleDeleteAction = (assessment) => {
+    setSelectedAssessment(assessment);
+    setActionType('delete');
+    setShowConfirmModal(true);
+  };
+
   const processApproval = async () => {
     if (!selectedAssessment || !actionType) return;
 
     try {
       setSubmitting(true);
       
+      // Delete
+      if (actionType === 'delete') {
+        const { error: delErr } = await supabase
+          .from('assessment')
+          .delete()
+          .eq('assessment_id', selectedAssessment.assessment_id);
+        if (delErr) throw new Error(delErr.message);
+
+        // Update local state by removing the deleted assessment
+        setAssessments(assessments.filter(a => a.assessment_id !== selectedAssessment.assessment_id));
+        showNotification(
+          t('assessmentApproval.notifSuccessTitle'),
+          t('assessmentApproval.notifDeleted', { name: selectedAssessment.assessment_nama }),
+          'success'
+        );
+
+        setShowConfirmModal(false);
+        setSelectedAssessment(null);
+        setActionType(null);
+        return;
+      }
+
       // Principal approves -> back to waiting (0); others -> approved (1)
       const newStatus = actionType === 'approve' ? (isPrincipal ? 0 : 1) : 2;
+
+      // Business rule: Max 2 approved (status=1) assessments per class per date
+      if (newStatus === 1) {
+        // 1) Resolve kelas_id from selected assessment's detail_kelas
+        const { data: dkSel, error: dkSelErr } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_kelas_id')
+          .eq('detail_kelas_id', selectedAssessment.assessment_detail_kelas_id)
+          .single();
+        if (dkSelErr) throw new Error(dkSelErr.message);
+        const kelasId = dkSel?.detail_kelas_kelas_id;
+        if (kelasId) {
+          // 2) All detail_kelas_ids under this kelas
+          const { data: dkList, error: dkListErr } = await supabase
+            .from('detail_kelas')
+            .select('detail_kelas_id')
+            .eq('detail_kelas_kelas_id', kelasId);
+          if (dkListErr) throw new Error(dkListErr.message);
+          const detailIds = (dkList || []).map(d => d.detail_kelas_id);
+          if (detailIds.length > 0) {
+            // 3) Count approved assessments on the same date for this kelas
+            const { count: approvedCount, error: countErr } = await supabase
+              .from('assessment')
+              .select('*', { count: 'exact', head: true })
+              .eq('assessment_status', 1)
+              .eq('assessment_tanggal', selectedAssessment.assessment_tanggal)
+              .in('assessment_detail_kelas_id', detailIds);
+            if (countErr) throw new Error(countErr.message);
+            if ((approvedCount || 0) >= 2) {
+              // Prevent approval and notify user
+              showNotification(
+                t('assessmentApproval.notifErrorTitle') || 'Gagal',
+                t('assessmentApproval.limitPerDayReached') || 'Pada tanggal tersebut sudah ada 2 assessment disetujui untuk kelas ini. Persetujuan dibatalkan.',
+                'error'
+              );
+              setSubmitting(false);
+              return;
+            }
+          }
+        }
+      }
       
       const { error } = await supabase
         .from('assessment')
@@ -252,7 +356,7 @@ export default function AssessmentApproval() {
           : assessment
       ));
 
-      if (actionType === 'approve') {
+  if (actionType === 'approve') {
         showNotification(t('assessmentApproval.notifSuccessTitle'), t('assessmentApproval.notifApproved', { name: selectedAssessment.assessment_nama }), 'success');
       } else {
         showNotification(t('assessmentApproval.notifSuccessTitle'), t('assessmentApproval.notifRejected', { name: selectedAssessment.assessment_nama }), 'success');
@@ -275,7 +379,7 @@ export default function AssessmentApproval() {
       // Principals only see status = 3 items
       (!isPrincipal || assessment.assessment_status === 3) &&
       (!filters.status || assessment.assessment_status.toString() === filters.status) &&
-      (!filters.subject || assessment.assessment_subject_id.toString() === filters.subject) &&
+  (!filters.subject || assessment.assessment_detail_kelas_id?.toString() === filters.subject) &&
       (!filters.user || assessment.assessment_user_id.toString() === filters.user)
     );
   });
@@ -349,9 +453,9 @@ export default function AssessmentApproval() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">{t('assessmentApproval.allSubjects')}</option>
-                {subjects.map(subject => (
-                  <option key={subject.subject_id} value={subject.subject_id}>
-                    {subject.subject_name}
+                {detailKelasOptions.map(opt => (
+                  <option key={opt.detail_kelas_id} value={opt.detail_kelas_id}>
+                    {opt.subject_name} - {opt.kelas_nama}
                   </option>
                 ))}
               </select>
@@ -428,7 +532,7 @@ export default function AssessmentApproval() {
                         {formatDate(assessment.assessment_tanggal)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {getSubjectName(assessment.assessment_subject_id)}
+                        {getSubjectName(assessment.assessment_detail_kelas_id)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {getUserName(assessment.assessment_user_id)}
@@ -437,8 +541,8 @@ export default function AssessmentApproval() {
                         {getStatusBadge(assessment.assessment_status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {(!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3) ? (
-                          <div className="flex space-x-2">
+                        <div className="flex space-x-2">
+                          {((!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)) && (
                             <Button
                               onClick={() => handleApprovalAction(assessment, 'approve')}
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm"
@@ -446,18 +550,28 @@ export default function AssessmentApproval() {
                               <FontAwesomeIcon icon={faCheck} className="mr-1" />
                               {t('assessmentApproval.approve')}
                             </Button>
+                          )}
+                          {((!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)) && (
                             <Button
                               onClick={() => handleApprovalAction(assessment, 'reject')}
                               className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-sm"
                             >
                               <FontAwesomeIcon icon={faTimes} className="mr-1" />
-                {t('assessmentApproval.reject')}
+                              {t('assessmentApproval.reject')}
                             </Button>
-                          </div>
-                        ) : null}
-                        {(!isPrincipal && assessment.assessment_status !== 0) || (isPrincipal && assessment.assessment_status !== 3) ? (
-              <span className="text-gray-400 text-sm">{t('assessmentApproval.processed')}</span>
-                        ) : null}
+                          )}
+                          {/* Delete is always available to approvers */}
+                          <Button
+                            onClick={() => handleDeleteAction(assessment)}
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-sm"
+                          >
+                            <FontAwesomeIcon icon={faTrash} className="mr-1" />
+                            {t('assessmentApproval.delete')}
+                          </Button>
+                          {((!isPrincipal && assessment.assessment_status !== 0) || (isPrincipal && assessment.assessment_status !== 3)) && (
+                            <span className="text-gray-400 text-sm self-center">{t('assessmentApproval.processed')}</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -476,7 +590,7 @@ export default function AssessmentApproval() {
           setSelectedAssessment(null);
           setActionType(null);
         }}
-  title={actionType === 'approve' ? t('assessmentApproval.confirmTitleApprove') : t('assessmentApproval.confirmTitleReject')}
+  title={actionType === 'approve' ? t('assessmentApproval.confirmTitleApprove') : actionType === 'reject' ? t('assessmentApproval.confirmTitleReject') : t('assessmentApproval.confirmTitleDelete')}
       >
         <div className="space-y-4">
           <p className="text-gray-700">
@@ -492,7 +606,7 @@ export default function AssessmentApproval() {
             <div className="text-sm space-y-2">
               <div><strong>{t('assessmentApproval.labelName')}:</strong> {selectedAssessment?.assessment_nama}</div>
               <div><strong>{t('assessmentApproval.labelDate')}:</strong> {selectedAssessment && formatDate(selectedAssessment.assessment_tanggal)}</div>
-              <div><strong>{t('assessmentApproval.labelSubject')}:</strong> {selectedAssessment && getSubjectName(selectedAssessment.assessment_subject_id)}</div>
+              <div><strong>{t('assessmentApproval.labelSubject')}:</strong> {selectedAssessment && getSubjectName(selectedAssessment.assessment_detail_kelas_id)}</div>
               <div><strong>{t('assessmentApproval.labelTeacher')}:</strong> {selectedAssessment && getUserName(selectedAssessment.assessment_user_id)}</div>
               {selectedAssessment?.assessment_keterangan && (
                 <div><strong>{t('assessmentApproval.labelNote')}:</strong> {selectedAssessment.assessment_keterangan}</div>
@@ -515,10 +629,11 @@ export default function AssessmentApproval() {
             <Button
               onClick={processApproval}
               disabled={submitting}
-              className={actionType === 'approve' 
-                ? "bg-green-600 hover:bg-green-700 text-white" 
-                : "bg-red-600 hover:bg-red-700 text-white"
-              }
+              className={actionType === 'approve'
+                ? "bg-green-600 hover:bg-green-700 text-white"
+                : actionType === 'reject'
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-gray-700 hover:bg-gray-800 text-white"}
             >
               {submitting ? (
                 <>
@@ -527,8 +642,8 @@ export default function AssessmentApproval() {
                 </>
               ) : (
                 <>
-                  <FontAwesomeIcon icon={actionType === 'approve' ? faCheck : faTimes} className="mr-2" />
-                  {actionType === 'approve' ? t('assessmentApproval.btnYesApprove') : t('assessmentApproval.btnYesReject')}
+                  <FontAwesomeIcon icon={actionType === 'approve' ? faCheck : actionType === 'reject' ? faTimes : faTrash} className="mr-2" />
+                  {actionType === 'approve' ? t('assessmentApproval.btnYesApprove') : actionType === 'reject' ? t('assessmentApproval.btnYesReject') : t('assessmentApproval.btnYesDelete')}
                 </>
               )}
             </Button>

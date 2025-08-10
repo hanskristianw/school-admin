@@ -22,7 +22,8 @@ import {
 export default function AssessmentSubmission() {
   const { t, lang } = useI18n();
   const [assessments, setAssessments] = useState([]);
-  const [subjects, setSubjects] = useState([]);
+  // detail_kelas options for this teacher: { detail_kelas_id, subject_id, subject_name, kelas_id, kelas_nama }
+  const [detailKelasOptions, setDetailKelasOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -31,7 +32,7 @@ export default function AssessmentSubmission() {
     assessment_nama: '',
     assessment_tanggal: '',
     assessment_keterangan: '',
-    assessment_subject_id: ''
+    assessment_detail_kelas_id: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -47,7 +48,7 @@ export default function AssessmentSubmission() {
   // Filter states
   const [filters, setFilters] = useState({
     status: '',
-    subject: '',
+    subject: '', // holds detail_kelas_id
     dateFrom: '',
     dateTo: ''
   });
@@ -57,7 +58,7 @@ export default function AssessmentSubmission() {
     const kr_id = localStorage.getItem("kr_id");
     if (kr_id) {
       setCurrentUserId(parseInt(kr_id));
-      fetchUserSubjects(parseInt(kr_id));
+      fetchUserDetailKelas(parseInt(kr_id));
       fetchUserAssessments(parseInt(kr_id));
     } else {
   setError(t('teacherSubmission.unauth'));
@@ -75,24 +76,62 @@ export default function AssessmentSubmission() {
     });
   };
 
-  const fetchUserSubjects = async (userId) => {
+  const fetchUserDetailKelas = async (userId) => {
     try {
-      // Fetch subjects yang diajar oleh user ini
+      // 1) Get subjects taught by this user
       const { data: subjectsData, error: subjectsError } = await supabase
         .from('subject')
         .select('subject_id, subject_name')
         .eq('subject_user_id', userId)
         .order('subject_name');
+      if (subjectsError) throw new Error(subjectsError.message);
 
-      if (subjectsError) {
-        throw new Error(subjectsError.message);
+      if (!subjectsData || subjectsData.length === 0) {
+        setDetailKelasOptions([]);
+        return;
       }
 
-      setSubjects(subjectsData || []);
-      
+      const subjectIds = subjectsData.map(s => s.subject_id);
+
+      // 2) Get detail_kelas rows linked to those subjects
+      const { data: details, error: detailErr } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id')
+        .in('detail_kelas_subject_id', subjectIds);
+      if (detailErr) throw new Error(detailErr.message);
+
+      if (!details || details.length === 0) {
+        setDetailKelasOptions([]);
+        return;
+      }
+
+      const kelasIds = Array.from(new Set(details.map(d => d.detail_kelas_kelas_id)));
+
+      // 3) Get kelas names
+      const { data: kelasData, error: kelasErr } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama')
+        .in('kelas_id', kelasIds);
+      if (kelasErr) throw new Error(kelasErr.message);
+
+      const kelasMap = new Map((kelasData || []).map(k => [k.kelas_id, k.kelas_nama]));
+      const subjectMap = new Map((subjectsData || []).map(s => [s.subject_id, s.subject_name]));
+
+      const options = (details || []).map(d => ({
+        detail_kelas_id: d.detail_kelas_id,
+        subject_id: d.detail_kelas_subject_id,
+        subject_name: subjectMap.get(d.detail_kelas_subject_id) || 'Unknown Subject',
+        kelas_id: d.detail_kelas_kelas_id,
+        kelas_nama: kelasMap.get(d.detail_kelas_kelas_id) || '-'
+      }));
+
+      // Sort by kelas then subject
+      options.sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '') || (a.subject_name || '').localeCompare(b.subject_name || ''));
+
+      setDetailKelasOptions(options);
     } catch (err) {
-  console.error('Error fetching user subjects:', err);
-  setError(t('teacherSubmission.notifErrorSubjects') + err.message);
+      console.error('Error fetching detail_kelas for user:', err);
+      setError(t('teacherSubmission.notifErrorSubjects') + err.message);
     }
   };
 
@@ -104,7 +143,7 @@ export default function AssessmentSubmission() {
       // Fetch assessments yang dibuat oleh user ini
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from('assessment')
-        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_subject_id')
+        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id')
         .eq('assessment_user_id', userId)
         .order('assessment_tanggal', { ascending: false });
 
@@ -158,9 +197,9 @@ export default function AssessmentSubmission() {
     }
   };
 
-  const getSubjectName = (subjectId) => {
-    const subject = subjects.find(s => s.subject_id === subjectId);
-    return subject ? subject.subject_name : 'Unknown Subject';
+  const getSubjectName = (detailKelasId) => {
+    const opt = detailKelasOptions.find(o => o.detail_kelas_id === detailKelasId);
+    return opt ? `${opt.subject_name} - ${opt.kelas_nama}` : 'Unknown Subject';
   };
 
   // Helper function untuk menghitung perbedaan hari
@@ -188,8 +227,8 @@ export default function AssessmentSubmission() {
   errors.assessment_tanggal = t('teacherSubmission.validation.dateRequired');
     }
     
-    if (!formData.assessment_subject_id) {
-  errors.assessment_subject_id = t('teacherSubmission.validation.subjectRequired');
+    if (!formData.assessment_detail_kelas_id) {
+  errors.assessment_detail_kelas_id = t('teacherSubmission.validation.subjectRequired');
     }
     
     // Validasi tanggal 
@@ -236,7 +275,7 @@ export default function AssessmentSubmission() {
       return;
     }
     
-    if (!currentUserId) {
+  if (!currentUserId) {
   showNotification(t('teacherSubmission.notifErrorTitle'), t('teacherSubmission.unauth'), 'error');
       return;
     }
@@ -258,7 +297,7 @@ export default function AssessmentSubmission() {
         assessment_keterangan: formData.assessment_keterangan.trim() || null,
         assessment_status: computedStatus, // 0: waiting, 3: waiting for principal approval
         assessment_user_id: currentUserId,
-        assessment_subject_id: parseInt(formData.assessment_subject_id)
+        assessment_detail_kelas_id: parseInt(formData.assessment_detail_kelas_id)
       };
 
       const { data, error } = await supabase
@@ -280,7 +319,7 @@ export default function AssessmentSubmission() {
         assessment_nama: '',
         assessment_tanggal: '',
         assessment_keterangan: '',
-        assessment_subject_id: ''
+        assessment_detail_kelas_id: ''
       });
       setFormErrors({});
       setShowForm(false);
@@ -307,7 +346,7 @@ export default function AssessmentSubmission() {
     }));
     
     // Clear error when user starts typing
-    if (formErrors[name]) {
+  if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
         [name]: ''
@@ -321,7 +360,7 @@ export default function AssessmentSubmission() {
       today.setHours(0, 0, 0, 0);
       selectedDate.setHours(0, 0, 0, 0);
       
-      if (selectedDate < today) {
+  if (selectedDate < today) {
         setFormErrors(prev => ({
           ...prev,
           assessment_tanggal: t('teacherSubmission.validation.datePast')
@@ -349,13 +388,13 @@ export default function AssessmentSubmission() {
           );
         }
       }
-    }
+  }
   };
 
   const filteredAssessments = assessments.filter(assessment => {
     return (
       (!filters.status || assessment.assessment_status.toString() === filters.status) &&
-      (!filters.subject || assessment.assessment_subject_id.toString() === filters.subject) &&
+      (!filters.subject || assessment.assessment_detail_kelas_id.toString() === filters.subject) &&
       (!filters.dateFrom || assessment.assessment_tanggal >= filters.dateFrom) &&
       (!filters.dateTo || assessment.assessment_tanggal <= filters.dateTo)
     );
@@ -387,7 +426,7 @@ export default function AssessmentSubmission() {
         <Button
           onClick={() => setShowForm(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white"
-          disabled={subjects.length === 0}
+          disabled={detailKelasOptions.length === 0}
         >
           <FontAwesomeIcon icon={faPlus} className="mr-2" />
           {t('teacherSubmission.newButton')}
@@ -400,7 +439,7 @@ export default function AssessmentSubmission() {
         </div>
       )}
 
-      {subjects.length === 0 && !loading && (
+  {detailKelasOptions.length === 0 && !loading && (
         <Card>
           <CardContent className="text-center py-8">
             <div className="text-gray-500 mb-4">
@@ -412,7 +451,7 @@ export default function AssessmentSubmission() {
         </Card>
       )}
 
-      {subjects.length > 0 && (
+  {detailKelasOptions.length > 0 && (
         <>
           {/* Filters */}
           <Card>
@@ -448,9 +487,9 @@ export default function AssessmentSubmission() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
         <option value="">{t('teacherSubmission.subjectLabel')}</option>
-                    {subjects.map(subject => (
-                      <option key={subject.subject_id} value={subject.subject_id}>
-                        {subject.subject_name}
+                    {detailKelasOptions.map(opt => (
+                      <option key={opt.detail_kelas_id} value={opt.detail_kelas_id}>
+                        {opt.subject_name} - {opt.kelas_nama}
                       </option>
                     ))}
                   </select>
@@ -542,7 +581,7 @@ export default function AssessmentSubmission() {
                             {formatDate(assessment.assessment_tanggal)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {getSubjectName(assessment.assessment_subject_id)}
+                            {getSubjectName(assessment.assessment_detail_kelas_id)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {getStatusBadge(assessment.assessment_status)}
@@ -565,12 +604,12 @@ export default function AssessmentSubmission() {
       <Modal
         isOpen={showForm}
         onClose={() => {
-          setShowForm(false);
-          setFormData({
+            setShowForm(false);
+            setFormData({
             assessment_nama: '',
             assessment_tanggal: '',
             assessment_keterangan: '',
-            assessment_subject_id: ''
+            assessment_detail_kelas_id: ''
           });
           setFormErrors({});
         }}
@@ -635,25 +674,25 @@ export default function AssessmentSubmission() {
           </div>
 
           <div>
-            <Label htmlFor="assessment_subject_id">{t('teacherSubmission.subjectLabel')}</Label>
+            <Label htmlFor="assessment_detail_kelas_id">{t('teacherSubmission.subjectLabel')}</Label>
             <select
-              id="assessment_subject_id"
-              name="assessment_subject_id"
-              value={formData.assessment_subject_id}
+              id="assessment_detail_kelas_id"
+              name="assessment_detail_kelas_id"
+              value={formData.assessment_detail_kelas_id}
               onChange={handleInputChange}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                formErrors.assessment_subject_id ? 'border-red-500' : 'border-gray-300'
+                formErrors.assessment_detail_kelas_id ? 'border-red-500' : 'border-gray-300'
               }`}
             >
               <option value="">{t('teacherSubmission.subjectPlaceholder')}</option>
-              {subjects.map(subject => (
-                <option key={subject.subject_id} value={subject.subject_id}>
-                  {subject.subject_name}
+              {detailKelasOptions.map(opt => (
+                <option key={opt.detail_kelas_id} value={opt.detail_kelas_id}>
+                  {opt.subject_name} - {opt.kelas_nama}
                 </option>
               ))}
             </select>
-            {formErrors.assessment_subject_id && (
-              <p className="text-red-500 text-sm mt-1">{formErrors.assessment_subject_id}</p>
+            {formErrors.assessment_detail_kelas_id && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.assessment_detail_kelas_id}</p>
             )}
           </div>
 
@@ -679,7 +718,7 @@ export default function AssessmentSubmission() {
                   assessment_nama: '',
                   assessment_tanggal: '',
                   assessment_keterangan: '',
-                  assessment_subject_id: ''
+                  assessment_detail_kelas_id: ''
                 });
                 setFormErrors({});
               }}

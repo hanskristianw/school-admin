@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faUsers, faBook, faCalendar, faClipboardCheck, faSchool } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faUsers, faBook, faCalendar, faClipboardCheck, faSchool, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
 
 export default function Dashboard() {
@@ -32,8 +32,23 @@ export default function Dashboard() {
 
   // Recent assessments + lookup maps
   const [recentAssessments, setRecentAssessments] = useState([])
-  const [subjectsMap, setSubjectsMap] = useState({})
+  const [detailKelasMap, setDetailKelasMap] = useState({})
   const [usersMap, setUsersMap] = useState({})
+
+  // Calendar state
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = new Date()
+    d.setDate(1)
+    d.setHours(0,0,0,0)
+    return d
+  })
+  const [calLoading, setCalLoading] = useState(false)
+  const [calError, setCalError] = useState('')
+  // calData: { 'YYYY-MM-DD': { total: number, perClass: Array<{kelas_id, kelas_nama, count}> } }
+  const [calData, setCalData] = useState({})
+  const [kelasOptions, setKelasOptions] = useState([]) // from current month data
+  const [kelasFilter, setKelasFilter] = useState('')
+  const [dayDetail, setDayDetail] = useState({ open: false, date: '', rows: [] })
 
   useEffect(() => {
     const id = localStorage.getItem("kr_id")
@@ -46,7 +61,7 @@ export default function Dashboard() {
       // Load profile and dashboard data in parallel
       setLoading(true)
       setError("")
-      Promise.all([fetchUserInfo(id), fetchDashboardData()])
+      Promise.all([fetchUserInfo(id), fetchDashboardData(parseInt(id))])
         .catch((e) => {
           console.error(e)
           setError(t('common.errorLoading'))
@@ -65,14 +80,18 @@ export default function Dashboard() {
     setUserData(data)
   }
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (userId) => {
     // Fetch counts in parallel
     const [usersRes, classesRes, subjectsRes, yearsRes, pendingRes] = await Promise.all([
       supabase.from('users').select('*', { count: 'exact', head: true }),
       supabase.from('kelas').select('*', { count: 'exact', head: true }),
       supabase.from('subject').select('*', { count: 'exact', head: true }),
       supabase.from('year').select('*', { count: 'exact', head: true }),
-      supabase.from('assessment').select('*', { count: 'exact', head: true }).eq('assessment_status', 0),
+      supabase
+        .from('assessment')
+        .select('*', { count: 'exact', head: true })
+        .eq('assessment_user_id', userId)
+        .in('assessment_status', [0, 3]),
     ])
 
     setStats({
@@ -84,31 +103,150 @@ export default function Dashboard() {
     })
 
     // Recent assessments (last 5)
-    const [{ data: assessments, error: aErr }, { data: subjects, error: sErr }, { data: users, error: uErr }] = await Promise.all([
+  const [{ data: assessments, error: aErr }, { data: detailKelas, error: dkErr }, { data: subjects, error: sErr }, { data: kelas, error: kErr }, { data: users, error: uErr }] = await Promise.all([
       supabase
         .from('assessment')
-        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_status, assessment_user_id, assessment_subject_id')
+    .select('assessment_id, assessment_nama, assessment_tanggal, assessment_status, assessment_user_id, assessment_detail_kelas_id')
+    .eq('assessment_user_id', userId)
+    .in('assessment_status', [0, 3])
         .order('assessment_tanggal', { ascending: false })
         .limit(5),
       supabase
+        .from('detail_kelas')
+        .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id'),
+      supabase
         .from('subject')
         .select('subject_id, subject_name'),
+      supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama'),
       supabase
         .from('users')
         .select('user_id, user_nama_depan, user_nama_belakang'),
     ])
 
     if (aErr) throw aErr
+    if (dkErr) throw dkErr
     if (sErr) throw sErr
+    if (kErr) throw kErr
     if (uErr) throw uErr
 
-    const sMap = Object.fromEntries((subjects || []).map(s => [s.subject_id, s.subject_name]))
+    const sMap = new Map((subjects || []).map(s => [s.subject_id, s.subject_name]))
+    const kMap = new Map((kelas || []).map(k => [k.kelas_id, k.kelas_nama]))
+    const dkMap = Object.fromEntries((detailKelas || []).map(dk => [
+      dk.detail_kelas_id,
+      `${sMap.get(dk.detail_kelas_subject_id) || 'Subject'} - ${kMap.get(dk.detail_kelas_kelas_id) || 'Kelas'}`
+    ]))
     const uMap = Object.fromEntries((users || []).map(u => [u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim()]))
 
-    setSubjectsMap(sMap)
+    setDetailKelasMap(dkMap)
     setUsersMap(uMap)
     setRecentAssessments(assessments || [])
   }
+
+  // Helpers for calendar
+  const toKey = (d) => {
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+  const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1)
+  const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth()+1, 0)
+  const prevMonth = () => setCalMonth(m => new Date(m.getFullYear(), m.getMonth()-1, 1))
+  const nextMonth = () => setCalMonth(m => new Date(m.getFullYear(), m.getMonth()+1, 1))
+  const thisMonth = () => setCalMonth(() => { const d=new Date(); d.setDate(1); return d })
+
+  useEffect(() => {
+    // fetch calendar data whenever month or filter changes
+    const fetchMonth = async () => {
+      try {
+        setCalLoading(true)
+        setCalError('')
+        const from = startOfMonth(calMonth)
+        const to = endOfMonth(calMonth)
+        const fromStr = toKey(from)
+        const toStr = toKey(to)
+        let rows = []
+        // Try RPC first
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('f_assessment_calendar_range', {
+          p_from: fromStr,
+          p_to: toStr,
+          p_kelas_id: kelasFilter ? parseInt(kelasFilter) : null,
+        })
+        if (!rpcErr && rpcData) {
+          rows = rpcData
+        } else {
+          // Fallback: client-side aggregation
+          const { data: assess, error: aErr } = await supabase
+            .from('assessment')
+            .select('assessment_tanggal, assessment_detail_kelas_id, assessment_status')
+            .gte('assessment_tanggal', fromStr)
+            .lte('assessment_tanggal', toStr)
+            .eq('assessment_status', 1)
+          if (aErr) throw aErr
+          const detailIds = Array.from(new Set((assess||[]).map(a=>a.assessment_detail_kelas_id).filter(Boolean)))
+          let dk = []
+          if (detailIds.length) {
+            const { data: dkData, error: dkErr } = await supabase
+              .from('detail_kelas')
+              .select('detail_kelas_id, detail_kelas_kelas_id')
+              .in('detail_kelas_id', detailIds)
+            if (dkErr) throw dkErr
+            dk = dkData || []
+          }
+          const kelasIds = Array.from(new Set(dk.map(d=>d.detail_kelas_kelas_id)))
+          let kelas = []
+          if (kelasIds.length) {
+            const { data: kData, error: kErr } = await supabase
+              .from('kelas')
+              .select('kelas_id, kelas_nama')
+              .in('kelas_id', kelasIds)
+            if (kErr) throw kErr
+            kelas = kData || []
+          }
+          const dkToKelas = new Map(dk.map(d=>[d.detail_kelas_id, d.detail_kelas_kelas_id]))
+          const kMap = new Map(kelas.map(k=>[k.kelas_id, k.kelas_nama]))
+          const agg = new Map() // key: day|kelas_id -> count
+          for (const a of (assess||[])) {
+            const day = String(a.assessment_tanggal).slice(0,10)
+            const kid = dkToKelas.get(a.assessment_detail_kelas_id)
+            if (!kid) continue
+            if (kelasFilter && parseInt(kelasFilter) !== kid) continue
+            const key = `${day}|${kid}`
+            agg.set(key, (agg.get(key)||0) + 1)
+          }
+          rows = Array.from(agg.entries()).map(([key, count]) => {
+            const [day, kidStr] = key.split('|')
+            const kid = parseInt(kidStr)
+            return { day, kelas_id: kid, kelas_nama: kMap.get(kid) || 'Kelas', assessment_count: count }
+          }).sort((a,b)=> a.day.localeCompare(b.day) || (a.kelas_nama||'').localeCompare(b.kelas_nama||''))
+        }
+
+        // Transform rows -> calData and kelasOptions
+        const map = {}
+        const kelasMap = new Map()
+        for (const r of (rows||[])) {
+          const dayKey = typeof r.day === 'string' ? r.day : toKey(new Date(r.day))
+          if (!map[dayKey]) map[dayKey] = { total: 0, perClass: [] }
+          map[dayKey].total += r.assessment_count
+          map[dayKey].perClass.push({ kelas_id: r.kelas_id, kelas_nama: r.kelas_nama, count: r.assessment_count })
+          if (!kelasMap.has(r.kelas_id)) kelasMap.set(r.kelas_id, r.kelas_nama)
+        }
+        setCalData(map)
+        // Build kelas options from data to keep dropdown small
+        const opts = Array.from(kelasMap.entries()).map(([id, nama]) => ({ id, nama }))
+          .sort((a,b)=> (a.nama||'').localeCompare(b.nama||''))
+        setKelasOptions(opts)
+      } catch (e) {
+        console.error(e)
+        setCalError(t('common.errorLoading'))
+      } finally {
+        setCalLoading(false)
+      }
+    }
+    fetchMonth()
+  }, [calMonth, kelasFilter])
 
   const formatDate = (dateString) => {
     try {
@@ -120,10 +258,11 @@ export default function Dashboard() {
 
   const StatusBadge = ({ status }) => {
     const map = useMemo(() => ({
-      0: { text: 'Menunggu', cls: 'bg-yellow-100 text-yellow-800' },
-      1: { text: 'Disetujui', cls: 'bg-green-100 text-green-800' },
-      2: { text: 'Ditolak', cls: 'bg-red-100 text-red-800' },
-    }), [])
+      0: { text: t('teacherSubmission.statusWaiting') || 'Waiting' , cls: 'bg-yellow-100 text-yellow-800' },
+      3: { text: t('assessmentApproval.statusWaitingPrincipal') || 'Waiting for principal approval', cls: 'bg-blue-100 text-blue-800' },
+      1: { text: t('teacherSubmission.statusApproved') || 'Approved', cls: 'bg-green-100 text-green-800' },
+      2: { text: t('teacherSubmission.statusRejected') || 'Rejected', cls: 'bg-red-100 text-red-800' },
+    }), [t])
     const cfg = map[status] || { text: 'Tidak diketahui', cls: 'bg-gray-100 text-gray-800' }
     return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>{cfg.text}</span>
   }
@@ -161,12 +300,7 @@ export default function Dashboard() {
             <p className="text-gray-600">{t('dashboard.subtitle')}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/profile"><Button variant="outline">{t('common.profile')}</Button></Link>
-          <Link href="/data/user"><Button variant="outline">{t('common.manageUsers')}</Button></Link>
-          <Link href="/data/class"><Button variant="outline">{t('common.manageClasses')}</Button></Link>
-          <Link href="/data/assessment_approval"><Button>{t('common.assessmentApproval')}</Button></Link>
-        </div>
+  {/* Quick action buttons removed; access via sidebar only */}
       </div>
 
       {error && (
@@ -239,13 +373,12 @@ export default function Dashboard() {
                     <div className="min-w-0">
                       <div className="font-medium truncate">{a.assessment_nama}</div>
                       <div className="text-xs text-gray-600 truncate">
-                        {subjectsMap[a.assessment_subject_id] || 'Mata pelajaran'} · {usersMap[a.assessment_user_id] || 'Guru'}
+                        {detailKelasMap[a.assessment_detail_kelas_id] || 'Mata pelajaran - Kelas'} · {usersMap[a.assessment_user_id] || 'Guru'}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 md:gap-6">
+                      <div className="flex items-center gap-3 md:gap-6">
                       <div className="text-xs text-gray-600 whitespace-nowrap">{formatDate(a.assessment_tanggal)}</div>
                       <StatusBadge status={a.assessment_status} />
-                      <Link href="/data/assessment_approval"><Button size="sm" variant="outline">Kelola</Button></Link>
                     </div>
                   </div>
                 ))}
@@ -253,7 +386,120 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+        {/* Assessment Calendar */}
+        <Card className="sm:col-span-2 lg:col-span-4">
+          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faCalendar} className="text-blue-500" />
+              <CardTitle className="text-base">Kalender Penilaian</CardTitle>
+            </div>
+            <div className="w-full md:w-auto overflow-x-auto">
+              <div className="inline-flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={prevMonth}>
+                  <FontAwesomeIcon icon={faChevronLeft} />
+                </Button>
+                <div className="text-sm min-w-[140px] text-center">
+                  {calMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                </div>
+                <Button variant="outline" size="sm" onClick={nextMonth}>
+                  <FontAwesomeIcon icon={faChevronRight} />
+                </Button>
+                <Button variant="outline" size="sm" onClick={thisMonth}>Bulan Ini</Button>
+                <select
+                  className="ml-2 border rounded px-2 py-1 text-sm shrink-0"
+                  value={kelasFilter}
+                  onChange={(e)=> setKelasFilter(e.target.value)}
+                >
+                  <option value="">Semua Kelas</option>
+                  {kelasOptions.map(k => (
+                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {calError && (
+              <div className="p-2 mb-3 rounded bg-red-50 text-red-700 border border-red-200 text-sm">{calError}</div>
+            )}
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 text-[11px] sm:text-xs font-medium text-gray-500 mb-2">
+              {['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(d => (
+                <div key={d} className="text-center">{d}</div>
+              ))}
+            </div>
+            {/* Month grid */}
+            {(() => {
+              const first = startOfMonth(calMonth)
+              const last = endOfMonth(calMonth)
+              const firstWeekday = (first.getDay() + 6) % 7 // make Monday=0
+              const days = []
+              // leading blanks
+              for (let i=0;i<firstWeekday;i++) days.push(null)
+              // actual days
+              for (let d=1; d<= last.getDate(); d++) {
+                days.push(new Date(calMonth.getFullYear(), calMonth.getMonth(), d))
+              }
+              // pad to full weeks
+              while (days.length % 7 !== 0) days.push(null)
+              return (
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                  {days.map((d, idx) => {
+          if (!d) return <div key={idx} className="h-20 md:h-24 rounded border bg-gray-50" />
+                    const key = toKey(d)
+                    const info = calData[key]
+                    const total = info?.total || 0
+                    const top = (info?.perClass || []).slice().sort((a,b)=> b.count - a.count).slice(0,2)
+                    const more = Math.max(0, (info?.perClass?.length || 0) - top.length)
+                    return (
+                      <button
+                        key={idx}
+            className={`h-20 md:h-24 rounded border p-2 text-left hover:bg-blue-50 transition ${total>0 ? 'bg-white' : 'bg-gray-50'}`}
+                        onClick={() => setDayDetail({ open: true, date: key, rows: (info?.perClass || []).slice().sort((a,b)=> b.count - a.count) })}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs font-semibold">{d.getDate()}</div>
+                          {total>0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{total}</span>}
+                        </div>
+                        <div className="mt-1 space-y-1">
+                          {top.map(c => (
+                            <div key={c.kelas_id} className="text-[10px] truncate">
+                              <span className="px-1 py-0.5 rounded bg-gray-100 mr-1">{c.count}</span>
+                              {c.kelas_nama}
+                            </div>
+                          ))}
+                          {more>0 && (
+                            <div className="text-[10px] text-gray-500">+{more} kelas lainnya</div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Day detail modal */}
+      <Modal
+        isOpen={dayDetail.open}
+        onClose={() => setDayDetail({ open: false, date: '', rows: [] })}
+        title={`Detail ${dayDetail.date}`}
+      >
+        <div className="space-y-2">
+          {dayDetail.rows.length === 0 ? (
+            <div className="text-sm text-gray-500">Tidak ada assessment</div>
+          ) : (
+            dayDetail.rows.map(r => (
+              <div key={r.kelas_id} className="flex items-center justify-between text-sm">
+                <div>{r.kelas_nama}</div>
+                <div className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs">{r.count}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }

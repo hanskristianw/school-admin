@@ -127,3 +127,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 2. Test di `/debug/supabase`
 3. Login ke aplikasi
 4. Enjoy simplified architecture! 🚀
+
+## 📅 Assessment Calendar Setup
+
+Untuk menampilkan jumlah assessment per hari per kelas di Dashboard, jalankan file SQL berikut di Supabase (SQL Editor):
+
+1) Buka file `assessment-calendar.sql` di repo ini, salin seluruh isi, lalu jalankan di Supabase.
+2) Pastikan view `v_assessment_calendar` dan function `f_assessment_calendar_range` berhasil dibuat.
+3) Grant sudah disertakan untuk anon/authenticated; sesuaikan dengan kebijakan RLS anda jika perlu.
+
+Dengan artifacts ini, frontend bisa mengambil agregasi per bulan menggunakan RPC:
+- `rpc('f_assessment_calendar_range', { p_from: 'YYYY-MM-01', p_to: 'YYYY-MM-31', p_kelas_id: null })`.

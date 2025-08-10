@@ -30,7 +30,8 @@ role (
   role_name VARCHAR(50),
   is_teacher BOOLEAN DEFAULT false,
   is_admin BOOLEAN DEFAULT false,
-  is_principal BOOLEAN DEFAULT false
+  is_principal BOOLEAN DEFAULT false,
+  is_student BOOLEAN DEFAULT false
 )
 
 -- Academic Structure
@@ -59,6 +60,20 @@ subject (
   subject_unit_id INTEGER REFERENCES unit(unit_id)
 )
 
+-- Topics (IB Units)
+topic (
+  topic_id SERIAL PRIMARY KEY,
+  topic_nama VARCHAR(100) NOT NULL, -- Unit Title
+  topic_subject_id INTEGER NOT NULL REFERENCES subject(subject_id) ON DELETE RESTRICT
+)
+
+-- Subject assignment to Class (per-class-per-subject mapping)
+detail_kelas (
+  detail_kelas_id SERIAL PRIMARY KEY,
+  detail_kelas_subject_id INTEGER NOT NULL REFERENCES subject(subject_id) ON DELETE RESTRICT,
+  detail_kelas_kelas_id INTEGER NOT NULL REFERENCES kelas(kelas_id) ON DELETE RESTRICT
+)
+
 -- Assessment System
 assessment (
   assessment_id SERIAL PRIMARY KEY,
@@ -66,7 +81,7 @@ assessment (
   assessment_deskripsi TEXT,
   assessment_tanggal DATE,
   assessment_user_id INTEGER REFERENCES users(user_id), -- Teacher
-  assessment_subject_id INTEGER REFERENCES subject(subject_id),
+  assessment_detail_kelas_id INTEGER REFERENCES detail_kelas(detail_kelas_id),
   -- Status (numeric):
   -- 0 = Waiting for admin approval
   -- 1 = Approved (final)
@@ -107,9 +122,13 @@ menus (
 - **Years**: `/data/year` - Manage academic years
 - **Classes**: `/data/class` - Manage classes with wali kelas and academic year association
 - **Subjects**: `/data/subject` - Manage subjects with teachers
+- **Topics (Units)**: `/data/topic` - Manage topics (IB units) per subject
 - **Access**: Admin only
 - **Key Tables**: `unit`, `year`, `kelas`, `subject`
 - **New Feature**: Classes now linked to academic years via `kelas_year_id` foreign key
+
+Notes:
+- Topic management page (`/data/topic`) is scoped to the logged-in teacher. Only subjects where `subject_user_id` matches the current user are available for selection, and only topics under those subjects are listed. Admins can expose broader management via menus or separate admin tooling if desired.
 
 ### **3. Assessment System**
 #### **Teacher Workflow**:
@@ -198,6 +217,10 @@ menus (
    WHERE r.is_teacher = true;
    ```
 
+3. **Topic Page Subject Scope**:
+  - The Topic CRUD page reads the logged-in user ID from localStorage (`kr_id`) and loads only subjects with `subject_user_id = kr_id`.
+  - The topics list and the "Subject" dropdown are restricted to that subject set; client-side validation prevents selecting a non-owned subject.
+
 3. **Assessment Date Validation**:
    ```jsx
    const daysDiff = Math.abs(new Date(date) - new Date()) / (1000 * 60 * 60 * 24);
@@ -217,6 +240,7 @@ menus (
 8. **`create-teacher-rpc-functions.sql`** - Helper functions for teacher queries
 9. **`fix-foreign-key-relationship.sql`** - Foreign key setup and verification
 10. **`update-icons.sql`** - FontAwesome icon updates
+11. **`topic-migration.sql`** - Topic (Unit) table and optional menu wiring
 
 ### **Development:**
 ```bash
@@ -280,12 +304,72 @@ WHERE u.is_active = true AND r.is_teacher = true;
 
 ### **Assessment with Relations:**
 ```sql
-SELECT a.*, u.user_nama_depan, u.user_nama_belakang, s.subject_name
+SELECT 
+  a.*,
+  u.user_nama_depan,
+  u.user_nama_belakang,
+  s.subject_name,
+  k.kelas_nama
 FROM assessment a
 LEFT JOIN users u ON a.assessment_user_id = u.user_id
-LEFT JOIN subject s ON a.assessment_subject_id = s.subject_id
+LEFT JOIN detail_kelas dk ON dk.detail_kelas_id = a.assessment_detail_kelas_id
+LEFT JOIN subject s ON s.subject_id = dk.detail_kelas_subject_id
+LEFT JOIN kelas k ON k.kelas_id = dk.detail_kelas_kelas_id
 ORDER BY a.assessment_tanggal DESC;
 ```
+
+### **Topics (Units) Queries:**
+```sql
+-- Topics by teacher (only subjects taught by the user)
+SELECT t.*, s.subject_name
+FROM topic t
+JOIN subject s ON s.subject_id = t.topic_subject_id
+WHERE s.subject_user_id = :user_id
+ORDER BY t.topic_nama;
+
+-- Topics by subject
+SELECT *
+FROM topic
+WHERE topic_subject_id = :subject_id
+ORDER BY topic_nama;
+```
+
+### **Assessment Calendar (View + RPC)**
+
+To support a dashboard calendar that shows the number of assessments per class per day, use this view and RPC. Note: uses detail_kelas_kelas_id and detail_kelas_subject_id per the schema.
+
+```sql
+-- View: daily counts per class
+create or replace view v_assessment_calendar as
+select
+  a.assessment_tanggal::date as day,
+  k.kelas_id,
+  k.kelas_nama,
+  count(*)::int as assessment_count
+from assessment a
+join detail_kelas dk on dk.detail_kelas_id = a.assessment_detail_kelas_id
+join kelas k on k.kelas_id = dk.detail_kelas_kelas_id
+where a.assessment_status = 1 -- only approved
+group by 1,2,3;
+
+-- RPC: ranged query with optional class filter
+create or replace function f_assessment_calendar_range(
+  p_from date,
+  p_to date,
+  p_kelas_id integer default null
+)
+returns table(day date, kelas_id integer, kelas_nama text, assessment_count int)
+language sql stable as $$
+  select day, kelas_id, kelas_nama, assessment_count
+  from v_assessment_calendar
+  where day between p_from and p_to
+    and (p_kelas_id is null or kelas_id = p_kelas_id)
+  order by day, kelas_nama;
+$$;
+```
+
+Client usage (example): fetch range for the visible month, then group by day in the UI.
+
 
 ### **Subject with Teacher & Unit:**
 ```sql
@@ -306,6 +390,7 @@ LEFT JOIN unit un ON s.subject_unit_id = un.unit_id;
 - ✅ Role-based menu system
 - ✅ FontAwesome icon integration
 - ✅ Teacher filtering in subject management
+- ✅ Topic (Unit) CRUD for teachers (scoped to own subjects)
 
 ### **Key Business Rules:**
 - ✅ Only teachers can submit assessments
@@ -342,3 +427,4 @@ LEFT JOIN unit un ON s.subject_unit_id = un.unit_id;
 - Subject/Teacher filter placeholders updated to “All Subjects/All Teachers” across locales
 - Switched remaining raw Font Awesome <i> usages to React FontAwesomeIcon components
 - Sidebar improvements: root detection by null/undefined parent, menu ordering by numeric `menu_order`, header text set to “School System”
+- New: Topic (Unit) table and CRUD page at `/data/topic`; teachers see only their subjects and their topics
