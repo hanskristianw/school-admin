@@ -132,6 +132,7 @@
     "notifErrorSubmit": "Gagal submit assessment: ",
     "notifWarnTitle": "Tanggal Tidak Valid",
     "unauth": "User tidak terautentikasi",
+  "limitPerDayReachedSubmit": "Pada tanggal {date}, kelas {class} sudah memiliki 2 assessment terjadwal. Silakan pilih tanggal lain.",
     "validation": {
       "nameRequired": "Nama assessment wajib diisi",
       "dateRequired": "Tanggal assessment wajib diisi",

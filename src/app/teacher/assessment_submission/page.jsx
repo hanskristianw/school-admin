@@ -282,6 +282,28 @@ export default function AssessmentSubmission() {
 
     try {
       setSubmitting(true);
+      // Check per-day limit: max 2 assessments for the same detail_kelas on the same date
+      const selectedDetailId = parseInt(formData.assessment_detail_kelas_id);
+      const selectedDateStr = formData.assessment_tanggal;
+      const { count: existingCount, error: countErr } = await supabase
+        .from('assessment')
+        .select('assessment_id', { count: 'exact', head: true })
+        .eq('assessment_detail_kelas_id', selectedDetailId)
+        .eq('assessment_tanggal', selectedDateStr);
+      if (countErr) throw new Error(countErr.message);
+      if ((existingCount || 0) >= 2) {
+        const selectedOpt = detailKelasOptions.find(o => o.detail_kelas_id === selectedDetailId);
+        const className = selectedOpt?.kelas_nama || '-';
+        const friendlyDate = new Date(selectedDateStr).toLocaleDateString(
+          lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID',
+          { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+        );
+        const msg = t('teacherSubmission.limitPerDayReachedSubmit', { class: className, date: friendlyDate })
+          || `On ${friendlyDate}, class ${className} already has 2 assessments scheduled. Please choose another date.`;
+        showNotification(t('teacherSubmission.notifWarnTitle'), msg, 'warning');
+        setSubmitting(false);
+        return;
+      }
       
       // Determine status based on date difference: 2-6 days => waiting for principal approval (3)
       const selectedDate = new Date(formData.assessment_tanggal);

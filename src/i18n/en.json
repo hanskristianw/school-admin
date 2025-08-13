@@ -132,6 +132,7 @@
     "notifErrorSubmit": "Failed to submit assessment: ",
     "notifWarnTitle": "Invalid Date",
     "unauth": "User not authenticated",
+  "limitPerDayReachedSubmit": "On {date}, class {class} already has 2 assessments scheduled. Please choose another date.",
     "validation": {
       "nameRequired": "Assessment name is required",
       "dateRequired": "Assessment date is required",

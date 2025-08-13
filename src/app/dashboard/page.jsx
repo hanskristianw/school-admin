@@ -200,13 +200,13 @@ export default function Dashboard() {
           if (kelasIds.length) {
             const { data: kData, error: kErr } = await supabase
               .from('kelas')
-              .select('kelas_id, kelas_nama')
+              .select('kelas_id, kelas_nama, kelas_color_name')
               .in('kelas_id', kelasIds)
             if (kErr) throw kErr
             kelas = kData || []
           }
           const dkToKelas = new Map(dk.map(d=>[d.detail_kelas_id, d.detail_kelas_kelas_id]))
-          const kMap = new Map(kelas.map(k=>[k.kelas_id, k.kelas_nama]))
+          const kMap = new Map(kelas.map(k=>[k.kelas_id, { nama: k.kelas_nama, color: k.kelas_color_name }]))
           const agg = new Map() // key: day|kelas_id -> count
           for (const a of (assess||[])) {
             const day = String(a.assessment_tanggal).slice(0,10)
@@ -219,19 +219,40 @@ export default function Dashboard() {
           rows = Array.from(agg.entries()).map(([key, count]) => {
             const [day, kidStr] = key.split('|')
             const kid = parseInt(kidStr)
-            return { day, kelas_id: kid, kelas_nama: kMap.get(kid) || 'Kelas', assessment_count: count }
+            const info = kMap.get(kid) || {}
+            return { day, kelas_id: kid, kelas_nama: info.nama || 'Kelas', assessment_count: count }
           }).sort((a,b)=> a.day.localeCompare(b.day) || (a.kelas_nama||'').localeCompare(b.kelas_nama||''))
         }
 
-        // Transform rows -> calData and kelasOptions
+        // Fetch kelas colors for RPC path (and ensure names), then transform -> calData and kelasOptions
+        let kelasInfo = new Map()
+        try {
+          const kelasIdsFromRows = Array.from(new Set((rows||[]).map(r=>r.kelas_id).filter(Boolean)))
+          if (kelasIdsFromRows.length) {
+            const { data: kelasData2, error: kelasErr2 } = await supabase
+              .from('kelas')
+              .select('kelas_id, kelas_nama, kelas_color_name')
+              .in('kelas_id', kelasIdsFromRows)
+            if (kelasErr2) throw kelasErr2
+            kelasInfo = new Map((kelasData2||[]).map(k => [k.kelas_id, { nama: k.kelas_nama, color: k.kelas_color_name }]))
+          }
+        } catch (e) {
+          // keep going without colors if lookup fails
+          console.warn('kelas color lookup failed', e)
+        }
+
+        // Transform rows -> calData with color and kelasOptions
         const map = {}
         const kelasMap = new Map()
         for (const r of (rows||[])) {
           const dayKey = typeof r.day === 'string' ? r.day : toKey(new Date(r.day))
           if (!map[dayKey]) map[dayKey] = { total: 0, perClass: [] }
           map[dayKey].total += r.assessment_count
-          map[dayKey].perClass.push({ kelas_id: r.kelas_id, kelas_nama: r.kelas_nama, count: r.assessment_count })
-          if (!kelasMap.has(r.kelas_id)) kelasMap.set(r.kelas_id, r.kelas_nama)
+          const info = kelasInfo.get(r.kelas_id) || {}
+          const kelas_nama = r.kelas_nama || info.nama || 'Kelas'
+          const color = info.color || null
+          map[dayKey].perClass.push({ kelas_id: r.kelas_id, kelas_nama, count: r.assessment_count, color })
+          if (!kelasMap.has(r.kelas_id)) kelasMap.set(r.kelas_id, kelas_nama)
         }
         setCalData(map)
         // Build kelas options from data to keep dropdown small
@@ -247,6 +268,24 @@ export default function Dashboard() {
     }
     fetchMonth()
   }, [calMonth, kelasFilter])
+
+  // Map semantic color to Tailwind chip classes
+  const colorToChip = (name) => {
+    switch ((name||'').toLowerCase()) {
+      case 'success': return 'bg-green-100 text-green-700'
+      case 'warning': return 'bg-amber-100 text-amber-700'
+      case 'error': return 'bg-red-100 text-red-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+  const colorToText = (name) => {
+    switch ((name||'').toLowerCase()) {
+      case 'success': return 'text-green-700'
+      case 'warning': return 'text-amber-700'
+      case 'error': return 'text-red-700'
+      default: return 'text-gray-700'
+    }
+  }
 
   const formatDate = (dateString) => {
     try {
@@ -463,8 +502,8 @@ export default function Dashboard() {
                         <div className="mt-1 space-y-1">
                           {top.map(c => (
                             <div key={c.kelas_id} className="text-[10px] truncate">
-                              <span className="px-1 py-0.5 rounded bg-gray-100 mr-1">{c.count}</span>
-                              {c.kelas_nama}
+                              <span className={`px-1 py-0.5 rounded mr-1 ${colorToChip(c.color)}`}>{c.count}</span>
+                              <span className={`${colorToText(c.color)}`}>{c.kelas_nama}</span>
                             </div>
                           ))}
                           {more>0 && (
@@ -489,12 +528,12 @@ export default function Dashboard() {
       >
         <div className="space-y-2">
           {dayDetail.rows.length === 0 ? (
-            <div className="text-sm text-gray-500">Tidak ada assessment</div>
+      <div className="text-sm text-gray-500">Tidak ada assessment</div>
           ) : (
             dayDetail.rows.map(r => (
               <div key={r.kelas_id} className="flex items-center justify-between text-sm">
-                <div>{r.kelas_nama}</div>
-                <div className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs">{r.count}</div>
+                <div className={`${colorToText(r.color)}`}>{r.kelas_nama}</div>
+        <div className={`px-2 py-0.5 rounded text-xs ${colorToChip(r.color)}`}>{r.count}</div>
               </div>
             ))
           )}

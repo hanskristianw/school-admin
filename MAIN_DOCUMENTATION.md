@@ -1,6 +1,13 @@
 # School Admin System - Complete Documentation
 
-## 🏗️ **Database Structure**
+## � Changelog
+
+### 2025-08-13
+- Internationalization: Class Management page (`/data/class`) fully localized (en/id/zh) with comprehensive `classManagement.*` keys; validations, confirmations, and notifications translated.
+- Teacher submission rule: Enforced “max 2 assessments per class-detail per date” with a contextual, localized message (`teacherSubmission.limitPerDayReachedSubmit`). Recommend DB-level enforcement for concurrency.
+- Dashboard calendar: Per-class chips and class name text are color-coded via `kelas.kelas_color_name` (success|warning|error).
+
+## �🏗️ **Database Structure**
 
 ### **Core Tables:**
 ```sql
@@ -50,7 +57,9 @@ kelas (
   kelas_nama VARCHAR(50),
   kelas_user_id INTEGER REFERENCES users(user_id), -- Wali Kelas
   kelas_unit_id INTEGER REFERENCES unit(unit_id),
-  kelas_year_id INTEGER REFERENCES year(year_id) -- Tahun Ajaran
+  kelas_year_id INTEGER REFERENCES year(year_id), -- Tahun Ajaran
+  -- Semantic color for calendar badges and labels
+  kelas_color_name VARCHAR(20) -- expected values: 'success' | 'warning' | 'error'
 )
 
 subject (
@@ -134,7 +143,9 @@ Notes:
 #### **Teacher Workflow**:
 - **Path**: `/teacher/assessment_submission`
 - **Features**: Submit assessments with date validation
-- **Business Rule**: Cannot submit if date difference > 2 days
+- **Business Rules**:
+  - Cannot submit if date difference > 2 days
+  - Maximum 2 assessments per class-detail per date; additional attempts are blocked with a localized message that includes the class name and the selected date
 - **Status Flow**: `pending` → admin review
 
 #### **Admin Workflow**:
@@ -166,15 +177,19 @@ Notes:
 ### **5. Dashboard**
 - **Path**: `/dashboard`
 - **Features**: Statistics, charts, summary data
+  - Assessment calendar shows per-day totals and per-class counts
+  - Per-class chips and class name text are colored based on `kelas_color_name`
+  - Color mapping: `success` (green), `warning` (amber), `error` (red); defaults to gray when unset
 - **Access**: All authenticated users
 
 ### **6. Internationalization (i18n)**
 - **Languages**: English (en), Indonesian (id), Chinese (zh)
 - **Implementation**: Custom provider `useI18n`, JSON dictionaries per locale.
 - **Recent Additions**:
-  - Full localization for Assessment Approval, including statuses and notifications
-  - New keys: `assessmentApproval.statusWaitingPrincipal`, `assessmentApproval.allSubjects`, `assessmentApproval.allTeachers`
-  - Chinese dictionary fixed and extended; placeholders and titles are localized
+  - Class Management (`/data/class`): fully localized UI, forms, validations, confirmations, and notifications under `classManagement.*`
+  - Teacher Submission: contextual limit message key `teacherSubmission.limitPerDayReachedSubmit` supports placeholders `{class}` and `{date}`
+  - Assessment Approval: statuses and notifications; keys include `assessmentApproval.statusWaitingPrincipal`, `assessmentApproval.allSubjects`, `assessmentApproval.allTeachers`
+  - Chinese dictionary fixed and extended; placeholders and titles localized
 
 ### **7. UI/UX Improvements**
 - **Assessment Approval Filters**:
@@ -287,7 +302,7 @@ npm run dev
 
 ### **3. Assessment Date Validation:**
 - **Issue**: Business rule enforcement
-- **Fix**: Client-side validation + server-side backup
+- **Fix**: Client-side validation + server-side backup; for the per-day submission cap (max 2), consider a DB constraint or trigger to prevent race conditions
 
 ### **4. Menu Permissions:**
 - **Issue**: Wrong role access
@@ -369,6 +384,24 @@ $$;
 ```
 
 Client usage (example): fetch range for the visible month, then group by day in the UI.
+
+Note on colors: The UI applies semantic colors by joining `kelas.kelas_color_name`. Optionally include this field in the view to avoid an extra lookup:
+
+```sql
+-- Extended view with kelas_color_name
+create or replace view v_assessment_calendar as
+select
+  a.assessment_tanggal::date as day,
+  k.kelas_id,
+  k.kelas_nama,
+  k.kelas_color_name,
+  count(*)::int as assessment_count
+from assessment a
+join detail_kelas dk on dk.detail_kelas_id = a.assessment_detail_kelas_id
+join kelas k on k.kelas_id = dk.detail_kelas_kelas_id
+where a.assessment_status = 1 -- only approved
+group by 1,2,3,4;
+```
 
 
 ### **Subject with Teacher & Unit:**
