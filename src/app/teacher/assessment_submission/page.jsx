@@ -32,10 +32,15 @@ export default function AssessmentSubmission() {
     assessment_nama: '',
     assessment_tanggal: '',
     assessment_keterangan: '',
-    assessment_detail_kelas_id: ''
+    assessment_detail_kelas_id: '',
+    assessment_topic_id: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  // Topic state (dependent on selected subject within detail_kelas)
+  const [topicsCache, setTopicsCache] = useState(new Map()); // key: subject_id|kelas_id -> topics[]
+  const [topics, setTopics] = useState([]); // topics for current selected subject
+  const [topicsLoading, setTopicsLoading] = useState(false);
   
   // Notification modal states
   const [notification, setNotification] = useState({
@@ -230,6 +235,21 @@ export default function AssessmentSubmission() {
     if (!formData.assessment_detail_kelas_id) {
   errors.assessment_detail_kelas_id = t('teacherSubmission.validation.subjectRequired');
     }
+    // Topic enforcement: now ALWAYS require a topic for a selected subject+class. If none exist, block submission with an error.
+    if (formData.assessment_detail_kelas_id) {
+      const selectedDetail = detailKelasOptions.find(o => o.detail_kelas_id.toString() === formData.assessment_detail_kelas_id.toString());
+      const subjId = selectedDetail?.subject_id;
+      const kelasId = selectedDetail?.kelas_id;
+      if (subjId && kelasId) {
+        const cacheKey = subjId + '|' + kelasId;
+        const availableTopics = topicsCache.get(cacheKey) || [];
+        if (availableTopics.length === 0) {
+          errors.assessment_topic_id = t('teacherSubmission.validation.topicRequired');
+        } else if (!formData.assessment_topic_id) {
+          errors.assessment_topic_id = t('teacherSubmission.validation.topicRequired');
+        }
+      }
+    }
     
     // Validasi tanggal 
     if (formData.assessment_tanggal) {
@@ -319,7 +339,8 @@ export default function AssessmentSubmission() {
         assessment_keterangan: formData.assessment_keterangan.trim() || null,
         assessment_status: computedStatus, // 0: waiting, 3: waiting for principal approval
         assessment_user_id: currentUserId,
-        assessment_detail_kelas_id: parseInt(formData.assessment_detail_kelas_id)
+  assessment_detail_kelas_id: parseInt(formData.assessment_detail_kelas_id),
+  assessment_topic_id: formData.assessment_topic_id ? parseInt(formData.assessment_topic_id) : null
       };
 
       const { data, error } = await supabase
@@ -341,7 +362,8 @@ export default function AssessmentSubmission() {
         assessment_nama: '',
         assessment_tanggal: '',
         assessment_keterangan: '',
-        assessment_detail_kelas_id: ''
+  assessment_detail_kelas_id: '',
+  assessment_topic_id: ''
       });
       setFormErrors({});
       setShowForm(false);
@@ -411,6 +433,44 @@ export default function AssessmentSubmission() {
         }
       }
   }
+  // If subject (detail_kelas) changes, load topics for its subject_id & kelas_id
+    if (name === 'assessment_detail_kelas_id') {
+      const selectedDetail = detailKelasOptions.find(o => o.detail_kelas_id.toString() === value);
+      const subjId = selectedDetail?.subject_id;
+      const kelasId = selectedDetail?.kelas_id;
+      setFormData(prev => ({ ...prev, assessment_topic_id: '' }));
+      if (subjId && kelasId) {
+        loadTopicsForSubject(subjId, kelasId);
+      } else {
+        setTopics([]);
+      }
+    }
+  };
+
+  const loadTopicsForSubject = async (subjectId, kelasId) => {
+    const cacheKey = subjectId + '|' + kelasId;
+    if (topicsCache.has(cacheKey)) {
+      setTopics(topicsCache.get(cacheKey));
+      return;
+    }
+    try {
+      setTopicsLoading(true);
+      const { data, error } = await supabase
+        .from('topic')
+        .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id')
+        .eq('topic_subject_id', subjectId)
+        .eq('topic_kelas_id', kelasId)
+        .order('topic_nama');
+      if (error) throw new Error(error.message);
+      const list = data || [];
+      setTopics(list);
+      setTopicsCache(prev => new Map(prev).set(cacheKey, list));
+    } catch (e) {
+      console.error('Failed loading topics for subject/class', subjectId, kelasId, e);
+      setTopics([]);
+    } finally {
+      setTopicsLoading(false);
+    }
   };
 
   const filteredAssessments = assessments.filter(assessment => {
@@ -631,7 +691,8 @@ export default function AssessmentSubmission() {
             assessment_nama: '',
             assessment_tanggal: '',
             assessment_keterangan: '',
-            assessment_detail_kelas_id: ''
+                assessment_detail_kelas_id: '',
+                assessment_topic_id: ''
           });
           setFormErrors({});
         }}
@@ -717,6 +778,34 @@ export default function AssessmentSubmission() {
               <p className="text-red-500 text-sm mt-1">{formErrors.assessment_detail_kelas_id}</p>
             )}
           </div>
+
+          {/* Topic selection (mandatory; block submission if none) */}
+          {formData.assessment_detail_kelas_id && (
+            <div>
+              <Label htmlFor="assessment_topic_id">{t('teacherSubmission.topicLabel')}</Label>
+              <select
+                id="assessment_topic_id"
+                name="assessment_topic_id"
+                value={formData.assessment_topic_id}
+                onChange={handleInputChange}
+                disabled={topicsLoading || topics.length === 0}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  formErrors.assessment_topic_id ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                <option value="">{topicsLoading ? t('teacherSubmission.topicLoading') : (topics.length === 0 ? t('teacherSubmission.topicPlaceholderDisabled') : t('teacherSubmission.topicPlaceholder'))}</option>
+                {topics.map(tp => (
+                  <option key={tp.topic_id} value={tp.topic_id}>{tp.topic_nama}</option>
+                ))}
+              </select>
+              {formErrors.assessment_topic_id && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.assessment_topic_id}</p>
+              )}
+              {(!topicsLoading && topics.length === 0 && formData.assessment_detail_kelas_id) && (
+                <p className="text-xs text-red-500 mt-1">{t('teacherSubmission.topicNoneForSubject')}</p>
+              )}
+            </div>
+          )}
 
           <div>
             <Label htmlFor="assessment_keterangan">{t('teacherSubmission.noteLabel')}</Label>

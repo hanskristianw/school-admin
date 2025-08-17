@@ -29,7 +29,11 @@
     "years": "Tahun Ajaran",
     "pendingAssessments": "Assessment Menunggu Persetujuan",
     "noneRecent": "Tidak ada assessment terbaru.",
-    "pending": "pending"
+    "pending": "pending",
+    "doorGreeterTitle": "Tugas Door Greeter",
+    "doorGreeterToday": "Anda bertugas sebagai Door Greeter hari ini ({day}). Harap datang lebih awal.",
+    "doorGreeterTomorrow": "Anda bertugas sebagai Door Greeter besok ({day}). Siapkan diri untuk datang lebih awal.",
+    "doorGreeterTodayAndTomorrow": "Anda bertugas sebagai Door Greeter hari ini ({today}) dan besok ({tomorrow})."
   },
   "menus": {
     "Dashboard": "Dashboard",
@@ -133,10 +137,16 @@
     "notifWarnTitle": "Tanggal Tidak Valid",
     "unauth": "User tidak terautentikasi",
   "limitPerDayReachedSubmit": "Pada tanggal {date}, kelas {class} sudah memiliki 2 assessment terjadwal. Silakan pilih tanggal lain.",
+    "topicLabel": "Topik",
+    "topicPlaceholder": "Pilih Topik",
+    "topicPlaceholderDisabled": "Tidak ada topik",
+    "topicNoneForSubject": "Belum ada topik untuk mata pelajaran ini.",
+    "topicLoading": "Memuat topik...",
     "validation": {
       "nameRequired": "Nama assessment wajib diisi",
       "dateRequired": "Tanggal assessment wajib diisi",
       "subjectRequired": "Mata pelajaran wajib dipilih",
+      "topicRequired": "Topik wajib dipilih",
       "datePast": "Tanggal assessment tidak boleh di masa lalu",
       "dateTomorrow": "Assessment tidak boleh dijadwalkan besok ({date}). Silakan pilih tanggal minimal 2 hari ke depan.",
       "dateTomorrowShort": "Assessment tidak boleh dijadwalkan besok ({date}). Minimal 2 hari ke depan."
@@ -163,6 +173,7 @@
     "thName": "Nama Assessment",
     "thDate": "Tanggal",
     "thSubject": "Mata Pelajaran",
+  "thTopic": "Topik",
     "thTeacher": "Pengajar",
     "thStatus": "Status",
     "thActions": "Aksi",
@@ -180,6 +191,7 @@
     "labelName": "Nama",
     "labelDate": "Tanggal",
     "labelSubject": "Mata Pelajaran",
+  "labelTopic": "Topik",
     "labelTeacher": "Pengajar",
     "labelNote": "Keterangan",
     "btnCancel": "Batal",
@@ -198,6 +210,7 @@
     "warningAlreadyProcessed": "Assessment ini sudah diproses sebelumnya",
     "unknownUser": "Pengguna Tidak Dikenal",
     "unknownSubject": "Mata Pelajaran Tidak Dikenal"
+  ,"unknownTopic": "Topik Tidak Dikenal","noTopic": "Tanpa Topik"
   }
   ,
   "topic": {
@@ -213,13 +226,18 @@
     "empty": "Tidak ada data unit",
     "thUnitTitle": "Unit Title",
     "thSubject": "Mata Pelajaran",
-    "thActions": "Aksi",
+  "thActions": "Aksi",
+  "thClass": "Kelas",
     "edit": "Edit",
     "delete": "Hapus",
     "editTitle": "Edit Unit",
     "createTitle": "Tambah Unit",
     "unitTitle": "Unit Title",
-    "selectSubject": "Pilih Mata Pelajaran",
+  "selectSubject": "Pilih Mata Pelajaran",
+  "class": "Kelas",
+  "selectClass": "Pilih Kelas",
+  "classLoading": "Memuat kelas...",
+  "classNoneForSubject": "Tidak ada kelas untuk mata pelajaran ini.",
     "cancel": "Batal",
     "save": "Simpan",
     "create": "Buat",
@@ -238,7 +256,8 @@
     "loadError": "Gagal memuat data",
     "validation": {
       "unitTitleRequired": "Unit title wajib diisi",
-      "subjectRequired": "Mata pelajaran wajib dipilih"
+      "subjectRequired": "Mata pelajaran wajib dipilih",
+      "classRequired": "Kelas wajib dipilih"
     }
   }
   ,
@@ -320,5 +339,61 @@
       "unitRequired": "Unit wajib dipilih",
       "yearRequired": "Tahun ajaran wajib dipilih"
     }
+  }
+  ,
+  "doorGreeter": {
+    "title": "Jadwal Door Greeter",
+    "subtitle": "Kelola petugas penyambut tiap hari",
+    "newButton": "Door Greeter Baru",
+    "filtersTitle": "Filter",
+    "day": "Hari",
+    "allDays": "Semua Hari",
+    "searchUser": "Cari User",
+    "searchPlaceholder": "Ketik untuk mencari...",
+    "assignmentsTitle": "Penugasan",
+    "empty": "Belum ada penugasan",
+    "thDay": "Hari",
+    "thUser": "User",
+    "thActions": "Aksi",
+    "edit": "Edit",
+    "delete": "Hapus",
+    "modalEditTitle": "Edit Penugasan",
+    "modalCreateTitle": "Penugasan Baru",
+    "selectDay": "Pilih Hari",
+    "user": "User",
+    "selectUser": "Pilih User",
+    "cancel": "Batal",
+    "saving": "Menyimpan...",
+    "save": "Simpan",
+    "create": "Buat",
+    "deleting": "Menghapus...",
+    "yesDelete": "Ya, Hapus",
+    "confirmDeleteTitle": "Konfirmasi Hapus",
+    "confirmDeleteQuestion": "Hapus penugasan untuk {day} - {user}?",
+    "notifSuccessTitle": "Berhasil",
+    "notifErrorTitle": "Error",
+    "notifCreated": "Penugasan dibuat",
+    "notifUpdated": "Penugasan diupdate",
+    "notifDeleted": "Penugasan dihapus",
+    "notifErrorGeneric": "Gagal: ",
+    "validation": {
+      "userRequired": "User wajib dipilih",
+      "dayRequired": "Hari wajib dipilih",
+      "dayDuplicate": "Sudah ada door greeter untuk hari ini"
+    },
+    "days": {
+      "Monday": "Senin",
+      "Tuesday": "Selasa",
+      "Wednesday": "Rabu",
+      "Thursday": "Kamis",
+      "Friday": "Jumat",
+      "Saturday": "Sabtu",
+      "Sunday": "Minggu"
+    }
+  },
+  "dashboardDoorGreeterKeys": {
+    "doorGreeterTitle": "Door Greeter",
+    "doorGreeterToday": "Anda adalah Door Greeter hari ini ({day}). Harap datang lebih awal untuk menyambut siswa.",
+    "doorGreeterTomorrow": "Anda adalah Door Greeter besok ({day}). Siapkan diri untuk datang lebih awal."
   }
 }

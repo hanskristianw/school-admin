@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faUsers, faBook, faCalendar, faClipboardCheck, faSchool, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faUsers, faBook, faCalendar, faClipboardCheck, faSchool, faChevronLeft, faChevronRight, faDoorOpen } from '@fortawesome/free-solid-svg-icons'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Modal from '@/components/ui/modal'
@@ -29,6 +29,8 @@ export default function Dashboard() {
     years: 0,
     pendingAssessments: 0,
   })
+  // Door greeter notification state
+  const [doorGreeter, setDoorGreeter] = useState({ today: null, tomorrow: null })
 
   // Recent assessments + lookup maps
   const [recentAssessments, setRecentAssessments] = useState([])
@@ -102,6 +104,26 @@ export default function Dashboard() {
       pendingAssessments: pendingRes.count ?? 0,
     })
 
+    // Door greeter assignment check (today / tomorrow)
+    try {
+      const today = new Date()
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
+      const weekday = (d) => d.toLocaleDateString('en-US', { weekday: 'long' })
+      const todayName = weekday(today)
+      const tomorrowName = weekday(tomorrow)
+      const { data: dgData, error: dgErr } = await supabase
+        .from('daftar_door_greeter')
+        .select('daftar_door_greeter_day')
+        .eq('daftar_door_greeter_user_id', userId)
+        .in('daftar_door_greeter_day', [todayName, tomorrowName])
+      if (dgErr) throw dgErr
+      const hasToday = dgData?.some(r => r.daftar_door_greeter_day === todayName) ? todayName : null
+      const hasTomorrow = dgData?.some(r => r.daftar_door_greeter_day === tomorrowName) ? tomorrowName : null
+      setDoorGreeter({ today: hasToday, tomorrow: hasTomorrow })
+    } catch (e) {
+      console.warn('Door greeter check failed', e)
+    }
+
     // Recent assessments (last 5)
   const [{ data: assessments, error: aErr }, { data: detailKelas, error: dkErr }, { data: subjects, error: sErr }, { data: kelas, error: kErr }, { data: users, error: uErr }] = await Promise.all([
       supabase
@@ -158,7 +180,7 @@ export default function Dashboard() {
   const thisMonth = () => setCalMonth(() => { const d=new Date(); d.setDate(1); return d })
 
   useEffect(() => {
-    // fetch calendar data whenever month or filter changes
+    // fetch calendar data whenever month or filter changes; now grouped by detail_kelas (class+subject) to show subject_code
     const fetchMonth = async () => {
       try {
         setCalLoading(true)
@@ -167,96 +189,76 @@ export default function Dashboard() {
         const to = endOfMonth(calMonth)
         const fromStr = toKey(from)
         const toStr = toKey(to)
-        let rows = []
-        // Try RPC first
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('f_assessment_calendar_range', {
-          p_from: fromStr,
-          p_to: toStr,
-          p_kelas_id: kelasFilter ? parseInt(kelasFilter) : null,
-        })
-        if (!rpcErr && rpcData) {
-          rows = rpcData
-        } else {
-          // Fallback: client-side aggregation
-          const { data: assess, error: aErr } = await supabase
-            .from('assessment')
-            .select('assessment_tanggal, assessment_detail_kelas_id, assessment_status')
-            .gte('assessment_tanggal', fromStr)
-            .lte('assessment_tanggal', toStr)
-            .eq('assessment_status', 1)
-          if (aErr) throw aErr
-          const detailIds = Array.from(new Set((assess||[]).map(a=>a.assessment_detail_kelas_id).filter(Boolean)))
-          let dk = []
-          if (detailIds.length) {
-            const { data: dkData, error: dkErr } = await supabase
-              .from('detail_kelas')
-              .select('detail_kelas_id, detail_kelas_kelas_id')
-              .in('detail_kelas_id', detailIds)
-            if (dkErr) throw dkErr
-            dk = dkData || []
-          }
-          const kelasIds = Array.from(new Set(dk.map(d=>d.detail_kelas_kelas_id)))
-          let kelas = []
-          if (kelasIds.length) {
-            const { data: kData, error: kErr } = await supabase
-              .from('kelas')
-              .select('kelas_id, kelas_nama, kelas_color_name')
-              .in('kelas_id', kelasIds)
-            if (kErr) throw kErr
-            kelas = kData || []
-          }
-          const dkToKelas = new Map(dk.map(d=>[d.detail_kelas_id, d.detail_kelas_kelas_id]))
-          const kMap = new Map(kelas.map(k=>[k.kelas_id, { nama: k.kelas_nama, color: k.kelas_color_name }]))
-          const agg = new Map() // key: day|kelas_id -> count
-          for (const a of (assess||[])) {
-            const day = String(a.assessment_tanggal).slice(0,10)
-            const kid = dkToKelas.get(a.assessment_detail_kelas_id)
-            if (!kid) continue
+        // Always use manual aggregation to incorporate subject_code per class+subject (detail_kelas)
+        const { data: assess, error: aErr } = await supabase
+          .from('assessment')
+          .select('assessment_tanggal, assessment_detail_kelas_id, assessment_status')
+          .gte('assessment_tanggal', fromStr)
+          .lte('assessment_tanggal', toStr)
+          .eq('assessment_status', 1)
+        if (aErr) throw aErr
+        const detailIds = Array.from(new Set((assess||[]).map(a=>a.assessment_detail_kelas_id).filter(Boolean)))
+        let dk = []
+        if (detailIds.length) {
+          const { data: dkData, error: dkErr } = await supabase
+            .from('detail_kelas')
+            .select('detail_kelas_id, detail_kelas_kelas_id, detail_kelas_subject_id')
+            .in('detail_kelas_id', detailIds)
+          if (dkErr) throw dkErr
+          dk = dkData || []
+        }
+        const kelasIds = Array.from(new Set(dk.map(d=>d.detail_kelas_kelas_id)))
+        const subjectIds = Array.from(new Set(dk.map(d=>d.detail_kelas_subject_id)))
+        let kelas = []
+        if (kelasIds.length) {
+          const { data: kData, error: kErr } = await supabase
+            .from('kelas')
+            .select('kelas_id, kelas_nama, kelas_color_name')
+            .in('kelas_id', kelasIds)
+          if (kErr) throw kErr
+          kelas = kData || []
+        }
+        let subjects = []
+        if (subjectIds.length) {
+          const { data: sData, error: sErr } = await supabase
+            .from('subject')
+            .select('subject_id, subject_code')
+            .in('subject_id', subjectIds)
+          if (sErr) throw sErr
+          subjects = sData || []
+        }
+        const dkInfo = new Map(dk.map(d=>[d.detail_kelas_id, { kelas_id: d.detail_kelas_kelas_id, subject_id: d.detail_kelas_subject_id }]))
+        const kelasMapFull = new Map(kelas.map(k=>[k.kelas_id, { nama: k.kelas_nama, color: k.kelas_color_name }]))
+        const subjCodeMap = new Map(subjects.map(s=>[s.subject_id, s.subject_code]))
+        const agg = new Map() // key: day|detail_kelas_id -> count
+        for (const a of (assess||[])) {
+          const day = String(a.assessment_tanggal).slice(0,10)
+          const info = dkInfo.get(a.assessment_detail_kelas_id)
+          if (!info) continue
+          const kid = info.kelas_id
             if (kelasFilter && parseInt(kelasFilter) !== kid) continue
-            const key = `${day}|${kid}`
-            agg.set(key, (agg.get(key)||0) + 1)
-          }
-          rows = Array.from(agg.entries()).map(([key, count]) => {
-            const [day, kidStr] = key.split('|')
-            const kid = parseInt(kidStr)
-            const info = kMap.get(kid) || {}
-            return { day, kelas_id: kid, kelas_nama: info.nama || 'Kelas', assessment_count: count }
-          }).sort((a,b)=> a.day.localeCompare(b.day) || (a.kelas_nama||'').localeCompare(b.kelas_nama||''))
+          const key = `${day}|${a.assessment_detail_kelas_id}`
+          agg.set(key, (agg.get(key)||0) + 1)
         }
-
-        // Fetch kelas colors for RPC path (and ensure names), then transform -> calData and kelasOptions
-        let kelasInfo = new Map()
-        try {
-          const kelasIdsFromRows = Array.from(new Set((rows||[]).map(r=>r.kelas_id).filter(Boolean)))
-          if (kelasIdsFromRows.length) {
-            const { data: kelasData2, error: kelasErr2 } = await supabase
-              .from('kelas')
-              .select('kelas_id, kelas_nama, kelas_color_name')
-              .in('kelas_id', kelasIdsFromRows)
-            if (kelasErr2) throw kelasErr2
-            kelasInfo = new Map((kelasData2||[]).map(k => [k.kelas_id, { nama: k.kelas_nama, color: k.kelas_color_name }]))
-          }
-        } catch (e) {
-          // keep going without colors if lookup fails
-          console.warn('kelas color lookup failed', e)
-        }
-
-        // Transform rows -> calData with color and kelasOptions
+        // Build final structure
         const map = {}
-        const kelasMap = new Map()
-        for (const r of (rows||[])) {
-          const dayKey = typeof r.day === 'string' ? r.day : toKey(new Date(r.day))
-          if (!map[dayKey]) map[dayKey] = { total: 0, perClass: [] }
-          map[dayKey].total += r.assessment_count
-          const info = kelasInfo.get(r.kelas_id) || {}
-          const kelas_nama = r.kelas_nama || info.nama || 'Kelas'
-          const color = info.color || null
-          map[dayKey].perClass.push({ kelas_id: r.kelas_id, kelas_nama, count: r.assessment_count, color })
-          if (!kelasMap.has(r.kelas_id)) kelasMap.set(r.kelas_id, kelas_nama)
+        const kelasFilterOptions = new Map()
+        for (const [key, count] of agg.entries()) {
+          const [day, dkIdStr] = key.split('|')
+          const dkId = parseInt(dkIdStr)
+          const info = dkInfo.get(dkId)
+          if (!info) continue
+          const kInfo = kelasMapFull.get(info.kelas_id) || {}
+          const kelas_nama = kInfo.nama || 'Kelas'
+          const color = kInfo.color || null
+          const subject_code = subjCodeMap.get(info.subject_id) || ''
+          if (!map[day]) map[day] = { total: 0, perClass: [] }
+          map[day].total += count
+          map[day].perClass.push({ detail_kelas_id: dkId, kelas_id: info.kelas_id, kelas_nama, subject_code, count, color })
+          if (!kelasFilterOptions.has(info.kelas_id)) kelasFilterOptions.set(info.kelas_id, kelas_nama)
         }
         setCalData(map)
-        // Build kelas options from data to keep dropdown small
-        const opts = Array.from(kelasMap.entries()).map(([id, nama]) => ({ id, nama }))
+        const opts = Array.from(kelasFilterOptions.entries()).map(([id, nama]) => ({ id, nama }))
           .sort((a,b)=> (a.nama||'').localeCompare(b.nama||''))
         setKelasOptions(opts)
       } catch (e) {
@@ -350,16 +352,50 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle className="text-base">{t('dashboard.totalUsers')}</CardTitle>
-            <FontAwesomeIcon icon={faUsers} className="text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.users}</div>
-            <div className="text-sm text-gray-500">Semua role</div>
-          </CardContent>
-        </Card>
+        { (doorGreeter.today || doorGreeter.tomorrow) ? (() => {
+          const todayLabel = doorGreeter.today ? (t(`doorGreeter.days.${doorGreeter.today}`) || doorGreeter.today) : null
+          const tomorrowLabel = doorGreeter.tomorrow ? (t(`doorGreeter.days.${doorGreeter.tomorrow}`) || doorGreeter.tomorrow) : null
+          let message
+          if (doorGreeter.today && doorGreeter.tomorrow) {
+            message = t('dashboard.doorGreeterTodayAndTomorrow', { today: todayLabel, tomorrow: tomorrowLabel }) || `You are on duty today (${todayLabel}) and tomorrow (${tomorrowLabel}).`
+          } else if (doorGreeter.today) {
+            message = t('dashboard.doorGreeterToday', { day: todayLabel }) || `You are on Door Greeter duty today (${todayLabel}).`
+          } else {
+            message = t('dashboard.doorGreeterTomorrow', { day: tomorrowLabel }) || `You are on Door Greeter duty tomorrow (${tomorrowLabel}).`
+          }
+          const isToday = !!doorGreeter.today
+          const baseCard = isToday ? 'border-red-300 from-rose-50 to-red-50' : 'border-amber-300 from-amber-50 to-yellow-50'
+          const circleBg = isToday ? 'bg-red-100' : 'bg-amber-100'
+            const iconColor = isToday ? 'text-red-600' : 'text-amber-600'
+            const titleColor = isToday ? 'text-red-800' : 'text-amber-800'
+            const textColor = isToday ? 'text-red-700' : 'text-amber-700'
+          return (
+            <Card className={`border bg-gradient-to-br shadow-sm ${baseCard}`}>
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-3">
+                  <div className={`flex-shrink-0 mt-0.5 w-10 h-10 rounded-full flex items-center justify-center ${circleBg}`}>
+                    <FontAwesomeIcon icon={faDoorOpen} className={`${iconColor} text-lg`} />
+                  </div>
+                  <div className="space-y-1">
+                    <div className={`font-semibold leading-snug ${titleColor}`}>{t('dashboard.doorGreeterTitle') || 'Door Greeter Duty'}</div>
+                    <p className={`text-sm leading-snug ${textColor}`}>{message}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })() : (
+          <Card>
+            <CardHeader className="flex items-center justify-between">
+              <CardTitle className="text-base">{t('dashboard.totalUsers')}</CardTitle>
+              <FontAwesomeIcon icon={faUsers} className="text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.users}</div>
+              <div className="text-sm text-gray-500">Semua role</div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="flex items-center justify-between">
@@ -501,9 +537,9 @@ export default function Dashboard() {
                         </div>
                         <div className="mt-1 space-y-1">
                           {top.map(c => (
-                            <div key={c.kelas_id} className="text-[10px] truncate">
+                            <div key={c.detail_kelas_id} className="text-[10px] truncate">
                               <span className={`px-1 py-0.5 rounded mr-1 ${colorToChip(c.color)}`}>{c.count}</span>
-                              <span className={`${colorToText(c.color)}`}>{c.kelas_nama}</span>
+                              <span className={`${colorToText(c.color)}`}>{c.kelas_nama}{c.subject_code ? ` (${c.subject_code})` : ''}</span>
                             </div>
                           ))}
                           {more>0 && (
@@ -531,9 +567,9 @@ export default function Dashboard() {
       <div className="text-sm text-gray-500">Tidak ada assessment</div>
           ) : (
             dayDetail.rows.map(r => (
-              <div key={r.kelas_id} className="flex items-center justify-between text-sm">
-                <div className={`${colorToText(r.color)}`}>{r.kelas_nama}</div>
-        <div className={`px-2 py-0.5 rounded text-xs ${colorToChip(r.color)}`}>{r.count}</div>
+              <div key={r.detail_kelas_id} className="flex items-center justify-between text-sm">
+                <div className={`${colorToText(r.color)}`}>{r.kelas_nama}{r.subject_code ? ` (${r.subject_code})` : ''}</div>
+                <div className={`px-2 py-0.5 rounded text-xs ${colorToChip(r.color)}`}>{r.count}</div>
               </div>
             ))
           )}

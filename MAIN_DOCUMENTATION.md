@@ -1,6 +1,35 @@
 # School Admin System - Complete Documentation
 
-## � Changelog
+## 📌 Changelog
+
+### 2025-08-17 (Subsequent Updates)
+- Door Greeter Module (`/data/door_greeter`): Weekly duty roster assigning at most one teacher per weekday (Mon–Fri). Dashboard notification card shows if teacher is on duty today (red theme) or tomorrow (amber). Fully localized (`doorGreeter.*`).
+- Door Greeter Table: `daftar_door_greeter (daftar_door_greeter_id, daftar_door_greeter_user_id FK users, daftar_door_greeter_day text)`; recommend unique constraint on day: `alter table daftar_door_greeter add constraint uq_door_greeter_day unique (daftar_door_greeter_day);`.
+- Timetable Module (`/data/timetable`): Added weekly recurring schedule blocks. Schema: `timetable (timetable_id, timetable_user_id FK users, timetable_detail_kelas_id FK detail_kelas, timetable_day text, timetable_time tsrange)`. Uses placeholder date `2000-01-01` inside `timetable_time` so only time-of-day matters.
+- Timetable Flow: Teacher → Subject (filtered by teacher) → Class (filtered `detail_kelas` rows for chosen subject) → Day → Start/End time. Replaced earlier direct subject storage with `detail_kelas_id` to bind subject-class pair. Added robust tsrange parser to fix truncated time / NaN duration issues.
+- Calendar Enhancement: Assessment calendar chips now include `subject_code` (from subject via detail_kelas) for clearer identification.
+- Recommended Constraints:
+  - Door Greeter uniqueness per weekday (see above).
+  - Timetable overlap prevention (after `btree_gist` extension):
+    ```sql
+    create extension if not exists btree_gist;
+    alter table timetable add constraint timetable_no_overlap exclude using gist (
+      timetable_user_id with =,
+      timetable_day with =,
+      timetable_time with &&
+    );
+    ```
+- Pending: i18n for timetable labels; optional timetable view for easier joins.
+
+### 2025-08-17
+- Subject Management: Added optional `subject_code` field (short identifier shown in Subject CRUD). Recommend adding unique index if codes must be unique: `create unique index concurrently if not exists idx_subject_subject_code on subject(lower(subject_code));` (nullable so duplicates allowed unless enforced).
+- Topic Management (`/data/topic`): Topics now link to a specific class via `topic_kelas_id`. Form enforces class selection based on available `detail_kelas` mappings for the chosen subject (only classes where the teacher actually teaches that subject). Topic list shows the human‑readable class name.
+- Assessment Submission (`/teacher/assessment_submission`): Added topic selection (`assessment_topic_id`). Topics are filtered by both selected subject and class (grade). Cache key uses `subject_id|kelas_id` to avoid cross-grade leakage. Topic is required only when at least one topic exists for that pair.
+- Assessment Approval (`/data/assessment_approval`): Added Topic column and topic detail in approval/rejection/delete confirmation modal. Gracefully shows “No Topic” when not set.
+- i18n: Added keys for topic selection & validation (`teacherSubmission.topic*`), class selection in topic page (`topic.class*`), and approval page topic display (`assessmentApproval.thTopic`, `labelTopic`, `unknownTopic`, `noTopic`). All provided in en/id/zh; fixed JSON integrity earlier (no duplicates, proper nesting).
+- Schema Updates: Added columns `subject.subject_code`, `topic.topic_kelas_id`, `assessment.assessment_topic_id`.
+- Business Rule Reinforcement: Submission per class per date (max 2 approved) logic extended to approval step (prevents admin approval if limit already reached); topic requirement dynamically enforced client-side.
+- Internal: Introduced lightweight in-memory maps for (subject|kelas) topic caching and kelas name resolution for topic list.
 
 ### 2025-08-13
 - Internationalization: Class Management page (`/data/class`) fully localized (en/id/zh) with comprehensive `classManagement.*` keys; validations, confirmations, and notifications translated.
@@ -66,14 +95,16 @@ subject (
   subject_id SERIAL PRIMARY KEY,
   subject_name VARCHAR(100),
   subject_user_id INTEGER REFERENCES users(user_id), -- Teacher
-  subject_unit_id INTEGER REFERENCES unit(unit_id)
+  subject_unit_id INTEGER REFERENCES unit(unit_id),
+  subject_code VARCHAR(30) -- Optional short code (e.g. MATH7A); nullable. Add unique index if required.
 )
 
 -- Topics (IB Units)
 topic (
   topic_id SERIAL PRIMARY KEY,
   topic_nama VARCHAR(100) NOT NULL, -- Unit Title
-  topic_subject_id INTEGER NOT NULL REFERENCES subject(subject_id) ON DELETE RESTRICT
+  topic_subject_id INTEGER NOT NULL REFERENCES subject(subject_id) ON DELETE RESTRICT,
+  topic_kelas_id INTEGER REFERENCES kelas(kelas_id) ON DELETE RESTRICT -- Optional: binds topic to specific class
 )
 
 -- Subject assignment to Class (per-class-per-subject mapping)
@@ -91,6 +122,7 @@ assessment (
   assessment_tanggal DATE,
   assessment_user_id INTEGER REFERENCES users(user_id), -- Teacher
   assessment_detail_kelas_id INTEGER REFERENCES detail_kelas(detail_kelas_id),
+  assessment_topic_id INTEGER REFERENCES topic(topic_id), -- Optional selected topic
   -- Status (numeric):
   -- 0 = Waiting for admin approval
   -- 1 = Approved (final)
@@ -113,6 +145,30 @@ menus (
   menu_type VARCHAR(20), -- 'admin', 'teacher', 'staff'
   is_active BOOLEAN DEFAULT true,
   is_visible BOOLEAN DEFAULT true
+)
+
+-- Door Greeter (one teacher per weekday)
+daftar_door_greeter (
+  daftar_door_greeter_id SERIAL PRIMARY KEY,
+  daftar_door_greeter_user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  daftar_door_greeter_day TEXT NOT NULL -- 'Monday'..'Friday'
+  -- Recommended: alter table daftar_door_greeter add constraint uq_door_greeter_day unique (daftar_door_greeter_day);
+)
+
+-- Weekly Timetable (recurring schedule)
+timetable (
+  timetable_id SERIAL PRIMARY KEY,
+  timetable_user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE, -- Teacher
+  timetable_detail_kelas_id INTEGER NOT NULL REFERENCES detail_kelas(detail_kelas_id) ON DELETE CASCADE,
+  timetable_day TEXT NOT NULL,  -- 'Monday'..'Friday'
+  timetable_time TSRANGE NOT NULL -- Stored as [2000-01-01 HH:MM,2000-01-01 HH:MM)
+  -- Optional overlap constraint (requires btree_gist):
+  -- create extension if not exists btree_gist;
+  -- alter table timetable add constraint timetable_no_overlap exclude using gist (
+  --   timetable_user_id with =,
+  --   timetable_day with =,
+  --   timetable_time with &&
+  -- );
 )
 ```
 
@@ -180,6 +236,7 @@ Notes:
   - Assessment calendar shows per-day totals and per-class counts
   - Per-class chips and class name text are colored based on `kelas_color_name`
   - Color mapping: `success` (green), `warning` (amber), `error` (red); defaults to gray when unset
+  - Door Greeter duty card: Shows today/tomorrow assignment for logged-in teacher with contextual color (today=red, tomorrow=amber)
 - **Access**: All authenticated users
 
 ### **6. Internationalization (i18n)**
@@ -196,6 +253,36 @@ Notes:
   - Subject/Teacher default options now use dedicated i18n placeholders (All Subjects/All Teachers)
   - For principals, status filter is constrained to Waiting for principal approval (status = 3)
 - **Badges & Icons**: Consistent FontAwesome icon usage; added status badge for status 3
+  - Door Greeter dashboard notification (today vs tomorrow color logic)
+
+### **8. Door Greeter Module**
+- **Path**: `/data/door_greeter`
+- **Goal**: Assign one teacher per weekday (Mon–Fri) to greeting duty.
+- **Business Rules**:
+  - One assignment per weekday (enforced client-side; DB unique recommended).
+  - Only teacher-role users listed.
+  - Weekday list fixed; always displayed in logical order.
+  - Editing a day replaces prior assignment (blocked if duplicate exists until deleted/changed).
+- **Dashboard**: Highlights today's and tomorrow's duty for current teacher.
+- **Schema**: See `daftar_door_greeter` table.
+- **i18n**: Keys under `doorGreeter.*` (EN/ID/ZH) for table headers, form, validation, notifications.
+
+### **9. Timetable Module**
+- **Path**: `/data/timetable`
+- **Goal**: Maintain weekly recurring lesson blocks per teacher/subject/class.
+- **Selection Flow**: Teacher → Subject (filtered by `subject.subject_user_id`) → Class (from `detail_kelas` entries for that subject) → Day → Start/End time.
+- **Storage Strategy**:
+  - `timetable_day` stores weekday text; repetition is weekly.
+  - `timetable_time` tsrange uses constant date `2000-01-01` to represent only time-of-day.
+  - `timetable_detail_kelas_id` links to subject+class mapping; teacher derived from subject.
+- **Client Validation**:
+  - Prevent overlapping ranges (same teacher + day) before insert/update.
+  - Ensure start < end; show human readable error.
+- **Recommended DB Constraint**: GIST EXCLUDE for concurrency-safe overlap prevention (see Changelog snippet).
+- **Future Enhancements**: i18n for labels, bulk import, per-day copy, or generation of actual dated events.
+
+### **10. Data Mapping Note**
+- `detail_kelas` does not carry a teacher column; teacher is inferred through `subject.subject_user_id` ensuring single-source-of-truth for ownership.
 
 ## 🔧 **Technical Implementation**
 
@@ -424,6 +511,8 @@ LEFT JOIN unit un ON s.subject_unit_id = un.unit_id;
 - ✅ FontAwesome icon integration
 - ✅ Teacher filtering in subject management
 - ✅ Topic (Unit) CRUD for teachers (scoped to own subjects)
+- ✅ Door Greeter weekly duty with dashboard notification
+- ✅ Timetable weekly recurring schedule (client overlap checks)
 
 ### **Key Business Rules:**
 - ✅ Only teachers can submit assessments
@@ -431,6 +520,8 @@ LEFT JOIN unit un ON s.subject_unit_id = un.unit_id;
 - ✅ Only admins can approve/reject assessments
 - ✅ Subject assignment only to teachers
 - ✅ Menu visibility based on user role
+- ✅ One Door Greeter per weekday (proposed unique constraint)
+- ✅ No timetable overlap per teacher+day (client-side; DB constraint proposed)
 
 ## 📁 **Project Structure**
 

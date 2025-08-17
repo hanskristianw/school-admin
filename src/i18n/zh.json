@@ -29,7 +29,11 @@
     "years": "学年",
     "pendingAssessments": "待审核评估",
     "noneRecent": "没有最新评估。",
-    "pending": "待处理"
+    "pending": "待处理",
+    "doorGreeterTitle": "迎宾值日",
+    "doorGreeterToday": "您今天 ({day}) 负责迎宾，请提前到校。",
+    "doorGreeterTomorrow": "您明天 ({day}) 负责迎宾，请做好准备提前到校。",
+    "doorGreeterTodayAndTomorrow": "您今天 ({today}) 和明天 ({tomorrow}) 都负责迎宾。"
   },
   "menus": {
     "Dashboard": "仪表盘",
@@ -101,6 +105,7 @@
     "thName": "评估名称",
     "thDate": "日期",
     "thSubject": "科目",
+  "thTopic": "主题",
     "thTeacher": "教师",
     "thStatus": "状态",
     "thActions": "操作",
@@ -118,6 +123,7 @@
     "labelName": "名称",
     "labelDate": "日期",
     "labelSubject": "科目",
+  "labelTopic": "主题",
     "labelTeacher": "教师",
     "labelNote": "备注",
     "btnCancel": "取消",
@@ -136,6 +142,7 @@
     "warningAlreadyProcessed": "该评估已被处理",
     "unknownUser": "未知用户",
     "unknownSubject": "未知科目"
+  ,"unknownTopic": "未知主题","noTopic": "无主题"
   }
   ,
   "teacherSubmission": {
@@ -190,10 +197,16 @@
     "notifWarnTitle": "日期无效",
     "unauth": "用户未认证",
   "limitPerDayReachedSubmit": "在 {date}，班级 {class} 已安排 2 个评估。请选择其他日期。",
+    "topicLabel": "主题",
+    "topicPlaceholder": "选择主题",
+    "topicPlaceholderDisabled": "无可用主题",
+    "topicNoneForSubject": "该科目暂无主题。",
+    "topicLoading": "加载主题中...",
     "validation": {
       "nameRequired": "评估名称为必填",
       "dateRequired": "评估日期为必填",
       "subjectRequired": "科目为必选",
+      "topicRequired": "主题为必选",
       "datePast": "评估日期不能早于今天",
       "dateTomorrow": "评估不能安排在明天（{date}）。请至少选择 2 天后的日期。",
       "dateTomorrowShort": "评估不能安排在明天（{date}）。至少需提前 2 天。"
@@ -213,7 +226,8 @@
     "empty": "暂无单元",
     "thUnitTitle": "单元标题",
     "thSubject": "科目",
-    "thActions": "操作",
+  "thActions": "操作",
+  "thClass": "班级",
     "edit": "编辑",
     "delete": "删除",
     "editTitle": "编辑单元",
@@ -222,8 +236,7 @@
     "selectSubject": "选择科目",
     "cancel": "取消",
     "save": "保存",
-    "create": "创建",
-    "saving": "保存中...",
+  "create": "创建",
     "processing": "处理中...",
     "btnYesDelete": "是，删除",
     "confirmTitleDelete": "确认删除",
@@ -238,7 +251,8 @@
     "loadError": "加载失败",
     "validation": {
       "unitTitleRequired": "单元标题为必填",
-      "subjectRequired": "必须选择科目"
+      "subjectRequired": "必须选择科目",
+      "classRequired": "必须选择班级"
     }
   }
   ,
@@ -320,5 +334,61 @@
       "unitRequired": "学部为必选",
       "yearRequired": "学年为必选"
     }
+  }
+  ,
+  "doorGreeter": {
+    "title": "门口迎宾排班",
+    "subtitle": "管理每天的迎宾人员安排",
+    "newButton": "新增迎宾",
+    "filtersTitle": "筛选",
+    "day": "星期",
+    "allDays": "全部",
+    "searchUser": "搜索用户",
+    "searchPlaceholder": "输入搜索...",
+    "assignmentsTitle": "安排列表",
+    "empty": "暂无安排",
+    "thDay": "星期",
+    "thUser": "用户",
+    "thActions": "操作",
+    "edit": "编辑",
+    "delete": "删除",
+    "modalEditTitle": "编辑安排",
+    "modalCreateTitle": "新增安排",
+    "selectDay": "选择星期",
+    "user": "用户",
+    "selectUser": "选择用户",
+    "cancel": "取消",
+    "saving": "保存中...",
+    "save": "保存",
+    "create": "创建",
+    "deleting": "删除中...",
+    "yesDelete": "是，删除",
+    "confirmDeleteTitle": "确认删除",
+    "confirmDeleteQuestion": "删除 {day} - {user} 的安排？",
+    "notifSuccessTitle": "成功",
+    "notifErrorTitle": "错误",
+    "notifCreated": "创建成功",
+    "notifUpdated": "更新成功",
+    "notifDeleted": "删除成功",
+    "notifErrorGeneric": "失败：",
+    "validation": {
+      "userRequired": "必须选择用户",
+      "dayRequired": "必须选择星期",
+      "dayDuplicate": "该星期已有迎宾人员"
+    },
+    "days": {
+      "Monday": "星期一",
+      "Tuesday": "星期二",
+      "Wednesday": "星期三",
+      "Thursday": "星期四",
+      "Friday": "星期五",
+      "Saturday": "星期六",
+      "Sunday": "星期日"
+    }
+  },
+  "dashboardDoorGreeterKeys": {
+    "doorGreeterTitle": "迎宾值日",
+    "doorGreeterToday": "您今天 ({day}) 负责迎接，请提前到校。",
+    "doorGreeterTomorrow": "您明天 ({day}) 负责迎接，请做好提前到校准备。"
   }
 }

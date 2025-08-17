@@ -20,6 +20,10 @@ export default function TopicPage() {
 
   const [subjects, setSubjects] = useState([]);
   const [topics, setTopics] = useState([]);
+  const [kelasCache, setKelasCache] = useState(new Map()); // subject_id -> kelas[]
+  const [kelasOptions, setKelasOptions] = useState([]); // current subject's kelas list
+  const [kelasLoading, setKelasLoading] = useState(false);
+  const [kelasNameMap, setKelasNameMap] = useState(new Map()); // kelas_id -> kelas_nama for display in list
   const [currentUserId, setCurrentUserId] = useState(null);
 
   // Filters
@@ -28,7 +32,7 @@ export default function TopicPage() {
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null); // topic row or null
-  const [formData, setFormData] = useState({ topic_nama: "", topic_subject_id: "" });
+  const [formData, setFormData] = useState({ topic_nama: "", topic_subject_id: "", topic_kelas_id: "" });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -71,11 +75,13 @@ export default function TopicPage() {
           const subjectIds = subj.map(s => s.subject_id);
           const { data: tData, error: tErr } = await supabase
             .from('topic')
-            .select('topic_id, topic_nama, topic_subject_id')
+            .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id')
             .in('topic_subject_id', subjectIds)
             .order('topic_nama');
           if (tErr) throw new Error(tErr.message);
           tops = tData || [];
+          // Build kelas name map for existing topics
+          await loadKelasNamesForTopics(tops);
         }
         setTopics(tops);
       } catch (e) {
@@ -98,8 +104,9 @@ export default function TopicPage() {
 
   const resetForm = () => {
     setEditing(null);
-    setFormData({ topic_nama: "", topic_subject_id: "" });
+    setFormData({ topic_nama: "", topic_subject_id: "", topic_kelas_id: "" });
     setFormErrors({});
+    setKelasOptions([]);
   };
 
   const openCreate = () => {
@@ -109,21 +116,64 @@ export default function TopicPage() {
 
   const openEdit = (row) => {
     setEditing(row);
-    setFormData({ topic_nama: row.topic_nama || "", topic_subject_id: String(row.topic_subject_id || "") });
+    setFormData({ topic_nama: row.topic_nama || "", topic_subject_id: String(row.topic_subject_id || ""), topic_kelas_id: row.topic_kelas_id ? String(row.topic_kelas_id) : "" });
     setFormErrors({});
     setShowForm(true);
+    if (row.topic_subject_id) {
+      loadKelasForSubject(row.topic_subject_id);
+    }
   };
 
   const validate = () => {
     const e = {};
     if (!formData.topic_nama.trim()) e.topic_nama = t("topic.validation.unitTitleRequired") || "Unit title wajib diisi";
     if (!formData.topic_subject_id) e.topic_subject_id = t("topic.validation.subjectRequired") || "Mata pelajaran wajib dipilih";
+    // kelas required: only if subject selected
+    if (formData.topic_subject_id && !formData.topic_kelas_id) e.topic_kelas_id = t('topic.validation.classRequired') || 'Kelas wajib dipilih';
     // Ensure selected subject belongs to current user list
     if (formData.topic_subject_id && !subjects.find(s => String(s.subject_id) === String(formData.topic_subject_id))) {
       e.topic_subject_id = t("topic.validation.subjectRequired") || "Mata pelajaran wajib dipilih";
     }
+    // Ensure kelas belongs to subject's kelasOptions
+    if (formData.topic_kelas_id && !kelasOptions.find(k => String(k.kelas_id) === String(formData.topic_kelas_id))) {
+      e.topic_kelas_id = t('topic.validation.classRequired') || 'Kelas wajib dipilih';
+    }
     setFormErrors(e);
     return Object.keys(e).length === 0;
+  };
+
+  const loadKelasForSubject = async (subjectId) => {
+    if (kelasCache.has(subjectId)) {
+      setKelasOptions(kelasCache.get(subjectId));
+      return;
+    }
+    try {
+      setKelasLoading(true);
+      // Find kelas via detail_kelas mapping
+      const { data: dk, error: dkErr } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_kelas_id')
+        .eq('detail_kelas_subject_id', subjectId);
+      if (dkErr) throw new Error(dkErr.message);
+      const kelasIds = Array.from(new Set((dk || []).map(d => d.detail_kelas_kelas_id).filter(Boolean)));
+      let kelasList = [];
+      if (kelasIds.length) {
+        const { data: kData, error: kErr } = await supabase
+          .from('kelas')
+          .select('kelas_id, kelas_nama')
+          .in('kelas_id', kelasIds)
+          .order('kelas_nama');
+        if (kErr) throw new Error(kErr.message);
+        kelasList = kData || [];
+      }
+      setKelasOptions(kelasList);
+      setKelasCache(prev => new Map(prev).set(subjectId, kelasList));
+    } catch (err) {
+      console.error('Failed loading kelas for subject', subjectId, err);
+      setKelasOptions([]);
+    } finally {
+      setKelasLoading(false);
+    }
   };
 
   const onSubmit = async (ev) => {
@@ -134,18 +184,23 @@ export default function TopicPage() {
       const payload = {
         topic_nama: formData.topic_nama.trim(),
         topic_subject_id: parseInt(formData.topic_subject_id),
+        topic_kelas_id: formData.topic_kelas_id ? parseInt(formData.topic_kelas_id) : null,
       };
       if (editing) {
-        const { data, error: upErr } = await supabase.from("topic").update(payload).eq("topic_id", editing.topic_id).select();
+  const { data, error: upErr } = await supabase.from("topic").update(payload).eq("topic_id", editing.topic_id).select();
         if (upErr) throw new Error(upErr.message);
         if (data && data[0]) {
           setTopics((prev) => prev.map((r) => (r.topic_id === editing.topic_id ? data[0] : r)));
+          if (data[0].topic_kelas_id) await ensureKelasNameLoaded(data[0].topic_kelas_id);
         }
         showNotification(t("topic.notifSuccessTitle") || "Berhasil", t("topic.notifUpdated") || "Unit berhasil diupdate", "success");
       } else {
-        const { data, error: insErr } = await supabase.from("topic").insert([payload]).select();
+  const { data, error: insErr } = await supabase.from("topic").insert([payload]).select();
         if (insErr) throw new Error(insErr.message);
-        if (data && data[0]) setTopics((prev) => [data[0], ...prev]);
+        if (data && data[0]) {
+          setTopics((prev) => [data[0], ...prev]);
+          if (data[0].topic_kelas_id) await ensureKelasNameLoaded(data[0].topic_kelas_id);
+        }
         showNotification(t("topic.notifSuccessTitle") || "Berhasil", t("topic.notifCreated") || "Unit berhasil dibuat", "success");
       }
       setShowForm(false);
@@ -155,6 +210,45 @@ export default function TopicPage() {
       showNotification(t("topic.notifErrorTitle") || "Error", (t("topic.notifErrorSave") || "Gagal menyimpan: ") + e.message, "error");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Load kelas names for a list of topics
+  const loadKelasNamesForTopics = async (topicsList) => {
+    try {
+      const ids = Array.from(new Set((topicsList || []).map(tp => tp.topic_kelas_id).filter(Boolean)));
+      const missing = ids.filter(id => !kelasNameMap.has(id));
+      if (!missing.length) return;
+      const { data, error } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama')
+        .in('kelas_id', missing);
+      if (error) throw new Error(error.message);
+      if (data) {
+        setKelasNameMap(prev => {
+          const map = new Map(prev);
+            data.forEach(k => map.set(k.kelas_id, k.kelas_nama));
+          return map;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed loading kelas names for topics', err);
+    }
+  };
+
+  const ensureKelasNameLoaded = async (kelasId) => {
+    if (!kelasId || kelasNameMap.has(kelasId)) return;
+    try {
+      const { data, error } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama')
+        .eq('kelas_id', kelasId)
+        .single();
+      if (!error && data) {
+        setKelasNameMap(prev => new Map(prev).set(data.kelas_id, data.kelas_nama));
+      }
+    } catch (e) {
+      /* ignore */
     }
   };
 
@@ -247,6 +341,7 @@ export default function TopicPage() {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thUnitTitle") || "Unit Title"}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thSubject") || "Mata Pelajaran"}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('topic.thClass') || 'Kelas'}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thActions") || "Aksi"}</th>
                   </tr>
                 </thead>
@@ -255,6 +350,7 @@ export default function TopicPage() {
                     <tr key={row.topic_id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.topic_nama}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{subjectMap.get(row.topic_subject_id) || "-"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.topic_kelas_id ? (kelasNameMap.get(row.topic_kelas_id) || row.topic_kelas_id) : '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Button onClick={() => openEdit(row)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm">
@@ -296,7 +392,11 @@ export default function TopicPage() {
               id="topic_subject_id"
               name="topic_subject_id"
               value={formData.topic_subject_id}
-              onChange={(e) => setFormData((prev) => ({ ...prev, topic_subject_id: e.target.value }))}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFormData(prev => ({ ...prev, topic_subject_id: v, topic_kelas_id: '' }));
+                if (v) loadKelasForSubject(parseInt(v)); else { setKelasOptions([]); }
+              }}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_subject_id ? "border-red-500" : "border-gray-300"}`}
             >
               <option value="">{t("topic.selectSubject") || "Pilih Mata Pelajaran"}</option>
@@ -307,6 +407,26 @@ export default function TopicPage() {
               ))}
             </select>
             {formErrors.topic_subject_id && <p className="text-red-500 text-sm mt-1">{formErrors.topic_subject_id}</p>}
+          </div>
+          <div>
+            <Label htmlFor="topic_kelas_id">{t('topic.class') || 'Kelas'}</Label>
+            <select
+              id="topic_kelas_id"
+              name="topic_kelas_id"
+              value={formData.topic_kelas_id}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_kelas_id: e.target.value }))}
+              disabled={!formData.topic_subject_id || kelasLoading}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_kelas_id ? 'border-red-500' : 'border-gray-300'}`}
+            >
+              <option value="">{kelasLoading ? (t('topic.classLoading') || 'Memuat kelas...') : (t('topic.selectClass') || 'Pilih Kelas')}</option>
+              {kelasOptions.map(k => (
+                <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+              ))}
+            </select>
+            {formErrors.topic_kelas_id && <p className="text-red-500 text-sm mt-1">{formErrors.topic_kelas_id}</p>}
+            {(!kelasLoading && formData.topic_subject_id && kelasOptions.length === 0) && (
+              <p className="text-xs text-gray-500 mt-1">{t('topic.classNoneForSubject') || 'Tidak ada kelas untuk subject ini.'}</p>
+            )}
           </div>
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="bg-gray-500 hover:bg-gray-600 text-white">

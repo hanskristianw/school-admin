@@ -13,6 +13,8 @@ import { faCheck, faTimes, faSpinner, faTrash } from '@fortawesome/free-solid-sv
 export default function AssessmentApproval() {
   const { t, lang } = useI18n();
   const [assessments, setAssessments] = useState([]);
+  // topic_id -> topic_nama map for display
+  const [topicNameMap, setTopicNameMap] = useState(new Map());
   // detail_kelas options across system for filtering/display
   const [detailKelasOptions, setDetailKelasOptions] = useState([]);
   const [users, setUsers] = useState([]);
@@ -117,14 +119,29 @@ export default function AssessmentApproval() {
       // Fetch assessments
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from('assessment')
-        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id')
+        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id, assessment_topic_id')
         .order('assessment_tanggal', { ascending: false });
 
       if (assessmentsError) {
         throw new Error(assessmentsError.message);
       }
 
-      setAssessments(assessmentsData || []);
+      const list = assessmentsData || [];
+      setAssessments(list);
+
+      // Load topic names for any referenced topic IDs
+      const topicIds = Array.from(new Set(list.map(a => a.assessment_topic_id).filter(Boolean)));
+      if (topicIds.length) {
+        const { data: topicsData, error: topicsErr } = await supabase
+          .from('topic')
+          .select('topic_id, topic_nama')
+          .in('topic_id', topicIds);
+        if (!topicsErr && topicsData) {
+          setTopicNameMap(new Map(topicsData.map(t => [t.topic_id, t.topic_nama])));
+        }
+      } else {
+        setTopicNameMap(new Map());
+      }
       
     } catch (err) {
       console.error('Error fetching assessments:', err);
@@ -248,6 +265,11 @@ export default function AssessmentApproval() {
     const opt = detailKelasOptions.find(o => o.detail_kelas_id === detailKelasId);
     if (!opt) return t('assessmentApproval.unknownSubject');
     return `${opt.subject_name} - ${opt.kelas_nama}`;
+  };
+
+  const getTopicName = (topicId) => {
+    if (!topicId) return t('assessmentApproval.noTopic');
+    return topicNameMap.get(topicId) || t('assessmentApproval.unknownTopic');
   };
 
   const handleApprovalAction = (assessment, action) => {
@@ -503,6 +525,9 @@ export default function AssessmentApproval() {
                       {t('assessmentApproval.thSubject')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('assessmentApproval.thTopic')}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('assessmentApproval.thTeacher')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -533,6 +558,9 @@ export default function AssessmentApproval() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {getSubjectName(assessment.assessment_detail_kelas_id)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {getTopicName(assessment.assessment_topic_id)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {getUserName(assessment.assessment_user_id)}
@@ -607,6 +635,7 @@ export default function AssessmentApproval() {
               <div><strong>{t('assessmentApproval.labelName')}:</strong> {selectedAssessment?.assessment_nama}</div>
               <div><strong>{t('assessmentApproval.labelDate')}:</strong> {selectedAssessment && formatDate(selectedAssessment.assessment_tanggal)}</div>
               <div><strong>{t('assessmentApproval.labelSubject')}:</strong> {selectedAssessment && getSubjectName(selectedAssessment.assessment_detail_kelas_id)}</div>
+              <div><strong>{t('assessmentApproval.labelTopic')}:</strong> {selectedAssessment && getTopicName(selectedAssessment.assessment_topic_id)}</div>
               <div><strong>{t('assessmentApproval.labelTeacher')}:</strong> {selectedAssessment && getUserName(selectedAssessment.assessment_user_id)}</div>
               {selectedAssessment?.assessment_keterangan && (
                 <div><strong>{t('assessmentApproval.labelNote')}:</strong> {selectedAssessment.assessment_keterangan}</div>

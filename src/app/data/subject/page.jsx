@@ -20,7 +20,8 @@ export default function SubjectManagement() {
   const [formData, setFormData] = useState({
     subject_name: '',
     subject_user_id: '',
-    subject_unit_id: ''
+  subject_unit_id: '',
+  subject_code: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -68,6 +69,7 @@ export default function SubjectManagement() {
           subject_name,
           subject_user_id,
           subject_unit_id,
+          subject_code,
           users:subject_user_id (
             user_nama_depan,
             user_nama_belakang
@@ -88,6 +90,7 @@ export default function SubjectManagement() {
         subject_name: subject.subject_name,
         subject_user_id: subject.subject_user_id,
         subject_unit_id: subject.subject_unit_id,
+  subject_code: subject.subject_code || '',
         user_nama_depan: subject.users?.user_nama_depan || '',
         user_nama_belakang: subject.users?.user_nama_belakang || '',
         unit_name: subject.unit?.unit_name || ''
@@ -295,6 +298,9 @@ export default function SubjectManagement() {
     if (!formData.subject_unit_id) {
       errors.subject_unit_id = 'Unit wajib dipilih';
     }
+    if (formData.subject_code && formData.subject_code.length > 12) {
+      errors.subject_code = 'Kode subject maksimal 12 karakter';
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -312,7 +318,8 @@ export default function SubjectManagement() {
       const submitData = {
         subject_name: formData.subject_name,
         subject_user_id: Number(formData.subject_user_id),
-        subject_unit_id: Number(formData.subject_unit_id)
+  subject_unit_id: Number(formData.subject_unit_id),
+  subject_code: formData.subject_code?.trim() || null
       };
 
       let result;
@@ -341,7 +348,8 @@ export default function SubjectManagement() {
       setFormData({
         subject_name: '',
         subject_user_id: '',
-        subject_unit_id: ''
+  subject_unit_id: '',
+  subject_code: ''
       });
       setError('');
       showNotification(
@@ -362,7 +370,8 @@ export default function SubjectManagement() {
     setFormData({
       subject_name: subject.subject_name,
       subject_user_id: subject.subject_user_id,
-      subject_unit_id: subject.subject_unit_id
+  subject_unit_id: subject.subject_unit_id,
+  subject_code: subject.subject_code || ''
     });
     setShowForm(true);
     setFormErrors({});
@@ -406,7 +415,8 @@ export default function SubjectManagement() {
     setFormData({
       subject_name: '',
       subject_user_id: '',
-      subject_unit_id: ''
+  subject_unit_id: '',
+  subject_code: ''
     });
     setShowForm(true);
     setFormErrors({});
@@ -537,6 +547,9 @@ export default function SubjectManagement() {
                       Subject Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Code
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Teacher
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -555,6 +568,9 @@ export default function SubjectManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {subject.subject_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {subject.subject_code || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {subject.user_nama_depan} {subject.user_nama_belakang}
@@ -614,6 +630,21 @@ export default function SubjectManagement() {
               />
               {formErrors.subject_name && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.subject_name}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="subject_code">Subject Code</Label>
+              <Input
+                id="subject_code"
+                type="text"
+                placeholder="(Opsional) Kode unik subject"
+                value={formData.subject_code}
+                onChange={(e) => setFormData(prev => ({ ...prev, subject_code: e.target.value }))}
+                className={formErrors.subject_code ? 'border-red-500' : ''}
+              />
+              {formErrors.subject_code && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.subject_code}</p>
               )}
             </div>
 

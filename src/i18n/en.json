@@ -29,7 +29,11 @@
     "years": "Academic Years",
     "pendingAssessments": "Pending Assessments",
     "noneRecent": "No recent assessments.",
-    "pending": "pending"
+    "pending": "pending",
+    "doorGreeterTitle": "Door Greeter Duty",
+    "doorGreeterToday": "You are the Door Greeter today ({day}). Please arrive earlier to greet students.",
+    "doorGreeterTomorrow": "You are the Door Greeter tomorrow ({day}). Prepare to arrive earlier.",
+    "doorGreeterTodayAndTomorrow": "You are the Door Greeter today ({today}) and tomorrow ({tomorrow})." 
   },
   "menus": {
     "Dashboard": "Dashboard",
@@ -133,10 +137,16 @@
     "notifWarnTitle": "Invalid Date",
     "unauth": "User not authenticated",
   "limitPerDayReachedSubmit": "On {date}, class {class} already has 2 assessments scheduled. Please choose another date.",
+    "topicLabel": "Topic",
+    "topicPlaceholder": "Select Topic",
+    "topicPlaceholderDisabled": "No topics available",
+    "topicNoneForSubject": "No topics defined for this subject.",
+    "topicLoading": "Loading topics...",
     "validation": {
       "nameRequired": "Assessment name is required",
       "dateRequired": "Assessment date is required",
       "subjectRequired": "Subject is required",
+      "topicRequired": "Topic is required",
       "datePast": "Assessment date cannot be in the past",
       "dateTomorrow": "Assessment cannot be scheduled for tomorrow ({date}). Please pick a date at least 2 days ahead.",
       "dateTomorrowShort": "Assessment cannot be scheduled for tomorrow ({date}). Minimum 2 days ahead."
@@ -163,6 +173,7 @@
     "thName": "Assessment Name",
     "thDate": "Date",
     "thSubject": "Subject",
+  "thTopic": "Topic",
     "thTeacher": "Teacher",
     "thStatus": "Status",
     "thActions": "Actions",
@@ -180,6 +191,7 @@
     "labelName": "Name",
     "labelDate": "Date",
     "labelSubject": "Subject",
+  "labelTopic": "Topic",
     "labelTeacher": "Teacher",
     "labelNote": "Notes",
     "btnCancel": "Cancel",
@@ -198,6 +210,7 @@
     "warningAlreadyProcessed": "This assessment has already been processed",
     "unknownUser": "Unknown User",
     "unknownSubject": "Unknown Subject"
+  ,"unknownTopic": "Unknown Topic","noTopic": "No Topic"
   }
   ,
   "topic": {
@@ -213,13 +226,18 @@
     "empty": "No units found",
     "thUnitTitle": "Unit Title",
     "thSubject": "Subject",
-    "thActions": "Actions",
+  "thActions": "Actions",
+  "thClass": "Class",
     "edit": "Edit",
     "delete": "Delete",
     "editTitle": "Edit Unit",
     "createTitle": "Create Unit",
     "unitTitle": "Unit Title",
-    "selectSubject": "Select Subject",
+  "selectSubject": "Select Subject",
+  "class": "Class",
+  "selectClass": "Select Class",
+  "classLoading": "Loading classes...",
+  "classNoneForSubject": "No classes available for this subject.",
     "cancel": "Cancel",
     "save": "Save",
     "create": "Create",
@@ -238,7 +256,8 @@
     "loadError": "Failed to load data",
     "validation": {
       "unitTitleRequired": "Unit title is required",
-      "subjectRequired": "Subject is required"
+      "subjectRequired": "Subject is required",
+      "classRequired": "Class is required"
     }
   }
   ,
@@ -320,5 +339,61 @@
       "unitRequired": "Unit is required",
       "yearRequired": "Academic year is required"
     }
+  }
+  ,
+  "doorGreeter": {
+    "title": "Door Greeter Schedule",
+    "subtitle": "Manage door greeter assignments per day",
+    "newButton": "New Door Greeter",
+    "filtersTitle": "Filters",
+    "day": "Day",
+    "allDays": "All Days",
+    "searchUser": "Search User",
+    "searchPlaceholder": "Type to search...",
+    "assignmentsTitle": "Assignments",
+    "empty": "No assignments",
+    "thDay": "Day",
+    "thUser": "User",
+    "thActions": "Actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "modalEditTitle": "Edit Assignment",
+    "modalCreateTitle": "New Assignment",
+    "selectDay": "Select Day",
+    "user": "User",
+    "selectUser": "Select User",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "save": "Save",
+    "create": "Create",
+    "deleting": "Deleting...",
+    "yesDelete": "Yes, Delete",
+    "confirmDeleteTitle": "Confirm Delete",
+    "confirmDeleteQuestion": "Delete assignment for {day} - {user}?",
+    "notifSuccessTitle": "Success",
+    "notifErrorTitle": "Error",
+    "notifCreated": "Entry created",
+    "notifUpdated": "Entry updated",
+    "notifDeleted": "Entry deleted",
+    "notifErrorGeneric": "Failed: ",
+    "validation": {
+      "userRequired": "User required",
+      "dayRequired": "Day required",
+      "dayDuplicate": "A door greeter is already assigned for this day"
+    },
+    "days": {
+      "Monday": "Monday",
+      "Tuesday": "Tuesday",
+      "Wednesday": "Wednesday",
+      "Thursday": "Thursday",
+      "Friday": "Friday",
+      "Saturday": "Saturday",
+      "Sunday": "Sunday"
+    }
+  },
+  "dashboardDoorGreeterKeys": {
+    "doorGreeterTitle": "Door Greeter",
+    "doorGreeterToday": "You are the Door Greeter today ({day}). Please arrive earlier to greet students.",
+    "doorGreeterTomorrow": "You are the Door Greeter tomorrow ({day}). Prepare to arrive earlier."
   }
 }
