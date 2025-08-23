@@ -31,17 +31,19 @@ export async function POST(req) {
 
   const ip = req.headers.get('x-forwarded-for') || ''
   const ua = req.headers.get('user-agent') || ''
-  const deviceHash = clientDeviceHash || crypto.createHash('sha256').update((ua||'') + '|' + (ip||'')).digest('hex').slice(0,32)
+  // Compute a stable server-side fallback hash from UA+IP, and prefer client hash if provided
+  const uaIpHash = crypto.createHash('sha256').update((ua||'') + '|' + (ip||'')).digest('hex').slice(0,32)
+  const deviceHash = (clientDeviceHash || '').trim() || uaIpHash
 
     if (!ok) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'invalid', ip, user_agent: ua, device_hash: deviceHash }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
       return NextResponse.json({ error: 'invalid' }, { status: 400 })
     }
 
     // Resolve student by user_id (client should send user_id from local storage), then check scope
     const uid = parseInt(user_id)
     if (!uid) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
       return NextResponse.json({ error: 'unauth' }, { status: 401 })
     }
 
@@ -53,7 +55,7 @@ export async function POST(req) {
     if (dErr) throw dErr
 
     if (!details || details.length === 0) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
       return NextResponse.json({ error: 'not_allowed' }, { status: 403 })
     }
 
@@ -74,7 +76,7 @@ export async function POST(req) {
     }
 
     if (!allowedDetail) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
       return NextResponse.json({ error: 'not_allowed' }, { status: 403 })
     }
 
@@ -83,7 +85,7 @@ export async function POST(req) {
     const centerLng = parseFloat(process.env.ATTENDANCE_CENTER_LNG || '0')
     const centerRadiusM = parseInt(process.env.ATTENDANCE_RADIUS_M || '0')
     if (!geo || typeof geo.lat !== 'number' || typeof geo.lng !== 'number') {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, flagged_reason: 'no_location' }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'no_location' }])
       return NextResponse.json({ error: 'location_required' }, { status: 403 })
     }
     const haversine = (lat1, lon1, lat2, lon2) => {
@@ -97,10 +99,48 @@ export async function POST(req) {
     if (centerRadiusM > 0 && isFinite(centerLat) && isFinite(centerLng)) {
       const dist = haversine(geo.lat, geo.lng, centerLat, centerLng)
       if (!(dist <= centerRadiusM + (geo.accuracy || 0))) {
-        await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, lat: geo.lat, lng: geo.lng, accuracy: geo.accuracy, flagged_reason: 'outside_geofence' }])
+        await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo.lat, lng: geo.lng, accuracy: geo.accuracy, flagged_reason: 'outside_geofence' }])
         return NextResponse.json({ error: 'outside_geofence' }, { status: 403 })
       }
     }
+
+  // Optional pre-check: multiple users on same device within window
+  const windowMin = parseInt(process.env.ATTENDANCE_DEVICE_WINDOW_MIN || '15')
+  const blockMulti = String(process.env.ATTENDANCE_BLOCK_MULTI_USER || 'false').toLowerCase() === 'true'
+  let multiUser = false
+  if (windowMin > 0) {
+    const sinceIso = new Date(Date.now() - windowMin * 60 * 1000).toISOString()
+    let recent = null
+    if (clientDeviceHash && clientDeviceHash.trim()) {
+      // Prefer strict match on client-provided device hash; include legacy device_hash column
+      const { data } = await supabaseAdmin
+        .from('attendance_scan_log')
+        .select('detail_siswa_id')
+        .or(`device_hash.eq.${clientDeviceHash},device_hash_client.eq.${clientDeviceHash}`)
+        .gte('created_at', sinceIso)
+        .not('detail_siswa_id', 'is', null)
+        .neq('detail_siswa_id', allowedDetail.detail_siswa_id)
+        .limit(1)
+      recent = data
+    } else {
+      // Fallback to UA+IP hash if no client hash available
+      const { data } = await supabaseAdmin
+        .from('attendance_scan_log')
+        .select('detail_siswa_id')
+        .or(`device_hash.eq.${uaIpHash},device_hash_uaip.eq.${uaIpHash}`)
+        .gte('created_at', sinceIso)
+        .not('detail_siswa_id', 'is', null)
+        .neq('detail_siswa_id', allowedDetail.detail_siswa_id)
+        .limit(1)
+      recent = data
+    }
+    if (recent && recent.length > 0) multiUser = true
+  }
+
+  if (blockMulti && multiUser) {
+    await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: 'device_multi_user' }])
+    return NextResponse.json({ error: 'device_multi_user' }, { status: 403 })
+  }
 
   // Upsert attendance for today (WIB/GMT+7)
   const wibNow = new Date(Date.now() + 7 * 60 * 60 * 1000)
@@ -113,7 +153,7 @@ export async function POST(req) {
       .maybeSingle?.() // ignore if not supported
 
     if (existing) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'duplicate', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'duplicate', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy }])
       return NextResponse.json({ status: 'duplicate' })
     }
 
@@ -123,22 +163,8 @@ export async function POST(req) {
       .insert([{ absen_detail_siswa_id: allowedDetail.detail_siswa_id, absen_date: today, absen_time: nowTime, absen_session_id: sid, absen_method: 'qr' }])
     if (insErr) throw insErr
 
-    // Flag: multiple users from the same device within window
-    const windowMin = parseInt(process.env.ATTENDANCE_DEVICE_WINDOW_MIN || '15')
-    let flagged = null
-    if (windowMin > 0) {
-      const sinceIso = new Date(Date.now() - windowMin * 60 * 1000).toISOString()
-      const { data: recent } = await supabaseAdmin
-        .from('attendance_scan_log')
-        .select('detail_siswa_id')
-        .eq('device_hash', deviceHash)
-        .gte('created_at', sinceIso)
-        .neq('detail_siswa_id', allowedDetail.detail_siswa_id)
-        .limit(1)
-      if (recent && recent.length > 0) flagged = 'device_multi_user'
-    }
-
-    await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: flagged }])
+  // Log success; flagged if multiUser detected
+  await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: multiUser ? 'device_multi_user' : null }])
 
     return NextResponse.json({ status: 'ok' })
   } catch (e) {

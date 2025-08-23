@@ -58,6 +58,14 @@ export default function StudentScanPage() {
           cooldownRef.current = Date.now() + 2000;
           return;
         }
+        if (j.error === 'device_multi_user') {
+          const msg = t('studentScan.deviceMultiUser') || 'Perangkat ini terdeteksi digunakan untuk beberapa akun dalam waktu singkat.';
+          setMessage(msg);
+          setStatus('error');
+          setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
+          cooldownRef.current = Date.now() + 5_000;
+          return;
+        }
         if (j.error === 'outside_geofence') {
           const msg = t('studentScan.tooFar') || "You're too far from school. Harap berada di area sekolah untuk presensi.";
           setMessage(msg);

@@ -452,6 +452,7 @@
   "restart": "Restart",
   "locationRequired": "Location is required to check in. Enable location services and try again.",
   "tooFar": "You're too far from school. Please be within the campus area to check in.",
-  "notAllowed": "You are not allowed to check in for this session."
+  "notAllowed": "You are not allowed to check in for this session.",
+  "deviceMultiUser": "This device appears to be used by multiple accounts in a short time. Please check with the teacher."
   }
 }

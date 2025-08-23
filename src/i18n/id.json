@@ -452,6 +452,7 @@
   "restart": "Mulai Ulang",
   "locationRequired": "Lokasi diperlukan untuk presensi. Aktifkan layanan lokasi lalu coba lagi.",
   "tooFar": "Anda terlalu jauh dari sekolah. Harap berada di area sekolah untuk presensi.",
-  "notAllowed": "Anda tidak diizinkan melakukan presensi pada sesi ini."
+  "notAllowed": "Anda tidak diizinkan melakukan presensi pada sesi ini.",
+  "deviceMultiUser": "Perangkat ini terdeteksi digunakan untuk beberapa akun dalam waktu singkat. Silakan konfirmasi dengan guru."
   }
 }
