@@ -1,25 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
+import NotificationModal from '@/components/ui/notification-modal';
 
 export default function StudentScanPage() {
   const { t } = useI18n();
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [last, setLast] = useState(null);
-  const ref = useRef(null);
-  const scannerRef = useRef(null);
+  const [scanning, setScanning] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const videoContainerId = 'qr-reader-video';
+  const qrRef = useRef(null);
+  const notifInit = { isOpen: false, title: '', message: '', type: 'success' };
+  const [notif, setNotif] = useState(notifInit);
 
   useEffect(() => {
-    if (!ref.current) return;
-    const scanner = new Html5QrcodeScanner(ref.current.id, { fps: 10, qrbox: 250 }, false);
-    scanner.render(onScanSuccess, onScanFailure);
-    scannerRef.current = scanner;
-    return () => { try { scanner.clear(); } catch {} };
+    return () => {
+      if (qrRef.current) {
+        try { qrRef.current.stop(); } catch {}
+        try { qrRef.current.clear(); } catch {}
+        qrRef.current = null;
+      }
+    };
   }, []);
 
   async function onScanSuccess(decodedText) {
@@ -37,21 +44,54 @@ export default function StudentScanPage() {
         setMessage(t('studentScan.success') || 'Presensi tercatat.');
         setStatus('ok');
         setLast(new Date());
+        try { await qrRef.current?.stop(); } catch {}
+        setScanning(false);
+        setNotif({ isOpen: true, title: t('teacherSubmission.notifSuccessTitle') || 'Success', message: t('studentScan.success') || 'Presensi tercatat.', type: 'success' });
       } else if (j.status === 'duplicate') {
         setMessage(t('studentScan.duplicate') || 'Anda sudah presensi hari ini.');
         setStatus('duplicate');
+        setNotif({ isOpen: true, title: t('attendance.infoTitle') || 'Info', message: t('studentScan.duplicate') || 'Anda sudah presensi hari ini.', type: 'info' });
       } else {
         setMessage(t('studentScan.invalid') || 'QR tidak valid atau sesi ditutup.');
         setStatus('error');
+        setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: t('studentScan.invalid') || 'QR tidak valid atau sesi ditutup.', type: 'error' });
       }
     } catch (e) {
       setMessage((t('studentScan.errorPrefix') || 'Gagal: ') + e.message);
       setStatus('error');
+      setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: (t('studentScan.errorPrefix') || 'Gagal: ') + e.message, type: 'error' });
     }
   }
 
   function onScanFailure() {
     // ignore frame errors
+  }
+
+  async function startCamera() {
+    setStarting(true);
+    try {
+      if (!qrRef.current) qrRef.current = new Html5Qrcode(videoContainerId);
+      await qrRef.current.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        onScanFailure
+      );
+      setScanning(true);
+      setStatus('ready');
+      setMessage('');
+    } catch (e) {
+      setStatus('error');
+      setMessage((t('studentScan.errorPrefix') || 'Gagal: ') + e.message);
+      setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: (t('studentScan.errorPrefix') || 'Gagal: ') + e.message, type: 'error' });
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function stopCamera() {
+    try { await qrRef.current?.stop(); } catch {}
+    setScanning(false);
   }
 
   return (
@@ -65,17 +105,25 @@ export default function StudentScanPage() {
         <CardHeader><CardTitle>{t('studentScan.scanner') || 'Pemindai QR'}</CardTitle></CardHeader>
         <CardContent>
           <div className="mx-auto w-full sm:w-[420px]">
-            <div id="qr-reader" ref={ref} className="rounded-lg overflow-hidden shadow-sm border border-gray-200" />
+            <div id={videoContainerId} className="rounded-lg overflow-hidden shadow-sm border border-gray-200 min-h-[260px] flex items-center justify-center bg-black/5" />
           </div>
           <div className="mt-4 text-sm">
             {status !== 'idle' && <div className={status==='ok' ? 'text-green-700' : status==='duplicate' ? 'text-amber-700' : 'text-red-700'}>{message}</div>}
             {last && <div className="text-xs text-gray-500">{t('studentScan.last') || 'Terakhir:'} {last.toLocaleTimeString()}</div>}
           </div>
           <div className="mt-3 flex gap-2">
-            <Button type="button" onClick={() => { try { scannerRef.current?.clear(); } catch {} window.location.reload(); }} className="bg-gray-600 hover:bg-gray-700 text-white text-xs">{t('studentScan.restart') || 'Mulai Ulang'}</Button>
+            {!scanning && (
+              <Button type="button" onClick={startCamera} disabled={starting} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+                {starting ? 'Meminta Izin Kamera...' : 'Aktifkan Kamera'}
+              </Button>
+            )}
+            {scanning && (
+              <Button type="button" onClick={stopCamera} className="bg-gray-600 hover:bg-gray-700 text-white text-xs">{t('studentScan.restart') || 'Mulai Ulang'}</Button>
+            )}
           </div>
         </CardContent>
       </Card>
+      <NotificationModal isOpen={notif.isOpen} onClose={() => setNotif(prev => ({ ...prev, isOpen: false }))} title={notif.title} message={notif.message} type={notif.type} />
     </div>
   );
 }
