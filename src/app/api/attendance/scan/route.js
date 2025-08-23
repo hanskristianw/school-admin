@@ -107,33 +107,28 @@ export async function POST(req) {
   // Optional pre-check: multiple users on same device within window
   const windowMin = parseInt(process.env.ATTENDANCE_DEVICE_WINDOW_MIN || '15')
   const blockMulti = String(process.env.ATTENDANCE_BLOCK_MULTI_USER || 'false').toLowerCase() === 'true'
+  const matchMode = String(process.env.ATTENDANCE_MULTI_MATCH || 'client_strict').toLowerCase() // client_strict | client_or_uaip
   let multiUser = false
   if (windowMin > 0) {
     const sinceIso = new Date(Date.now() - windowMin * 60 * 1000).toISOString()
-    let recent = null
+    let orParts = []
     if (clientDeviceHash && clientDeviceHash.trim()) {
-      // Prefer strict match on client-provided device hash; include legacy device_hash column
-      const { data } = await supabaseAdmin
-        .from('attendance_scan_log')
-        .select('detail_siswa_id')
-        .or(`device_hash.eq.${clientDeviceHash},device_hash_client.eq.${clientDeviceHash}`)
-        .gte('created_at', sinceIso)
-        .not('detail_siswa_id', 'is', null)
-        .neq('detail_siswa_id', allowedDetail.detail_siswa_id)
-        .limit(1)
-      recent = data
+      orParts.push(`device_hash.eq.${clientDeviceHash}`, `device_hash_client.eq.${clientDeviceHash}`)
+      if (matchMode === 'client_or_uaip') {
+        orParts.push(`device_hash.eq.${uaIpHash}`, `device_hash_uaip.eq.${uaIpHash}`)
+      }
     } else {
-      // Fallback to UA+IP hash if no client hash available
-      const { data } = await supabaseAdmin
-        .from('attendance_scan_log')
-        .select('detail_siswa_id')
-        .or(`device_hash.eq.${uaIpHash},device_hash_uaip.eq.${uaIpHash}`)
-        .gte('created_at', sinceIso)
-        .not('detail_siswa_id', 'is', null)
-        .neq('detail_siswa_id', allowedDetail.detail_siswa_id)
-        .limit(1)
-      recent = data
+      // No client hash -> only UA+IP option
+      orParts.push(`device_hash.eq.${uaIpHash}`, `device_hash_uaip.eq.${uaIpHash}`)
     }
+    const { data: recent } = await supabaseAdmin
+      .from('attendance_scan_log')
+      .select('detail_siswa_id')
+      .or(orParts.join(','))
+      .gte('created_at', sinceIso)
+      .not('detail_siswa_id', 'is', null)
+      .neq('detail_siswa_id', allowedDetail.detail_siswa_id)
+      .limit(1)
     if (recent && recent.length > 0) multiUser = true
   }
 

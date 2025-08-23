@@ -140,7 +140,14 @@ export default function StudentScanPage() {
       const key = 'device_hash_v1';
       let dh = localStorage.getItem(key);
       if (!dh) {
-        const seed = `${navigator.userAgent}|${Math.random()}|${Date.now()}`;
+        // Stable seed: UA + random.once (persisted)
+        const randKey = 'device_rand_v1';
+        let rand = localStorage.getItem(randKey);
+        if (!rand) {
+          rand = String(Math.random()) + ':' + String(Date.now());
+          localStorage.setItem(randKey, rand);
+        }
+        const seed = `${navigator.userAgent}|${rand}`;
         dh = (await sha256(seed)).slice(0, 32);
         localStorage.setItem(key, dh);
       }
