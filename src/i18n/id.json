@@ -434,6 +434,21 @@
     "errorMark": "Gagal menandai presensi: ",
   "errorUndo": "Gagal membatalkan: ",
   "pinFilters": "Sematkan Filter",
-  "unpinFilters": "Lepas Sematan"
+  "unpinFilters": "Lepas Sematan",
+  "startSession": "Mulai Sesi",
+  "closeSession": "Tutup Sesi",
+  "qrHint": "Siswa memindai QR ini dari aplikasi/halaman siswa. Token berganti tiap ~10 detik."
+  }
+  ,
+  "studentScan": {
+    "title": "Scan Presensi",
+    "subtitle": "Arahkan kamera ke QR di kelas.",
+    "scanner": "Pemindai QR",
+    "success": "Presensi tercatat.",
+    "duplicate": "Anda sudah presensi hari ini.",
+    "invalid": "QR tidak valid atau sesi ditutup.",
+    "errorPrefix": "Gagal: ",
+    "last": "Terakhir:",
+    "restart": "Mulai Ulang"
   }
 }

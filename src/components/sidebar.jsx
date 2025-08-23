@@ -32,6 +32,7 @@ import {
   faEdit,
   faTrash
 } from "@fortawesome/free-solid-svg-icons"
+import { faQrcode } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
 const iconMap = {
@@ -50,6 +51,7 @@ const iconMap = {
   'fas fa-calendar-alt': faCalendarAlt,
   'fas fa-edit': faEdit,
   'fas fa-trash': faTrash
+  , 'fas fa-qrcode': faQrcode
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

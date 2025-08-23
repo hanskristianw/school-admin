@@ -434,6 +434,21 @@
     "errorMark": "Failed to mark attendance: ",
   "errorUndo": "Failed to undo: ",
   "pinFilters": "Pin Filters",
-  "unpinFilters": "Unpin Filters"
+  "unpinFilters": "Unpin Filters",
+  "startSession": "Start Session",
+  "closeSession": "Close Session",
+  "qrHint": "Students scan this QR in their app. Token rotates every ~10s."
+  }
+  ,
+  "studentScan": {
+    "title": "Attendance Scan",
+    "subtitle": "Point your camera at the classroom QR.",
+    "scanner": "QR Scanner",
+    "success": "Attendance recorded.",
+    "duplicate": "You already checked in today.",
+    "invalid": "Invalid QR or session closed.",
+    "errorPrefix": "Failed: ",
+    "last": "Last:",
+    "restart": "Restart"
   }
 }

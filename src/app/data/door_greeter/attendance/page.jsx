@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import NotificationModal from "@/components/ui/notification-modal";
+import Qr from "@/components/ui/qr";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCalendarDay, faRotate, faCheck, faUndo, faSpinner, faList } from "@fortawesome/free-solid-svg-icons";
 import { faThumbtack, faArrowDownLong } from "@fortawesome/free-solid-svg-icons";
@@ -172,6 +173,65 @@ export default function AttendancePage() {
   const totalPresent = attendanceMap.size;
   const totalStudents = students.length;
 
+  // QR Session state
+  const [sessionId, setSessionId] = useState(null);
+  const [qrToken, setQrToken] = useState(null);
+  const [qrValidSec, setQrValidSec] = useState(0);
+  const [qrPolling, setQrPolling] = useState(false);
+
+  // Poll QR token when session active
+  useEffect(() => {
+    let timer;
+    const poll = async () => {
+      if (!sessionId) return;
+      try {
+        const res = await fetch(`/api/attendance/session/${sessionId}/qr-token`, { cache: 'no-store' });
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.error || 'qr');
+        setQrToken(j.token);
+        setQrValidSec(j.validForSec || 0);
+      } catch (e) {
+        console.error('qr fetch', e);
+      }
+    };
+    if (sessionId) {
+      setQrPolling(true);
+      poll();
+      timer = setInterval(poll, 10000);
+    }
+    return () => { if (timer) clearInterval(timer); setQrPolling(false); };
+  }, [sessionId]);
+
+  const startSession = async () => {
+    try {
+      const kr_id = typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null;
+      const body = {
+        scope_type: filterClass ? 'class' : 'year',
+        scope_year_id: selectedYearId || null,
+        scope_kelas_id: filterClass || null,
+        created_by_user_id: kr_id ? parseInt(kr_id) : undefined
+      };
+      const res = await fetch('/api/attendance/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'create');
+      setSessionId(j.session_id);
+    } catch (e) {
+      showNotification(t('attendance.errorTitle') || 'Error', 'Failed to start session: ' + e.message, 'error');
+    }
+  };
+
+  const closeSession = async () => {
+    if (!sessionId) return;
+    try {
+      const res = await fetch(`/api/attendance/session/${sessionId}/close`, { method: 'POST' });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'close');
+      setSessionId(null); setQrToken(null);
+    } catch (e) {
+      showNotification(t('attendance.errorTitle') || 'Error', 'Failed to close session: ' + e.message, 'error');
+    }
+  };
+
   return (
   <div className="space-y-6 pb-8">
       <div>
@@ -230,7 +290,7 @@ export default function AttendancePage() {
         </CardContent>
       </Card>
 
-      {/* Filters & Summary (pin/unpin) */}
+      {/* Filters & Summary (pin/unpin) + Session Controls */}
       {selectedYearId && (
         <div className={pinFilters ? "sticky top-0 z-30 mt-4" : "mt-4"}>
           <Card className={pinFilters ? "backdrop-blur supports-[backdrop-filter]:bg-white/70 shadow-sm border border-gray-200" : "shadow-sm border border-gray-200"}>
@@ -242,15 +302,24 @@ export default function AttendancePage() {
                     {totalPresent}/{totalStudents} {t('attendance.present')}
                   </span>
                 </CardTitle>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setPinFilters(p => !p)}
-                  className="h-8 px-3 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700"
-                >
-                  <FontAwesomeIcon icon={pinFilters ? faThumbtack : faArrowDownLong} className="mr-1" />
-                  {pinFilters ? t('attendance.unpinFilters') : t('attendance.pinFilters')}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={sessionId ? closeSession : startSession}
+                    className={sessionId ? 'bg-red-600 hover:bg-red-700 text-white h-8 px-3 text-xs' : 'bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs'}
+                  >
+                    {sessionId ? (t('attendance.closeSession') || 'Close Session') : (t('attendance.startSession') || 'Start Session')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setPinFilters(p => !p)}
+                    className="h-8 px-3 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  >
+                    <FontAwesomeIcon icon={pinFilters ? faThumbtack : faArrowDownLong} className="mr-1" />
+                    {pinFilters ? t('attendance.unpinFilters') : t('attendance.pinFilters')}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
@@ -274,6 +343,21 @@ export default function AttendancePage() {
                   <div className="mt-2 text-[11px] text-gray-600">{t('attendance.summary')}: {totalPresent}/{totalStudents} {t('attendance.present')}</div>
                 </div>
               </div>
+              {sessionId && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-1 flex items-center justify-center">
+                    <div className="border rounded-md p-3 bg-white flex flex-col items-center">
+                      {qrToken ? (
+                        <Qr text={JSON.stringify({ sid: sessionId, tok: qrToken })} size={220} />
+                      ) : (
+                        <div className="w-[220px] h-[220px] bg-gray-100 rounded animate-pulse" />
+                      )}
+                      <div className="text-[11px] text-gray-500 mt-2">{qrValidSec ? `${qrValidSec}s` : ''}</div>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 text-sm text-gray-600 flex items-center">{t('attendance.qrHint') || 'Have students scan the QR in the Student app/page. Token rotates every ~10 seconds.'}</div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -429,6 +429,21 @@
     "errorMark": "标记出勤失败：",
   "errorUndo": "撤销失败：",
   "pinFilters": "固定筛选",
-  "unpinFilters": "取消固定"
+  "unpinFilters": "取消固定",
+  "startSession": "开始签到",
+  "closeSession": "结束签到",
+  "qrHint": "学生使用应用扫描此二维码，令牌约每10秒刷新。"
+  }
+  ,
+  "studentScan": {
+    "title": "签到扫描",
+    "subtitle": "将相机对准课堂二维码。",
+    "scanner": "二维码扫描器",
+    "success": "签到成功。",
+    "duplicate": "今天已签到。",
+    "invalid": "二维码无效或会话已关闭。",
+    "errorPrefix": "失败：",
+    "last": "上次：",
+    "restart": "重新开始"
   }
 }
