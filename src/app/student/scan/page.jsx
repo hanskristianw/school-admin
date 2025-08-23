@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import NotificationModal from '@/components/ui/notification-modal';
+import { sha256 } from '@/lib/utils';
 
 export default function StudentScanPage() {
   const { t } = useI18n();
@@ -18,6 +19,8 @@ export default function StudentScanPage() {
   const qrRef = useRef(null);
   const processingRef = useRef(false);
   const cooldownRef = useRef(0);
+  const deviceHashRef = useRef(null);
+  const geoRef = useRef(null);
   const notifInit = { isOpen: false, title: '', message: '', type: 'success' };
   const [notif, setNotif] = useState(notifInit);
 
@@ -43,7 +46,7 @@ export default function StudentScanPage() {
       const res = await fetch('/api/attendance/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sid: payload.sid, tok: payload.tok, user_id: kr_id })
+        body: JSON.stringify({ sid: payload.sid, tok: payload.tok, user_id: kr_id, deviceHash: deviceHashRef.current, geo: geoRef.current })
       });
       const j = await res.json();
       if (res.ok && j.status === 'ok') {
@@ -88,6 +91,27 @@ export default function StudentScanPage() {
   async function startCamera() {
     setStarting(true);
     try {
+      // Acquire geolocation first (required)
+      const getGeo = () => new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject(new Error('Geolocation tidak tersedia'));
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+          (err) => reject(new Error(err.message || 'Tidak dapat mengambil lokasi')),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      });
+      geoRef.current = await getGeo();
+
+      // Compute a stable device hash and keep it in localStorage
+      const key = 'device_hash_v1';
+      let dh = localStorage.getItem(key);
+      if (!dh) {
+        const seed = `${navigator.userAgent}|${Math.random()}|${Date.now()}`;
+        dh = (await sha256(seed)).slice(0, 32);
+        localStorage.setItem(key, dh);
+      }
+      deviceHashRef.current = dh;
+
       if (!qrRef.current) qrRef.current = new Html5Qrcode(videoContainerId);
       processingRef.current = false; cooldownRef.current = 0;
       await qrRef.current.start(
