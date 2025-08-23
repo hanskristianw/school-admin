@@ -444,6 +444,9 @@
     "invalid": "二维码无效或会话已关闭。",
     "errorPrefix": "失败：",
     "last": "上次：",
-    "restart": "重新开始"
+  "restart": "重新开始",
+  "locationRequired": "签到需要位置信息。请开启定位服务后重试。",
+  "tooFar": "您离学校太远了，请在校园范围内进行签到。",
+  "notAllowed": "您无权参加本次签到会话。"
   }
 }

@@ -449,6 +449,9 @@
     "invalid": "Invalid QR or session closed.",
     "errorPrefix": "Failed: ",
     "last": "Last:",
-    "restart": "Restart"
+  "restart": "Restart",
+  "locationRequired": "Location is required to check in. Enable location services and try again.",
+  "tooFar": "You're too far from school. Please be within the campus area to check in.",
+  "notAllowed": "You are not allowed to check in for this session."
   }
 }
