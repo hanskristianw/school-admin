@@ -77,8 +77,9 @@ export async function POST(req) {
       return NextResponse.json({ error: 'not_allowed' }, { status: 403 })
     }
 
-    // Upsert attendance for today
-    const today = new Date().toISOString().slice(0,10)
+  // Upsert attendance for today (WIB/GMT+7)
+  const wibNow = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const today = wibNow.toISOString().slice(0,10)
     const { data: existing } = await supabaseAdmin
       .from('absen')
       .select('absen_id')
@@ -91,7 +92,7 @@ export async function POST(req) {
       return NextResponse.json({ status: 'duplicate' })
     }
 
-    const nowTime = new Date().toTimeString().slice(0,8)
+  const nowTime = wibNow.toISOString().slice(11,19)
     const { error: insErr } = await supabaseAdmin
       .from('absen')
       .insert([{ absen_detail_siswa_id: allowedDetail.detail_siswa_id, absen_date: today, absen_time: nowTime, absen_session_id: sid, absen_method: 'qr' }])

@@ -16,6 +16,8 @@ export default function StudentScanPage() {
   const [starting, setStarting] = useState(false);
   const videoContainerId = 'qr-reader-video';
   const qrRef = useRef(null);
+  const processingRef = useRef(false);
+  const cooldownRef = useRef(0);
   const notifInit = { isOpen: false, title: '', message: '', type: 'success' };
   const [notif, setNotif] = useState(notifInit);
 
@@ -30,6 +32,10 @@ export default function StudentScanPage() {
   }, []);
 
   async function onScanSuccess(decodedText) {
+  // Ignore scans while processing or during cooldown
+  const nowMs = Date.now();
+  if (processingRef.current || nowMs < cooldownRef.current) return;
+  processingRef.current = true;
     try {
       setStatus('scanning');
       const payload = JSON.parse(decodedText);
@@ -47,19 +53,31 @@ export default function StudentScanPage() {
         try { await qrRef.current?.stop(); } catch {}
         setScanning(false);
         setNotif({ isOpen: true, title: t('teacherSubmission.notifSuccessTitle') || 'Success', message: t('studentScan.success') || 'Presensi tercatat.', type: 'success' });
+        // After success, prevent further scans until user restarts
+        cooldownRef.current = Date.now() + 5 * 60 * 1000; // 5 minutes guard
       } else if (j.status === 'duplicate') {
         setMessage(t('studentScan.duplicate') || 'Anda sudah presensi hari ini.');
         setStatus('duplicate');
         setNotif({ isOpen: true, title: t('attendance.infoTitle') || 'Info', message: t('studentScan.duplicate') || 'Anda sudah presensi hari ini.', type: 'info' });
+        // Stop scanning to avoid repeat submits; user can start again if needed
+        try { await qrRef.current?.stop(); } catch {}
+        setScanning(false);
+        cooldownRef.current = Date.now() + 60 * 1000; // 1 minute cool-down
       } else {
         setMessage(t('studentScan.invalid') || 'QR tidak valid atau sesi ditutup.');
         setStatus('error');
         setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: t('studentScan.invalid') || 'QR tidak valid atau sesi ditutup.', type: 'error' });
+        // Brief cooldown to avoid flooding
+        cooldownRef.current = Date.now() + 1500;
       }
     } catch (e) {
       setMessage((t('studentScan.errorPrefix') || 'Gagal: ') + e.message);
       setStatus('error');
       setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: (t('studentScan.errorPrefix') || 'Gagal: ') + e.message, type: 'error' });
+      cooldownRef.current = Date.now() + 1500;
+    }
+    finally {
+      processingRef.current = false;
     }
   }
 
@@ -71,9 +89,10 @@ export default function StudentScanPage() {
     setStarting(true);
     try {
       if (!qrRef.current) qrRef.current = new Html5Qrcode(videoContainerId);
+      processingRef.current = false; cooldownRef.current = 0;
       await qrRef.current.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        { fps: 8, qrbox: { width: 250, height: 250 } },
         onScanSuccess,
         onScanFailure
       );

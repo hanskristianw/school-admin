@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import NotificationModal from "@/components/ui/notification-modal";
 import Qr from "@/components/ui/qr";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCalendarDay, faRotate, faCheck, faUndo, faSpinner, faList } from "@fortawesome/free-solid-svg-icons";
+import { faRotate, faCheck, faUndo, faSpinner, faList } from "@fortawesome/free-solid-svg-icons";
 import { faThumbtack, faArrowDownLong } from "@fortawesome/free-solid-svg-icons";
 
 // Attendance page initial implementation.
@@ -24,7 +24,12 @@ export default function AttendancePage() {
   const [selectedYearId, setSelectedYearId] = useState("");
   const [students, setStudents] = useState([]); // { detail_siswa_id, user_id, nama, kelas_id, kelas_nama }
   const [classesForYear, setClassesForYear] = useState([]); // {kelas_id, kelas_nama}
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0,10));
+  // Always use today's date (WIB) implicitly
+  const wibToday = () => {
+    const d = new Date(Date.now() + 7 * 60 * 60 * 1000); // shift to GMT+7
+    return d.toISOString().slice(0, 10);
+  };
+  const [selectedDate] = useState(() => wibToday());
   const [attendanceMap, setAttendanceMap] = useState(new Map()); // detail_siswa_id -> { absen_id, absen_time }
 
   const [loadingYears, setLoadingYears] = useState(true);
@@ -41,7 +46,31 @@ export default function AttendancePage() {
 
   useEffect(() => { loadYears(); }, []);
   useEffect(() => { if (selectedYearId) loadStudentsAndClasses(); }, [selectedYearId]);
-  useEffect(() => { if (selectedYearId && students.length > 0) loadAttendance(); else setAttendanceMap(new Map()); }, [selectedDate, students, selectedYearId]);
+  useEffect(() => { if (selectedYearId && students.length > 0) loadAttendance(); else setAttendanceMap(new Map()); }, [students, selectedYearId]);
+
+  // Realtime: refresh attendance when absen table changes for today
+  useEffect(() => {
+    if (!selectedYearId) return;
+    const channel = supabase
+      .channel('realtime-absen-attendance')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'absen' }, (payload) => {
+        const today = wibToday();
+        const dNew = payload.new?.absen_date;
+        const dOld = payload.old?.absen_date;
+        if (dNew === today || dOld === today) {
+          loadAttendance();
+        }
+      })
+      .subscribe();
+    return () => { try { supabase.removeChannel(channel); } catch {} };
+  }, [selectedYearId, students.length]);
+
+  // Fallback: periodic poll in case realtime is not available
+  useEffect(() => {
+    if (!selectedYearId) return;
+    const id = setInterval(() => { loadAttendance(); }, 10000);
+    return () => clearInterval(id);
+  }, [selectedYearId, students.length]);
 
   const loadYears = async () => {
     try {
@@ -111,7 +140,7 @@ export default function AttendancePage() {
       const { data, error } = await supabase
         .from('absen')
         .select('absen_id, absen_detail_siswa_id, absen_time')
-        .eq('absen_date', selectedDate)
+  .eq('absen_date', wibToday())
         .in('absen_detail_siswa_id', detailIds);
       if (error) throw new Error(error.message);
       const map = new Map();
@@ -127,8 +156,8 @@ export default function AttendancePage() {
     if (attendanceMap.has(detailId)) return;
     setSavingIds(prev => new Set([...prev, detailId]));
     try {
-      const now = new Date();
-      const timeStr = now.toTimeString().slice(0,8);
+  const now = new Date(Date.now() + 7 * 60 * 60 * 1000); // WIB
+  const timeStr = now.toISOString().slice(11,19);
       const payload = { absen_detail_siswa_id: detailId, absen_date: selectedDate, absen_time: timeStr };
       const { data, error } = await supabase.from('absen').insert([payload]).select();
       if (error) {
@@ -172,6 +201,8 @@ export default function AttendancePage() {
 
   const totalPresent = attendanceMap.size;
   const totalStudents = students.length;
+
+  const fmtTime = (t) => (t ? String(t).slice(0,5) : '');
 
   // QR Session state
   const [sessionId, setSessionId] = useState(null);
@@ -239,7 +270,7 @@ export default function AttendancePage() {
   <p className="text-gray-600 text-sm">{t('attendance.subtitle')}</p>
       </div>
 
-      {/* Year & Date Selection (non-sticky) */}
+  {/* Year Selection (non-sticky) - date is always today (WIB) */}
       <Card className="shadow-sm border border-gray-200">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold text-gray-800">{t('attendance.yearSelection')}</CardTitle>
@@ -248,8 +279,8 @@ export default function AttendancePage() {
           {loadingYears ? (
             <div className="py-3 text-gray-500 text-sm flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" />{t('common.loading')}</div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="lg:col-span-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="lg:col-span-2">
                 <Label className="block mb-1 text-xs font-medium uppercase tracking-wide text-gray-600">{t('attendance.selectYear')}</Label>
                 <select
                   value={selectedYearId}
@@ -259,13 +290,6 @@ export default function AttendancePage() {
                   <option value="">{t('attendance.placeholderYear')}</option>
                   {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
                 </select>
-              </div>
-              <div className="flex flex-col">
-                <Label className="block mb-1 text-xs font-medium uppercase tracking-wide text-gray-600">{t('attendance.date')}</Label>
-                <div className="flex items-center gap-2">
-                  <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="text-sm h-10" />
-                  <Button type="button" onClick={() => setSelectedDate(new Date().toISOString().slice(0,10))} className="bg-gray-500 hover:bg-gray-600 text-white text-xs h-10 px-3 whitespace-nowrap"><FontAwesomeIcon icon={faCalendarDay} className="mr-1" />{t('attendance.today')}</Button>
-                </div>
               </div>
               {selectedYearId && (
                 <div className="flex flex-row sm:flex-row lg:flex-col gap-2 lg:items-start items-stretch lg:justify-start justify-end lg:col-span-2">
@@ -395,7 +419,7 @@ export default function AttendancePage() {
                             <td className="px-4 py-2 whitespace-nowrap text-sm">
                               {present ? (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
-                                  {t('attendance.present')}{rec?.absen_time ? ` (${String(rec.absen_time).slice(0,5)})` : ''}
+                                  {t('attendance.present')}{rec?.absen_time ? ` (${fmtTime(rec.absen_time)})` : ''}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full bg-red-100 text-red-600 text-xs font-semibold">{t('attendance.absent')}</span>
@@ -449,7 +473,7 @@ export default function AttendancePage() {
                             <div className="mt-1">
                               {present ? (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[11px] font-semibold">
-                                  {t('attendance.present')}{rec?.absen_time ? ` · ${String(rec.absen_time).slice(0,5)}` : ''}
+                                  {t('attendance.present')}{rec?.absen_time ? ` · ${fmtTime(rec.absen_time)}` : ''}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[11px] font-semibold">{t('attendance.absent')}</span>
