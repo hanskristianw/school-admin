@@ -161,7 +161,7 @@ export async function POST(req) {
   // Log success; flagged if multiUser detected
   await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: multiUser ? 'device_multi_user' : null }])
 
-    return NextResponse.json({ status: 'ok' })
+  return NextResponse.json({ status: 'ok', flagged: multiUser ? 'device_multi_user' : null })
   } catch (e) {
     console.error('scan error', e)
     return NextResponse.json({ error: e.message }, { status: 500 })

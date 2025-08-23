@@ -84,12 +84,14 @@ export default function StudentScanPage() {
         }
       }
       if (res.ok && j.status === 'ok') {
-        setMessage(t('studentScan.success') || 'Presensi tercatat.');
+        const baseMsg = t('studentScan.success') || 'Presensi tercatat.';
+        const extra = j.flagged === 'device_multi_user' ? (t('studentScan.successWithDeviceFlag') || 'Catatan: Perangkat ini terdeteksi digunakan oleh beberapa akun. Silakan konfirmasi dengan guru.') : '';
+        setMessage(extra ? `${baseMsg} ${extra}` : baseMsg);
         setStatus('ok');
         setLast(new Date());
         try { await qrRef.current?.stop(); } catch {}
         setScanning(false);
-        setNotif({ isOpen: true, title: t('teacherSubmission.notifSuccessTitle') || 'Success', message: t('studentScan.success') || 'Presensi tercatat.', type: 'success' });
+        setNotif({ isOpen: true, title: t('teacherSubmission.notifSuccessTitle') || 'Success', message: extra ? `${baseMsg} ${extra}` : baseMsg, type: 'success' });
         // After success, prevent further scans until user restarts
         cooldownRef.current = Date.now() + 5 * 60 * 1000; // 5 minutes guard
       } else if (j.status === 'duplicate') {

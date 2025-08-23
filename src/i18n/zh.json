@@ -448,6 +448,7 @@
   "locationRequired": "签到需要位置信息。请开启定位服务后重试。",
   "tooFar": "您离学校太远了，请在校园范围内进行签到。",
   "notAllowed": "您无权参加本次签到会话。",
-  "deviceMultiUser": "检测到该设备在短时间内用于多个账号，请联系老师。"
+  "deviceMultiUser": "检测到该设备在短时间内用于多个账号，请联系老师。",
+  "successWithDeviceFlag": "提示：该设备似乎被多个账号使用，请联系老师确认。"
   }
 }
