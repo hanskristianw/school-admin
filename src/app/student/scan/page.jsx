@@ -49,6 +49,32 @@ export default function StudentScanPage() {
         body: JSON.stringify({ sid: payload.sid, tok: payload.tok, user_id: kr_id, deviceHash: deviceHashRef.current, geo: geoRef.current })
       });
       const j = await res.json();
+      if (!res.ok) {
+        if (j.error === 'location_required') {
+          const msg = t('studentScan.locationRequired') || 'Lokasi diperlukan untuk presensi. Aktifkan layanan lokasi dan coba lagi.';
+          setMessage(msg);
+          setStatus('error');
+          setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
+          cooldownRef.current = Date.now() + 2000;
+          return;
+        }
+        if (j.error === 'outside_geofence') {
+          const msg = t('studentScan.tooFar') || "You're too far from school. Harap berada di area sekolah untuk presensi.";
+          setMessage(msg);
+          setStatus('error');
+          setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
+          cooldownRef.current = Date.now() + 4000;
+          return;
+        }
+        if (j.error === 'not_allowed') {
+          const msg = t('studentScan.notAllowed') || 'Anda tidak diizinkan melakukan presensi untuk sesi ini.';
+          setMessage(msg);
+          setStatus('error');
+          setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
+          cooldownRef.current = Date.now() + 2500;
+          return;
+        }
+      }
       if (res.ok && j.status === 'ok') {
         setMessage(t('studentScan.success') || 'Presensi tercatat.');
         setStatus('ok');
