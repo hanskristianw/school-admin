@@ -76,7 +76,8 @@ users (
   user_nama_depan VARCHAR(50),
   user_nama_belakang VARCHAR(50),
   user_username VARCHAR(50) UNIQUE,
-  user_password VARCHAR(255),
+  -- Passwords are stored as bcrypt hashes only; no plaintext is kept
+  user_password_hash TEXT,
   user_role_id INTEGER REFERENCES role(role_id),
   is_active BOOLEAN DEFAULT true,
   -- Profile fields
@@ -263,6 +264,15 @@ alter table absen add column if not exists absen_method text not null default 'm
 - **Access**: All authenticated users for dashboard/profile, Admin only for user management
 - **Key Tables**: `users`, `role`
 
+Auth specifics:
+- Server-side authentication using Next.js App Router routes with Supabase Service Role (bypasses RLS for secure operations).
+- Passwords verified against `users.user_password_hash` via Postgres function `verify_password` (pgcrypto/bcrypt); server falls back to bcryptjs if the function is unavailable.
+- Endpoints:
+  - `POST /api/auth/login` – verify credentials and return safe user payload.
+  - `POST /api/profile/change-password` – change the current user’s password securely.
+  - `POST /api/admin/users/set-password` – admin-only, set any user’s password (hashes in DB).
+- Import on `/data/user` uses CSV column `user_password` for plaintext input, but the client never writes it to the table; after inserting the user record (without a password), the server API is called to hash and store `user_password_hash`.
+
 ### **2. Academic Data Management**
 - **Units**: `/data/unit` - Manage school units
 - **Years**: `/data/year` - Manage academic years
@@ -387,7 +397,7 @@ Notes:
 ## 🔧 **Technical Implementation**
 
 ### **Frontend Stack:**
-- **Framework**: Next.js 14 with App Router
+- **Framework**: Next.js 15 with App Router
 - **UI**: Tailwind CSS + Custom Components
 - **Icons**: FontAwesome React Components
 - **Forms**: React Hook Form + Validation
@@ -395,8 +405,8 @@ Notes:
 
 ### **Backend & Database:**
 - **Database**: Supabase PostgreSQL
-- **Auth**: Custom authentication with localStorage
-- **API**: Supabase client-side queries
+- **Auth**: Custom server-side routes (service role) + cookies/localStorage for client state; passwords hashed (bcrypt via pgcrypto) and never stored in plaintext.
+- **API**: Server routes for sensitive operations (login, password changes). Client-side Supabase queries only for safe, public/metadata reads.
 - **Real-time**: Supabase subscriptions
 
 ### **Key Technical Notes:**

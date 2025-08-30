@@ -21,7 +21,7 @@ export default function UserManagement() {
     user_nama_depan: '',
     user_nama_belakang: '',
     user_username: '',
-    user_password: '',
+  password: '',
     user_role_id: '',
     user_unit_id: '',
     is_active: true
@@ -213,13 +213,13 @@ export default function UserManagement() {
     const errors = [];
     const validData = [];
 
-    data.forEach((row, index) => {
+  data.forEach((row, index) => {
       const rowErrors = [];
       const validRow = {
         user_nama_depan: '',
         user_nama_belakang: '',
         user_username: '',
-        user_password: '',
+    user_password: '',
         user_role_id: '',
         user_unit_id: '',
         is_active: true
@@ -244,14 +244,14 @@ export default function UserManagement() {
         validRow.user_username = (row.username || row.user_username || '').trim();
       }
 
-      if (!row.password && !row.user_password) {
+      if (!row.user_password && !row.password) {
         rowErrors.push('Password is required');
       } else {
-        const password = (row.password || row.user_password || '').trim();
-        if (password.length < 6) {
+        const pw = (row.user_password || row.password || '').trim();
+        if (pw.length < 6) {
           rowErrors.push('Password must be at least 6 characters');
         } else {
-          validRow.user_password = password;
+          validRow.user_password = pw;
         }
       }
 
@@ -353,18 +353,39 @@ export default function UserManagement() {
         };
 
         // Additional validation before sending
-        if (!cleanedUserData.user_nama_depan || !cleanedUserData.user_nama_belakang || 
-            !cleanedUserData.user_username || !cleanedUserData.user_password || 
+    if (!cleanedUserData.user_nama_depan || !cleanedUserData.user_nama_belakang || 
+      !cleanedUserData.user_username || !cleanedUserData.user_password || 
             !cleanedUserData.user_role_id) {
           throw new Error('Missing required fields after cleaning');
         }
 
         const result = await supabase
           .from('users')
-          .insert([cleanedUserData]);
+          .insert([{ 
+            user_nama_depan: cleanedUserData.user_nama_depan,
+            user_nama_belakang: cleanedUserData.user_nama_belakang,
+            user_username: cleanedUserData.user_username,
+            user_role_id: cleanedUserData.user_role_id,
+            user_unit_id: cleanedUserData.user_unit_id,
+            is_active: cleanedUserData.is_active
+          }])
+          .select('user_id')
+          .single();
 
-        if (result.error) {
-          throw new Error(result.error.message);
+        if (result.error) throw new Error(result.error.message);
+
+        const createdId = result.data?.user_id;
+        if (!createdId) throw new Error('Gagal membuat user');
+
+        // Set password via secure admin API
+        const res = await fetch('/api/admin/users/set-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: createdId, newPassword: cleanedUserData.user_password })
+        });
+        if (!res.ok) {
+          const msg = await res.json().catch(() => ({}));
+          throw new Error(msg?.error || 'Gagal set password');
         }
 
         results.success++;
@@ -429,7 +450,7 @@ export default function UserManagement() {
     const sampleUnit1 = availableUnits[0] || 'PYP';
     const sampleUnit2 = availableUnits.length > 1 ? availableUnits[1] : availableUnits[0] || 'MYP';
     
-    const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}password${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}password123${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}password456${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
+  const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}user_password${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}password123${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}password456${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -556,9 +577,9 @@ export default function UserManagement() {
       errors.user_username = 'Username minimal 3 karakter';
     }
     
-    if (!editingUser && !formData.user_password.trim()) {
+  if (!editingUser && !formData.password.trim()) {
       errors.user_password = 'Password wajib diisi';
-    } else if (formData.user_password && formData.user_password.length < 6) {
+  } else if (formData.password && formData.password.length < 6) {
       errors.user_password = 'Password minimal 6 karakter';
     }
     
@@ -579,7 +600,7 @@ export default function UserManagement() {
 
     setSubmitting(true);
     try {
-      const submitData = { ...formData };
+  const submitData = { ...formData };
       
       // Ensure role_id is a number
       if (submitData.user_role_id) {
@@ -594,44 +615,61 @@ export default function UserManagement() {
       }
 
       let result;
+  const newPassword = submitData.password?.trim() || '';
+      // Never send plaintext password directly to the users table
+      const baseData = { ...submitData };
+  delete baseData.password;
 
       if (editingUser) {
-        // Update existing user
-        const updateData = { ...submitData };
-        
-        // Don't send password if empty for updates
-        if (!updateData.user_password) {
-          delete updateData.user_password;
-        } else {
-          // TODO: Hash password properly in production
-          // For now, store as is (not secure for production)
-        }
-
+        // Update existing user fields (without password)
         result = await supabase
           .from('users')
-          .update(updateData)
+          .update(baseData)
           .eq('user_id', editingUser.user_id);
-      } else {
-        // Create new user
-        // TODO: Hash password properly in production
-        result = await supabase
-          .from('users')
-          .insert([submitData]);
-      }
+        if (result.error) throw new Error(result.error.message);
 
-      if (result.error) {
-        throw new Error(result.error.message);
+        // If password provided, set via secure server API (hashes and clears plaintext in DB)
+        if (newPassword) {
+          const res = await fetch('/api/admin/users/set-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: editingUser.user_id, newPassword })
+          });
+          if (!res.ok) {
+            const msg = await res.json().catch(() => ({}));
+            throw new Error(msg?.error || 'Gagal mengubah password');
+          }
+        }
+      } else {
+        // Create new user without password first
+        const insertRes = await supabase
+          .from('users')
+          .insert([baseData])
+          .select('user_id')
+          .single();
+        if (insertRes.error) throw new Error(insertRes.error.message);
+
+        const createdId = insertRes.data?.user_id;
+        // For new user, password is required by validation; set via secure server API
+        if (newPassword && createdId) {
+          const res = await fetch('/api/admin/users/set-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: createdId, newPassword })
+          });
+          if (!res.ok) {
+            const msg = await res.json().catch(() => ({}));
+            throw new Error(msg?.error || 'Gagal set password awal');
+          }
+        }
       }
 
       // Success
       await fetchUsers(); // Refresh the list
       resetForm();
       setError('');
-      showNotification(
-        'Berhasil!',
-        editingUser ? 'Data user berhasil diupdate!' : 'User baru berhasil ditambahkan!',
-        'success'
-      );
+  const pwdNote = newPassword ? ' (termasuk password)' : '';
+  showNotification('Berhasil!', editingUser ? `Data user berhasil diupdate${pwdNote}!` : `User baru berhasil ditambahkan${pwdNote}!`, 'success');
     } catch (err) {
       const errorMessage = processErrorMessage(err.message);
       setError('Error: ' + errorMessage);
@@ -646,7 +684,7 @@ export default function UserManagement() {
       user_nama_depan: user.user_nama_depan,
       user_nama_belakang: user.user_nama_belakang,
       user_username: user.user_username,
-      user_password: '', // Don't fill password for editing
+  password: '', // Don't fill password for editing
       user_role_id: user.user_role_id,
       user_unit_id: user.user_unit_id || '',
       is_active: user.is_active
@@ -662,7 +700,7 @@ export default function UserManagement() {
       user_nama_depan: '',
       user_nama_belakang: '',
       user_username: '',
-      user_password: '',
+  password: '',
       user_role_id: '',
       user_unit_id: '',
       is_active: true
@@ -797,14 +835,14 @@ export default function UserManagement() {
             </div>
 
             <div>
-              <Label htmlFor="user_password">
+              <Label htmlFor="password">
                 Password {editingUser ? '(kosongkan jika tidak ingin mengubah)' : '*'}
               </Label>
               <Input
-                id="user_password"
+                id="password"
                 name="user_password"
                 type="password"
-                value={formData.user_password}
+                value={formData.password}
                 onChange={handleInputChange}
                 className={formErrors.user_password ? 'border-red-500' : ''}
                 disabled={submitting}

@@ -97,10 +97,28 @@ export default function TopicPage() {
   const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.subject_id, s.subject_name])), [subjects]);
 
   const filtered = useMemo(() => {
-    return topics.filter(
-      (row) => (!filters.subject || String(row.topic_subject_id) === filters.subject) && (!filters.search || row.topic_nama.toLowerCase().includes(filters.search.toLowerCase()))
-    );
-  }, [topics, filters]);
+    const gradeOf = (name) => {
+      if (!name || typeof name !== 'string') return 9999;
+      const m = name.match(/(\d{1,2})/); // extract first number from class name
+      return m ? parseInt(m[1], 10) : 9999;
+    };
+    return topics
+      .filter(
+        (row) => (!filters.subject || String(row.topic_subject_id) === filters.subject) && (!filters.search || row.topic_nama.toLowerCase().includes(filters.search.toLowerCase()))
+      )
+      .slice()
+      .sort((a, b) => {
+        const aName = a.topic_kelas_id ? (kelasNameMap.get(a.topic_kelas_id) || '') : ''
+        const bName = b.topic_kelas_id ? (kelasNameMap.get(b.topic_kelas_id) || '') : ''
+        const ga = gradeOf(aName)
+        const gb = gradeOf(bName)
+        if (ga !== gb) return ga - gb
+        // fallback: class name asc, then topic title asc
+        const ncmp = (aName || '').localeCompare(bName || '')
+        if (ncmp !== 0) return ncmp
+        return (a.topic_nama || '').localeCompare(b.topic_nama || '')
+      })
+  }, [topics, filters, kelasNameMap]);
 
   const resetForm = () => {
     setEditing(null);
@@ -382,7 +400,7 @@ export default function TopicPage() {
               name="topic_nama"
               value={formData.topic_nama}
               onChange={(e) => setFormData((prev) => ({ ...prev, topic_nama: e.target.value }))}
-              className={formErrors.topic_nama ? "border-red-500" : ""}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_nama ? 'border-red-500' : 'border-gray-300'}`}
             />
             {formErrors.topic_nama && <p className="text-red-500 text-sm mt-1">{formErrors.topic_nama}</p>}
           </div>

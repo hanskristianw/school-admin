@@ -17,10 +17,54 @@ for select using (true);
 -- 2) Sensitive data: server-only access (service role bypasses RLS)
 -- Users
 alter table if exists public.users enable row level security;
+-- Ensure schema supports hashed passwords and allows null plaintext during migration
+alter table if exists public.users
+	add column if not exists user_password_hash text;
+-- Fully drop legacy plaintext password column
+alter table if exists public.users drop column if exists user_password;
 -- DEV-ONLY: allow public read of minimal user info used by admin UIs
 drop policy if exists "public read users" on public.users;
 create policy "public read users" on public.users
 for select using (true);
+-- DEV-ONLY: allow profile updates from client UI
+drop policy if exists "public update users" on public.users;
+create policy "public update users" on public.users
+for update using (true) with check (true);
+
+create extension if not exists pgcrypto;
+-- You can keep pgsodium installed if already present, but it's not required for hashing
+create extension if not exists pgsodium;
+
+-- SECURITY DEFINER function to hash and update password
+-- Hashing is done inside Postgres using bcrypt via pgcrypto
+create or replace function public.secure_update_password(p_user_id bigint, p_new_password text)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+	update public.users
+	-- On Supabase, pgcrypto functions live under the `extensions` schema
+	set user_password_hash = extensions.crypt(p_new_password, extensions.gen_salt('bf')),
+			user_updated_at = now()
+	where user_id = p_user_id;
+$$;
+
+-- Helper to verify a password against a hash (used by server API)
+create or replace function public.verify_password(p_hash text, p_password text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+	select coalesce(extensions.crypt(p_password, p_hash) = p_hash, false);
+$$;
+
+-- Remove legacy auto-hash trigger and function (no longer needed)
+drop trigger if exists trg_users_hash_password on public.users;
+drop function if exists public.t_users_hash_password();
+
+-- Optional: execution can be limited; service role bypasses anyway.
 
 -- Role
 alter table if exists public.role enable row level security;

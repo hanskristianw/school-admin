@@ -21,6 +21,12 @@ export default function ProfilePage() {
   const [updating, setUpdating] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  // Change password state
+  const [showPwdForm, setShowPwdForm] = useState(false)
+  const [pwdNew, setPwdNew] = useState('')
+  const [pwdConfirm, setPwdConfirm] = useState('')
+  const [pwdSaving, setPwdSaving] = useState(false)
+  const [pwdMsg, setPwdMsg] = useState('')
 
   useEffect(() => {
     const id = localStorage.getItem("kr_id")
@@ -239,10 +245,16 @@ export default function ProfilePage() {
       <div className="flex items-center justify-between">
     <h1 className="text-3xl font-bold">{t('profile.title')}</h1>
         {!editing && (
-          <Button onClick={handleEdit} className="flex items-center gap-2">
-            <FontAwesomeIcon icon={faEdit} />
-      {t('profile.edit')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleEdit} className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faEdit} />
+              {t('profile.edit')}
+            </Button>
+            <Button onClick={() => { setShowPwdForm((v) => !v); setPwdMsg(''); }} variant="outline" className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faSave} />
+              Change Password
+            </Button>
+          </div>
         )}
       </div>
 
@@ -253,6 +265,68 @@ export default function ProfilePage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Change Password Card */}
+        {showPwdForm && (
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Change Password</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pwdMsg && (
+                <div className={`mb-3 px-3 py-2 rounded border text-sm ${pwdMsg.startsWith('Success') ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                  {pwdMsg}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="pwdNew">New Password</Label>
+                  <Input id="pwdNew" type="password" value={pwdNew} onChange={(e) => setPwdNew(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="pwdConfirm">Confirm New Password</Label>
+                  <Input id="pwdConfirm" type="password" value={pwdConfirm} onChange={(e) => setPwdConfirm(e.target.value)} />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-3">
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    setPwdMsg('')
+                    if (!pwdNew || pwdNew.length < 6) { setPwdMsg('Password must be at least 6 characters'); return }
+                    if (pwdNew !== pwdConfirm) { setPwdMsg('Password confirmation does not match'); return }
+                    try {
+                      setPwdSaving(true)
+                      const res = await fetch('/api/profile/change-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ newPassword: pwdNew })
+                      })
+                      const json = await res.json().catch(() => ({}))
+                      if (!res.ok) throw new Error(json.error || 'Request failed')
+                      setPwdMsg('Success: Password updated')
+                      setPwdNew('')
+                      setPwdConfirm('')
+                    } catch (e) {
+                      console.error('Change password failed:', e)
+                      setPwdMsg('Failed to update password: ' + (e.message || 'Unknown error'))
+                    } finally {
+                      setPwdSaving(false)
+                    }
+                  }}
+                  disabled={pwdSaving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {pwdSaving ? 'Saving...' : 'Update Password'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => { setShowPwdForm(false); setPwdMsg(''); setPwdNew(''); setPwdConfirm(''); }}>
+                  Cancel
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Note: For development only. In production, use server routes and hashing.</p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Profile Picture Card */}
         <Card>
           <CardHeader>

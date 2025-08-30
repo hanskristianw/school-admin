@@ -37,12 +37,17 @@ export default function Login() {
     try {
       console.log("📤 Logging in with Supabase...")
       
-      // Menggunakan Supabase langsung tanpa Go API
-      const result = await customAuth.login(username, password)
+      // Gunakan server API untuk verifikasi hash secara aman
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      const result = await res.json()
       
       console.log("📥 Login result:", result)
 
-      if (result.success) {
+      if (res.ok && result.success) {
         console.log("✅ Login successful with Supabase")
         // Simpan data user ke localStorage
         localStorage.setItem("kr_id", result.user.userID)
