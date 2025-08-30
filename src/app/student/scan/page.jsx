@@ -205,17 +205,32 @@ export default function StudentScanPage() {
             <div className="relative">
               <div id={videoContainerId} className="rounded-lg overflow-hidden shadow-sm border border-gray-200 min-h-[260px] flex items-center justify-center bg-black/5" />
               {confirming && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
-                  <div className="bg-white/90 rounded-md px-4 py-3 flex items-center gap-2 shadow">
-                    <div className="h-5 w-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm text-gray-800">{t('studentScan.processing') || 'Memproses konfirmasi...'}</span>
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
+                  <div className="bg-white rounded-lg px-5 py-4 w-[85%] sm:w-[360px] border border-emerald-100 shadow-lg" aria-busy="true" aria-live="polite">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 h-6 w-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">{t('studentScan.processing') || 'Memproses konfirmasi...'}</div>
+                        <div className="text-xs text-gray-600 mt-0.5">{t('studentScan.keepSteady') || 'Harap tetap arahkan kamera ke QR sampai konfirmasi selesai.'}</div>
+                      </div>
+                    </div>
+                    <div className="h-1.5 w-full bg-emerald-100 rounded mt-3 overflow-hidden">
+                      <div className="h-full w-2/3 bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 animate-pulse rounded" />
+                    </div>
                   </div>
                 </div>
               )}
             </div>
           </div>
           <div className="mt-4 text-sm">
-            {status !== 'idle' && <div className={status==='ok' ? 'text-green-700' : status==='duplicate' ? 'text-amber-700' : 'text-red-700'}>{message}</div>}
+            {status !== 'idle' && (
+              <div className={
+                status==='ok' ? 'text-green-700' :
+                status==='duplicate' ? 'text-amber-700' :
+                status==='confirming' ? 'text-emerald-700' :
+                'text-red-700'
+              }>{message}</div>
+            )}
             {last && <div className="text-xs text-gray-500">{t('studentScan.last') || 'Terakhir:'} {last.toLocaleTimeString()}</div>}
           </div>
           <div className="mt-3 flex gap-2">
