@@ -327,6 +327,12 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
           <button
             onClick={() => {
               localStorage.clear()
+              // Clear auth cookies for middleware
+              const past = 'Thu, 01 Jan 1970 00:00:00 GMT'
+              document.cookie = `kr_id=; Path=/; Expires=${past}; SameSite=Lax`
+              document.cookie = `role_name=; Path=/; Expires=${past}; SameSite=Lax`
+              document.cookie = `is_admin=; Path=/; Expires=${past}; SameSite=Lax`
+              document.cookie = `allowed_paths=; Path=/; Expires=${past}; SameSite=Lax`
               window.location.href = "/login"
             }}
             className="w-full flex items-center px-4 py-2 text-red-600 hover:bg-red-50 rounded-md"

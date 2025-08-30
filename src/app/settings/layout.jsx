@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Sidebar from "@/components/sidebar"
+import AccessGuard from "@/components/AccessGuard"
 
 export default function SettingsLayout({ children }) {
   const router = useRouter()
@@ -20,7 +21,9 @@ export default function SettingsLayout({ children }) {
       <div className="flex h-screen">
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
         <main className="flex-1 transition-all duration-300 overflow-y-auto p-4">
-          {children}
+          <AccessGuard>
+            {children}
+          </AccessGuard>
         </main>
       </div>
     </div>

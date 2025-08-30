@@ -33,7 +33,11 @@
     "doorGreeterTitle": "Door Greeter Duty",
     "doorGreeterToday": "You are the Door Greeter today ({day}). Please arrive earlier to greet students.",
     "doorGreeterTomorrow": "You are the Door Greeter tomorrow ({day}). Prepare to arrive earlier.",
-    "doorGreeterTodayAndTomorrow": "You are the Door Greeter today ({today}) and tomorrow ({tomorrow})." 
+  "doorGreeterTodayAndTomorrow": "You are the Door Greeter today ({today}) and tomorrow ({tomorrow}).",
+  "todaySchedule": "Today's Schedule",
+  "noScheduleToday": "No schedule for today.",
+  "dayLabel": "Day",
+  "classLabel": "Class"
   },
   "menus": {
     "Dashboard": "Dashboard",
@@ -45,6 +49,10 @@
   }
   ,
     "menu": "Menu",
+  "student": {
+    "qrScan": "QR Scan",
+    "scanHint": "Tip: Please allow location and camera access when scanning."
+  },
   "profile": {
     "title": "My Profile",
     "edit": "Edit Profile",

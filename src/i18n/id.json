@@ -33,7 +33,11 @@
     "doorGreeterTitle": "Tugas Door Greeter",
     "doorGreeterToday": "Anda bertugas sebagai Door Greeter hari ini ({day}). Harap datang lebih awal.",
     "doorGreeterTomorrow": "Anda bertugas sebagai Door Greeter besok ({day}). Siapkan diri untuk datang lebih awal.",
-    "doorGreeterTodayAndTomorrow": "Anda bertugas sebagai Door Greeter hari ini ({today}) dan besok ({tomorrow})."
+  "doorGreeterTodayAndTomorrow": "Anda bertugas sebagai Door Greeter hari ini ({today}) dan besok ({tomorrow}).",
+  "todaySchedule": "Jadwal Hari Ini",
+  "noScheduleToday": "Tidak ada jadwal untuk hari ini.",
+  "dayLabel": "Hari",
+  "classLabel": "Kelas"
   },
   "menus": {
     "Dashboard": "Dashboard",
@@ -45,6 +49,10 @@
   }
   ,
     "menu": "Menu",
+  "student": {
+    "qrScan": "Pindai QR",
+    "scanHint": "Tips: Izinkan akses lokasi dan kamera saat memindai."
+  },
   "profile": {
     "title": "Profile Saya",
     "edit": "Edit Profile",

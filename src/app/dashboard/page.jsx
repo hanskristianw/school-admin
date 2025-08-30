@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faUsers, faBook, faCalendar, faClipboardCheck, faSchool, faChevronLeft, faChevronRight, faDoorOpen } from '@fortawesome/free-solid-svg-icons'
@@ -12,7 +12,9 @@ import { useI18n } from '@/lib/i18n'
 
 export default function Dashboard() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { t } = useI18n()
+  const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
   // UI states
   const [loading, setLoading] = useState(true)
@@ -20,6 +22,7 @@ export default function Dashboard() {
 
   // User profile
   const [userData, setUserData] = useState(null)
+  const [isStudent, setIsStudent] = useState(false)
 
   // Stats
   const [stats, setStats] = useState({
@@ -51,6 +54,10 @@ export default function Dashboard() {
   const [kelasOptions, setKelasOptions] = useState([]) // from current month data
   const [kelasFilter, setKelasFilter] = useState('')
   const [dayDetail, setDayDetail] = useState({ open: false, date: '', rows: [] })
+  // Student dashboard
+  const [studentSchedule, setStudentSchedule] = useState([]) // [{start,end,subject,teacher}]
+  const [studentInfo, setStudentInfo] = useState({ kelas_nama: '' })
+  const [selectedDay, setSelectedDay] = useState(() => new Date().toLocaleDateString('en-US', { weekday: 'long' }))
 
   useEffect(() => {
     const id = localStorage.getItem("kr_id")
@@ -60,10 +67,22 @@ export default function Dashboard() {
       localStorage.clear()
       router.replace("/login")
     } else {
-      // Load profile and dashboard data in parallel
+      // Load profile, then decide dashboard variant by role flag
       setLoading(true)
       setError("")
-      Promise.all([fetchUserInfo(id), fetchDashboardData(parseInt(id))])
+  Promise.all([fetchUserInfo(id), fetchRoleFlag()])
+        .then(async ([_, roleFlag]) => {
+          const uid = parseInt(id, 10)
+          if (roleFlag?.is_student) {
+            setIsStudent(true)
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+    setSelectedDay(today)
+    await fetchStudentDashboardData(uid, today)
+          } else {
+            setIsStudent(false)
+            await fetchDashboardData(uid)
+          }
+        })
         .catch((e) => {
           console.error(e)
           setError(t('common.errorLoading'))
@@ -80,6 +99,25 @@ export default function Dashboard() {
       .single()
     if (error) throw error
     setUserData(data)
+  }
+
+  const fetchRoleFlag = async () => {
+    try {
+      const raw = localStorage.getItem('user_data')
+      const u = raw ? JSON.parse(raw) : null
+      const roleId = u?.roleID
+      if (!roleId) return { is_student: false }
+      const { data, error } = await supabase
+        .from('role')
+        .select('is_student')
+        .eq('role_id', roleId)
+        .single()
+      if (error) throw error
+      return data || { is_student: false }
+    } catch (e) {
+      console.warn('Role flag fetch failed', e)
+      return { is_student: false }
+    }
   }
 
   const fetchDashboardData = async (userId) => {
@@ -165,6 +203,76 @@ export default function Dashboard() {
     setUsersMap(uMap)
     setRecentAssessments(assessments || [])
   }
+
+  const fetchStudentDashboardData = async (userId, day) => {
+    try {
+      // 1) Find student's class
+      const { data: ds, error: dsErr } = await supabase
+        .from('detail_siswa')
+        .select('detail_siswa_kelas_id')
+        .eq('detail_siswa_user_id', userId)
+        .limit(1)
+      if (dsErr) throw dsErr
+      const kelasId = ds && ds[0]?.detail_siswa_kelas_id
+      if (!kelasId) { setStudentInfo({ kelas_nama: '' }); setStudentSchedule([]); return }
+
+      // 2) Get class name, mappings and today timetable rows
+      const weekday = day || new Date().toLocaleDateString('en-US', { weekday: 'long' })
+      const [kelasRes, dkRes, subjRes, usersRes, ttRes] = await Promise.all([
+        supabase.from('kelas').select('kelas_nama').eq('kelas_id', kelasId).single(),
+        supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id').eq('detail_kelas_kelas_id', kelasId),
+        supabase.from('subject').select('subject_id, subject_name, subject_code, subject_user_id'),
+        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang'),
+        supabase.from('timetable').select('timetable_detail_kelas_id, timetable_time, timetable_user_id, timetable_day').eq('timetable_day', weekday)
+      ])
+      if (kelasRes.error) throw kelasRes.error
+      if (dkRes.error) throw dkRes.error
+      if (subjRes.error) throw subjRes.error
+      if (usersRes.error) throw usersRes.error
+      if (ttRes.error) throw ttRes.error
+
+      setStudentInfo({ kelas_nama: kelasRes.data?.kelas_nama || '' })
+      const dkIds = (dkRes.data || []).map(d => d.detail_kelas_id)
+      const subjMap = new Map((subjRes.data || []).map(s => [s.subject_id, s]))
+      const userMap = new Map((usersRes.data || []).map(u => [u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim()]))
+      const dkSubjMap = new Map((dkRes.data || []).map(d => [d.detail_kelas_id, d.detail_kelas_subject_id]))
+
+      const parseRange = (rangeStr) => {
+        if (!rangeStr || typeof rangeStr !== 'string') return { start: '', end: '' }
+        // 1) Generic: first two HH:MM anywhere (handles "07:30-08:10", "[07:30, 08:10]", "Mon 07:30 - Mon 08:10")
+        const times = rangeStr.match(/\b(\d{1,2}:\d{2})\b/g)
+        if (times && times.length >= 2) return { start: times[0], end: times[1] }
+        // 2) Bracketed comma format fallback: [start, end]
+        const m = /\[\s*(\d{1,2}:\d{2})\s*,\s*(\d{1,2}:\d{2})\s*\]/.exec(rangeStr)
+        if (m) return { start: m[1], end: m[2] }
+        return { start: '', end: '' }
+      }
+
+      const items = (ttRes.data || [])
+        .filter(row => dkIds.includes(row.timetable_detail_kelas_id))
+        .map(row => {
+          const subjId = dkSubjMap.get(row.timetable_detail_kelas_id)
+          const s = subjMap.get(subjId) || {}
+          const teacher = userMap.get(s.subject_user_id) || ''
+          const { start, end } = parseRange(row.timetable_time)
+          return { start, end, subject: s.subject_code || s.subject_name || 'Subject', teacher }
+        })
+        .sort((a,b) => a.start.localeCompare(b.start))
+      setStudentSchedule(items)
+    } catch (e) {
+      console.error('Student dashboard load failed', e)
+      setStudentSchedule([])
+    }
+  }
+
+  // When student changes the day, re-fetch schedule
+  useEffect(() => {
+    const id = localStorage.getItem('kr_id')
+    if (!isStudent || !id) return
+    const uid = parseInt(id, 10)
+    fetchStudentDashboardData(uid, selectedDay)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStudent, selectedDay])
 
   // Helpers for calendar
   const toKey = (d) => {
@@ -321,8 +429,77 @@ export default function Dashboard() {
     )
   }
 
+  // Student-focused dashboard
+  if (isStudent) {
+    return (
+      <div className="py-4 md:py-6 space-y-6">
+        {searchParams?.get('forbidden') === '1' && (
+          <div className="mx-1 md:mx-0 p-3 rounded-md bg-red-50 text-red-700 border border-red-200 text-sm">
+            Access denied for the requested page.
+          </div>
+        )}
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              {t('common.welcome', { name: `${userData?.user_nama_depan || ''} ${userData?.user_nama_belakang || ''}`.trim() })}
+            </h1>
+            {studentInfo.kelas_nama && (
+              <p className="text-gray-600">{(t('dashboard.classLabel') || 'Class')}: {studentInfo.kelas_nama}</p>
+            )}
+          </div>
+          <Button onClick={() => router.push('/student/scan')} className="bg-green-600 hover:bg-green-700 text-white">
+            {t('student.qrScan') || 'QR Scan'}
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader><CardTitle>{t('dashboard.todaySchedule') || "Today's Schedule"}</CardTitle></CardHeader>
+          <CardContent>
+            <div className="mb-3">
+              <label className="text-sm text-gray-600 mr-2">{(t('dashboard.dayLabel') || 'Day')}:</label>
+              <select
+                value={selectedDay}
+                onChange={(e)=> setSelectedDay(e.target.value)}
+                className="px-2 py-1 border rounded"
+              >
+                {DAYS.map(d => {
+                  const label = t(`doorGreeter.days.${d}`) || d
+                  return <option key={d} value={d}>{label}</option>
+                })}
+              </select>
+            </div>
+            {studentSchedule.length === 0 ? (
+              <div className="text-sm text-gray-500">{t('dashboard.noScheduleToday') || 'No schedule for today.'}</div>
+            ) : (
+              <div className="divide-y rounded border">
+                {studentSchedule.map((it, i) => (
+                  <div key={i} className="flex items-center justify-between p-3">
+                    <div>
+                      <div className="font-medium">{it.subject}</div>
+                      <div className="text-sm text-gray-500">{it.teacher}</div>
+                    </div>
+                    <div className="text-sm text-gray-700 font-mono">{it.start} - {it.end}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded mx-1 md:mx-0">
+          {t('student.scanHint') || 'Tip: Please allow location and camera access when scanning.'}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="py-4 md:py-6 space-y-6">
+      {searchParams?.get('forbidden') === '1' && (
+        <div className="mx-1 md:mx-0 p-3 rounded-md bg-red-50 text-red-700 border border-red-200 text-sm">
+          Access denied for the requested page.
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-1">
         <div className="flex items-center gap-4">

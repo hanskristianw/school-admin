@@ -2,6 +2,15 @@
 
 ## 📌 Changelog
 
+### 2025-08-30
+- Student Dashboard Enhancements:
+  - Added dedicated student view showing a schedule list with start–end times per lesson (parsed from `timetable.timetable_time`).
+  - Day selector (Monday–Sunday) with default to today; labels localized via `doorGreeter.days.*`.
+  - QR Scan quick action button linking to `/student/scan`.
+  - New i18n keys used: `dashboard.todaySchedule`, `dashboard.noScheduleToday`, `dashboard.dayLabel`, `dashboard.classLabel`, `student.qrScan`, `student.scanHint` (provided in en/id/zh).
+  - More robust `tsrange` parser to reliably extract time ranges regardless of stored format (`[start,end)`, `start-end`, or with weekday hints).
+- RLS (DEV convenience): Allow client-side management of class–subject relations under RLS by adding DEV-only write policies on `detail_kelas` (insert/update/delete). For production, move writes to server routes (service role) or restrict to admin roles.
+
 ### 2025-08-23
 - QR Attendance: API `POST /api/attendance/scan` kini mengembalikan `{ status: 'ok', flagged: 'device_multi_user' | null }` saat sukses; UI siswa menampilkan catatan sopan bila perangkat terdeteksi dipakai beberapa akun.
 - Deteksi multi-user perangkat dapat dikonfigurasi via `ATTENDANCE_MULTI_MATCH`:
@@ -159,13 +168,17 @@ assessment (
 menus (
   menu_id SERIAL PRIMARY KEY,
   menu_name VARCHAR(100),
-  menu_url VARCHAR(200),
+  menu_path VARCHAR(200),
   menu_icon VARCHAR(50),
   menu_order INTEGER,
-  menu_parent_id INTEGER,
-  menu_type VARCHAR(20), -- 'admin', 'teacher', 'staff'
-  is_active BOOLEAN DEFAULT true,
-  is_visible BOOLEAN DEFAULT true
+  menu_parent_id INTEGER
+)
+
+-- Menu Permissions (role-based access to menus)
+menu_permissions (
+  permissions_id SERIAL PRIMARY KEY,
+  menu_id INTEGER NOT NULL REFERENCES menus(menu_id) ON DELETE CASCADE,
+  role_id INTEGER NOT NULL REFERENCES role(role_id) ON DELETE CASCADE
 )
 
 -- Door Greeter (one teacher per weekday)
@@ -305,6 +318,11 @@ Notes:
   - Per-class chips and class name text are colored based on `kelas_color_name`
   - Color mapping: `success` (green), `warning` (amber), `error` (red); defaults to gray when unset
   - Door Greeter duty card: Shows today/tomorrow assignment for logged-in teacher with contextual color (today=red, tomorrow=amber)
+- **Student view** (when `role.is_student = true`):
+  - Shows “Today’s Schedule” list for the selected day (default today) with subject, teacher, and time range (start–end) derived from `timetable_time`.
+  - Day selector (Mon–Sun) with localized weekday labels.
+  - Quick action button for “QR Scan” that navigates to `/student/scan`.
+  - All labels are localized; see new i18n keys under the i18n section.
 - **Access**: All authenticated users
 
 ### **6. Internationalization (i18n)**
@@ -315,6 +333,10 @@ Notes:
   - Teacher Submission: contextual limit message key `teacherSubmission.limitPerDayReachedSubmit` supports placeholders `{class}` and `{date}`
   - Assessment Approval: statuses and notifications; keys include `assessmentApproval.statusWaitingPrincipal`, `assessmentApproval.allSubjects`, `assessmentApproval.allTeachers`
   - Chinese dictionary fixed and extended; placeholders and titles localized
+  - Student Dashboard keys (en/id/zh):
+    - `dashboard.todaySchedule`, `dashboard.noScheduleToday`, `dashboard.dayLabel`, `dashboard.classLabel`
+    - `student.qrScan`, `student.scanHint`
+    - Weekday labels reused via `doorGreeter.days.*`
 
 ### **7. UI/UX Improvements**
 - **Assessment Approval Filters**:
@@ -343,6 +365,9 @@ Notes:
   - `timetable_day` stores weekday text; repetition is weekly.
   - `timetable_time` tsrange uses constant date `2000-01-01` to represent only time-of-day.
   - `timetable_detail_kelas_id` links to subject+class mapping; teacher derived from subject.
+- **Student Dashboard Consumption**:
+  - The student dashboard reads the weekly `timetable` and shows start–end times parsed robustly from `timetable_time`.
+  - If time format varies (e.g., `[07:30,08:10)`, `07:30-08:10`, or contains weekday text), the parser extracts the first two HH:MM tokens.
 - **Client Validation**:
   - Prevent overlapping ranges (same teacher + day) before insert/update.
   - Ensure start < end; show human readable error.
@@ -477,7 +502,12 @@ npm run dev
 
 ### **4. Menu Permissions:**
 - **Issue**: Wrong role access
-- **Fix**: Check `menu_type` vs user role in sidebar
+- **Fix**: Ensure `menu_permissions` rows exist for the role-menu pairs and that the client fetch uses those permissions
+
+### **5. RLS write blocked on subject-class mapping (detail_kelas)**
+- **Issue**: Error when saving subject relations in `/data/class` — `new row violates row-level security policy for table "detail_kelas"` after enabling RLS.
+- **Fix (Development)**: Apply the updated `enable-rls-examples.sql` which includes DEV-only write policies for `detail_kelas` (insert/update/delete). This allows client-side management to work under RLS.
+- **Production Recommendation**: Remove broad client write access; move writes to server routes (service role bypasses RLS) or restrict with role-based policies so only admins can modify `detail_kelas`.
 
 ## 📊 **Database Queries Reference**
 

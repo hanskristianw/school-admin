@@ -48,6 +48,35 @@ export default function Login() {
         localStorage.setItem("kr_id", result.user.userID)
         localStorage.setItem("user_role", result.user.roleName)
         localStorage.setItem("user_data", JSON.stringify(result.user))
+
+        // Fetch allowed menu paths for middleware-based SSR auth
+        let allowedPaths = []
+        try {
+          const menusRes = await customAuth.getMenusByRole(result.user.roleName, !!result.user.isAdmin)
+          if (menusRes?.success) {
+            const normalize = (p) => {
+              if (!p) return ''
+              let s = String(p).trim()
+              if (!s.startsWith('/')) s = '/' + s
+              if (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1)
+              return s
+            }
+            const defaults = ['/dashboard', '/profile']
+            const raw = (menusRes.menus || []).map(m => m.menu_path).filter(Boolean)
+            const merged = Array.from(new Set([...raw.map(normalize), ...defaults.map(normalize)]))
+            allowedPaths = merged
+          }
+        } catch (e) {
+          console.warn('Failed to fetch allowed menus for cookie', e)
+        }
+
+        // Set cookies readable by middleware (Edge)
+        const maxAge = 60 * 60 * 8 // 8 hours
+  const safeJoin = encodeURIComponent((allowedPaths || []).join('|'))
+        document.cookie = `kr_id=${result.user.userID}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+        document.cookie = `role_name=${encodeURIComponent(result.user.roleName || '')}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+        document.cookie = `is_admin=${result.user.isAdmin ? '1' : '0'}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+        document.cookie = `allowed_paths=${safeJoin}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
         router.push("/dashboard")
       } else {
         console.log("❌ Login failed:", result.message)

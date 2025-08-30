@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Sidebar from "@/components/sidebar"
+import AccessGuard from "@/components/AccessGuard"
 
 export default function DashboardLayout({ children }) {
   const router = useRouter()
@@ -21,7 +22,9 @@ export default function DashboardLayout({ children }) {
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
         <main className="flex-1 p-4 transition-all duration-300 overflow-y-auto">
           <div className="max-w-7xl">
-            {children}
+            <AccessGuard>
+              {children}
+            </AccessGuard>
           </div>
         </main>
       </div>

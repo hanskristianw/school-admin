@@ -33,7 +33,11 @@
     "doorGreeterTitle": "迎宾值日",
     "doorGreeterToday": "您今天 ({day}) 负责迎宾，请提前到校。",
     "doorGreeterTomorrow": "您明天 ({day}) 负责迎宾，请做好准备提前到校。",
-    "doorGreeterTodayAndTomorrow": "您今天 ({today}) 和明天 ({tomorrow}) 都负责迎宾。"
+  "doorGreeterTodayAndTomorrow": "您今天 ({today}) 和明天 ({tomorrow}) 都负责迎宾。",
+  "todaySchedule": "今日课程",
+  "noScheduleToday": "今天没有课程安排。",
+  "dayLabel": "星期",
+  "classLabel": "班级"
   },
   "menus": {
     "Dashboard": "仪表盘",
@@ -45,6 +49,10 @@
   }
   ,
     "menu": "菜单",
+  "student": {
+    "qrScan": "二维码扫描",
+    "scanHint": "提示：扫描时请允许位置和相机权限。"
+  },
   "profile": {
     "title": "我的资料",
     "edit": "编辑资料",

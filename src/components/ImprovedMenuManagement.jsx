@@ -39,11 +39,7 @@ export default function ImprovedMenuManagement() {
     menu_icon: '',
     menu_order: 1,
     menu_parent_id: null,
-    menu_type: 'navigation',
-    menu_description: '',
-    is_active: true,
-    is_visible: true,
-    permissions: {} // Format: { role_id: { can_view: true, can_create: false, etc } }
+  permissions: {} // Format: { role_id: true|false } -> access or not
   })
 
   // Enhanced icon options with categories
@@ -69,13 +65,7 @@ export default function ImprovedMenuManagement() {
     ]
   }
 
-  // Menu types
-  const menuTypes = [
-    { value: 'navigation', label: 'Navigation Menu', description: 'Standard navigation menu with routing' },
-    { value: 'action', label: 'Action Menu', description: 'Menu for actions (no routing needed)' },
-    { value: 'external', label: 'External Link', description: 'External website link' },
-    { value: 'divider', label: 'Divider', description: 'Visual separator in menu' }
-  ]
+  // No menu types in current schema; keep UI minimal
 
   useEffect(() => {
     fetchMenus()
@@ -110,7 +100,7 @@ export default function ImprovedMenuManagement() {
       // Fetch menus terlebih dahulu
       const { data: menusData, error: menusError } = await supabase
         .from('menus')
-        .select('menu_id, menu_name, menu_url, menu_icon, menu_order, menu_parent_id, is_active')
+  .select('menu_id, menu_name, menu_path, menu_icon, menu_order, menu_parent_id')
         .order('menu_order');
 
       if (menusError) {
@@ -135,16 +125,13 @@ export default function ImprovedMenuManagement() {
         throw new Error(rolesError.message);
       }
 
-      // Transform data dengan menggabungkan informasi permissions
+      // Transform data dengan menggabungkan informasi permissions (boolean access per role)
       const transformedMenus = menusData.map(menu => {
         const menuPermissions = permissionsData.filter(p => p.menu_id === menu.menu_id);
-        const permissions = menuPermissions.map(perm => {
-          const role = rolesData.find(r => r.role_id === perm.role_id);
-          return {
-            role_id: perm.role_id,
-            role: role
-          };
-        });
+        const permissions = menuPermissions.map(perm => ({
+          role_id: perm.role_id,
+          role: rolesData.find(r => r.role_id === perm.role_id)
+        }));
 
         return {
           ...menu,
@@ -167,7 +154,6 @@ export default function ImprovedMenuManagement() {
         .from('menus')
         .select('menu_id, menu_name')
         .is('menu_parent_id', null) // Only top-level menus can be parents
-        .eq('is_active', true)
         .order('menu_name');
 
       if (error) {
@@ -183,16 +169,11 @@ export default function ImprovedMenuManagement() {
   const handleEdit = (menu) => {
     setEditingMenu(menu)
     
-    // Prepare permissions object for non-admin roles
+    // Prepare permissions object for non-admin roles (boolean access)
     const permissions = {}
     nonAdminRoles.forEach(role => {
-      const rolePermission = menu.permissions?.find(p => p.role_id === role.role_id) || {}
-      permissions[role.role_id] = {
-        can_view: rolePermission.can_view || false,
-        can_create: rolePermission.can_create || false,
-        can_edit: rolePermission.can_edit || false,
-        can_delete: rolePermission.can_delete || false
-      }
+      const hasAccess = !!menu.permissions?.find(p => p.role_id === role.role_id)
+      permissions[role.role_id] = hasAccess
     })
 
     setFormData({
@@ -201,10 +182,6 @@ export default function ImprovedMenuManagement() {
       menu_icon: menu.menu_icon || '',
       menu_order: menu.menu_order || 1,
       menu_parent_id: menu.menu_parent_id || null,
-      menu_type: menu.menu_type || 'navigation',
-      menu_description: menu.menu_description || '',
-      is_active: menu.is_active !== false,
-      is_visible: menu.is_visible !== false,
       permissions: permissions
     })
     setShowModal(true)
@@ -213,46 +190,50 @@ export default function ImprovedMenuManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Validation based on menu type
-    if (formData.menu_type === 'navigation' && formData.menu_parent_id && !formData.menu_path) {
-      alert('Path menu wajib diisi untuk submenu navigasi')
+    // Minimal validation: name required; path optional for top-level groups
+    if (formData.menu_parent_id && !formData.menu_path) {
+      alert('Path menu wajib diisi untuk submenu')
       return
     }
 
-    if (formData.menu_type === 'divider') {
-      formData.menu_path = null
-      formData.menu_icon = null
-    }
-
     try {
-      // Prepare menu data for Supabase
+      // Prepare menu data for Supabase (schema: menu_name, menu_path, menu_icon, menu_order, menu_parent_id)
       const menuData = {
         menu_name: formData.menu_name,
-        menu_url: formData.menu_path,
+        menu_path: formData.menu_path,
         menu_icon: formData.menu_icon,
         menu_order: formData.menu_order,
-        menu_parent_id: formData.menu_parent_id || null,
-        is_active: formData.is_active
+        menu_parent_id: formData.menu_parent_id || null
       };
 
       let result;
+      let menuId;
 
       if (editingMenu) {
         // Update existing menu
         result = await supabase
           .from('menus')
           .update(menuData)
-          .eq('menu_id', editingMenu.menu_id);
+          .eq('menu_id', editingMenu.menu_id)
+          .select('menu_id')
+          .single();
+        menuId = editingMenu.menu_id
       } else {
         // Create new menu
         result = await supabase
           .from('menus')
-          .insert([menuData]);
+          .insert([menuData])
+          .select('menu_id')
+          .single();
+        menuId = result.data?.menu_id
       }
 
       if (result.error) {
         throw new Error(result.error.message);
       }
+
+      // Sync permissions for non-admin roles
+      await syncMenuPermissions(menuId)
 
       fetchMenus()
       setShowModal(false)
@@ -270,57 +251,58 @@ export default function ImprovedMenuManagement() {
       menu_icon: '',
       menu_order: 1,
       menu_parent_id: null,
-      menu_type: 'navigation',
-      menu_description: '',
-      is_active: true,
-      is_visible: true,
       permissions: {}
     })
     setEditingMenu(null)
   }
 
-  const handlePermissionChange = (roleId, permissionType, value) => {
+  const handlePermissionChange = (roleId, value) => {
     setFormData(prev => ({
       ...prev,
       permissions: {
         ...prev.permissions,
-        [roleId]: {
-          ...prev.permissions[roleId],
-          [permissionType]: value
-        }
+        [roleId]: value
       }
     }))
   }
 
-  const toggleMenuStatus = async (menuId, field, currentValue) => {
-    try {
-      const { error } = await supabase
-        .from('menus')
-        .update({ [field]: !currentValue })
-        .eq('menu_id', menuId);
+  // For now, use a generic icon for list
+  const getMenuTypeIcon = () => faHome
 
-      if (error) {
-        throw new Error(error.message);
-      }
+  // Sync menu_permissions with current formData.permissions
+  const syncMenuPermissions = async (menuId) => {
+    if (!menuId) return
+    // Fetch current permissions for this menu
+    const { data: existing, error: fetchErr } = await supabase
+      .from('menu_permissions')
+      .select('role_id')
+      .eq('menu_id', menuId)
 
-      fetchMenus()
-    } catch (error) {
-      console.error('Error toggling menu status:', error)
+    if (fetchErr) throw new Error(fetchErr.message)
+
+    const existingSet = new Set((existing || []).map(p => p.role_id))
+    const desiredRoles = Object.entries(formData.permissions)
+      .filter(([, has]) => !!has)
+      .map(([roleId]) => parseInt(roleId, 10))
+    const desiredSet = new Set(desiredRoles)
+
+    // Roles to add: in desired but not existing
+    const toAdd = desiredRoles.filter(r => !existingSet.has(r))
+    if (toAdd.length) {
+      const rows = toAdd.map(role_id => ({ menu_id: menuId, role_id }))
+      const { error: addErr } = await supabase.from('menu_permissions').insert(rows)
+      if (addErr) throw new Error(addErr.message)
     }
-  }
 
-  const getMenuTypeLabel = (type) => {
-    const menuType = menuTypes.find(mt => mt.value === type)
-    return menuType?.label || type
-  }
-
-  const getMenuTypeIcon = (type) => {
-    switch(type) {
-      case 'navigation': return faHome
-      case 'action': return faEdit
-      case 'external': return faChevronRight
-      case 'divider': return faTimes
-      default: return faHome
+    // Roles to remove: in existing but not desired
+    const toRemove = [...existingSet].filter(r => !desiredSet.has(r))
+    if (toRemove.length) {
+      const { error: delErr } = await supabase
+        .from('menu_permissions')
+        .delete()
+        .eq('menu_id', menuId)
+        .in('role_id', toRemove)
+      if (delErr) throw new Error(delErr.message)
     }
   }
 
@@ -373,9 +355,6 @@ export default function ImprovedMenuManagement() {
                 Non-Admin Access
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -389,28 +368,19 @@ export default function ImprovedMenuManagement() {
                       <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 mr-2" />
                     )}
                     <FontAwesomeIcon 
-                      icon={getMenuTypeIcon(menu.menu_type)} 
+                      icon={getMenuTypeIcon()} 
                       className="text-gray-600 mr-2" 
                     />
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         {menu.menu_name}
                       </div>
-                      {menu.menu_description && (
-                        <div className="text-sm text-gray-500">
-                          {menu.menu_description}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
-                    <span className="inline-block bg-gray-100 px-2 py-1 rounded text-xs mr-2">
-                      {getMenuTypeLabel(menu.menu_type)}
-                    </span>
-                    <br />
                     <span className="text-gray-600">
                       {menu.menu_path || '-'}
                     </span>
@@ -425,7 +395,7 @@ export default function ImprovedMenuManagement() {
                   <div className="text-sm">
                     {nonAdminRoles.map(role => {
                       const permission = menu.permissions?.find(p => p.role_id === role.role_id)
-                      const hasAccess = permission?.can_view
+                      const hasAccess = !!permission
                       
                       return (
                         <div key={role.role_id} className="flex items-center mb-1">
@@ -438,26 +408,6 @@ export default function ImprovedMenuManagement() {
                         </div>
                       )
                     })}
-                  </div>
-                </td>
-
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col space-y-1">
-                    <button
-                      onClick={() => toggleMenuStatus(menu.menu_id, 'is_active', menu.is_active)}
-                      className={`text-sm ${menu.is_active ? 'text-green-600' : 'text-red-600'}`}
-                    >
-                      <FontAwesomeIcon icon={menu.is_active ? faToggleOn : faToggleOff} className="mr-1" />
-                      {menu.is_active ? 'Active' : 'Inactive'}
-                    </button>
-                    
-                    <button
-                      onClick={() => toggleMenuStatus(menu.menu_id, 'is_visible', menu.is_visible)}
-                      className={`text-sm ${menu.is_visible ? 'text-blue-600' : 'text-gray-600'}`}
-                    >
-                      <FontAwesomeIcon icon={menu.is_visible ? faEye : faEyeSlash} className="mr-1" />
-                      {menu.is_visible ? 'Visible' : 'Hidden'}
-                    </button>
                   </div>
                 </td>
 
@@ -507,42 +457,19 @@ export default function ImprovedMenuManagement() {
                   />
                 </div>
 
+                {/* Path Field */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Menu Type *
+                    Menu Path {formData.menu_parent_id ? ' *' : ''}
                   </label>
-                  <select
-                    value={formData.menu_type}
-                    onChange={(e) => setFormData({...formData, menu_type: e.target.value})}
+                  <input
+                    type="text"
+                    value={formData.menu_path}
+                    onChange={(e) => setFormData({...formData, menu_path: e.target.value})}
+                    placeholder={'/path/to/page'}
                     className="w-full p-2 border border-gray-300 rounded"
-                  >
-                    {menuTypes.map(type => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {menuTypes.find(t => t.value === formData.menu_type)?.description}
-                  </p>
+                  />
                 </div>
-
-                {/* Conditional Path Field */}
-                {formData.menu_type !== 'divider' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Menu Path 
-                      {formData.menu_type === 'navigation' && formData.menu_parent_id && ' *'}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.menu_path}
-                      onChange={(e) => setFormData({...formData, menu_path: e.target.value})}
-                      placeholder={formData.menu_type === 'external' ? 'https://...' : '/path/to/page'}
-                      className="w-full p-2 border border-gray-300 rounded"
-                    />
-                  </div>
-                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -558,19 +485,7 @@ export default function ImprovedMenuManagement() {
                 </div>
               </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={formData.menu_description}
-                  onChange={(e) => setFormData({...formData, menu_description: e.target.value})}
-                  rows="2"
-                  className="w-full p-2 border border-gray-300 rounded"
-                  placeholder="Brief description of this menu"
-                />
-              </div>
+              {/* Description removed - not in schema */}
 
               {/* Parent Menu */}
               <div>
@@ -592,38 +507,36 @@ export default function ImprovedMenuManagement() {
               </div>
 
               {/* Icon Selection */}
-              {formData.menu_type !== 'divider' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Icon
-                  </label>
-                  <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto border p-2 rounded">
-                    {Object.entries(iconCategories).map(([category, icons]) => (
-                      <div key={category} className="col-span-4">
-                        <div className="text-xs font-medium text-gray-600 mb-1">{category}</div>
-                        <div className="grid grid-cols-4 gap-1">
-                          {icons.map(icon => (
-                            <button
-                              key={icon.value}
-                              type="button"
-                              onClick={() => setFormData({...formData, menu_icon: icon.value})}
-                              className={`p-2 border rounded text-center ${
-                                formData.menu_icon === icon.value 
-                                  ? 'border-blue-500 bg-blue-50' 
-                                  : 'border-gray-300'
-                              }`}
-                            >
-                              <FontAwesomeIcon icon={icon.icon} />
-                            </button>
-                          ))}
-                        </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Icon
+                </label>
+                <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto border p-2 rounded">
+                  {Object.entries(iconCategories).map(([category, icons]) => (
+                    <div key={category} className="col-span-4">
+                      <div className="text-xs font-medium text-gray-600 mb-1">{category}</div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {icons.map(icon => (
+                          <button
+                            key={icon.value}
+                            type="button"
+                            onClick={() => setFormData({...formData, menu_icon: icon.value})}
+                            className={`p-2 border rounded text-center ${
+                              formData.menu_icon === icon.value 
+                                ? 'border-blue-500 bg-blue-50' 
+                                : 'border-gray-300'
+                            }`}
+                          >
+                            <FontAwesomeIcon icon={icon.icon} />
+                          </button>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
 
-              {/* Non-Admin Role Permissions */}
+              {/* Non-Admin Role Permissions (boolean access) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Access Permissions for Non-Admin Roles
@@ -632,7 +545,7 @@ export default function ImprovedMenuManagement() {
                   <p className="text-sm text-yellow-800">
                     <FontAwesomeIcon icon={faShieldAlt} className="mr-1" />
                     Administrator automatically has full access to all menus. 
-                    Configure permissions below for Teacher and Student roles only.
+                    Configure access below for Teacher and Student roles only.
                   </p>
                 </div>
                 
@@ -642,48 +555,20 @@ export default function ImprovedMenuManagement() {
                       <h4 className="font-medium text-gray-800 mb-2">
                         {role.role_name} Permissions
                       </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {['can_view', 'can_create', 'can_edit', 'can_delete'].map(permission => (
-                          <label key={permission} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={formData.permissions[role.role_id]?.[permission] || false}
-                              onChange={(e) => handlePermissionChange(role.role_id, permission, e.target.checked)}
-                              className="mr-2"
-                            />
-                            <span className="text-sm">
-                              {permission.replace('can_', '').replace('_', ' ').toUpperCase()}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!!formData.permissions[role.role_id]}
+                          onChange={(e) => handlePermissionChange(role.role_id, e.target.checked)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Can Access</span>
+                      </label>
                     </div>
                   ))}
                 </div>
               </div>
-
-              {/* Status Toggles */}
-              <div className="flex space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_active}
-                    onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">Menu Active</span>
-                </label>
-                
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_visible}
-                    onChange={(e) => setFormData({...formData, is_visible: e.target.checked})}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">Visible in Sidebar</span>
-                </label>
-              </div>
+              {/* Status toggles removed - not in schema */}
 
               {/* Action Buttons */}
               <div className="flex justify-end space-x-3 pt-4">
