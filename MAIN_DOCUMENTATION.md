@@ -2,6 +2,27 @@
 
 ## 📌 Changelog
 
+### 2025-08-23
+- QR Attendance: API `POST /api/attendance/scan` kini mengembalikan `{ status: 'ok', flagged: 'device_multi_user' | null }` saat sukses; UI siswa menampilkan catatan sopan bila perangkat terdeteksi dipakai beberapa akun.
+- Deteksi multi-user perangkat dapat dikonfigurasi via `ATTENDANCE_MULTI_MATCH`:
+  - `client_strict` – hanya berdasarkan hash perangkat dari klien (minim false positive)
+  - `client_or_uaip` – juga mempertimbangkan hash UA+IP (menangkap shared-device; lebih sensitif)
+- Variabel env baru: `ATTENDANCE_BLOCK_MULTI_USER` (blokir scan kedua) dan `ATTENDANCE_MULTI_MATCH`.
+- UI siswa: hash perangkat dibuat stabil (persisten di localStorage) dan pesan sukses ditambah catatan bila flagged.
+- Skema: `attendance_scan_log` ditambah `device_hash_client`, `device_hash_uaip` + index.
+
+### 2025-08-22
+- Geofence & Logging: Lokasi wajib. Geofence opsional dengan `ATTENDANCE_CENTER_LAT`, `ATTENDANCE_CENTER_LNG`, `ATTENDANCE_RADIUS_M`.
+- Log menyimpan `lat`, `lng`, `accuracy`, `device_hash`; `flagged_reason` menggunakan nilai seperti `outside_geofence`, `no_location`, `device_multi_user`.
+- UI siswa: pesan terlokalisasi untuk lokasi wajib, di luar area, dan tidak diizinkan.
+
+### 2025-08-21
+- Realtime & WIB: Halaman presensi guru auto-refresh (realtime + fallback polling). Penentuan tanggal/jam presensi memakai WIB (GMT+7).
+
+### 2025-08-20
+- QR Sessions: Token QR dinamis (HMAC berbasis slot ~20s, toleransi ±1). Scope sesi `all|year|class`.
+- Tabel baru: `attendance_session`, `attendance_scan_log`. Tabel `absen` menambah `absen_session_id`, `absen_method` dan unique per siswa per tanggal.
+
 ### 2025-08-17 (Subsequent Updates)
 - Door Greeter Module (`/data/door_greeter`): Weekly duty roster assigning at most one teacher per weekday (Mon–Fri). Dashboard notification card shows if teacher is on duty today (red theme) or tomorrow (amber). Fully localized (`doorGreeter.*`).
 - Door Greeter Table: `daftar_door_greeter (daftar_door_greeter_id, daftar_door_greeter_user_id FK users, daftar_door_greeter_day text)`; recommend unique constraint on day: `alter table daftar_door_greeter add constraint uq_door_greeter_day unique (daftar_door_greeter_day);`.
@@ -172,6 +193,53 @@ timetable (
 )
 ```
 
+### Attendance (QR) Tables
+
+```sql
+-- Sesi QR (token dinamis per slot waktu)
+attendance_session (
+  session_id uuid primary key,
+  created_by_user_id bigint not null references users(user_id) on delete cascade,
+  scope_type text not null check (scope_type in ('year','class','all')),
+  scope_year_id bigint references year(year_id) on delete set null,
+  scope_kelas_id bigint references kelas(kelas_id) on delete set null,
+  session_date date not null default current_date,
+  start_time timestamptz not null default now(),
+  end_time timestamptz null,
+  token_step_seconds smallint not null default 20,
+  clock_skew_seconds smallint not null default 5,
+  secret text not null,
+  status text not null default 'open' check (status in ('open','closed'))
+)
+
+-- Log scan (rekam semua percobaan dan flag)
+attendance_scan_log (
+  log_id bigserial primary key,
+  session_id uuid not null references attendance_session(session_id) on delete cascade,
+  detail_siswa_id bigint null references detail_siswa(detail_siswa_id) on delete set null,
+  token_slot bigint not null,
+  result text not null check (result in ('ok','duplicate','expired','invalid','closed','not_allowed')),
+  ip inet null,
+  user_agent text null,
+  created_at timestamptz not null default now(),
+  -- Geofence & device
+  device_hash text,
+  device_hash_client text,
+  device_hash_uaip text,
+  lat double precision,
+  lng double precision,
+  accuracy double precision,
+  flagged_reason text -- contoh: 'device_multi_user' | 'outside_geofence' | 'no_location'
+)
+
+-- Perubahan pada absen
+-- 1) Unique per siswa per tanggal
+-- 2) Tambah kolom sesi & metode
+alter table absen add column if not exists absen_session_id uuid references attendance_session(session_id) on delete set null;
+alter table absen add column if not exists absen_method text not null default 'manual' check (absen_method in ('manual','qr','import'));
+-- (Unique constraint pada (absen_detail_siswa_id, absen_date))
+```
+
 ## 🎯 **System Modules & Features**
 
 ### **1. Authentication & User Management**
@@ -284,6 +352,13 @@ Notes:
 ### **10. Data Mapping Note**
 - `detail_kelas` does not carry a teacher column; teacher is inferred through `subject.subject_user_id` ensuring single-source-of-truth for ownership.
 
+### **11. Attendance (QR Sessions & Scans)**
+- Teacher session controls: mulai/tutup sesi presensi dan tampilkan QR dinamis (token berganti ~20 detik). Tanggal selalu hari ini (WIB), tanpa pemilih tanggal.
+- Student scan: `/student/scan` memakai kamera (Html5Qrcode). Wajib aktifkan lokasi sebelum kamera. Debounce dan cooldown untuk mencegah spam.
+- Geofence: pusat dan radius dikonfigurasi via env; jika di luar radius (memperhitungkan `accuracy`), scan ditolak dengan pesan yang sesuai.
+- Device tracking: hash perangkat stabil di klien (localStorage) + fallback UA+IP di server. Deteksi perangkat dipakai multi akun dalam jendela waktu → di-flag `device_multi_user` (bisa juga diblokir jika diaktifkan).
+- Realtime: halaman guru auto-refresh perubahan absen hari ini; polling fallback tersedia.
+
 ## 🔧 **Technical Implementation**
 
 ### **Frontend Stack:**
@@ -343,6 +418,9 @@ Notes:
 9. **`fix-foreign-key-relationship.sql`** - Foreign key setup and verification
 10. **`update-icons.sql`** - FontAwesome icon updates
 11. **`topic-migration.sql`** - Topic (Unit) table and optional menu wiring
+12. **`supabase-migration-qr-attendance.sql`** - Tabel `attendance_session`, `attendance_scan_log`, perubahan `absen`
+13. **`supabase-migration-qr-security.sql`** - Kolom device/location & index (device+time)
+14. **`supabase-migration-qr-devicehash.sql`** - Kolom `device_hash_client`, `device_hash_uaip` & index
 
 ### **Development:**
 ```bash
@@ -354,6 +432,12 @@ npm run dev
 ### **Key Environment:**
 - **Supabase URL**: https://gzucqoupjfnwkesgyybc.supabase.co
 - **Default Admin**: admin/password (change after setup)
+
+**Attendance (QR) Environment:**
+- `ATTENDANCE_CENTER_LAT` / `ATTENDANCE_CENTER_LNG` / `ATTENDANCE_RADIUS_M` — pusat kampus dan radius (meter). Radius 0 menonaktifkan geofence (lokasi tetap wajib).
+- `ATTENDANCE_DEVICE_WINDOW_MIN` — jendela waktu deteksi multi-user perangkat (menit).
+- `ATTENDANCE_BLOCK_MULTI_USER` — `true` memblokir scan kedua; `false` hanya menandai (flag) di log dan response sukses.
+- `ATTENDANCE_MULTI_MATCH` — `client_strict` (hanya hash klien) atau `client_or_uaip` (tambahkan UA+IP).
 
 ### **Additional Files:**
 - **`SETUP_SUPABASE.md`** - Supabase setup instructions

@@ -14,6 +14,8 @@ export default function StudentScanPage() {
   const [message, setMessage] = useState('');
   const [last, setLast] = useState(null);
   const [scanning, setScanning] = useState(false);
+  const scanningRef = useRef(false);
+  const [confirming, setConfirming] = useState(false);
   const [starting, setStarting] = useState(false);
   const videoContainerId = 'qr-reader-video';
   const qrRef = useRef(null);
@@ -39,8 +41,12 @@ export default function StudentScanPage() {
   const nowMs = Date.now();
   if (processingRef.current || nowMs < cooldownRef.current) return;
   processingRef.current = true;
+    // Show QRIS-like waiting overlay and pause the camera while awaiting server
+    setConfirming(true);
+    setStatus('confirming');
+    setMessage(t('studentScan.processing') || 'Memproses konfirmasi...');
+    try { await qrRef.current?.pause?.(true); } catch {}
     try {
-      setStatus('scanning');
       const payload = JSON.parse(decodedText);
       const kr_id = localStorage.getItem('kr_id');
       const res = await fetch('/api/attendance/scan', {
@@ -90,7 +96,7 @@ export default function StudentScanPage() {
         setStatus('ok');
         setLast(new Date());
         try { await qrRef.current?.stop(); } catch {}
-        setScanning(false);
+        setScanning(false); scanningRef.current = false;
         setNotif({ isOpen: true, title: t('teacherSubmission.notifSuccessTitle') || 'Success', message: extra ? `${baseMsg} ${extra}` : baseMsg, type: 'success' });
         // After success, prevent further scans until user restarts
         cooldownRef.current = Date.now() + 5 * 60 * 1000; // 5 minutes guard
@@ -100,7 +106,7 @@ export default function StudentScanPage() {
         setNotif({ isOpen: true, title: t('attendance.infoTitle') || 'Info', message: t('studentScan.duplicate') || 'Anda sudah presensi hari ini.', type: 'info' });
         // Stop scanning to avoid repeat submits; user can start again if needed
         try { await qrRef.current?.stop(); } catch {}
-        setScanning(false);
+        setScanning(false); scanningRef.current = false;
         cooldownRef.current = Date.now() + 60 * 1000; // 1 minute cool-down
       } else {
         setMessage(t('studentScan.invalid') || 'QR tidak valid atau sesi ditutup.');
@@ -117,6 +123,11 @@ export default function StudentScanPage() {
     }
     finally {
       processingRef.current = false;
+      // Resume camera if still in scanning mode (i.e., not stopped due to success/duplicate)
+      if (scanningRef.current) {
+        try { await qrRef.current?.resume?.(); } catch {}
+      }
+      setConfirming(false);
     }
   }
 
@@ -163,7 +174,7 @@ export default function StudentScanPage() {
         onScanSuccess,
         onScanFailure
       );
-      setScanning(true);
+      setScanning(true); scanningRef.current = true;
       setStatus('ready');
       setMessage('');
     } catch (e) {
@@ -177,7 +188,7 @@ export default function StudentScanPage() {
 
   async function stopCamera() {
     try { await qrRef.current?.stop(); } catch {}
-    setScanning(false);
+    setScanning(false); scanningRef.current = false;
   }
 
   return (
@@ -191,7 +202,17 @@ export default function StudentScanPage() {
         <CardHeader><CardTitle>{t('studentScan.scanner') || 'Pemindai QR'}</CardTitle></CardHeader>
         <CardContent>
           <div className="mx-auto w-full sm:w-[420px]">
-            <div id={videoContainerId} className="rounded-lg overflow-hidden shadow-sm border border-gray-200 min-h-[260px] flex items-center justify-center bg-black/5" />
+            <div className="relative">
+              <div id={videoContainerId} className="rounded-lg overflow-hidden shadow-sm border border-gray-200 min-h-[260px] flex items-center justify-center bg-black/5" />
+              {confirming && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+                  <div className="bg-white/90 rounded-md px-4 py-3 flex items-center gap-2 shadow">
+                    <div className="h-5 w-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-gray-800">{t('studentScan.processing') || 'Memproses konfirmasi...'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div className="mt-4 text-sm">
             {status !== 'idle' && <div className={status==='ok' ? 'text-green-700' : status==='duplicate' ? 'text-amber-700' : 'text-red-700'}>{message}</div>}
@@ -199,12 +220,12 @@ export default function StudentScanPage() {
           </div>
           <div className="mt-3 flex gap-2">
             {!scanning && (
-              <Button type="button" onClick={startCamera} disabled={starting} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+              <Button type="button" onClick={startCamera} disabled={starting || confirming} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
                 {starting ? 'Meminta Izin Kamera...' : 'Aktifkan Kamera'}
               </Button>
             )}
             {scanning && (
-              <Button type="button" onClick={stopCamera} className="bg-gray-600 hover:bg-gray-700 text-white text-xs">{t('studentScan.restart') || 'Mulai Ulang'}</Button>
+              <Button type="button" onClick={stopCamera} disabled={confirming} className="bg-gray-600 hover:bg-gray-700 text-white text-xs">{confirming ? (t('studentScan.processing') || 'Memproses konfirmasi...') : (t('studentScan.restart') || 'Mulai Ulang')}</Button>
             )}
           </div>
         </CardContent>
