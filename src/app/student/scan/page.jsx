@@ -211,7 +211,6 @@ export default function StudentScanPage() {
                       <div className="mt-0.5 h-6 w-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-900">{t('studentScan.processing') || 'Memproses konfirmasi...'}</div>
-                        <div className="text-xs text-gray-600 mt-0.5">{t('studentScan.keepSteady') || 'Harap tetap arahkan kamera ke QR sampai konfirmasi selesai.'}</div>
                       </div>
                     </div>
                     <div className="h-1.5 w-full bg-emerald-100 rounded mt-3 overflow-hidden">

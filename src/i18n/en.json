@@ -444,6 +444,7 @@
     "title": "Attendance Scan",
     "subtitle": "Point your camera at the classroom QR.",
     "scanner": "QR Scanner",
+  "processing": "Confirming attendance...",
     "success": "Attendance recorded.",
     "duplicate": "You already checked in today.",
     "invalid": "Invalid QR or session closed.",

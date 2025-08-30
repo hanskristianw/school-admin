@@ -444,6 +444,7 @@
     "title": "Scan Presensi",
     "subtitle": "Arahkan kamera ke QR di kelas.",
     "scanner": "Pemindai QR",
+  "processing": "Mengonfirmasi presensi...",
     "success": "Presensi tercatat.",
     "duplicate": "Anda sudah presensi hari ini.",
     "invalid": "QR tidak valid atau sesi ditutup.",

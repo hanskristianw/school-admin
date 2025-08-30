@@ -439,6 +439,7 @@
     "title": "签到扫描",
     "subtitle": "将相机对准课堂二维码。",
     "scanner": "二维码扫描器",
+  "processing": "正在确认签到...",
     "success": "签到成功。",
     "duplicate": "今天已签到。",
     "invalid": "二维码无效或会话已关闭。",
