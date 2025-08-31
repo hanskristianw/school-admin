@@ -2,6 +2,21 @@
 
 ## 📌 Changelog
 
+### 2025-08-31
+- Consultation (BK) page `/data/consultation` enhanced:
+  - Dropdowns fixed to reliably load from `year`, `kelas`, dan `detail_siswa` (native `<select>`)
+  - Added data table under the form with filters (by selected year/class/student), pagination, and actions
+  - Edit modal to update all fields; Delete with confirmation; auto-refresh list after changes
+  - DEV note: relies on broad RLS for now; tighten in production
+ - Access Control hardening:
+   - Teacher: `/teacher` namespace protected in middleware; login and client guard add `/teacher` and `/teacher/assessment_submission` to allowed paths when `role.is_teacher = true`. Admin bypass remains.
+   - Student: `/student` namespace (incl. `/student/scan`) is protected in middleware; only roles with `role.is_student = true` can access. Login and client guard add `/student` and `/student/scan` to allowed paths for student roles. Admin bypass remains.
+   - Middleware now also matches `/student/:path*` in addition to `/data`, `/settings`, and `/teacher`.
+ - Sidebar Icons:
+   - Role Management uses `fas fa-key` (Key icon)
+   - Menu Management uses `fas fa-sitemap` (Sitemap icon)
+   - Mapping added in `src/components/sidebar.jsx` iconMap; set `menus.menu_icon` accordingly in DB
+
 ### 2025-08-30
 - Student Dashboard Enhancements:
   - Added dedicated student view showing a schedule list with start–end times per lesson (parsed from `timetable.timetable_time`).
@@ -394,6 +409,21 @@ Notes:
 - Device tracking: hash perangkat stabil di klien (localStorage) + fallback UA+IP di server. Deteksi perangkat dipakai multi akun dalam jendela waktu → di-flag `device_multi_user` (bisa juga diblokir jika diaktifkan).
 - Realtime: halaman guru auto-refresh perubahan absen hari ini; polling fallback tersedia.
 
+### **12. Student Consultation (BK)**
+- Path: `/data/consultation`
+- Goal: Catat konsultasi siswa (private/public) oleh guru BK.
+- Form: pilih Tahun → Kelas → Siswa, tanggal, jenis, judul (opsional), catatan (opsional).
+- List: tabel di bawah form menampilkan konsultasi yang sudah disimpan, terfilter oleh pilihan (Tahun/Kelas/Siswa) beserta pagination dan tombol Refresh.
+- Actions:
+  - Edit: buka modal dengan field lengkap (tahun/kelas/siswa/tanggal/jenis/judul/catatan), simpan perubahan.
+  - Delete: konfirmasi hapus baris.
+- Access: DEV semua role diizinkan untuk kemudahan; untuk produksi batasi ke BK/Admin dan/atau wali kelas terkait.
+- Key Tables: `consultation`, `year`, `kelas`, `detail_siswa`, `users`.
+
+Notes:
+- Dropdown Tahun, Kelas, Siswa memuat data langsung dari tabel yang relevan (`year`, `kelas` berdasarkan `kelas_year_id`, `detail_siswa` + join nama `users`).
+- Setelah Simpan/Edit/Hapus, daftar akan otomatis refresh; pagination default 10 baris/halaman.
+
 ## 🔧 **Technical Implementation**
 
 ### **Frontend Stack:**
@@ -417,6 +447,22 @@ Notes:
    // ❌ Wrong  
    <i className="fas fa-edit"></i>
    ```
+
+4. **Menu Icons (Sidebar) – cara menambah/mengubah**
+   - Kolom `menus.menu_icon` menyimpan nama icon dalam format string klasik Font Awesome (misal: `fas fa-user`, `fas fa-database`).
+   - Di UI, `src/components/sidebar.jsx` melakukan mapping string → komponen React FontAwesome lewat objek `iconMap`.
+   - Tambah icon baru:
+     1) Import icon di `sidebar.jsx`, contoh: `import { faUser } from '@fortawesome/free-solid-svg-icons'`.
+     2) Tambah entry di `iconMap`: `'fas fa-user': faUser,`
+     3) Set nilai `menu_icon` di tabel `menus` pada menu terkait menjadi string yang sama (contoh `fas fa-user`).
+   - Jika tidak ditemukan di `iconMap`, aplikasi fallback ke ikon default (faTable) dan log peringatan di console. Lihat utilitas `update-icons.*` di root untuk pembaruan massal.
+
+  Preset yang dipakai di proyek ini:
+  - Role Management → `fas fa-key`
+  - Menu Management → `fas fa-sitemap`
+  - Consultation (BK) → `fas fa-comments`
+  - Door Greeter → `fas fa-door-open`
+  - Student Scan → `fas fa-qrcode`
 
 2. **Teacher Filter**: Use RPC function or manual JOIN
    ```sql
@@ -492,9 +538,18 @@ npm run dev
 - View own subjects
 - Dashboard access
 
+### **Student (`is_student = true`):**
+- QR Attendance Scan at `/student/scan`
+- Student dashboard access and UI elements relevant to students
+- Notes: Scan requires geolocation permission and uses a stable client device hash as part of anti-abuse checks
+
 ### **Staff (default):**
 - Dashboard access only
 - Limited view permissions
+
+### Access flow (guards)
+- Client: `AccessGuard` reads role flags and menu permissions; it constructs an allowed paths list and updates the `allowed_paths` cookie for SSR. It applies role-based overrides for Counselor (`/data/consultation`), Teacher (`/teacher`, `/teacher/assessment_submission`), and Student (`/student`, `/student/scan`). Admins bypass.
+- Server (Edge): `middleware.ts` protects `/data/:path*`, `/settings/:path*`, `/teacher/:path*`, and `/student/:path*`. It allows admins or any path present in the `allowed_paths` cookie; otherwise redirects to `/dashboard?forbidden=1`.
 
 ## 📋 **Common Issues & Solutions**
 

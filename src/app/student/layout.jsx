@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/sidebar'
+import AccessGuard from '@/components/AccessGuard'
 
 export default function StudentLayout({ children }) {
   const router = useRouter()
@@ -18,7 +19,9 @@ export default function StudentLayout({ children }) {
       <div className="flex h-screen">
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
         <main className="flex-1 p-4 transition-all duration-300 overflow-y-auto">
-          <div className="max-w-3xl mx-auto sm:max-w-5xl md:max-w-6xl">{children}</div>
+          <AccessGuard>
+            <div className="max-w-3xl mx-auto sm:max-w-5xl md:max-w-6xl">{children}</div>
+          </AccessGuard>
         </main>
       </div>
     </div>

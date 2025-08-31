@@ -14,7 +14,7 @@ export default function AccessGuard({ children }) {
   const [authorized, setAuthorized] = useState(false)
   const [checking, setChecking] = useState(true)
 
-  const { roleName, isAdmin } = useMemo(() => {
+  const { roleName, isAdmin, isCounselor, isTeacher, isStudent } = useMemo(() => {
     if (typeof window === 'undefined') return { roleName: null, isAdmin: false }
     try {
       const userRaw = localStorage.getItem('user_data')
@@ -22,9 +22,12 @@ export default function AccessGuard({ children }) {
       const storedRole = localStorage.getItem('user_role')
       const roleName = user?.roleName || storedRole || null
       const isAdmin = !!user?.isAdmin || roleName === 'admin' || roleName === 'Admin'
-      return { roleName, isAdmin }
+      const isCounselor = !!user?.isCounselor
+  const isTeacher = !!user?.isTeacher
+  const isStudent = !!user?.isStudent
+  return { roleName, isAdmin, isCounselor, isTeacher, isStudent }
     } catch {
-      return { roleName: null, isAdmin: false }
+  return { roleName: null, isAdmin: false, isCounselor: false, isTeacher: false, isStudent: false }
     }
   }, [])
 
@@ -79,7 +82,19 @@ export default function AccessGuard({ children }) {
         // Normalize paths and add default always-allowed sections
         const defaults = ['/dashboard', '/profile']
         const normalizedList = Array.isArray(allowedPaths) ? allowedPaths.map(normalize) : []
-        const merged = Array.from(new Set([...normalizedList, ...defaults.map(normalize)]))
+        // Counselor override: ensure consultation is allowed even if menu permission missing
+        const counselorExtra = isCounselor ? ['/data/consultation'] : []
+        // Teacher override: ensure teacher section is allowed when role is teacher
+        const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission'] : []
+        // Student override: ensure student scan is allowed when role is student
+        const studentExtra = isStudent ? ['/student', '/student/scan'] : []
+        const merged = Array.from(new Set([
+          ...normalizedList,
+          ...defaults.map(normalize),
+          ...counselorExtra.map(normalize),
+          ...teacherExtra.map(normalize),
+          ...studentExtra.map(normalize)
+        ]))
 
         // Update cookie for SSR middleware (while SSR currently guards /data|/settings only)
         try {

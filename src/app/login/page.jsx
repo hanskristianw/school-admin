@@ -68,7 +68,19 @@ export default function Login() {
             }
             const defaults = ['/dashboard', '/profile']
             const raw = (menusRes.menus || []).map(m => m.menu_path).filter(Boolean)
-            const merged = Array.from(new Set([...raw.map(normalize), ...defaults.map(normalize)]))
+            // Counselor override: ensure consultation path is allowed even if not present in menus
+            const counselorExtra = result.user.isCounselor ? ['/data/consultation'] : []
+            // Teacher override: ensure teacher pages are allowed for teacher roles
+            const teacherExtra = result.user.isTeacher ? ['/teacher', '/teacher/assessment_submission'] : []
+            // Student override: ensure student pages are allowed for student roles
+            const studentExtra = result.user.isStudent ? ['/student', '/student/scan'] : []
+            const merged = Array.from(new Set([
+              ...raw.map(normalize),
+              ...defaults.map(normalize),
+              ...counselorExtra.map(normalize),
+              ...teacherExtra.map(normalize),
+              ...studentExtra.map(normalize)
+            ]))
             allowedPaths = merged
           }
         } catch (e) {

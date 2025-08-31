@@ -7,12 +7,24 @@ alter table if exists public.menus enable row level security;
 drop policy if exists "public read menus" on public.menus;
 create policy "public read menus" on public.menus
 for select using (true);
+-- DEV-ONLY: allow client-side writes for menu management (move to server routes in production)
+drop policy if exists "public insert menus" on public.menus;
+drop policy if exists "public update menus" on public.menus;
+drop policy if exists "public delete menus" on public.menus;
+create policy "public insert menus" on public.menus for insert with check (true);
+create policy "public update menus" on public.menus for update using (true) with check (true);
+create policy "public delete menus" on public.menus for delete using (true);
 
 -- Menu permissions (optional to expose; if you prefer to hide, comment this out)
 alter table if exists public.menu_permissions enable row level security;
 drop policy if exists "public read menu_permissions" on public.menu_permissions;
 create policy "public read menu_permissions" on public.menu_permissions
 for select using (true);
+-- DEV-ONLY: allow managing permissions client-side
+drop policy if exists "public insert menu_permissions" on public.menu_permissions;
+drop policy if exists "public delete menu_permissions" on public.menu_permissions;
+create policy "public insert menu_permissions" on public.menu_permissions for insert with check (true);
+create policy "public delete menu_permissions" on public.menu_permissions for delete using (true);
 
 -- 2) Sensitive data: server-only access (service role bypasses RLS)
 -- Users
@@ -68,9 +80,19 @@ drop function if exists public.t_users_hash_password();
 
 -- Role
 alter table if exists public.role enable row level security;
+-- Ensure counselor flag exists on role table
+alter table if exists public.role
+	add column if not exists is_counselor boolean default false;
 -- Allow public read if UI filters by role (teacher detection)
 drop policy if exists "public read role" on public.role;
 create policy "public read role" on public.role for select using (true);
+-- DEV-ONLY: allow client-side role management (move writes server-side in production)
+drop policy if exists "public insert role" on public.role;
+drop policy if exists "public update role" on public.role;
+drop policy if exists "public delete role" on public.role;
+create policy "public insert role" on public.role for insert with check (true);
+create policy "public update role" on public.role for update using (true) with check (true);
+create policy "public delete role" on public.role for delete using (true);
 
 -- Academic data (adjust visibility as needed)
 alter table if exists public.unit enable row level security;
@@ -110,6 +132,37 @@ alter table if exists public.attendance_session enable row level security;
 alter table if exists public.attendance_scan_log enable row level security;
 alter table if exists public.absen enable row level security;
 -- no public policies => clients cannot touch directly; use server endpoints (service role)
+
+-- 3b) Student Counseling (Consultations)
+create table if not exists public.consultation (
+	consultation_id bigserial primary key,
+	consultation_date date not null,
+	consultation_type text not null check (consultation_type in ('private','public')),
+	consultation_year_id bigint not null references public.year(year_id) on delete restrict,
+	consultation_kelas_id bigint not null references public.kelas(kelas_id) on delete restrict,
+	consultation_detail_siswa_id bigint not null references public.detail_siswa(detail_siswa_id) on delete restrict,
+	consultation_counselor_user_id bigint null references public.users(user_id) on delete set null,
+	consultation_title text null,
+	consultation_notes text null,
+	created_by_user_id bigint null references public.users(user_id) on delete set null,
+	created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
+);
+
+-- Helpful indexes
+create index if not exists idx_consultation_kelas_date on public.consultation(consultation_kelas_id, consultation_date);
+create index if not exists idx_consultation_detail on public.consultation(consultation_detail_siswa_id);
+
+-- Enable RLS and provide DEV-friendly policies (tighten in production)
+alter table if exists public.consultation enable row level security;
+drop policy if exists "public read consultation" on public.consultation;
+drop policy if exists "public insert consultation" on public.consultation;
+drop policy if exists "public update consultation" on public.consultation;
+drop policy if exists "public delete consultation" on public.consultation;
+create policy "public read consultation" on public.consultation for select using (true);
+create policy "public insert consultation" on public.consultation for insert with check (true);
+create policy "public update consultation" on public.consultation for update using (true) with check (true);
+create policy "public delete consultation" on public.consultation for delete using (true);
 
 -- 4) Door greeter & timetable: usually admin pages only
 alter table if exists public.daftar_door_greeter enable row level security;

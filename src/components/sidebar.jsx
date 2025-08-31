@@ -30,8 +30,11 @@ import {
   faPaperPlane,
   faCalendarAlt,
   faEdit,
-  faTrash
+  faTrash,
+  faComments,
+  faSitemap
 } from "@fortawesome/free-solid-svg-icons"
+import { faDoorOpen } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
@@ -52,6 +55,10 @@ const iconMap = {
   'fas fa-edit': faEdit,
   'fas fa-trash': faTrash
   , 'fas fa-qrcode': faQrcode
+  , 'fas fa-comments': faComments
+  , 'fas fa-door-open': faDoorOpen
+  , 'fas fa-key': faKey
+  , 'fas fa-sitemap': faSitemap
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {
@@ -69,16 +76,18 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
         setError(null)
         
         // Get user data from localStorage
-        const userData = localStorage.getItem("user_data")
+  const userData = localStorage.getItem("user_data")
         let role = localStorage.getItem("user_role")
         let isAdmin = false
+  let isCounselor = false
         
         if (userData) {
           try {
             const user = JSON.parse(userData)
             role = user.roleName
             isAdmin = user.isAdmin
-            console.log("👤 User data from localStorage:", { role, isAdmin, user })
+            isCounselor = !!user.isCounselor
+            console.log("👤 User data from localStorage:", { role, isAdmin, isCounselor, user })
           } catch (e) {
             console.warn("⚠️ Failed to parse user data:", e)
           }
@@ -107,7 +116,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
 
         if (result.success && result.menus && Array.isArray(result.menus)) {
           // Transform data from Supabase
-          const transformedData = result.menus.map(item => ({
+          let transformedData = result.menus.map(item => ({
             id: item.menu_id,
             name: item.menu_name,
             path: item.menu_path || '#',        
@@ -115,6 +124,14 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
             parentId: item.menu_parent_id,      
             order: item.menu_order || 0
           }))
+
+          // Hide Consultation menu for non-counselor users (admins always see all)
+          if (!isAdmin && !isCounselor) {
+            transformedData = transformedData.filter(m => {
+              const p = (m.path || '').trim()
+              return !(p === '/data/consultation' || p.startsWith('/data/consultation/'))
+            })
+          }
 
           console.log("🔄 Transformed Supabase data:", transformedData)
           console.log("📊 Total menus from Supabase:", transformedData.length)
@@ -271,7 +288,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                         {renderIcon(menu.icon)}
                       </span>
                     )}
-                    <span>{translateMenu(menu.name, menu.name)}</span>
+                    <span>{menu.name}</span>
                   </div>
                   <FontAwesomeIcon 
                     icon={expandedMenus[menu.id] ? faChevronDown : faChevronRight} 
@@ -296,7 +313,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                             {renderIcon(child.icon)}
                           </span>
                         )}
-                        <span>{translateMenu(child.name, child.name)}</span>
+                        <span>{child.name}</span>
                       </Link>
                     ))}
                   </div>
