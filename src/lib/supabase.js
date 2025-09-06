@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { bearerHeaders } from '@/lib/auth'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -18,6 +19,15 @@ console.log('🔧 Supabase config:', {
   keyStart: supabaseAnonKey?.substring(0, 20) + '...'
 })
 
+export const setAuthToken = (token) => {
+  const headers = bearerHeaders(token)
+  try {
+    // Supabase JS v2 exposes a headers bag used for PostgREST calls.
+    // Mutating it makes new requests include the Authorization header.
+    supabase.headers = { ...(supabase.headers || {}), ...headers }
+  } catch {}
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     // Disable Supabase auth since we're using custom auth
@@ -26,6 +36,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false
   }
 })
+
+// (Factory defined at bottom)
 
 // Custom authentication functions to replace Go API
 export const customAuth = {
@@ -38,7 +50,7 @@ export const customAuth = {
       if (isAdmin || roleName === 'admin' || roleName === 'Admin') {
         // Admin dapat akses semua menu
         console.log('👑 Admin access - fetching all menus')
-        const { data, error } = await supabase
+  const { data, error } = await supabase
           .from('menus')
           .select('*')
           .order('menu_order')
@@ -55,7 +67,7 @@ export const customAuth = {
         console.log('👤 Non-admin access - checking permissions for role:', roleName)
         
         // 1. Fetch role ID berdasarkan role name
-        const { data: roleData, error: roleError } = await supabase
+  const { data: roleData, error: roleError } = await supabase
           .from('role')
           .select('role_id')
           .eq('role_name', roleName)
@@ -67,7 +79,7 @@ export const customAuth = {
         }
 
         // 2. Fetch menu permissions untuk role tersebut
-        const { data: permissionsData, error: permError } = await supabase
+  const { data: permissionsData, error: permError } = await supabase
           .from('menu_permissions')
           .select('menu_id')
           .eq('role_id', roleData.role_id)
@@ -85,7 +97,7 @@ export const customAuth = {
           return { success: true, menus: [] }
         }
 
-        const { data: menusData, error: menusError } = await supabase
+  const { data: menusData, error: menusError } = await supabase
           .from('menus')
           .select('*')
           .in('menu_id', menuIds)
@@ -107,3 +119,17 @@ export const customAuth = {
 }
 // Export for direct database operations (bypassing auth)
 export default supabase
+
+// Factory to create a client that always sends an Authorization bearer
+export function createSupabaseWithAuth(token) {
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
+  })
+  const headers = bearerHeaders(token)
+  client.headers = { ...(client.headers || {}), ...headers }
+  return client
+}

@@ -32,7 +32,7 @@ export default function TopicPage() {
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null); // topic row or null
-  const [formData, setFormData] = useState({ topic_nama: "", topic_subject_id: "", topic_kelas_id: "" });
+  const [formData, setFormData] = useState({ topic_nama: "", topic_subject_id: "", topic_kelas_id: "", topic_planner: "" });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,7 +62,7 @@ export default function TopicPage() {
         // 1) Load only subjects taught by this user
         const { data: subj, error: sErr } = await supabase
           .from('subject')
-          .select('subject_id, subject_name')
+          .select('subject_id, subject_name, subject_guide')
           .eq('subject_user_id', userId)
           .order('subject_name');
         if (sErr) throw new Error(sErr.message);
@@ -73,9 +73,9 @@ export default function TopicPage() {
         let tops = [];
         if (subj && subj.length > 0) {
           const subjectIds = subj.map(s => s.subject_id);
-          const { data: tData, error: tErr } = await supabase
-            .from('topic')
-            .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id')
+      const { data: tData, error: tErr } = await supabase
+        .from('topic')
+        .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_planner')
             .in('topic_subject_id', subjectIds)
             .order('topic_nama');
           if (tErr) throw new Error(tErr.message);
@@ -122,7 +122,7 @@ export default function TopicPage() {
 
   const resetForm = () => {
     setEditing(null);
-    setFormData({ topic_nama: "", topic_subject_id: "", topic_kelas_id: "" });
+    setFormData({ topic_nama: "", topic_subject_id: "", topic_kelas_id: "", topic_planner: "" });
     setFormErrors({});
     setKelasOptions([]);
   };
@@ -134,7 +134,7 @@ export default function TopicPage() {
 
   const openEdit = (row) => {
     setEditing(row);
-    setFormData({ topic_nama: row.topic_nama || "", topic_subject_id: String(row.topic_subject_id || ""), topic_kelas_id: row.topic_kelas_id ? String(row.topic_kelas_id) : "" });
+    setFormData({ topic_nama: row.topic_nama || "", topic_subject_id: String(row.topic_subject_id || ""), topic_kelas_id: row.topic_kelas_id ? String(row.topic_kelas_id) : "", topic_planner: row.topic_planner || "" });
     setFormErrors({});
     setShowForm(true);
     if (row.topic_subject_id) {
@@ -148,6 +148,15 @@ export default function TopicPage() {
     if (!formData.topic_subject_id) e.topic_subject_id = t("topic.validation.subjectRequired") || "Mata pelajaran wajib dipilih";
     // kelas required: only if subject selected
     if (formData.topic_subject_id && !formData.topic_kelas_id) e.topic_kelas_id = t('topic.validation.classRequired') || 'Kelas wajib dipilih';
+    // optional planner URL validation
+    if (formData.topic_planner && formData.topic_planner.trim()) {
+      try {
+        const u = new URL(formData.topic_planner.trim());
+        if (!/^https?:$/.test(u.protocol)) throw new Error('invalid');
+      } catch {
+        e.topic_planner = 'Link harus berupa URL yang valid (contoh: https://drive.google.com/...)';
+      }
+    }
     // Ensure selected subject belongs to current user list
     if (formData.topic_subject_id && !subjects.find(s => String(s.subject_id) === String(formData.topic_subject_id))) {
       e.topic_subject_id = t("topic.validation.subjectRequired") || "Mata pelajaran wajib dipilih";
@@ -203,6 +212,7 @@ export default function TopicPage() {
         topic_nama: formData.topic_nama.trim(),
         topic_subject_id: parseInt(formData.topic_subject_id),
         topic_kelas_id: formData.topic_kelas_id ? parseInt(formData.topic_kelas_id) : null,
+        topic_planner: formData.topic_planner?.trim() || null,
       };
       if (editing) {
   const { data, error: upErr } = await supabase.from("topic").update(payload).eq("topic_id", editing.topic_id).select();
@@ -341,6 +351,38 @@ export default function TopicPage() {
               />
             </div>
           </div>
+          {/* Subject guide link for selected subject */}
+          {filters.subject && (() => {
+            const s = subjects.find(x => String(x.subject_id) === String(filters.subject));
+            const guide = s?.subject_guide?.trim();
+            return guide ? (
+              <div className="md:col-span-3 text-sm text-gray-700">
+                <span className="text-gray-600 mr-2">Guide:</span>
+                <a href={guide} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900">Open</a>
+              </div>
+            ) : null;
+          })()}
+          {/* If 'All Subjects' selected, show guides for all subjects that have links */}
+          {!filters.subject && subjects && subjects.length > 0 && (
+            <div className="md:col-span-3 text-sm text-gray-700">
+              <div className="text-gray-600 mb-1">Guides:</div>
+              <ul className="list-disc ml-5 space-y-1">
+                {subjects.map((s) => {
+                  const g = s.subject_guide?.trim();
+                  if (!g) return null;
+                  return (
+                    <li key={s.subject_id}>
+                      <span className="text-gray-800">{s.subject_name}:</span>
+                      <a href={g} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900 ml-2">Open</a>
+                    </li>
+                  );
+                })}
+                {subjects.every((s) => !s.subject_guide) && (
+                  <li className="text-gray-400">-</li>
+                )}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -360,6 +402,7 @@ export default function TopicPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thUnitTitle") || "Unit Title"}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thSubject") || "Mata Pelajaran"}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('topic.thClass') || 'Kelas'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Planner</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thActions") || "Aksi"}</th>
                   </tr>
                 </thead>
@@ -369,6 +412,13 @@ export default function TopicPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.topic_nama}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{subjectMap.get(row.topic_subject_id) || "-"}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.topic_kelas_id ? (kelasNameMap.get(row.topic_kelas_id) || row.topic_kelas_id) : '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {row.topic_planner ? (
+                          <a href={row.topic_planner} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900">Open</a>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Button onClick={() => openEdit(row)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm">
@@ -425,6 +475,17 @@ export default function TopicPage() {
               ))}
             </select>
             {formErrors.topic_subject_id && <p className="text-red-500 text-sm mt-1">{formErrors.topic_subject_id}</p>}
+            {/* Guide link for selected subject in form */}
+            {formData.topic_subject_id && (() => {
+              const s = subjects.find(x => String(x.subject_id) === String(formData.topic_subject_id));
+              const guide = s?.subject_guide?.trim();
+              return guide ? (
+                <p className="text-sm mt-2">
+                  <span className="text-gray-600 mr-1">Guide:</span>
+                  <a href={guide} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900">Open</a>
+                </p>
+              ) : null;
+            })()}
           </div>
           <div>
             <Label htmlFor="topic_kelas_id">{t('topic.class') || 'Kelas'}</Label>
@@ -445,6 +506,19 @@ export default function TopicPage() {
             {(!kelasLoading && formData.topic_subject_id && kelasOptions.length === 0) && (
               <p className="text-xs text-gray-500 mt-1">{t('topic.classNoneForSubject') || 'Tidak ada kelas untuk subject ini.'}</p>
             )}
+          </div>
+          <div>
+            <Label htmlFor="topic_planner">Planner (Google Drive URL)</Label>
+            <Input
+              id="topic_planner"
+              name="topic_planner"
+              type="url"
+              placeholder="https://drive.google.com/..."
+              value={formData.topic_planner}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_planner: e.target.value }))}
+              className={`w-full px-3 py-2 border rounded-md ${formErrors.topic_planner ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {formErrors.topic_planner && <p className="text-red-500 text-sm mt-1">{formErrors.topic_planner}</p>}
           </div>
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="bg-gray-500 hover:bg-gray-600 text-white">

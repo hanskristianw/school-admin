@@ -32,6 +32,8 @@ import {
   faEdit,
   faTrash,
   faComments,
+  faBuilding,
+  faCalendarDays,
   faSitemap
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen } from "@fortawesome/free-solid-svg-icons"
@@ -59,6 +61,8 @@ const iconMap = {
   , 'fas fa-door-open': faDoorOpen
   , 'fas fa-key': faKey
   , 'fas fa-sitemap': faSitemap
+  , 'fas fa-building': faBuilding
+  , 'fas fa-calendar-days': faCalendarDays
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

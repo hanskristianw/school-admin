@@ -45,7 +45,39 @@
     "Users": "用户",
     "Classes": "班级",
     "Subjects": "科目",
-    "Assessment Approval": "评估审核"
+  "Assessment Approval": "评估审核",
+  "Room Booking": "房间预订",
+  "Room Master": "房间管理"
+  }
+  ,
+  "nilai": {
+    "title": "成绩录入",
+    "year": "学年",
+    "selectYear": "选择学年",
+    "subject": "科目",
+    "selectSubject": "选择科目",
+    "class": "班级",
+    "selectClass": "选择班级",
+    "topic": "单元",
+    "selectTopic": "选择单元",
+    "batchTitle": "学生成绩",
+    "exportCsv": "导出 CSV",
+    "importCsv": "导入 CSV",
+    "saveAll": "全部保存",
+    "saving": "保存中...",
+    "selectFiltersHint": "请先选择学年、科目、班级和单元。",
+    "thStudent": "学生",
+    "thScore": "成绩 (1-8)",
+    "thActions": "操作",
+    "delete": "删除",
+    "loadError": "加载数据失败",
+    "invalidValue": "成绩必须是 1-8 的整数",
+    "nothingToSave": "没有需要保存的内容",
+    "saved": "已保存",
+    "saveErrorPrefix": "保存失败：",
+    "deleteErrorPrefix": "删除失败：",
+    "imported": "导入完成",
+    "importError": "导入 CSV 失败"
   }
   ,
     "menu": "菜单",
@@ -459,5 +491,66 @@
   "notAllowed": "您无权参加本次签到会话。",
   "deviceMultiUser": "检测到该设备在短时间内用于多个账号，请联系老师。",
   "successWithDeviceFlag": "提示：该设备似乎被多个账号使用，请联系老师确认。"
+  }
+  ,
+  "roomBooking": {
+    "title": "房间预订",
+    "subtitle": "教师可提交预订，管理员可审批。",
+    "formTitle": "预订表单",
+    "fields": {
+      "room": "房间",
+      "roomPlaceholder": "选择房间",
+      "date": "日期",
+      "start": "开始",
+      "end": "结束",
+      "purpose": "用途（可选）",
+      "purposePlaceholder": "例如：MGMP 会议"
+    },
+    "submit": "提交预订",
+    "listTitle": "申请列表",
+    "table": {
+      "room": "房间",
+      "time": "时间",
+      "status": "状态",
+      "requester": "申请人",
+      "actions": "操作"
+    },
+    "approve": "批准",
+    "cancel": "取消",
+    "empty": "暂无申请。",
+    "status": {
+      "pending": "待处理",
+      "approved": "已批准",
+      "cancelled": "已取消"
+    },
+    "errors": {
+      "overlap": "与已批准的预订时间冲突。请选择其他时间或取消其中一个预订。",
+      "invalidTime": "开始时间必须早于结束时间。",
+      "generic": "发生错误，请重试。",
+      "cancelNotOwner": "只能取消您自己提交的预订。"
+    }
+  },
+  "roomMaster": {
+    "title": "房间管理",
+    "subtitle": "管理房间名称。",
+    "add": "新增房间",
+    "listTitle": "房间列表",
+    "name": "名称",
+    "nameLabel": "房间名称",
+    "namePlaceholder": "例如：计算机实验室 1",
+    "actions": "操作",
+    "edit": "编辑",
+    "delete": "删除",
+    "empty": "暂无房间。",
+    "modalTitleCreate": "新增房间",
+    "modalTitleEdit": "编辑房间",
+    "cancel": "取消",
+    "save": "保存",
+    "create": "创建",
+    "confirmDeleteTitle": "确认删除",
+    "confirmDeleteQuestion": "删除房间 \"{name}\"？",
+    "errors": {
+      "nameDuplicate": "房间名称已存在。"
+    }
   }
 }

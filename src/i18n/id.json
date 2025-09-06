@@ -45,7 +45,39 @@
     "Users": "Pengguna",
     "Classes": "Kelas",
     "Subjects": "Mata Pelajaran",
-    "Assessment Approval": "Approval Assessment"
+  "Assessment Approval": "Approval Assessment",
+  "Room Booking": "Peminjaman Ruangan",
+  "Room Master": "Master Ruangan"
+  }
+  ,
+  "nilai": {
+    "title": "Input Nilai",
+    "year": "Tahun",
+    "selectYear": "Pilih Tahun",
+    "subject": "Mata Pelajaran",
+    "selectSubject": "Pilih Mata Pelajaran",
+    "class": "Kelas",
+    "selectClass": "Pilih Kelas",
+    "topic": "Topik",
+    "selectTopic": "Pilih Topik",
+    "batchTitle": "Entri Nilai Siswa",
+    "exportCsv": "Export CSV",
+    "importCsv": "Import CSV",
+    "saveAll": "Simpan Semua",
+    "saving": "Menyimpan...",
+    "selectFiltersHint": "Pilih Tahun, Mapel, Kelas, dan Topik terlebih dahulu.",
+    "thStudent": "Siswa",
+    "thScore": "Nilai (1-8)",
+    "thActions": "Aksi",
+    "delete": "Hapus",
+    "loadError": "Gagal memuat data",
+    "invalidValue": "Nilai harus bilangan bulat 1-8",
+    "nothingToSave": "Tidak ada yang disimpan",
+    "saved": "Tersimpan",
+    "saveErrorPrefix": "Gagal menyimpan: ",
+    "deleteErrorPrefix": "Gagal menghapus: ",
+    "imported": "Impor selesai",
+    "importError": "Gagal impor CSV"
   }
   ,
     "menu": "Menu",
@@ -464,5 +496,66 @@
   "notAllowed": "Anda tidak diizinkan melakukan presensi pada sesi ini.",
   "deviceMultiUser": "Perangkat ini terdeteksi digunakan untuk beberapa akun dalam waktu singkat. Silakan konfirmasi dengan guru.",
   "successWithDeviceFlag": "Catatan: Perangkat ini terdeteksi digunakan oleh beberapa akun. Silakan konfirmasi dengan guru."
+  }
+  ,
+  "roomBooking": {
+    "title": "Peminjaman Ruangan",
+    "subtitle": "Guru dapat mengajukan peminjaman. Admin dapat menyetujui.",
+    "formTitle": "Form Booking",
+    "fields": {
+      "room": "Ruangan",
+      "roomPlaceholder": "Pilih ruangan",
+      "date": "Tanggal",
+      "start": "Mulai",
+      "end": "Selesai",
+      "purpose": "Keperluan (opsional)",
+      "purposePlaceholder": "Contoh: Rapat MGMP"
+    },
+    "submit": "Ajukan Booking",
+    "listTitle": "Daftar Pengajuan",
+    "table": {
+      "room": "Ruangan",
+      "time": "Waktu",
+      "status": "Status",
+      "requester": "Pemohon",
+      "actions": "Aksi"
+    },
+    "approve": "Setujui",
+    "cancel": "Batalkan",
+    "empty": "Belum ada pengajuan.",
+    "status": {
+      "pending": "Menunggu",
+      "approved": "Disetujui",
+      "cancelled": "Dibatalkan"
+    },
+    "errors": {
+      "overlap": "Jadwal bertabrakan dengan booking yang sudah disetujui. Silakan pilih waktu lain atau batalkan salah satu booking.",
+      "invalidTime": "Waktu mulai harus lebih awal daripada waktu selesai.",
+      "generic": "Terjadi kesalahan. Coba lagi.",
+      "cancelNotOwner": "Anda hanya dapat membatalkan pengajuan milik Anda sendiri."
+    }
+  },
+  "roomMaster": {
+    "title": "Master Ruangan",
+    "subtitle": "Kelola daftar nama ruangan.",
+    "add": "Tambah Ruangan",
+    "listTitle": "Daftar Ruangan",
+    "name": "Nama",
+    "nameLabel": "Nama Ruangan",
+    "namePlaceholder": "Contoh: Lab Komputer 1",
+    "actions": "Aksi",
+    "edit": "Edit",
+    "delete": "Hapus",
+    "empty": "Belum ada ruangan.",
+    "modalTitleCreate": "Tambah Ruangan",
+    "modalTitleEdit": "Edit Ruangan",
+    "cancel": "Batal",
+    "save": "Simpan",
+    "create": "Buat",
+    "confirmDeleteTitle": "Konfirmasi Hapus",
+    "confirmDeleteQuestion": "Hapus ruangan \"{name}\"?",
+    "errors": {
+      "nameDuplicate": "Nama ruangan sudah ada."
+    }
   }
 }

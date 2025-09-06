@@ -187,7 +187,156 @@ create policy "public update timetable" on public.timetable for update using (tr
 create policy "public delete timetable" on public.timetable for delete using (true);
 -- leave without public policies, or add read-only if UI needs client-side read
 
+-- 5) Room Booking (master rooms + bookings)
+create extension if not exists btree_gist;
+
+-- Rooms master
+create table if not exists public.room (
+	room_id bigserial primary key,
+	room_name text not null unique,
+	created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
+);
+
+alter table if exists public.room enable row level security;
+drop policy if exists "public read room" on public.room;
+create policy "public read room" on public.room for select using (true);
+-- DEV-ONLY: allow admin UI from client; move writes server-side for production
+drop policy if exists "public insert room" on public.room;
+drop policy if exists "public update room" on public.room;
+drop policy if exists "public delete room" on public.room;
+create policy "public insert room" on public.room for insert with check (true);
+create policy "public update room" on public.room for update using (true) with check (true);
+create policy "public delete room" on public.room for delete using (true);
+
+-- Room bookings
+create table if not exists public.room_booking (
+	booking_id bigserial primary key,
+	room_id bigint not null references public.room(room_id) on delete cascade,
+	requested_by_user_id bigint references public.users(user_id) on delete set null,
+	status text not null default 'pending' check (status in ('pending','approved','cancelled')),
+	-- Using timestamptz range for actual booking window; half-open [start, end)
+	booking_time tstzrange not null,
+	purpose text null,
+	created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now(),
+	-- sanity check
+	constraint room_booking_nonempty check (lower(booking_time) < upper(booking_time))
+);
+
+-- Prevent double-booking ONLY among approved bookings
+-- This uses a partial exclusion constraint available in Postgres: WHERE (predicate)
+alter table if exists public.room_booking drop constraint if exists room_booking_no_overlap_approved;
+alter table if exists public.room_booking
+	add constraint room_booking_no_overlap_approved
+	exclude using gist (
+		room_id with =,
+		booking_time with &&
+	) where (status = 'approved');
+
+alter table if exists public.room_booking enable row level security;
+drop policy if exists "public read room_booking" on public.room_booking;
+create policy "public read room_booking" on public.room_booking for select using (true);
+-- DEV-ONLY: allow client-side writes; production should restrict to teacher/admin via server routes
+drop policy if exists "public insert room_booking" on public.room_booking;
+drop policy if exists "public update room_booking" on public.room_booking;
+drop policy if exists "public delete room_booking" on public.room_booking;
+create policy "public insert room_booking" on public.room_booking for insert with check (true);
+create policy "public update room_booking" on public.room_booking for update using (true) with check (true);
+create policy "public delete room_booking" on public.room_booking for delete using (true);
+
 -- Notes:
 -- - Service role (used in serverless functions/routes) bypasses RLS.
 -- - After enabling RLS, ensure you REVOKE grants from anon/authenticated if you granted them manually.
 -- - Test each table with the anon key from the browser; you should only see what policies allow.
+
+-- 6) Nilai (Grades) - teacher-only, no admin bypass here (same client policy style for DEV)
+create table if not exists public.nilai (
+	nilai_id bigserial primary key,
+	nilai_topic_id bigint not null references public.topic(topic_id) on delete restrict,
+	nilai_detail_siswa_id bigint not null references public.detail_siswa(detail_siswa_id) on delete restrict,
+	nilai_value smallint not null check (nilai_value between 1 and 8),
+	created_by_user_id bigint null references public.users(user_id) on delete set null,
+	created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now(),
+	constraint uq_nilai_topic_student unique (nilai_topic_id, nilai_detail_siswa_id)
+);
+
+create index if not exists idx_nilai_topic on public.nilai(nilai_topic_id);
+create index if not exists idx_nilai_detail on public.nilai(nilai_detail_siswa_id);
+
+alter table if exists public.nilai enable row level security;
+drop policy if exists "public read nilai" on public.nilai;
+drop policy if exists "public insert nilai" on public.nilai;
+drop policy if exists "public update nilai" on public.nilai;
+drop policy if exists "public delete nilai" on public.nilai;
+
+-- DEV: broad read for UI listings
+create policy "public read nilai" on public.nilai for select using (true);
+
+-- Hardened RLS: teacher-only writes using JWT claims
+-- Expectations:
+-- - Client sends a JWT (Authorization: Bearer <token>) signed with the project's JWT secret
+-- - The JWT contains custom claims:
+--     is_teacher: boolean
+--     kr_id: bigint (the teacher's user_id in our users table)
+-- - These are accessible in Postgres via auth.jwt() JSON
+-- - Policies below also ensure the teacher owns the subject of the topic they are writing grades for
+
+-- INSERT: only teachers, and only for topics they own (subject.subject_user_id = kr_id)
+create policy "teacher insert nilai" on public.nilai
+for insert
+with check (
+	coalesce((auth.jwt() ->> 'is_teacher')::boolean, false)
+	and exists (
+		select 1
+		from public.topic t
+		join public.subject s on s.subject_id = t.topic_subject_id
+		where t.topic_id = nilai.nilai_topic_id
+			and s.subject_user_id = coalesce((auth.jwt() ->> 'kr_id')::bigint, -1)
+	)
+);
+
+-- UPDATE: only teachers on rows within their owned topics
+create policy "teacher update nilai" on public.nilai
+for update
+using (
+	coalesce((auth.jwt() ->> 'is_teacher')::boolean, false)
+	and exists (
+		select 1
+		from public.topic t
+		join public.subject s on s.subject_id = t.topic_subject_id
+		where t.topic_id = nilai.nilai_topic_id
+			and s.subject_user_id = coalesce((auth.jwt() ->> 'kr_id')::bigint, -1)
+	)
+)
+with check (
+	coalesce((auth.jwt() ->> 'is_teacher')::boolean, false)
+	and exists (
+		select 1
+		from public.topic t
+		join public.subject s on s.subject_id = t.topic_subject_id
+		where t.topic_id = nilai.nilai_topic_id
+			and s.subject_user_id = coalesce((auth.jwt() ->> 'kr_id')::bigint, -1)
+	)
+);
+
+-- DELETE: only teachers on rows within their owned topics
+create policy "teacher delete nilai" on public.nilai
+for delete
+using (
+	coalesce((auth.jwt() ->> 'is_teacher')::boolean, false)
+	and exists (
+		select 1
+		from public.topic t
+		join public.subject s on s.subject_id = t.topic_subject_id
+		where t.topic_id = nilai.nilai_topic_id
+			and s.subject_user_id = coalesce((auth.jwt() ->> 'kr_id')::bigint, -1)
+	)
+);
+
+-- Optional: you can also restrict SELECT to only classes/subjects the teacher owns by uncommenting and adjusting:
+-- drop policy if exists "public read nilai" on public.nilai;
+-- create policy "teacher read nilai" on public.nilai for select using (
+--   coalesce((auth.jwt() ->> 'is_teacher')::boolean, false)
+-- );

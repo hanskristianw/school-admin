@@ -138,3 +138,19 @@ Untuk menampilkan jumlah assessment per hari per kelas di Dashboard, jalankan fi
 
 Dengan artifacts ini, frontend bisa mengambil agregasi per bulan menggunakan RPC:
 - `rpc('f_assessment_calendar_range', { p_from: 'YYYY-MM-01', p_to: 'YYYY-MM-31', p_kelas_id: null })`.
+
+## 🔐 Custom JWT for RLS
+
+To enforce teacher-only writes for the `nilai` table via Postgres RLS, the app issues a signed JWT after login that carries custom claims. Configure the following environment variable in `.env.local`:
+
+```
+SUPABASE_JWT_SECRET=your_supabase_project_jwt_secret
+```
+
+Then, ensure your Supabase project uses the same JWT secret (Settings → API → JWT Settings). The token includes:
+
+- role: user's role name
+- is_teacher: boolean flag for RLS checks
+- kr_id: numeric user id; used to verify ownership of subjects/topics
+
+The client stores the token and sends it as `Authorization: Bearer <token>` for DB operations. Update or rotate the secret consistently across app and Supabase if needed.

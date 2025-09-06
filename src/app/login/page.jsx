@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { customAuth } from "@/lib/supabase"
+import { customAuth, setAuthToken } from "@/lib/supabase"
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -54,6 +54,24 @@ export default function Login() {
         localStorage.setItem("user_role", result.user.roleName)
         localStorage.setItem("user_data", JSON.stringify(result.user))
 
+        // Mint JWT for RLS and store
+        try {
+          const tokenRes = await fetch('/api/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: result.user.userID, role: result.user.roleName, kr_id: result.user.userID })
+          })
+          const tokenJson = await tokenRes.json()
+          if (tokenRes.ok && tokenJson.token) {
+            localStorage.setItem('app_jwt', tokenJson.token)
+            setAuthToken(tokenJson.token)
+          } else {
+            console.warn('Failed to mint JWT:', tokenJson.error)
+          }
+        } catch (e) {
+          console.warn('JWT mint error', e)
+        }
+
         // Fetch allowed menu paths for middleware-based SSR auth
         let allowedPaths = []
         try {
@@ -71,7 +89,7 @@ export default function Login() {
             // Counselor override: ensure consultation path is allowed even if not present in menus
             const counselorExtra = result.user.isCounselor ? ['/data/consultation'] : []
             // Teacher override: ensure teacher pages are allowed for teacher roles
-            const teacherExtra = result.user.isTeacher ? ['/teacher', '/teacher/assessment_submission'] : []
+            const teacherExtra = result.user.isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
             // Student override: ensure student pages are allowed for student roles
             const studentExtra = result.user.isStudent ? ['/student', '/student/scan'] : []
             const merged = Array.from(new Set([
@@ -90,7 +108,7 @@ export default function Login() {
         // Set cookies readable by middleware (Edge)
         const maxAge = 60 * 60 * 8 // 8 hours
   const safeJoin = encodeURIComponent((allowedPaths || []).join('|'))
-        document.cookie = `kr_id=${result.user.userID}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+  document.cookie = `kr_id=${result.user.userID}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
         document.cookie = `role_name=${encodeURIComponent(result.user.roleName || '')}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
         document.cookie = `is_admin=${result.user.isAdmin ? '1' : '0'}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
         document.cookie = `allowed_paths=${safeJoin}; Path=/; Max-Age=${maxAge}; SameSite=Lax`

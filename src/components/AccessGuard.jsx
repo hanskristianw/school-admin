@@ -84,8 +84,8 @@ export default function AccessGuard({ children }) {
         const normalizedList = Array.isArray(allowedPaths) ? allowedPaths.map(normalize) : []
         // Counselor override: ensure consultation is allowed even if menu permission missing
         const counselorExtra = isCounselor ? ['/data/consultation'] : []
-        // Teacher override: ensure teacher section is allowed when role is teacher
-        const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission'] : []
+  // Teacher override: ensure teacher & room sections are allowed when role is teacher
+  const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
         // Student override: ensure student scan is allowed when role is student
         const studentExtra = isStudent ? ['/student', '/student/scan'] : []
         const merged = Array.from(new Set([

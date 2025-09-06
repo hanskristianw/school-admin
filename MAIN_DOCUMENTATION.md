@@ -2,6 +2,35 @@
 
 ## 📌 Changelog
 
+### 2025-09-06
+- Room Booking feature:
+  - Pages/Paths:
+    - Admin Master Rooms: `/data/room` (admin-only) — CRUD nama ruangan, popup modal add/edit, unique name
+    - Booking: `/room/booking` (guru/admin) — Form ajukan (ruangan, tanggal, jam mulai/selesai, keperluan), daftar pengajuan, Setujui (admin), Batalkan (hanya oleh pengaju)
+  - Double-booking policy: Pending boleh overlap; Approved tidak boleh overlap (dibatasi oleh constraint DB); back-to-back diperbolehkan dengan interval half-open `[start,end)`
+  - Data model: `room` (room_name unik) dan `room_booking` (booking_time `tstzrange`, status `pending|approved|cancelled`, partial exclusion constraint hanya untuk `status='approved'`)
+  - Middleware & Guard: `/room/:path*` ditambahkan ke SSR middleware; allowed_paths teacher override menambah `/room` dan `/room/booking` agar akses lancar; layout `/room` memakai Sidebar
+  - Icons: `fas fa-building` (Room Master) dan `fas fa-calendar-days` (Booking) ditambahkan ke `iconMap` di `src/components/sidebar.jsx`
+  - i18n: Halaman Room Booking dan Master Ruangan sepenuhnya dilokalisasi (EN/ID/ZH). Semua label, tombol, status, dan pesan error menggunakan kunci `roomBooking.*` dan `roomMaster.*`.
+  - Error UX: Pesan error constraint overlap (`room_booking_no_overlap_approved`) dipetakan menjadi pesan yang ramah dan terjemahan tersedia; validasi “start < end” juga ditampilkan secara lokal.
+
+- Subject Guide (link PDF):
+  - Skema: kolom baru `subject.subject_guide` (TEXT) untuk menyimpan URL Google Drive (atau URL PDF lain).
+  - `/data/subject`: Form tambah/edit menambahkan field "Subject Guide" (validasi URL http/https). Tabel menampilkan kolom "Guide Link" sebagai tautan "Open" bila tersedia.
+  - `/data/topic`: Menampilkan tautan guide untuk subject yang dipilih. Jika filter "Semua Mata Pelajaran" dipilih, daftar link untuk semua subject yang diajarkan oleh guru ditampilkan (hanya tautan).
+
+- Topic Planner (tautan per‑topik):
+  - Skema: kolom baru `topic.topic_planner` (TEXT) untuk menyimpan URL Planner (mis. Google Drive/Docs).
+  - `/data/topic`: Form tambah/edit menambahkan field "Planner (Google Drive URL)" dengan validasi URL (http/https). Pada tabel daftar topic, ditambahkan kolom "Planner" yang menampilkan tautan "Open" bila tersedia.
+  - Migrasi: `alter table topic add column if not exists topic_planner text;`
+
+- Nilai (Grade Entry) updates:
+  - Path: `/teacher/nilai` (teacher-only)
+  - UI: Table now hides internal IDs; columns shown are Student and Score only.
+  - CSV: Export only (no import). Export format is `nama,nilai` where `nama` is the student full name and `nilai` is 1–8.
+  - Behavior: Save overwrites existing values per (topic, student) via upsert; per-row delete supported. Client-side validation enforces integer 1–8.
+  - Icons: Suggested menu icon `fas fa-clipboard-check` for this page.
+
 ### 2025-08-31
 - Consultation (BK) page `/data/consultation` enhanced:
   - Dropdowns fixed to reliably load from `year`, `kelas`, dan `detail_siswa` (native `<select>`)
@@ -142,7 +171,8 @@ subject (
   subject_name VARCHAR(100),
   subject_user_id INTEGER REFERENCES users(user_id), -- Teacher
   subject_unit_id INTEGER REFERENCES unit(unit_id),
-  subject_code VARCHAR(30) -- Optional short code (e.g. MATH7A); nullable. Add unique index if required.
+  subject_code VARCHAR(30), -- Optional short code (e.g. MATH7A); nullable. Add unique index if required.
+  subject_guide TEXT -- Optional: URL to subject guide (Google Drive/PDF)
 )
 
 -- Topics (IB Units)
@@ -150,7 +180,8 @@ topic (
   topic_id SERIAL PRIMARY KEY,
   topic_nama VARCHAR(100) NOT NULL, -- Unit Title
   topic_subject_id INTEGER NOT NULL REFERENCES subject(subject_id) ON DELETE RESTRICT,
-  topic_kelas_id INTEGER REFERENCES kelas(kelas_id) ON DELETE RESTRICT -- Optional: binds topic to specific class
+  topic_kelas_id INTEGER REFERENCES kelas(kelas_id) ON DELETE RESTRICT, -- Optional: binds topic to specific class
+  topic_planner TEXT -- Optional: URL to planner (Google Drive/Docs)
 )
 
 -- Subject assignment to Class (per-class-per-subject mapping)
@@ -219,6 +250,21 @@ timetable (
   --   timetable_day with =,
   --   timetable_time with &&
   -- );
+)
+```
+
+### Grades (Nilai) Table
+
+```sql
+nilai (
+  nilai_id SERIAL PRIMARY KEY,
+  nilai_topic_id INTEGER NOT NULL REFERENCES topic(topic_id) ON DELETE RESTRICT,
+  nilai_detail_siswa_id INTEGER NOT NULL REFERENCES detail_siswa(detail_siswa_id) ON DELETE RESTRICT,
+  nilai_value SMALLINT NOT NULL CHECK (nilai_value BETWEEN 1 AND 8),
+  created_by_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT uq_nilai_topic_student UNIQUE (nilai_topic_id, nilai_detail_siswa_id)
 )
 ```
 
@@ -402,6 +448,51 @@ Notes:
 ### **10. Data Mapping Note**
 - `detail_kelas` does not carry a teacher column; teacher is inferred through `subject.subject_user_id` ensuring single-source-of-truth for ownership.
 
+### **13. Room Booking Module**
+- Paths:
+  - Master Rooms: `/data/room` (Admin only). CRUD nama ruangan via modal popup. Nama unik.
+  - Booking: `/room/booking` (Guru/Admin). Ajukan booking, lihat daftar, Admin menyetujui, pembatalan hanya oleh pengaju (creator only).
+- Business Rules:
+  - Pending boleh tumpang tindih (overlap) dengan booking lain.
+  - Approved tidak boleh overlap untuk ruangan yang sama. Back-to-back (mis. 10:00–11:00 vs 11:00–12:00) boleh, memakai interval `[start,end)`.
+  - Client-side check mencegah ajukan di slot yang bertabrakan dengan booking Approved yang ada; approval admin juga dilindungi constraint DB.
+  - Error Handling & i18n:
+    - Pesan error database untuk overlap (`room_booking_no_overlap_approved` / exclusion `&&`) ditampilkan sebagai pesan ramah yang telah dilokalisasi.
+    - Validasi waktu tidak valid (start ≥ end) ditampilkan dengan pesan terjemahan.
+    - Semua label, tombol, status, dan tabel pada halaman Booking memakai kunci `roomBooking.*`.
+    - Halaman Master Ruangan memakai kunci `roomMaster.*` (label field, tombol, modal title, konfirmasi hapus, dan pesan duplicate-name).
+- Schema Ringkas:
+  ```sql
+  -- Rooms
+  room (
+    room_id bigserial primary key,
+    room_name text not null unique,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+  );
+
+  -- Bookings
+  room_booking (
+    booking_id bigserial primary key,
+    room_id bigint not null references room(room_id) on delete cascade,
+    requested_by_user_id bigint references users(user_id) on delete set null,
+    status text not null default 'pending' check (status in ('pending','approved','cancelled')),
+    booking_time tstzrange not null, -- [start,end)
+    purpose text,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now(),
+    constraint room_booking_nonempty check (lower(booking_time) < upper(booking_time))
+  );
+
+  -- No overlap among approved only
+  alter table room_booking add constraint room_booking_no_overlap_approved
+    exclude using gist (room_id with =, booking_time with &&)
+    where (status = 'approved');
+  ```
+- RLS (DEV): `enable-rls-examples.sql` menambah kebijakan baca publik dan write DEV untuk `room` dan `room_booking`. Untuk produksi, pindahkan write ke server routes (service role) atau batasi role (guru/admin).
+- UI Catatan: `/room/booking` memakai layout `/room` sehingga sidebar konsisten dengan menu lainnya.
+ - Menu i18n: Label menu untuk “Room Master” dan “Room Booking” ditambahkan pada kamus i18n (`menus.Room Master`, `menus.Room Booking`).
+
 ### **11. Attendance (QR Sessions & Scans)**
 - Teacher session controls: mulai/tutup sesi presensi dan tampilkan QR dinamis (token berganti ~20 detik). Tanggal selalu hari ini (WIB), tanpa pemilih tanggal.
 - Student scan: `/student/scan` memakai kamera (Html5Qrcode). Wajib aktifkan lokasi sebelum kamera. Debounce dan cooldown untuk mencegah spam.
@@ -463,6 +554,9 @@ Notes:
   - Consultation (BK) → `fas fa-comments`
   - Door Greeter → `fas fa-door-open`
   - Student Scan → `fas fa-qrcode`
+  - Room Master → `fas fa-building`
+  - Room Booking → `fas fa-calendar-days`
+  - Grade Entry → `fas fa-clipboard-check`
 
 2. **Teacher Filter**: Use RPC function or manual JOIN
    ```sql
@@ -503,6 +597,18 @@ Notes:
 13. **`supabase-migration-qr-security.sql`** - Kolom device/location & index (device+time)
 14. **`supabase-migration-qr-devicehash.sql`** - Kolom `device_hash_client`, `device_hash_uaip` & index
 
+15. (Optional) Add subject guide column
+  ```sql
+  alter table subject add column if not exists subject_guide text;
+  ```
+  - RLS note: if RLS is enabled on subject, ensure appropriate update/insert policies allow writing `subject_guide` for admins.
+
+16. (Optional) Add topic planner column
+  ```sql
+  alter table topic add column if not exists topic_planner text;
+  ```
+  - If RLS is enabled on `topic`, ensure insert/update policies allow admins/owners to write `topic_planner`.
+
 ### **Development:**
 ```bash
 npm install
@@ -535,6 +641,7 @@ npm run dev
 
 ### **Teacher (`is_teacher = true`):**
 - Assessment submission
+- Grade entry (`/teacher/nilai`)
 - View own subjects
 - Dashboard access
 

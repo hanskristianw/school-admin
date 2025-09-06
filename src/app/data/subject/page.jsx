@@ -21,7 +21,8 @@ export default function SubjectManagement() {
     subject_name: '',
     subject_user_id: '',
   subject_unit_id: '',
-  subject_code: ''
+  subject_code: '',
+  subject_guide: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +71,7 @@ export default function SubjectManagement() {
           subject_user_id,
           subject_unit_id,
           subject_code,
+          subject_guide,
           users:subject_user_id (
             user_nama_depan,
             user_nama_belakang
@@ -91,6 +93,7 @@ export default function SubjectManagement() {
         subject_user_id: subject.subject_user_id,
         subject_unit_id: subject.subject_unit_id,
   subject_code: subject.subject_code || '',
+  subject_guide: subject.subject_guide || '',
         user_nama_depan: subject.users?.user_nama_depan || '',
         user_nama_belakang: subject.users?.user_nama_belakang || '',
         unit_name: subject.unit?.unit_name || ''
@@ -301,6 +304,14 @@ export default function SubjectManagement() {
     if (formData.subject_code && formData.subject_code.length > 12) {
       errors.subject_code = 'Kode subject maksimal 12 karakter';
     }
+    if (formData.subject_guide && formData.subject_guide.trim()) {
+      try {
+        const u = new URL(formData.subject_guide.trim());
+        if (!/^https?:$/.test(u.protocol)) throw new Error('invalid');
+      } catch {
+        errors.subject_guide = 'Link harus berupa URL yang valid (contoh: https://drive.google.com/...)';
+      }
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -319,7 +330,8 @@ export default function SubjectManagement() {
         subject_name: formData.subject_name,
         subject_user_id: Number(formData.subject_user_id),
   subject_unit_id: Number(formData.subject_unit_id),
-  subject_code: formData.subject_code?.trim() || null
+  subject_code: formData.subject_code?.trim() || null,
+        subject_guide: formData.subject_guide?.trim() || null
       };
 
       let result;
@@ -349,7 +361,8 @@ export default function SubjectManagement() {
         subject_name: '',
         subject_user_id: '',
   subject_unit_id: '',
-  subject_code: ''
+  subject_code: '',
+        subject_guide: ''
       });
       setError('');
       showNotification(
@@ -371,7 +384,8 @@ export default function SubjectManagement() {
       subject_name: subject.subject_name,
       subject_user_id: subject.subject_user_id,
   subject_unit_id: subject.subject_unit_id,
-  subject_code: subject.subject_code || ''
+  subject_code: subject.subject_code || '',
+      subject_guide: subject.subject_guide || ''
     });
     setShowForm(true);
     setFormErrors({});
@@ -416,7 +430,8 @@ export default function SubjectManagement() {
       subject_name: '',
       subject_user_id: '',
   subject_unit_id: '',
-  subject_code: ''
+  subject_code: '',
+      subject_guide: ''
     });
     setShowForm(true);
     setFormErrors({});
@@ -550,6 +565,9 @@ export default function SubjectManagement() {
                       Code
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Guide Link
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Teacher
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -571,6 +589,15 @@ export default function SubjectManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {subject.subject_code || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-700">
+                        {subject.subject_guide ? (
+                          <a href={subject.subject_guide} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">
+                            Open
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {subject.user_nama_depan} {subject.user_nama_belakang}
@@ -645,6 +672,21 @@ export default function SubjectManagement() {
               />
               {formErrors.subject_code && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.subject_code}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="subject_guide">Subject Guide (Google Drive/PDF URL)</Label>
+              <Input
+                id="subject_guide"
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={formData.subject_guide}
+                onChange={(e) => setFormData(prev => ({ ...prev, subject_guide: e.target.value }))}
+                className={formErrors.subject_guide ? 'border-red-500' : ''}
+              />
+              {formErrors.subject_guide && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.subject_guide}</p>
               )}
             </div>
 

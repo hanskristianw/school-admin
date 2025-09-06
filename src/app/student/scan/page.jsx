@@ -7,9 +7,13 @@ import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import NotificationModal from '@/components/ui/notification-modal';
 import { sha256 } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function StudentScanPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const [allowed, setAllowed] = useState(false);
+  const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [last, setLast] = useState(null);
@@ -26,6 +30,24 @@ export default function StudentScanPage() {
   const notifInit = { isOpen: false, title: '', message: '', type: 'success' };
   const [notif, setNotif] = useState(notifInit);
 
+  // Strict page-level guard: only students can access this page
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('user_data');
+      const user = raw ? JSON.parse(raw) : null;
+      const isStudent = !!user?.isStudent;
+      if (isStudent) {
+        setAllowed(true);
+      } else {
+        router.replace('/dashboard?forbidden=1');
+      }
+    } catch {
+      router.replace('/dashboard?forbidden=1');
+    } finally {
+      setChecked(true);
+    }
+  }, [router]);
+
   useEffect(() => {
     return () => {
       if (qrRef.current) {
@@ -35,6 +57,8 @@ export default function StudentScanPage() {
       }
     };
   }, []);
+
+  if (!checked || !allowed) return null;
 
   async function onScanSuccess(decodedText) {
   // Ignore scans while processing or during cooldown

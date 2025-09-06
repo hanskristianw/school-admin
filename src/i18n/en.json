@@ -45,7 +45,39 @@
     "Users": "Users",
     "Classes": "Classes",
     "Subjects": "Subjects",
-  "Assessment Approval": "Assessment Approval"
+  "Assessment Approval": "Assessment Approval",
+  "Room Booking": "Room Booking",
+  "Room Master": "Rooms"
+  }
+  ,
+  "nilai": {
+    "title": "Grade Entry",
+    "year": "Year",
+    "selectYear": "Select Year",
+    "subject": "Subject",
+    "selectSubject": "Select Subject",
+    "class": "Class",
+    "selectClass": "Select Class",
+    "topic": "Topic",
+    "selectTopic": "Select Topic",
+    "batchTitle": "Student Grades",
+    "exportCsv": "Export CSV",
+    "importCsv": "Import CSV",
+    "saveAll": "Save All",
+    "saving": "Saving...",
+    "selectFiltersHint": "Select Year, Subject, Class, and Topic first.",
+    "thStudent": "Student",
+    "thScore": "Score (1-8)",
+    "thActions": "Actions",
+    "delete": "Delete",
+    "loadError": "Failed to load data",
+    "invalidValue": "Score must be an integer 1-8",
+    "nothingToSave": "Nothing to save",
+    "saved": "Saved",
+    "saveErrorPrefix": "Failed to save: ",
+    "deleteErrorPrefix": "Failed to delete: ",
+    "imported": "Import finished",
+    "importError": "Failed to import CSV"
   }
   ,
     "menu": "Menu",
@@ -464,5 +496,66 @@
   "notAllowed": "You are not allowed to check in for this session.",
   "deviceMultiUser": "This device appears to be used by multiple accounts in a short time. Please check with the teacher.",
   "successWithDeviceFlag": "Note: This device seems to be used by multiple accounts. Please check with the teacher."
+  }
+  ,
+  "roomBooking": {
+    "title": "Room Booking",
+    "subtitle": "Teachers can request room bookings. Admins can approve.",
+    "formTitle": "Booking Form",
+    "fields": {
+      "room": "Room",
+      "roomPlaceholder": "Select room",
+      "date": "Date",
+      "start": "Start",
+      "end": "End",
+      "purpose": "Purpose (optional)",
+      "purposePlaceholder": "e.g., MGMP Meeting"
+    },
+    "submit": "Submit Booking",
+    "listTitle": "Requests",
+    "table": {
+      "room": "Room",
+      "time": "Time",
+      "status": "Status",
+      "requester": "Requester",
+      "actions": "Actions"
+    },
+    "approve": "Approve",
+    "cancel": "Cancel",
+    "empty": "No requests yet.",
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "cancelled": "Cancelled"
+    },
+    "errors": {
+      "overlap": "Time conflicts with an approved booking. Please choose another time or cancel one of the bookings.",
+      "invalidTime": "Start time must be before end time.",
+      "generic": "Something went wrong. Please try again.",
+      "cancelNotOwner": "You can only cancel your own booking request."
+    }
+  },
+  "roomMaster": {
+    "title": "Rooms Master",
+    "subtitle": "Manage room names.",
+    "add": "Add Room",
+    "listTitle": "Rooms",
+    "name": "Name",
+    "nameLabel": "Room Name",
+    "namePlaceholder": "e.g., Computer Lab 1",
+    "actions": "Actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "empty": "No rooms yet.",
+    "modalTitleCreate": "Add Room",
+    "modalTitleEdit": "Edit Room",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "confirmDeleteTitle": "Confirm Delete",
+    "confirmDeleteQuestion": "Delete room \"{name}\"?",
+    "errors": {
+      "nameDuplicate": "Room name already exists."
+    }
   }
 }
