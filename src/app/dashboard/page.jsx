@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faUsers, faBook, faCalendar, faClipboardCheck, faSchool, faChevronLeft, faChevronRight, faDoorOpen } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faCalendar, faClipboardCheck, faChevronLeft, faChevronRight, faDoorOpen } from '@fortawesome/free-solid-svg-icons'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Modal from '@/components/ui/modal'
@@ -14,6 +14,15 @@ export default function Dashboard() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useI18n()
+  // Simple translation helper with fallback if key is missing
+  const tr = (key, fallback, params) => {
+    try {
+      const val = params ? t(key, params) : t(key)
+      return val === key ? fallback : val
+    } catch {
+      return fallback
+    }
+  }
   const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
   // UI states
@@ -32,6 +41,9 @@ export default function Dashboard() {
     years: 0,
     pendingAssessments: 0,
   })
+  // Teacher schedule (for non-student) – teaching today
+  const [teacherToday, setTeacherToday] = useState([]) // [{start,end,kelas,subject,chipColor}]
+  const [teacherSelectedDay, setTeacherSelectedDay] = useState(() => new Date().toLocaleDateString('en-US', { weekday: 'long' }))
   // Door greeter notification state
   const [doorGreeter, setDoorGreeter] = useState({ today: null, tomorrow: null })
 
@@ -80,7 +92,10 @@ export default function Dashboard() {
     await fetchStudentDashboardData(uid, today)
           } else {
             setIsStudent(false)
-            await fetchDashboardData(uid)
+            await Promise.all([
+              fetchDashboardData(uid),
+              fetchTeacherTodaySchedule(uid, teacherSelectedDay)
+            ])
           }
         })
         .catch((e) => {
@@ -121,26 +136,14 @@ export default function Dashboard() {
   }
 
   const fetchDashboardData = async (userId) => {
-    // Fetch counts in parallel
-    const [usersRes, classesRes, subjectsRes, yearsRes, pendingRes] = await Promise.all([
-      supabase.from('users').select('*', { count: 'exact', head: true }),
-      supabase.from('kelas').select('*', { count: 'exact', head: true }),
-      supabase.from('subject').select('*', { count: 'exact', head: true }),
-      supabase.from('year').select('*', { count: 'exact', head: true }),
-      supabase
-        .from('assessment')
-        .select('*', { count: 'exact', head: true })
-        .eq('assessment_user_id', userId)
-        .in('assessment_status', [0, 3]),
-    ])
+    // Only compute pending assessments; totals are no longer shown
+    const { count: pendingCount } = await supabase
+      .from('assessment')
+      .select('*', { count: 'exact', head: true })
+      .eq('assessment_user_id', userId)
+      .in('assessment_status', [0, 3])
 
-    setStats({
-      users: usersRes.count ?? 0,
-      classes: classesRes.count ?? 0,
-      subjects: subjectsRes.count ?? 0,
-      years: yearsRes.count ?? 0,
-      pendingAssessments: pendingRes.count ?? 0,
-    })
+    setStats((s) => ({ ...s, pendingAssessments: pendingCount ?? 0 }))
 
     // Door greeter assignment check (today / tomorrow)
     try {
@@ -203,6 +206,73 @@ export default function Dashboard() {
     setUsersMap(uMap)
     setRecentAssessments(assessments || [])
   }
+
+  // Teacher: fetch what they teach today from timetable
+  const fetchTeacherTodaySchedule = async (userId, day) => {
+    try {
+      const weekday = day || new Date().toLocaleDateString('en-US', { weekday: 'long' })
+      const { data: tt, error: ttErr } = await supabase
+        .from('timetable')
+        .select('timetable_detail_kelas_id, timetable_time, timetable_user_id, timetable_day')
+        .eq('timetable_user_id', userId)
+        .eq('timetable_day', weekday)
+      if (ttErr) throw ttErr
+
+      const detailIds = Array.from(new Set((tt || []).map(r => r.timetable_detail_kelas_id).filter(Boolean)))
+      if (detailIds.length === 0) { setTeacherToday([]); return }
+
+      const [{ data: dkRows, error: dkErr }, { data: kelasRows, error: kErr }, { data: subjRows, error: sErr }] = await Promise.all([
+        supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_kelas_id, detail_kelas_subject_id').in('detail_kelas_id', detailIds),
+        supabase.from('kelas').select('kelas_id, kelas_nama, kelas_color_name'),
+        supabase.from('subject').select('subject_id, subject_code, subject_name'),
+      ])
+      if (dkErr) throw dkErr
+      if (kErr) throw kErr
+      if (sErr) throw sErr
+
+      const kelasMap = new Map((kelasRows || []).map(k => [k.kelas_id, { nama: k.kelas_nama, color: k.kelas_color_name }]))
+      const subjMap = new Map((subjRows || []).map(s => [s.subject_id, { code: s.subject_code, name: s.subject_name }]))
+      const dkMap = new Map((dkRows || []).map(d => [d.detail_kelas_id, { kelas_id: d.detail_kelas_kelas_id, subject_id: d.detail_kelas_subject_id }]))
+
+      const parseRange = (rangeStr) => {
+        if (!rangeStr || typeof rangeStr !== 'string') return { start: '', end: '' }
+        const times = rangeStr.match(/\b(\d{1,2}:\d{2})\b/g)
+        if (times && times.length >= 2) return { start: times[0], end: times[1] }
+        const m = /\[\s*(\d{1,2}:\d{2})\s*,\s*(\d{1,2}:\d{2})\s*\]/.exec(rangeStr)
+        if (m) return { start: m[1], end: m[2] }
+        return { start: '', end: '' }
+      }
+
+      const items = (tt || [])
+        .map(row => {
+          const rel = dkMap.get(row.timetable_detail_kelas_id)
+          const k = rel ? kelasMap.get(rel.kelas_id) : null
+          const s = rel ? subjMap.get(rel.subject_id) : null
+          const { start, end } = parseRange(row.timetable_time)
+          return {
+            start,
+            end,
+            kelas: k?.nama || 'Kelas',
+            subject: s?.code || s?.name || 'Subject',
+            chipColor: k?.color || null,
+          }
+        })
+        .sort((a,b) => a.start.localeCompare(b.start))
+      setTeacherToday(items)
+    } catch (e) {
+      console.error('Teacher today schedule load failed', e)
+      setTeacherToday([])
+    }
+  }
+
+  // Re-fetch when teacher changes selected day
+  useEffect(() => {
+    const id = localStorage.getItem('kr_id')
+    if (isStudent || !id) return
+    const uid = parseInt(id, 10)
+    fetchTeacherTodaySchedule(uid, teacherSelectedDay)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStudent, teacherSelectedDay])
 
   const fetchStudentDashboardData = async (userId, day) => {
     try {
@@ -527,86 +597,101 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stats */}
+      {/* Teaching Today (Teacher only) and Door Greeter */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        { (doorGreeter.today || doorGreeter.tomorrow) ? (() => {
-          const todayLabel = doorGreeter.today ? (t(`doorGreeter.days.${doorGreeter.today}`) || doorGreeter.today) : null
-          const tomorrowLabel = doorGreeter.tomorrow ? (t(`doorGreeter.days.${doorGreeter.tomorrow}`) || doorGreeter.tomorrow) : null
-          let message
-          if (doorGreeter.today && doorGreeter.tomorrow) {
-            message = t('dashboard.doorGreeterTodayAndTomorrow', { today: todayLabel, tomorrow: tomorrowLabel }) || `You are on duty today (${todayLabel}) and tomorrow (${tomorrowLabel}).`
-          } else if (doorGreeter.today) {
-            message = t('dashboard.doorGreeterToday', { day: todayLabel }) || `You are on Door Greeter duty today (${todayLabel}).`
-          } else {
-            message = t('dashboard.doorGreeterTomorrow', { day: tomorrowLabel }) || `You are on Door Greeter duty tomorrow (${tomorrowLabel}).`
-          }
-          const isToday = !!doorGreeter.today
-          const baseCard = isToday ? 'border-red-300 from-rose-50 to-red-50' : 'border-amber-300 from-amber-50 to-yellow-50'
-          const circleBg = isToday ? 'bg-red-100' : 'bg-amber-100'
+        {(() => {
+          const isOnDuty = !!(doorGreeter.today || doorGreeter.tomorrow)
+          if (isOnDuty) {
+            const todayLabel = doorGreeter.today ? tr(`doorGreeter.days.${doorGreeter.today}`, doorGreeter.today) : null
+            const tomorrowLabel = doorGreeter.tomorrow ? tr(`doorGreeter.days.${doorGreeter.tomorrow}`, doorGreeter.tomorrow) : null
+            let message
+            if (doorGreeter.today && doorGreeter.tomorrow) {
+              message = tr('dashboard.doorGreeterTodayAndTomorrow', `Anda bertugas hari ini (${todayLabel}) dan besok (${tomorrowLabel}).`, { today: todayLabel, tomorrow: tomorrowLabel })
+            } else if (doorGreeter.today) {
+              message = tr('dashboard.doorGreeterToday', `Anda bertugas hari ini (${todayLabel}).`, { day: todayLabel })
+            } else {
+              message = tr('dashboard.doorGreeterTomorrow', `Anda bertugas sebagai Door Greeter besok (${tomorrowLabel}).`, { day: tomorrowLabel })
+            }
+            const isToday = !!doorGreeter.today
+            const baseCard = isToday ? 'border-red-300 from-rose-50 to-red-50' : 'border-amber-300 from-amber-50 to-yellow-50'
+            const circleBg = isToday ? 'bg-red-100' : 'bg-amber-100'
             const iconColor = isToday ? 'text-red-600' : 'text-amber-600'
             const titleColor = isToday ? 'text-red-800' : 'text-amber-800'
             const textColor = isToday ? 'text-red-700' : 'text-amber-700'
+            return (
+              <Card className={`border bg-gradient-to-br shadow-sm ${baseCard}`}>
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`flex-shrink-0 mt-0.5 w-10 h-10 rounded-full flex items-center justify-center ${circleBg}`}>
+                      <FontAwesomeIcon icon={faDoorOpen} className={`${iconColor} text-lg`} />
+                    </div>
+                    <div className="space-y-1">
+                      <div className={`font-semibold leading-snug ${titleColor}`}>{tr('dashboard.doorGreeterTitle', 'Tugas Door Greeter')}</div>
+                      <p className={`text-sm leading-snug ${textColor}`}>{message}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          }
+          // Not on duty today or tomorrow – show neutral card
           return (
-            <Card className={`border bg-gradient-to-br shadow-sm ${baseCard}`}>
+            <Card className="border bg-gradient-to-br shadow-sm border-gray-200 from-gray-50 to-gray-50">
               <CardContent className="pt-4">
                 <div className="flex items-start gap-3">
-                  <div className={`flex-shrink-0 mt-0.5 w-10 h-10 rounded-full flex items-center justify-center ${circleBg}`}>
-                    <FontAwesomeIcon icon={faDoorOpen} className={`${iconColor} text-lg`} />
+                  <div className="flex-shrink-0 mt-0.5 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
+                    <FontAwesomeIcon icon={faDoorOpen} className="text-gray-500 text-lg" />
                   </div>
                   <div className="space-y-1">
-                    <div className={`font-semibold leading-snug ${titleColor}`}>{t('dashboard.doorGreeterTitle') || 'Door Greeter Duty'}</div>
-                    <p className={`text-sm leading-snug ${textColor}`}>{message}</p>
+                    <div className="font-semibold leading-snug text-gray-800">{tr('dashboard.doorGreeterTitle', 'Tugas Door Greeter')}</div>
+                    <p className="text-sm leading-snug text-gray-600">{tr('dashboard.notDoorGreeter', 'Anda tidak bertugas sebagai Door Greeter.')}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )
-        })() : (
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <CardTitle className="text-base">{t('dashboard.totalUsers')}</CardTitle>
-              <FontAwesomeIcon icon={faUsers} className="text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.users}</div>
-              <div className="text-sm text-gray-500">Semua role</div>
-            </CardContent>
-          </Card>
-        )}
+        })()}
 
-        <Card>
+        {/* Teaching schedule (selectable day) */}
+        <Card className="sm:col-span-2 lg:col-span-3">
           <CardHeader className="flex items-center justify-between">
-            <CardTitle className="text-base">{t('dashboard.classes')}</CardTitle>
-            <FontAwesomeIcon icon={faSchool} className="text-emerald-500" />
+            <CardTitle className="text-base">
+              {tr('dashboard.teachingToday', 'Mengajar Hari Ini')}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">{tr('dashboard.dayLabel', 'Hari')}:</label>
+              <select
+                value={teacherSelectedDay}
+                onChange={(e)=> setTeacherSelectedDay(e.target.value)}
+                className="px-2 py-1 border rounded text-sm"
+              >
+                {DAYS.map(d => {
+                  const label = tr(`doorGreeter.days.${d}`, d)
+                  return <option key={d} value={d}>{label}</option>
+                })}
+              </select>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.classes}</div>
-            <div className="text-sm text-gray-500">Terdaftar</div>
+            {teacherToday.length === 0 ? (
+              <div className="text-sm text-gray-500">{tr('dashboard.noTeachingToday', 'Tidak ada jadwal mengajar hari ini.')}</div>
+            ) : (
+              <div className="divide-y rounded border">
+                {teacherToday.map((it, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3">
+                    <div>
+                      <div className="font-medium">{it.subject}</div>
+                      <div className="text-sm text-gray-500">{it.kelas}</div>
+                    </div>
+                    <div className="text-sm text-gray-700 font-mono">{it.start} - {it.end}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle className="text-base">{t('dashboard.subjects')}</CardTitle>
-            <FontAwesomeIcon icon={faBook} className="text-violet-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.subjects}</div>
-            <div className="text-sm text-gray-500">Aktif</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle className="text-base">{t('dashboard.years')}</CardTitle>
-            <FontAwesomeIcon icon={faCalendar} className="text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.years}</div>
-            <div className="text-sm text-gray-500">Total</div>
-          </CardContent>
-        </Card>
-
+        {/* Pending assessments */}
         <Card className="sm:col-span-2 lg:col-span-4">
           <CardHeader className="flex items-center justify-between">
             <div className="flex items-center gap-2">
