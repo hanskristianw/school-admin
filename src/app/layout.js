@@ -22,17 +22,22 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="antialiased">
         <Providers>
-          {/* Global language switcher bar */}
-          <div className="sticky top-0 z-50 bg-white/70 backdrop-blur border-b">
-            <div className="max-w-7xl mx-auto px-4 py-2 flex justify-end">
-              {/* Render LanguageSwitcher here */}
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500">Language:</span>
-                <div id="global-language-switcher" />
+          <div className="flex min-h-screen flex-col">
+            {/* Global language switcher bar */}
+            <div className="sticky top-0 z-50 bg-white/70 backdrop-blur border-b">
+              <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-end">
+                {/* Render LanguageSwitcher here */}
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-500">Language:</span>
+                  <div id="global-language-switcher" />
+                </div>
               </div>
             </div>
+            {/* Content area fills the remaining height; prevent page-level overflow */}
+            <div className="flex-1 min-h-0">
+              {children}
+            </div>
           </div>
-          {children}
         </Providers>
       </body>
     </html>

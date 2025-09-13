@@ -500,7 +500,7 @@
   ,
   "roomBooking": {
     "title": "Room Booking",
-    "subtitle": "Teachers can request room bookings. Admins can approve.",
+  "subtitle": "Bookings are auto-approved on a first-come, first-served basis; overlaps with approved bookings are not allowed.",
     "formTitle": "Booking Form",
     "fields": {
       "room": "Room",
@@ -556,6 +556,54 @@
     "confirmDeleteQuestion": "Delete room \"{name}\"?",
     "errors": {
       "nameDuplicate": "Room name already exists."
+    }
+  }
+  ,
+  "schoolFee": {
+    "title": "School Fee Settings",
+    "subtitle": "Define Monthly School Fee (can vary by month) and UDP (one-time, can be in installments) per Unit and Academic Year.",
+    "filter": "Filter",
+    "unit": "Unit (School)",
+    "selectUnit": "Select Unit",
+    "year": "Academic Year",
+    "selectYear": "Select Year",
+    "load": "Load",
+    "tabs": { "school": "School Fee", "udp": "UDP" },
+    "school": {
+      "default": "Default per Month (IDR)",
+      "placeholder": "(empty = use default)",
+      "applyDefault": "Apply Default to Empty",
+  "save": "Save School Fee",
+  "total12": "Total 12 Months"
+    },
+    "udp": {
+      "total": "UDP Total (IDR)",
+      "installments": "Installments Count (optional)",
+      "distribute": "Distribute Equally",
+      "seq": "Seq",
+      "month": "Month",
+      "amount": "Amount (IDR)",
+      "actions": "Actions",
+  "selectMonth": "Select Month",
+  "totalPlan": "Installments Total",
+      "addRow": "Add Installment Row",
+      "save": "Save UDP",
+      "empty": "No installment plan yet.",
+      "validation": {
+        "monthRange": "Month must be 1-12",
+        "monthDup": "Duplicate month",
+        "negative": "Amount cannot be negative",
+        "sumMismatch": "Installment sum must equal UDP total"
+      }
+    },
+    "messages": {
+      "loadSchoolFeeError": "Failed to load School Fee: ",
+      "saveSuccess": "School Fee saved",
+      "saveError": "Failed to save: ",
+      "loadUdpError": "Failed to load UDP: ",
+      "udpSaveSuccess": "UDP saved",
+      "udpSaveError": "Failed to save UDP: ",
+      "fillInstallments": "Fill installments count first"
     }
   }
 }

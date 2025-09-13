@@ -75,7 +75,7 @@ export default function RoomBookingPage() {
   }
 
   const overlapsApproved = (r) => {
-    // Client-side check only against approved items for same room, treat pending as non-blocking as requested
+    // Fast client-side check against approved items for same room
     const selStart = new Date(`${date}T${start}:00`).getTime()
     const selEnd = new Date(`${date}T${end}:00`).getTime()
   if (!(selStart < selEnd)) return t('roomBooking.errors.invalidTime')
@@ -94,7 +94,8 @@ export default function RoomBookingPage() {
     setLoading(true); setError('')
     try {
       const range = toRange(date, start, end)
-      const { error } = await supabase.from('room_booking').insert([{ room_id: Number(roomId), requested_by_user_id: user.userID, booking_time: range, purpose }])
+      // Auto-approve on insert; DB exclusion constraint will reject overlaps automatically
+      const { error } = await supabase.from('room_booking').insert([{ room_id: Number(roomId), requested_by_user_id: user.userID, booking_time: range, purpose, status: 'approved' }])
       if (error) throw error
       setPurpose('')
       await loadItems()
@@ -103,17 +104,6 @@ export default function RoomBookingPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const approve = async (bk) => {
-    if (!isAdmin) return
-    // Approve: DB exclusion constraint will enforce no-overlap among approved
-    setLoading(true); setError('')
-    try {
-      const { error } = await supabase.from('room_booking').update({ status: 'approved' }).eq('booking_id', bk.booking_id)
-      if (error) throw error
-      await loadItems()
-    } catch (e) { setError(friendlyError(e)) } finally { setLoading(false) }
   }
 
   const cancel = async (bk) => {
@@ -203,9 +193,7 @@ export default function RoomBookingPage() {
                     <td className="px-2 py-2">{bk.user ? `${bk.user.user_nama_depan||''} ${bk.user.user_nama_belakang||''}`.trim() : '-'}</td>
                     <td className="px-2 py-2">
                       <div className="flex gap-2">
-                        {isAdmin && bk.status==='pending' && (
-                          <Button type="button" onClick={() => approve(bk)} className="bg-emerald-600 hover:bg-emerald-700 text-xs">{t('roomBooking.approve')}</Button>
-                        )}
+                        {/* Auto-approve flow removes manual approval */}
                         {bk.status!=='cancelled' && user && bk.requested_by_user_id === user.userID && (
                           <Button type="button" onClick={() => cancel(bk)} className="bg-gray-600 hover:bg-gray-700 text-xs">{t('roomBooking.cancel')}</Button>
                         )}

@@ -16,7 +16,8 @@ export default function UnitManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingUnit, setEditingUnit] = useState(null);
   const [formData, setFormData] = useState({
-    unit_name: ''
+    unit_name: '',
+    is_school: false
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -96,7 +97,7 @@ export default function UnitManagement() {
       // Menggunakan Supabase untuk fetch units
       const { data, error } = await supabase
         .from('unit')
-        .select('unit_id, unit_name')
+        .select('unit_id, unit_name, is_school')
         .order('unit_name');
 
       if (error) {
@@ -117,7 +118,7 @@ export default function UnitManagement() {
   const validateForm = () => {
     const errors = {};
     
-    if (!formData.unit_name.trim()) {
+  if (!formData.unit_name.trim()) {
       errors.unit_name = 'Nama unit wajib diisi';
     } else if (formData.unit_name.length < 2) {
       errors.unit_name = 'Nama unit minimal 2 karakter';
@@ -137,7 +138,8 @@ export default function UnitManagement() {
     setSubmitting(true);
     try {
       const submitData = {
-        unit_name: formData.unit_name.trim()
+        unit_name: formData.unit_name.trim(),
+        is_school: !!formData.is_school
       };
 
       let result;
@@ -179,7 +181,8 @@ export default function UnitManagement() {
   const handleEdit = (unit) => {
     setEditingUnit(unit);
     setFormData({
-      unit_name: unit.unit_name
+      unit_name: unit.unit_name,
+      is_school: !!unit.is_school
     });
     setShowForm(true);
     setFormErrors({});
@@ -214,7 +217,8 @@ export default function UnitManagement() {
 
   const resetForm = () => {
     setFormData({
-      unit_name: ''
+      unit_name: '',
+      is_school: false
     });
     setEditingUnit(null);
     setShowForm(false);
@@ -223,10 +227,10 @@ export default function UnitManagement() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
     
     // Clear error when user starts typing
@@ -287,6 +291,19 @@ export default function UnitManagement() {
             )}
           </div>
 
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              id="is_school"
+              name="is_school"
+              type="checkbox"
+              checked={!!formData.is_school}
+              onChange={handleInputChange}
+              disabled={submitting}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <Label htmlFor="is_school">Merupakan Sekolah?</Label>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-2 pt-3">
             <Button 
               type="submit" 
@@ -328,6 +345,13 @@ export default function UnitManagement() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-semibold">{unit.unit_name}</h3>
+                      <div className="mt-1">
+                        {unit.is_school ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sekolah</span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Manajemen</span>
+                        )}
+                      </div>
                     </div>
                     <span className="text-xs text-gray-500">ID: {unit.unit_id}</span>
                   </div>
@@ -360,13 +384,14 @@ export default function UnitManagement() {
                 <tr className="bg-gray-50">
                   <th className="border border-gray-300 px-4 py-2 text-left">ID</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Nama Unit</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">Tipe</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {units.length === 0 ? (
                   <tr>
-                    <td colSpan="3" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
+                    <td colSpan="4" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
                       No units found
                     </td>
                   </tr>
@@ -375,6 +400,13 @@ export default function UnitManagement() {
                     <tr key={unit.unit_id} className="hover:bg-gray-50">
                       <td className="border border-gray-300 px-4 py-2">{unit.unit_id}</td>
                       <td className="border border-gray-300 px-4 py-2">{unit.unit_name}</td>
+                      <td className="border border-gray-300 px-4 py-2">
+                        {unit.is_school ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sekolah</span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Manajemen</span>
+                        )}
+                      </td>
                       <td className="border border-gray-300 px-4 py-2">
                         <div className="flex space-x-2">
                           <Button 

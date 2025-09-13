@@ -289,6 +289,10 @@ drop policy if exists "public read nilai" on public.nilai;
 drop policy if exists "public insert nilai" on public.nilai;
 drop policy if exists "public update nilai" on public.nilai;
 drop policy if exists "public delete nilai" on public.nilai;
+-- Ensure old teacher policies are dropped before re-creating
+drop policy if exists "teacher insert nilai" on public.nilai;
+drop policy if exists "teacher update nilai" on public.nilai;
+drop policy if exists "teacher delete nilai" on public.nilai;
 
 -- DEV: broad read for UI listings
 create policy "public read nilai" on public.nilai for select using (true);

@@ -7,17 +7,28 @@ async function updateIconNames() {
   console.log('🔄 Updating icon names in database...')
   
   try {
-    // Update icon names satu per satu
+    // Sidebar kita menggunakan mapping iconMap dengan key format "fas fa-..."
+    // Script ini akan:
+    // 1) Menormalkan nilai lama yang tidak lengkap (mis. "users", "book") menjadi "fas fa-users", dst.
+    // 2) Mengembalikan nilai yang sudah terlanjur diubah ke format "faXxx" agar sesuai iconMap sidebar.
     const updates = [
-      { old: 'fas fa-tachometer-alt', new: 'faTachometerAlt' },
-      { old: 'fas fa-database', new: 'faDatabase' },
-      { old: 'fas fa-user', new: 'faUser' },
-      { old: 'fas fa-eye', new: 'faEye' },
-      { old: 'users', new: 'faUsers' },
-      { old: 'graduation-cap', new: 'faGraduationCap' },
-      { old: 'book', new: 'faBook' },
-      { old: 'fas fa-edit', new: 'faEdit' },
-      { old: 'fas fa-trash', new: 'faTrash' }
+      // Normalisasi dari nilai tidak lengkap ke format lengkap
+      { old: 'users', new: 'fas fa-users' },
+      { old: 'graduation-cap', new: 'fas fa-graduation-cap' },
+      { old: 'book', new: 'fas fa-book' },
+  { old: 'sack-dollar', new: 'fas fa-sack-dollar' },
+
+      // Kembalikan dari format faXxx ke format kelas Font Awesome lama yang dipakai di sidebar
+      { old: 'faTachometerAlt', new: 'fas fa-tachometer-alt' },
+      { old: 'faDatabase', new: 'fas fa-database' },
+      { old: 'faUser', new: 'fas fa-user' },
+      { old: 'faEye', new: 'fas fa-eye' },
+      { old: 'faUsers', new: 'fas fa-users' },
+      { old: 'faGraduationCap', new: 'fas fa-graduation-cap' },
+      { old: 'faBook', new: 'fas fa-book' },
+  { old: 'faSackDollar', new: 'fas fa-sack-dollar' },
+      { old: 'faEdit', new: 'fas fa-edit' },
+      { old: 'faTrash', new: 'fas fa-trash' }
     ]
     
     for (const update of updates) {

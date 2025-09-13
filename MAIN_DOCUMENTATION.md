@@ -2,6 +2,36 @@
 
 ## 📌 Changelog
 
+### 2025-09-14
+- Sales & Reports UX
+  - Added section layouts so Sidebar appears on these namespaces:
+    - `src/app/sales/layout.jsx` → wraps `/sales/*` with Sidebar + AccessGuard
+    - `src/app/reports/layout.jsx` → wraps `/reports/*` with Sidebar + AccessGuard
+  - Menu icons recommendation (supported by `iconMap`):
+    - Sales Uniform → `fas fa-cart-shopping` (alias: `faCartShopping`)
+    - Reports Uniform → `fas fa-clipboard-list` (alias: `faClipboardList`)
+- Storage hardening (recommendation):
+  - Make `uniform-receipts` a PRIVATE bucket and serve receipts via signed URLs; restrict read access to the purchasing student and staff/admin.
+
+### 2025-09-13
+- Unit Management enhancements:
+ - FontAwesome Icons & Menu Icons:
+   - Sidebar iconMap now supports both classic class names (e.g. `fas fa-user`) and alias names (e.g. `faUser`).
+   - Added `sack-dollar` icon mapping (finance): use `fas fa-sack-dollar` (or alias `faSackDollar`).
+   - Provided `update-icons.js` script to normalize legacy/inconsistent DB values to the supported keys.
+  - Schema: `unit.is_school BOOLEAN NOT NULL DEFAULT false` to distinguish School units vs Management departments.
+  - UI (/settings/unit):
+    - Add/Edit form includes a checkbox “Merupakan Sekolah?”.
+    - Table shows a “Tipe” column with badges: “Sekolah” (green) or “Manajemen” (gray).
+  - Migration:
+    ```sql
+    alter table unit add column if not exists is_school boolean not null default false;
+    ```
+  - Notes: For existing data, you may update rows accordingly:
+    ```sql
+    update unit set is_school = true where unit_name ilike '%sd%' or unit_name ilike '%smp%' or unit_name ilike '%sma%';
+    ```
+
 ### 2025-09-06
 - Room Booking feature:
   - Pages/Paths:
@@ -148,7 +178,8 @@ role (
 -- Academic Structure
 unit (
   unit_id SERIAL PRIMARY KEY,
-  unit_name VARCHAR(100)
+  unit_name VARCHAR(100),
+  is_school BOOLEAN NOT NULL DEFAULT false -- true: School unit, false: Management/department
 )
 
 year (
@@ -501,6 +532,31 @@ Notes:
 - Realtime: halaman guru auto-refresh perubahan absen hari ini; polling fallback tersedia.
 
 ### **12. Student Consultation (BK)**
+### **14. Uniform Sales Module (NEW)**
+- Scope: Only students can buy. No Year scope; scoped by Unit. Payment method: transfer with receipt upload.
+- Pages:
+  - Master Ukuran Seragam: `/data/uniform-size` – manage dynamic sizes per Unit (add any label, order, active flag).
+  - Master Seragam: `/data/uniform` – manage uniforms per Unit (code, name, gender, notes, image). Per-size pricing/HPP via variants.
+  - Penjualan Seragam: `/sales/uniform` – select student, unit, add items (uniform+size+qty), upload transfer receipt, finalize sale.
+  - Laporan Seragam: `/reports/uniform` – sales summary by period, uniform, size, unit; gross profit (price − HPP).
+- Schema (summary):
+  - `uniform_size (size_id, unit_id, size_name, display_order, is_active, ...)` unique per unit.
+  - `uniform (uniform_id, unit_id, code, name, gender, notes, image_url, is_active, ...)` unique code/name per unit.
+  - `uniform_variant (variant_id, uniform_id, size_id, hpp, price, sku, barcode, ...)` unique (uniform_id, size_id).
+  - `uniform_stock_txn (txn_id, uniform_id, size_id, qty_delta, txn_type, ref_table, ref_id, ...)` source of truth for stock.
+  - `v_uniform_stock` view: aggregated current stock per (uniform,size).
+  - `uniform_sale (sale_id, detail_siswa_id, unit_id, sale_date, status, payment_method=transfer, receipt_url, totals, ...)`.
+  - `uniform_sale_item (item_id, sale_id, uniform_id, size_id, qty, unit_price, unit_hpp, subtotal, ...)`.
+- RLS: DEV policies allow read/write for all; tighten in production to admin-only writes or server routes.
+- Icons (suggested):
+  - Master Ukuran → `fas fa-ruler`
+  - Master Seragam → `fas fa-shirt`
+  - Penjualan → `fas fa-cart-shopping`
+  - Laporan → `fas fa-clipboard-list`
+
+- Layouts & Guarding:
+  - `/sales/*` and `/reports/*` use dedicated layouts that include the Sidebar and `AccessGuard` for consistent navigation and client-side access checks.
+
 - Path: `/data/consultation`
 - Goal: Catat konsultasi siswa (private/public) oleh guru BK.
 - Form: pilih Tahun → Kelas → Siswa, tanggal, jenis, judul (opsional), catatan (opsional).
@@ -540,13 +596,15 @@ Notes:
    ```
 
 4. **Menu Icons (Sidebar) – cara menambah/mengubah**
-   - Kolom `menus.menu_icon` menyimpan nama icon dalam format string klasik Font Awesome (misal: `fas fa-user`, `fas fa-database`).
-   - Di UI, `src/components/sidebar.jsx` melakukan mapping string → komponen React FontAwesome lewat objek `iconMap`.
+   - Nilai kolom `menus.menu_icon` kini didukung dalam 2 format:
+     - Klasik: `fas fa-user`, `fas fa-database`, `fas fa-sack-dollar`, dll.
+     - Alias FontAwesome React: `faUser`, `faDatabase`, `faSackDollar`, dll.
+   - Di UI, `src/components/sidebar.jsx` melakukan mapping string → komponen React FontAwesome lewat objek `iconMap`, dengan alias untuk kedua format di atas.
    - Tambah icon baru:
      1) Import icon di `sidebar.jsx`, contoh: `import { faUser } from '@fortawesome/free-solid-svg-icons'`.
-     2) Tambah entry di `iconMap`: `'fas fa-user': faUser,`
-     3) Set nilai `menu_icon` di tabel `menus` pada menu terkait menjadi string yang sama (contoh `fas fa-user`).
-   - Jika tidak ditemukan di `iconMap`, aplikasi fallback ke ikon default (faTable) dan log peringatan di console. Lihat utilitas `update-icons.*` di root untuk pembaruan massal.
+     2) Tambah entry di `iconMap`: `'fas fa-user': faUser,` dan opsional alias `'faUser': faUser,`.
+     3) Set nilai `menu_icon` di tabel `menus` pada menu terkait ke salah satu format (disarankan format klasik untuk konsistensi).
+   - Jika tidak ditemukan di `iconMap`, aplikasi fallback ke ikon default (faTable) dan log peringatan di console. Lihat utilitas `update-icons.js` di root untuk normalisasi massal.
 
   Preset yang dipakai di proyek ini:
   - Role Management → `fas fa-key`
@@ -557,6 +615,9 @@ Notes:
   - Room Master → `fas fa-building`
   - Room Booking → `fas fa-calendar-days`
   - Grade Entry → `fas fa-clipboard-check`
+  - School Fee & UDP → `fas fa-sack-dollar`
+  - Uniform Sales → `fas fa-cart-shopping`
+  - Uniform Reports → `fas fa-clipboard-list`
 
 2. **Teacher Filter**: Use RPC function or manual JOIN
    ```sql

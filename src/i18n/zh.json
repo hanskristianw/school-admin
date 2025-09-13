@@ -495,7 +495,7 @@
   ,
   "roomBooking": {
     "title": "房间预订",
-    "subtitle": "教师可提交预订，管理员可审批。",
+  "subtitle": "预订采用先到先得并自动批准；与已批准的预订不得重叠。",
     "formTitle": "预订表单",
     "fields": {
       "room": "房间",
@@ -551,6 +551,54 @@
     "confirmDeleteQuestion": "删除房间 \"{name}\"？",
     "errors": {
       "nameDuplicate": "房间名称已存在。"
+    }
+  }
+  ,
+  "schoolFee": {
+    "title": "学费设置",
+    "subtitle": "按单位与学年设置每月学费（可按月不同）和 UDP（一次性，可分期）。",
+    "filter": "筛选",
+    "unit": "单位（学校）",
+    "selectUnit": "选择单位",
+    "year": "学年",
+    "selectYear": "选择学年",
+    "load": "加载",
+    "tabs": { "school": "学费", "udp": "UDP" },
+    "school": {
+      "default": "每月默认金额（IDR）",
+      "placeholder": "（空=使用默认）",
+      "applyDefault": "将默认应用到空值",
+  "save": "保存学费",
+  "total12": "12个月合计"
+    },
+    "udp": {
+      "total": "UDP 总额（IDR）",
+      "installments": "分期数（可选）",
+      "distribute": "平均分配",
+      "seq": "顺序",
+      "month": "月份",
+      "amount": "金额（IDR）",
+      "actions": "操作",
+  "selectMonth": "选择月份",
+  "totalPlan": "分期总额",
+      "addRow": "新增分期行",
+      "save": "保存 UDP",
+      "empty": "尚无分期计划。",
+      "validation": {
+        "monthRange": "月份必须在 1-12",
+        "monthDup": "月份重复",
+        "negative": "金额不可为负",
+        "sumMismatch": "分期总额必须等于 UDP 总额"
+      }
+    },
+    "messages": {
+      "loadSchoolFeeError": "加载学费失败：",
+      "saveSuccess": "学费已保存",
+      "saveError": "保存失败：",
+      "loadUdpError": "加载 UDP 失败：",
+      "udpSaveSuccess": "UDP 已保存",
+      "udpSaveError": "保存 UDP 失败：",
+      "fillInstallments": "请先填写分期数"
     }
   }
 }

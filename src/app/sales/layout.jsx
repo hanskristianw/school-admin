@@ -1,18 +1,18 @@
 'use client'
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Sidebar from "@/components/sidebar"
-import AccessGuard from "@/components/AccessGuard"
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Sidebar from '@/components/sidebar'
+import AccessGuard from '@/components/AccessGuard'
 
-export default function DataLayout({ children }) {
+export default function SalesLayout({ children }) {
   const router = useRouter()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
-    const kr_id = localStorage.getItem("kr_id")
+    const kr_id = localStorage.getItem('kr_id')
     if (!kr_id) {
-      router.replace("/login")
+      router.replace('/login')
     }
   }, [router])
 

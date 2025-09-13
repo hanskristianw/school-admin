@@ -65,7 +65,8 @@ export default function TimetablePage() {
   const [users, setUsers] = useState([]); // teacher users only
   const [detailKelas, setDetailKelas] = useState([]); // raw detail_kelas rows with subject & class info
   const [subjects, setSubjects] = useState([]); // subjects (with teacher user mapping)
-  const [filters, setFilters] = useState({ user: '', day: '' });
+  const [kelasList, setKelasList] = useState([]); // kelas rows
+  const [filters, setFilters] = useState({ user: '', day: '', kelas: '' });
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [formData, setFormData] = useState({ timetable_user_id: '', subject_id: '', timetable_detail_kelas_id: '', timetable_day: '', startTime: '', endTime: '' });
@@ -73,6 +74,7 @@ export default function TimetablePage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ open: false, row: null });
   const [notification, setNotification] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+  const [viewMode, setViewMode] = useState('grid'); // 'table' | 'grid'
 
   const showNotification = (title, message, type='success') => setNotification({ isOpen: true, title, message, type });
 
@@ -102,8 +104,8 @@ export default function TimetablePage() {
       setRows(ttRes.data || []);
       setUsers(teacherUsers);
       // Enrich detail_kelas with subject & class names
-      const subjMap = new Map((subjRes.data||[]).map(s=>[s.subject_id, s]));
-      const kelasMap = new Map((kelasRes.data||[]).map(k=>[k.kelas_id, k]));
+  const subjMap = new Map((subjRes.data||[]).map(s=>[s.subject_id, s]));
+  const kelasMap = new Map((kelasRes.data||[]).map(k=>[k.kelas_id, k]));
       const dkEnriched = (dkRes.data||[]).map(d=>({
         ...d,
         subject_name: subjMap.get(d.detail_kelas_subject_id)?.subject_name || 'Subject',
@@ -113,17 +115,20 @@ export default function TimetablePage() {
       }));
       setDetailKelas(dkEnriched);
       setSubjects(subjRes.data || []);
+  setKelasList(kelasRes.data || []);
     } catch (e) { setError(e.message); console.error(e); }
     finally { setLoading(false); }
   };
 
   const userMap = useMemo(() => new Map(users.map(u => [u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim()])), [users]);
+  const detailToKelasMap = useMemo(() => new Map(detailKelas.map(d => [d.detail_kelas_id, d.detail_kelas_kelas_id])), [detailKelas]);
 
   const filtered = useMemo(() => rows.filter(r => {
     const condUser = !filters.user || r.timetable_user_id === parseInt(filters.user);
     const condDay = !filters.day || r.timetable_day === filters.day;
-    return condUser && condDay;
-  }), [rows, filters]);
+    const condKelas = !filters.kelas || detailToKelasMap.get(r.timetable_detail_kelas_id) === parseInt(filters.kelas);
+    return condUser && condDay && condKelas;
+  }), [rows, filters, detailToKelasMap]);
 
   const openCreate = () => { setEditing(null); setFormData({ timetable_user_id: '', subject_id: '', timetable_detail_kelas_id: '', timetable_day: '', startTime: '', endTime: '' }); setFormErrors({}); setShowForm(true); };
   const openEdit = (row) => {
@@ -257,26 +262,51 @@ export default function TimetablePage() {
                 {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-            <div className="md:col-span-2 flex items-end">
-              <Button variant="outline" onClick={()=> setFilters({ user: '', day: '' })}>Reset</Button>
+            <div>
+              <Label className="block text-sm font-medium mb-1">Class</Label>
+              <select value={filters.kelas} onChange={(e)=> setFilters(prev=>({...prev, kelas: e.target.value}))} className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">All</option>
+                {kelasList.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button variant="outline" onClick={()=> setFilters({ user: '', day: '', kelas: '' })}>Reset</Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
-  <CardHeader><CardTitle>Schedule Blocks</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Schedule</CardTitle>
+            <div className="inline-flex rounded-md shadow-sm border border-gray-200 overflow-hidden" role="group" aria-label="View switch">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-1 text-sm ${viewMode==='grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                title="Grouped by day"
+              >Grid</button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1 text-sm border-l ${viewMode==='table' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                title="Tabular list"
+              >Table</button>
+            </div>
+          </div>
+        </CardHeader>
         <CardContent>
           {sorted.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No schedule blocks</div>
-          ) : (
+          ) : viewMode === 'table' ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class/Subject</th>
-          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
@@ -299,7 +329,7 @@ export default function TimetablePage() {
                           if (!dk) return '-';
                           return `${dk.kelas_nama} - ${dk.subject_code || dk.subject_name}`;
                         })()}</td>
-            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{r.timetable_day}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{r.timetable_day}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{startTime}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{endTime}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{durationMin !== '' ? `${durationMin} min` : '-'}</td>
@@ -314,6 +344,53 @@ export default function TimetablePage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          ) : (
+            <div>
+              {/* Grouped by day grid */}
+              {(() => {
+                const daysToShow = filters.day ? [filters.day] : DAYS;
+                return (
+                  <div className={`grid grid-cols-1 md:grid-cols-5 gap-4`}>
+                    {daysToShow.map(day => {
+                      const items = sorted.filter(r => r.timetable_day === day);
+                      return (
+                        <div key={day} className="border rounded-md bg-white">
+                          <div className="px-3 py-2 border-b bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
+                            <span>{day}</span>
+                            <span className="text-xs text-gray-500">{items.length} item{items.length!==1?'s':''}</span>
+                          </div>
+                          <div className="p-3 space-y-2 min-h-[4rem]">
+                            {items.length === 0 ? (
+                              <div className="text-sm text-gray-400">No items</div>
+                            ) : items.map(r => {
+                              const { start, end } = parseRange(r.timetable_time);
+                              const startTime = extractHM(start);
+                              const endTime = extractHM(end);
+                              const dk = detailKelas.find(d=> d.detail_kelas_id === r.timetable_detail_kelas_id);
+                              return (
+                                <div key={r.timetable_id} className="border rounded-md bg-blue-50 p-2">
+                                  <div className="flex items-start justify-between">
+                                    <div>
+                                      <div className="text-sm font-semibold text-blue-900">{dk ? `${dk.kelas_nama} - ${dk.subject_code || dk.subject_name}` : '-'}</div>
+                                      <div className="text-xs text-blue-800">{startTime} - {endTime}</div>
+                                      <div className="text-xs text-gray-600">{userMap.get(r.timetable_user_id) || '-'}</div>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                      <Button onClick={()=> openEdit(r)} className="!px-2 !py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs"><FontAwesomeIcon icon={faEdit} /></Button>
+                                      <Button onClick={()=> setConfirmDelete({ open: true, row: r })} className="!px-2 !py-1 bg-red-600 hover:bg-red-700 text-white text-xs"><FontAwesomeIcon icon={faTrash} /></Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </CardContent>

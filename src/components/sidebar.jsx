@@ -34,7 +34,8 @@ import {
   faComments,
   faBuilding,
   faCalendarDays,
-  faSitemap
+  faSitemap,
+  faSackDollar
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -63,6 +64,39 @@ const iconMap = {
   , 'fas fa-sitemap': faSitemap
   , 'fas fa-building': faBuilding
   , 'fas fa-calendar-days': faCalendarDays
+  , 'fas fa-sack-dollar': faSackDollar
+  , 'fas fa-ruler': require('@fortawesome/free-solid-svg-icons').faRuler
+  , 'fas fa-shirt': require('@fortawesome/free-solid-svg-icons').faShirt
+  , 'fas fa-cart-shopping': require('@fortawesome/free-solid-svg-icons').faCartShopping
+  , 'fas fa-clipboard-list': require('@fortawesome/free-solid-svg-icons').faClipboardList
+  ,
+  // Alias: dukung format nama icon 'faXxx' supaya lebih toleran
+  'faTachometerAlt': faTachometerAlt,
+  'faDatabase': faDatabase,
+  'faUser': faUser,
+  'faEye': faEye,
+  'faUsers': faUsers,
+  'faGraduationCap': faGraduationCap,
+  'faBook': faBook,
+  'faHouse': faHouse,
+  'faChalkboardTeacher': faChalkboardTeacher,
+  'faClipboardCheck': faClipboardCheck,
+  'faPaperPlane': faPaperPlane,
+  'faCalendarAlt': faCalendarAlt,
+  'faEdit': faEdit,
+  'faTrash': faTrash,
+  'faQrcode': faQrcode,
+  'faComments': faComments,
+  'faDoorOpen': faDoorOpen,
+  'faKey': faKey,
+  'faSitemap': faSitemap,
+  'faBuilding': faBuilding,
+  'faCalendarDays': faCalendarDays,
+  'faSackDollar': faSackDollar
+  , 'faRuler': require('@fortawesome/free-solid-svg-icons').faRuler
+  , 'faShirt': require('@fortawesome/free-solid-svg-icons').faShirt
+  , 'faCartShopping': require('@fortawesome/free-solid-svg-icons').faCartShopping
+  , 'faClipboardList': require('@fortawesome/free-solid-svg-icons').faClipboardList
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {
@@ -81,9 +115,11 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
         
         // Get user data from localStorage
   const userData = localStorage.getItem("user_data")
-        let role = localStorage.getItem("user_role")
-        let isAdmin = false
+  let role = localStorage.getItem("user_role")
+  let isAdmin = false
   let isCounselor = false
+  let isTeacher = false
+  let isStudent = false
         
         if (userData) {
           try {
@@ -91,6 +127,8 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
             role = user.roleName
             isAdmin = user.isAdmin
             isCounselor = !!user.isCounselor
+            isTeacher = !!user.isTeacher
+            isStudent = !!user.isStudent
             console.log("👤 User data from localStorage:", { role, isAdmin, isCounselor, user })
           } catch (e) {
             console.warn("⚠️ Failed to parse user data:", e)
@@ -152,6 +190,32 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
           if (transformedData.length === 0) {
             console.warn("⚠️ No menus found for role:", role)
             setError(`No menus configured for role: ${role}. Please check database setup.`)
+          }
+          // Also update allowed_paths cookie for SSR middleware using the freshly fetched menus
+          try {
+            const normalize = (p) => {
+              if (!p) return ''
+              let s = String(p).trim()
+              if (!s.startsWith('/')) s = '/' + s
+              if (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1)
+              return s
+            }
+            const defaults = ['/dashboard', '/profile']
+            const counselorExtra = isCounselor ? ['/data/consultation'] : []
+            const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
+            const studentExtra = isStudent ? ['/student', '/student/scan'] : []
+            const merged = Array.from(new Set([
+              ...transformedData.map(m => normalize(m.path)),
+              ...defaults.map(normalize),
+              ...counselorExtra.map(normalize),
+              ...teacherExtra.map(normalize),
+              ...studentExtra.map(normalize)
+            ]))
+            const maxAge = 60 * 60 * 8
+            const safeJoin = encodeURIComponent(merged.join('|'))
+            document.cookie = `allowed_paths=${safeJoin}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+          } catch (e) {
+            console.warn('Failed updating allowed_paths cookie from Sidebar', e)
           }
         } else {
           throw new Error(`Failed to fetch menus: ${result.message || 'Unknown error'}`)
@@ -347,6 +411,12 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
         <div className="mt-8 pt-4 border-t border-gray-200">
           <button
             onClick={() => {
+              // Clear client storage/cache
+              try {
+                const role = localStorage.getItem('user_role')
+                if (role) sessionStorage.removeItem(`allowed_menu_paths:${role}`)
+                sessionStorage.removeItem('allowed_menu_paths:admin')
+              } catch {}
               localStorage.clear()
               // Clear auth cookies for middleware
               const past = 'Thu, 01 Jan 1970 00:00:00 GMT'
@@ -388,12 +458,12 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
       )}
 
       {/* Sidebar */}
-      <aside
+    <aside
         className={`
           fixed top-0 left-0 z-40 h-screen w-64 bg-white shadow-lg flex flex-col
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:static lg:h-full
+          lg:translate-x-0 lg:static lg:h-[calc(100vh-3rem)] lg:self-stretch
         `}
       >
         {/* Header */}

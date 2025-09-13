@@ -500,7 +500,7 @@
   ,
   "roomBooking": {
     "title": "Peminjaman Ruangan",
-    "subtitle": "Guru dapat mengajukan peminjaman. Admin dapat menyetujui.",
+  "subtitle": "Peminjaman disetujui otomatis berdasarkan siapa cepat dia dapat; tidak boleh bertabrakan dengan booking yang sudah disetujui.",
     "formTitle": "Form Booking",
     "fields": {
       "room": "Ruangan",
@@ -556,6 +556,54 @@
     "confirmDeleteQuestion": "Hapus ruangan \"{name}\"?",
     "errors": {
       "nameDuplicate": "Nama ruangan sudah ada."
+    }
+  }
+  ,
+  "schoolFee": {
+    "title": "Pengaturan Biaya Sekolah",
+    "subtitle": "Tentukan Uang Sekolah (bulanan, bisa berbeda per bulan) dan UDP (sekali, bisa dicicil) per Unit dan Tahun Ajaran.",
+    "filter": "Filter",
+    "unit": "Unit (Sekolah)",
+    "selectUnit": "Pilih Unit",
+    "year": "Tahun Ajaran",
+    "selectYear": "Pilih Tahun",
+    "load": "Muat",
+    "tabs": { "school": "Uang Sekolah", "udp": "UDP" },
+    "school": {
+      "default": "Default per Bulan (IDR)",
+      "placeholder": "(kosong = pakai default)",
+      "applyDefault": "Terapkan Default ke Kosong",
+  "save": "Simpan Uang Sekolah",
+  "total12": "Total 12 Bulan"
+    },
+    "udp": {
+      "total": "Total UDP (IDR)",
+      "installments": "Jumlah Cicilan (opsional)",
+      "distribute": "Bagi Rata",
+      "seq": "Seq",
+      "month": "Bulan",
+      "amount": "Nominal (IDR)",
+      "actions": "Aksi",
+  "selectMonth": "Pilih Bulan",
+  "totalPlan": "Total Cicilan",
+      "addRow": "Tambah Baris Cicilan",
+      "save": "Simpan UDP",
+      "empty": "Belum ada rencana cicilan.",
+      "validation": {
+        "monthRange": "Bulan harus 1-12",
+        "monthDup": "Bulan duplikat",
+        "negative": "Nominal tidak boleh negatif",
+        "sumMismatch": "Total cicilan harus sama dengan total UDP"
+      }
+    },
+    "messages": {
+      "loadSchoolFeeError": "Gagal memuat School Fee: ",
+      "saveSuccess": "School Fee disimpan",
+      "saveError": "Gagal menyimpan: ",
+      "loadUdpError": "Gagal memuat UDP: ",
+      "udpSaveSuccess": "UDP disimpan",
+      "udpSaveError": "Gagal menyimpan UDP: ",
+      "fillInstallments": "Isi jumlah cicilan dahulu"
     }
   }
 }

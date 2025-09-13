@@ -82,6 +82,7 @@ for (const table of tables) {
 - ✅ `menus` - Navigation menu items
 - ✅ `menu_permissions` - Role-based menu access
 - ✅ `unit` - School units/departments
+  - Column: `is_school boolean not null default false` (School vs Management)
 - ✅ `kelas` - Classes
 - ✅ `subject` - Academic subjects
 
@@ -120,13 +121,68 @@ NEXT_PUBLIC_SUPABASE_URL=https://gzucqoupjfnwkesgyybc.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
----
 
 **🎯 Next Steps:**
 1. Jalankan migration SQL di Supabase Dashboard
 2. Test di `/debug/supabase`
 3. Login ke aplikasi
 4. Enjoy simplified architecture! 🚀
+
+## 🧩 Additional Migrations
+### School Fee & UDP
+
+Create tables for defining School Fee (monthly, with optional per-month overrides) and UDP (one-time, with installment plan) per Unit and Academic Year. Run the following SQL (or run the prepared file `supabase-migration-fees.sql`):
+
+```sql
+-- See file: supabase-migration-fees.sql
+```
+
+Notes:
+- Uniqueness is enforced per (unit_id, year_id) for both definitions (only one active per Unit+Year).
+- Monthly School Fee supports a 12-length array; null entries fall back to default.
+- UDP installment plan enforces unique month per definition and sum equals total (validated in UI).
+- RLS is enabled with DEV-friendly policies; tighten to admin-only writes for production.
+
+Menu access:
+- Add a menu entry for path `/data/school-fee` in `menus`.
+- Grant visibility via `menu_permissions` for non-admin roles as needed. Admin sees all by default.
+
+Add a column to distinguish School vs Management units:
+
+```sql
+alter table unit add column if not exists is_school boolean not null default false;
+```
+
+If RLS is enabled on `unit`, ensure insert/update policies allow writing `is_school` for admins.
+
+### Uniform Sales Module
+Run `supabase-migration-uniform.sql` to create masters (sizes, uniforms), per-size pricing, stock transactions, and sales tables.
+
+Notes:
+- DEV policies allow full read/write; restrict in production.
+- Add menus for `/data/uniform-size`, `/data/uniform`, `/sales/uniform`, `/reports/uniform` and grant via `menu_permissions` as needed (buyers are always students, but only staff performs sales operations).
+- Storage (receipts): Create a PRIVATE bucket `uniform-receipts`. Do NOT enable public read. The app should generate short‑lived signed URLs when users (buyer or staff/admin) view receipts.
+
+Example policy approach (SQL Editor → Storage Policies):
+```sql
+-- Allow authenticated writes (upload by staff via service route preferable)
+-- Read should generally be denied by default and accessed via signed URLs.
+-- If you must allow direct reads, scope by ownership (detail_siswa) via custom claims.
+```
+
+## 🧰 Menu Icon Normalizer (optional)
+To normalize inconsistent `menus.menu_icon` values to what the Sidebar supports, use `update-icons.js` at the repo root.
+
+What it does:
+- Converts short names like `users`, `book`, `graduation-cap`, `sack-dollar` → classic class names (`fas fa-users`, `fas fa-book`, `fas fa-graduation-cap`, `fas fa-sack-dollar`).
+- Converts alias names like `faUsers`, `faBook`, `faGraduationCap`, `faSackDollar` → classic class names so both old and new entries are consistent.
+
+How to run:
+1) Open `update-icons.js` and temporarily uncomment the line `updateIconNames()` at the bottom.
+2) Run the app (env must be available for Supabase client). Then execute the script in a Node context that can import the app’s Supabase client, or paste an adapted version into the browser console of a logged-in session.
+3) Check the console output for updates and verify via Supabase table `menus`.
+
+Note: The Sidebar supports both `fas fa-...` and `faXxx` formats, but we recommend storing classic class names (`fas fa-...`) in the DB for consistency.
 
 ## 📅 Assessment Calendar Setup
 

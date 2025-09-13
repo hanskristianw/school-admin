@@ -617,8 +617,10 @@ export default function UserManagement() {
       let result;
   const newPassword = submitData.password?.trim() || '';
       // Never send plaintext password directly to the users table
-      const baseData = { ...submitData };
+  const baseData = { ...submitData };
+  // Never send any password fields to users table
   delete baseData.password;
+  delete baseData.user_password;
 
       if (editingUser) {
         // Update existing user fields (without password)
@@ -840,7 +842,7 @@ export default function UserManagement() {
               </Label>
               <Input
                 id="password"
-                name="user_password"
+                name="password"
                 type="password"
                 value={formData.password}
                 onChange={handleInputChange}

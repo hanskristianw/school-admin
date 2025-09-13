@@ -17,10 +17,10 @@ export default function TeacherLayout({ children }) {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="flex h-screen">
+    <div className="bg-gray-100 h-[calc(100vh-3rem)]">{/* header 48px */}
+      <div className="flex h-full min-h-0">
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-        <main className="flex-1 transition-all duration-300 overflow-y-auto p-4">
+        <main className="flex-1 min-h-0 transition-all duration-300 overflow-y-auto p-4">
           <AccessGuard>
             {children}
           </AccessGuard>

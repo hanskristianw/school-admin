@@ -79,7 +79,7 @@ export default function AccessGuard({ children }) {
           }
         }
 
-        // Normalize paths and add default always-allowed sections
+  // Normalize paths and add default always-allowed sections
         const defaults = ['/dashboard', '/profile']
         const normalizedList = Array.isArray(allowedPaths) ? allowedPaths.map(normalize) : []
         // Counselor override: ensure consultation is allowed even if menu permission missing
@@ -88,7 +88,7 @@ export default function AccessGuard({ children }) {
   const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
         // Student override: ensure student scan is allowed when role is student
         const studentExtra = isStudent ? ['/student', '/student/scan'] : []
-        const merged = Array.from(new Set([
+  let merged = Array.from(new Set([
           ...normalizedList,
           ...defaults.map(normalize),
           ...counselorExtra.map(normalize),
@@ -107,6 +107,33 @@ export default function AccessGuard({ children }) {
           if (!Array.isArray(merged)) return false
           const np = normalize(path)
           return merged.some(p => np === p || (p && p !== '/' && np.startsWith(p + '/')))
+        }
+
+        // If cache denies current path, force-refresh from DB to pick up latest permissions
+        if (!hasAccess(pathname)) {
+          try {
+            const { customAuth } = await import('@/lib/supabase')
+            const fresh = await customAuth.getMenusByRole(roleName || '', false)
+            if (fresh.success) {
+              const freshPaths = (fresh.menus || []).map(m => m.menu_path).filter(Boolean)
+              // Update cache for this role
+              if (cacheKey) sessionStorage.setItem(cacheKey, JSON.stringify(freshPaths))
+              const freshNorm = Array.isArray(freshPaths) ? freshPaths.map(normalize) : []
+              merged = Array.from(new Set([
+                ...freshNorm,
+                ...defaults.map(normalize),
+                ...counselorExtra.map(normalize),
+                ...teacherExtra.map(normalize),
+                ...studentExtra.map(normalize)
+              ]))
+              // Refresh cookie after update
+              try {
+                const maxAge = 60 * 60 * 8
+                const safeJoin = encodeURIComponent(merged.join('|'))
+                document.cookie = `allowed_paths=${safeJoin}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+              } catch {}
+            }
+          } catch {}
         }
 
         if (!mounted) return
