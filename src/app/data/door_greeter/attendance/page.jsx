@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase, setAuthToken, createSupabaseWithAuth } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,18 @@ export default function AttendancePage() {
   const [notification, setNotification] = useState({ isOpen: false, title: "", message: "", type: "success" });
   const showNotification = (title, message, type="success") => setNotification({ isOpen: true, title, message, type });
 
+  // Authed Supabase client (ensures Authorization header under RLS)
+  const db = useRef(null);
+  useEffect(() => {
+    try {
+      const tok = typeof window !== 'undefined' ? localStorage.getItem('app_jwt') : null;
+      if (tok) {
+        setAuthToken(tok);
+        db.current = createSupabaseWithAuth(tok);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => { loadYears(); }, []);
   useEffect(() => { if (selectedYearId) loadStudentsAndClasses(); }, [selectedYearId]);
   useEffect(() => { if (selectedYearId && students.length > 0) loadAttendance(); else setAttendanceMap(new Map()); }, [students, selectedYearId]);
@@ -51,7 +63,8 @@ export default function AttendancePage() {
   // Realtime: refresh attendance when absen table changes for today
   useEffect(() => {
     if (!selectedYearId) return;
-    const channel = supabase
+    const client = db.current || supabase;
+    const channel = client
       .channel('realtime-absen-attendance')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'absen' }, (payload) => {
         const today = wibToday();
@@ -62,7 +75,7 @@ export default function AttendancePage() {
         }
       })
       .subscribe();
-    return () => { try { supabase.removeChannel(channel); } catch {} };
+    return () => { try { client.removeChannel(channel); } catch {} };
   }, [selectedYearId, students.length]);
 
   // Fallback: periodic poll in case realtime is not available
@@ -75,7 +88,8 @@ export default function AttendancePage() {
   const loadYears = async () => {
     try {
       setLoadingYears(true);
-      const { data, error } = await supabase.from('year').select('year_id, year_name').order('year_name');
+  const client = db.current || supabase;
+  const { data, error } = await client.from('year').select('year_id, year_name').order('year_name');
       if (error) throw new Error(error.message);
       setYears(data || []);
     } catch (e) {
@@ -88,7 +102,8 @@ export default function AttendancePage() {
     try {
       setLoadingStudents(true);
       setStudents([]); setClassesForYear([]); setAttendanceMap(new Map());
-      const { data: kelasData, error: kelasErr } = await supabase
+  const client = db.current || supabase;
+  const { data: kelasData, error: kelasErr } = await client
         .from('kelas')
         .select('kelas_id, kelas_nama')
         .eq('kelas_year_id', selectedYearId)
@@ -98,7 +113,7 @@ export default function AttendancePage() {
 
       if (kelasIds.length === 0) { setClassesForYear([]); setStudents([]); return; }
 
-      const { data: detailData, error: detailErr } = await supabase
+  const { data: detailData, error: detailErr } = await client
         .from('detail_siswa')
         .select('detail_siswa_id, detail_siswa_user_id, detail_siswa_kelas_id')
         .in('detail_siswa_kelas_id', kelasIds);
@@ -107,7 +122,7 @@ export default function AttendancePage() {
 
       let usersMap = new Map();
       if (userIds.length > 0) {
-        const { data: usersData, error: usersErr } = await supabase
+  const { data: usersData, error: usersErr } = await client
           .from('users')
           .select('user_id, user_nama_depan, user_nama_belakang')
           .in('user_id', userIds);
@@ -137,7 +152,8 @@ export default function AttendancePage() {
       setLoadingAttendance(true);
       const detailIds = students.map(s => s.detail_siswa_id);
       if (detailIds.length === 0) { setAttendanceMap(new Map()); return; }
-      const { data, error } = await supabase
+  const client = db.current || supabase;
+  const { data, error } = await client
         .from('absen')
         .select('absen_id, absen_detail_siswa_id, absen_time')
   .eq('absen_date', wibToday())
@@ -158,8 +174,9 @@ export default function AttendancePage() {
     try {
   const now = new Date(Date.now() + 7 * 60 * 60 * 1000); // WIB
   const timeStr = now.toISOString().slice(11,19);
-      const payload = { absen_detail_siswa_id: detailId, absen_date: selectedDate, absen_time: timeStr };
-      const { data, error } = await supabase.from('absen').insert([payload]).select();
+  const client = db.current || supabase;
+  const payload = { absen_detail_siswa_id: detailId, absen_date: selectedDate, absen_time: timeStr };
+  const { data, error } = await client.from('absen').insert([payload]).select();
       if (error) {
         const msg = error.message || '';
         if (/duplicate/i.test(msg)) {
@@ -181,7 +198,8 @@ export default function AttendancePage() {
     if (!rec) return;
     setSavingIds(prev => new Set([...prev, detailId]));
     try {
-      const { error } = await supabase.from('absen').delete().eq('absen_id', rec.absen_id);
+      const client = db.current || supabase;
+      const { error } = await client.from('absen').delete().eq('absen_id', rec.absen_id);
       if (error) throw new Error(error.message);
       setAttendanceMap(prev => { const n = new Map(prev); n.delete(detailId); return n; });
     } catch (e) {

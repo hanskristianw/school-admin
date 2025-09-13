@@ -131,6 +131,25 @@ create policy "public read detail_siswa" on public.detail_siswa for select using
 alter table if exists public.attendance_session enable row level security;
 alter table if exists public.attendance_scan_log enable row level security;
 alter table if exists public.absen enable row level security;
+
+-- DEV-friendly policies for attendance (tighten in production)
+do $$ begin
+	if not exists (
+		select 1 from pg_policies where schemaname = 'public' and tablename = 'absen' and policyname = 'public read absen'
+	) then
+		create policy "public read absen" on public.absen for select using (true);
+	end if;
+	if not exists (
+		select 1 from pg_policies where schemaname = 'public' and tablename = 'absen' and policyname = 'public insert absen'
+	) then
+		create policy "public insert absen" on public.absen for insert with check (true);
+	end if;
+	if not exists (
+		select 1 from pg_policies where schemaname = 'public' and tablename = 'absen' and policyname = 'public delete absen'
+	) then
+		create policy "public delete absen" on public.absen for delete using (true);
+	end if;
+end $$;
 -- no public policies => clients cannot touch directly; use server endpoints (service role)
 
 -- 3b) Student Counseling (Consultations)
