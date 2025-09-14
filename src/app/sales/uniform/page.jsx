@@ -12,7 +12,6 @@ import { formatCurrency, toNumber } from '@/lib/utils'
 export default function UniformSalesPage() {
   const [units, setUnits] = useState([])
   const [unitId, setUnitId] = useState('')
-  const [students, setStudents] = useState([]) // { detail_siswa_id, nama }
   const [detailSiswaId, setDetailSiswaId] = useState('')
   const [uniforms, setUniforms] = useState([]) // { uniform_id, uniform_name }
   const [sizes, setSizes] = useState([]) // by unit
@@ -39,35 +38,37 @@ export default function UniformSalesPage() {
     fetchUnits()
   }, [])
 
-  // Load students, uniforms, sizes, variants, stock for unit
+  // Resolve logged-in student's detail_siswa_id, then load uniforms, sizes, variants, stock for unit
   useEffect(() => {
     if (!unitId) return
     const load = async () => {
       setLoading(true)
       try {
-        const [dsRes, uRes, sRes, vRes, stRes] = await Promise.all([
-          supabase.from('detail_siswa').select('detail_siswa_id, detail_siswa_user_id').order('detail_siswa_id'),
+        // Get current user id from localStorage
+        const kr_id = typeof window !== 'undefined' ? Number(localStorage.getItem('kr_id')) : null
+        if (!kr_id) throw new Error('Unauthorized')
+        // Find the student's active detail_siswa row for this user (latest by id)
+        const { data: dsRows, error: dsErr } = await supabase
+          .from('detail_siswa')
+          .select('detail_siswa_id, detail_siswa_user_id')
+          .eq('detail_siswa_user_id', kr_id)
+          .order('detail_siswa_id', { ascending: false })
+          .limit(1)
+        if (dsErr) throw dsErr
+        const dsRow = (dsRows || [])[0]
+        if (!dsRow) throw new Error('Profil siswa tidak ditemukan')
+        setDetailSiswaId(String(dsRow.detail_siswa_id))
+
+        const [uRes, sRes, vRes, stRes] = await Promise.all([
           supabase.from('uniform').select('uniform_id, uniform_name').eq('unit_id', Number(unitId)).eq('is_active', true).order('uniform_name'),
           supabase.from('uniform_size').select('*').eq('unit_id', Number(unitId)).eq('is_active', true).order('display_order'),
           supabase.from('uniform_variant').select('uniform_id, size_id, hpp, price'),
           supabase.from('v_uniform_stock').select('uniform_id, size_id, qty')
         ])
-        if (dsRes.error) throw dsRes.error
         if (uRes.error) throw uRes.error
         if (sRes.error) throw sRes.error
         if (vRes.error) throw vRes.error
         if (stRes.error) throw stRes.error
-
-        // Map student names via users
-        const userIds = [...new Set((dsRes.data || []).map(d => d.detail_siswa_user_id).filter(Boolean))]
-        let nameMap = new Map()
-        if (userIds.length) {
-          const { data: usersRows, error: usersErr } = await supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').in('user_id', userIds)
-          if (usersErr) throw usersErr
-          nameMap = new Map((usersRows || []).map(u => [u.user_id, `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()]))
-        }
-        const dsList = (dsRes.data || []).map(d => ({ detail_siswa_id: d.detail_siswa_id, nama: nameMap.get(d.detail_siswa_user_id) || `Siswa ${d.detail_siswa_id}` }))
-        setStudents(dsList)
         setUniforms(uRes.data || [])
         setSizes(sRes.data || [])
         setVariants(vRes.data || [])
@@ -75,7 +76,6 @@ export default function UniformSalesPage() {
         ;(stRes.data || []).forEach(r => sm.set(`${r.uniform_id}_${r.size_id}`, r.qty || 0))
         setStockMap(sm)
         setItems([])
-        setDetailSiswaId('')
         setReceiptFile(null)
       } catch (e) { setError(e.message) } finally { setLoading(false) }
     }
@@ -104,7 +104,7 @@ export default function UniformSalesPage() {
 
   const validate = () => {
     if (!unitId) return 'Pilih unit'
-    if (!detailSiswaId) return 'Pilih siswa'
+  if (!detailSiswaId) return 'Siswa tidak terdeteksi'
     if (!items.length) return 'Tambahkan item'
     for (const it of items) {
       if (!it.uniform_id || !it.size_id || !Number(it.qty)) return 'Item tidak valid'
@@ -197,13 +197,7 @@ export default function UniformSalesPage() {
               {units.map(u => <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>)}
             </select>
           </div>
-          <div className="md:col-span-2">
-            <Label>Siswa</Label>
-            <select className="mt-1 w-full border rounded px-2 py-2" value={detailSiswaId} onChange={e=>setDetailSiswaId(e.target.value)}>
-              <option value="">-- Pilih Siswa --</option>
-              {students.map(s => <option key={s.detail_siswa_id} value={s.detail_siswa_id}>{s.nama}</option>)}
-            </select>
-          </div>
+          {/* Siswa diambil otomatis dari user yang login */}
           <div className="flex items-end">
             <Button onClick={addItem} className="bg-blue-600 hover:bg-blue-700 text-white">Tambah Item</Button>
           </div>

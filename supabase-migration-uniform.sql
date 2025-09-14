@@ -95,6 +95,64 @@ create table if not exists public.uniform_sale_item (
   created_at timestamptz not null default now()
 );
 
+-- 6) Supplier master (global)
+create table if not exists public.uniform_supplier (
+  supplier_id bigserial primary key,
+  supplier_code text null,
+  supplier_name text not null,
+  contact_person text null,
+  phone text null,
+  email text null,
+  address text null,
+  notes text null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- 7) Purchase (add stock when posted)
+create table if not exists public.uniform_purchase (
+  purchase_id bigserial primary key,
+  unit_id integer not null references public.unit(unit_id) on delete restrict,
+  supplier_id bigint not null references public.uniform_supplier(supplier_id) on delete restrict,
+  purchase_date date not null default (current_date),
+  invoice_no text null,
+  notes text null,
+  attachment_url text null,
+  status text not null default 'posted' check (status in ('draft','posted','cancelled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.uniform_purchase_item (
+  item_id bigserial primary key,
+  purchase_id bigint not null references public.uniform_purchase(purchase_id) on delete cascade,
+  uniform_id bigint not null references public.uniform(uniform_id) on delete restrict,
+  size_id bigint not null references public.uniform_size(size_id) on delete restrict,
+  qty integer not null check (qty > 0),
+  unit_cost numeric(12,2) not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- 8) Purchase Receipts (support partial arrivals and history)
+create table if not exists public.uniform_purchase_receipt (
+  receipt_id bigserial primary key,
+  purchase_id bigint not null references public.uniform_purchase(purchase_id) on delete cascade,
+  receipt_date date not null default (current_date),
+  notes text null,
+  attachment_url text null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.uniform_purchase_receipt_item (
+  receipt_item_id bigserial primary key,
+  receipt_id bigint not null references public.uniform_purchase_receipt(receipt_id) on delete cascade,
+  purchase_item_id bigint not null references public.uniform_purchase_item(item_id) on delete restrict,
+  qty_received integer not null check (qty_received > 0),
+  unit_cost numeric(12,2) not null,
+  created_at timestamptz not null default now()
+);
+
 -- Indexes for performance
 create index if not exists idx_uniform_unit on public.uniform(unit_id);
 create index if not exists idx_uniform_size_unit on public.uniform_size(unit_id);
@@ -104,6 +162,13 @@ create index if not exists idx_uniform_stock_txn_us on public.uniform_stock_txn(
 create index if not exists idx_uniform_sale_detail_siswa on public.uniform_sale(detail_siswa_id);
 create index if not exists idx_uniform_sale_unit on public.uniform_sale(unit_id);
 create index if not exists idx_uniform_sale_item_sale on public.uniform_sale_item(sale_id);
+create index if not exists idx_uniform_supplier_active on public.uniform_supplier(is_active);
+create index if not exists idx_uniform_purchase_unit on public.uniform_purchase(unit_id);
+create index if not exists idx_uniform_purchase_supplier on public.uniform_purchase(supplier_id);
+create index if not exists idx_uniform_purchase_item_p on public.uniform_purchase_item(purchase_id);
+create index if not exists idx_uniform_purchase_receipt_p on public.uniform_purchase_receipt(purchase_id);
+create index if not exists idx_uniform_purchase_receipt_item_r on public.uniform_purchase_receipt_item(receipt_id);
+create index if not exists idx_uniform_purchase_receipt_item_pi on public.uniform_purchase_receipt_item(purchase_item_id);
 
 -- Expression-based uniqueness (use unique indexes instead of constraints)
 create unique index if not exists uq_uniform_size_name_per_unit
@@ -120,6 +185,11 @@ alter table public.uniform_variant enable row level security;
 alter table public.uniform_stock_txn enable row level security;
 alter table public.uniform_sale enable row level security;
 alter table public.uniform_sale_item enable row level security;
+alter table public.uniform_supplier enable row level security;
+alter table public.uniform_purchase enable row level security;
+alter table public.uniform_purchase_item enable row level security;
+alter table public.uniform_purchase_receipt enable row level security;
+alter table public.uniform_purchase_receipt_item enable row level security;
 
 do $$ begin
   -- Allow all read
@@ -143,6 +213,21 @@ do $$ begin
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_sale_item' and policyname='read_uniform_sale_item') then
     create policy read_uniform_sale_item on public.uniform_sale_item for select using (true);
   end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_supplier' and policyname='read_uniform_supplier') then
+    create policy read_uniform_supplier on public.uniform_supplier for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_purchase' and policyname='read_uniform_purchase') then
+    create policy read_uniform_purchase on public.uniform_purchase for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_purchase_item' and policyname='read_uniform_purchase_item') then
+    create policy read_uniform_purchase_item on public.uniform_purchase_item for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_purchase_receipt' and policyname='read_uniform_purchase_receipt') then
+    create policy read_uniform_purchase_receipt on public.uniform_purchase_receipt for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_purchase_receipt_item' and policyname='read_uniform_purchase_receipt_item') then
+    create policy read_uniform_purchase_receipt_item on public.uniform_purchase_receipt_item for select using (true);
+  end if;
 
   -- DEV upsert policies (allow all write)
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform' and policyname='write_uniform') then
@@ -163,6 +248,64 @@ do $$ begin
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_sale_item' and policyname='write_uniform_sale_item') then
     create policy write_uniform_sale_item on public.uniform_sale_item for all using (true) with check (true);
   end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_supplier' and policyname='write_uniform_supplier') then
+    create policy write_uniform_supplier on public.uniform_supplier for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_purchase' and policyname='write_uniform_purchase') then
+    create policy write_uniform_purchase on public.uniform_purchase for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_purchase_item' and policyname='write_uniform_purchase_item') then
+    create policy write_uniform_purchase_item on public.uniform_purchase_item for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_purchase_receipt' and policyname='write_uniform_purchase_receipt') then
+    create policy write_uniform_purchase_receipt on public.uniform_purchase_receipt for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='uniform_purchase_receipt_item' and policyname='write_uniform_purchase_receipt_item') then
+    create policy write_uniform_purchase_receipt_item on public.uniform_purchase_receipt_item for all using (true) with check (true);
+  end if;
+end $$;
+
+-- Helper view: purchase item progress (ordered, received, remaining)
+create or replace view public.v_uniform_purchase_item_progress as
+select
+  pi.item_id as purchase_item_id,
+  pi.purchase_id,
+  pi.uniform_id,
+  pi.size_id,
+  pi.qty::int as qty_ordered,
+  coalesce(sum(ri.qty_received), 0)::int as qty_received,
+  (pi.qty - coalesce(sum(ri.qty_received), 0))::int as qty_remaining
+from public.uniform_purchase_item pi
+left join public.uniform_purchase_receipt_item ri on ri.purchase_item_id = pi.item_id
+left join public.uniform_purchase_receipt r on r.receipt_id = ri.receipt_id
+group by pi.item_id;
+
+-- Storage: create buckets for receipts and purchase attachments (DEV defaults)
+insert into storage.buckets (id, name, public)
+values
+  ('uniform-receipts', 'uniform-receipts', true),
+  ('uniform-purchases', 'uniform-purchases', true)
+on conflict (id) do nothing;
+
+-- DEV Storage Policies (broad; tighten for production)
+do $$ begin
+  if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='dev_select_uniform_buckets') then
+    create policy dev_select_uniform_buckets on storage.objects for select
+      using (bucket_id in ('uniform-receipts','uniform-purchases'));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='dev_insert_uniform_buckets') then
+    create policy dev_insert_uniform_buckets on storage.objects for insert
+      with check (bucket_id in ('uniform-receipts','uniform-purchases'));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='dev_update_uniform_buckets') then
+    create policy dev_update_uniform_buckets on storage.objects for update
+      using (bucket_id in ('uniform-receipts','uniform-purchases'))
+      with check (bucket_id in ('uniform-receipts','uniform-purchases'));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='dev_delete_uniform_buckets') then
+    create policy dev_delete_uniform_buckets on storage.objects for delete
+      using (bucket_id in ('uniform-receipts','uniform-purchases'));
+  end if;
 end $$;
 
 -- Optional: Menus (run once; adjust order/parent as needed)
@@ -171,6 +314,8 @@ end $$;
 -- ('Master Seragam', '/data/uniform', 'fas fa-shirt', 51),
 -- ('Penjualan Seragam', '/sales/uniform', 'fas fa-cart-shopping', 52),
 -- ('Laporan Seragam', '/reports/uniform', 'fas fa-clipboard-list', 53);
+-- ('Supplier Seragam', '/data/uniform-supplier', 'fas fa-truck', 54),
+-- ('Tambah Stok Seragam', '/stock/uniform/add', 'fas fa-warehouse', 55);
 
 -- Notes:
 -- - Tighten RLS for production: restrict writes to admin roles or move to server routes using service role.

@@ -69,6 +69,9 @@ const iconMap = {
   , 'fas fa-shirt': require('@fortawesome/free-solid-svg-icons').faShirt
   , 'fas fa-cart-shopping': require('@fortawesome/free-solid-svg-icons').faCartShopping
   , 'fas fa-clipboard-list': require('@fortawesome/free-solid-svg-icons').faClipboardList
+  , 'fas fa-truck': require('@fortawesome/free-solid-svg-icons').faTruck
+  , 'fas fa-warehouse': require('@fortawesome/free-solid-svg-icons').faWarehouse
+  , 'fas fa-cart-plus': require('@fortawesome/free-solid-svg-icons').faCartPlus
   ,
   // Alias: dukung format nama icon 'faXxx' supaya lebih toleran
   'faTachometerAlt': faTachometerAlt,
@@ -97,6 +100,9 @@ const iconMap = {
   , 'faShirt': require('@fortawesome/free-solid-svg-icons').faShirt
   , 'faCartShopping': require('@fortawesome/free-solid-svg-icons').faCartShopping
   , 'faClipboardList': require('@fortawesome/free-solid-svg-icons').faClipboardList
+  , 'faTruck': require('@fortawesome/free-solid-svg-icons').faTruck
+  , 'faWarehouse': require('@fortawesome/free-solid-svg-icons').faWarehouse
+  , 'faCartPlus': require('@fortawesome/free-solid-svg-icons').faCartPlus
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

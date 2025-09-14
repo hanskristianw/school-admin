@@ -210,3 +210,54 @@ Then, ensure your Supabase project uses the same JWT secret (Settings → API �
 - kr_id: numeric user id; used to verify ownership of subjects/topics
 
 The client stores the token and sends it as `Authorization: Bearer <token>` for DB operations. Update or rotate the secret consistently across app and Supabase if needed.
+
+## 🧾 Uniform Purchases & Receiving
+
+This module supports pending purchases (draft) and partial receiving with history. Apply `supabase-migration-uniform.sql` to create all tables, policies, and helper views.
+
+- Tables:
+  - `uniform_purchase`: purchase header per Unit with `status in ('draft','posted','cancelled')`
+  - `uniform_purchase_item`: ordered items with `qty` and `unit_cost`
+  - `uniform_purchase_receipt`: receipt header per purchase (date, notes, attachment_url)
+  - `uniform_purchase_receipt_item`: per-item received quantities and cost at receipt
+  - `uniform_stock_txn`: stock increases recorded on each receipt (`txn_type='purchase'`)
+- View:
+  - `v_uniform_purchase_item_progress`: shows `qty_ordered`, `qty_received`, `qty_remaining` per purchase item
+- Storage:
+  - Buckets `uniform-purchases` (invoice/PO attachments) and `uniform-receipts` (receipt docs). In DEV they are public for convenience; for production, make them private and serve via signed URLs.
+
+### UI Flow
+- Add Order: `/stock/uniform/add`
+  - Pick Unit + Supplier, fill items, optional invoice and attachment, then Save. Status = `draft`. No stock change yet.
+  - The order appears under “Pending Order (Draft)”.
+- Receive Goods (Partial OK):
+  - Click “Terima” on a draft to open the receiving modal.
+  - Enter quantities received per item (capped by remaining). Optionally update HPP per line.
+  - Saving a receipt inserts to `uniform_purchase_receipt*` tables and posts stock to `uniform_stock_txn` for each line.
+  - When all remaining = 0, the purchase auto-updates to `posted` and moves to “Transaksi Selesai”.
+- Completed History:
+  - Section “Transaksi Selesai” lists `posted` purchases. “Lihat Riwayat” shows header, item summary (ordered/received/remaining), and receipt history with links to attachments.
+
+### Troubleshooting
+- If you see errors about missing `v_uniform_purchase_item_progress`, re-run the migration or create the view with:
+```sql
+create or replace view public.v_uniform_purchase_item_progress as
+select
+  pi.item_id as purchase_item_id,
+  pi.purchase_id,
+  pi.uniform_id,
+  pi.size_id,
+  pi.qty::int as qty_ordered,
+  coalesce(sum(ri.qty_received), 0)::int as qty_received,
+  (pi.qty - coalesce(sum(ri.qty_received), 0))::int as qty_remaining
+from public.uniform_purchase_item pi
+left join public.uniform_purchase_receipt_item ri on ri.purchase_item_id = pi.item_id
+left join public.uniform_purchase_receipt r on r.receipt_id = ri.receipt_id
+group by pi.item_id;
+```
+- The UI has a fallback and will compute remaining from tables if the view is absent, but adding the view is recommended for performance.
+
+### Hardening for Production
+- Tighten RLS: restrict writes to admin/service roles.
+- Make storage buckets private; generate signed URLs to view attachments.
+- Consider a server-side route for uploads using the service role key to avoid broad client policies.
