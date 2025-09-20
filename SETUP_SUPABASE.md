@@ -261,3 +261,74 @@ group by pi.item_id;
 - Tighten RLS: restrict writes to admin/service roles.
 - Make storage buckets private; generate signed URLs to view attachments.
 - Consider a server-side route for uploads using the service role key to avoid broad client policies.
+
+## 🤖 AI (Gemini) Setup
+
+Environment variables in `.env.local`:
+
+```env
+NEXT_PUBLIC_GEMINI_MODELS=gemini-2.5-pro,gemini-2.5-flash
+GEMINI_API_KEY=your_google_generative_language_api_key
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+- `NEXT_PUBLIC_GEMINI_MODELS`: comma-separated allowed models shown in UI (chat etc).
+- `GEMINI_MODEL`: server default when none provided.
+- API route: `/api/gemini` (single prompt) expects `{ prompt, model?, context? }`.
+
+Notes:
+- For development, `gemini-2.5-flash` is used for quick responses. You can switch to `gemini-2.5-pro` if enabled in your billing.
+
+## 🧩 AI Rule (Single Row Config)
+
+To standardize AI outputs per page, use table `public.ai_rule` (single row):
+
+- SQL file: `supabase-migration-ai.sql` (creates table, RLS, and ensures at least 1 row exists).
+- Columns:
+  - `ai_rule_id` (PK)
+  - `ai_rule_unit` (text): knowledge/context used for Unit (Topic) AI assistance
+  - `created_at`, `updated_at`
+
+Manage from UI:
+- Page: `/settings/ai-rule` — only one row is editable. If table is empty, app auto-inserts a default row.
+
+RLS:
+- DEV policies allow full read/write. Harden to admin-only writes for production.
+
+## 📚 Topic (Unit) – Extended Fields
+
+Topic schema supports additional learning-design fields. Ensure these columns exist in `public.topic`:
+
+```sql
+alter table public.topic add column if not exists topic_global_context text;
+alter table public.topic add column if not exists topic_key_concept text;
+alter table public.topic add column if not exists topic_related_concept text;
+alter table public.topic add column if not exists topic_statement text;
+```
+
+UI updates (page `/data/topic`):
+- Create/Edit form now includes:
+  - Global Context (textarea)
+  - Key Concept (input)
+  - Related Concept (input)
+  - Statement of Inquiry (textarea)
+- The list shows these fields (truncated) for quick review.
+
+## ✨ AI Help in Unit Title (Topic)
+
+On `/data/topic` create/edit form, an AI assistant helps generate Unit titles:
+
+- Buttons: AI Help (EN), AI Help (ID), AI Help (ZH)
+- Behavior:
+  - Reads `ai_rule.ai_rule_unit` as context.
+  - Builds prompt: `<Unit Title typed>\n\nMohon jawab dalam bahasa <Inggris/Indonesia/Mandarin>.`
+  - Calls `/api/gemini` with `model: gemini-2.5-flash`.
+  - Parses numbered results (1., 2., 3., ...) into suggestions.
+  - Each suggestion has “Gunakan sebagai Judul” to insert into Unit Title.
+- Debugging:
+  - The modal displays “Prompt dikirim:” showing the exact prompt sent to Gemini.
+- Empty-title message is localized to the selected language.
+
+Notes & Next steps:
+- You can extend the modal to also “Insert to Planner” or map items 1–3 to the new fields if your prompt enforces a stable format.
+- For production, consider server-side proxies and stricter RLS for `ai_rule`.

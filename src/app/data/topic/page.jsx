@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import Modal from "@/components/ui/modal";
 import NotificationModal from "@/components/ui/notification-modal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faTrash, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faTrash, faSpinner, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 
 export default function TopicPage() {
   const { t } = useI18n();
@@ -32,7 +32,16 @@ export default function TopicPage() {
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null); // topic row or null
-  const [formData, setFormData] = useState({ topic_nama: "", topic_subject_id: "", topic_kelas_id: "", topic_planner: "" });
+  const [formData, setFormData] = useState({
+    topic_nama: "",
+    topic_subject_id: "",
+    topic_kelas_id: "",
+    topic_planner: "",
+    topic_global_context: "",
+    topic_key_concept: "",
+    topic_related_concept: "",
+    topic_statement: ""
+  });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,6 +51,402 @@ export default function TopicPage() {
   // Notifications
   const [notification, setNotification] = useState({ isOpen: false, title: "", message: "", type: "success" });
   const showNotification = (title, message, type = "success") => setNotification({ isOpen: true, title, message, type });
+
+  // AI Help state
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState('')
+  const [aiRaw, setAiRaw] = useState('')
+  const [aiItems, setAiItems] = useState([]) // parsed items 1., 2., 3.
+  const [aiLang, setAiLang] = useState('')
+  const [aiPrompt, setAiPrompt] = useState('')
+
+  // AI Global Context state
+  const [gcOpen, setGcOpen] = useState(false)
+  const [gcLoading, setGcLoading] = useState(false)
+  const [gcError, setGcError] = useState('')
+  const [gcItems, setGcItems] = useState([])
+  const [gcRaw, setGcRaw] = useState('')
+  const [gcPrompt, setGcPrompt] = useState('')
+  const [gcLang, setGcLang] = useState('')
+
+  // AI Key Concept state
+  const [kcOpen, setKcOpen] = useState(false)
+  const [kcLoading, setKcLoading] = useState(false)
+  const [kcError, setKcError] = useState('')
+  const [kcItems, setKcItems] = useState([])
+  const [kcRaw, setKcRaw] = useState('')
+  const [kcPrompt, setKcPrompt] = useState('')
+  const [kcLang, setKcLang] = useState('')
+  const [kcSelected, setKcSelected] = useState([])
+  const [kcSelectError, setKcSelectError] = useState('')
+
+  // AI Related Concept state
+  const [rcOpen, setRcOpen] = useState(false)
+  const [rcLoading, setRcLoading] = useState(false)
+  const [rcError, setRcError] = useState('')
+  const [rcItems, setRcItems] = useState([])
+  const [rcRaw, setRcRaw] = useState('')
+  const [rcPrompt, setRcPrompt] = useState('')
+  const [rcLang, setRcLang] = useState('')
+
+  // AI Statement of Inquiry state
+  const [soOpen, setSoOpen] = useState(false)
+  const [soLoading, setSoLoading] = useState(false)
+  const [soError, setSoError] = useState('')
+  const [soItems, setSoItems] = useState([])
+  const [soRaw, setSoRaw] = useState('')
+  const [soPrompt, setSoPrompt] = useState('')
+  const [soLang, setSoLang] = useState('')
+  const [soSelected, setSoSelected] = useState([])
+  const [soSelectError, setSoSelectError] = useState('')
+  const [rcSelected, setRcSelected] = useState([])
+  const [rcSelectError, setRcSelectError] = useState('')
+
+  const parseAiOutput = (text) => {
+    if (!text || typeof text !== 'string') return []
+    const lines = text.split(/\r?\n/)
+    const items = []
+    let current = null
+    const startRe = /^\s*(\d+)[\.)]\s+/
+    lines.forEach((ln) => {
+      const m = ln.match(startRe)
+      if (m) {
+        if (current) items.push(current)
+        current = { index: parseInt(m[1], 10), text: ln.replace(startRe, '').trim() }
+      } else if (current) {
+        current.text += (current.text ? '\n' : '') + ln.trim()
+      }
+    })
+    if (current) items.push(current)
+    // Fallback: if no numbered items, return whole as single item
+    return items.length ? items : [{ index: 1, text: text.trim() }]
+  }
+
+  const stripBoldWrap = (s) => {
+    if (typeof s !== 'string') return s
+    let out = s.trim()
+    if (out.startsWith('**') && out.endsWith('**') && out.length >= 4) {
+      out = out.slice(2, -2).trim()
+    }
+    return out
+  }
+
+  const stripAllBoldMarkers = (s) => {
+    if (typeof s !== 'string') return s
+    return s.replace(/\*\*/g, '')
+  }
+
+  const extractFirstBoldWord = (text) => {
+    if (!text) return ''
+    const str = String(text)
+    const m = str.match(/\*\*([^*]+)\*\*/)
+    if (m && m[1]) {
+      const inner = m[1].trim()
+      const first = inner.split(/\s+/)[0] || ''
+      return first.replace(/[.,;:!?\-—–]+$/g, '')
+    }
+    const firstLine = String(text).split(/\r?\n/)[0]
+    const cleaned = stripBoldWrap(firstLine)
+    const first = cleaned.split(/\s+/)[0] || ''
+    return first.replace(/[.,;:!?\-—–]+$/g, '')
+  }
+
+  const openAiHelp = async (lang) => {
+    if (!formData.topic_nama || !formData.topic_nama.trim()) {
+      const titles = { en: 'Info', id: 'Info', zh: '提示' }
+      const messages = {
+        en: 'Please fill in the Unit Title before asking AI for help.',
+        id: 'Isi dulu Unit Title sebelum meminta bantuan AI.',
+        zh: '在向 AI 请求帮助之前，请先填写单元标题。'
+      }
+      const ttl = titles[lang] || 'Info'
+      const msg = messages[lang] || messages.id
+      showNotification(ttl, msg, 'warning')
+      return
+    }
+    setAiOpen(true)
+    setAiLoading(true)
+    setAiError('')
+    setAiRaw('')
+    setAiItems([])
+    setAiLang(lang || '')
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_unit').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_unit || ''
+      const bahasaMap = {
+        en: 'Inggris',
+        id: 'Indonesia',
+        zh: 'Mandarin'
+      }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const promptWithLang = `${formData.topic_nama.trim()}\n\nMohon jawab dalam bahasa ${selected}.`
+  setAiPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setAiRaw(text)
+      setAiItems(parseAiOutput(text))
+    } catch (e) {
+      console.error('AI Help error', e)
+      setAiError(e.message)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const insertToTitle = (txt) => {
+    if (!txt) return
+    // Use first line, keep it concise
+    const firstLine = stripAllBoldMarkers(stripBoldWrap(String(txt).split(/\r?\n/)[0]))
+    setFormData(prev => ({ ...prev, topic_nama: firstLine }))
+    setAiOpen(false)
+  }
+
+  // removed copy-all per request
+
+  // Open AI help for Global Context
+  const openGcHelp = async (lang) => {
+    if (!formData.topic_nama || !formData.topic_nama.trim()) {
+      showNotification('Info', 'Isi dulu Unit Title sebelum meminta bantuan AI untuk Global Context.', 'warning')
+      return
+    }
+    setGcOpen(true)
+    setGcLoading(true)
+    setGcError('')
+    setGcItems([])
+    setGcRaw('')
+    setGcPrompt('')
+    setGcLang(lang || '')
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_global_context').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_global_context || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const promptWithLang = `${formData.topic_nama.trim()}\n\nBuat dalam bahasa ${selected}.`
+      setGcPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setGcRaw(text)
+      const items = parseAiOutput(text).slice(0, 2)
+      setGcItems(items)
+    } catch (e) {
+      console.error('AI Global Context error', e)
+      setGcError(e.message)
+    } finally {
+      setGcLoading(false)
+    }
+  }
+
+  const useGlobalContext = (txt) => {
+    if (!txt) return
+    const first = stripAllBoldMarkers(stripBoldWrap(String(txt).split(/\r?\n/)[0]))
+    setFormData(prev => ({ ...prev, topic_global_context: first }))
+    setGcOpen(false)
+  }
+
+  // Open AI help for Key Concept (expects 2 options)
+  const openKcHelp = async (lang) => {
+    if (!formData.topic_nama || !formData.topic_nama.trim()) {
+      showNotification('Info', 'Isi dulu Unit Title sebelum meminta bantuan AI untuk Key Concept.', 'warning')
+      return
+    }
+    setKcOpen(true)
+    setKcLoading(true)
+    setKcError('')
+    setKcItems([])
+    setKcRaw('')
+    setKcPrompt('')
+    setKcLang(lang || '')
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_key_concept').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_key_concept || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const promptWithLang = `${formData.topic_nama.trim()}\n\nBerikan tepat 2 key concept yang mungkin berkaitan. Buat dalam bahasa ${selected}.`
+      setKcPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setKcRaw(text)
+      const items = parseAiOutput(text).slice(0, 2)
+  setKcItems(items)
+  setKcSelected(items.map(() => true))
+  setKcSelectError('')
+    } catch (e) {
+      console.error('AI Key Concept error', e)
+      setKcError(e.message)
+    } finally {
+      setKcLoading(false)
+    }
+  }
+
+  const useKeyConcept = (txt) => {
+    if (!txt) return
+    const concept = extractFirstBoldWord(txt)
+    setFormData(prev => ({ ...prev, topic_key_concept: concept }))
+    setKcOpen(false)
+  }
+
+  const confirmKeyConceptSelection = () => {
+    if (!kcItems || kcItems.length === 0) return
+    const selectedConcepts = kcItems
+      .filter((_, idx) => kcSelected[idx])
+      .map(it => extractFirstBoldWord(it.text))
+      .map(s => (s || '').trim())
+      .filter(Boolean)
+    if (selectedConcepts.length === 0) {
+      setKcSelectError('Pilih minimal 1 opsi.')
+      return
+    }
+    setFormData(prev => ({ ...prev, topic_key_concept: selectedConcepts.join(', ') }))
+    setKcOpen(false)
+  }
+
+  // Open AI help for Related Concept (expects 2 options)
+  const openRcHelp = async (lang) => {
+    const subjId = formData.topic_subject_id
+    const unit = formData.topic_nama?.trim()
+    const gc = formData.topic_global_context?.trim()
+    const kc = formData.topic_key_concept?.trim()
+    if (!subjId || !unit || !gc || !kc) {
+      showNotification('Info', 'Isi Subject, Unit Title, Global Context, dan Key Concept sebelum meminta bantuan AI untuk Related Concept.', 'warning')
+      return
+    }
+    const subjName = subjects.find(s => String(s.subject_id) === String(subjId))?.subject_name || ''
+    setRcOpen(true)
+    setRcLoading(true)
+    setRcError('')
+    setRcItems([])
+    setRcRaw('')
+    setRcPrompt('')
+    setRcLang(lang || '')
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_related_concept').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_related_concept || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+  const promptWithLang = `Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\n\nBerikan tepat 2 related concept yang mungkin relevan. Buat dalam bahasa ${selected}. Berikan alasannya juga.`
+      setRcPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setRcRaw(text)
+      const items = parseAiOutput(text).slice(0, 2)
+  setRcItems(items)
+  setRcSelected(items.map(() => true))
+  setRcSelectError('')
+    } catch (e) {
+      console.error('AI Related Concept error', e)
+      setRcError(e.message)
+    } finally {
+      setRcLoading(false)
+    }
+  }
+
+  const useRelatedConcept = (txt) => {
+    if (!txt) return
+    const first = stripAllBoldMarkers(stripBoldWrap(String(txt).split(/\r?\n/)[0]))
+    setFormData(prev => ({ ...prev, topic_related_concept: first }))
+    setRcOpen(false)
+  }
+
+  // Open AI help for Statement of Inquiry (expects 2 options)
+  const openSoHelp = async (lang) => {
+    const unit = formData.topic_nama?.trim()
+    const gc = formData.topic_global_context?.trim()
+    const kc = formData.topic_key_concept?.trim()
+    const rc = formData.topic_related_concept?.trim()
+    if (!unit || !gc || !kc || !rc) {
+      showNotification('Info', 'Isi Unit Title, Global Context, Key Concept, dan Related Concept sebelum meminta bantuan AI untuk Statement of Inquiry.', 'warning')
+      return
+    }
+    setSoOpen(true)
+    setSoLoading(true)
+    setSoError('')
+    setSoItems([])
+    setSoRaw('')
+    setSoPrompt('')
+    setSoLang(lang || '')
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_statement').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_statement || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+  const promptWithLang = `Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 3 opsi Statement of Inquiry yang relevan. Buat dalam bahasa ${selected}.`
+      setSoPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setSoRaw(text)
+  const items = parseAiOutput(text).slice(0, 3)
+  setSoItems(items)
+  setSoSelected(items.map((_, i) => i === 0))
+  setSoSelectError('')
+    } catch (e) {
+      console.error('AI Statement error', e)
+      setSoError(e.message)
+    } finally {
+      setSoLoading(false)
+    }
+  }
+
+  const useStatement = (txt) => {
+    if (!txt) return
+    const cleaned = stripBoldWrap(String(txt).trim())
+    setFormData(prev => ({ ...prev, topic_statement: cleaned }))
+    setSoOpen(false)
+  }
+
+  const confirmStatementSelection = () => {
+    if (!soItems || soItems.length === 0) return
+    const idx = soSelected.findIndex(v => v)
+    if (idx === -1) {
+      setSoSelectError('Pilih salah satu opsi.')
+      return
+    }
+    const chosen = String(soItems[idx].text || '').trim()
+    const cleaned = stripAllBoldMarkers(stripBoldWrap(chosen))
+    setFormData(prev => ({ ...prev, topic_statement: cleaned }))
+    setSoOpen(false)
+  }
+
+  const confirmRelatedConceptSelection = () => {
+    if (!rcItems || rcItems.length === 0) return
+    const selectedConcepts = rcItems
+      .filter((_, idx) => rcSelected[idx])
+      .map(it => extractFirstBoldWord(it.text))
+      .map(s => (s || '').trim())
+      .filter(Boolean)
+    if (selectedConcepts.length === 0) {
+      setRcSelectError('Pilih minimal 1 opsi.')
+      return
+    }
+    setFormData(prev => ({ ...prev, topic_related_concept: selectedConcepts.join(', ') }))
+    setRcOpen(false)
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -75,7 +480,7 @@ export default function TopicPage() {
           const subjectIds = subj.map(s => s.subject_id);
       const { data: tData, error: tErr } = await supabase
         .from('topic')
-        .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_planner')
+        .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_planner, topic_global_context, topic_key_concept, topic_related_concept, topic_statement')
             .in('topic_subject_id', subjectIds)
             .order('topic_nama');
           if (tErr) throw new Error(tErr.message);
@@ -122,7 +527,16 @@ export default function TopicPage() {
 
   const resetForm = () => {
     setEditing(null);
-    setFormData({ topic_nama: "", topic_subject_id: "", topic_kelas_id: "", topic_planner: "" });
+    setFormData({
+      topic_nama: "",
+      topic_subject_id: "",
+      topic_kelas_id: "",
+      topic_planner: "",
+      topic_global_context: "",
+      topic_key_concept: "",
+      topic_related_concept: "",
+      topic_statement: ""
+    });
     setFormErrors({});
     setKelasOptions([]);
   };
@@ -134,7 +548,16 @@ export default function TopicPage() {
 
   const openEdit = (row) => {
     setEditing(row);
-    setFormData({ topic_nama: row.topic_nama || "", topic_subject_id: String(row.topic_subject_id || ""), topic_kelas_id: row.topic_kelas_id ? String(row.topic_kelas_id) : "", topic_planner: row.topic_planner || "" });
+    setFormData({
+      topic_nama: row.topic_nama || "",
+      topic_subject_id: String(row.topic_subject_id || ""),
+      topic_kelas_id: row.topic_kelas_id ? String(row.topic_kelas_id) : "",
+      topic_planner: row.topic_planner || "",
+      topic_global_context: row.topic_global_context || "",
+      topic_key_concept: row.topic_key_concept || "",
+      topic_related_concept: row.topic_related_concept || "",
+      topic_statement: row.topic_statement || ""
+    });
     setFormErrors({});
     setShowForm(true);
     if (row.topic_subject_id) {
@@ -213,6 +636,10 @@ export default function TopicPage() {
         topic_subject_id: parseInt(formData.topic_subject_id),
         topic_kelas_id: formData.topic_kelas_id ? parseInt(formData.topic_kelas_id) : null,
         topic_planner: formData.topic_planner?.trim() || null,
+        topic_global_context: formData.topic_global_context?.trim() || null,
+        topic_key_concept: formData.topic_key_concept?.trim() || null,
+        topic_related_concept: formData.topic_related_concept?.trim() || null,
+        topic_statement: formData.topic_statement?.trim() || null,
       };
       if (editing) {
   const { data, error: upErr } = await supabase.from("topic").update(payload).eq("topic_id", editing.topic_id).select();
@@ -403,6 +830,10 @@ export default function TopicPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thSubject") || "Mata Pelajaran"}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('topic.thClass') || 'Kelas'}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Planner</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Global Context</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key Concept</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Related Concept</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statement</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thActions") || "Aksi"}</th>
                   </tr>
                 </thead>
@@ -419,6 +850,10 @@ export default function TopicPage() {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_global_context || ''}>{row.topic_global_context || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_key_concept || ''}>{row.topic_key_concept || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_related_concept || ''}>{row.topic_related_concept || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_statement || ''}>{row.topic_statement || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Button onClick={() => openEdit(row)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm">
@@ -445,6 +880,17 @@ export default function TopicPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <Label htmlFor="topic_nama">{t("topic.unitTitle") || "Unit Title"}</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openAiHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (EN)
+              </button>
+              <button type="button" onClick={() => openAiHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (ID)
+              </button>
+              <button type="button" onClick={() => openAiHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (ZH)
+              </button>
+            </div>
             <Input
               id="topic_nama"
               name="topic_nama"
@@ -520,6 +966,91 @@ export default function TopicPage() {
             />
             {formErrors.topic_planner && <p className="text-red-500 text-sm mt-1">{formErrors.topic_planner}</p>}
           </div>
+          {/* New fields: Global Context, Key Concept, Related Concept, Statement */}
+          <div>
+            <Label htmlFor="topic_global_context">Global Context</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openGcHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Context (EN)
+              </button>
+              <button type="button" onClick={() => openGcHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Context (ID)
+              </button>
+              <button type="button" onClick={() => openGcHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Context (ZH)
+              </button>
+            </div>
+            <textarea
+              id="topic_global_context"
+              name="topic_global_context"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              value={formData.topic_global_context}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_global_context: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="topic_key_concept">Key Concept</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openKcHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Key Concept (EN)
+              </button>
+              <button type="button" onClick={() => openKcHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Key Concept (ID)
+              </button>
+              <button type="button" onClick={() => openKcHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Key Concept (ZH)
+              </button>
+            </div>
+            <Input
+              id="topic_key_concept"
+              name="topic_key_concept"
+              value={formData.topic_key_concept}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_key_concept: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-md border-gray-300"
+            />
+          </div>
+          <div>
+            <Label htmlFor="topic_related_concept">Related Concept</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openRcHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Related Concept (EN)
+              </button>
+              <button type="button" onClick={() => openRcHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Related Concept (ID)
+              </button>
+              <button type="button" onClick={() => openRcHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Related Concept (ZH)
+              </button>
+            </div>
+            <Input
+              id="topic_related_concept"
+              name="topic_related_concept"
+              value={formData.topic_related_concept}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_related_concept: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-md border-gray-300"
+            />
+          </div>
+          <div>
+            <Label htmlFor="topic_statement">Statement of Inquiry</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openSoHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Statement (EN)
+              </button>
+              <button type="button" onClick={() => openSoHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Statement (ID)
+              </button>
+              <button type="button" onClick={() => openSoHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Statement (ZH)
+              </button>
+            </div>
+            <textarea
+              id="topic_statement"
+              name="topic_statement"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              value={formData.topic_statement}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_statement: e.target.value }))}
+            />
+          </div>
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="bg-gray-500 hover:bg-gray-600 text-white">
               {t("topic.cancel") || "Batal"}
@@ -538,6 +1069,205 @@ export default function TopicPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* AI Statement of Inquiry Modal */}
+      <Modal isOpen={soOpen} onClose={() => setSoOpen(false)} title={`AI Statement of Inquiry${soLang ? ` (${soLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {soLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Statement of Inquiry...</div>
+          )}
+          {soError && (
+            <div className="text-sm text-red-600">{soError}</div>
+          )}
+          {!soLoading && !soError && soPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{soPrompt}</pre>
+            </div>
+          )}
+          {!soLoading && !soError && soItems && soItems.length > 0 && (
+            <div className="space-y-2">
+              {soItems.map((it, idx) => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={!!soSelected[idx]} onChange={(e) => {
+                        const arr = soItems.map(() => false)
+                        if (e.target.checked) arr[idx] = true
+                        setSoSelected(arr)
+                        setSoSelectError('')
+                      }} />
+                      <span className="font-semibold">Opsi {it.index}</span>
+                    </label>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+              {soSelectError && <div className="text-xs text-red-600">{soSelectError}</div>}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!soLoading && !soError && soItems && soItems.length > 0 && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmStatementSelection}>Gunakan yang dipilih</Button>
+            )}
+            <Button type="button" onClick={() => setSoOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Related Concept Modal */}
+      <Modal isOpen={rcOpen} onClose={() => setRcOpen(false)} title={`AI Related Concept${rcLang ? ` (${rcLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {rcLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Related Concept...</div>
+          )}
+          {rcError && (
+            <div className="text-sm text-red-600">{rcError}</div>
+          )}
+          {!rcLoading && !rcError && rcPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{rcPrompt}</pre>
+            </div>
+          )}
+          {!rcLoading && !rcError && rcItems && rcItems.length > 0 && (
+            <div className="space-y-2">
+              {rcItems.map((it, idx) => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={!!rcSelected[idx]} onChange={(e) => { const arr = [...rcSelected]; arr[idx] = e.target.checked; setRcSelected(arr); setRcSelectError('') }} />
+                      <span className="font-semibold">Opsi {it.index}</span>
+                    </label>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+              {rcSelectError && <div className="text-xs text-red-600">{rcSelectError}</div>}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!rcLoading && !rcError && rcItems && rcItems.length > 0 && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmRelatedConceptSelection}>Gunakan yang dipilih</Button>
+            )}
+            <Button type="button" onClick={() => setRcOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Key Concept Modal */}
+      <Modal isOpen={kcOpen} onClose={() => setKcOpen(false)} title={`AI Key Concept${kcLang ? ` (${kcLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {kcLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Key Concept...</div>
+          )}
+          {kcError && (
+            <div className="text-sm text-red-600">{kcError}</div>
+          )}
+          {!kcLoading && !kcError && kcPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{kcPrompt}</pre>
+            </div>
+          )}
+          {!kcLoading && !kcError && kcItems && kcItems.length > 0 && (
+            <div className="space-y-2">
+              {kcItems.map((it, idx) => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={!!kcSelected[idx]} onChange={(e) => { const arr = [...kcSelected]; arr[idx] = e.target.checked; setKcSelected(arr); setKcSelectError('') }} />
+                      <span className="font-semibold">Opsi {it.index}</span>
+                    </label>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+              {kcSelectError && <div className="text-xs text-red-600">{kcSelectError}</div>}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!kcLoading && !kcError && kcItems && kcItems.length > 0 && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmKeyConceptSelection}>Gunakan yang dipilih</Button>
+            )}
+            <Button type="button" onClick={() => setKcOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Global Context Modal */}
+  <Modal isOpen={gcOpen} onClose={() => setGcOpen(false)} title={`AI Global Context${gcLang ? ` (${gcLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {gcLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Global Context...</div>
+          )}
+          {gcError && (
+            <div className="text-sm text-red-600">{gcError}</div>
+          )}
+          {!gcLoading && !gcError && gcPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{gcPrompt}</pre>
+            </div>
+          )}
+          {!gcLoading && !gcError && gcItems && gcItems.length > 0 && (
+            <div className="space-y-2">
+              {gcItems.map((it) => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold">Opsi {it.index}</div>
+                    <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-sm" onClick={() => useGlobalContext(it.text)}>
+                      Gunakan
+                    </Button>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" onClick={() => setGcOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Help Modal */}
+  <Modal isOpen={aiOpen} onClose={() => setAiOpen(false)} title={`AI Help untuk Unit Title${aiLang ? ` (${aiLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {aiLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran dari AI...</div>
+          )}
+          {aiError && (
+            <div className="text-sm text-red-600">{aiError}</div>
+          )}
+          {!aiLoading && !aiError && aiPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{aiPrompt}</pre>
+            </div>
+          )}
+          {!aiLoading && !aiError && aiItems && aiItems.length > 0 && (
+            <div className="space-y-2">
+              {aiItems.map(it => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold">Usulan {it.index}</div>
+                    <div className="flex gap-2">
+                      <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-sm" onClick={() => insertToTitle(it.text)}>
+                        Gunakan sebagai Judul
+                      </Button>
+                    </div>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" onClick={() => setAiOpen(false)}>Tutup</Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Delete Confirm */}
