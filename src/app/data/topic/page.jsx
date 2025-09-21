@@ -40,7 +40,11 @@ export default function TopicPage() {
     topic_global_context: "",
     topic_key_concept: "",
     topic_related_concept: "",
-    topic_statement: ""
+    topic_statement: "",
+    topic_learner_profile: "",
+    topic_service_learning: "",
+    topic_formative_assessment: "",
+    topic_summative_assessment: ""
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -102,6 +106,50 @@ export default function TopicPage() {
   const [soSelectError, setSoSelectError] = useState('')
   const [rcSelected, setRcSelected] = useState([])
   const [rcSelectError, setRcSelectError] = useState('')
+
+  // AI Learner Profile state
+  const [lpOpen, setLpOpen] = useState(false)
+  const [lpLoading, setLpLoading] = useState(false)
+  const [lpError, setLpError] = useState('')
+  const [lpItems, setLpItems] = useState([])
+  const [lpRaw, setLpRaw] = useState('')
+  const [lpPrompt, setLpPrompt] = useState('')
+  const [lpLang, setLpLang] = useState('')
+  const [lpSelected, setLpSelected] = useState([])
+  const [lpSelectError, setLpSelectError] = useState('')
+
+  // AI Service Learning state
+  const [slOpen, setSlOpen] = useState(false)
+  const [slLoading, setSlLoading] = useState(false)
+  const [slError, setSlError] = useState('')
+  const [slItems, setSlItems] = useState([])
+  const [slRaw, setSlRaw] = useState('')
+  const [slPrompt, setSlPrompt] = useState('')
+  const [slLang, setSlLang] = useState('')
+  const [slSelected, setSlSelected] = useState([])
+  const [slSelectError, setSlSelectError] = useState('')
+
+  // AI Formative Assessment state
+  const [faOpen, setFaOpen] = useState(false)
+  const [faLoading, setFaLoading] = useState(false)
+  const [faError, setFaError] = useState('')
+  const [faItems, setFaItems] = useState([])
+  const [faRaw, setFaRaw] = useState('')
+  const [faPrompt, setFaPrompt] = useState('')
+  const [faLang, setFaLang] = useState('')
+  const [faSelected, setFaSelected] = useState([])
+  const [faSelectError, setFaSelectError] = useState('')
+
+  // AI Summative Assessment state
+  const [saOpen, setSaOpen] = useState(false)
+  const [saLoading, setSaLoading] = useState(false)
+  const [saError, setSaError] = useState('')
+  const [saItems, setSaItems] = useState([])
+  const [saRaw, setSaRaw] = useState('')
+  const [saPrompt, setSaPrompt] = useState('')
+  const [saLang, setSaLang] = useState('')
+  const [saSelected, setSaSelected] = useState([])
+  const [saSelectError, setSaSelectError] = useState('')
 
   const parseAiOutput = (text) => {
     if (!text || typeof text !== 'string') return []
@@ -370,6 +418,120 @@ export default function TopicPage() {
     setRcOpen(false)
   }
 
+  // Open AI help for Learner Profile (expects 3 options)
+  const openLpHelp = async (lang) => {
+    const unit = formData.topic_nama?.trim()
+    const gc = formData.topic_global_context?.trim()
+    const kc = formData.topic_key_concept?.trim()
+    const rc = formData.topic_related_concept?.trim()
+    if (!unit || !gc || !kc || !rc) {
+      showNotification('Info', 'Isi Unit Title, Global Context, Key Concept, dan Related Concept sebelum meminta bantuan AI untuk Learner Profile.', 'warning')
+      return
+    }
+    setLpOpen(true)
+    setLpLoading(true)
+    setLpError('')
+    setLpItems([])
+    setLpRaw('')
+    setLpPrompt('')
+    setLpLang(lang || '')
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_learner_profile').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_learner_profile || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const promptWithLang = `Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 3 opsi atribut IB Learner Profile yang paling relevan. Buat dalam bahasa ${selected}. Berikan alasannya juga.`
+      setLpPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setLpRaw(text)
+      const items = parseAiOutput(text).slice(0, 3)
+      setLpItems(items)
+      setLpSelected(items.map(() => true))
+      setLpSelectError('')
+    } catch (e) {
+      console.error('AI Learner Profile error', e)
+      setLpError(e.message)
+    } finally {
+      setLpLoading(false)
+    }
+  }
+
+  const confirmLearnerProfileSelection = () => {
+    if (!lpItems || lpItems.length === 0) return
+    const selectedAttrs = lpItems
+      .filter((_, idx) => lpSelected[idx])
+      .map(it => extractFirstBoldWord(it.text))
+      .map(s => (s || '').trim())
+      .filter(Boolean)
+    if (selectedAttrs.length === 0) {
+      setLpSelectError('Pilih minimal 1 opsi.')
+      return
+    }
+    setFormData(prev => ({ ...prev, topic_learner_profile: selectedAttrs.join(', ') }))
+    setLpOpen(false)
+  }
+
+  // Open AI help for Service Learning (expects 3 options)
+  const openSlHelp = async (lang) => {
+    const unit = formData.topic_nama?.trim()
+    const gc = formData.topic_global_context?.trim()
+    const kc = formData.topic_key_concept?.trim()
+    const rc = formData.topic_related_concept?.trim()
+    if (!unit || !gc || !kc || !rc) {
+      showNotification('Info', 'Isi Unit Title, Global Context, Key Concept, dan Related Concept sebelum meminta bantuan AI untuk Service Learning.', 'warning')
+      return
+    }
+    setSlOpen(true)
+    setSlLoading(true)
+    setSlError('')
+    setSlItems([])
+    setSlRaw('')
+    setSlPrompt('')
+    setSlLang(lang || '')
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_service_learning').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_service_learning || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const promptWithLang = `Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 3 opsi rencana Service Learning yang relevan dan aplikatif. Buat dalam bahasa ${selected}.`
+      setSlPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setSlRaw(text)
+      const items = parseAiOutput(text).slice(0, 3)
+      setSlItems(items)
+      setSlSelected(items.map((_, i) => i === 0))
+      setSlSelectError('')
+    } catch (e) {
+      console.error('AI Service Learning error', e)
+      setSlError(e.message)
+    } finally {
+      setSlLoading(false)
+    }
+  }
+
+  const confirmServiceLearningSelection = () => {
+    if (!slItems || slItems.length === 0) return
+    const idx = slSelected.findIndex(v => v)
+    if (idx === -1) {
+      setSlSelectError('Pilih salah satu opsi.')
+      return
+    }
+    const chosen = String(slItems[idx].text || '').trim()
+    const cleaned = stripAllBoldMarkers(stripBoldWrap(chosen))
+    setFormData(prev => ({ ...prev, topic_service_learning: cleaned }))
+    setSlOpen(false)
+  }
+
   // Open AI help for Statement of Inquiry (expects 2 options)
   const openSoHelp = async (lang) => {
     const unit = formData.topic_nama?.trim()
@@ -448,6 +610,125 @@ export default function TopicPage() {
     setRcOpen(false)
   }
 
+  // Open AI help for Formative Assessment (expects 3 options, multi-select allowed)
+  const openFaHelp = async (lang) => {
+    const unit = formData.topic_nama?.trim()
+    const gc = formData.topic_global_context?.trim()
+    const kc = formData.topic_key_concept?.trim()
+    const rc = formData.topic_related_concept?.trim()
+    if (!unit || !gc || !kc || !rc) {
+      showNotification('Info', 'Isi Unit Title, Global Context, Key Concept, dan Related Concept sebelum meminta bantuan AI untuk Formative Assessment.', 'warning')
+      return
+    }
+    setFaOpen(true)
+    setFaLoading(true)
+    setFaError('')
+    setFaItems([])
+    setFaRaw('')
+    setFaPrompt('')
+    setFaLang(lang || '')
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_formative_assessment').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_formative_assessment || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const promptWithLang = `Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 3 opsi Formative Assessment yang relevan. Buat dalam bahasa ${selected}.`
+      setFaPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setFaRaw(text)
+      const items = parseAiOutput(text).slice(0, 3)
+      setFaItems(items)
+      setFaSelected(items.map(() => true))
+      setFaSelectError('')
+    } catch (e) {
+      console.error('AI Formative Assessment error', e)
+      setFaError(e.message)
+    } finally {
+      setFaLoading(false)
+    }
+  }
+
+  const confirmFormativeAssessmentSelection = () => {
+    if (!faItems || faItems.length === 0) return
+    const selectedItems = faItems
+      .filter((_, idx) => faSelected[idx])
+      .map(it => String(it.text || '').trim())
+      .map(s => stripAllBoldMarkers(stripBoldWrap(s)))
+      .filter(Boolean)
+    if (selectedItems.length === 0) {
+      setFaSelectError('Pilih minimal 1 opsi.')
+      return
+    }
+    const joined = selectedItems.join('\n\n')
+    setFormData(prev => ({ ...prev, topic_formative_assessment: joined }))
+    setFaOpen(false)
+  }
+
+  // Open AI help for Summative Assessment (expects exactly 2 options, single-select)
+  const openSaHelp = async (lang) => {
+    const subjId = formData.topic_subject_id
+    const unit = formData.topic_nama?.trim()
+    const gc = formData.topic_global_context?.trim()
+    const kc = formData.topic_key_concept?.trim()
+    const rc = formData.topic_related_concept?.trim()
+    if (!subjId || !unit || !gc || !kc || !rc) {
+      showNotification('Info', 'Isi Subject, Unit Title, Global Context, Key Concept, dan Related Concept sebelum meminta bantuan AI untuk Summative Assessment.', 'warning')
+      return
+    }
+    const subj = subjects.find(s => String(s.subject_id) === String(subjId))
+    const subjName = subj?.subject_name || ''
+    setSaOpen(true)
+    setSaLoading(true)
+    setSaError('')
+    setSaItems([])
+    setSaRaw('')
+    setSaPrompt('')
+    setSaLang(lang || '')
+    setSaSelected([])
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_summative_assessment').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_summative_assessment || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const promptWithLang = `Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 2 opsi Summative Assessment yang relevan. Buat dalam bahasa ${selected}.`
+      setSaPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setSaRaw(text)
+      const items = parseAiOutput(text).slice(0, 2)
+      setSaItems(items)
+      setSaSelected(items.map((_, i) => i === 0))
+      setSaSelectError('')
+    } catch (e) {
+      console.error('AI Summative Assessment error', e)
+      setSaError(e.message)
+    } finally {
+      setSaLoading(false)
+    }
+  }
+
+  const confirmSummativeAssessmentSelection = () => {
+    if (!saItems || saItems.length === 0) return
+    const idx = saSelected.findIndex(v => v)
+    if (idx === -1) {
+      setSaSelectError('Pilih salah satu opsi.')
+      return
+    }
+    const chosen = String(saItems[idx].text || '').trim()
+    const cleaned = stripAllBoldMarkers(stripBoldWrap(chosen))
+    setFormData(prev => ({ ...prev, topic_summative_assessment: cleaned }))
+    setSaOpen(false)
+  }
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -480,7 +761,7 @@ export default function TopicPage() {
           const subjectIds = subj.map(s => s.subject_id);
       const { data: tData, error: tErr } = await supabase
         .from('topic')
-        .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_planner, topic_global_context, topic_key_concept, topic_related_concept, topic_statement')
+  .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_planner, topic_global_context, topic_key_concept, topic_related_concept, topic_statement, topic_learner_profile, topic_service_learning, topic_formative_assessment, topic_summative_assessment')
             .in('topic_subject_id', subjectIds)
             .order('topic_nama');
           if (tErr) throw new Error(tErr.message);
@@ -535,7 +816,11 @@ export default function TopicPage() {
       topic_global_context: "",
       topic_key_concept: "",
       topic_related_concept: "",
-      topic_statement: ""
+      topic_statement: "",
+      topic_learner_profile: "",
+      topic_service_learning: "",
+      topic_formative_assessment: "",
+      topic_summative_assessment: ""
     });
     setFormErrors({});
     setKelasOptions([]);
@@ -556,7 +841,11 @@ export default function TopicPage() {
       topic_global_context: row.topic_global_context || "",
       topic_key_concept: row.topic_key_concept || "",
       topic_related_concept: row.topic_related_concept || "",
-      topic_statement: row.topic_statement || ""
+      topic_statement: row.topic_statement || "",
+      topic_learner_profile: row.topic_learner_profile || "",
+      topic_service_learning: row.topic_service_learning || "",
+      topic_formative_assessment: row.topic_formative_assessment || "",
+      topic_summative_assessment: row.topic_summative_assessment || ""
     });
     setFormErrors({});
     setShowForm(true);
@@ -640,6 +929,10 @@ export default function TopicPage() {
         topic_key_concept: formData.topic_key_concept?.trim() || null,
         topic_related_concept: formData.topic_related_concept?.trim() || null,
         topic_statement: formData.topic_statement?.trim() || null,
+        topic_learner_profile: formData.topic_learner_profile?.trim() || null,
+        topic_service_learning: formData.topic_service_learning?.trim() || null,
+  topic_formative_assessment: formData.topic_formative_assessment?.trim() || null,
+  topic_summative_assessment: formData.topic_summative_assessment?.trim() || null,
       };
       if (editing) {
   const { data, error: upErr } = await supabase.from("topic").update(payload).eq("topic_id", editing.topic_id).select();
@@ -834,6 +1127,10 @@ export default function TopicPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key Concept</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Related Concept</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statement</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Learner Profile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service Learning</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Formative Assessment</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Summative Assessment</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thActions") || "Aksi"}</th>
                   </tr>
                 </thead>
@@ -854,6 +1151,10 @@ export default function TopicPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_key_concept || ''}>{row.topic_key_concept || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_related_concept || ''}>{row.topic_related_concept || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_statement || ''}>{row.topic_statement || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_learner_profile || ''}>{row.topic_learner_profile || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_service_learning || ''}>{row.topic_service_learning || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_formative_assessment || ''}>{row.topic_formative_assessment || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_summative_assessment || ''}>{row.topic_summative_assessment || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Button onClick={() => openEdit(row)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm">
@@ -1051,6 +1352,90 @@ export default function TopicPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, topic_statement: e.target.value }))}
             />
           </div>
+          <div>
+            <Label htmlFor="topic_service_learning">Service Learning</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openSlHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Service Learning (EN)
+              </button>
+              <button type="button" onClick={() => openSlHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Service Learning (ID)
+              </button>
+              <button type="button" onClick={() => openSlHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Service Learning (ZH)
+              </button>
+            </div>
+            <textarea
+              id="topic_service_learning"
+              name="topic_service_learning"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              value={formData.topic_service_learning || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_service_learning: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="topic_learner_profile">Learner Profile</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openLpHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Learner Profile (EN)
+              </button>
+              <button type="button" onClick={() => openLpHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Learner Profile (ID)
+              </button>
+              <button type="button" onClick={() => openLpHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Learner Profile (ZH)
+              </button>
+            </div>
+            <Input
+              id="topic_learner_profile"
+              name="topic_learner_profile"
+              value={formData.topic_learner_profile || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_learner_profile: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-md border-gray-300"
+            />
+          </div>
+          <div>
+            <Label htmlFor="topic_formative_assessment">Formative Assessment</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openFaHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Formative (EN)
+              </button>
+              <button type="button" onClick={() => openFaHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Formative (ID)
+              </button>
+              <button type="button" onClick={() => openFaHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Formative (ZH)
+              </button>
+            </div>
+            <textarea
+              id="topic_formative_assessment"
+              name="topic_formative_assessment"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              value={formData.topic_formative_assessment || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_formative_assessment: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="topic_summative_assessment">Summative Assessment</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openSaHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Summative (EN)
+              </button>
+              <button type="button" onClick={() => openSaHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Summative (ID)
+              </button>
+              <button type="button" onClick={() => openSaHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Summative (ZH)
+              </button>
+            </div>
+            <textarea
+              id="topic_summative_assessment"
+              name="topic_summative_assessment"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              value={formData.topic_summative_assessment || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_summative_assessment: e.target.value }))}
+            />
+          </div>
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="bg-gray-500 hover:bg-gray-600 text-white">
               {t("topic.cancel") || "Batal"}
@@ -1069,6 +1454,91 @@ export default function TopicPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* AI Formative Assessment Modal */}
+      <Modal isOpen={faOpen} onClose={() => setFaOpen(false)} title={`AI Formative Assessment${faLang ? ` (${faLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {faLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Formative Assessment...</div>
+          )}
+          {faError && (
+            <div className="text-sm text-red-600">{faError}</div>
+          )}
+          {!faLoading && !faError && faPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{faPrompt}</pre>
+            </div>
+          )}
+          {!faLoading && !faError && faItems && faItems.length > 0 && (
+            <div className="space-y-2">
+              {faItems.map((it, idx) => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={!!faSelected[idx]} onChange={(e) => { const arr = [...faSelected]; arr[idx] = e.target.checked; setFaSelected(arr); setFaSelectError('') }} />
+                      <span className="font-semibold">Opsi {it.index}</span>
+                    </label>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+              {faSelectError && <div className="text-xs text-red-600">{faSelectError}</div>}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!faLoading && !faError && faItems && faItems.length > 0 && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmFormativeAssessmentSelection}>Gunakan yang dipilih</Button>
+            )}
+            <Button type="button" onClick={() => setFaOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Service Learning Modal */}
+      <Modal isOpen={slOpen} onClose={() => setSlOpen(false)} title={`AI Service Learning${slLang ? ` (${slLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {slLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Service Learning...</div>
+          )}
+          {slError && (
+            <div className="text-sm text-red-600">{slError}</div>
+          )}
+          {!slLoading && !slError && slPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{slPrompt}</pre>
+            </div>
+          )}
+          {!slLoading && !slError && slItems && slItems.length > 0 && (
+            <div className="space-y-2">
+              {slItems.map((it, idx) => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={!!slSelected[idx]} onChange={(e) => {
+                        const arr = slItems.map(() => false)
+                        if (e.target.checked) arr[idx] = true
+                        setSlSelected(arr)
+                        setSlSelectError('')
+                      }} />
+                      <span className="font-semibold">Opsi {it.index}</span>
+                    </label>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+              {slSelectError && <div className="text-xs text-red-600">{slSelectError}</div>}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!slLoading && !slError && slItems && slItems.length > 0 && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmServiceLearningSelection}>Gunakan yang dipilih</Button>
+            )}
+            <Button type="button" onClick={() => setSlOpen(false)}>Tutup</Button>
+          </div>
+        </div>
       </Modal>
 
       {/* AI Statement of Inquiry Modal */}
@@ -1112,6 +1582,91 @@ export default function TopicPage() {
               <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmStatementSelection}>Gunakan yang dipilih</Button>
             )}
             <Button type="button" onClick={() => setSoOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Learner Profile Modal */}
+      <Modal isOpen={lpOpen} onClose={() => setLpOpen(false)} title={`AI Learner Profile${lpLang ? ` (${lpLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {lpLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Learner Profile...</div>
+          )}
+          {lpError && (
+            <div className="text-sm text-red-600">{lpError}</div>
+          )}
+          {!lpLoading && !lpError && lpPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{lpPrompt}</pre>
+            </div>
+          )}
+          {!lpLoading && !lpError && lpItems && lpItems.length > 0 && (
+            <div className="space-y-2">
+              {lpItems.map((it, idx) => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={!!lpSelected[idx]} onChange={(e) => { const arr = [...lpSelected]; arr[idx] = e.target.checked; setLpSelected(arr); setLpSelectError('') }} />
+                      <span className="font-semibold">Opsi {it.index}</span>
+                    </label>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+              {lpSelectError && <div className="text-xs text-red-600">{lpSelectError}</div>}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!lpLoading && !lpError && lpItems && lpItems.length > 0 && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmLearnerProfileSelection}>Gunakan yang dipilih</Button>
+            )}
+            <Button type="button" onClick={() => setLpOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Summative Assessment Modal */}
+      <Modal isOpen={saOpen} onClose={() => setSaOpen(false)} title={`AI Summative Assessment${saLang ? ` (${saLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {saLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Summative Assessment...</div>
+          )}
+          {saError && (
+            <div className="text-sm text-red-600">{saError}</div>
+          )}
+          {!saLoading && !saError && saPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{saPrompt}</pre>
+            </div>
+          )}
+          {!saLoading && !saError && saItems && saItems.length > 0 && (
+            <div className="space-y-2">
+              {saItems.map((it, idx) => (
+                <div key={it.index} className="border rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={!!saSelected[idx]} onChange={(e) => {
+                        const arr = saItems.map(() => false)
+                        if (e.target.checked) arr[idx] = true
+                        setSaSelected(arr)
+                        setSaSelectError('')
+                      }} />
+                      <span className="font-semibold">Opsi {it.index}</span>
+                    </label>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
+                </div>
+              ))}
+              {saSelectError && <div className="text-xs text-red-600">{saSelectError}</div>}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!saLoading && !saError && saItems && saItems.length > 0 && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmSummativeAssessmentSelection}>Gunakan yang dipilih</Button>
+            )}
+            <Button type="button" onClick={() => setSaOpen(false)}>Tutup</Button>
           </div>
         </div>
       </Modal>
