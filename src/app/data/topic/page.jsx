@@ -200,6 +200,49 @@ export default function TopicPage() {
     return first.replace(/[.,;:!?\-—–]+$/g, '')
   }
 
+  const csvEscape = (val) => {
+    const s = (val == null ? '' : String(val))
+    // Escape double quotes by doubling them; keep newlines
+    return '"' + s.replace(/"/g, '""') + '"'
+  }
+
+  const exportCsv = (sep) => {
+    const header = [
+      'Unit Title',
+      'Global Context',
+      'Key Concept',
+      'Related Concept',
+      'Statement of Inquiry',
+      'IB LP Attributes',
+      'Service Learning',
+      'Formative Assessment',
+      'Summative Assessment'
+    ]
+    const rows = (filtered || []).map((row) => [
+      row.topic_nama || '',
+      row.topic_global_context || '',
+      row.topic_key_concept || '',
+      row.topic_related_concept || '',
+      row.topic_statement || '',
+      row.topic_learner_profile || '',
+      row.topic_service_learning || '',
+      row.topic_formative_assessment || '',
+      row.topic_summative_assessment || ''
+    ])
+    const sepChar = sep === 'semicolon' ? ';' : ','
+    const lines = [header, ...rows].map(cols => cols.map(csvEscape).join(sepChar)).join('\r\n')
+    const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const ts = new Date().toISOString().slice(0,10)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `topics_${sep === 'semicolon' ? 'semicolon' : 'comma'}_${ts}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   const openAiHelp = async (lang) => {
     if (!formData.topic_nama || !formData.topic_nama.trim()) {
       const titles = { en: 'Info', id: 'Info', zh: '提示' }
@@ -1032,10 +1075,18 @@ export default function TopicPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t("topic.title") || "Unit (Topic) Management"}</h1>
           <p className="text-gray-600">{t("topic.subtitle") || "Kelola Unit (Topik) untuk setiap mata pelajaran"}</p>
         </div>
-        <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
-          <FontAwesomeIcon icon={faPlus} className="mr-2" />
-          {t("topic.new") || "Tambah Unit"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => exportCsv('comma')} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            Export CSV (,)
+          </Button>
+          <Button onClick={() => exportCsv('semicolon')} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            Export CSV (;)
+          </Button>
+          <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <FontAwesomeIcon icon={faPlus} className="mr-2" />
+            {t("topic.new") || "Tambah Unit"}
+          </Button>
+        </div>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
