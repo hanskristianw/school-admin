@@ -244,16 +244,18 @@ export default function TopicPage() {
   }
 
   const openAiHelp = async (lang) => {
-    if (!formData.topic_nama || !formData.topic_nama.trim()) {
-      const titles = { en: 'Info', id: 'Info', zh: '提示' }
-      const messages = {
-        en: 'Please fill in the Unit Title before asking AI for help.',
-        id: 'Isi dulu Unit Title sebelum meminta bantuan AI.',
-        zh: '在向 AI 请求帮助之前，请先填写单元标题。'
-      }
-      const ttl = titles[lang] || 'Info'
-      const msg = messages[lang] || messages.id
-      showNotification(ttl, msg, 'warning')
+    if (!formData.topic_subject_id) {
+      showNotification('Info', 'Pilih mata pelajaran terlebih dahulu sebelum meminta AI untuk Unit Title.', 'warning')
+      return
+    }
+    if (!formData.topic_kelas_id) {
+      showNotification('Info', 'Pilih kelas terlebih dahulu sebelum meminta AI untuk Unit Title.', 'warning')
+      return
+    }
+    const unitSeed = (formData.topic_nama || '').trim()
+    const wordCount = unitSeed ? unitSeed.split(/\s+/).filter(Boolean).length : 0
+    if (wordCount < 1) {
+      showNotification('Info', 'Isi dulu Unit Title minimal 1–2 kata sebelum meminta bantuan AI.', 'warning')
       return
     }
     setAiOpen(true)
@@ -265,14 +267,18 @@ export default function TopicPage() {
     try {
       const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_unit').limit(1).single()
       if (rErr) throw new Error(rErr.message)
-      const context = rule?.ai_rule_unit || ''
+  const context = rule?.ai_rule_unit || ''
       const bahasaMap = {
         en: 'Inggris',
         id: 'Indonesia',
         zh: 'Mandarin'
       }
       const selected = bahasaMap[lang] || 'Indonesia'
-      const promptWithLang = `${formData.topic_nama.trim()}\n\nMohon jawab dalam bahasa ${selected}.`
+  const subj = subjects.find(s => String(s.subject_id) === String(formData.topic_subject_id))
+  const subjName = subj?.subject_name || ''
+  const kelasName = (kelasOptions.find(k => String(k.kelas_id) === String(formData.topic_kelas_id))?.kelas_nama) || (kelasNameMap.get(parseInt(formData.topic_kelas_id)) || '')
+  const unitTitleCurrent = (formData.topic_nama || '').trim()
+  const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nKelas: ${kelasName}\nUnit Title (current): ${unitTitleCurrent || '-' }\n\nBuatkan beberapa usulan Unit Title yang relevan. Mohon jawab dalam bahasa ${selected}.`
   setAiPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', {
@@ -366,9 +372,9 @@ export default function TopicPage() {
       const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_key_concept').limit(1).single()
       if (rErr) throw new Error(rErr.message)
       const context = rule?.ai_rule_key_concept || ''
-      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
-      const selected = bahasaMap[lang] || 'Indonesia'
-      const promptWithLang = `${formData.topic_nama.trim()}\n\nBerikan tepat 2 key concept yang mungkin berkaitan. Buat dalam bahasa ${selected}.`
+  const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+  const selected = bahasaMap[lang] || 'Indonesia'
+  const promptWithLang = `${formData.topic_nama.trim()}\n\nBuat dalam bahasa ${selected}.`
       setKcPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -434,7 +440,7 @@ export default function TopicPage() {
       const context = rule?.ai_rule_related_concept || ''
       const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
       const selected = bahasaMap[lang] || 'Indonesia'
-  const promptWithLang = `Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\n\nBerikan tepat 2 related concept yang mungkin relevan. Buat dalam bahasa ${selected}. Berikan alasannya juga.`
+  const promptWithLang = `Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\n\nBuat dalam bahasa ${selected}. Berikan alasannya juga.`
       setRcPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -1069,13 +1075,11 @@ export default function TopicPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t("topic.title") || "Unit (Topic) Management"}</h1>
-          <p className="text-gray-600">{t("topic.subtitle") || "Kelola Unit (Topik) untuk setiap mata pelajaran"}</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="space-y-6 p-4">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
+        <div className="text-xl font-semibold">{t('topic.pageTitle') || 'Topics'}</div>
+        <div className="flex gap-2">
           <Button onClick={() => exportCsv('comma')} className="bg-emerald-600 hover:bg-emerald-700 text-white">
             Export CSV (,)
           </Button>
@@ -1231,28 +1235,6 @@ export default function TopicPage() {
       <Modal isOpen={showForm} onClose={() => { setShowForm(false); resetForm(); }} title={editing ? t("topic.editTitle") || "Edit Unit" : t("topic.createTitle") || "Tambah Unit"}>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="topic_nama">{t("topic.unitTitle") || "Unit Title"}</Label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" onClick={() => openAiHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
-                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (EN)
-              </button>
-              <button type="button" onClick={() => openAiHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
-                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (ID)
-              </button>
-              <button type="button" onClick={() => openAiHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
-                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (ZH)
-              </button>
-            </div>
-            <Input
-              id="topic_nama"
-              name="topic_nama"
-              value={formData.topic_nama}
-              onChange={(e) => setFormData((prev) => ({ ...prev, topic_nama: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_nama ? 'border-red-500' : 'border-gray-300'}`}
-            />
-            {formErrors.topic_nama && <p className="text-red-500 text-sm mt-1">{formErrors.topic_nama}</p>}
-          </div>
-          <div>
             <Label htmlFor="topic_subject_id">{t("topic.subject") || "Mata Pelajaran"}</Label>
             <select
               id="topic_subject_id"
@@ -1293,7 +1275,7 @@ export default function TopicPage() {
               value={formData.topic_kelas_id}
               onChange={(e) => setFormData(prev => ({ ...prev, topic_kelas_id: e.target.value }))}
               disabled={!formData.topic_subject_id || kelasLoading}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_kelas_id ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200 disabled:cursor-not-allowed disabled:focus:ring-0 ${formErrors.topic_kelas_id ? 'border-red-500' : 'border-gray-300'}`}
             >
               <option value="">{kelasLoading ? (t('topic.classLoading') || 'Memuat kelas...') : (t('topic.selectClass') || 'Pilih Kelas')}</option>
               {kelasOptions.map(k => (
@@ -1306,17 +1288,26 @@ export default function TopicPage() {
             )}
           </div>
           <div>
-            <Label htmlFor="topic_planner">Planner (Google Drive URL)</Label>
+            <Label htmlFor="topic_nama">{t("topic.unitTitle") || "Unit Title"}</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openAiHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (EN)
+              </button>
+              <button type="button" onClick={() => openAiHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (ID)
+              </button>
+              <button type="button" onClick={() => openAiHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Help (ZH)
+              </button>
+            </div>
             <Input
-              id="topic_planner"
-              name="topic_planner"
-              type="url"
-              placeholder="https://drive.google.com/..."
-              value={formData.topic_planner}
-              onChange={(e) => setFormData(prev => ({ ...prev, topic_planner: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-md ${formErrors.topic_planner ? 'border-red-500' : 'border-gray-300'}`}
+              id="topic_nama"
+              name="topic_nama"
+              value={formData.topic_nama}
+              onChange={(e) => setFormData((prev) => ({ ...prev, topic_nama: e.target.value }))}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_nama ? 'border-red-500' : 'border-gray-300'}`}
             />
-            {formErrors.topic_planner && <p className="text-red-500 text-sm mt-1">{formErrors.topic_planner}</p>}
+            {formErrors.topic_nama && <p className="text-red-500 text-sm mt-1">{formErrors.topic_nama}</p>}
           </div>
           {/* New fields: Global Context, Key Concept, Related Concept, Statement */}
           <div>
@@ -1487,6 +1478,19 @@ export default function TopicPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, topic_summative_assessment: e.target.value }))}
             />
           </div>
+            <div>
+              <Label htmlFor="topic_planner">Planner (Google Drive URL)</Label>
+              <Input
+                id="topic_planner"
+                name="topic_planner"
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={formData.topic_planner}
+                onChange={(e) => setFormData(prev => ({ ...prev, topic_planner: e.target.value }))}
+                className={`w-full px-3 py-2 border rounded-md ${formErrors.topic_planner ? 'border-red-500' : 'border-gray-300'}`}
+              />
+              {formErrors.topic_planner && <p className="text-red-500 text-sm mt-1">{formErrors.topic_planner}</p>}
+            </div>
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="bg-gray-500 hover:bg-gray-600 text-white">
               {t("topic.cancel") || "Batal"}
