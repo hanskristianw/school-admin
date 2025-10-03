@@ -102,8 +102,7 @@ export default function TopicPage() {
   const [soRaw, setSoRaw] = useState('')
   const [soPrompt, setSoPrompt] = useState('')
   const [soLang, setSoLang] = useState('')
-  const [soSelected, setSoSelected] = useState([])
-  const [soSelectError, setSoSelectError] = useState('')
+  // single-select now; no selection state needed
   const [rcSelected, setRcSelected] = useState([])
   const [rcSelectError, setRcSelectError] = useState('')
 
@@ -139,6 +138,7 @@ export default function TopicPage() {
   const [faLang, setFaLang] = useState('')
   const [faSelected, setFaSelected] = useState([])
   const [faSelectError, setFaSelectError] = useState('')
+  const [faParsedMeta, setFaParsedMeta] = useState({ json: false, count: 0 })
 
   // AI Summative Assessment state
   const [saOpen, setSaOpen] = useState(false)
@@ -150,6 +150,7 @@ export default function TopicPage() {
   const [saLang, setSaLang] = useState('')
   const [saSelected, setSaSelected] = useState([])
   const [saSelectError, setSaSelectError] = useState('')
+  const [saCriteria, setSaCriteria] = useState([]) // [{A:bool,B:bool,C:bool,D:bool} per assessment]
 
   const parseAiOutput = (text) => {
     if (!text || typeof text !== 'string') return []
@@ -171,6 +172,58 @@ export default function TopicPage() {
     return items.length ? items : [{ index: 1, text: text.trim() }]
   }
 
+  // Try to parse JSON from a text that may include code fences or extra prose
+  const tryParseJsonFromText = (text) => {
+    if (!text || typeof text !== 'string') return null
+    const raw = text.trim()
+    // 1) Direct JSON
+    try { return JSON.parse(raw) } catch (_) {}
+    // 2) Code fence ```json ... ``` or ``` ... ```
+    try {
+      const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)
+      if (fence && fence[1]) {
+        const inner = fence[1].trim()
+        return JSON.parse(inner)
+      }
+    } catch (_) {}
+    // 3) Best-effort: substring between first { and last }
+    try {
+      const first = raw.indexOf('{')
+      const last = raw.lastIndexOf('}')
+      if (first !== -1 && last !== -1 && last > first) {
+        const slice = raw.slice(first, last + 1)
+        return JSON.parse(slice)
+      }
+    } catch (_) {}
+    // 4) Targeted extraction: find JSON object containing "jawaban" using brace matching
+    try {
+      const keyIdx = raw.toLowerCase().indexOf('"jawaban"')
+      if (keyIdx !== -1) {
+        // find nearest '{' before keyIdx
+        let start = keyIdx
+        while (start >= 0 && raw[start] !== '{') start--
+        if (start >= 0) {
+          // walk forward with brace depth, respecting string quotes
+          let i = start
+          let depth = 0
+          let inStr = false
+          let esc = false
+          for (; i < raw.length; i++) {
+            const ch = raw[i]
+            if (inStr) {
+              if (esc) { esc = false } else if (ch === '\\') { esc = true } else if (ch === '"') { inStr = false }
+            } else {
+              if (ch === '"') inStr = true
+              else if (ch === '{') depth++
+              else if (ch === '}') { depth--; if (depth === 0) { const slice = raw.slice(start, i + 1); return JSON.parse(slice) } }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    return null
+  }
+
   const stripBoldWrap = (s) => {
     if (typeof s !== 'string') return s
     let out = s.trim()
@@ -182,7 +235,7 @@ export default function TopicPage() {
 
   const stripAllBoldMarkers = (s) => {
     if (typeof s !== 'string') return s
-    return s.replace(/\*\*/g, '')
+        return s.replace(/\*\*/g, '').replace(/__/g, '')
   }
 
   const extractFirstBoldWord = (text) => {
@@ -290,7 +343,20 @@ export default function TopicPage() {
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
       const text = json?.text || ''
       setAiRaw(text)
-      setAiItems(parseAiOutput(text))
+      let items = []
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && Array.isArray(parsed.jawaban)) {
+        items = parsed.jawaban.map((a, idx) => ({
+          index: idx + 1,
+          // Normalize both legacy (opsi/isi) and new (option/text) keys
+          opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
+          isi: (a?.isi ?? a?.text ?? '').toString().trim(),
+          reason: (a?.reason ?? '').toString().trim(),
+        }))
+      } else {
+        items = parseAiOutput(text)
+      }
+      setAiItems(items)
     } catch (e) {
       console.error('AI Help error', e)
       setAiError(e.message)
@@ -338,7 +404,18 @@ export default function TopicPage() {
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
       const text = json?.text || ''
       setGcRaw(text)
-      const items = parseAiOutput(text).slice(0, 2)
+      const parsed = tryParseJsonFromText(text)
+      let items = []
+      if (parsed && Array.isArray(parsed.jawaban)) {
+        items = parsed.jawaban.map((a, idx) => ({
+          index: idx + 1,
+          opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
+          isi: (a?.isi ?? a?.text ?? '').toString().trim(),
+          reason: (a?.reason ?? '').toString().trim(),
+        }))
+      } else {
+        items = parseAiOutput(text).slice(0, 2)
+      }
       setGcItems(items)
     } catch (e) {
       console.error('AI Global Context error', e)
@@ -372,9 +449,11 @@ export default function TopicPage() {
       const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_key_concept').limit(1).single()
       if (rErr) throw new Error(rErr.message)
       const context = rule?.ai_rule_key_concept || ''
-  const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
-  const selected = bahasaMap[lang] || 'Indonesia'
-  const promptWithLang = `${formData.topic_nama.trim()}\n\nBuat dalam bahasa ${selected}.`
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const unit = formData.topic_nama.trim()
+      const gc = (formData.topic_global_context || '').trim()
+      const promptWithLang = `${context ? context + "\n\n" : ''}Unit Title: ${unit}${gc ? `\nGlobal Context: ${gc}` : ''}\n\nBuat dalam bahasa ${selected}. Jawab HANYA dalam format JSON dengan schema: {"jawaban":[{"option":"...","text":"...","reason":"..."}]}`
       setKcPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -382,10 +461,21 @@ export default function TopicPage() {
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
       const text = json?.text || ''
       setKcRaw(text)
-      const items = parseAiOutput(text).slice(0, 2)
-  setKcItems(items)
-  setKcSelected(items.map(() => true))
-  setKcSelectError('')
+      let items = []
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && Array.isArray(parsed.jawaban)) {
+        items = parsed.jawaban.map((a, idx) => ({
+          index: idx + 1,
+          opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
+          isi: (a?.isi ?? a?.text ?? '').toString().trim(),
+          reason: (a?.reason ?? '').toString().trim(),
+        }))
+      } else {
+        items = parseAiOutput(text)
+      }
+      setKcItems(items)
+      setKcSelected(items.map(() => true))
+      setKcSelectError('')
     } catch (e) {
       console.error('AI Key Concept error', e)
       setKcError(e.message)
@@ -401,20 +491,14 @@ export default function TopicPage() {
     setKcOpen(false)
   }
 
-  const confirmKeyConceptSelection = () => {
-    if (!kcItems || kcItems.length === 0) return
-    const selectedConcepts = kcItems
-      .filter((_, idx) => kcSelected[idx])
-      .map(it => extractFirstBoldWord(it.text))
-      .map(s => (s || '').trim())
-      .filter(Boolean)
-    if (selectedConcepts.length === 0) {
-      setKcSelectError('Pilih minimal 1 opsi.')
-      return
-    }
-    setFormData(prev => ({ ...prev, topic_key_concept: selectedConcepts.join(', ') }))
+  const useKeyConceptOption = (opt) => {
+    const val = stripAllBoldMarkers((opt || '').trim())
+    if (!val) return
+    setFormData(prev => ({ ...prev, topic_key_concept: val }))
     setKcOpen(false)
   }
+
+  // single-select now; confirmKeyConceptSelection removed
 
   // Open AI help for Related Concept (expects 2 options)
   const openRcHelp = async (lang) => {
@@ -422,7 +506,7 @@ export default function TopicPage() {
     const unit = formData.topic_nama?.trim()
     const gc = formData.topic_global_context?.trim()
     const kc = formData.topic_key_concept?.trim()
-    if (!subjId || !unit || !gc || !kc) {
+    if (!unit || !gc || !kc) {
       showNotification('Info', 'Isi Subject, Unit Title, Global Context, dan Key Concept sebelum meminta bantuan AI untuk Related Concept.', 'warning')
       return
     }
@@ -440,7 +524,7 @@ export default function TopicPage() {
       const context = rule?.ai_rule_related_concept || ''
       const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
       const selected = bahasaMap[lang] || 'Indonesia'
-  const promptWithLang = `Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\n\nBuat dalam bahasa ${selected}. Berikan alasannya juga.`
+      const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\n\nBuat dalam bahasa ${selected}.`
       setRcPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -448,10 +532,21 @@ export default function TopicPage() {
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
       const text = json?.text || ''
       setRcRaw(text)
-      const items = parseAiOutput(text).slice(0, 2)
-  setRcItems(items)
-  setRcSelected(items.map(() => true))
-  setRcSelectError('')
+      let items = []
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && Array.isArray(parsed.jawaban)) {
+        items = parsed.jawaban.map((a, idx) => ({
+          index: idx + 1,
+          opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
+          isi: (a?.isi ?? a?.text ?? '').toString().trim(),
+          reason: (a?.reason ?? '').toString().trim(),
+        }))
+      } else {
+        items = parseAiOutput(text)
+      }
+      setRcItems(items)
+      setRcSelected(items.map(() => true))
+      setRcSelectError('')
     } catch (e) {
       console.error('AI Related Concept error', e)
       setRcError(e.message)
@@ -490,7 +585,7 @@ export default function TopicPage() {
       const context = rule?.ai_rule_learner_profile || ''
       const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
       const selected = bahasaMap[lang] || 'Indonesia'
-      const promptWithLang = `Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 3 opsi atribut IB Learner Profile yang paling relevan. Buat dalam bahasa ${selected}. Berikan alasannya juga.`
+      const promptWithLang = `${context ? context + "\n\n" : ''}Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuat dalam bahasa ${selected}.`
       setLpPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -498,7 +593,18 @@ export default function TopicPage() {
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
       const text = json?.text || ''
       setLpRaw(text)
-      const items = parseAiOutput(text).slice(0, 3)
+      let items = []
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && Array.isArray(parsed.jawaban)) {
+        items = parsed.jawaban.map((a, idx) => ({
+          index: idx + 1,
+          opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
+          isi: (a?.isi ?? a?.text ?? '').toString().trim(),
+          reason: (a?.reason ?? '').toString().trim(),
+        }))
+      } else {
+        items = parseAiOutput(text).slice(0, 3)
+      }
       setLpItems(items)
       setLpSelected(items.map(() => true))
       setLpSelectError('')
@@ -512,11 +618,12 @@ export default function TopicPage() {
 
   const confirmLearnerProfileSelection = () => {
     if (!lpItems || lpItems.length === 0) return
-    const selectedAttrs = lpItems
-      .filter((_, idx) => lpSelected[idx])
-      .map(it => extractFirstBoldWord(it.text))
-      .map(s => (s || '').trim())
-      .filter(Boolean)
+      const anyJson = lpItems.some(it => typeof it?.opsi === 'string' || typeof it?.isi === 'string')
+      const selectedAttrs = lpItems
+        .filter((_, idx) => lpSelected[idx])
+        .map(it => anyJson ? (it?.opsi || '') : extractFirstBoldWord(it.text))
+        .map(s => stripAllBoldMarkers((s || '').trim()))
+        .filter(Boolean)
     if (selectedAttrs.length === 0) {
       setLpSelectError('Pilih minimal 1 opsi.')
       return
@@ -601,10 +708,8 @@ export default function TopicPage() {
     try {
       const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_statement').limit(1).single()
       if (rErr) throw new Error(rErr.message)
-      const context = rule?.ai_rule_statement || ''
-      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
-      const selected = bahasaMap[lang] || 'Indonesia'
-  const promptWithLang = `Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 3 opsi Statement of Inquiry yang relevan. Buat dalam bahasa ${selected}.`
+  const context = rule?.ai_rule_statement || ''
+  const promptWithLang = `${context ? context + "\n\n" : ''}Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}`
       setSoPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -612,10 +717,19 @@ export default function TopicPage() {
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
       const text = json?.text || ''
       setSoRaw(text)
-  const items = parseAiOutput(text).slice(0, 3)
-  setSoItems(items)
-  setSoSelected(items.map((_, i) => i === 0))
-  setSoSelectError('')
+      let items = []
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && Array.isArray(parsed.jawaban)) {
+        items = parsed.jawaban.map((a, idx) => ({
+          index: idx + 1,
+          opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
+          isi: (a?.isi ?? a?.text ?? '').toString().trim(),
+          reason: (a?.reason ?? '').toString().trim(),
+        }))
+      } else {
+        items = parseAiOutput(text).slice(0, 3)
+      }
+      setSoItems(items)
     } catch (e) {
       console.error('AI Statement error', e)
       setSoError(e.message)
@@ -631,25 +745,22 @@ export default function TopicPage() {
     setSoOpen(false)
   }
 
-  const confirmStatementSelection = () => {
-    if (!soItems || soItems.length === 0) return
-    const idx = soSelected.findIndex(v => v)
-    if (idx === -1) {
-      setSoSelectError('Pilih salah satu opsi.')
-      return
-    }
-    const chosen = String(soItems[idx].text || '').trim()
-    const cleaned = stripAllBoldMarkers(stripBoldWrap(chosen))
-    setFormData(prev => ({ ...prev, topic_statement: cleaned }))
+  const useStatementOption = (optOrText, preferText = true) => {
+    const val = stripAllBoldMarkers((optOrText || '').trim())
+    if (!val) return
+    setFormData(prev => ({ ...prev, topic_statement: val }))
     setSoOpen(false)
   }
 
+  // confirmStatementSelection removed (single-select)
+
   const confirmRelatedConceptSelection = () => {
     if (!rcItems || rcItems.length === 0) return
+    const anyJson = rcItems.some(it => typeof it?.opsi === 'string' || typeof it?.isi === 'string')
     const selectedConcepts = rcItems
       .filter((_, idx) => rcSelected[idx])
-      .map(it => extractFirstBoldWord(it.text))
-      .map(s => (s || '').trim())
+      .map(it => anyJson ? (it?.opsi || '') : extractFirstBoldWord(it.text))
+      .map(s => stripAllBoldMarkers((s || '').trim()))
       .filter(Boolean)
     if (selectedConcepts.length === 0) {
       setRcSelectError('Pilih minimal 1 opsi.')
@@ -676,13 +787,14 @@ export default function TopicPage() {
     setFaRaw('')
     setFaPrompt('')
     setFaLang(lang || '')
+  setFaParsedMeta({ json: false, count: 0 })
     try {
       const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_formative_assessment').limit(1).single()
       if (rErr) throw new Error(rErr.message)
-      const context = rule?.ai_rule_formative_assessment || ''
-      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
-      const selected = bahasaMap[lang] || 'Indonesia'
-      const promptWithLang = `Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 3 opsi Formative Assessment yang relevan. Buat dalam bahasa ${selected}.`
+  const context = rule?.ai_rule_formative_assessment || ''
+  const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+  const selected = bahasaMap[lang] || 'Indonesia'
+  const promptWithLang = `${context ? context + "\n\n" : ''}Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuat dalam bahasa ${selected}.`
       setFaPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -690,10 +802,22 @@ export default function TopicPage() {
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
       const text = json?.text || ''
       setFaRaw(text)
-      const items = parseAiOutput(text).slice(0, 3)
+      let items = []
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && Array.isArray(parsed.jawaban)) {
+        items = parsed.jawaban.map((a, idx) => ({
+          index: idx + 1,
+          opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
+          isi: (a?.isi ?? a?.text ?? '').toString().trim(),
+          reason: (a?.reason ?? '').toString().trim(),
+        }))
+      } else {
+        items = parseAiOutput(text).slice(0, 3)
+      }
       setFaItems(items)
       setFaSelected(items.map(() => true))
       setFaSelectError('')
+      setFaParsedMeta({ json: !!(parsed && Array.isArray(parsed.jawaban)), count: items.length })
     } catch (e) {
       console.error('AI Formative Assessment error', e)
       setFaError(e.message)
@@ -704,10 +828,24 @@ export default function TopicPage() {
 
   const confirmFormativeAssessmentSelection = () => {
     if (!faItems || faItems.length === 0) return
+    const anyJson = faItems.some(it => typeof it?.opsi === 'string' || typeof it?.isi === 'string')
     const selectedItems = faItems
       .filter((_, idx) => faSelected[idx])
-      .map(it => String(it.text || '').trim())
-      .map(s => stripAllBoldMarkers(stripBoldWrap(s)))
+      .map(it => {
+        if (anyJson) {
+          const opt = stripAllBoldMarkers((it?.opsi || '').trim())
+          const isi = stripAllBoldMarkers(stripBoldWrap((it?.isi || '').trim()))
+          if (opt && isi) return `${opt} - ${isi}`
+          return opt || isi
+        } else {
+          const raw = String(it.text || '')
+          const opt = extractFirstBoldWord(raw)
+          const cleaned = stripAllBoldMarkers(stripBoldWrap(raw.trim()))
+          if (opt && cleaned) return `${opt} - ${cleaned}`
+          return cleaned || opt
+        }
+      })
+      .map(s => (s || '').trim())
       .filter(Boolean)
     if (selectedItems.length === 0) {
       setFaSelectError('Pilih minimal 1 opsi.')
@@ -739,13 +877,14 @@ export default function TopicPage() {
     setSaPrompt('')
     setSaLang(lang || '')
     setSaSelected([])
+  setSaCriteria([])
     try {
       const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_summative_assessment').limit(1).single()
       if (rErr) throw new Error(rErr.message)
-      const context = rule?.ai_rule_summative_assessment || ''
+  const context = rule?.ai_rule_summative_assessment || ''
       const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
       const selected = bahasaMap[lang] || 'Indonesia'
-      const promptWithLang = `Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 2 opsi Summative Assessment yang relevan. Buat dalam bahasa ${selected}.`
+  const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuat dalam bahasa ${selected}.`
       setSaPrompt(promptWithLang)
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -753,9 +892,29 @@ export default function TopicPage() {
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
       const text = json?.text || ''
       setSaRaw(text)
-      const items = parseAiOutput(text).slice(0, 2)
-      setSaItems(items)
-      setSaSelected(items.map((_, i) => i === 0))
+      let items = []
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && Array.isArray(parsed.assessments)) {
+        items = parsed.assessments.map((a, idx) => ({
+          index: idx + 1,
+          judul: (a?.judul ?? '').toString().trim(),
+          criteria: typeof a?.criteria === 'object' && a?.criteria ? {
+            ...a.criteria
+          } : {}
+        }))
+        setSaItems(items)
+        // default: select first assessment, no criteria preselected (user must pick)
+        setSaSelected(items.map((_, i) => i === 0))
+        setSaCriteria(items.map((it, i) => {
+          const obj = {}
+          Object.keys(it.criteria || {}).forEach(k => { obj[k] = false })
+          return obj
+        }))
+      } else {
+        items = parseAiOutput(text).slice(0, 2)
+        setSaItems(items)
+        setSaSelected(items.map((_, i) => i === 0))
+      }
       setSaSelectError('')
     } catch (e) {
       console.error('AI Summative Assessment error', e)
@@ -769,13 +928,28 @@ export default function TopicPage() {
     if (!saItems || saItems.length === 0) return
     const idx = saSelected.findIndex(v => v)
     if (idx === -1) {
-      setSaSelectError('Pilih salah satu opsi.')
+      setSaSelectError('Pilih salah satu assessment.')
       return
     }
-    const chosen = String(saItems[idx].text || '').trim()
-    const cleaned = stripAllBoldMarkers(stripBoldWrap(chosen))
-    setFormData(prev => ({ ...prev, topic_summative_assessment: cleaned }))
-    setSaOpen(false)
+    const it = saItems[idx]
+    const isJson = it && typeof it.judul === 'string' && it.criteria && typeof it.criteria === 'object'
+    if (isJson) {
+      const critSel = saCriteria[idx] || {}
+      const picked = Object.entries(critSel).filter(([, v]) => !!v).map(([k]) => k)
+      if (picked.length === 0) {
+        setSaSelectError('Pilih minimal 1 criteria pada assessment terpilih.')
+        return
+      }
+      const judul = stripAllBoldMarkers((it.judul || '').trim())
+      const lines = [judul, ...picked.map(k => `${k}: ${stripAllBoldMarkers((it.criteria?.[k] || '').trim())}`)]
+      setFormData(prev => ({ ...prev, topic_summative_assessment: lines.join('\n') }))
+      setSaOpen(false)
+    } else {
+      const chosen = String(it.text || '').trim()
+      const cleaned = stripAllBoldMarkers(stripBoldWrap(chosen))
+      setFormData(prev => ({ ...prev, topic_summative_assessment: cleaned }))
+      setSaOpen(false)
+    }
   }
 
   useEffect(() => {
@@ -1524,21 +1698,28 @@ export default function TopicPage() {
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{faPrompt}</pre>
+              <div className="mt-1 text-[10px] text-gray-500">Parsed: JSON {faParsedMeta?.json ? 'yes' : 'no'} ({faParsedMeta?.count || 0} items)</div>
             </div>
           )}
           {!faLoading && !faError && faItems && faItems.length > 0 && (
             <div className="space-y-2">
-              {faItems.map((it, idx) => (
-                <div key={it.index} className="border rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="inline-flex items-center gap-2">
-                      <input type="checkbox" checked={!!faSelected[idx]} onChange={(e) => { const arr = [...faSelected]; arr[idx] = e.target.checked; setFaSelected(arr); setFaSelectError('') }} />
-                      <span className="font-semibold">Opsi {it.index}</span>
-                    </label>
+              {faItems.map((it, idx) => {
+                const hasJson = typeof it.isi === 'string' || typeof it.opsi === 'string'
+                const preview = hasJson
+                  ? stripAllBoldMarkers(`${it.opsi ? `${it.opsi}` : ''}${it.opsi ? `\n\n` : ''}${it.isi ? `${it.isi}` : ''}${it.reason ? `\n\n${it.reason}` : ''}`)
+                  : stripAllBoldMarkers(it.text)
+                return (
+                  <div key={it.index} className="border rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" checked={!!faSelected[idx]} onChange={(e) => { const arr = [...faSelected]; arr[idx] = e.target.checked; setFaSelected(arr); setFaSelectError('') }} />
+                        <span className="font-semibold">Opsi {it.index}</span>
+                      </label>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{preview}</pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
-                </div>
-              ))}
+                )
+              })}
               {faSelectError && <div className="text-xs text-red-600">{faSelectError}</div>}
             </div>
           )}
@@ -1613,29 +1794,27 @@ export default function TopicPage() {
           )}
           {!soLoading && !soError && soItems && soItems.length > 0 && (
             <div className="space-y-2">
-              {soItems.map((it, idx) => (
-                <div key={it.index} className="border rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="inline-flex items-center gap-2">
-                      <input type="checkbox" checked={!!soSelected[idx]} onChange={(e) => {
-                        const arr = soItems.map(() => false)
-                        if (e.target.checked) arr[idx] = true
-                        setSoSelected(arr)
-                        setSoSelectError('')
-                      }} />
-                      <span className="font-semibold">Opsi {it.index}</span>
-                    </label>
+              {soItems.map((it) => {
+                const hasJson = typeof it.isi === 'string' || typeof it.opsi === 'string'
+                const preview = hasJson
+                  ? stripAllBoldMarkers(`${it.opsi ? `${it.opsi}` : ''}${it.opsi ? `\n\n` : ''}${it.isi ? `${it.isi}` : ''}${it.reason ? `\n\n${it.reason}` : ''}`)
+                  : stripAllBoldMarkers(it.text)
+                const valueToUse = hasJson ? (it.isi || '') : (it.text || '')
+                return (
+                  <div key={it.index} className="border rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold">Opsi {it.index}</div>
+                      <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-sm" onClick={() => useStatementOption(valueToUse)}>
+                        Gunakan
+                      </Button>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{preview}</pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
-                </div>
-              ))}
-              {soSelectError && <div className="text-xs text-red-600">{soSelectError}</div>}
+                )
+              })}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
-            {!soLoading && !soError && soItems && soItems.length > 0 && (
-              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmStatementSelection}>Gunakan yang dipilih</Button>
-            )}
             <Button type="button" onClick={() => setSoOpen(false)}>Tutup</Button>
           </div>
         </div>
@@ -1658,17 +1837,23 @@ export default function TopicPage() {
           )}
           {!lpLoading && !lpError && lpItems && lpItems.length > 0 && (
             <div className="space-y-2">
-              {lpItems.map((it, idx) => (
-                <div key={it.index} className="border rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="inline-flex items-center gap-2">
-                      <input type="checkbox" checked={!!lpSelected[idx]} onChange={(e) => { const arr = [...lpSelected]; arr[idx] = e.target.checked; setLpSelected(arr); setLpSelectError('') }} />
-                      <span className="font-semibold">Opsi {it.index}</span>
-                    </label>
+              {lpItems.map((it, idx) => {
+                const hasJson = typeof it.isi === 'string' || typeof it.opsi === 'string'
+                const preview = hasJson
+                  ? stripAllBoldMarkers(`${it.opsi ? `${it.opsi}` : ''}${it.opsi ? `\n\n` : ''}${it.isi ? `${it.isi}` : ''}${it.reason ? `\n\n${it.reason}` : ''}`)
+                  : stripAllBoldMarkers(it.text)
+                return (
+                  <div key={it.index} className="border rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" checked={!!lpSelected[idx]} onChange={(e) => { const arr = [...lpSelected]; arr[idx] = e.target.checked; setLpSelected(arr); setLpSelectError('') }} />
+                        <span className="font-semibold">Opsi {it.index}</span>
+                      </label>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{preview}</pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
-                </div>
-              ))}
+                )
+              })}
               {lpSelectError && <div className="text-xs text-red-600">{lpSelectError}</div>}
             </div>
           )}
@@ -1698,22 +1883,73 @@ export default function TopicPage() {
           )}
           {!saLoading && !saError && saItems && saItems.length > 0 && (
             <div className="space-y-2">
-              {saItems.map((it, idx) => (
-                <div key={it.index} className="border rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="inline-flex items-center gap-2">
-                      <input type="checkbox" checked={!!saSelected[idx]} onChange={(e) => {
-                        const arr = saItems.map(() => false)
-                        if (e.target.checked) arr[idx] = true
-                        setSaSelected(arr)
-                        setSaSelectError('')
-                      }} />
-                      <span className="font-semibold">Opsi {it.index}</span>
-                    </label>
+              {saItems.map((it, idx) => {
+                const isJson = typeof it?.judul === 'string' && it?.criteria && typeof it.criteria === 'object'
+                if (isJson) {
+                  const selected = !!saSelected[idx]
+                  const criteriaObj = it.criteria || {}
+                  const criteriaKeys = Object.keys(criteriaObj)
+                  const critSel = saCriteria[idx] || {}
+                  return (
+                    <div key={it.index} className="border rounded p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" checked={selected} onChange={(e) => {
+                            const arr = saItems.map(() => false)
+                            if (e.target.checked) arr[idx] = true
+                            setSaSelected(arr)
+                            setSaSelectError('')
+                          }} />
+                          <span className="font-semibold">Assessment {it.index}: {stripAllBoldMarkers(it.judul || '')}</span>
+                        </label>
+                      </div>
+                      {criteriaKeys.length > 0 && (
+                        <div className="ml-6 space-y-1">
+                          <div className="text-xs text-gray-600">Pilih minimal 1 criteria:</div>
+                          {criteriaKeys.map((ck) => (
+                            <label key={ck} className="flex items-start gap-2 text-sm">
+                              <input type="checkbox" checked={!!critSel[ck]} onChange={(e) => {
+                                // Only allow interacting with criteria of selected assessment
+                                if (!saSelected[idx]) {
+                                  const arr = saItems.map(() => false)
+                                  arr[idx] = true
+                                  setSaSelected(arr)
+                                }
+                                setSaCriteria(prev => {
+                                  const copy = [...prev]
+                                  while (copy.length < saItems.length) copy.push({})
+                                  copy[idx] = { ...(copy[idx] || {}) }
+                                  copy[idx][ck] = e.target.checked
+                                  return copy
+                                })
+                                setSaSelectError('')
+                              }} />
+                              <span><span className="font-semibold mr-1">{ck}.</span>{stripAllBoldMarkers(criteriaObj[ck] || '')}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+                // Fallback plain text preview
+                return (
+                  <div key={it.index} className="border rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" checked={!!saSelected[idx]} onChange={(e) => {
+                          const arr = saItems.map(() => false)
+                          if (e.target.checked) arr[idx] = true
+                          setSaSelected(arr)
+                          setSaSelectError('')
+                        }} />
+                        <span className="font-semibold">Opsi {it.index}</span>
+                      </label>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
-                </div>
-              ))}
+                )
+              })}
               {saSelectError && <div className="text-xs text-red-600">{saSelectError}</div>}
             </div>
           )}
@@ -1743,17 +1979,23 @@ export default function TopicPage() {
           )}
           {!rcLoading && !rcError && rcItems && rcItems.length > 0 && (
             <div className="space-y-2">
-              {rcItems.map((it, idx) => (
-                <div key={it.index} className="border rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="inline-flex items-center gap-2">
-                      <input type="checkbox" checked={!!rcSelected[idx]} onChange={(e) => { const arr = [...rcSelected]; arr[idx] = e.target.checked; setRcSelected(arr); setRcSelectError('') }} />
-                      <span className="font-semibold">Opsi {it.index}</span>
-                    </label>
+              {rcItems.map((it, idx) => {
+                const hasJson = typeof it.isi === 'string' || typeof it.opsi === 'string'
+                const preview = hasJson
+                  ? stripAllBoldMarkers(`${it.isi ? `${it.isi}` : ''}${it.reason ? `\n\n${it.reason}` : ''}`)
+                  : stripAllBoldMarkers(it.text)
+                return (
+                  <div key={it.index} className="border rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" checked={!!rcSelected[idx]} onChange={(e) => { const arr = [...rcSelected]; arr[idx] = e.target.checked; setRcSelected(arr); setRcSelectError('') }} />
+                        <span className="font-semibold">Opsi {it.index}</span>
+                      </label>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{preview}</pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
-                </div>
-              ))}
+                )
+              })}
               {rcSelectError && <div className="text-xs text-red-600">{rcSelectError}</div>}
             </div>
           )}
@@ -1783,24 +2025,27 @@ export default function TopicPage() {
           )}
           {!kcLoading && !kcError && kcItems && kcItems.length > 0 && (
             <div className="space-y-2">
-              {kcItems.map((it, idx) => (
-                <div key={it.index} className="border rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="inline-flex items-center gap-2">
-                      <input type="checkbox" checked={!!kcSelected[idx]} onChange={(e) => { const arr = [...kcSelected]; arr[idx] = e.target.checked; setKcSelected(arr); setKcSelectError('') }} />
-                      <span className="font-semibold">Opsi {it.index}</span>
-                    </label>
+              {kcItems.map((it) => {
+                const hasJson = typeof it.isi === 'string' || typeof it.opsi === 'string'
+                const preview = hasJson
+                  ? stripAllBoldMarkers(`${it.opsi ? `${it.opsi}` : ''}${it.opsi ? `\n\n` : ''}${it.isi ? `${it.isi}` : ''}${it.reason ? `\n\n${it.reason}` : ''}`)
+                  : stripAllBoldMarkers(it.text)
+                const valueToUse = hasJson ? (it.opsi || '') : extractFirstBoldWord(it.text)
+                return (
+                  <div key={it.index} className="border rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold">Opsi {it.index}</div>
+                      <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-sm" onClick={() => useKeyConceptOption(valueToUse)}>
+                        Gunakan
+                      </Button>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{preview}</pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
-                </div>
-              ))}
-              {kcSelectError && <div className="text-xs text-red-600">{kcSelectError}</div>}
+                )
+              })}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
-            {!kcLoading && !kcError && kcItems && kcItems.length > 0 && (
-              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmKeyConceptSelection}>Gunakan yang dipilih</Button>
-            )}
             <Button type="button" onClick={() => setKcOpen(false)}>Tutup</Button>
           </div>
         </div>
@@ -1823,17 +2068,24 @@ export default function TopicPage() {
           )}
           {!gcLoading && !gcError && gcItems && gcItems.length > 0 && (
             <div className="space-y-2">
-              {gcItems.map((it) => (
-                <div key={it.index} className="border rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold">Opsi {it.index}</div>
-                    <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-sm" onClick={() => useGlobalContext(it.text)}>
-                      Gunakan
-                    </Button>
+              {gcItems.map((it) => {
+                const hasJson = typeof it.isi === 'string' || typeof it.opsi === 'string'
+                const preview = hasJson
+                  ? stripAllBoldMarkers(`${it.opsi ? `${it.opsi}` : ''}${it.opsi ? `\n\n` : ''}${it.isi ? `${it.isi}` : ''}${it.reason ? `\n\n${it.reason}` : ''}`)
+                  : stripAllBoldMarkers(it.text)
+                const valueToUse = hasJson ? (it.opsi || '') : (it.text || '')
+                return (
+                  <div key={it.index} className="border rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold">Opsi {it.index}</div>
+                      <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-sm" onClick={() => useGlobalContext(valueToUse)}>
+                        Gunakan
+                      </Button>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{preview}</pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
@@ -1859,19 +2111,26 @@ export default function TopicPage() {
           )}
           {!aiLoading && !aiError && aiItems && aiItems.length > 0 && (
             <div className="space-y-2">
-              {aiItems.map(it => (
-                <div key={it.index} className="border rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold">Usulan {it.index}</div>
-                    <div className="flex gap-2">
-                      <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-sm" onClick={() => insertToTitle(it.text)}>
-                        Gunakan sebagai Judul
-                      </Button>
+              {aiItems.map(it => {
+                const hasJson = typeof it.isi === 'string' || typeof it.opsi === 'string'
+                const preview = hasJson
+                  ? stripAllBoldMarkers(`${it.opsi ? `${it.opsi}` : ''}${it.opsi ? `\n\n` : ''}${it.isi ? `${it.isi}` : ''}${it.reason ? `\n\n${it.reason}` : ''}`)
+                  : stripAllBoldMarkers(it.text)
+                const titleToUse = hasJson ? (it.isi || it.opsi || '') : (it.text || '')
+                return (
+                  <div key={it.index} className="border rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold">Usulan {it.index}</div>
+                      <div className="flex gap-2">
+                        <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 text-sm" onClick={() => insertToTitle(titleToUse)}>
+                          Gunakan sebagai Judul
+                        </Button>
+                      </div>
                     </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800">{preview}</pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{stripAllBoldMarkers(it.text)}</pre>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
