@@ -760,7 +760,7 @@ export default function Dashboard() {
               <div className="p-2 mb-3 rounded bg-red-50 text-red-700 border border-red-200 text-sm">{calError}</div>
             )}
             <div className="grid grid-cols-7 gap-1 sm:gap-2 text-[11px] sm:text-xs font-medium text-gray-500 mb-2">
-              {['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(d => (
+              {['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(d => (
                 <div key={d} className="text-center">{d}</div>
               ))}
             </div>
