@@ -272,6 +272,31 @@ export default function AssessmentApproval() {
     return topicNameMap.get(topicId) || t('assessmentApproval.unknownTopic');
   };
 
+  // Convert URLs in plain text into clickable links
+  const linkifyText = (text) => {
+    if (!text) return '-';
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const parts = text.split(urlRegex);
+    return parts.map((part, idx) => {
+      if (!part) return null;
+      if (part.match(urlRegex)) {
+        const href = part.startsWith('http') ? part : `http://${part}`;
+        return (
+          <a
+            key={`lnk-${idx}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline break-words"
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={`txt-${idx}`}>{part}</span>;
+    });
+  };
+
   const handleApprovalAction = (assessment, action) => {
     const requiredStatus = isPrincipal ? 3 : 0;
     if (assessment.assessment_status !== requiredStatus) {
@@ -519,6 +544,9 @@ export default function AssessmentApproval() {
                       {t('assessmentApproval.thName')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('assessmentApproval.labelNote')}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('assessmentApproval.thDate')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -546,11 +574,11 @@ export default function AssessmentApproval() {
                           <div className="text-sm font-medium text-gray-900">
                             {assessment.assessment_nama}
                           </div>
-                          {assessment.assessment_keterangan && (
-                            <div className="text-sm text-gray-500 max-w-xs truncate">
-                              {assessment.assessment_keterangan}
-                            </div>
-                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-md">
+                        <div className="max-w-md truncate" title={assessment.assessment_keterangan || ''}>
+                          {linkifyText(assessment.assessment_keterangan)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -638,7 +666,10 @@ export default function AssessmentApproval() {
               <div><strong>{t('assessmentApproval.labelTopic')}:</strong> {selectedAssessment && getTopicName(selectedAssessment.assessment_topic_id)}</div>
               <div><strong>{t('assessmentApproval.labelTeacher')}:</strong> {selectedAssessment && getUserName(selectedAssessment.assessment_user_id)}</div>
               {selectedAssessment?.assessment_keterangan && (
-                <div><strong>{t('assessmentApproval.labelNote')}:</strong> {selectedAssessment.assessment_keterangan}</div>
+                <div className="space-x-1">
+                  <strong>{t('assessmentApproval.labelNote')}:</strong>
+                  <span className="break-words">{linkifyText(selectedAssessment.assessment_keterangan)}</span>
+                </div>
               )}
             </div>
           </div>
