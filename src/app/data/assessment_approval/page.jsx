@@ -8,7 +8,7 @@ import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
 import { useI18n } from '@/lib/i18n';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faTimes, faSpinner, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faTimes, faSpinner, faTrash, faUser } from '@fortawesome/free-solid-svg-icons';
 
 export default function AssessmentApproval() {
   const { t, lang } = useI18n();
@@ -555,25 +555,50 @@ export default function AssessmentApproval() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('assessmentApproval.thTopic')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('assessmentApproval.thTeacher')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('assessmentApproval.thStatus')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('assessmentApproval.thActions')}
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredAssessments.map((assessment) => (
                     <tr key={assessment.assessment_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 align-top">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {assessment.assessment_nama}
                           </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {((!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)) && (
+                            <button
+                              type="button"
+                              onClick={() => handleApprovalAction(assessment, 'approve')}
+                              className="inline-flex items-center gap-1 rounded-full border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 px-2 py-0.5 text-[11px]"
+                            >
+                              <FontAwesomeIcon icon={faCheck} />
+                              <span>{t('assessmentApproval.approve')}</span>
+                            </button>
+                          )}
+                          {((!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)) && (
+                            <button
+                              type="button"
+                              onClick={() => handleApprovalAction(assessment, 'reject')}
+                              className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 px-2 py-0.5 text-[11px]"
+                            >
+                              <FontAwesomeIcon icon={faTimes} />
+                              <span>{t('assessmentApproval.reject')}</span>
+                            </button>
+                          )}
+                          {/* Delete is always available to approvers */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAction(assessment)}
+                            className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 px-2 py-0.5 text-[11px]"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                            <span>{t('assessmentApproval.delete')}</span>
+                          </button>
+                          {((!isPrincipal && assessment.assessment_status !== 0) || (isPrincipal && assessment.assessment_status !== 3)) && (
+                            <span className="text-gray-400 text-[11px] self-center">{t('assessmentApproval.processed')}</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-md">
@@ -582,52 +607,22 @@ export default function AssessmentApproval() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(assessment.assessment_tanggal)}
+                        <div className="flex flex-col">
+                          <span>{formatDate(assessment.assessment_tanggal)}</span>
+                          <span className="mt-1">{getStatusBadge(assessment.assessment_status)}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {getSubjectName(assessment.assessment_detail_kelas_id)}
+                        <div className="flex flex-col">
+                          <span>{getSubjectName(assessment.assessment_detail_kelas_id)}</span>
+                          <span className="text-xs text-gray-500 inline-flex items-center gap-1">
+                            <FontAwesomeIcon icon={faUser} className="opacity-70" />
+                            {getUserName(assessment.assessment_user_id)}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {getTopicName(assessment.assessment_topic_id)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {getUserName(assessment.assessment_user_id)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(assessment.assessment_status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          {((!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)) && (
-                            <Button
-                              onClick={() => handleApprovalAction(assessment, 'approve')}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm"
-                            >
-                              <FontAwesomeIcon icon={faCheck} className="mr-1" />
-                              {t('assessmentApproval.approve')}
-                            </Button>
-                          )}
-                          {((!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)) && (
-                            <Button
-                              onClick={() => handleApprovalAction(assessment, 'reject')}
-                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-sm"
-                            >
-                              <FontAwesomeIcon icon={faTimes} className="mr-1" />
-                              {t('assessmentApproval.reject')}
-                            </Button>
-                          )}
-                          {/* Delete is always available to approvers */}
-                          <Button
-                            onClick={() => handleDeleteAction(assessment)}
-                            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-sm"
-                          >
-                            <FontAwesomeIcon icon={faTrash} className="mr-1" />
-                            {t('assessmentApproval.delete')}
-                          </Button>
-                          {((!isPrincipal && assessment.assessment_status !== 0) || (isPrincipal && assessment.assessment_status !== 3)) && (
-                            <span className="text-gray-400 text-sm self-center">{t('assessmentApproval.processed')}</span>
-                          )}
-                        </div>
                       </td>
                     </tr>
                   ))}
