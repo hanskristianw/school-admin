@@ -235,6 +235,10 @@ export async function POST(req) {
   const blockMulti = String(process.env.ATTENDANCE_BLOCK_MULTI_USER || 'false').toLowerCase() === 'true'
   const matchMode = String(process.env.ATTENDANCE_MULTI_MATCH || 'client_strict').toLowerCase() // client_strict | client_or_uaip
   let multiUser = false
+  
+  console.log('[scan] Multi-user detection config:', { windowMin, blockMulti, matchMode });
+  console.log('[scan] Device hashes:', { clientDeviceHash, deviceHash: deviceHash.slice(0, 12) + '...', uaIpHash: uaIpHash.slice(0, 12) + '...' });
+  
   if (windowMin > 0) {
     const sinceIso = new Date(Date.now() - windowMin * 60 * 1000).toISOString()
     let orParts = []
@@ -247,15 +251,24 @@ export async function POST(req) {
       // No client hash -> only UA+IP option
       orParts.push(`device_hash.eq.${uaIpHash}`, `device_hash_uaip.eq.${uaIpHash}`)
     }
+    
+    console.log('[scan] Checking for recent scans since:', sinceIso);
+    console.log('[scan] Query OR parts:', orParts);
+    
     const { data: recent } = await supabaseAdmin
       .from('attendance_scan_log')
-      .select('detail_siswa_id')
+      .select('detail_siswa_id, created_at, device_hash_client')
       .or(orParts.join(','))
       .gte('created_at', sinceIso)
       .not('detail_siswa_id', 'is', null)
       .neq('detail_siswa_id', allowedDetail.detail_siswa_id)
       .limit(1)
-    if (recent && recent.length > 0) multiUser = true
+      
+    console.log('[scan] Recent scans found:', recent?.length || 0);
+    if (recent && recent.length > 0) {
+      console.log('[scan] Multi-user detected! Recent scan:', recent[0]);
+      multiUser = true
+    }
   }
 
   if (blockMulti && multiUser) {
@@ -289,8 +302,10 @@ export async function POST(req) {
     if (insErr) throw insErr
 
   // Log success; flagged if multiUser detected
+  console.log('[scan] Recording success. MultiUser flag:', multiUser);
   await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: multiUser ? 'device_multi_user' : null }])
 
+  console.log('[scan] ✅ Success! Attendance recorded', { detail_siswa_id: allowedDetail.detail_siswa_id, flagged: multiUser });
   return NextResponse.json({ status: 'ok', flagged: multiUser ? 'device_multi_user' : null })
   } catch (e) {
     console.error('[scan] ERROR:', e)
