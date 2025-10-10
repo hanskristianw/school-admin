@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test QR Scan Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .debug-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test QR Scan Debug</h1>
+    <p>Gunakan halaman ini untuk test scan QR dan lihat error message detail.</p>
+
+    <div class="form-group">
+        <label>Day (1=Sen, 2=Sel, 3=Rab, 4=Kam, 5=Jum):</label>
+        <select id="day">
+            <option value="1">1 - Senin</option>
+            <option value="2">2 - Selasa</option>
+            <option value="3">3 - Rabu</option>
+            <option value="4">4 - Kamis</option>
+            <option value="5" selected>5 - Jumat</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Token (dari QR code):</label>
+        <input type="text" id="token" placeholder="Masukkan token dari QR">
+    </div>
+
+    <div class="form-group">
+        <label>User ID:</label>
+        <input type="number" id="user_id" placeholder="Masukkan user_id siswa" value="1">
+    </div>
+
+    <div class="form-group">
+        <label>Latitude (GPS):</label>
+        <input type="number" step="any" id="lat" placeholder="Auto-detect atau manual">
+    </div>
+
+    <div class="form-group">
+        <label>Longitude (GPS):</label>
+        <input type="number" step="any" id="lng" placeholder="Auto-detect atau manual">
+    </div>
+
+    <button onclick="getLocation()">📍 Auto-detect Lokasi</button>
+    <br><br>
+    <button onclick="testScan()">✅ Test Scan</button>
+
+    <div id="result"></div>
+
+    <script>
+        function getLocation() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'info';
+            resultDiv.textContent = 'Mendapatkan lokasi GPS...';
+
+            if (!navigator.geolocation) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = 'Browser tidak support geolocation';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    document.getElementById('lat').value = position.coords.latitude;
+                    document.getElementById('lng').value = position.coords.longitude;
+                    resultDiv.className = 'success';
+                    resultDiv.textContent = `✅ Lokasi berhasil dideteksi:\nLat: ${position.coords.latitude}\nLng: ${position.coords.longitude}\nAccuracy: ${position.coords.accuracy}m`;
+                },
+                (error) => {
+                    resultDiv.className = 'error';
+                    resultDiv.textContent = `❌ Gagal mendapatkan lokasi: ${error.message}`;
+                }
+            );
+        }
+
+        async function testScan() {
+            const resultDiv = document.getElementById('result');
+            const day = parseInt(document.getElementById('day').value);
+            const tok = document.getElementById('token').value.trim();
+            const user_id = parseInt(document.getElementById('user_id').value);
+            const lat = parseFloat(document.getElementById('lat').value);
+            const lng = parseFloat(document.getElementById('lng').value);
+
+            if (!tok) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = '❌ Token harus diisi';
+                return;
+            }
+
+            if (!user_id) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = '❌ User ID harus diisi';
+                return;
+            }
+
+            if (!lat || !lng) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = '❌ Lokasi GPS harus diisi. Klik "Auto-detect Lokasi" atau masukkan manual.';
+                return;
+            }
+
+            resultDiv.className = 'info';
+            resultDiv.innerHTML = '⏳ Mengirim request ke server...';
+
+            const payload = {
+                day: day,
+                tok: tok,
+                user_id: user_id,
+                geo: {
+                    lat: lat,
+                    lng: lng,
+                    accuracy: 10
+                }
+            };
+
+            try {
+                const response = await fetch('/api/attendance/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                let resultHtml = `<strong>Status Code:</strong> ${response.status}\n\n`;
+                resultHtml += `<strong>Response:</strong>\n${JSON.stringify(data, null, 2)}\n\n`;
+                
+                if (data.debug) {
+                    resultHtml += `<div class="debug-info"><strong>🐛 Debug Info:</strong>\n${data.debug}</div>`;
+                }
+
+                if (response.ok && data.status === 'ok') {
+                    resultDiv.className = 'success';
+                    resultHtml = '✅ BERHASIL!\n\n' + resultHtml;
+                } else if (data.status === 'duplicate') {
+                    resultDiv.className = 'info';
+                    resultHtml = 'ℹ️ DUPLIKAT - Sudah absen hari ini\n\n' + resultHtml;
+                } else {
+                    resultDiv.className = 'error';
+                    resultHtml = '❌ ERROR\n\n' + resultHtml;
+                }
+
+                resultDiv.innerHTML = resultHtml;
+
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `❌ Network Error:\n${error.message}\n\nPastikan server sedang running (npm run dev)`;
+            }
+        }
+
+        // Auto-detect location on page load
+        window.addEventListener('load', () => {
+            getLocation();
+        });
+    </script>
+</body>
+</html>

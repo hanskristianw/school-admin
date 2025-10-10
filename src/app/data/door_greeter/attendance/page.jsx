@@ -452,6 +452,10 @@ export default function AttendancePage() {
                   <div className="border rounded-md p-4 bg-white flex flex-col items-center">
                     <Qr text={JSON.stringify({ day, tok: dailyQrToken })} size={240} />
                     <div className="text-sm font-semibold text-gray-800 mt-3">{getWeekdayLabel(day)}</div>
+                    <div className="mt-2 text-xs text-gray-600 break-all select-all">
+                      <span className="font-semibold">Token server:</span> <span className="bg-gray-100 px-2 py-1 rounded text-[13px]">{dailyQrToken}</span>
+                      <span className="block text-[11px] text-gray-400 mt-1">(Copy-paste untuk cek manual, harus sama persis dengan token dari QR di aplikasi siswa)</span>
+                    </div>
                   </div>
                 </div>
                 <div className="md:col-span-2 flex flex-col justify-center gap-4">

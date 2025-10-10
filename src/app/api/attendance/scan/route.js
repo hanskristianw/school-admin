@@ -7,13 +7,31 @@ export async function POST(req) {
     const body = await req.json()
     const { sid, tok, day, user_id, deviceHash: clientDeviceHash, geo } = body || {}
     
-    console.log('[scan] Request received:', { hasDay: !!day, hasSid: !!sid, day, user_id });
+    console.log('[scan] Request received:', { hasDay: !!day, hasSid: !!sid, day, user_id, tok: tok?.slice(0,8)+'...' });
     
     // Support both session-based (sid) and daily static (day) QR
     const isDaily = !!day && !sid
     
-    if (!tok) return NextResponse.json({ error: 'bad_request' }, { status: 400 })
-    if (!supabaseAdmin) return NextResponse.json({ error: 'no_admin_client' }, { status: 500 })
+    if (!tok) {
+      return NextResponse.json({ 
+        error: 'bad_request',
+        debug: 'Parameter "tok" (token) tidak ditemukan'
+      }, { status: 400 })
+    }
+    
+    if (!isDaily && !sid) {
+      return NextResponse.json({
+        error: 'bad_request',
+        debug: 'Harus ada "day" (QR harian) atau "sid" (QR sesi)'
+      }, { status: 400 })
+    }
+    
+    if (!supabaseAdmin) {
+      return NextResponse.json({ 
+        error: 'no_admin_client',
+        debug: 'Database admin client tidak tersedia'
+      }, { status: 500 })
+    }
 
     const ip = req.headers.get('x-forwarded-for') || ''
     const ua = req.headers.get('user-agent') || ''
@@ -36,13 +54,19 @@ export async function POST(req) {
       if (day < 1 || day > 5) {
         console.warn('[scan] Invalid day in QR:', day);
         await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'invalid_day' }])
-        return NextResponse.json({ error: 'invalid_day' }, { status: 400 })
+        return NextResponse.json({ 
+          error: 'invalid_day',
+          debug: `Day ${day} harus 1-5 (Mon-Fri)`
+        }, { status: 400 })
       }
 
       if (day !== currentDay) {
         console.warn('[scan] Day mismatch. Current:', currentDay, 'Scanned:', day);
         await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'wrong_day' }])
-        return NextResponse.json({ error: 'wrong_day' }, { status: 400 })
+        return NextResponse.json({ 
+          error: 'wrong_day',
+          debug: `QR untuk hari ${['Sen','Sel','Rab','Kam','Jum'][day-1]}, tapi sekarang hari ${['Sen','Sel','Rab','Kam','Jum','Sab','Min'][currentDay-1]}`
+        }, { status: 400 })
       }
 
       const secretKey = `ATTENDANCE_SECRET_${['MON','TUE','WED','THU','FRI'][day-1]}`
@@ -58,13 +82,23 @@ export async function POST(req) {
 
       if (!secret || secret.trim() === '') {
         console.error('[scan] Secret not configured for', secretKey);
-        return NextResponse.json({ error: 'not_configured' }, { status: 500 })
+        return NextResponse.json({ 
+          error: 'not_configured',
+          debug: `Secret untuk hari ${['Sen','Sel','Rab','Kam','Jum'][day-1]} belum diset di /data/settings/daily_qr`
+        }, { status: 500 })
       }
 
       const expectedToken = crypto.createHmac('sha256', secret).update(`daily:${day}`).digest('hex').slice(0, 16)
       tokenValid = (tok === expectedToken)
       
-      console.log('[scan] Token valid:', tokenValid);
+      console.log('[scan] Token valid:', tokenValid, 'Expected:', expectedToken.slice(0,8)+'...', 'Got:', tok.slice(0,8)+'...');
+      
+      if (!tokenValid) {
+        return NextResponse.json({
+          error: 'invalid_token',
+          debug: `Token tidak cocok. Expected: ${expectedToken.slice(0,8)}..., Got: ${tok.slice(0,8)}... (day=${day}, secret_key=${dbKey})`
+        }, { status: 400 })
+      }
     } else {
       console.log('[scan] Session-based QR mode');
       
@@ -90,12 +124,23 @@ export async function POST(req) {
         const t = crypto.createHmac('sha256', session.secret).update(payload).digest('hex').slice(0, 12)
         return t === tok
       })
+      
+      if (!tokenValid) {
+        return NextResponse.json({
+          error: 'invalid_session_token',
+          debug: `Token sesi tidak cocok (sid=${sid})`
+        }, { status: 400 })
+      }
     }
 
+    // This should not be reached if tokenValid check moved inside blocks
     if (!tokenValid) {
-      console.warn('[scan] Token invalid');
+      console.warn('[scan] Token invalid - fallback check');
       await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
-      return NextResponse.json({ error: 'invalid' }, { status: 400 })
+      return NextResponse.json({ 
+        error: 'invalid',
+        debug: 'Token validation failed (fallback)'
+      }, { status: 400 })
     }
 
     console.log('[scan] Token validated successfully');
@@ -104,7 +149,10 @@ export async function POST(req) {
     const uid = parseInt(user_id)
     if (!uid) {
       await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
-      return NextResponse.json({ error: 'unauth' }, { status: 401 })
+      return NextResponse.json({ 
+        error: 'unauth',
+        debug: 'User ID tidak valid atau tidak dikirim'
+      }, { status: 401 })
     }
 
     // Find active detail_siswa for this date
@@ -116,7 +164,10 @@ export async function POST(req) {
 
     if (!details || details.length === 0) {
       await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
-      return NextResponse.json({ error: 'not_allowed' }, { status: 403 })
+      return NextResponse.json({ 
+        error: 'not_allowed',
+        debug: `User ID ${uid} tidak memiliki data siswa aktif`
+      }, { status: 403 })
     }
 
     // Check scope (only for session-based QR; daily QR has no scope restriction)
@@ -143,7 +194,10 @@ export async function POST(req) {
 
     if (!allowedDetail) {
       await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
-      return NextResponse.json({ error: 'not_allowed' }, { status: 403 })
+      return NextResponse.json({ 
+        error: 'not_allowed',
+        debug: 'Siswa tidak dalam scope sesi ini'
+      }, { status: 403 })
     }
 
     // Require location and enforce optional geofence
@@ -152,7 +206,10 @@ export async function POST(req) {
     const centerRadiusM = parseInt(process.env.ATTENDANCE_RADIUS_M || '0')
     if (!geo || typeof geo.lat !== 'number' || typeof geo.lng !== 'number') {
       await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'no_location' }])
-      return NextResponse.json({ error: 'location_required' }, { status: 403 })
+      return NextResponse.json({ 
+        error: 'location_required',
+        debug: 'Lokasi GPS tidak terdeteksi atau tidak dikirim'
+      }, { status: 403 })
     }
     const haversine = (lat1, lon1, lat2, lon2) => {
       const R = 6371000; // meters
@@ -166,7 +223,10 @@ export async function POST(req) {
       const dist = haversine(geo.lat, geo.lng, centerLat, centerLng)
       if (!(dist <= centerRadiusM + (geo.accuracy || 0))) {
         await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo.lat, lng: geo.lng, accuracy: geo.accuracy, flagged_reason: 'outside_geofence' }])
-        return NextResponse.json({ error: 'outside_geofence' }, { status: 403 })
+        return NextResponse.json({ 
+          error: 'outside_geofence',
+          debug: `Anda berada ${Math.round(dist)}m dari sekolah (maks ${centerRadiusM}m)`
+        }, { status: 403 })
       }
     }
 
@@ -200,7 +260,10 @@ export async function POST(req) {
 
   if (blockMulti && multiUser) {
     await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: 'device_multi_user' }])
-    return NextResponse.json({ error: 'device_multi_user' }, { status: 403 })
+    return NextResponse.json({ 
+      error: 'device_multi_user',
+      debug: 'Device ini baru digunakan siswa lain dalam 15 menit terakhir'
+    }, { status: 403 })
   }
 
   // Upsert attendance for today (WIB/GMT+7) - use proper timezone conversion
@@ -230,7 +293,11 @@ export async function POST(req) {
 
   return NextResponse.json({ status: 'ok', flagged: multiUser ? 'device_multi_user' : null })
   } catch (e) {
-    console.error('scan error', e)
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[scan] ERROR:', e)
+    return NextResponse.json({ 
+      error: 'server_error',
+      debug: e.message,
+      stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+    }, { status: 500 })
   }
 }
