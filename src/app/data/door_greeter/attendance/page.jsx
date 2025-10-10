@@ -44,6 +44,10 @@ export default function AttendancePage() {
   const [notification, setNotification] = useState({ isOpen: false, title: "", message: "", type: "success" });
   const showNotification = (title, message, type="success") => setNotification({ isOpen: true, title, message, type });
 
+  // Flagged attendance count
+  const [flaggedCount, setFlaggedCount] = useState(0);
+  const [loadingFlagged, setLoadingFlagged] = useState(false);
+
   // Authed Supabase client (ensures Authorization header under RLS)
   const db = useRef(null);
   useEffect(() => {
@@ -162,10 +166,38 @@ export default function AttendancePage() {
       const map = new Map();
       (data || []).forEach(r => map.set(r.absen_detail_siswa_id, { absen_id: r.absen_id, absen_time: r.absen_time }));
       setAttendanceMap(map);
+      
+      // Load flagged count after attendance loaded
+      loadFlaggedCount();
     } catch (e) {
       console.error(e);
       showNotification(t('attendance.errorTitle') || 'Error', (t('attendance.errorLoadAttendance') || 'Failed to load attendance: ') + e.message, 'error');
     } finally { setLoadingAttendance(false); }
+  };
+
+  const loadFlaggedCount = async () => {
+    try {
+      setLoadingFlagged(true);
+      const client = db.current || supabase;
+      const today = wibToday();
+      const startOfDay = `${today}T00:00:00`;
+      const endOfDay = `${today}T23:59:59`;
+      
+      const { count, error } = await client
+        .from('attendance_scan_log')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', startOfDay)
+        .lte('created_at', endOfDay)
+        .eq('result', 'ok')
+        .not('flagged_reason', 'is', null);
+      
+      if (error) throw error;
+      setFlaggedCount(count || 0);
+    } catch (e) {
+      console.error('Error loading flagged count:', e);
+    } finally {
+      setLoadingFlagged(false);
+    }
   };
 
   const markPresent = async (detailId) => {
@@ -318,6 +350,29 @@ export default function AttendancePage() {
   <h1 className="text-2xl font-bold text-gray-900">{t('attendance.title')}</h1>
   <p className="text-gray-600 text-sm">{t('attendance.subtitle')}</p>
       </div>
+
+      {/* Flagged Attendance Alert */}
+      {flaggedCount > 0 && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-md">
+          <div className="flex items-center">
+            <FontAwesomeIcon icon={require('@fortawesome/free-solid-svg-icons').faExclamationTriangle} className="text-amber-500 text-xl mr-3" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-800">
+                {flaggedCount} Kehadiran Terdeteksi Suspicious Hari Ini
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Multiple users menggunakan device yang sama dalam waktu singkat
+              </p>
+            </div>
+            <a
+              href="/data/attendance_flags"
+              className="ml-4 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-md transition"
+            >
+              Lihat Detail
+            </a>
+          </div>
+        </div>
+      )}
 
   {/* Year Selection (non-sticky) - date is always today (WIB) */}
       <Card className="shadow-sm border border-gray-200">
