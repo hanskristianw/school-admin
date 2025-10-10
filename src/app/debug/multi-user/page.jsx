@@ -33,6 +33,7 @@ export default function DebugMultiUserPage() {
           created_at,
           detail_siswa:detail_siswa_id (
             detail_siswa_id,
+            detail_siswa_user_id,
             users:detail_siswa_user_id (
               user_id,
               user_nama_depan,
@@ -42,9 +43,59 @@ export default function DebugMultiUserPage() {
         `)
         .gte('created_at', startOfDay.toISOString())
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw dbError;
+      }
+
+      console.log('Debug page loaded:', { 
+        count: data?.length, 
+        startOfDay: startOfDay.toISOString(),
+        now: new Date().toISOString(),
+        sampleLog: data?.[0] 
+      });
+
+      // If no data today, try last 7 days
+      if (!data || data.length === 0) {
+        console.log('No scans today, trying last 7 days...');
+        const last7Days = new Date();
+        last7Days.setDate(last7Days.getDate() - 7);
+        
+        const { data: oldData, error: oldError } = await supabase
+          .from('attendance_scan_log')
+          .select(`
+            log_id,
+            detail_siswa_id,
+            result,
+            flagged_reason,
+            device_hash_client,
+            device_hash,
+            device_hash_uaip,
+            created_at,
+            detail_siswa:detail_siswa_id (
+              detail_siswa_id,
+              detail_siswa_user_id,
+              users:detail_siswa_user_id (
+                user_id,
+                user_nama_depan,
+                user_nama_belakang
+              )
+            )
+          `)
+          .gte('created_at', last7Days.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(50);
+        
+        if (oldError) {
+          console.error('Old data error:', oldError);
+        } else {
+          console.log('Found old scans:', oldData?.length);
+          setLogs(oldData || []);
+          return;
+        }
+      }
 
       setLogs(data || []);
     } catch (err) {
@@ -65,6 +116,11 @@ export default function DebugMultiUserPage() {
     deviceGroups[deviceKey].push(log);
   });
 
+  // Get date range
+  const dates = logs.map(l => new Date(l.created_at));
+  const minDate = dates.length > 0 ? new Date(Math.min(...dates)) : null;
+  const maxDate = dates.length > 0 ? new Date(Math.max(...dates)) : null;
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">🔍 Debug Multi-User Detection</h1>
@@ -72,7 +128,10 @@ export default function DebugMultiUserPage() {
       <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
         <h2 className="font-semibold text-blue-900 mb-2">📋 Diagnostic Info</h2>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Total scans today: <strong>{logs.length}</strong></li>
+          <li>• Total scans: <strong>{logs.length}</strong></li>
+          {minDate && maxDate && (
+            <li>• Date range: <strong>{minDate.toLocaleDateString('id-ID')} - {maxDate.toLocaleDateString('id-ID')}</strong></li>
+          )}
           <li>• Unique devices: <strong>{Object.keys(deviceGroups).length}</strong></li>
           <li>• Flagged scans: <strong>{logs.filter(l => l.flagged_reason).length}</strong></li>
           <li>• Window: <strong>15 minutes</strong></li>
@@ -90,8 +149,15 @@ export default function DebugMultiUserPage() {
 
       {loading && <div className="text-gray-600">Loading...</div>}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded p-4 text-red-800">
-          Error: {error}
+        <div className="bg-red-50 border border-red-200 rounded p-4 mb-4">
+          <h3 className="font-semibold text-red-900 mb-2">❌ Error Loading Data</h3>
+          <p className="text-red-800 text-sm">{error}</p>
+          <details className="mt-2 text-xs">
+            <summary className="cursor-pointer text-red-700">Show debug info</summary>
+            <pre className="mt-2 bg-red-100 p-2 rounded overflow-x-auto">
+              {JSON.stringify({ error, timestamp: new Date().toISOString() }, null, 2)}
+            </pre>
+          </details>
         </div>
       )}
 
