@@ -254,20 +254,28 @@ export async function POST(req) {
     
     console.log('[scan] Checking for recent scans since:', sinceIso);
     console.log('[scan] Query OR parts:', orParts);
+    console.log('[scan] Excluding current student:', allowedDetail.detail_siswa_id);
     
-    const { data: recent } = await supabaseAdmin
+    const { data: recent, error: queryError } = await supabaseAdmin
       .from('attendance_scan_log')
-      .select('detail_siswa_id, created_at, device_hash_client')
+      .select('detail_siswa_id, created_at, device_hash_client, device_hash, device_hash_uaip, result')
       .or(orParts.join(','))
+      .eq('result', 'ok')  // ⚠️ IMPORTANT: Only check successful scans!
       .gte('created_at', sinceIso)
       .not('detail_siswa_id', 'is', null)
       .neq('detail_siswa_id', allowedDetail.detail_siswa_id)
-      .limit(1)
+      .limit(10)  // Get multiple to debug
       
+    if (queryError) {
+      console.error('[scan] ❌ Query error:', queryError);
+    }
+    
     console.log('[scan] Recent scans found:', recent?.length || 0);
     if (recent && recent.length > 0) {
-      console.log('[scan] Multi-user detected! Recent scan:', recent[0]);
+      console.log('[scan] 🚨 Multi-user detected! Recent scans:', recent);
       multiUser = true
+    } else {
+      console.log('[scan] ✅ No multi-user activity detected');
     }
   }
 
