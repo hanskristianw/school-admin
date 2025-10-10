@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import NotificationModal from "@/components/ui/notification-modal";
 import Qr from "@/components/ui/qr";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRotate, faCheck, faUndo, faSpinner, faList } from "@fortawesome/free-solid-svg-icons";
+import { faRotate, faCheck, faUndo, faSpinner, faList, faPrint } from "@fortawesome/free-solid-svg-icons";
 import { faThumbtack, faArrowDownLong } from "@fortawesome/free-solid-svg-icons";
 
 // Attendance page initial implementation.
@@ -222,63 +222,94 @@ export default function AttendancePage() {
 
   const fmtTime = (t) => (t ? String(t).slice(0,5) : '');
 
-  // QR Session state
-  const [sessionId, setSessionId] = useState(null);
-  const [qrToken, setQrToken] = useState(null);
-  const [qrValidSec, setQrValidSec] = useState(0);
-  const [qrPolling, setQrPolling] = useState(false);
-
-  // Poll QR token when session active
-  useEffect(() => {
-    let timer;
-    const poll = async () => {
-      if (!sessionId) return;
-      try {
-        const res = await fetch(`/api/attendance/session/${sessionId}/qr-token`, { cache: 'no-store' });
-        const j = await res.json();
-        if (!res.ok) throw new Error(j.error || 'qr');
-        setQrToken(j.token);
-        setQrValidSec(j.validForSec || 0);
-      } catch (e) {
-        console.error('qr fetch', e);
-      }
-    };
-    if (sessionId) {
-      setQrPolling(true);
-      poll();
-      timer = setInterval(poll, 10000);
-    }
-    return () => { if (timer) clearInterval(timer); setQrPolling(false); };
-  }, [sessionId]);
-
-  const startSession = async () => {
-    try {
-      const kr_id = typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null;
-      const body = {
-        scope_type: filterClass ? 'class' : 'year',
-        scope_year_id: selectedYearId || null,
-        scope_kelas_id: filterClass || null,
-        created_by_user_id: kr_id ? parseInt(kr_id) : undefined
-      };
-      const res = await fetch('/api/attendance/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || 'create');
-      setSessionId(j.session_id);
-    } catch (e) {
-      showNotification(t('attendance.errorTitle') || 'Error', 'Failed to start session: ' + e.message, 'error');
-    }
+  // Static Daily QR
+  const [dailyQrToken, setDailyQrToken] = useState(null);
+  const [dailyQrError, setDailyQrError] = useState(null);
+  const getCurrentWeekday = () => {
+    // Use proper timezone conversion for WIB (Asia/Jakarta)
+    const now = new Date();
+    const wibTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const day = wibTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    return day === 0 ? 7 : day; // Convert to 1=Mon, 7=Sun
+  };
+  const getWeekdayLabel = (day) => {
+    const labels = { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Minggu' };
+    return labels[day] || '';
   };
 
-  const closeSession = async () => {
-    if (!sessionId) return;
-    try {
-      const res = await fetch(`/api/attendance/session/${sessionId}/close`, { method: 'POST' });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || 'close');
-      setSessionId(null); setQrToken(null);
-    } catch (e) {
-      showNotification(t('attendance.errorTitle') || 'Error', 'Failed to close session: ' + e.message, 'error');
-    }
+  useEffect(() => {
+    const fetchDailyQr = async () => {
+      try {
+        const day = getCurrentWeekday();
+        console.log('[Daily QR] Current weekday:', day, getWeekdayLabel(day));
+        
+        if (day < 1 || day > 5) {
+          const msg = 'QR hanya tersedia Senin-Jumat';
+          console.warn('[Daily QR]', msg);
+          setDailyQrError(msg);
+          setDailyQrToken(null);
+          return;
+        }
+        
+        console.log('[Daily QR] Fetching token from API...');
+        const res = await fetch('/api/attendance/daily-qr', { cache: 'no-store' });
+        const j = await res.json();
+        
+        console.log('[Daily QR] API Response:', { status: res.status, data: j });
+        
+        if (!res.ok) {
+          const errMsg = j.error || 'fetch failed';
+          console.error('[Daily QR] API Error:', errMsg);
+          throw new Error(errMsg);
+        }
+        
+        console.log('[Daily QR] Token received successfully');
+        setDailyQrToken(j.token);
+        setDailyQrError(null);
+      } catch (e) {
+        console.error('[Daily QR] Fetch error:', e);
+        const errMsg = e.message === 'not_configured' 
+          ? 'Secret QR belum dikonfigurasi. Silakan set di Settings → Daily QR'
+          : (e.message || 'Gagal memuat QR');
+        setDailyQrError(errMsg);
+        setDailyQrToken(null);
+      }
+    };
+    fetchDailyQr();
+  }, []);
+
+  const handlePrintQr = () => {
+    const day = getCurrentWeekday();
+    if (!dailyQrToken || day < 1 || day > 5) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const qrData = JSON.stringify({ day, tok: dailyQrToken });
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>QR Kehadiran ${getWeekdayLabel(day)}</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+            h1 { font-size: 24px; margin-bottom: 10px; }
+            p { font-size: 14px; color: #666; margin-bottom: 30px; }
+            #qr { margin: 0 auto; }
+          </style>
+          <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+        </head>
+        <body>
+          <h1>QR Kehadiran ${getWeekdayLabel(day)}</h1>
+          <p>Scan QR code ini untuk mencatat kehadiran</p>
+          <canvas id="qr"></canvas>
+          <script>
+            QRCode.toCanvas(document.getElementById('qr'), '${qrData}', { width: 300 }, function(err) {
+              if (err) console.error(err);
+              setTimeout(() => window.print(), 500);
+            });
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   return (
@@ -344,24 +375,15 @@ export default function AttendancePage() {
                     {totalPresent}/{totalStudents} {t('attendance.present')}
                   </span>
                 </CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={sessionId ? closeSession : startSession}
-                    className={sessionId ? 'bg-red-600 hover:bg-red-700 text-white h-8 px-3 text-xs' : 'bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs'}
-                  >
-                    {sessionId ? (t('attendance.closeSession') || 'Close Session') : (t('attendance.startSession') || 'Start Session')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setPinFilters(p => !p)}
-                    className="h-8 px-3 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700"
-                  >
-                    <FontAwesomeIcon icon={pinFilters ? faThumbtack : faArrowDownLong} className="mr-1" />
-                    {pinFilters ? t('attendance.unpinFilters') : t('attendance.pinFilters')}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setPinFilters(p => !p)}
+                  className="h-8 px-3 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >
+                  <FontAwesomeIcon icon={pinFilters ? faThumbtack : faArrowDownLong} className="mr-1" />
+                  {pinFilters ? t('attendance.unpinFilters') : t('attendance.pinFilters')}
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
@@ -385,25 +407,72 @@ export default function AttendancePage() {
                   <div className="mt-2 text-[11px] text-gray-600">{t('attendance.summary')}: {totalPresent}/{totalStudents} {t('attendance.present')}</div>
                 </div>
               </div>
-              {sessionId && (
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-1 flex items-center justify-center">
-                    <div className="border rounded-md p-3 bg-white flex flex-col items-center">
-                      {qrToken ? (
-                        <Qr text={JSON.stringify({ sid: sessionId, tok: qrToken })} size={220} />
-                      ) : (
-                        <div className="w-[220px] h-[220px] bg-gray-100 rounded animate-pulse" />
-                      )}
-                      <div className="text-[11px] text-gray-500 mt-2">{qrValidSec ? `${qrValidSec}s` : ''}</div>
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 text-sm text-gray-600 flex items-center">{t('attendance.qrHint') || 'Have students scan the QR in the Student app/page. Token rotates every ~10 seconds.'}</div>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
       )}
+
+      {/* Static Daily QR Section */}
+      <Card className="shadow-sm border border-gray-200">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold text-gray-800">QR Kehadiran Harian</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const day = getCurrentWeekday();
+            if (day < 1 || day > 5) {
+              return (
+                <div className="text-center py-8">
+                  <div className="text-sm text-amber-600 mb-2">QR kehadiran hanya tersedia Senin-Jumat</div>
+                  <div className="text-xs text-gray-500">Hari ini: {getWeekdayLabel(day)}</div>
+                </div>
+              );
+            }
+            if (dailyQrError) {
+              return (
+                <div className="text-center py-8">
+                  <div className="text-sm text-red-600 mb-3">{dailyQrError}</div>
+                  {dailyQrError.includes('belum dikonfigurasi') && (
+                    <a 
+                      href="/data/settings/daily_qr" 
+                      className="inline-block text-xs text-blue-600 underline hover:text-blue-800"
+                    >
+                      Klik di sini untuk konfigurasi QR secrets
+                    </a>
+                  )}
+                </div>
+              );
+            }
+            if (!dailyQrToken) {
+              return <div className="text-sm text-gray-500 py-4 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" />Memuat QR...</div>;
+            }
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-1 flex items-center justify-center">
+                  <div className="border rounded-md p-4 bg-white flex flex-col items-center">
+                    <Qr text={JSON.stringify({ day, tok: dailyQrToken })} size={240} />
+                    <div className="text-sm font-semibold text-gray-800 mt-3">{getWeekdayLabel(day)}</div>
+                  </div>
+                </div>
+                <div className="md:col-span-2 flex flex-col justify-center gap-4">
+                  <div className="text-sm text-gray-600">
+                    <p className="mb-2">QR code ini berlaku untuk <strong>{getWeekdayLabel(day)}</strong> dan dapat dicetak untuk dipasang di pintu masuk.</p>
+                    <p className="text-xs text-gray-500">Siswa dapat scan QR ini dari aplikasi Student untuk mencatat kehadiran.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handlePrintQr}
+                    className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 w-fit"
+                  >
+                    <FontAwesomeIcon icon={faPrint} className="mr-2" />
+                    Print QR {getWeekdayLabel(day)}
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
 
       {selectedYearId && (
         <Card>

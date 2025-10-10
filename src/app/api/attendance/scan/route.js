@@ -4,46 +4,106 @@ import { supabaseAdmin } from '@/lib/supabase-updated'
 
 export async function POST(req) {
   try {
-  const body = await req.json()
-  const { sid, tok, user_id, deviceHash: clientDeviceHash, geo } = body || {}
-    if (!sid || !tok) return NextResponse.json({ error: 'bad_request' }, { status: 400 })
+    const body = await req.json()
+    const { sid, tok, day, user_id, deviceHash: clientDeviceHash, geo } = body || {}
+    
+    console.log('[scan] Request received:', { hasDay: !!day, hasSid: !!sid, day, user_id });
+    
+    // Support both session-based (sid) and daily static (day) QR
+    const isDaily = !!day && !sid
+    
+    if (!tok) return NextResponse.json({ error: 'bad_request' }, { status: 400 })
     if (!supabaseAdmin) return NextResponse.json({ error: 'no_admin_client' }, { status: 500 })
 
-    const { data: session, error } = await supabaseAdmin
-      .from('attendance_session')
-      .select('*')
-      .eq('session_id', sid)
-      .single()
-    if (error) throw error
+    const ip = req.headers.get('x-forwarded-for') || ''
+    const ua = req.headers.get('user-agent') || ''
+    const uaIpHash = crypto.createHash('sha256').update((ua||'') + '|' + (ip||'')).digest('hex').slice(0,32)
+    const deviceHash = (clientDeviceHash || '').trim() || uaIpHash
 
-    if (session.status !== 'open') return NextResponse.json({ error: 'closed' }, { status: 400 })
+    let tokenValid = false
 
-    const step = session.token_step_seconds || 20
-    const now = Math.floor(Date.now() / 1000)
-    const slot = Math.floor(now / step)
+    if (isDaily) {
+      console.log('[scan] Daily QR mode');
+      
+      // Daily static QR verification - use proper timezone
+      const now = new Date();
+      const wibTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const dayOfWeek = wibTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      const currentDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert to 1=Mon, 7=Sun
 
-    const slots = [slot - 1, slot, slot + 1]
-    const ok = slots.some(s => {
-      const payload = `${sid}:${s}`
-      const t = crypto.createHmac('sha256', session.secret).update(payload).digest('hex').slice(0, 12)
-      return t === tok
-    })
+      console.log('[scan] Current day (WIB):', currentDay, 'Scanned day:', day);
 
-  const ip = req.headers.get('x-forwarded-for') || ''
-  const ua = req.headers.get('user-agent') || ''
-  // Compute a stable server-side fallback hash from UA+IP, and prefer client hash if provided
-  const uaIpHash = crypto.createHash('sha256').update((ua||'') + '|' + (ip||'')).digest('hex').slice(0,32)
-  const deviceHash = (clientDeviceHash || '').trim() || uaIpHash
+      if (day < 1 || day > 5) {
+        console.warn('[scan] Invalid day in QR:', day);
+        await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'invalid_day' }])
+        return NextResponse.json({ error: 'invalid_day' }, { status: 400 })
+      }
 
-    if (!ok) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
+      if (day !== currentDay) {
+        console.warn('[scan] Day mismatch. Current:', currentDay, 'Scanned:', day);
+        await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'wrong_day' }])
+        return NextResponse.json({ error: 'wrong_day' }, { status: 400 })
+      }
+
+      const secretKey = `ATTENDANCE_SECRET_${['MON','TUE','WED','THU','FRI'][day-1]}`
+      const dbKey = secretKey.toLowerCase();
+      
+      console.log('[scan] Looking for secret:', dbKey);
+      
+      let secret = process.env[secretKey]
+      if (!secret) {
+        const { data: setting } = await supabaseAdmin.from('settings').select('value').eq('key', dbKey).maybeSingle()
+        if (setting) secret = setting.value
+      }
+
+      if (!secret || secret.trim() === '') {
+        console.error('[scan] Secret not configured for', secretKey);
+        return NextResponse.json({ error: 'not_configured' }, { status: 500 })
+      }
+
+      const expectedToken = crypto.createHmac('sha256', secret).update(`daily:${day}`).digest('hex').slice(0, 16)
+      tokenValid = (tok === expectedToken)
+      
+      console.log('[scan] Token valid:', tokenValid);
+    } else {
+      console.log('[scan] Session-based QR mode');
+      
+      // Legacy session-based verification
+      if (!sid) return NextResponse.json({ error: 'bad_request' }, { status: 400 })
+      
+      const { data: session, error } = await supabaseAdmin
+        .from('attendance_session')
+        .select('*')
+        .eq('session_id', sid)
+        .single()
+      if (error) throw error
+
+      if (session.status !== 'open') return NextResponse.json({ error: 'closed' }, { status: 400 })
+
+      const step = session.token_step_seconds || 20
+      const now = Math.floor(Date.now() / 1000)
+      const slot = Math.floor(now / step)
+
+      const slots = [slot - 1, slot, slot + 1]
+      tokenValid = slots.some(s => {
+        const payload = `${sid}:${s}`
+        const t = crypto.createHmac('sha256', session.secret).update(payload).digest('hex').slice(0, 12)
+        return t === tok
+      })
+    }
+
+    if (!tokenValid) {
+      console.warn('[scan] Token invalid');
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
       return NextResponse.json({ error: 'invalid' }, { status: 400 })
     }
+
+    console.log('[scan] Token validated successfully');
 
     // Resolve student by user_id (client should send user_id from local storage), then check scope
     const uid = parseInt(user_id)
     if (!uid) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
       return NextResponse.json({ error: 'unauth' }, { status: 401 })
     }
 
@@ -55,28 +115,34 @@ export async function POST(req) {
     if (dErr) throw dErr
 
     if (!details || details.length === 0) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
       return NextResponse.json({ error: 'not_allowed' }, { status: 403 })
     }
 
-    // Check scope if class/year provided
-    let allowedDetail = null
-    if (session.scope_type === 'class' && session.scope_kelas_id) {
-      allowedDetail = details.find(d => String(d.detail_siswa_kelas_id) === String(session.scope_kelas_id))
-    } else {
-      // For 'year' we need kelas_year_id -> join kelas
-      if (session.scope_type === 'year' && session.scope_year_id) {
-        // fetch kelas by id
-        const { data: kelasRow } = await supabaseAdmin.from('kelas').select('kelas_id, kelas_year_id').in('kelas_id', details.map(d=>d.detail_siswa_kelas_id))
-        const okKelas = (kelasRow||[]).some(k => String(k.kelas_year_id) === String(session.scope_year_id))
-        if (okKelas) allowedDetail = details[0]
-      } else {
-        allowedDetail = details[0]
+    // Check scope (only for session-based QR; daily QR has no scope restriction)
+    let allowedDetail = details[0] // Default to first detail_siswa
+    
+    if (!isDaily && sid) {
+      const { data: session, error: sessionErr } = await supabaseAdmin
+        .from('attendance_session')
+        .select('scope_type, scope_kelas_id, scope_year_id')
+        .eq('session_id', sid)
+        .single()
+      
+      if (!sessionErr && session) {
+        if (session.scope_type === 'class' && session.scope_kelas_id) {
+          allowedDetail = details.find(d => String(d.detail_siswa_kelas_id) === String(session.scope_kelas_id))
+        } else if (session.scope_type === 'year' && session.scope_year_id) {
+          const { data: kelasRow } = await supabaseAdmin.from('kelas').select('kelas_id, kelas_year_id').in('kelas_id', details.map(d=>d.detail_siswa_kelas_id))
+          const okKelas = (kelasRow||[]).some(k => String(k.kelas_year_id) === String(session.scope_year_id))
+          if (okKelas) allowedDetail = details[0]
+          else allowedDetail = null
+        }
       }
     }
 
     if (!allowedDetail) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash }])
       return NextResponse.json({ error: 'not_allowed' }, { status: 403 })
     }
 
@@ -85,7 +151,7 @@ export async function POST(req) {
     const centerLng = parseFloat(process.env.ATTENDANCE_CENTER_LNG || '0')
     const centerRadiusM = parseInt(process.env.ATTENDANCE_RADIUS_M || '0')
     if (!geo || typeof geo.lat !== 'number' || typeof geo.lng !== 'number') {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'no_location' }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'no_location' }])
       return NextResponse.json({ error: 'location_required' }, { status: 403 })
     }
     const haversine = (lat1, lon1, lat2, lon2) => {
@@ -99,7 +165,7 @@ export async function POST(req) {
     if (centerRadiusM > 0 && isFinite(centerLat) && isFinite(centerLng)) {
       const dist = haversine(geo.lat, geo.lng, centerLat, centerLng)
       if (!(dist <= centerRadiusM + (geo.accuracy || 0))) {
-        await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo.lat, lng: geo.lng, accuracy: geo.accuracy, flagged_reason: 'outside_geofence' }])
+        await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo.lat, lng: geo.lng, accuracy: geo.accuracy, flagged_reason: 'outside_geofence' }])
         return NextResponse.json({ error: 'outside_geofence' }, { status: 403 })
       }
     }
@@ -133,12 +199,13 @@ export async function POST(req) {
   }
 
   if (blockMulti && multiUser) {
-    await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: 'device_multi_user' }])
+    await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'not_allowed', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: 'device_multi_user' }])
     return NextResponse.json({ error: 'device_multi_user' }, { status: 403 })
   }
 
-  // Upsert attendance for today (WIB/GMT+7)
-  const wibNow = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  // Upsert attendance for today (WIB/GMT+7) - use proper timezone conversion
+  const now = new Date();
+  const wibNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
   const today = wibNow.toISOString().slice(0,10)
     const { data: existing } = await supabaseAdmin
       .from('absen')
@@ -148,18 +215,18 @@ export async function POST(req) {
       .maybeSingle?.() // ignore if not supported
 
     if (existing) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'duplicate', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'duplicate', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy }])
       return NextResponse.json({ status: 'duplicate' })
     }
 
   const nowTime = wibNow.toISOString().slice(11,19)
     const { error: insErr } = await supabaseAdmin
       .from('absen')
-      .insert([{ absen_detail_siswa_id: allowedDetail.detail_siswa_id, absen_date: today, absen_time: nowTime, absen_session_id: sid, absen_method: 'qr' }])
+      .insert([{ absen_detail_siswa_id: allowedDetail.detail_siswa_id, absen_date: today, absen_time: nowTime, absen_session_id: sid || null, absen_method: isDaily ? 'qr_daily' : 'qr' }])
     if (insErr) throw insErr
 
   // Log success; flagged if multiUser detected
-  await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid, token_slot: slot, result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: multiUser ? 'device_multi_user' : null }])
+  await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: multiUser ? 'device_multi_user' : null }])
 
   return NextResponse.json({ status: 'ok', flagged: multiUser ? 'device_multi_user' : null })
   } catch (e) {

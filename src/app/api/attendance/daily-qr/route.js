@@ -1,0 +1,77 @@
+import { NextResponse } from 'next/server'
+import crypto from 'crypto'
+import { supabaseAdmin } from '@/lib/supabase-updated'
+
+export async function GET() {
+  try {
+    if (!supabaseAdmin) {
+      console.error('[daily-qr] No admin client available');
+      return NextResponse.json({ error: 'no_admin_client' }, { status: 500 })
+    }
+
+    // Determine current weekday (WIB/GMT+7)
+    // Use proper timezone conversion
+    const now = new Date();
+    const wibTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const dayOfWeek = wibTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const day = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert to 1=Mon, 7=Sun
+
+    console.log('[daily-qr] Request received');
+    console.log('[daily-qr] Server time:', now.toISOString());
+    console.log('[daily-qr] WIB time:', wibTime.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }));
+    console.log('[daily-qr] Day of week:', dayOfWeek, '(0=Sun, 1=Mon, ...6=Sat)');
+    console.log('[daily-qr] Converted day:', day, '(1=Mon, 7=Sun)');
+    console.log('[daily-qr] Day name:', ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]);
+
+    // Only Mon-Fri (1-5)
+    if (day < 1 || day > 5) {
+      console.warn('[daily-qr] Weekend request rejected. Day:', day);
+      return NextResponse.json({ error: 'weekend' }, { status: 400 })
+    }
+
+    // Fetch daily secrets from settings or env
+    const secretKey = `ATTENDANCE_SECRET_${['MON','TUE','WED','THU','FRI'][day-1]}`
+    const dbKey = secretKey.toLowerCase();
+    
+    console.log('[daily-qr] Looking for secret:', secretKey);
+    
+    let secret = process.env[secretKey]
+    if (secret) {
+      console.log('[daily-qr] Secret found in ENV');
+    }
+
+    // Fallback: try to fetch from database settings table (if exists)
+    if (!secret) {
+      console.log('[daily-qr] Checking database for key:', dbKey);
+      const { data: setting, error: dbError } = await supabaseAdmin
+        .from('settings')
+        .select('value')
+        .eq('key', dbKey)
+        .maybeSingle()
+      
+      if (dbError) {
+        console.error('[daily-qr] Database error:', dbError);
+      } else if (setting) {
+        secret = setting.value;
+        console.log('[daily-qr] Secret found in DB, length:', secret?.length || 0);
+      } else {
+        console.warn('[daily-qr] No setting found in DB for key:', dbKey);
+      }
+    }
+
+    if (!secret || secret.trim() === '') {
+      console.error('[daily-qr] Secret not configured for', secretKey);
+      return NextResponse.json({ error: 'not_configured' }, { status: 500 })
+    }
+
+    // Generate static token for this day (HMAC of day number with secret)
+    const payload = `daily:${day}`
+    const token = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 16)
+
+    console.log('[daily-qr] Token generated successfully for day', day);
+    return NextResponse.json({ token, day })
+  } catch (e) {
+    console.error('[daily-qr] Unexpected error:', e)
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
