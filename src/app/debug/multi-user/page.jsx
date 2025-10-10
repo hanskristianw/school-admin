@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 export default function DebugMultiUserPage() {
   const [logs, setLogs] = useState([]);
@@ -16,8 +16,6 @@ export default function DebugMultiUserPage() {
     setLoading(true);
     setError(null);
     try {
-      const supabase = createClient();
-      
       // Get recent logs from today
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
@@ -31,11 +29,11 @@ export default function DebugMultiUserPage() {
           flagged_reason,
           device_hash_client,
           device_hash,
-          ua_ip_hash,
+          device_hash_uaip,
           created_at,
           detail_siswa:detail_siswa_id (
-            siswa_id,
-            users:user_id (
+            detail_siswa_id,
+            users:detail_siswa_user_id (
               user_id,
               user_nama_depan,
               user_nama_belakang
@@ -60,7 +58,7 @@ export default function DebugMultiUserPage() {
   // Group logs by device hash
   const deviceGroups = {};
   logs.forEach(log => {
-    const deviceKey = log.device_hash_client || log.device_hash || log.ua_ip_hash || 'unknown';
+    const deviceKey = log.device_hash_client || log.device_hash || log.device_hash_uaip || 'unknown';
     if (!deviceGroups[deviceKey]) {
       deviceGroups[deviceKey] = [];
     }
