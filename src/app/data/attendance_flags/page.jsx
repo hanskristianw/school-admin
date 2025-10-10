@@ -37,7 +37,7 @@ export default function FlaggedAttendancePage() {
       const { data: logs, error } = await db
         .from('attendance_scan_log')
         .select(`
-          scan_log_id,
+          log_id,
           result,
           flagged_reason,
           created_at,
@@ -51,7 +51,8 @@ export default function FlaggedAttendancePage() {
             detail_siswa_user_id,
             users:detail_siswa_user_id (
               user_id,
-              user_fullname
+              user_nama_depan,
+              user_nama_belakang
             ),
             kelas:detail_siswa_kelas_id (
               kelas_id,
@@ -173,10 +174,11 @@ export default function FlaggedAttendancePage() {
                 const student = log.detail_siswa;
                 const user = student?.users;
                 const kelas = student?.kelas;
+                const userName = user ? `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim() : `User ID: ${student?.detail_siswa_user_id}`;
                 
                 return (
                   <div
-                    key={log.scan_log_id}
+                    key={log.log_id}
                     className="border border-amber-200 bg-amber-50 rounded-lg p-4 hover:bg-amber-100 transition"
                   >
                     <div className="flex items-start justify-between mb-3">
@@ -184,7 +186,7 @@ export default function FlaggedAttendancePage() {
                         <div className="flex items-center gap-2 mb-1">
                           <FontAwesomeIcon icon={faUser} className="text-gray-600" />
                           <span className="font-semibold text-gray-800">
-                            {user?.user_fullname || `User ID: ${student?.detail_siswa_user_id}`}
+                            {userName}
                           </span>
                           {kelas && (
                             <span className="text-xs text-gray-600 bg-white px-2 py-1 rounded-full border">

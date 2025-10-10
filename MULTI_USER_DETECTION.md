@@ -58,11 +58,11 @@ Ketika siswa scan QR:
 3. Jika `ATTENDANCE_BLOCK_MULTI_USER=true` → tolak attendance
 4. Jika `false` → catat attendance tapi flag dengan `flagged_reason='device_multi_user'`
 
-### 3. Database Schema
+### Database Schema
 ```sql
 -- attendance_scan_log table
 CREATE TABLE attendance_scan_log (
-  scan_log_id SERIAL PRIMARY KEY,
+  log_id BIGSERIAL PRIMARY KEY,  -- ⚠️ NOT scan_log_id!
   session_id UUID,
   detail_siswa_id INTEGER,
   result TEXT, -- 'ok', 'invalid', 'duplicate', 'not_allowed'
@@ -176,7 +176,7 @@ Jika terdeteksi multi-user:
 ```sql
 SELECT 
   sl.created_at,
-  u.user_fullname,
+  CONCAT(u.user_nama_depan, ' ', u.user_nama_belakang) as user_fullname,
   k.kelas_nama,
   sl.device_hash_client,
   sl.flagged_reason
@@ -195,7 +195,7 @@ ORDER BY sl.created_at DESC;
 SELECT 
   device_hash_client,
   COUNT(DISTINCT detail_siswa_id) as user_count,
-  ARRAY_AGG(DISTINCT u.user_fullname) as users
+  ARRAY_AGG(DISTINCT CONCAT(u.user_nama_depan, ' ', u.user_nama_belakang)) as users
 FROM attendance_scan_log sl
 JOIN detail_siswa ds ON sl.detail_siswa_id = ds.detail_siswa_id
 JOIN users u ON ds.detail_siswa_user_id = u.user_id
