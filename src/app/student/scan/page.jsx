@@ -73,15 +73,41 @@ export default function StudentScanPage() {
     try {
       const payload = JSON.parse(decodedText);
       const kr_id = localStorage.getItem('kr_id');
+      
+      // Support both daily QR (day, tok) and session QR (sid, tok)
+      const requestBody = {
+        user_id: kr_id,
+        deviceHash: deviceHashRef.current,
+        geo: geoRef.current
+      };
+      
+      if (payload.day) {
+        // Daily static QR
+        requestBody.day = payload.day;
+        requestBody.tok = payload.tok;
+      } else if (payload.sid) {
+        // Session-based QR (legacy)
+        requestBody.sid = payload.sid;
+        requestBody.tok = payload.tok;
+      } else {
+        throw new Error('QR format tidak valid');
+      }
+      
       const res = await fetch('/api/attendance/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sid: payload.sid, tok: payload.tok, user_id: kr_id, deviceHash: deviceHashRef.current, geo: geoRef.current })
+        body: JSON.stringify(requestBody)
       });
       const j = await res.json();
+      
+      // Show debug info if available (for development/troubleshooting)
+      if (j.debug) {
+        console.log('[Student Scan] Server debug:', j.debug);
+      }
+      
       if (!res.ok) {
         if (j.error === 'location_required') {
-          const msg = t('studentScan.locationRequired') || 'Lokasi diperlukan untuk presensi. Aktifkan layanan lokasi dan coba lagi.';
+          const msg = j.debug || t('studentScan.locationRequired') || 'Lokasi diperlukan untuk presensi. Aktifkan layanan lokasi dan coba lagi.';
           setMessage(msg);
           setStatus('error');
           setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
@@ -89,7 +115,7 @@ export default function StudentScanPage() {
           return;
         }
         if (j.error === 'device_multi_user') {
-          const msg = t('studentScan.deviceMultiUser') || 'Perangkat ini terdeteksi digunakan untuk beberapa akun dalam waktu singkat.';
+          const msg = j.debug || t('studentScan.deviceMultiUser') || 'Perangkat ini terdeteksi digunakan untuk beberapa akun dalam waktu singkat.';
           setMessage(msg);
           setStatus('error');
           setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
@@ -97,7 +123,7 @@ export default function StudentScanPage() {
           return;
         }
         if (j.error === 'outside_geofence') {
-          const msg = t('studentScan.tooFar') || "You're too far from school. Harap berada di area sekolah untuk presensi.";
+          const msg = j.debug || t('studentScan.tooFar') || "You're too far from school. Harap berada di area sekolah untuk presensi.";
           setMessage(msg);
           setStatus('error');
           setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
@@ -105,11 +131,20 @@ export default function StudentScanPage() {
           return;
         }
         if (j.error === 'not_allowed') {
-          const msg = t('studentScan.notAllowed') || 'Anda tidak diizinkan melakukan presensi untuk sesi ini.';
+          const msg = j.debug || t('studentScan.notAllowed') || 'Anda tidak diizinkan melakukan presensi untuk sesi ini.';
           setMessage(msg);
           setStatus('error');
           setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
           cooldownRef.current = Date.now() + 2500;
+          return;
+        }
+        // Handle other errors with debug info
+        if (j.error === 'invalid_token' || j.error === 'wrong_day' || j.error === 'invalid_day' || j.error === 'not_configured') {
+          const msg = j.debug || `Error: ${j.error}`;
+          setMessage(msg);
+          setStatus('error');
+          setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
+          cooldownRef.current = Date.now() + 2000;
           return;
         }
       }
@@ -133,9 +168,11 @@ export default function StudentScanPage() {
         setScanning(false); scanningRef.current = false;
         cooldownRef.current = Date.now() + 60 * 1000; // 1 minute cool-down
       } else {
-        setMessage(t('studentScan.invalid') || 'QR tidak valid atau sesi ditutup.');
+        // Generic fallback with debug info if available
+        const msg = j.debug || t('studentScan.invalid') || 'QR tidak valid atau sesi ditutup.';
+        setMessage(msg);
         setStatus('error');
-        setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: t('studentScan.invalid') || 'QR tidak valid atau sesi ditutup.', type: 'error' });
+        setNotif({ isOpen: true, title: t('attendance.errorTitle') || 'Error', message: msg, type: 'error' });
         // Brief cooldown to avoid flooding
         cooldownRef.current = Date.now() + 1500;
       }
