@@ -16,10 +16,10 @@ export default function DebugMultiUserPage() {
     setLoading(true);
     setError(null);
     try {
-      // Get recent logs from today
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+      console.log('[multi-user debug] Loading logs without date filter...');
+      console.log('[multi-user debug] Current time:', new Date().toISOString());
 
+      // TRY 1: Get ALL logs without date filter (to debug)
       const { data, error: dbError } = await supabase
         .from('attendance_scan_log')
         .select(`
@@ -41,61 +41,19 @@ export default function DebugMultiUserPage() {
             )
           )
         `)
-        .gte('created_at', startOfDay.toISOString())
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (dbError) {
-        console.error('Database error:', dbError);
+        console.error('[multi-user debug] Database error:', dbError);
         throw dbError;
       }
 
-      console.log('Debug page loaded:', { 
-        count: data?.length, 
-        startOfDay: startOfDay.toISOString(),
-        now: new Date().toISOString(),
-        sampleLog: data?.[0] 
+      console.log('[multi-user debug] Logs loaded:', { 
+        count: data?.length,
+        sampleLog: data?.[0],
+        allDates: data?.slice(0, 5).map(d => d.created_at)
       });
-
-      // If no data today, try last 7 days
-      if (!data || data.length === 0) {
-        console.log('No scans today, trying last 7 days...');
-        const last7Days = new Date();
-        last7Days.setDate(last7Days.getDate() - 7);
-        
-        const { data: oldData, error: oldError } = await supabase
-          .from('attendance_scan_log')
-          .select(`
-            log_id,
-            detail_siswa_id,
-            result,
-            flagged_reason,
-            device_hash_client,
-            device_hash,
-            device_hash_uaip,
-            created_at,
-            detail_siswa:detail_siswa_id (
-              detail_siswa_id,
-              detail_siswa_user_id,
-              users:detail_siswa_user_id (
-                user_id,
-                user_nama_depan,
-                user_nama_belakang
-              )
-            )
-          `)
-          .gte('created_at', last7Days.toISOString())
-          .order('created_at', { ascending: false })
-          .limit(50);
-        
-        if (oldError) {
-          console.error('Old data error:', oldError);
-        } else {
-          console.log('Found old scans:', oldData?.length);
-          setLogs(oldData || []);
-          return;
-        }
-      }
 
       setLogs(data || []);
     } catch (err) {
