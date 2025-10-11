@@ -125,12 +125,13 @@ export default function DebugMultiUserPage() {
           const isMultiUser = deviceLogs.length > 1;
           const uniqueUsers = new Set(deviceLogs.map(l => l.detail_siswa_id).filter(Boolean));
           const hasMultipleUsers = uniqueUsers.size > 1;
+          const hasFlaggedScans = deviceLogs.some(l => l.flagged_reason === 'device_multi_user');
 
           return (
             <div
               key={deviceKey}
               className={`border rounded-lg p-4 ${
-                hasMultipleUsers
+                hasFlaggedScans || hasMultipleUsers
                   ? 'border-red-500 bg-red-50'
                   : isMultiUser
                   ? 'border-amber-500 bg-amber-50'
@@ -139,7 +140,7 @@ export default function DebugMultiUserPage() {
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold">
-                  {hasMultipleUsers ? '🚨' : isMultiUser ? '⚠️' : '✅'} Device:{' '}
+                  {hasFlaggedScans || hasMultipleUsers ? '🚨' : isMultiUser ? '⚠️' : '✅'} Device:{' '}
                   <code className="text-xs bg-gray-100 px-2 py-1 rounded">
                     {deviceKey.substring(0, 16)}...
                   </code>
@@ -147,7 +148,7 @@ export default function DebugMultiUserPage() {
                 <div className="text-sm">
                   <span
                     className={`px-3 py-1 rounded ${
-                      hasMultipleUsers
+                      hasFlaggedScans || hasMultipleUsers
                         ? 'bg-red-200 text-red-800'
                         : isMultiUser
                         ? 'bg-amber-200 text-amber-800'
@@ -160,14 +161,14 @@ export default function DebugMultiUserPage() {
                 </div>
               </div>
 
-              {hasMultipleUsers && (
+              {(hasFlaggedScans || hasMultipleUsers) && (
                 <div className="bg-red-100 border border-red-300 rounded p-2 mb-3 text-sm text-red-900">
                   <strong>⚠️ MULTI-USER DETECTED!</strong> This device was used by {uniqueUsers.size}{' '}
-                  different users today.
-                  {deviceLogs.some(l => l.flagged_reason) ? (
-                    <span className="text-green-700"> ✓ Correctly flagged</span>
+                  different user{uniqueUsers.size > 1 ? 's' : ''} recently.
+                  {hasFlaggedScans ? (
+                    <span className="text-green-700"> ✓ Correctly flagged in database</span>
                   ) : (
-                    <span className="text-red-700"> ✗ NOT FLAGGED (BUG!)</span>
+                    <span className="text-orange-700"> ⚠️ Detected in UI but check database flags</span>
                   )}
                 </div>
               )}

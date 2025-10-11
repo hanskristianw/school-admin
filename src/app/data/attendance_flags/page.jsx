@@ -11,30 +11,22 @@ import NotificationModal from '@/components/ui/notification-modal';
 export default function FlaggedAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [flaggedLogs, setFlaggedLogs] = useState([]);
-  const [filterDate, setFilterDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().slice(0, 10);
-  });
+  const [filterDate, setFilterDate] = useState(''); // Empty = show all
   const [notification, setNotification] = useState({ isOpen: false, title: '', message: '', type: 'success' });
   
   useEffect(() => {
     loadFlaggedLogs();
-  }, [filterDate]);
+  }, []); // Only load once on mount
 
   async function loadFlaggedLogs() {
     setLoading(true);
     try {
-      const token = localStorage.getItem('app_jwt');
-      if (!token) return;
-      
-      setAuthToken(token);
-      const db = createSupabaseWithAuth(token);
+      // Use default supabase client (RLS disabled)
+      console.log('[attendance_flags] Loading flagged logs for date:', filterDate);
 
       // Get attendance_scan_log with flagged_reason
-      const startOfDay = `${filterDate}T00:00:00`;
-      const endOfDay = `${filterDate}T23:59:59`;
-      
-      const { data: logs, error } = await db
+      // Use simple date comparison without time
+      const { data: logs, error } = await supabase
         .from('attendance_scan_log')
         .select(`
           log_id,
@@ -60,13 +52,17 @@ export default function FlaggedAttendancePage() {
             )
           )
         `)
-        .gte('created_at', startOfDay)
-        .lte('created_at', endOfDay)
-        .eq('result', 'ok')
         .not('flagged_reason', 'is', null)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[attendance_flags] Query error:', error);
+        throw error;
+      }
+
+      console.log('[attendance_flags] Flagged logs found:', logs?.length);
+      console.log('[attendance_flags] Sample log:', logs?.[0]);
 
       setFlaggedLogs(logs || []);
     } catch (e) {
@@ -81,6 +77,14 @@ export default function FlaggedAttendancePage() {
       setLoading(false);
     }
   }
+
+  // Filter logs by selected date in client-side
+  const filteredLogs = flaggedLogs.filter(log => {
+    if (!filterDate) return true; // Show all if no date selected
+    // Use UTC date comparison to avoid timezone issues
+    const logDate = new Date(log.created_at).toISOString().slice(0, 10);
+    return logDate === filterDate;
+  });
 
   function formatTime(isoString) {
     if (!isoString) return '-';
@@ -139,14 +143,25 @@ export default function FlaggedAttendancePage() {
         <CardContent>
           <div className="flex items-center gap-4">
             <FontAwesomeIcon icon={faCalendar} className="text-gray-500" />
+            <select
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Semua Tanggal</option>
+              <option value={new Date().toISOString().slice(0, 10)}>Hari Ini</option>
+              <option value={new Date(Date.now() - 86400000).toISOString().slice(0, 10)}>Kemarin</option>
+              <option value={new Date(Date.now() - 7*86400000).toISOString().slice(0, 10)}>7 Hari Lalu</option>
+            </select>
             <input
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Atau pilih tanggal..."
             />
             <span className="text-sm text-gray-600">
-              Total: <strong>{flaggedLogs.length}</strong> kehadiran terdeteksi suspicious
+              Menampilkan: <strong>{filteredLogs.length}</strong> dari {flaggedLogs.length} total flagged
             </span>
           </div>
         </CardContent>
@@ -162,14 +177,23 @@ export default function FlaggedAttendancePage() {
               <FontAwesomeIcon icon={faSpinner} spin className="text-2xl mb-2" />
               <div className="text-sm">Memuat data...</div>
             </div>
-          ) : flaggedLogs.length === 0 ? (
+          ) : filteredLogs.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
               <FontAwesomeIcon icon={faExclamationTriangle} className="text-4xl mb-3 text-gray-300" />
-              <div className="text-sm">Tidak ada kehadiran suspicious pada tanggal ini</div>
+              <div className="text-sm">
+                {flaggedLogs.length > 0 
+                  ? `Tidak ada kehadiran suspicious pada tanggal ${filterDate}` 
+                  : 'Tidak ada kehadiran suspicious'}
+              </div>
+              {flaggedLogs.length > 0 && (
+                <div className="text-xs text-gray-500 mt-2">
+                  Ada {flaggedLogs.length} flagged logs di tanggal lain. Ubah tanggal atau refresh untuk melihat semua.
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
-              {flaggedLogs.map((log) => {
+              {filteredLogs.map((log) => {
                 const flag = getFlagLabel(log.flagged_reason);
                 const student = log.detail_siswa;
                 const user = student?.users;
