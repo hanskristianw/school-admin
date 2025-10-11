@@ -299,19 +299,19 @@ export async function POST(req) {
       .maybeSingle?.() // ignore if not supported
 
     if (existing) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'duplicate', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'duplicate', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy }])
       return NextResponse.json({ status: 'duplicate' })
     }
 
   const nowTime = wibNow.toISOString().slice(11,19)
     const { error: insErr } = await supabaseAdmin
       .from('absen')
-      .insert([{ absen_detail_siswa_id: allowedDetail.detail_siswa_id, absen_date: today, absen_time: nowTime, absen_session_id: sid || null, absen_method: isDaily ? 'qr_daily' : 'qr' }])
+      .insert([{ absen_detail_siswa_id: allowedDetail.detail_siswa_id, absen_date: today, absen_time: nowTime, absen_method: isDaily ? 'qr_daily' : 'qr' }])
     if (insErr) throw insErr
 
   // Log success; flagged if multiUser detected
   console.log('[scan] Recording success. MultiUser flag:', multiUser);
-  await supabaseAdmin.from('attendance_scan_log').insert([{ session_id: sid || null, result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: multiUser ? 'device_multi_user' : null }])
+  await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: multiUser ? 'device_multi_user' : null }])
 
   console.log('[scan] ✅ Success! Attendance recorded', { detail_siswa_id: allowedDetail.detail_siswa_id, flagged: multiUser });
   return NextResponse.json({ status: 'ok', flagged: multiUser ? 'device_multi_user' : null })
