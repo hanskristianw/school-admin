@@ -15,7 +15,9 @@ export default function DailyQrSettings() {
     tue: '',
     wed: '',
     thu: '',
-    fri: ''
+    fri: '',
+    sat: '',
+    sun: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,7 +34,15 @@ export default function DailyQrSettings() {
   const loadSecrets = async () => {
     try {
       setLoading(true);
-      const keys = ['attendance_secret_mon', 'attendance_secret_tue', 'attendance_secret_wed', 'attendance_secret_thu', 'attendance_secret_fri'];
+      const keys = [
+        'attendance_secret_mon', 
+        'attendance_secret_tue', 
+        'attendance_secret_wed', 
+        'attendance_secret_thu', 
+        'attendance_secret_fri',
+        'attendance_secret_sat',
+        'attendance_secret_sun'
+      ];
       const { data, error } = await supabase
         .from('settings')
         .select('key, value')
@@ -45,7 +55,9 @@ export default function DailyQrSettings() {
         tue: '',
         wed: '',
         thu: '',
-        fri: ''
+        fri: '',
+        sat: '',
+        sun: ''
       };
 
       (data || []).forEach(item => {
@@ -83,7 +95,9 @@ export default function DailyQrSettings() {
       tue: generateRandomSecret(),
       wed: generateRandomSecret(),
       thu: generateRandomSecret(),
-      fri: generateRandomSecret()
+      fri: generateRandomSecret(),
+      sat: generateRandomSecret(),
+      sun: generateRandomSecret()
     });
   };
 
@@ -119,7 +133,9 @@ export default function DailyQrSettings() {
     tue: 'Selasa',
     wed: 'Rabu',
     thu: 'Kamis',
-    fri: 'Jumat'
+    fri: 'Jumat',
+    sat: 'Sabtu',
+    sun: 'Minggu'
   };
 
   if (loading) {
@@ -138,7 +154,7 @@ export default function DailyQrSettings() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Pengaturan QR Kehadiran Harian</h1>
         <p className="text-gray-600 text-sm mt-1">
-          Kelola secret key untuk QR kehadiran Senin-Jumat. Setiap hari memiliki QR unik yang tidak berubah (static).
+          Kelola secret key untuk QR kehadiran 7 hari (Senin-Minggu). Setiap hari memiliki QR unik yang tidak berubah (static).
         </p>
       </div>
 
@@ -191,7 +207,7 @@ export default function DailyQrSettings() {
               <p className="font-semibold mb-2">⚠️ Penting:</p>
               <ul className="list-disc list-inside space-y-1 text-xs">
                 <li>Secret key ini digunakan untuk generate QR code harian yang static (tidak berubah).</li>
-                <li>Setiap hari (Senin-Jumat) memiliki secret berbeda untuk keamanan.</li>
+                <li>Setiap hari (Senin-Minggu) memiliki secret berbeda untuk keamanan.</li>
                 <li>Jangan bagikan secret key ini ke siapapun.</li>
                 <li>Setelah mengubah secret, QR lama tidak akan valid lagi - cetak ulang QR baru.</li>
               </ul>

@@ -251,7 +251,9 @@ WHERE key IN (
   'attendance_secret_tue',
   'attendance_secret_wed',
   'attendance_secret_thu',
-  'attendance_secret_fri'
+  'attendance_secret_fri',
+  'attendance_secret_sat',
+  'attendance_secret_sun'
 )
 ORDER BY key;
 
@@ -273,6 +275,12 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM settings WHERE key = 'attendance_secret_fri') THEN
     INSERT INTO settings (key, value) VALUES ('attendance_secret_fri', gen_random_uuid()::text);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM settings WHERE key = 'attendance_secret_sat') THEN
+    INSERT INTO settings (key, value) VALUES ('attendance_secret_sat', gen_random_uuid()::text);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM settings WHERE key = 'attendance_secret_sun') THEN
+    INSERT INTO settings (key, value) VALUES ('attendance_secret_sun', gen_random_uuid()::text);
   END IF;
 END $$;
 */

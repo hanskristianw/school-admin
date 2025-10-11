@@ -65,11 +65,11 @@ export async function POST(req) {
         await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'wrong_day' }])
         return NextResponse.json({ 
           error: 'wrong_day',
-          debug: `QR untuk hari ${['Sen','Sel','Rab','Kam','Jum'][day-1]}, tapi sekarang hari ${['Sen','Sel','Rab','Kam','Jum','Sab','Min'][currentDay-1]}`
+          debug: `QR untuk hari ${['Sen','Sel','Rab','Kam','Jum','Sab','Min'][day-1]}, tapi sekarang hari ${['Sen','Sel','Rab','Kam','Jum','Sab','Min'][currentDay-1]}`
         }, { status: 400 })
       }
 
-      const secretKey = `ATTENDANCE_SECRET_${['MON','TUE','WED','THU','FRI'][day-1]}`
+      const secretKey = `ATTENDANCE_SECRET_${['MON','TUE','WED','THU','FRI','SAT','SUN'][day-1]}`
       const dbKey = secretKey.toLowerCase();
       
       console.log('[scan] Looking for secret:', dbKey);
@@ -84,7 +84,7 @@ export async function POST(req) {
         console.error('[scan] Secret not configured for', secretKey);
         return NextResponse.json({ 
           error: 'not_configured',
-          debug: `Secret untuk hari ${['Sen','Sel','Rab','Kam','Jum'][day-1]} belum diset di /data/settings/daily_qr`
+          debug: `Secret untuk hari ${['Sen','Sel','Rab','Kam','Jum','Sab','Min'][day-1]} belum diset di /data/settings/daily_qr`
         }, { status: 500 })
       }
 

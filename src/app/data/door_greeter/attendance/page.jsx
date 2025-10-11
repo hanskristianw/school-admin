@@ -275,8 +275,8 @@ export default function AttendancePage() {
         const day = getCurrentWeekday();
         console.log('[Daily QR] Current weekday:', day, getWeekdayLabel(day));
         
-        if (day < 1 || day > 5) {
-          const msg = 'QR hanya tersedia Senin-Jumat';
+        if (day < 1 || day > 7) {
+          const msg = 'QR hanya tersedia Senin-Minggu';
           console.warn('[Daily QR]', msg);
           setDailyQrError(msg);
           setDailyQrToken(null);
@@ -312,7 +312,7 @@ export default function AttendancePage() {
 
   const handlePrintQr = () => {
     const day = getCurrentWeekday();
-    if (!dailyQrToken || day < 1 || day > 5) return;
+    if (!dailyQrToken || day < 1 || day > 7) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     const qrData = JSON.stringify({ day, tok: dailyQrToken });
@@ -475,10 +475,10 @@ export default function AttendancePage() {
         <CardContent>
           {(() => {
             const day = getCurrentWeekday();
-            if (day < 1 || day > 5) {
+            if (day < 1 || day > 7) {
               return (
                 <div className="text-center py-8">
-                  <div className="text-sm text-amber-600 mb-2">QR kehadiran hanya tersedia Senin-Jumat</div>
+                  <div className="text-sm text-amber-600 mb-2">QR kehadiran tersedia 7 hari (Senin-Minggu)</div>
                   <div className="text-xs text-gray-500">Hari ini: {getWeekdayLabel(day)}</div>
                 </div>
               );

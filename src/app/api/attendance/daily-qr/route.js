@@ -23,14 +23,14 @@ export async function GET() {
     console.log('[daily-qr] Converted day:', day, '(1=Mon, 7=Sun)');
     console.log('[daily-qr] Day name:', ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek]);
 
-    // Only Mon-Fri (1-5)
-    if (day < 1 || day > 5) {
-      console.warn('[daily-qr] Weekend request rejected. Day:', day);
-      return NextResponse.json({ error: 'weekend' }, { status: 400 })
+    // Support all 7 days (1=Mon, 7=Sun)
+    if (day < 1 || day > 7) {
+      console.warn('[daily-qr] Invalid day:', day);
+      return NextResponse.json({ error: 'invalid_day' }, { status: 400 })
     }
 
     // Fetch daily secrets from settings or env
-    const secretKey = `ATTENDANCE_SECRET_${['MON','TUE','WED','THU','FRI'][day-1]}`
+    const secretKey = `ATTENDANCE_SECRET_${['MON','TUE','WED','THU','FRI','SAT','SUN'][day-1]}`
     const dbKey = secretKey.toLowerCase();
     
     console.log('[daily-qr] Looking for secret:', secretKey);
