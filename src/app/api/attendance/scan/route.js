@@ -299,22 +299,66 @@ export async function POST(req) {
       .maybeSingle?.() // ignore if not supported
 
     if (existing) {
-      await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'duplicate', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy }])
+      await supabaseAdmin.from('attendance_scan_log').insert([{ 
+        result: 'duplicate', 
+        detail_siswa_id: allowedDetail.detail_siswa_id, 
+        absen_id: existing.absen_id, // Link to existing absen record
+        ip, 
+        user_agent: ua, 
+        device_hash: deviceHash, 
+        device_hash_client: clientDeviceHash || null, 
+        device_hash_uaip: uaIpHash, 
+        lat: geo?.lat, 
+        lng: geo?.lng, 
+        accuracy: geo?.accuracy 
+      }])
       return NextResponse.json({ status: 'duplicate' })
     }
 
-  const nowTime = wibNow.toISOString().slice(11,19)
-    const { error: insErr } = await supabaseAdmin
+    const nowTime = wibNow.toISOString().slice(11,19)
+    const { data: absenData, error: insErr } = await supabaseAdmin
       .from('absen')
-      .insert([{ absen_detail_siswa_id: allowedDetail.detail_siswa_id, absen_date: today, absen_time: nowTime, absen_method: isDaily ? 'qr_daily' : 'qr' }])
+      .insert([{ 
+        absen_detail_siswa_id: allowedDetail.detail_siswa_id, 
+        absen_date: today, 
+        absen_time: nowTime, 
+        absen_method: isDaily ? 'qr_daily' : 'qr',
+        absen_status: 'hadir' 
+      }])
+      .select()
+      .single()
+    
     if (insErr) throw insErr
 
-  // Log success; flagged if multiUser detected
-  console.log('[scan] Recording success. MultiUser flag:', multiUser);
-  await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'ok', detail_siswa_id: allowedDetail.detail_siswa_id, ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, lat: geo?.lat, lng: geo?.lng, accuracy: geo?.accuracy, flagged_reason: multiUser ? 'device_multi_user' : null }])
+    const absenId = absenData?.absen_id
 
-  console.log('[scan] ✅ Success! Attendance recorded', { detail_siswa_id: allowedDetail.detail_siswa_id, flagged: multiUser });
-  return NextResponse.json({ status: 'ok', flagged: multiUser ? 'device_multi_user' : null })
+  // Log success; flagged if multiUser detected
+  console.log('[scan] Recording success. MultiUser flag:', multiUser, 'Absen ID:', absenId);
+  await supabaseAdmin.from('attendance_scan_log').insert([{ 
+    result: 'ok', 
+    detail_siswa_id: allowedDetail.detail_siswa_id, 
+    absen_id: absenId, // Link to newly created absen record
+    ip, 
+    user_agent: ua, 
+    device_hash: deviceHash, 
+    device_hash_client: clientDeviceHash || null, 
+    device_hash_uaip: uaIpHash, 
+    lat: geo?.lat, 
+    lng: geo?.lng, 
+    accuracy: geo?.accuracy, 
+    flagged_reason: multiUser ? 'device_multi_user' : null 
+  }])
+
+  console.log('[scan] ✅ Success! Attendance recorded', { 
+    detail_siswa_id: allowedDetail.detail_siswa_id, 
+    absen_id: absenId,
+    flagged: multiUser 
+  });
+  return NextResponse.json({ 
+    status: 'ok', 
+    absen_id: absenId,
+    flagged: multiUser ? 'device_multi_user' : null 
+  })
   } catch (e) {
     console.error('[scan] ERROR:', e)
     return NextResponse.json({ 
