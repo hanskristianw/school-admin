@@ -51,12 +51,12 @@ export async function POST(req) {
 
       console.log('[scan] Current day (WIB):', currentDay, 'Scanned day:', day);
 
-      if (day < 1 || day > 5) {
+      if (day < 1 || day > 7) {
         console.warn('[scan] Invalid day in QR:', day);
         await supabaseAdmin.from('attendance_scan_log').insert([{ result: 'invalid', ip, user_agent: ua, device_hash: deviceHash, device_hash_client: clientDeviceHash || null, device_hash_uaip: uaIpHash, flagged_reason: 'invalid_day' }])
         return NextResponse.json({ 
           error: 'invalid_day',
-          debug: `Day ${day} harus 1-5 (Mon-Fri)`
+          debug: `Day ${day} harus 1-7 (Mon-Sun)`
         }, { status: 400 })
       }
 
