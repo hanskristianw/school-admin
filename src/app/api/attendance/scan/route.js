@@ -322,8 +322,7 @@ export async function POST(req) {
         absen_detail_siswa_id: allowedDetail.detail_siswa_id, 
         absen_date: today, 
         absen_time: nowTime, 
-        absen_method: isDaily ? 'qr_daily' : 'qr',
-        absen_status: 'hadir' 
+        absen_method: isDaily ? 'qr_daily' : 'qr'
       }])
       .select()
       .single()
