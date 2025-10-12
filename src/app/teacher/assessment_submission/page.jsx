@@ -81,6 +81,29 @@ export default function AssessmentSubmission() {
     });
   };
 
+  const notifyVicePrincipal = async (assessmentId) => {
+    if (!assessmentId) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/notifications/assessment-submitted', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ assessmentId })
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        console.warn('Assessment notification failed', payload?.error || response.status);
+      }
+    } catch (err) {
+      console.warn('Assessment notification error', err);
+    }
+  };
+
   const fetchUserDetailKelas = async (userId) => {
     try {
       // 1) Get subjects taught by this user
@@ -355,6 +378,7 @@ export default function AssessmentSubmission() {
       // Update local state
       if (data && data[0]) {
         setAssessments([data[0], ...assessments]);
+        notifyVicePrincipal(data[0].assessment_id);
       }
 
       // Reset form

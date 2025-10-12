@@ -386,6 +386,7 @@ Notes:
   - Cannot submit if date difference > 2 days
   - Maximum 2 assessments per class-detail per date; additional attempts are blocked with a localized message that includes the class name and the selected date
 - **Status Flow**: `pending` → admin review
+- **Notifications**: After each successful submission the app calls `/api/notifications/assessment-submitted`, which emails every “Vice Principal Curriculum” role holder in the same unit (requires `RESEND_API_KEY` + `RESEND_FROM_EMAIL`).
 
 #### **Admin Workflow**:
 - **Path**: `/data/assessment_approval`
