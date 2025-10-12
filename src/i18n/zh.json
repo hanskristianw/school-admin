@@ -121,6 +121,7 @@
       "maxFileSize": "最大文件大小为 5MB",
       "uploadFailedPrefix": "上传失败:",
       "fetchFailedPrefix": "资料加载失败:",
+      "emailInvalid": "请输入有效的邮箱地址",
       "saveFailed": "保存更改失败"
     }
   }

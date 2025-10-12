@@ -21,7 +21,8 @@ export default function UserManagement() {
     user_nama_depan: '',
     user_nama_belakang: '',
     user_username: '',
-  password: '',
+    user_email: '',
+    password: '',
     user_role_id: '',
     user_unit_id: '',
     is_active: true
@@ -219,7 +220,8 @@ export default function UserManagement() {
         user_nama_depan: '',
         user_nama_belakang: '',
         user_username: '',
-    user_password: '',
+        user_email: '',
+        user_password: '',
         user_role_id: '',
         user_unit_id: '',
         is_active: true
@@ -242,6 +244,16 @@ export default function UserManagement() {
         rowErrors.push('Username is required');
       } else {
         validRow.user_username = (row.username || row.user_username || '').trim();
+      }
+
+      const emailValue = (row.email || row.user_email || '').trim();
+      if (emailValue) {
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(emailValue)) {
+          rowErrors.push('Invalid email format');
+        } else {
+          validRow.user_email = emailValue;
+        }
       }
 
       if (!row.user_password && !row.password) {
@@ -346,6 +358,7 @@ export default function UserManagement() {
           user_nama_depan: String(userData.user_nama_depan || '').trim(),
           user_nama_belakang: String(userData.user_nama_belakang || '').trim(),
           user_username: String(userData.user_username || '').trim(),
+          user_email: String(userData.user_email || '').trim(),
           user_password: String(userData.user_password || '').trim(),
           user_role_id: Number(userData.user_role_id),
           user_unit_id: userData.user_unit_id ? Number(userData.user_unit_id) : null,
@@ -365,6 +378,7 @@ export default function UserManagement() {
             user_nama_depan: cleanedUserData.user_nama_depan,
             user_nama_belakang: cleanedUserData.user_nama_belakang,
             user_username: cleanedUserData.user_username,
+            user_email: cleanedUserData.user_email || null,
             user_role_id: cleanedUserData.user_role_id,
             user_unit_id: cleanedUserData.user_unit_id,
             is_active: cleanedUserData.is_active
@@ -398,6 +412,7 @@ export default function UserManagement() {
         
         results.errors.push({
           username: userData.user_username || 'Unknown',
+          email: userData.user_email || '',
           error: errorMsg
         });
       }
@@ -410,7 +425,7 @@ export default function UserManagement() {
     if (results.failed > 0) {
       message += ` ${results.failed} failed.`;
       if (results.errors.length > 0) {
-        message += `\n\nErrors:\n${results.errors.map(e => `${e.username}: ${e.error}`).join('\n')}`;
+        message += `\n\nErrors:\n${results.errors.map(e => `${e.username}${e.email ? ` (${e.email})` : ''}: ${e.error}`).join('\n')}`;
       }
     }
     
@@ -450,7 +465,7 @@ export default function UserManagement() {
     const sampleUnit1 = availableUnits[0] || 'PYP';
     const sampleUnit2 = availableUnits.length > 1 ? availableUnits[1] : availableUnits[0] || 'MYP';
     
-  const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}user_password${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}password123${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}password456${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
+  const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}email${delimiter}user_password${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}john@example.com${delimiter}password123${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}jane@example.com${delimiter}password456${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -469,7 +484,7 @@ export default function UserManagement() {
       // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_role_id, user_unit_id, is_active')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_email, user_role_id, user_unit_id, is_active')
         .order('user_id');
 
       if (usersError) {
@@ -504,6 +519,7 @@ export default function UserManagement() {
           user_nama_depan: user.user_nama_depan,
           user_nama_belakang: user.user_nama_belakang,
           user_username: user.user_username,
+          user_email: user.user_email || null,
           user_role_id: user.user_role_id,
           user_unit_id: user.user_unit_id,
           role_name: role?.role_name || '',
@@ -562,6 +578,7 @@ export default function UserManagement() {
 
   const validateForm = () => {
     const errors = {};
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
     if (!formData.user_nama_depan.trim()) {
       errors.user_nama_depan = 'Nama depan wajib diisi';
@@ -583,6 +600,10 @@ export default function UserManagement() {
       errors.user_password = 'Password minimal 6 karakter';
     }
     
+    if (formData.user_email && !emailPattern.test(formData.user_email.trim())) {
+      errors.user_email = 'Email tidak valid';
+    }
+
     if (!formData.user_role_id) {
       errors.user_role_id = 'Role wajib dipilih';
     }
@@ -600,7 +621,7 @@ export default function UserManagement() {
 
     setSubmitting(true);
     try {
-  const submitData = { ...formData };
+    const submitData = { ...formData };
       
       // Ensure role_id is a number
       if (submitData.user_role_id) {
@@ -614,10 +635,15 @@ export default function UserManagement() {
         submitData.user_unit_id = null;
       }
 
+      submitData.user_email = submitData.user_email ? submitData.user_email.trim() : '';
+      if (!submitData.user_email) {
+        submitData.user_email = null;
+      }
+
       let result;
   const newPassword = submitData.password?.trim() || '';
       // Never send plaintext password directly to the users table
-  const baseData = { ...submitData };
+    const baseData = { ...submitData };
   // Never send any password fields to users table
   delete baseData.password;
   delete baseData.user_password;
@@ -686,6 +712,7 @@ export default function UserManagement() {
       user_nama_depan: user.user_nama_depan,
       user_nama_belakang: user.user_nama_belakang,
       user_username: user.user_username,
+      user_email: user.user_email || '',
   password: '', // Don't fill password for editing
       user_role_id: user.user_role_id,
       user_unit_id: user.user_unit_id || '',
@@ -702,6 +729,7 @@ export default function UserManagement() {
       user_nama_depan: '',
       user_nama_belakang: '',
       user_username: '',
+      user_email: '',
   password: '',
       user_role_id: '',
       user_unit_id: '',
@@ -833,6 +861,22 @@ export default function UserManagement() {
               />
               {formErrors.user_username && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.user_username}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="user_email">Email</Label>
+              <Input
+                id="user_email"
+                name="user_email"
+                type="email"
+                value={formData.user_email}
+                onChange={handleInputChange}
+                className={formErrors.user_email ? 'border-red-500' : ''}
+                disabled={submitting}
+              />
+              {formErrors.user_email && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.user_email}</p>
               )}
             </div>
 
@@ -1022,6 +1066,7 @@ export default function UserManagement() {
                     <tr className="border-b border-green-200">
                       <th className="text-left py-1">Name</th>
                       <th className="text-left py-1">Username</th>
+                      <th className="text-left py-1">Email</th>
                       <th className="text-left py-1">Role</th>
                       <th className="text-left py-1">Unit</th>
                       <th className="text-left py-1">Status</th>
@@ -1032,6 +1077,7 @@ export default function UserManagement() {
                       <tr key={index} className="border-b border-green-100">
                         <td className="py-1">{user.user_nama_depan} {user.user_nama_belakang}</td>
                         <td className="py-1">{user.user_username}</td>
+                        <td className="py-1">{user.user_email || '-'}</td>
                         <td className="py-1">
                           {roles.find(r => r.role_id === user.user_role_id)?.role_name}
                         </td>
@@ -1043,7 +1089,7 @@ export default function UserManagement() {
                     ))}
                     {importPreview.length > 5 && (
                       <tr>
-                        <td colSpan="5" className="py-1 text-gray-500 text-center">
+                        <td colSpan="6" className="py-1 text-gray-500 text-center">
                           ... and {importPreview.length - 5} more users
                         </td>
                       </tr>
@@ -1241,6 +1287,7 @@ export default function UserManagement() {
                         {user.user_nama_depan} {user.user_nama_belakang}
                       </h3>
                       <p className="text-sm text-gray-600">@{user.user_username}</p>
+                      <p className="text-sm text-gray-500">Email: {user.user_email || '-'}</p>
                     </div>
                     <span className="text-xs text-gray-500">ID: {user.user_id}</span>
                   </div>
@@ -1281,6 +1328,7 @@ export default function UserManagement() {
                   <th className="border border-gray-300 px-4 py-2 text-left">ID</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Nama Lengkap</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Username</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">Email</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Role</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Unit</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Status</th>
@@ -1290,7 +1338,7 @@ export default function UserManagement() {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
+                    <td colSpan="8" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
                       {(filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
                     </td>
                   </tr>
@@ -1302,6 +1350,7 @@ export default function UserManagement() {
                         {user.user_nama_depan} {user.user_nama_belakang}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">{user.user_username}</td>
+                      <td className="border border-gray-300 px-4 py-2">{user.user_email || '-'}</td>
                       <td className="border border-gray-300 px-4 py-2">
                         <span className={`px-2 py-1 rounded text-xs ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
                           {user.role_name}

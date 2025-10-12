@@ -192,6 +192,15 @@ export default function ProfilePage() {
       return
     }
 
+    if (formData.user_email) {
+      const emailTrimmed = formData.user_email.trim()
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailPattern.test(emailTrimmed)) {
+        setError(t('profile.validation.emailInvalid'))
+        return
+      }
+    }
+
     setUpdating(true)
     setError('')
 
@@ -201,7 +210,7 @@ export default function ProfilePage() {
         .update({
           user_nama_depan: formData.user_nama_depan,
           user_nama_belakang: formData.user_nama_belakang,
-          user_email: formData.user_email,
+          user_email: formData.user_email ? formData.user_email.trim() : null,
           user_phone: formData.user_phone,
           user_bio: formData.user_bio,
           user_birth_date: formData.user_birth_date || null,

@@ -121,6 +121,7 @@
       "maxFileSize": "Maximum file size is 5MB",
       "uploadFailedPrefix": "Failed to upload file:",
       "fetchFailedPrefix": "Failed to load profile:",
+      "emailInvalid": "Please enter a valid email address",
       "saveFailed": "Failed to save changes"
     }
   }

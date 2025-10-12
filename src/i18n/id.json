@@ -121,6 +121,7 @@
       "maxFileSize": "Ukuran file maksimal 5MB",
       "uploadFailedPrefix": "Gagal upload file:",
       "fetchFailedPrefix": "Gagal memuat data profile:",
+      "emailInvalid": "Format email tidak valid",
       "saveFailed": "Gagal menyimpan perubahan"
     }
   }

@@ -5,6 +5,7 @@ This folder contains all SQL migration scripts for the school admin system.
 ## 📂 Structure
 
 ### Active/Current Migrations
+- **add-user-email-column.sql** - Adds `user_email` field to `users` table for profile updates
 - **add-absen-id-to-scan-log.sql** - ⭐ Latest: Links scan logs to attendance records (FK relationship)
 - **cleanup-scan-log-columns.sql** - Remove unused columns from attendance_scan_log
 - **add-weekend-attendance-secrets.sql** - Add Saturday/Sunday secrets for weekend attendance
