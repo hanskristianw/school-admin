@@ -14,6 +14,10 @@ import { faPlus, faEdit, faTrash, faSpinner, faWandMagicSparkles } from "@fortaw
 
 export default function TopicPage() {
   const { t } = useI18n();
+  const resolveText = (key, fallback) => {
+    const value = t(key);
+    return value === key ? fallback : value;
+  };
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1252,7 +1256,7 @@ export default function TopicPage() {
     <div className="space-y-6 p-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between">
-        <div className="text-xl font-semibold">{t('topic.pageTitle') || 'Topics'}</div>
+  <div className="text-xl font-semibold">{resolveText('topic.pageTitle', 'Unit List')}</div>
         <div className="flex gap-2">
           <Button onClick={() => exportCsv('comma')} className="bg-emerald-600 hover:bg-emerald-700 text-white">
             Export CSV (,)
