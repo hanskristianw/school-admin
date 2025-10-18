@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import NotificationModal from "@/components/ui/notification-modal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner, faSave, faKey } from "@fortawesome/free-solid-svg-icons";
+import { faSpinner, faSave, faKey, faPrint } from "@fortawesome/free-solid-svg-icons";
 
 export default function DailyQrSettings() {
   const [secrets, setSecrets] = useState({
@@ -21,6 +21,7 @@ export default function DailyQrSettings() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [printingDay, setPrintingDay] = useState(null);
   const [notification, setNotification] = useState({ isOpen: false, title: "", message: "", type: "success" });
   
   const showNotification = (title, message, type = "success") => {
@@ -137,6 +138,61 @@ export default function DailyQrSettings() {
     sat: 'Sabtu',
     sun: 'Minggu'
   };
+  const dayNumberMap = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
+
+  const handlePrint = async (dayKey) => {
+    const dayNumber = dayNumberMap[dayKey];
+    const label = dayLabels[dayKey] || dayKey;
+    if (!dayNumber) return;
+    setPrintingDay(dayKey);
+    try {
+      const res = await fetch(`/api/attendance/daily-qr?day=${dayNumber}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Gagal mengambil token QR');
+      }
+      const token = data?.token;
+      if (!token) {
+        throw new Error('Token QR tidak tersedia');
+      }
+      const popup = window.open('', '_blank');
+      if (!popup) {
+        throw new Error('Popup diblokir browser. Izinkan popup lalu coba lagi.');
+      }
+      const qrPayload = JSON.stringify({ day: dayNumber, tok: token });
+      popup.document.write(`
+        <html>
+          <head>
+            <title>QR Kehadiran ${label}</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+              h1 { font-size: 24px; margin-bottom: 10px; }
+              p { font-size: 14px; color: #666; margin-bottom: 30px; }
+              #qr { margin: 0 auto; }
+            </style>
+            <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+          </head>
+          <body>
+            <h1>QR Kehadiran ${label}</h1>
+            <p>Scan QR code ini untuk mencatat kehadiran</p>
+            <canvas id="qr"></canvas>
+            <script>
+              QRCode.toCanvas(document.getElementById('qr'), '${qrPayload}', { width: 300 }, function(err) {
+                if (err) console.error(err);
+                setTimeout(() => window.print(), 500);
+              });
+            </script>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+    } catch (err) {
+      console.error('Print QR error:', err);
+      showNotification('Error', `Gagal menyiapkan QR ${label}: ${err.message}`, 'error');
+    } finally {
+      setPrintingDay(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -188,7 +244,7 @@ export default function DailyQrSettings() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                   />
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 flex flex-col gap-2">
                   <Button
                     type="button"
                     onClick={() => handleGenerate(day)}
@@ -196,6 +252,24 @@ export default function DailyQrSettings() {
                   >
                     <FontAwesomeIcon icon={faKey} className="mr-1" />
                     Generate
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => handlePrint(day)}
+                    disabled={printingDay === day}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9 px-3 w-full"
+                  >
+                    {printingDay === day ? (
+                      <>
+                        <FontAwesomeIcon icon={faSpinner} spin className="mr-1" />
+                        Menyiapkan...
+                      </>
+                    ) : (
+                      <>
+                        <FontAwesomeIcon icon={faPrint} className="mr-1" />
+                        Print QR {dayLabels[day]}
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

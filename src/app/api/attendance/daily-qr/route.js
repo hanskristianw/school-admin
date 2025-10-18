@@ -2,19 +2,39 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase-updated'
 
-export async function GET() {
+export async function GET(request) {
   try {
     if (!supabaseAdmin) {
       console.error('[daily-qr] No admin client available');
       return NextResponse.json({ error: 'no_admin_client' }, { status: 500 })
     }
 
-    // Determine current weekday (WIB/GMT+7)
-    // Use proper timezone conversion
+    const url = new URL(request.url)
+    const requestedDay = url.searchParams.get('day')
+
+    // Determine target weekday (WIB/GMT+7) or use explicit override
+    let day
+    let dayOfWeek
+    let wibTime
     const now = new Date();
-    const wibTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-    const dayOfWeek = wibTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-    const day = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert to 1=Mon, 7=Sun
+
+    if (requestedDay) {
+      const parsed = parseInt(requestedDay, 10)
+      console.log('[daily-qr] Requested day override:', requestedDay)
+      if (Number.isNaN(parsed) || parsed < 1 || parsed > 7) {
+        console.warn('[daily-qr] Invalid requested day:', requestedDay)
+        return NextResponse.json({ error: 'invalid_day' }, { status: 400 })
+      }
+      day = parsed
+      // Map back to JS weekday for consistent logging (1=Mon => 1, 7=Sun => 0)
+      dayOfWeek = day === 7 ? 0 : day
+      wibTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
+    } else {
+      // Use proper timezone conversion when not explicitly requested
+      wibTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      dayOfWeek = wibTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      day = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert to 1=Mon, 7=Sun
+    }
 
     console.log('[daily-qr] Request received');
     console.log('[daily-qr] Server time:', now.toISOString());
