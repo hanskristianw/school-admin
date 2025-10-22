@@ -29,7 +29,8 @@ export default function AiRuleSettingsPage() {
           ai_rule_learner_profile: '',
           ai_rule_service_learning: '',
           ai_rule_formative_assessment: '',
-          ai_rule_summative_assessment: ''
+          ai_rule_summative_assessment: '',
+          ai_rule_inquiry_question: ''
         }]).select('*').single()
         if (insErr) throw insErr
         setRow(ins)
@@ -58,6 +59,7 @@ export default function AiRuleSettingsPage() {
         ai_rule_service_learning: row.ai_rule_service_learning || '',
         ai_rule_formative_assessment: row.ai_rule_formative_assessment || '',
         ai_rule_summative_assessment: row.ai_rule_summative_assessment || '',
+        ai_rule_inquiry_question: row.ai_rule_inquiry_question || '',
         updated_at: new Date().toISOString() 
       }
       const { error } = await supabase.from('ai_rule').update(payload).eq('ai_rule_id', row.ai_rule_id)
@@ -85,7 +87,7 @@ export default function AiRuleSettingsPage() {
             <div>
               <Label>Global Context</Label>
               <textarea
-                className="mt-1 w-full border rounded p-2 min-h-[80px]"
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_global_context || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_global_context: e.target.value }))}
               />
@@ -93,7 +95,7 @@ export default function AiRuleSettingsPage() {
             <div>
               <Label>Key Concept</Label>
               <textarea
-                className="mt-1 w-full border rounded p-2 min-h-[80px]"
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_key_concept || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_key_concept: e.target.value }))}
               />
@@ -101,7 +103,7 @@ export default function AiRuleSettingsPage() {
             <div>
               <Label>Related Concept</Label>
               <textarea
-                className="mt-1 w-full border rounded p-2 min-h-[80px]"
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_related_concept || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_related_concept: e.target.value }))}
               />
@@ -109,7 +111,7 @@ export default function AiRuleSettingsPage() {
             <div>
               <Label>Statement of Inquiry</Label>
               <textarea
-                className="mt-1 w-full border rounded p-2 min-h-[80px]"
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_statement || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_statement: e.target.value }))}
               />
@@ -117,7 +119,7 @@ export default function AiRuleSettingsPage() {
             <div>
               <Label>Learner Profile</Label>
               <textarea
-                className="mt-1 w-full border rounded p-2 min-h-[80px]"
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_learner_profile || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_learner_profile: e.target.value }))}
               />
@@ -125,7 +127,7 @@ export default function AiRuleSettingsPage() {
             <div>
               <Label>Service Learning</Label>
               <textarea
-                className="mt-1 w-full border rounded p-2 min-h-[80px]"
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_service_learning || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_service_learning: e.target.value }))}
               />
@@ -133,7 +135,7 @@ export default function AiRuleSettingsPage() {
             <div>
               <Label>Formative Assessment</Label>
               <textarea
-                className="mt-1 w-full border rounded p-2 min-h-[80px]"
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_formative_assessment || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_formative_assessment: e.target.value }))}
               />
@@ -141,9 +143,17 @@ export default function AiRuleSettingsPage() {
             <div>
               <Label>Summative Assessment</Label>
               <textarea
-                className="mt-1 w-full border rounded p-2 min-h-[80px]"
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_summative_assessment || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_summative_assessment: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Inquiry Question</Label>
+              <textarea
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
+                value={row.ai_rule_inquiry_question || ''}
+                onChange={e => setRow(r => ({ ...r, ai_rule_inquiry_question: e.target.value }))}
               />
             </div>
             <div className="flex justify-end gap-2">

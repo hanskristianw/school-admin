@@ -29,6 +29,7 @@ export default function TopicPage() {
   const [kelasLoading, setKelasLoading] = useState(false);
   const [kelasNameMap, setKelasNameMap] = useState(new Map()); // kelas_id -> kelas_nama for display in list
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Filters
   const [filters, setFilters] = useState({ subject: "", search: "" });
@@ -41,6 +42,7 @@ export default function TopicPage() {
     topic_subject_id: "",
     topic_kelas_id: "",
     topic_planner: "",
+    topic_inquiry_question: "",
     topic_global_context: "",
     topic_key_concept: "",
     topic_related_concept: "",
@@ -155,6 +157,15 @@ export default function TopicPage() {
   const [saSelected, setSaSelected] = useState([])
   const [saSelectError, setSaSelectError] = useState('')
   const [saCriteria, setSaCriteria] = useState([]) // [{A:bool,B:bool,C:bool,D:bool} per assessment]
+
+  // AI Inquiry Question state
+  const [iqOpen, setIqOpen] = useState(false)
+  const [iqLoading, setIqLoading] = useState(false)
+  const [iqError, setIqError] = useState('')
+  const [iqRaw, setIqRaw] = useState('')
+  const [iqPrompt, setIqPrompt] = useState('')
+  const [iqLang, setIqLang] = useState('')
+  const [iqData, setIqData] = useState(null) // parsed JSON data
 
   const parseAiOutput = (text) => {
     if (!text || typeof text !== 'string') return []
@@ -956,6 +967,79 @@ export default function TopicPage() {
     }
   }
 
+  // Open AI help for Inquiry Question
+  const openIqHelp = async (lang) => {
+    const subjId = formData.topic_subject_id
+    const unit = formData.topic_nama?.trim()
+    const gc = formData.topic_global_context?.trim()
+    const kc = formData.topic_key_concept?.trim()
+    const rc = formData.topic_related_concept?.trim()
+    if (!subjId || !unit || !gc || !kc || !rc) {
+      showNotification('Info', 'Isi Subject, Unit Title, Global Context, Key Concept, dan Related Concept sebelum meminta bantuan AI untuk Inquiry Question.', 'warning')
+      return
+    }
+    const subjName = subjects.find(s => String(s.subject_id) === String(subjId))?.subject_name || ''
+    setIqOpen(true)
+    setIqLoading(true)
+    setIqError('')
+    setIqRaw('')
+    setIqPrompt('')
+    setIqLang(lang || '')
+    setIqData(null)
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_inquiry_question').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      const context = rule?.ai_rule_inquiry_question || ''
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuat dalam bahasa ${selected}.`
+      setIqPrompt(promptWithLang)
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      const text = json?.text || ''
+      setIqRaw(text)
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && parsed.inquiry_questions) {
+        setIqData(parsed.inquiry_questions)
+      } else {
+        throw new Error('Format respons AI tidak sesuai. Harap coba lagi.')
+      }
+    } catch (e) {
+      console.error('AI Inquiry Question error', e)
+      setIqError(e.message)
+    } finally {
+      setIqLoading(false)
+    }
+  }
+
+  const confirmInquiryQuestion = () => {
+    if (!iqData) return
+    const factual = iqData.factual || {}
+    const conceptual = iqData.conceptual || {}
+    const debatable = iqData.debatable || {}
+    
+    const lines = []
+    lines.push('FACTUAL:')
+    if (factual.question_1) lines.push(`1. ${factual.question_1}`)
+    if (factual.question_2) lines.push(`2. ${factual.question_2}`)
+    if (factual.question_3) lines.push(`3. ${factual.question_3}`)
+    lines.push('')
+    lines.push('CONCEPTUAL:')
+    if (conceptual.question_1) lines.push(`1. ${conceptual.question_1}`)
+    if (conceptual.question_2) lines.push(`2. ${conceptual.question_2}`)
+    if (conceptual.question_3) lines.push(`3. ${conceptual.question_3}`)
+    lines.push('')
+    lines.push('DEBATABLE:')
+    if (debatable.question_1) lines.push(`1. ${debatable.question_1}`)
+    if (debatable.question_2) lines.push(`2. ${debatable.question_2}`)
+    if (debatable.question_3) lines.push(`3. ${debatable.question_3}`)
+    
+    setFormData(prev => ({ ...prev, topic_inquiry_question: lines.join('\n') }))
+    setIqOpen(false)
+  }
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -971,6 +1055,17 @@ export default function TopicPage() {
         }
         const userId = parseInt(kr_id);
         setCurrentUserId(userId);
+
+        // Check if user is admin
+        const user_role = typeof window !== 'undefined' ? localStorage.getItem("user_role") : null;
+        if (user_role) {
+          try {
+            const roleData = JSON.parse(user_role);
+            setIsAdmin(roleData?.is_admin === true || roleData?.is_admin === 1);
+          } catch (e) {
+            setIsAdmin(false);
+          }
+        }
 
         // 1) Load only subjects taught by this user
         const { data: subj, error: sErr } = await supabase
@@ -988,7 +1083,7 @@ export default function TopicPage() {
           const subjectIds = subj.map(s => s.subject_id);
       const { data: tData, error: tErr } = await supabase
         .from('topic')
-  .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_planner, topic_global_context, topic_key_concept, topic_related_concept, topic_statement, topic_learner_profile, topic_service_learning, topic_formative_assessment, topic_summative_assessment')
+  .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_planner, topic_inquiry_question, topic_global_context, topic_key_concept, topic_related_concept, topic_statement, topic_learner_profile, topic_service_learning, topic_formative_assessment, topic_summative_assessment')
             .in('topic_subject_id', subjectIds)
             .order('topic_nama');
           if (tErr) throw new Error(tErr.message);
@@ -1040,6 +1135,7 @@ export default function TopicPage() {
       topic_subject_id: "",
       topic_kelas_id: "",
       topic_planner: "",
+      topic_inquiry_question: "",
       topic_global_context: "",
       topic_key_concept: "",
       topic_related_concept: "",
@@ -1065,6 +1161,7 @@ export default function TopicPage() {
       topic_subject_id: String(row.topic_subject_id || ""),
       topic_kelas_id: row.topic_kelas_id ? String(row.topic_kelas_id) : "",
       topic_planner: row.topic_planner || "",
+      topic_inquiry_question: row.topic_inquiry_question || "",
       topic_global_context: row.topic_global_context || "",
       topic_key_concept: row.topic_key_concept || "",
       topic_related_concept: row.topic_related_concept || "",
@@ -1152,6 +1249,7 @@ export default function TopicPage() {
         topic_subject_id: parseInt(formData.topic_subject_id),
         topic_kelas_id: formData.topic_kelas_id ? parseInt(formData.topic_kelas_id) : null,
         topic_planner: formData.topic_planner?.trim() || null,
+        topic_inquiry_question: formData.topic_inquiry_question?.trim() || null,
         topic_global_context: formData.topic_global_context?.trim() || null,
         topic_key_concept: formData.topic_key_concept?.trim() || null,
         topic_related_concept: formData.topic_related_concept?.trim() || null,
@@ -1356,6 +1454,7 @@ export default function TopicPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thSubject") || "Mata Pelajaran"}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('topic.thClass') || 'Kelas'}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Planner</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inquiry Question</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Global Context</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key Concept</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Related Concept</th>
@@ -1380,6 +1479,7 @@ export default function TopicPage() {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_inquiry_question || ''}>{row.topic_inquiry_question || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_global_context || ''}>{row.topic_global_context || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_key_concept || ''}>{row.topic_key_concept || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_related_concept || ''}>{row.topic_related_concept || '-'}</td>
@@ -1669,6 +1769,28 @@ export default function TopicPage() {
               />
               {formErrors.topic_planner && <p className="text-red-500 text-sm mt-1">{formErrors.topic_planner}</p>}
             </div>
+          <div>
+            <Label htmlFor="topic_inquiry_question">Inquiry Question</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openIqHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Inquiry Question (EN)
+              </button>
+              <button type="button" onClick={() => openIqHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Inquiry Question (ID)
+              </button>
+              <button type="button" onClick={() => openIqHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Inquiry Question (ZH)
+              </button>
+            </div>
+            <textarea
+              id="topic_inquiry_question"
+              name="topic_inquiry_question"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              value={formData.topic_inquiry_question || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_inquiry_question: e.target.value }))}
+              placeholder="Masukkan inquiry question..."
+            />
+          </div>
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="bg-gray-500 hover:bg-gray-600 text-white">
               {t("topic.cancel") || "Batal"}
@@ -1698,7 +1820,7 @@ export default function TopicPage() {
           {faError && (
             <div className="text-sm text-red-600">{faError}</div>
           )}
-          {!faLoading && !faError && faPrompt && (
+          {isAdmin && !faLoading && !faError && faPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{faPrompt}</pre>
@@ -1745,7 +1867,7 @@ export default function TopicPage() {
           {slError && (
             <div className="text-sm text-red-600">{slError}</div>
           )}
-          {!slLoading && !slError && slPrompt && (
+          {isAdmin && !slLoading && !slError && slPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{slPrompt}</pre>
@@ -1790,7 +1912,7 @@ export default function TopicPage() {
           {soError && (
             <div className="text-sm text-red-600">{soError}</div>
           )}
-          {!soLoading && !soError && soPrompt && (
+          {isAdmin && !soLoading && !soError && soPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{soPrompt}</pre>
@@ -1833,7 +1955,7 @@ export default function TopicPage() {
           {lpError && (
             <div className="text-sm text-red-600">{lpError}</div>
           )}
-          {!lpLoading && !lpError && lpPrompt && (
+          {isAdmin && !lpLoading && !lpError && lpPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{lpPrompt}</pre>
@@ -1879,7 +2001,7 @@ export default function TopicPage() {
           {saError && (
             <div className="text-sm text-red-600">{saError}</div>
           )}
-          {!saLoading && !saError && saPrompt && (
+          {isAdmin && !saLoading && !saError && saPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{saPrompt}</pre>
@@ -1966,6 +2088,58 @@ export default function TopicPage() {
         </div>
       </Modal>
 
+      {/* AI Inquiry Question Modal */}
+      <Modal isOpen={iqOpen} onClose={() => setIqOpen(false)} title={`AI Inquiry Question${iqLang ? ` (${iqLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {iqLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Meminta saran Inquiry Question...</div>
+          )}
+          {iqError && (
+            <div className="text-sm text-red-600">{iqError}</div>
+          )}
+          {isAdmin && !iqLoading && !iqError && iqPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{iqPrompt}</pre>
+            </div>
+          )}
+          {!iqLoading && !iqError && iqData && (
+            <div className="space-y-4">
+              <div className="border rounded p-4 bg-blue-50">
+                <h4 className="font-semibold text-blue-900 mb-2">FACTUAL Questions</h4>
+                <ol className="list-decimal list-inside space-y-1 text-sm">
+                  {iqData.factual?.question_1 && <li>{iqData.factual.question_1}</li>}
+                  {iqData.factual?.question_2 && <li>{iqData.factual.question_2}</li>}
+                  {iqData.factual?.question_3 && <li>{iqData.factual.question_3}</li>}
+                </ol>
+              </div>
+              <div className="border rounded p-4 bg-green-50">
+                <h4 className="font-semibold text-green-900 mb-2">CONCEPTUAL Questions</h4>
+                <ol className="list-decimal list-inside space-y-1 text-sm">
+                  {iqData.conceptual?.question_1 && <li>{iqData.conceptual.question_1}</li>}
+                  {iqData.conceptual?.question_2 && <li>{iqData.conceptual.question_2}</li>}
+                  {iqData.conceptual?.question_3 && <li>{iqData.conceptual.question_3}</li>}
+                </ol>
+              </div>
+              <div className="border rounded p-4 bg-purple-50">
+                <h4 className="font-semibold text-purple-900 mb-2">DEBATABLE Questions</h4>
+                <ol className="list-decimal list-inside space-y-1 text-sm">
+                  {iqData.debatable?.question_1 && <li>{iqData.debatable.question_1}</li>}
+                  {iqData.debatable?.question_2 && <li>{iqData.debatable.question_2}</li>}
+                  {iqData.debatable?.question_3 && <li>{iqData.debatable.question_3}</li>}
+                </ol>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!iqLoading && !iqError && iqData && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmInquiryQuestion}>Gunakan</Button>
+            )}
+            <Button type="button" onClick={() => setIqOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* AI Related Concept Modal */}
       <Modal isOpen={rcOpen} onClose={() => setRcOpen(false)} title={`AI Related Concept${rcLang ? ` (${rcLang.toUpperCase()})` : ''}`}>
         <div className="space-y-3">
@@ -1975,7 +2149,7 @@ export default function TopicPage() {
           {rcError && (
             <div className="text-sm text-red-600">{rcError}</div>
           )}
-          {!rcLoading && !rcError && rcPrompt && (
+          {isAdmin && !rcLoading && !rcError && rcPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{rcPrompt}</pre>
@@ -2021,7 +2195,7 @@ export default function TopicPage() {
           {kcError && (
             <div className="text-sm text-red-600">{kcError}</div>
           )}
-          {!kcLoading && !kcError && kcPrompt && (
+          {isAdmin && !kcLoading && !kcError && kcPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{kcPrompt}</pre>
@@ -2064,7 +2238,7 @@ export default function TopicPage() {
           {gcError && (
             <div className="text-sm text-red-600">{gcError}</div>
           )}
-          {!gcLoading && !gcError && gcPrompt && (
+          {isAdmin && !gcLoading && !gcError && gcPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{gcPrompt}</pre>
@@ -2107,7 +2281,7 @@ export default function TopicPage() {
           {aiError && (
             <div className="text-sm text-red-600">{aiError}</div>
           )}
-          {!aiLoading && !aiError && aiPrompt && (
+          {isAdmin && !aiLoading && !aiError && aiPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{aiPrompt}</pre>
