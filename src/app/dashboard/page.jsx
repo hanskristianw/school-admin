@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faCalendar, faClipboardCheck, faChevronLeft, faChevronRight, faDoorOpen } from '@fortawesome/free-solid-svg-icons'
+import { faUser, faCalendar, faClipboardCheck, faChevronLeft, faChevronRight, faDoorOpen, faQrcode } from '@fortawesome/free-solid-svg-icons'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Modal from '@/components/ui/modal'
@@ -508,8 +508,8 @@ export default function Dashboard() {
             Access denied for the requested page.
           </div>
         )}
-        <div className="flex items-center justify-between px-1">
-          <div>
+        <div className="px-1">
+          <div className="mb-4">
             <h1 className="text-2xl md:text-3xl font-bold">
               {t('common.welcome', { name: `${userData?.user_nama_depan || ''} ${userData?.user_nama_belakang || ''}`.trim() })}
             </h1>
@@ -517,8 +517,14 @@ export default function Dashboard() {
               <p className="text-gray-600">{(t('dashboard.classLabel') || 'Class')}: {studentInfo.kelas_nama}</p>
             )}
           </div>
-          <Button onClick={() => router.push('/student/scan')} className="bg-green-600 hover:bg-green-700 text-white">
-            {t('student.qrScan') || 'QR Scan'}
+          
+          {/* QR Scan Button - Enhanced for Mobile */}
+          <Button 
+            onClick={() => router.push('/student/scan')} 
+            className="w-full md:w-auto bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-4 md:py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-3 text-lg md:text-base mb-4"
+          >
+            <FontAwesomeIcon icon={faQrcode} className="text-2xl md:text-xl" />
+            <span>{t('student.qrScan') || 'QR Scan'}</span>
           </Button>
         </div>
 
