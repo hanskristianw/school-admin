@@ -18,6 +18,14 @@ function parseRange(range) {
   return [start?.trim() || null, end?.trim() || null]
 }
 
+function toLocalDateKey(date) {
+  // Format date as YYYY-MM-DD in local timezone (not UTC)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function RoomBookingPage() {
   const { t, lang } = useI18n()
   const router = useRouter()
@@ -84,7 +92,7 @@ export default function RoomBookingPage() {
       const [startIso, endIso] = parseRange(bk.booking_time)
       const startDate = startIso ? new Date(startIso) : null
       const endDate = endIso ? new Date(endIso) : null
-      const dateKey = startDate ? startDate.toISOString().slice(0, 10) : null
+      const dateKey = startDate ? toLocalDateKey(startDate) : null
       return {
         ...bk,
         startDate,
@@ -109,8 +117,10 @@ export default function RoomBookingPage() {
   }, [rooms, roomId])
 
   const filteredBookings = useMemo(() => {
-    if (!roomId) return bookings
-    return bookings.filter(bk => bk.room_id === Number(roomId))
+    // Filter out cancelled bookings
+    const activeBookings = bookings.filter(bk => bk.status !== 'cancelled')
+    if (!roomId) return activeBookings
+    return activeBookings.filter(bk => bk.room_id === Number(roomId))
   }, [bookings, roomId])
 
   const bookingsByDate = useMemo(() => {
@@ -153,7 +163,7 @@ export default function RoomBookingPage() {
     })
   }, [currentMonth])
 
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = toLocalDateKey(new Date())
 
   const toRange = (dateStr, startTime, endTime) => {
     const startIso = new Date(`${dateStr}T${startTime}:00`).toISOString()
@@ -296,7 +306,7 @@ export default function RoomBookingPage() {
           </div>
           <div className="grid grid-cols-7 gap-px bg-gray-200">
             {calendarDays.map(day => {
-              const dateKey = day.toISOString().slice(0, 10)
+              const dateKey = toLocalDateKey(day)
               const isCurrentMonth = day.getMonth() === currentMonth.getMonth()
               const isToday = dateKey === todayKey
               const dayBookings = bookingsByDate.get(dateKey) || []

@@ -12,7 +12,6 @@ import { useI18n } from '@/lib/i18n'
 export default function RoomMasterPage() {
   const { t } = useI18n()
   const router = useRouter()
-  const [isAdmin, setIsAdmin] = useState(false)
   const [checked, setChecked] = useState(false)
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(false)
@@ -23,17 +22,13 @@ export default function RoomMasterPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('user_data')
-      const user = raw ? JSON.parse(raw) : null
-      if (user?.isAdmin) {
-        setIsAdmin(true)
-      } else {
-        router.replace('/dashboard?forbidden=1')
-      }
-    } finally {
-      setChecked(true)
+    // Check if user is authenticated
+    const kr_id = typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null
+    if (!kr_id) {
+      router.replace('/login')
+      return
     }
+    setChecked(true)
   }, [router])
 
   const loadRooms = async () => {
@@ -53,7 +48,7 @@ export default function RoomMasterPage() {
     }
   }
 
-  useEffect(() => { if (isAdmin) loadRooms() }, [isAdmin])
+  useEffect(() => { if (checked) loadRooms() }, [checked])
 
   const resetForm = () => { setName(''); setEditing(null) }
 
@@ -118,7 +113,7 @@ export default function RoomMasterPage() {
     }
   }
 
-  if (!checked || !isAdmin) return null
+  if (!checked) return null
 
   return (
     <div className="space-y-6 pb-8">
