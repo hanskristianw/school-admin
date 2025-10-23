@@ -265,6 +265,7 @@
     "searchPlaceholder": "输入搜索...",
     "listTitle": "单元列表",
     "empty": "暂无单元",
+    "thOrder": "顺序",
     "thUnitTitle": "单元标题",
     "thSubject": "科目",
   "thActions": "操作",
@@ -275,6 +276,12 @@
     "createTitle": "创建单元",
     "unitTitle": "单元标题",
     "selectSubject": "选择科目",
+    "class": "班级",
+    "selectClass": "选择班级",
+    "classLoading": "正在加载班级...",
+    "classNoneForSubject": "此科目没有可用的班级。",
+    "order": "顺序",
+    "orderPlaceholder": "用于排序主题的顺序号",
     "cancel": "取消",
     "save": "保存",
   "create": "创建",
@@ -293,7 +300,9 @@
     "validation": {
       "unitTitleRequired": "单元标题为必填",
       "subjectRequired": "必须选择科目",
-      "classRequired": "必须选择班级"
+      "classRequired": "必须选择班级",
+      "orderRequired": "必须填写顺序",
+      "orderMin": "顺序必须至少为 1"
     }
   }
   ,

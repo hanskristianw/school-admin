@@ -265,6 +265,7 @@
     "searchPlaceholder": "Type to search...",
     "listTitle": "Units",
     "empty": "No units found",
+    "thOrder": "Order",
     "thUnitTitle": "Unit Title",
     "thSubject": "Subject",
   "thActions": "Actions",
@@ -279,6 +280,8 @@
   "selectClass": "Select Class",
   "classLoading": "Loading classes...",
   "classNoneForSubject": "No classes available for this subject.",
+  "order": "Order",
+  "orderPlaceholder": "Order number to sort topics",
     "cancel": "Cancel",
     "save": "Save",
     "create": "Create",
@@ -298,7 +301,9 @@
     "validation": {
       "unitTitleRequired": "Unit title is required",
       "subjectRequired": "Subject is required",
-      "classRequired": "Class is required"
+      "classRequired": "Class is required",
+      "orderRequired": "Order is required",
+      "orderMin": "Order must be at least 1"
     }
   }
   ,

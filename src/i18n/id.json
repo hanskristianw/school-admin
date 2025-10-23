@@ -265,6 +265,7 @@
     "searchPlaceholder": "Ketik untuk mencari...",
     "listTitle": "Daftar Unit",
     "empty": "Tidak ada data unit",
+    "thOrder": "Urutan",
     "thUnitTitle": "Unit Title",
     "thSubject": "Mata Pelajaran",
   "thActions": "Aksi",
@@ -279,6 +280,8 @@
   "selectClass": "Pilih Kelas",
   "classLoading": "Memuat kelas...",
   "classNoneForSubject": "Tidak ada kelas untuk mata pelajaran ini.",
+  "order": "Urutan",
+  "orderPlaceholder": "Nomor urutan untuk mengurutkan topik",
     "cancel": "Batal",
     "save": "Simpan",
     "create": "Buat",
@@ -298,7 +301,9 @@
     "validation": {
       "unitTitleRequired": "Unit title wajib diisi",
       "subjectRequired": "Mata pelajaran wajib dipilih",
-      "classRequired": "Kelas wajib dipilih"
+      "classRequired": "Kelas wajib dipilih",
+      "orderRequired": "Urutan wajib diisi",
+      "orderMin": "Urutan harus minimal 1"
     }
   }
   ,

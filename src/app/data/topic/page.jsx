@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -41,6 +41,7 @@ export default function TopicPage() {
     topic_nama: "",
     topic_subject_id: "",
     topic_kelas_id: "",
+    topic_urutan: "",
     topic_planner: "",
     topic_inquiry_question: "",
     topic_global_context: "",
@@ -1083,7 +1084,7 @@ export default function TopicPage() {
           const subjectIds = subj.map(s => s.subject_id);
       const { data: tData, error: tErr } = await supabase
         .from('topic')
-  .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_planner, topic_inquiry_question, topic_global_context, topic_key_concept, topic_related_concept, topic_statement, topic_learner_profile, topic_service_learning, topic_formative_assessment, topic_summative_assessment')
+  .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_urutan, topic_planner, topic_inquiry_question, topic_global_context, topic_key_concept, topic_related_concept, topic_statement, topic_learner_profile, topic_service_learning, topic_formative_assessment, topic_summative_assessment')
             .in('topic_subject_id', subjectIds)
             .order('topic_nama');
           if (tErr) throw new Error(tErr.message);
@@ -1120,13 +1121,44 @@ export default function TopicPage() {
         const bName = b.topic_kelas_id ? (kelasNameMap.get(b.topic_kelas_id) || '') : ''
         const ga = gradeOf(aName)
         const gb = gradeOf(bName)
+        // first: sort by grade
         if (ga !== gb) return ga - gb
-        // fallback: class name asc, then topic title asc
+        // second: sort by class name
         const ncmp = (aName || '').localeCompare(bName || '')
         if (ncmp !== 0) return ncmp
+        // third: sort by topic_urutan (ascending)
+        const aUrutan = a.topic_urutan != null ? a.topic_urutan : 9999
+        const bUrutan = b.topic_urutan != null ? b.topic_urutan : 9999
+        if (aUrutan !== bUrutan) return aUrutan - bUrutan
+        // fallback: topic title asc
         return (a.topic_nama || '').localeCompare(b.topic_nama || '')
       })
   }, [topics, filters, kelasNameMap]);
+
+  // Group topics by class (kelas)
+  const groupedByClass = useMemo(() => {
+    const groups = new Map();
+    filtered.forEach(topic => {
+      const kelasId = topic.topic_kelas_id || 0; // 0 for no class
+      const kelasName = kelasId ? (kelasNameMap.get(kelasId) || `Class ${kelasId}`) : 'No Class';
+      if (!groups.has(kelasId)) {
+        groups.set(kelasId, { kelasId, kelasName, topics: [] });
+      }
+      groups.get(kelasId).topics.push(topic);
+    });
+    // Convert to array and sort by grade
+    const gradeOf = (name) => {
+      if (!name || typeof name !== 'string') return 9999;
+      const m = name.match(/(\d{1,2})/);
+      return m ? parseInt(m[1], 10) : 9999;
+    };
+    return Array.from(groups.values()).sort((a, b) => {
+      const ga = gradeOf(a.kelasName);
+      const gb = gradeOf(b.kelasName);
+      if (ga !== gb) return ga - gb;
+      return a.kelasName.localeCompare(b.kelasName);
+    });
+  }, [filtered, kelasNameMap]);
 
   const resetForm = () => {
     setEditing(null);
@@ -1134,6 +1166,7 @@ export default function TopicPage() {
       topic_nama: "",
       topic_subject_id: "",
       topic_kelas_id: "",
+      topic_urutan: "",
       topic_planner: "",
       topic_inquiry_question: "",
       topic_global_context: "",
@@ -1160,6 +1193,7 @@ export default function TopicPage() {
       topic_nama: row.topic_nama || "",
       topic_subject_id: String(row.topic_subject_id || ""),
       topic_kelas_id: row.topic_kelas_id ? String(row.topic_kelas_id) : "",
+      topic_urutan: row.topic_urutan != null ? String(row.topic_urutan) : "",
       topic_planner: row.topic_planner || "",
       topic_inquiry_question: row.topic_inquiry_question || "",
       topic_global_context: row.topic_global_context || "",
@@ -1184,6 +1218,12 @@ export default function TopicPage() {
     if (!formData.topic_subject_id) e.topic_subject_id = t("topic.validation.subjectRequired") || "Mata pelajaran wajib dipilih";
     // kelas required: only if subject selected
     if (formData.topic_subject_id && !formData.topic_kelas_id) e.topic_kelas_id = t('topic.validation.classRequired') || 'Kelas wajib dipilih';
+    // urutan required
+    if (!formData.topic_urutan || !formData.topic_urutan.trim()) {
+      e.topic_urutan = t('topic.validation.orderRequired') || 'Urutan wajib diisi';
+    } else if (parseInt(formData.topic_urutan) < 1) {
+      e.topic_urutan = t('topic.validation.orderMin') || 'Urutan harus minimal 1';
+    }
     // optional planner URL validation
     if (formData.topic_planner && formData.topic_planner.trim()) {
       try {
@@ -1248,6 +1288,7 @@ export default function TopicPage() {
         topic_nama: formData.topic_nama.trim(),
         topic_subject_id: parseInt(formData.topic_subject_id),
         topic_kelas_id: formData.topic_kelas_id ? parseInt(formData.topic_kelas_id) : null,
+        topic_urutan: parseInt(formData.topic_urutan),
         topic_planner: formData.topic_planner?.trim() || null,
         topic_inquiry_question: formData.topic_inquiry_question?.trim() || null,
         topic_global_context: formData.topic_global_context?.trim() || null,
@@ -1450,6 +1491,7 @@ export default function TopicPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thOrder") || "Urutan"}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thUnitTitle") || "Unit Title"}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("topic.thSubject") || "Mata Pelajaran"}</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('topic.thClass') || 'Kelas'}</th>
@@ -1467,40 +1509,54 @@ export default function TopicPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filtered.map((row) => (
-                    <tr key={row.topic_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.topic_nama}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{subjectMap.get(row.topic_subject_id) || "-"}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.topic_kelas_id ? (kelasNameMap.get(row.topic_kelas_id) || row.topic_kelas_id) : '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {row.topic_planner ? (
-                          <a href={row.topic_planner} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900">Open</a>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_inquiry_question || ''}>{row.topic_inquiry_question || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_global_context || ''}>{row.topic_global_context || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_key_concept || ''}>{row.topic_key_concept || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_related_concept || ''}>{row.topic_related_concept || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_statement || ''}>{row.topic_statement || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_learner_profile || ''}>{row.topic_learner_profile || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_service_learning || ''}>{row.topic_service_learning || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_formative_assessment || ''}>{row.topic_formative_assessment || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_summative_assessment || ''}>{row.topic_summative_assessment || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <Button onClick={() => openEdit(row)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm">
-                            <FontAwesomeIcon icon={faEdit} className="mr-1" />
-                            {t("topic.edit") || "Edit"}
-                          </Button>
-                          <Button onClick={() => setConfirmDelete({ open: true, row })} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-sm">
-                            <FontAwesomeIcon icon={faTrash} className="mr-1" />
-                            {t("topic.delete") || "Hapus"}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                  {groupedByClass.map((group, groupIdx) => (
+                    <Fragment key={`group-${group.kelasId}`}>
+                      {/* Group Header - Class Name */}
+                      <tr className="bg-blue-50">
+                        <td colSpan="15" className="px-6 py-3">
+                          <h3 className="text-sm font-bold text-blue-900">
+                            {group.kelasName} ({group.topics.length} {group.topics.length === 1 ? 'topic' : 'topics'})
+                          </h3>
+                        </td>
+                      </tr>
+                      {/* Topics in this group */}
+                      {group.topics.map((row) => (
+                        <tr key={row.topic_id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{row.topic_urutan || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.topic_nama}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{subjectMap.get(row.topic_subject_id) || "-"}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.topic_kelas_id ? (kelasNameMap.get(row.topic_kelas_id) || row.topic_kelas_id) : '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {row.topic_planner ? (
+                              <a href={row.topic_planner} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900">Open</a>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_inquiry_question || ''}>{row.topic_inquiry_question || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_global_context || ''}>{row.topic_global_context || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_key_concept || ''}>{row.topic_key_concept || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_related_concept || ''}>{row.topic_related_concept || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_statement || ''}>{row.topic_statement || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={row.topic_learner_profile || ''}>{row.topic_learner_profile || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_service_learning || ''}>{row.topic_service_learning || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_formative_assessment || ''}>{row.topic_formative_assessment || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_summative_assessment || ''}>{row.topic_summative_assessment || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <Button onClick={() => openEdit(row)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm">
+                                <FontAwesomeIcon icon={faEdit} className="mr-1" />
+                                {t("topic.edit") || "Edit"}
+                              </Button>
+                              <Button onClick={() => setConfirmDelete({ open: true, row })} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-sm">
+                                <FontAwesomeIcon icon={faTrash} className="mr-1" />
+                                {t("topic.delete") || "Hapus"}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -1564,6 +1620,21 @@ export default function TopicPage() {
             {(!kelasLoading && formData.topic_subject_id && kelasOptions.length === 0) && (
               <p className="text-xs text-gray-500 mt-1">{t('topic.classNoneForSubject') || 'Tidak ada kelas untuk subject ini.'}</p>
             )}
+          </div>
+          <div>
+            <Label htmlFor="topic_urutan">{t("topic.order") || "Urutan"} *</Label>
+            <Input
+              id="topic_urutan"
+              name="topic_urutan"
+              type="number"
+              min="1"
+              required
+              value={formData.topic_urutan}
+              onChange={(e) => setFormData((prev) => ({ ...prev, topic_urutan: e.target.value }))}
+              placeholder={t("topic.orderPlaceholder") || "Nomor urutan untuk mengurutkan topic"}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_urutan ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {formErrors.topic_urutan && <p className="text-red-500 text-sm mt-1">{formErrors.topic_urutan}</p>}
           </div>
           <div>
             <Label htmlFor="topic_nama">{t("topic.unitTitle") || "Unit Title"}</Label>
