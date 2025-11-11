@@ -42,6 +42,8 @@ export default function TopicPage() {
     topic_subject_id: "",
     topic_kelas_id: "",
     topic_urutan: "",
+    topic_duration: "",
+    topic_hours_per_week: "",
     topic_planner: "",
     topic_inquiry_question: "",
     topic_global_context: "",
@@ -50,8 +52,10 @@ export default function TopicPage() {
     topic_statement: "",
     topic_learner_profile: "",
     topic_service_learning: "",
+    topic_learning_process: "",
     topic_formative_assessment: "",
-    topic_summative_assessment: ""
+    topic_summative_assessment: "",
+    topic_relationship_summative_assessment_statement_of_inquiry: ""
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -158,6 +162,24 @@ export default function TopicPage() {
   const [saSelected, setSaSelected] = useState([])
   const [saSelectError, setSaSelectError] = useState('')
   const [saCriteria, setSaCriteria] = useState([]) // [{A:bool,B:bool,C:bool,D:bool} per assessment]
+
+  // AI Learning Process state
+  const [lprocOpen, setLprocOpen] = useState(false)
+  const [lprocLoading, setLprocLoading] = useState(false)
+  const [lprocError, setLprocError] = useState('')
+  const [lprocRaw, setLprocRaw] = useState('')
+  const [lprocPrompt, setLprocPrompt] = useState('')
+  const [lprocLang, setLprocLang] = useState('')
+  const [lprocData, setLprocData] = useState(null) // parsed JSON data { jadwal: [...] }
+
+  // AI Relationship SA-SOI state
+  const [relOpen, setRelOpen] = useState(false)
+  const [relLoading, setRelLoading] = useState(false)
+  const [relError, setRelError] = useState('')
+  const [relRaw, setRelRaw] = useState('')
+  const [relPrompt, setRelPrompt] = useState('')
+  const [relLang, setRelLang] = useState('')
+  const [relData, setRelData] = useState(null) // parsed JSON data
 
   // AI Inquiry Question state
   const [iqOpen, setIqOpen] = useState(false)
@@ -1041,6 +1063,195 @@ export default function TopicPage() {
     setIqOpen(false)
   }
 
+  // Open AI help for Learning Process (returns JSON schedule)
+  const openLprocHelp = async (lang) => {
+    if (!formData.topic_nama || !formData.topic_nama.trim()) {
+      showNotification('Info', 'Isi Unit Title terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_subject_id) {
+      showNotification('Info', 'Pilih Subject terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_kelas_id) {
+      showNotification('Info', 'Pilih Class terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_global_context || !formData.topic_global_context.trim()) {
+      showNotification('Info', 'Isi Global Context terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_key_concept || !formData.topic_key_concept.trim()) {
+      showNotification('Info', 'Isi Key Concept terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_related_concept || !formData.topic_related_concept.trim()) {
+      showNotification('Info', 'Isi Related Concept terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_statement || !formData.topic_statement.trim()) {
+      showNotification('Info', 'Isi Statement of Inquiry terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_learner_profile || !formData.topic_learner_profile.trim()) {
+      showNotification('Info', 'Isi Learner Profile terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_summative_assessment || !formData.topic_summative_assessment.trim()) {
+      showNotification('Info', 'Isi Summative Assessment terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_inquiry_question || !formData.topic_inquiry_question.trim()) {
+      showNotification('Info', 'Isi Inquiry Question terlebih dahulu.', 'warning')
+      return
+    }
+    
+    setLprocOpen(true)
+    setLprocLoading(true)
+    setLprocError('')
+    setLprocRaw('')
+    setLprocLang(lang || '')
+    setLprocData(null)
+    
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_learning_process').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+      
+      const context = rule?.ai_rule_learning_process || ''
+      const unit = formData.topic_nama.trim()
+      const subjName = subjectMap.get(parseInt(formData.topic_subject_id)) || ''
+      const gc = formData.topic_global_context.trim()
+      const kc = formData.topic_key_concept.trim()
+      const rc = formData.topic_related_concept.trim()
+      const duration = formData.topic_duration ? parseInt(formData.topic_duration) : 0
+      const hoursPerWeek = formData.topic_hours_per_week ? parseFloat(formData.topic_hours_per_week) : 0
+      const formativeAssessment = formData.topic_formative_assessment?.trim() || ''
+      const summativeAssessment = formData.topic_summative_assessment?.trim() || ''
+      
+      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[lang] || 'Indonesia'
+      
+      const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\nTotal Duration: ${duration} teaching hours\nHours per Week: ${hoursPerWeek} hours\nFormative Assessment: ${formativeAssessment}\nSummative Assessment: ${summativeAssessment}\n\nBuat jadwal pembelajaran mingguan yang terstruktur. Kembalikan dalam format JSON dengan struktur berikut:\n{\n  "jadwal": [\n    {\n      "minggu": 1,\n      "judul_minggu": "Judul untuk minggu ini",\n      "konten": [\n        {"judul": "Konten 1"},\n        {"judul": "Konten 2"}\n      ]\n    }\n  ]\n}\n\nBuat dalam bahasa ${selected}.`
+      
+      setLprocPrompt(promptWithLang)
+      
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      
+      const text = json?.text || ''
+      setLprocRaw(text)
+      
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && parsed.jadwal && Array.isArray(parsed.jadwal)) {
+        setLprocData(parsed)
+      } else {
+        throw new Error('Format respons AI tidak sesuai. Harap coba lagi.')
+      }
+    } catch (e) {
+      console.error('AI Learning Process error', e)
+      setLprocError(e.message)
+    } finally {
+      setLprocLoading(false)
+    }
+  }
+
+  const confirmLearningProcess = () => {
+    if (!lprocData || !lprocData.jadwal) return
+    
+    const lines = []
+    lprocData.jadwal.forEach((week) => {
+      lines.push(`Week ${week.minggu}: ${week.judul_minggu}`)
+      if (week.konten && Array.isArray(week.konten)) {
+        week.konten.forEach((item, idx) => {
+          lines.push(`  ${idx + 1}. ${item.judul}`)
+        })
+      }
+      lines.push('')
+    })
+    
+    setFormData(prev => ({ ...prev, topic_learning_process: lines.join('\n') }))
+    setLprocOpen(false)
+  }
+
+  // Open AI help for Relationship between SA and SOI
+  const openRelHelp = async (lang) => {
+    if (!formData.topic_summative_assessment || !formData.topic_summative_assessment.trim()) {
+      showNotification('Info', 'Isi Summative Assessment terlebih dahulu.', 'warning')
+      return
+    }
+    if (!formData.topic_statement || !formData.topic_statement.trim()) {
+      showNotification('Info', 'Isi Statement of Inquiry terlebih dahulu.', 'warning')
+      return
+    }
+
+    setRelOpen(true)
+    setRelLoading(true)
+    setRelError('')
+    setRelRaw('')
+    setRelLang(lang || '')
+    setRelData(null)
+
+    try {
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_relationship_sa_soi').limit(1).single()
+      if (rErr) throw new Error(rErr.message)
+
+      const context = rule?.ai_rule_relationship_sa_soi || 'Analyze the relationship between the Summative Assessment and Statement of Inquiry. Explain how the assessment aligns with and measures the statement of inquiry.'
+      const sa = formData.topic_summative_assessment.trim()
+      const soi = formData.topic_statement.trim()
+      const unit = formData.topic_nama?.trim() || ''
+      const subjName = subjectMap.get(parseInt(formData.topic_subject_id)) || ''
+
+      const bahasaMap = { en: 'English', id: 'Indonesian', zh: 'Mandarin' }
+      const selectedLang = bahasaMap[lang] || 'Indonesian'
+
+      const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}
+Unit Title: ${unit}
+
+STATEMENT OF INQUIRY:
+${soi}
+
+SUMMATIVE ASSESSMENT:
+${sa}
+
+Explain in one paragraph how the Summative Assessment aligns with and measures the Statement of Inquiry above. Return ONLY a JSON object with this structure:
+{
+  "relationship": "Your one paragraph explanation here"
+}
+
+Respond in ${selectedLang}.`
+
+      setRelPrompt(promptWithLang)
+
+      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await resp.json()
+      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+
+      const text = json?.text || ''
+      setRelRaw(text)
+
+      const parsed = tryParseJsonFromText(text)
+      if (parsed && parsed.relationship) {
+        setRelData(parsed)
+      } else {
+        throw new Error('Format respons AI tidak sesuai. Harap coba lagi.')
+      }
+    } catch (e) {
+      console.error('AI Relationship SA-SOI error', e)
+      setRelError(e.message)
+    } finally {
+      setRelLoading(false)
+    }
+  }
+
+  const confirmRelationship = () => {
+    if (!relData || !relData.relationship) return
+    setFormData(prev => ({ ...prev, topic_relationship_summative_assessment_statement_of_inquiry: relData.relationship }))
+    setRelOpen(false)
+  }
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -1084,7 +1295,7 @@ export default function TopicPage() {
           const subjectIds = subj.map(s => s.subject_id);
       const { data: tData, error: tErr } = await supabase
         .from('topic')
-  .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_urutan, topic_planner, topic_inquiry_question, topic_global_context, topic_key_concept, topic_related_concept, topic_statement, topic_learner_profile, topic_service_learning, topic_formative_assessment, topic_summative_assessment')
+  .select('topic_id, topic_nama, topic_subject_id, topic_kelas_id, topic_urutan, topic_duration, topic_hours_per_week, topic_planner, topic_inquiry_question, topic_global_context, topic_key_concept, topic_related_concept, topic_statement, topic_learner_profile, topic_service_learning, topic_learning_process, topic_formative_assessment, topic_summative_assessment, topic_relationship_summative_assessment_statement_of_inquiry')
             .in('topic_subject_id', subjectIds)
             .order('topic_nama');
           if (tErr) throw new Error(tErr.message);
@@ -1167,6 +1378,8 @@ export default function TopicPage() {
       topic_subject_id: "",
       topic_kelas_id: "",
       topic_urutan: "",
+      topic_duration: "",
+      topic_hours_per_week: "",
       topic_planner: "",
       topic_inquiry_question: "",
       topic_global_context: "",
@@ -1175,8 +1388,10 @@ export default function TopicPage() {
       topic_statement: "",
       topic_learner_profile: "",
       topic_service_learning: "",
+      topic_learning_process: "",
       topic_formative_assessment: "",
-      topic_summative_assessment: ""
+      topic_summative_assessment: "",
+      topic_relationship_summative_assessment_statement_of_inquiry: ""
     });
     setFormErrors({});
     setKelasOptions([]);
@@ -1194,6 +1409,8 @@ export default function TopicPage() {
       topic_subject_id: String(row.topic_subject_id || ""),
       topic_kelas_id: row.topic_kelas_id ? String(row.topic_kelas_id) : "",
       topic_urutan: row.topic_urutan != null ? String(row.topic_urutan) : "",
+      topic_duration: row.topic_duration != null ? String(row.topic_duration) : "",
+      topic_hours_per_week: row.topic_hours_per_week != null ? String(row.topic_hours_per_week) : "",
       topic_planner: row.topic_planner || "",
       topic_inquiry_question: row.topic_inquiry_question || "",
       topic_global_context: row.topic_global_context || "",
@@ -1202,8 +1419,10 @@ export default function TopicPage() {
       topic_statement: row.topic_statement || "",
       topic_learner_profile: row.topic_learner_profile || "",
       topic_service_learning: row.topic_service_learning || "",
+      topic_learning_process: row.topic_learning_process || "",
       topic_formative_assessment: row.topic_formative_assessment || "",
-      topic_summative_assessment: row.topic_summative_assessment || ""
+      topic_summative_assessment: row.topic_summative_assessment || "",
+      topic_relationship_summative_assessment_statement_of_inquiry: row.topic_relationship_summative_assessment_statement_of_inquiry || ""
     });
     setFormErrors({});
     setShowForm(true);
@@ -1289,6 +1508,8 @@ export default function TopicPage() {
         topic_subject_id: parseInt(formData.topic_subject_id),
         topic_kelas_id: formData.topic_kelas_id ? parseInt(formData.topic_kelas_id) : null,
         topic_urutan: parseInt(formData.topic_urutan),
+        topic_duration: formData.topic_duration?.trim() ? parseInt(formData.topic_duration) : null,
+        topic_hours_per_week: formData.topic_hours_per_week?.trim() ? parseFloat(formData.topic_hours_per_week) : null,
         topic_planner: formData.topic_planner?.trim() || null,
         topic_inquiry_question: formData.topic_inquiry_question?.trim() || null,
         topic_global_context: formData.topic_global_context?.trim() || null,
@@ -1297,8 +1518,10 @@ export default function TopicPage() {
         topic_statement: formData.topic_statement?.trim() || null,
         topic_learner_profile: formData.topic_learner_profile?.trim() || null,
         topic_service_learning: formData.topic_service_learning?.trim() || null,
+        topic_learning_process: formData.topic_learning_process?.trim() || null,
   topic_formative_assessment: formData.topic_formative_assessment?.trim() || null,
   topic_summative_assessment: formData.topic_summative_assessment?.trim() || null,
+        topic_relationship_summative_assessment_statement_of_inquiry: formData.topic_relationship_summative_assessment_statement_of_inquiry?.trim() || null,
       };
       if (editing) {
   const { data, error: upErr } = await supabase.from("topic").update(payload).eq("topic_id", editing.topic_id).select();
@@ -1637,6 +1860,36 @@ export default function TopicPage() {
             {formErrors.topic_urutan && <p className="text-red-500 text-sm mt-1">{formErrors.topic_urutan}</p>}
           </div>
           <div>
+            <Label htmlFor="topic_duration">{t("topic.duration") || "Total Durasi dalam Jam Pelajaran"}</Label>
+            <Input
+              id="topic_duration"
+              name="topic_duration"
+              type="number"
+              min="1"
+              step="0.5"
+              value={formData.topic_duration}
+              onChange={(e) => setFormData((prev) => ({ ...prev, topic_duration: e.target.value }))}
+              placeholder={t("topic.durationPlaceholder") || "Total jam pelajaran untuk unit ini"}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_duration ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {formErrors.topic_duration && <p className="text-red-500 text-sm mt-1">{formErrors.topic_duration}</p>}
+          </div>
+          <div>
+            <Label htmlFor="topic_hours_per_week">{t("topic.hoursPerWeek") || "Subject Hours per Week"}</Label>
+            <Input
+              id="topic_hours_per_week"
+              name="topic_hours_per_week"
+              type="number"
+              min="0"
+              step="0.5"
+              value={formData.topic_hours_per_week}
+              onChange={(e) => setFormData((prev) => ({ ...prev, topic_hours_per_week: e.target.value }))}
+              placeholder={t("topic.hoursPerWeekPlaceholder") || "Subject hours per week"}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.topic_hours_per_week ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {formErrors.topic_hours_per_week && <p className="text-red-500 text-sm mt-1">{formErrors.topic_hours_per_week}</p>}
+          </div>
+          <div>
             <Label htmlFor="topic_nama">{t("topic.unitTitle") || "Unit Title"}</Label>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => openAiHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
@@ -1827,6 +2080,28 @@ export default function TopicPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, topic_summative_assessment: e.target.value }))}
             />
           </div>
+          <div>
+            <Label htmlFor="topic_relationship_summative_assessment_statement_of_inquiry">Relationship between Summative Assessment and Statement of Inquiry</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openRelHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Relationship (EN)
+              </button>
+              <button type="button" onClick={() => openRelHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Relationship (ID)
+              </button>
+              <button type="button" onClick={() => openRelHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Relationship (ZH)
+              </button>
+            </div>
+            <textarea
+              id="topic_relationship_summative_assessment_statement_of_inquiry"
+              name="topic_relationship_summative_assessment_statement_of_inquiry"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              value={formData.topic_relationship_summative_assessment_statement_of_inquiry || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_relationship_summative_assessment_statement_of_inquiry: e.target.value }))}
+              placeholder="Jelaskan hubungan antara Summative Assessment dan Statement of Inquiry..."
+            />
+          </div>
             <div>
               <Label htmlFor="topic_planner">Planner (Google Drive URL)</Label>
               <Input
@@ -1862,6 +2137,28 @@ export default function TopicPage() {
               placeholder="Masukkan inquiry question..."
             />
           </div>
+          <div>
+            <Label htmlFor="topic_learning_process">Learning Process</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => openLprocHelp('en')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Learning Process (EN)
+              </button>
+              <button type="button" onClick={() => openLprocHelp('id')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Learning Process (ID)
+              </button>
+              <button type="button" onClick={() => openLprocHelp('zh')} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> AI Learning Process (ZH)
+              </button>
+            </div>
+            <textarea
+              id="topic_learning_process"
+              name="topic_learning_process"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              value={formData.topic_learning_process || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, topic_learning_process: e.target.value }))}
+              placeholder="Masukkan learning process..."
+            />
+          </div>
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="bg-gray-500 hover:bg-gray-600 text-white">
               {t("topic.cancel") || "Batal"}
@@ -1891,7 +2188,7 @@ export default function TopicPage() {
           {faError && (
             <div className="text-sm text-red-600">{faError}</div>
           )}
-          {isAdmin && !faLoading && !faError && faPrompt && (
+          {faPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{faPrompt}</pre>
@@ -1938,7 +2235,7 @@ export default function TopicPage() {
           {slError && (
             <div className="text-sm text-red-600">{slError}</div>
           )}
-          {isAdmin && !slLoading && !slError && slPrompt && (
+          {slPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{slPrompt}</pre>
@@ -1983,7 +2280,7 @@ export default function TopicPage() {
           {soError && (
             <div className="text-sm text-red-600">{soError}</div>
           )}
-          {isAdmin && !soLoading && !soError && soPrompt && (
+          {soPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{soPrompt}</pre>
@@ -2026,7 +2323,7 @@ export default function TopicPage() {
           {lpError && (
             <div className="text-sm text-red-600">{lpError}</div>
           )}
-          {isAdmin && !lpLoading && !lpError && lpPrompt && (
+          {lpPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{lpPrompt}</pre>
@@ -2072,7 +2369,7 @@ export default function TopicPage() {
           {saError && (
             <div className="text-sm text-red-600">{saError}</div>
           )}
-          {isAdmin && !saLoading && !saError && saPrompt && (
+          {saPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{saPrompt}</pre>
@@ -2168,7 +2465,7 @@ export default function TopicPage() {
           {iqError && (
             <div className="text-sm text-red-600">{iqError}</div>
           )}
-          {isAdmin && !iqLoading && !iqError && iqPrompt && (
+          {iqPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{iqPrompt}</pre>
@@ -2211,6 +2508,76 @@ export default function TopicPage() {
         </div>
       </Modal>
 
+      {/* AI Relationship SA-SOI Modal */}
+      <Modal isOpen={relOpen} onClose={() => setRelOpen(false)} title={`AI Relationship SA-SOI${relLang ? ` (${relLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {relLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Menganalisis hubungan...</div>
+          )}
+          {relError && (
+            <div className="text-sm text-red-600">{relError}</div>
+          )}
+          {relPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{relPrompt}</pre>
+            </div>
+          )}
+          {!relLoading && !relError && relData && relData.relationship && (
+            <div className="border rounded p-4 bg-blue-50">
+              <h4 className="font-semibold text-blue-900 mb-2">Relationship Analysis</h4>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{relData.relationship}</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!relLoading && !relError && relData && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmRelationship}>Gunakan</Button>
+            )}
+            <Button type="button" onClick={() => setRelOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI Learning Process Modal */}
+      <Modal isOpen={lprocOpen} onClose={() => setLprocOpen(false)} title={`AI Learning Process${lprocLang ? ` (${lprocLang.toUpperCase()})` : ''}`}>
+        <div className="space-y-3">
+          {lprocLoading && (
+            <div className="text-sm text-gray-600 flex items-center"><FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> Membuat Learning Process...</div>
+          )}
+          {lprocError && (
+            <div className="text-sm text-red-600">{lprocError}</div>
+          )}
+          {lprocPrompt && (
+            <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+              <div className="font-semibold mb-1">Prompt dikirim:</div>
+              <pre className="whitespace-pre-wrap">{lprocPrompt}</pre>
+            </div>
+          )}
+          {!lprocLoading && !lprocError && lprocData && lprocData.jadwal && (
+            <div className="space-y-2">
+              {lprocData.jadwal.map((week, idx) => (
+                <div key={idx} className="border rounded p-3 bg-gray-50">
+                  <h4 className="font-semibold text-gray-800 mb-2">Week {week.minggu}: {week.judul_minggu}</h4>
+                  {week.konten && week.konten.length > 0 && (
+                    <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
+                      {week.konten.map((item, itemIdx) => (
+                        <li key={itemIdx}>{item.judul}</li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            {!lprocLoading && !lprocError && lprocData && (
+              <Button type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmLearningProcess}>Gunakan</Button>
+            )}
+            <Button type="button" onClick={() => setLprocOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* AI Related Concept Modal */}
       <Modal isOpen={rcOpen} onClose={() => setRcOpen(false)} title={`AI Related Concept${rcLang ? ` (${rcLang.toUpperCase()})` : ''}`}>
         <div className="space-y-3">
@@ -2220,7 +2587,7 @@ export default function TopicPage() {
           {rcError && (
             <div className="text-sm text-red-600">{rcError}</div>
           )}
-          {isAdmin && !rcLoading && !rcError && rcPrompt && (
+          {rcPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{rcPrompt}</pre>
@@ -2266,7 +2633,7 @@ export default function TopicPage() {
           {kcError && (
             <div className="text-sm text-red-600">{kcError}</div>
           )}
-          {isAdmin && !kcLoading && !kcError && kcPrompt && (
+          {kcPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{kcPrompt}</pre>
@@ -2309,7 +2676,7 @@ export default function TopicPage() {
           {gcError && (
             <div className="text-sm text-red-600">{gcError}</div>
           )}
-          {isAdmin && !gcLoading && !gcError && gcPrompt && (
+          {gcPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{gcPrompt}</pre>
@@ -2352,7 +2719,7 @@ export default function TopicPage() {
           {aiError && (
             <div className="text-sm text-red-600">{aiError}</div>
           )}
-          {isAdmin && !aiLoading && !aiError && aiPrompt && (
+          {aiPrompt && (
             <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
               <div className="font-semibold mb-1">Prompt dikirim:</div>
               <pre className="whitespace-pre-wrap">{aiPrompt}</pre>

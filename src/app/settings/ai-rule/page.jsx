@@ -30,7 +30,9 @@ export default function AiRuleSettingsPage() {
           ai_rule_service_learning: '',
           ai_rule_formative_assessment: '',
           ai_rule_summative_assessment: '',
-          ai_rule_inquiry_question: ''
+          ai_rule_inquiry_question: '',
+          ai_rule_learning_process: '',
+          ai_rule_relationship_sa_soi: ''
         }]).select('*').single()
         if (insErr) throw insErr
         setRow(ins)
@@ -60,6 +62,8 @@ export default function AiRuleSettingsPage() {
         ai_rule_formative_assessment: row.ai_rule_formative_assessment || '',
         ai_rule_summative_assessment: row.ai_rule_summative_assessment || '',
         ai_rule_inquiry_question: row.ai_rule_inquiry_question || '',
+        ai_rule_learning_process: row.ai_rule_learning_process || '',
+        ai_rule_relationship_sa_soi: row.ai_rule_relationship_sa_soi || '',
         updated_at: new Date().toISOString() 
       }
       const { error } = await supabase.from('ai_rule').update(payload).eq('ai_rule_id', row.ai_rule_id)
@@ -154,6 +158,22 @@ export default function AiRuleSettingsPage() {
                 className="mt-1 w-full border rounded p-2 min-h-[200px]"
                 value={row.ai_rule_inquiry_question || ''}
                 onChange={e => setRow(r => ({ ...r, ai_rule_inquiry_question: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Learning Process</Label>
+              <textarea
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
+                value={row.ai_rule_learning_process || ''}
+                onChange={e => setRow(r => ({ ...r, ai_rule_learning_process: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Relationship between Summative Assessment and Statement of Inquiry</Label>
+              <textarea
+                className="mt-1 w-full border rounded p-2 min-h-[200px]"
+                value={row.ai_rule_relationship_sa_soi || ''}
+                onChange={e => setRow(r => ({ ...r, ai_rule_relationship_sa_soi: e.target.value }))}
               />
             </div>
             <div className="flex justify-end gap-2">
