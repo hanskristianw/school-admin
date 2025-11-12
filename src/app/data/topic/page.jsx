@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import Modal from "@/components/ui/modal";
 import NotificationModal from "@/components/ui/notification-modal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEdit, faTrash, faSpinner, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faEdit, faTrash, faSpinner, faWandMagicSparkles, faPrint } from "@fortawesome/free-solid-svg-icons";
 
 export default function TopicPage() {
   const { t } = useI18n();
@@ -1767,6 +1767,10 @@ Respond in ${selectedLang}.`
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_summative_assessment || ''}>{row.topic_summative_assessment || '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
+                              <Button onClick={() => window.open(`/print-topic/${row.topic_id}`, '_blank')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm">
+                                <FontAwesomeIcon icon={faPrint} className="mr-1" />
+                                Print Unit Plan
+                              </Button>
                               <Button onClick={() => openEdit(row)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm">
                                 <FontAwesomeIcon icon={faEdit} className="mr-1" />
                                 {t("topic.edit") || "Edit"}
