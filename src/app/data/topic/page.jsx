@@ -11,6 +11,8 @@ import Modal from "@/components/ui/modal";
 import NotificationModal from "@/components/ui/notification-modal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faEdit, faTrash, faSpinner, faWandMagicSparkles, faPrint } from "@fortawesome/free-solid-svg-icons";
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function TopicPage() {
   const { t } = useI18n();
@@ -148,6 +150,11 @@ export default function TopicPage() {
   const [faPrompt, setFaPrompt] = useState('')
   const [faLang, setFaLang] = useState('')
   const [faSelected, setFaSelected] = useState([])
+
+  // Print PDF Modal state
+  const [confirmPrint, setConfirmPrint] = useState({ open: false, row: null });
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printTopicData, setPrintTopicData] = useState(null);
   const [faSelectError, setFaSelectError] = useState('')
   const [faParsedMeta, setFaParsedMeta] = useState({ json: false, count: 0 })
 
@@ -1606,6 +1613,229 @@ Respond in ${selectedLang}.`
     }
   };
 
+  // Open confirmation modal for print
+  const openPrintConfirm = (row) => {
+    setConfirmPrint({ open: true, row });
+  };
+
+  // Handle Print - Load topic data and generate PDF
+  const handlePrint = async () => {
+    const topicRow = confirmPrint.row;
+    if (!topicRow) return;
+    
+    setConfirmPrint({ open: false, row: null });
+    
+    try {
+      // Load complete topic data
+      const { data: topic, error: topicErr } = await supabase
+        .from("topic")
+        .select("*")
+        .eq("topic_id", topicRow.topic_id)
+        .single();
+      
+      if (topicErr) throw new Error(topicErr.message);
+
+      // Load subject data
+      let subject = null;
+      let teacher = null;
+      if (topic.topic_subject_id) {
+        const { data: subjectData, error: subjectErr } = await supabase
+          .from("subject")
+          .select("subject_name, subject_user_id")
+          .eq("subject_id", topic.topic_subject_id)
+          .single();
+        
+        if (subjectErr) {
+          console.error("Error loading subject:", subjectErr);
+        } else {
+          subject = subjectData;
+          console.log("Subject loaded:", subjectData);
+
+          // Load teacher data from subject_user_id
+          if (subjectData?.subject_user_id) {
+            const { data: teacherData, error: teacherErr } = await supabase
+              .from("users")
+              .select("user_nama_depan, user_nama_belakang")
+              .eq("user_id", subjectData.subject_user_id)
+              .single();
+            
+            if (teacherErr) {
+              console.error("Error loading teacher:", teacherErr);
+            } else {
+              teacher = {
+                name: `${teacherData.user_nama_depan || ''} ${teacherData.user_nama_belakang || ''}`.trim()
+              };
+              console.log("Teacher loaded:", teacher);
+            }
+          } else {
+            console.warn("No subject_user_id found in subject:", subjectData);
+          }
+        }
+      }
+
+      // Fallback: if teacher still null, try to get current user name
+      if (!teacher && currentUserId) {
+        const { data: currentUser, error: userErr } = await supabase
+          .from("users")
+          .select("user_nama_depan, user_nama_belakang")
+          .eq("user_id", currentUserId)
+          .single();
+        
+        if (!userErr && currentUser) {
+          teacher = {
+            name: `${currentUser.user_nama_depan || ''} ${currentUser.user_nama_belakang || ''}`.trim()
+          };
+          console.log("Teacher loaded from current user:", teacher);
+        }
+      }
+
+      // Load kelas data
+      let kelas = null;
+      if (topic.topic_kelas_id) {
+        const { data: kelasData, error: kelasErr } = await supabase
+          .from("kelas")
+          .select("kelas_nama")
+          .eq("kelas_id", topic.topic_kelas_id)
+          .single();
+        
+        if (kelasErr) {
+          console.error("Error loading kelas:", kelasErr);
+        } else {
+          kelas = kelasData;
+          console.log("Kelas loaded:", kelasData);
+        }
+      }
+
+      // Generate PDF
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 14;
+      let yPos = 10;
+
+      // Header Table
+      autoTable(pdf, {
+        startY: yPos,
+        head: [],
+        body: [
+          [
+            { content: 'Teacher(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: teacher?.name || 'N/A' },
+            { content: 'Subject group and discipline', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: subject?.subject_name || 'N/A' },
+            { content: 'MYP year', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: kelas?.kelas_nama || 'N/A' },
+            { content: 'Unit duration (hrs)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topic.topic_duration || 'N/A' },
+          ],
+          [
+            { content: 'Unit title', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topic.topic_nama || 'N/A', colSpan: 7 },
+          ],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5 },
+        columnStyles: {
+          0: { cellWidth: 32 },
+          1: { cellWidth: 56 },
+          2: { cellWidth: 48 },
+          3: { cellWidth: 56 },
+          4: { cellWidth: 21 },
+          5: { cellWidth: 21 },
+          6: { cellWidth: 19 },
+          7: { cellWidth: 13 },
+        },
+      });
+
+      // Inquiry section
+      yPos = pdf.lastAutoTable.finalY + 8;
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Inquiry:', margin, yPos);
+      yPos += 6;
+
+      const availableWidth = pageWidth - (margin * 2);
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: [
+          [
+            { content: 'Key concept', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topic.topic_key_concept || 'N/A' },
+            { content: 'Related concept(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topic.topic_related_concept || 'N/A' },
+            { content: 'Global context', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topic.topic_global_context || 'N/A' },
+          ],
+          [
+            { content: 'Statement of inquiry', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
+          ],
+          [
+            { content: topic.topic_statement || 'N/A', colSpan: 6, styles: { cellPadding: 3 } },
+          ],
+          [
+            { content: 'Inquiry questions', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
+          ],
+          [
+            { content: topic.topic_inquiry_question || 'N/A', colSpan: 6, styles: { cellPadding: 3 } },
+          ],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5, valign: 'top' },
+        columnStyles: {
+          0: { cellWidth: availableWidth * 0.15 },
+          1: { cellWidth: availableWidth * 0.18 },
+          2: { cellWidth: availableWidth * 0.17 },
+          3: { cellWidth: availableWidth * 0.17 },
+          4: { cellWidth: availableWidth * 0.15 },
+          5: { cellWidth: availableWidth * 0.18 },
+        },
+      });
+
+      // Add new page for remaining sections
+      pdf.addPage();
+      yPos = 10;
+
+      const sections = [
+        { label: 'Middle Years Programme objectives', content: topic.topic_myp_objectives },
+        { label: 'Summative assessment task(s)', content: topic.topic_summative_assessment },
+        { label: 'Relationship between summative assessment task(s) and statement of inquiry', content: topic.topic_relationship },
+        { label: 'Approaches to learning (ATL) skills', content: topic.topic_atl_skills },
+        { label: 'Content', content: topic.topic_content },
+        { label: 'Learning experiences and teaching strategies', content: topic.topic_learning_experiences },
+        { label: 'Formative assessment', content: topic.topic_formative_assessment },
+        { label: 'Differentiation', content: topic.topic_differentiation },
+        { label: 'Resources', content: topic.topic_resources },
+        { label: 'Reflection', content: topic.topic_reflection },
+      ];
+
+      sections.forEach((section) => {
+        if (section.content) {
+          autoTable(pdf, {
+            startY: yPos,
+            head: [],
+            body: [
+              [{ content: section.label, styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 8 }],
+              [{ content: section.content, colSpan: 8, styles: { cellPadding: 3 } }],
+            ],
+            theme: 'grid',
+            styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5 },
+          });
+          yPos = pdf.lastAutoTable.finalY + 5;
+        }
+      });
+
+      // Save PDF
+      const fileName = `unit-planner-${topic.topic_nama?.replace(/[^a-z0-9]/gi, '-') || 'topic'}.pdf`;
+      pdf.save(fileName);
+      
+      showNotification("Success", "PDF downloaded successfully", "success");
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      showNotification("Error", `Failed to generate PDF: ${error.message}`, "error");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -1767,7 +1997,7 @@ Respond in ${selectedLang}.`
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[16rem] truncate" title={row.topic_summative_assessment || ''}>{row.topic_summative_assessment || '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
-                              <Button onClick={() => window.open(`/print-topic/${row.topic_id}`, '_blank')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm">
+                              <Button onClick={() => openPrintConfirm(row)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm">
                                 <FontAwesomeIcon icon={faPrint} className="mr-1" />
                                 Print Unit Plan
                               </Button>
@@ -2776,6 +3006,27 @@ Respond in ${selectedLang}.`
               ) : (
                 t("topic.btnYesDelete") || "Ya, Hapus"
               )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Print Confirmation Modal */}
+      <Modal isOpen={confirmPrint.open} onClose={() => setConfirmPrint({ open: false, row: null })} title="Download Unit Plan PDF">
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            Apakah Anda ingin men-download Unit Plan untuk <strong>{confirmPrint.row?.topic_nama}</strong>?
+          </p>
+          <div className="flex justify-end space-x-3">
+            <Button
+              onClick={() => setConfirmPrint({ open: false, row: null })}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-800"
+            >
+              Batal
+            </Button>
+            <Button onClick={handlePrint} disabled={submitting} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <FontAwesomeIcon icon={faPrint} className="mr-2" />
+              Ya, Download PDF
             </Button>
           </div>
         </div>
