@@ -112,8 +112,25 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
   const [error, setError] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [expandedMenus, setExpandedMenus] = useState({})
+  const [isCollapsed, setIsCollapsed] = useState(true) // Start collapsed
+  const [activeMenu, setActiveMenu] = useState(null) // For showing popup in collapsed mode
+  const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0, height: 0 }) // Position for popup
   const pathname = usePathname()
   const { translateMenu, t } = useI18n()
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (activeMenu && !e.target.closest('.sidebar-menu-button') && !e.target.closest('.sidebar-popup')) {
+        setActiveMenu(null)
+      }
+    }
+
+    if (activeMenu) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [activeMenu])
 
   useEffect(() => {
     const fetchMenus = async () => {
@@ -348,38 +365,70 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
     }
 
     return (
-      <nav className="flex-1 px-4 pb-4 overflow-y-auto">
+      <nav className="flex-1 px-4 pb-4 overflow-y-auto" style={{ overflowX: 'visible' }}>
         {organizedMenus.map((menu) => (
-          <div key={menu.id} className="mb-1">
+          <div key={menu.id} className="mb-1 relative" style={{ overflow: 'visible' }}>
             {menu.children && menu.children.length > 0 ? (
               // Parent menu with children - clickable to expand
               <>
                 <button
-                  onClick={() => toggleExpanded(menu.id)}
-                  className="w-full flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+                  onClick={(e) => {
+                    if (isCollapsed) {
+                      e.preventDefault()
+                      
+                      // Toggle menu - close if already open, open if closed
+                      if (activeMenu === menu.id) {
+                        setActiveMenu(null)
+                      } else {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const viewportHeight = window.innerHeight
+                        const popupHeight = Math.min(menu.children.length * 40 + 50, viewportHeight - 20)
+                        
+                        let top = rect.top
+                        let height = popupHeight
+                        
+                        if (top + popupHeight > viewportHeight) {
+                          top = Math.max(10, viewportHeight - popupHeight - 10)
+                          height = Math.min(popupHeight, viewportHeight - top - 20)
+                        }
+                        
+                        setPopupPosition({ top, left: rect.right, height })
+                        setActiveMenu(menu.id)
+                      }
+                    } else {
+                      toggleExpanded(menu.id)
+                    }
+                  }}
+                  className={`sidebar-menu-button w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md ${activeMenu === menu.id ? 'bg-blue-50 ring-2 ring-blue-200' : ''}`}
+                  title={isCollapsed ? `${menu.name} (click to expand)` : ''}
                 >
-                  <div className="flex items-center">
+                  <div className={`flex items-center ${isCollapsed ? 'relative' : ''}`}>
                     {menu.icon && (
-                      <span className="mr-3 inline-flex items-center justify-center w-4 h-4">
+                      <span className={`${isCollapsed ? '' : 'mr-3'} inline-flex items-center justify-center w-4 h-4 relative`}>
                         {renderIcon(menu.icon)}
+                        {isCollapsed && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></span>
+                        )}
                       </span>
                     )}
-                    <span>{menu.name}</span>
+                    {!isCollapsed && <span>{menu.name}</span>}
                   </div>
-                  <FontAwesomeIcon 
-                    icon={expandedMenus[menu.id] ? faChevronDown : faChevronRight} 
-                    className="w-3 h-3 transition-transform"
-                  />
+                  {!isCollapsed && (
+                    <FontAwesomeIcon 
+                      icon={expandedMenus[menu.id] ? faChevronDown : faChevronRight} 
+                      className="w-3 h-3 transition-transform"
+                    />
+                  )}
                 </button>
                 
-                {/* Child menus */}
-                {expandedMenus[menu.id] && (
+                {/* Child menus - normal expanded mode */}
+                {!isCollapsed && expandedMenus[menu.id] && (
                   <div className="ml-6 mt-1 space-y-1">
                     {menu.children.map((child) => (
                       <Link
                         key={child.id}
                         href={child.path}
-                        onClick={() => setIsOpen && setIsOpen(false)} // Close mobile menu when clicking
+                        onClick={() => setIsOpen && setIsOpen(false)}
                         className={`flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md ${
                           pathname === child.path ? 'bg-blue-50 text-blue-600' : ''
                         }`}
@@ -394,22 +443,62 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                     ))}
                   </div>
                 )}
+
+                {/* Child menus - popup in collapsed mode with fixed positioning */}
+                {isCollapsed && activeMenu === menu.id && typeof window !== 'undefined' && (
+                    <div 
+                      className="sidebar-popup fixed bg-white shadow-xl rounded-md py-2 min-w-[200px] max-w-[280px] border border-gray-200 overflow-hidden"
+                      style={{ 
+                        zIndex: 99999, 
+                        top: `${popupPosition.top}px`, 
+                        left: `${popupPosition.left + 8}px`,
+                        maxHeight: 'calc(100vh - 20px)'
+                      }}
+                    >
+                      <div className="px-4 py-2 font-semibold text-gray-700 border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
+                        {menu.name}
+                      </div>
+                      <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 70px)' }}>
+                        {menu.children.map((child) => (
+                          <Link
+                            key={child.id}
+                            href={child.path}
+                            onClick={() => {
+                              setActiveMenu(null)
+                              setIsOpen && setIsOpen(false)
+                            }}
+                            className={`flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 ${
+                              pathname === child.path ? 'bg-blue-50 text-blue-600' : ''
+                            }`}
+                          >
+                            {child.icon && (
+                              <span className="mr-3 inline-flex items-center justify-center w-4 h-4">
+                                {renderIcon(child.icon)}
+                              </span>
+                            )}
+                            <span className="break-words">{child.name}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                )}
               </>
             ) : (
               // Regular menu item without children
               <Link 
                 href={menu.path}
                 onClick={() => setIsOpen && setIsOpen(false)} // Close mobile menu when clicking
-                className={`flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md ${
+                className={`flex items-center ${isCollapsed ? 'justify-center' : ''} px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md ${
                   pathname === menu.path ? 'bg-blue-50 text-blue-600' : ''
                 }`}
+                title={isCollapsed ? menu.name : ''}
               >
                 {menu.icon && (
-                  <span className="mr-3 inline-flex items-center justify-center w-4 h-4">
+                  <span className={`${isCollapsed ? '' : 'mr-3'} inline-flex items-center justify-center w-4 h-4`}>
                     {renderIcon(menu.icon)}
                   </span>
                 )}
-                <span>{menu.name}</span>
+                {!isCollapsed && <span>{menu.name}</span>}
               </Link>
             )}
           </div>
@@ -434,12 +523,13 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
               document.cookie = `allowed_paths=; Path=/; Expires=${past}; SameSite=Lax`
               window.location.href = "/login"
             }}
-            className="w-full flex items-center px-4 py-2 text-red-600 hover:bg-red-50 rounded-md"
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : ''} px-4 py-2 text-red-600 hover:bg-red-50 rounded-md`}
+            title={isCollapsed ? t('common.logout') : ''}
           >
-            <span className="mr-3 inline-flex items-center justify-center w-4 h-4">
+            <span className={`${isCollapsed ? '' : 'mr-3'} inline-flex items-center justify-center w-4 h-4`}>
               <FontAwesomeIcon icon={faUser} />
             </span>
-            <span>{t('common.logout')}</span>
+            {!isCollapsed && <span>{t('common.logout')}</span>}
           </button>
         </div>
       </nav>
@@ -468,15 +558,29 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
       {/* Sidebar */}
     <aside
         className={`
-          fixed top-0 left-0 z-40 h-screen w-64 bg-white shadow-lg flex flex-col
-          transform transition-transform duration-300 ease-in-out
+          fixed top-0 left-0 z-40 h-screen bg-white shadow-lg flex flex-col
+          transform transition-all duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${isCollapsed ? 'lg:w-16' : 'lg:w-64'}
           lg:translate-x-0 lg:static lg:h-[calc(100vh-3rem)] lg:self-stretch
         `}
+        style={{ width: isCollapsed ? '4rem' : '16rem' }}
       >
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex-shrink-0">
-          <h1 className="text-xl font-bold text-gray-800">School System</h1>
+        <div className={`p-4 border-b border-gray-200 flex-shrink-0 flex items-center justify-between`}>
+          <h1 className={`text-xl font-bold text-gray-800 transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
+            School System
+          </h1>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden lg:block p-1 hover:bg-gray-100 rounded-md transition-colors"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <FontAwesomeIcon 
+              icon={isCollapsed ? faChevronRight : faBars} 
+              className="w-4 h-4 text-gray-600"
+            />
+          </button>
         </div>
         
         {/* Content */}
