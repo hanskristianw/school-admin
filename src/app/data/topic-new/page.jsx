@@ -1,14 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSpinner } from '@fortawesome/free-solid-svg-icons'
 import SlideOver from '@/components/ui/slide-over'
+import { useI18n } from '@/lib/i18n'
 
 export default function TopicNewPage() {
   const router = useRouter()
+  const { t, lang } = useI18n()
+  const aiScrollRef = useRef(null)
   const [activeTab, setActiveTab] = useState('planning')
   const [activeSubMenu, setActiveSubMenu] = useState('overview')
   
@@ -78,7 +82,7 @@ export default function TopicNewPage() {
   
   const [selectedContexts, setSelectedContexts] = useState([])
   
-  // AI Help state for Unit Title
+  // AI Help state for Unit Title and Inquiry Question
   const [aiInputModalOpen, setAiInputModalOpen] = useState(false)
   const [aiResultModalOpen, setAiResultModalOpen] = useState(false)
   const [aiUserInput, setAiUserInput] = useState('')
@@ -86,6 +90,14 @@ export default function TopicNewPage() {
   const [aiError, setAiError] = useState('')
   const [aiItems, setAiItems] = useState([])
   const [aiLang, setAiLang] = useState('')
+  const [aiHelpType, setAiHelpType] = useState('') // 'unitTitle', 'inquiryQuestion', 'keyConcept', 'relatedConcept', 'globalContext', 'statement', 'learnerProfile', or 'serviceLearning'
+  const [selectedInquiryQuestions, setSelectedInquiryQuestions] = useState([]) // For multi-select inquiry questions
+  const [selectedKeyConcepts, setSelectedKeyConcepts] = useState([]) // For multi-select key concepts
+  const [selectedRelatedConcepts, setSelectedRelatedConcepts] = useState([]) // For multi-select related concepts
+  const [selectedGlobalContexts, setSelectedGlobalContexts] = useState([]) // For multi-select global contexts
+  const [selectedStatements, setSelectedStatements] = useState([]) // For multi-select statements of inquiry
+  const [selectedLearnerProfiles, setSelectedLearnerProfiles] = useState([]) // For multi-select learner profiles
+  const [selectedServiceLearning, setSelectedServiceLearning] = useState([]) // For multi-select service learning
   
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
@@ -126,20 +138,6 @@ export default function TopicNewPage() {
       description: 'Define IB learner attributes and service learning opportunities',
       fields: ['topic_learner_profile', 'topic_service_learning'],
       guidance: 'Select IB Learner Profile attributes (e.g., Inquirers, Thinkers, Communicators) students will develop. Identify opportunities for service learning and action.'
-    },
-    {
-      id: 'learning',
-      title: 'Learning Process',
-      description: 'Outline how students will learn and engage',
-      fields: ['topic_learning_process'],
-      guidance: 'Describe the learning experiences, activities, and teaching strategies. Include differentiation strategies and how students will construct understanding.'
-    },
-    {
-      id: 'assessment',
-      title: 'Assessment & Relationship',
-      description: 'Plan formative and summative assessments',
-      fields: ['topic_formative_assessment', 'topic_summative_assessment', 'topic_relationship_summative_assessment_statement_of_inquiry'],
-      guidance: 'Formative assessments monitor learning progress. Summative assessments evaluate achievement. Explain how the summative assessment relates back to the Statement of Inquiry.'
     }
   ]
   
@@ -405,15 +403,17 @@ export default function TopicNewPage() {
   }
   
   // AI Help functions
-  const openAiInputModal = (lang) => {
+  const openAiInputModal = (lang, helpType = 'unitTitle') => {
     setAiLang(lang)
+    setAiHelpType(helpType)
     setAiUserInput('')
     setAiError('')
+    setSelectedInquiryQuestions([])
     setAiInputModalOpen(true)
   }
   
-  const requestAiHelp = async () => {
-    if (!aiUserInput.trim()) {
+  const requestAiHelp = async (helpType = aiHelpType) => {
+    if (helpType !== 'keyConcept' && helpType !== 'relatedConcept' && helpType !== 'inquiryQuestion' && helpType !== 'globalContext' && helpType !== 'statement' && helpType !== 'learnerProfile' && !aiUserInput.trim()) {
       setAiError('Mohon masukkan topik atau konteks yang ingin dibahas')
       return
     }
@@ -425,18 +425,392 @@ export default function TopicNewPage() {
     setAiItems([])
     
     try {
-      const { data: rule, error: rErr } = await supabase.from('ai_rule').select('ai_rule_unit').limit(1).single()
+      // Determine which AI rule to fetch based on help type
+      let ruleColumn = 'ai_rule_unit'
+      if (helpType === 'inquiryQuestion') {
+        ruleColumn = 'ai_rule_inquiry_question'
+      } else if (helpType === 'keyConcept') {
+        ruleColumn = 'ai_rule_key_concept'
+      } else if (helpType === 'relatedConcept') {
+        ruleColumn = 'ai_rule_related_concept'
+      } else if (helpType === 'globalContext') {
+        ruleColumn = 'ai_rule_global_context'
+      } else if (helpType === 'statement') {
+        ruleColumn = 'ai_rule_statement'
+      } else if (helpType === 'learnerProfile') {
+        ruleColumn = 'ai_rule_learner_profile'
+      } else if (helpType === 'serviceLearning') {
+        ruleColumn = 'ai_rule_service_learning'
+      }
+      
+      const { data: rule, error: rErr } = await supabase.from('ai_rule').select(ruleColumn).limit(1).single()
       if (rErr) throw new Error(rErr.message)
       
-      const context = rule?.ai_rule_unit || ''
-      const bahasaMap = { en: 'Inggris', id: 'Indonesia', zh: 'Mandarin' }
-      const selected = bahasaMap[aiLang] || 'Indonesia'
+      const context = rule?.[ruleColumn] || ''
+      const bahasaMap = { en: 'English', id: 'Indonesia', zh: 'Mandarin' }
+      const selected = bahasaMap[aiLang] || 'English'
       
       const subj = subjects.find(s => String(s.subject_id) === String(selectedTopic?.topic_subject_id))
-      const subjName = subj?.subject_name || ''
-      const kelasName = kelasNameMap.get(parseInt(selectedTopic?.topic_kelas_id)) || ''
+      const subjName = subj?.subject_name || 'Belum dipilih'
+      const kelasName = kelasNameMap.get(parseInt(selectedTopic?.topic_kelas_id)) || 'Belum dipilih'
       
-      const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nKelas: ${kelasName}\nTopik yang ingin dibahas: ${aiUserInput.trim()}\n\nBuatkan beberapa usulan Unit Title yang relevan dengan topik tersebut. Mohon jawab dalam bahasa ${selected}.`
+      let promptWithLang = ''
+      
+      if (helpType === 'relatedConcept') {
+        // Prompt for Related Concept
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Subject: ${subjName}
+- Grade/Class: ${kelasName}
+
+INSTRUCTIONS:
+Based on the unit title "${unitTitle}" for the subject "${subjName}" at grade "${kelasName}", suggest 3 most relevant Related Concepts.
+
+Related Concepts are subject-specific concepts that deepen understanding within a particular discipline. They are more specific than Key Concepts and directly relate to the subject being taught.
+
+For each suggested Related Concept, provide:
+- The concept name (option)
+- A brief explanation of the concept (text)
+- Why this concept is relevant to the unit (reason)
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Related Concept name",
+      "text": "Brief explanation of this concept in the context of ${subjName}",
+      "reason": "Why this concept is relevant to '${unitTitle}' for ${kelasName} students"
+    },
+    {
+      "option": "Related Concept name",
+      "text": "Brief explanation of this concept",
+      "reason": "Why this concept is relevant to the unit"
+    },
+    {
+      "option": "Related Concept name",
+      "text": "Brief explanation of this concept",
+      "reason": "Why this concept is relevant to the unit"
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format.`
+      } else if (helpType === 'statement') {
+        // Prompt for Statement of Inquiry
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Key Concepts: ${keyConcept}
+- Related Concepts: ${relatedConcept}
+- Global Context: ${globalContext}
+- Subject: ${subjName}
+
+INSTRUCTIONS:
+Based on the information above, generate 3 Statement of Inquiry suggestions that integrate the Key Concepts, Related Concepts, and Global Context.
+
+A Statement of Inquiry should:
+- Be a clear, concise statement (1-2 sentences)
+- Integrate Key Concept + Related Concept + Global Context
+- Guide the entire unit's learning
+- Be transferable and conceptual
+
+For each suggested Statement of Inquiry, provide:
+- The complete statement (option)
+- How it integrates the concepts and context (text)
+- Why this statement is effective for the unit (reason)
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Complete Statement of Inquiry text",
+      "text": "Explanation of how it integrates Key Concept '${keyConcept}' + Related Concept '${relatedConcept}' + Global Context '${globalContext}'",
+      "reason": "Why this statement effectively guides learning for the unit '${unitTitle}'"
+    },
+    {
+      "option": "Complete Statement of Inquiry text",
+      "text": "Explanation of how it integrates the concepts and context",
+      "reason": "Why this statement is effective"
+    },
+    {
+      "option": "Complete Statement of Inquiry text",
+      "text": "Explanation of how it integrates the concepts and context",
+      "reason": "Why this statement is effective"
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format.`
+      } else if (helpType === 'globalContext') {
+        // Prompt for Global Context
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Key Concepts: ${keyConcept}
+- Subject: ${subjName}
+
+INSTRUCTIONS:
+Based on the unit title "${unitTitle}" and key concepts "${keyConcept}" for the subject "${subjName}", suggest 2-3 most relevant IB MYP Global Contexts from the following 6 contexts:
+
+1. Identities and relationships
+2. Orientation in space and time
+3. Personal and cultural expression
+4. Scientific and technical innovation
+5. Globalization and sustainability
+6. Fairness and development
+
+For each suggested Global Context, provide:
+- The context name (option)
+- A brief description connecting it to the unit (text)
+- Why this context is relevant to the unit (reason)
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Global Context name",
+      "text": "Brief description connecting to the unit",
+      "reason": "Why this context is relevant to '${unitTitle}' with key concepts '${keyConcept}'"
+    },
+    {
+      "option": "Global Context name",
+      "text": "Brief description connecting to the unit",
+      "reason": "Why this context is relevant to '${unitTitle}' with key concepts '${keyConcept}'"
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format.`
+      } else if (helpType === 'keyConcept') {
+        // Prompt for Key Concept
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Subject: ${subjName}
+
+INSTRUCTIONS:
+Based on the unit title "${unitTitle}" for the subject "${subjName}", suggest 3 most relevant IB MYP Key Concepts from the following 16 concepts:
+
+Aesthetics, Change, Communication, Communities, Connections, Creativity, Culture, Development, Form, Global interactions, Identity, Logic, Perspective, Relationships, Systems, Time place and space
+
+For each suggested Key Concept, provide:
+- The concept name (option)
+- A brief description of what the concept means (text)
+- Why this concept is relevant to the unit (reason)
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Key Concept name",
+      "text": "Brief description of the concept",
+      "reason": "Why this concept is relevant to the unit '${unitTitle}'"
+    },
+    {
+      "option": "Key Concept name",
+      "text": "Brief description of the concept",
+      "reason": "Why this concept is relevant to the unit '${unitTitle}'"
+    },
+    {
+      "option": "Key Concept name",
+      "text": "Brief description of the concept",
+      "reason": "Why this concept is relevant to the unit '${unitTitle}'"
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format.`
+      } else if (helpType === 'inquiryQuestion') {
+        // Prompt for Inquiry Question
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Subject: ${subjName}
+- Class: ${kelasName}
+- Unit Title: ${unitTitle}
+- Additional context from teacher: ${aiUserInput.trim()}
+
+INSTRUCTIONS:
+Based on the context above, generate inquiry questions in THREE categories (Factual, Conceptual, and Debatable) for the subject "${subjName}" at ${kelasName} level with unit title "${unitTitle}". 
+
+Follow IB MYP inquiry framework:
+- **Factual questions**: Questions that elicit facts and test knowledge/comprehension (What? When? Where? Who?)
+- **Conceptual questions**: Questions that require analysis, synthesis, and understanding of concepts (Why? How? What if?)
+- **Debatable questions**: Questions that are open-ended, provocative, and require evaluation and judgment (To what extent? Should? Is it justified?)
+
+Generate 3 questions for EACH category (total 9 questions).
+
+JSON FORMAT:
+{
+  "inquiry_questions": {
+    "factual": {
+      "question_1": "First factual question...",
+      "question_2": "Second factual question...",
+      "question_3": "Third factual question..."
+    },
+    "conceptual": {
+      "question_1": "First conceptual question...",
+      "question_2": "Second conceptual question...",
+      "question_3": "Third conceptual question..."
+    },
+    "debatable": {
+      "question_1": "First debatable question...",
+      "question_2": "Second debatable question...",
+      "question_3": "Third debatable question..."
+    }
+  }
+}
+
+Please respond in ${selected} language and ensure valid JSON format.`
+      } else if (helpType === 'learnerProfile') {
+        // Prompt for Learner Profile
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Key Concepts: ${keyConcept}
+- Related Concepts: ${relatedConcept}
+- Global Context: ${globalContext}
+- Subject: ${subjName}
+- Grade/Class: ${kelasName}
+
+INSTRUCTIONS:
+Based on the information above, suggest 2-3 most relevant IB Learner Profile attributes that students will develop through this unit.
+
+The 10 IB Learner Profile attributes are:
+1. Inquirers - They develop their natural curiosity and acquire skills for inquiry and research
+2. Knowledgeable - They explore concepts and ideas, and engage with issues of local and global significance
+3. Thinkers - They exercise initiative in applying thinking skills critically and creatively
+4. Communicators - They express themselves confidently and creatively in multiple ways
+5. Principled - They act with integrity and honesty, with a strong sense of fairness and justice
+6. Open-minded - They understand and appreciate their own cultures and personal histories, and are open to perspectives of others
+7. Caring - They show empathy, compassion and respect towards the needs and feelings of others
+8. Risk-takers - They approach unfamiliar situations and uncertainty with courage
+9. Balanced - They understand the importance of intellectual, physical and emotional balance
+10. Reflective - They give thoughtful consideration to their own learning and experience
+
+For each suggested Learner Profile attribute, provide:
+- The attribute name (option) - choose from the 10 above
+- How this attribute will be developed through the unit (text)
+- Why this attribute is particularly relevant to the unit's context (reason)
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Learner Profile attribute name",
+      "text": "Explanation of how this attribute will be developed through '${unitTitle}' with focus on '${keyConcept}' and '${relatedConcept}' in the context of '${globalContext}'",
+      "reason": "Why this attribute is particularly relevant to this unit in ${subjName} for ${kelasName}"
+    },
+    {
+      "option": "Learner Profile attribute name",
+      "text": "Explanation of how this attribute will be developed through the unit",
+      "reason": "Why this attribute is particularly relevant to this unit"
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format.`
+      } else if (helpType === 'serviceLearning') {
+        // Prompt for Service Learning
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Key Concepts: ${keyConcept}
+- Related Concepts: ${relatedConcept}
+- Global Context: ${globalContext}
+- Subject: ${subjName}
+- Grade/Class: ${kelasName}
+
+INSTRUCTIONS:
+Based on the information above, suggest 2-3 meaningful Service Learning opportunities that students can engage in to apply their learning in real-world contexts.
+
+Service Learning should:
+- Connect to the unit's Key Concepts, Related Concepts, and Global Context
+- Address a genuine community need or issue
+- Provide opportunities for students to apply subject knowledge
+- Promote reflection and deeper understanding
+- Be age-appropriate for ${kelasName} students
+
+For each Service Learning suggestion, provide:
+- A concise title/description of the service activity (option)
+- How this service connects to the unit's concepts and context (text)
+- Why this service learning opportunity is meaningful for students (reason)
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Brief title/description of service learning activity",
+      "text": "Explanation of how this service connects to '${keyConcept}', '${relatedConcept}', and '${globalContext}' in the context of '${unitTitle}'",
+      "reason": "Why this service learning is meaningful and appropriate for ${kelasName} students in ${subjName}"
+    },
+    {
+      "option": "Brief title/description of service learning activity",
+      "text": "Explanation of how this service connects to the unit's concepts and context",
+      "reason": "Why this service learning is meaningful and appropriate"
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format.`
+      } else {
+        // Prompt for Unit Title
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Subject: ${subjName}
+- Class: ${kelasName}
+- Topic to discuss: ${aiUserInput.trim()}
+
+INSTRUCTIONS:
+Based on the context above, generate 3 Unit Title suggestions that are appropriate for the subject "${subjName}" at ${kelasName} level. Ensure the unit titles are relevant to the topic discussed and match the characteristics of the subject.
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "unit title suggestion 1",
+      "text": "brief description explaining unit focus",
+      "reason": "why this title is suitable for ${subjName} in ${kelasName}"
+    },
+    {
+      "option": "unit title suggestion 2",
+      "text": "brief description explaining unit focus",
+      "reason": "why this title is suitable for ${subjName} in ${kelasName}"
+    },
+    {
+      "option": "unit title suggestion 3",
+      "text": "brief description explaining unit focus",
+      "reason": "why this title is suitable for ${subjName} in ${kelasName}"
+    }
+  ]
+}
+
+Please respond in ${selected} language and ensure valid JSON format.`
+      }
+      
+      // DEBUG: Log the prompt to console
+      console.log('🤖 AI Prompt yang dikirim:')
+      console.log('─────────────────────────────────────')
+      console.log('📚 Subject:', subjName)
+      console.log('🎓 Kelas:', kelasName)
+      console.log('💭 User Input:', aiUserInput.trim())
+      console.log('🌐 Bahasa:', selected)
+      console.log('─────────────────────────────────────')
+      console.log('Full Prompt:')
+      console.log(promptWithLang)
+      console.log('─────────────────────────────────────')
       
       const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
       const resp = await fetch('/api/gemini', {
@@ -449,26 +823,99 @@ export default function TopicNewPage() {
       
       const text = json?.text || ''
       
+      // DEBUG: Log AI response
+      console.log('🤖 AI Response:')
+      console.log('─────────────────────────────────────')
+      console.log(text)
+      console.log('─────────────────────────────────────')
+      
       // Parse AI response
       let items = []
       try {
-        const parsed = JSON.parse(text)
-        if (parsed && Array.isArray(parsed.jawaban)) {
+        // Try to parse as JSON first
+        let parsed
+        try {
+          parsed = JSON.parse(text)
+        } catch (jsonErr) {
+          // Try to extract JSON from text that might have markdown code blocks
+          const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/```\s*([\s\S]*?)\s*```/)
+          if (jsonMatch) {
+            parsed = JSON.parse(jsonMatch[1])
+          } else {
+            // Try to find JSON object in text (support both formats)
+            const objMatch = text.match(/\{[\s\S]*("jawaban"|"inquiry_questions")[\s\S]*\}/)
+            if (objMatch) {
+              parsed = JSON.parse(objMatch[0])
+            }
+          }
+        }
+        
+        // Handle inquiry_questions format (new format)
+        if (parsed && parsed.inquiry_questions) {
+          const iq = parsed.inquiry_questions
+          items = []
+          let idx = 1
+          
+          // Factual questions
+          if (iq.factual) {
+            Object.entries(iq.factual).forEach(([key, question]) => {
+              items.push({
+                index: idx++,
+                category: 'Factual',
+                option: question.toString().trim(),
+                text: 'A factual question that tests knowledge and comprehension',
+                reason: 'Helps students recall and understand basic facts and information'
+              })
+            })
+          }
+          
+          // Conceptual questions
+          if (iq.conceptual) {
+            Object.entries(iq.conceptual).forEach(([key, question]) => {
+              items.push({
+                index: idx++,
+                category: 'Conceptual',
+                option: question.toString().trim(),
+                text: 'A conceptual question that requires analysis and synthesis',
+                reason: 'Encourages students to understand deeper concepts and relationships'
+              })
+            })
+          }
+          
+          // Debatable questions
+          if (iq.debatable) {
+            Object.entries(iq.debatable).forEach(([key, question]) => {
+              items.push({
+                index: idx++,
+                category: 'Debatable',
+                option: question.toString().trim(),
+                text: 'A debatable question that requires evaluation and judgment',
+                reason: 'Promotes critical thinking and justification of perspectives'
+              })
+            })
+          }
+          
+          console.log('✅ Parsed inquiry questions:', items)
+        }
+        // Handle jawaban format (old format for unit titles)
+        else if (parsed && Array.isArray(parsed.jawaban)) {
           items = parsed.jawaban.map((a, idx) => ({
             index: idx + 1,
-            opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
-            isi: (a?.isi ?? a?.text ?? '').toString().trim(),
+            option: (a?.option ?? '').toString().trim(),
+            text: (a?.text ?? '').toString().trim(),
             reason: (a?.reason ?? '').toString().trim(),
           }))
+          console.log('✅ Parsed JSON items:', items)
         }
       } catch (e) {
+        console.warn('⚠️ Failed to parse as JSON, falling back to numbered list', e)
         // Parse as numbered list
         const lines = text.split(/\r?\n/).filter(l => l.trim())
         items = lines
           .map(line => {
             const match = line.match(/^(\d+)[.)\s]+(.*)$/)
             if (match) {
-              return { index: parseInt(match[1]), text: match[2].trim() }
+              return { index: parseInt(match[1]), text: match[2].trim(), option: match[2].trim(), reason: '' }
             }
             return null
           })
@@ -484,11 +931,361 @@ export default function TopicNewPage() {
     }
   }
   
-  const insertAiTitle = (txt) => {
+  const insertAiSuggestion = (txt) => {
     if (!txt) return
     const firstLine = String(txt).split(/\r?\n/)[0].replace(/\*\*/g, '').trim()
-    setSelectedTopic(prev => ({ ...prev, topic_nama: firstLine }))
+    
+    if (aiHelpType === 'inquiryQuestion') {
+      setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: firstLine }))
+    } else {
+      setSelectedTopic(prev => ({ ...prev, topic_nama: firstLine }))
+    }
+    
     setAiResultModalOpen(false)
+  }
+  
+  // Toggle checkbox for inquiry question selection
+  const toggleInquiryQuestion = (index) => {
+    const scrollContainer = aiScrollRef.current
+    if (!scrollContainer) return
+    
+    const currentScrollPos = scrollContainer.scrollTop
+    const scrollElem = scrollContainer
+    
+    setSelectedInquiryQuestions(prev => {
+      const newVal = prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+      
+      // Force scroll restore in next tick
+      Promise.resolve().then(() => {
+        scrollElem.scrollTop = currentScrollPos
+        setTimeout(() => scrollElem.scrollTop = currentScrollPos, 0)
+        requestAnimationFrame(() => scrollElem.scrollTop = currentScrollPos)
+      })
+      
+      return newVal
+    })
+  }
+  
+  // Toggle checkbox for key concept selection
+  const toggleKeyConcept = (index) => {
+    const scrollContainer = aiScrollRef.current
+    if (!scrollContainer) return
+    
+    const currentScrollPos = scrollContainer.scrollTop
+    const scrollElem = scrollContainer
+    
+    setSelectedKeyConcepts(prev => {
+      const newVal = prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+      
+      // Force scroll restore in next tick
+      Promise.resolve().then(() => {
+        scrollElem.scrollTop = currentScrollPos
+        setTimeout(() => scrollElem.scrollTop = currentScrollPos, 0)
+        requestAnimationFrame(() => scrollElem.scrollTop = currentScrollPos)
+      })
+      
+      return newVal
+    })
+  }
+  
+  // Toggle checkbox for related concept selection
+  const toggleRelatedConcept = (index) => {
+    const scrollContainer = aiScrollRef.current
+    if (!scrollContainer) return
+    
+    const currentScrollPos = scrollContainer.scrollTop
+    const scrollElem = scrollContainer
+    
+    setSelectedRelatedConcepts(prev => {
+      const newVal = prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+      
+      // Force scroll restore in next tick
+      Promise.resolve().then(() => {
+        scrollElem.scrollTop = currentScrollPos
+        setTimeout(() => scrollElem.scrollTop = currentScrollPos, 0)
+        requestAnimationFrame(() => scrollElem.scrollTop = currentScrollPos)
+      })
+      
+      return newVal
+    })
+  }
+  
+  // Toggle checkbox for global context selection
+  const toggleGlobalContext = (index) => {
+    const scrollContainer = aiScrollRef.current
+    if (!scrollContainer) return
+    
+    const currentScrollPos = scrollContainer.scrollTop
+    const scrollElem = scrollContainer
+    
+    setSelectedGlobalContexts(prev => {
+      const newVal = prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+      
+      // Force scroll restore in next tick
+      Promise.resolve().then(() => {
+        scrollElem.scrollTop = currentScrollPos
+        setTimeout(() => scrollElem.scrollTop = currentScrollPos, 0)
+        requestAnimationFrame(() => scrollElem.scrollTop = currentScrollPos)
+      })
+      
+      return newVal
+    })
+  }
+  
+  // Toggle checkbox for statement selection (single select only)
+  const toggleStatement = (index) => {
+    const scrollContainer = aiScrollRef.current
+    if (!scrollContainer) return
+    
+    const currentScrollPos = scrollContainer.scrollTop
+    const scrollElem = scrollContainer
+    
+    setSelectedStatements(prev => {
+      // Single select: if already selected, deselect. Otherwise, replace with new selection
+      const newVal = prev.includes(index) ? [] : [index]
+      
+      // Force scroll restore in next tick
+      Promise.resolve().then(() => {
+        scrollElem.scrollTop = currentScrollPos
+        setTimeout(() => scrollElem.scrollTop = currentScrollPos, 0)
+        requestAnimationFrame(() => scrollElem.scrollTop = currentScrollPos)
+      })
+      
+      return newVal
+    })
+  }
+  
+  // Toggle checkbox for learner profile selection
+  const toggleLearnerProfile = (index) => {
+    const scrollContainer = aiScrollRef.current
+    if (!scrollContainer) return
+    
+    const currentScrollPos = scrollContainer.scrollTop
+    const scrollElem = scrollContainer
+    
+    setSelectedLearnerProfiles(prev => {
+      const newVal = prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+      
+      // Force scroll restore in next tick
+      Promise.resolve().then(() => {
+        scrollElem.scrollTop = currentScrollPos
+        setTimeout(() => scrollElem.scrollTop = currentScrollPos, 0)
+        requestAnimationFrame(() => scrollElem.scrollTop = currentScrollPos)
+      })
+      
+      return newVal
+    })
+  }
+  
+  // Apply selected statement of inquiry
+  const applySelectedStatements = () => {
+    // Clear previous errors
+    setAiError('')
+    
+    if (selectedStatements.length === 0) {
+      setAiError('⚠️ Please select one statement of inquiry.')
+      return
+    }
+    
+    // Get selected statement
+    const selectedItems = aiItems.filter(item => selectedStatements.includes(item.index))
+    const statementText = selectedItems[0].option // Only take the first one
+    
+    setSelectedTopic(prev => ({ ...prev, topic_statement: statementText }))
+    setAiResultModalOpen(false)
+    setSelectedStatements([])
+    setAiError('')
+  }
+  
+  // Apply selected global contexts
+  const applySelectedGlobalContexts = () => {
+    // Clear previous errors
+    setAiError('')
+    
+    if (selectedGlobalContexts.length === 0) {
+      setAiError('⚠️ Please select at least one global context.')
+      return
+    }
+    
+    // Get selected context names
+    const selectedItems = aiItems.filter(item => selectedGlobalContexts.includes(item.index))
+    const contextNames = selectedItems.map(item => item.option).join(', ')
+    
+    setSelectedTopic(prev => ({ ...prev, topic_global_context: contextNames }))
+    setAiResultModalOpen(false)
+    setSelectedGlobalContexts([])
+    setAiError('')
+  }
+  
+  // Apply selected key concepts
+  const applySelectedKeyConcepts = () => {
+    // Clear previous errors
+    setAiError('')
+    
+    if (selectedKeyConcepts.length === 0) {
+      setAiError('⚠️ Please select at least one key concept.')
+      return
+    }
+    
+    // Get selected concept names
+    const selectedItems = aiItems.filter(item => selectedKeyConcepts.includes(item.index))
+    const conceptNames = selectedItems.map(item => item.option).join(', ')
+    
+    setSelectedTopic(prev => ({ ...prev, topic_key_concept: conceptNames }))
+    setAiResultModalOpen(false)
+    setSelectedKeyConcepts([])
+    setAiError('')
+  }
+  
+  // Apply selected related concepts
+  const applySelectedRelatedConcepts = () => {
+    setAiError('')
+    
+    if (selectedRelatedConcepts.length === 0) {
+      setAiError('⚠️ Please select at least one related concept.')
+      return
+    }
+    
+    // Get all selected concept names and join with comma
+    const selectedItems = aiItems.filter(item => selectedRelatedConcepts.includes(item.index))
+    const conceptNames = selectedItems.map(item => item.option).join(', ')
+    
+    setSelectedTopic(prev => ({ ...prev, topic_related_concept: conceptNames }))
+    setAiResultModalOpen(false)
+    setSelectedRelatedConcepts([])
+    setAiError('')
+  }
+  
+  // Apply selected learner profiles
+  const applySelectedLearnerProfiles = () => {
+    setAiError('')
+    
+    if (selectedLearnerProfiles.length === 0) {
+      setAiError('⚠️ Please select at least one learner profile attribute.')
+      return
+    }
+    
+    // Normalize function to match exact learner profile names
+    const normalizeLearnerProfile = (name) => {
+      const normalized = name.trim()
+      // Case-insensitive match with learnerProfiles array
+      const match = learnerProfiles.find(
+        profile => profile.toLowerCase() === normalized.toLowerCase()
+      )
+      return match || normalized
+    }
+    
+    // Get all selected profile names, normalize them, and join with comma
+    const selectedItems = aiItems.filter(item => selectedLearnerProfiles.includes(item.index))
+    const profileNames = selectedItems
+      .map(item => normalizeLearnerProfile(item.option))
+      .join(', ')
+    
+    setSelectedTopic(prev => ({ ...prev, topic_learner_profile: profileNames }))
+    setAiResultModalOpen(false)
+    setSelectedLearnerProfiles([])
+    setAiError('')
+  }
+  
+  // Toggle checkbox for service learning selection (single select only)
+  const toggleServiceLearning = (index) => {
+    const scrollContainer = aiScrollRef.current
+    if (!scrollContainer) return
+    
+    const currentScrollPos = scrollContainer.scrollTop
+    const scrollElem = scrollContainer
+    
+    setSelectedServiceLearning(prev => {
+      // Single select: if already selected, deselect. Otherwise, replace with new selection
+      const newVal = prev.includes(index) ? [] : [index]
+      
+      // Force scroll restore in next tick
+      Promise.resolve().then(() => {
+        scrollElem.scrollTop = currentScrollPos
+        setTimeout(() => scrollElem.scrollTop = currentScrollPos, 0)
+        requestAnimationFrame(() => scrollElem.scrollTop = currentScrollPos)
+      })
+      
+      return newVal
+    })
+  }
+  
+  // Apply selected service learning
+  const applySelectedServiceLearning = () => {
+    setAiError('')
+    
+    if (selectedServiceLearning.length === 0) {
+      setAiError('⚠️ Please select one service learning option.')
+      return
+    }
+    
+    // Get all selected service learning options and join with comma
+    const selectedItems = aiItems.filter(item => selectedServiceLearning.includes(item.index))
+    const serviceLearningText = selectedItems.map(item => item.option).join(', ')
+    
+    setSelectedTopic(prev => ({ ...prev, topic_service_learning: serviceLearningText }))
+    setAiResultModalOpen(false)
+    setSelectedServiceLearning([])
+    setAiError('')
+  }
+  
+  // Apply selected inquiry questions
+  const applySelectedInquiryQuestions = () => {
+    // Clear previous errors
+    setAiError('')
+    
+    if (selectedInquiryQuestions.length === 0) {
+      setAiError('⚠️ Please select at least one question from each category before applying.')
+      return
+    }
+    
+    // Validate at least 1 from each category
+    const selectedItems = aiItems.filter(item => selectedInquiryQuestions.includes(item.index))
+    const hasFactual = selectedItems.some(item => item.category === 'Factual')
+    const hasConceptual = selectedItems.some(item => item.category === 'Conceptual')
+    const hasDebatable = selectedItems.some(item => item.category === 'Debatable')
+    
+    if (!hasFactual || !hasConceptual || !hasDebatable) {
+      const missing = []
+      if (!hasFactual) missing.push('Factual')
+      if (!hasConceptual) missing.push('Conceptual')
+      if (!hasDebatable) missing.push('Debatable')
+      setAiError(`⚠️ Please select at least one question from: ${missing.join(', ')}`)
+      return
+    }
+    
+    // Combine selected questions
+    const factualQuestions = selectedItems
+      .filter(item => item.category === 'Factual')
+      .map(item => item.option)
+      .join('\n')
+    
+    const conceptualQuestions = selectedItems
+      .filter(item => item.category === 'Conceptual')
+      .map(item => item.option)
+      .join('\n')
+    
+    const debatableQuestions = selectedItems
+      .filter(item => item.category === 'Debatable')
+      .map(item => item.option)
+      .join('\n')
+    
+    const combinedText = `FACTUAL:\n${factualQuestions}\n\nCONCEPTUAL:\n${conceptualQuestions}\n\nDEBATABLE:\n${debatableQuestions}`
+    
+    setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: combinedText }))
+    setAiResultModalOpen(false)
+    setSelectedInquiryQuestions([])
+    setAiError('')
   }
   
   // Wizard navigation
@@ -683,14 +1480,14 @@ export default function TopicNewPage() {
                   <div className="mb-6 flex gap-4 items-end">
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Filter by Subject
+                        {t('topicNew.filters.subject')}
                       </label>
                       <select
                         value={filters.subject}
                         onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                       >
-                        <option value="">All Subjects</option>
+                        <option value="">{t('topicNew.filters.allSubjects')}</option>
                         {subjects.map(s => (
                           <option key={s.subject_id} value={s.subject_id}>
                             {s.subject_name}
@@ -700,13 +1497,13 @@ export default function TopicNewPage() {
                     </div>
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Search Topics
+                        {t('topicNew.filters.search')}
                       </label>
                       <input
                         type="text"
                         value={filters.search}
                         onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                        placeholder="Search by topic name..."
+                        placeholder={t('topicNew.filters.search')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                       />
                     </div>
@@ -721,7 +1518,7 @@ export default function TopicNewPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredTopics.length === 0 && (
                         <div className="col-span-full text-center py-12 text-gray-500">
-                          No topics found
+                          {t('topicNew.table.noUnits')}
                         </div>
                       )}
                       
@@ -879,15 +1676,16 @@ export default function TopicNewPage() {
       {/* Detail Modal with smooth animation */}
       {modalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 transition-opacity duration-300"
+          className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black bg-opacity-50 transition-opacity duration-300"
           onClick={() => setModalOpen(false)}
         >
-          <div className="w-full flex justify-center items-start gap-4" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full flex justify-center items-start gap-4 max-w-[1400px] mt-8" onClick={(e) => e.stopPropagation()}>
             <div 
-              className="bg-white rounded-lg shadow-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100"
+              className="bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100"
               style={{
                 animation: 'modalSlideIn 0.3s ease-out',
-                maxWidth: aiResultModalOpen ? 'calc(100% - 420px)' : undefined
+                width: (aiInputModalOpen || aiResultModalOpen) ? 'calc(100% - 420px)' : '900px',
+                maxWidth: (aiInputModalOpen || aiResultModalOpen) ? 'calc(100% - 420px)' : '900px'
               }}
             >
               {selectedTopic && (
@@ -899,8 +1697,8 @@ export default function TopicNewPage() {
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <h2 className="text-2xl font-bold text-gray-800">Create New Unit</h2>
-                          <p className="text-sm text-gray-500 mt-1">IB MYP Unit Planner</p>
+                          <h2 className="text-2xl font-bold text-gray-800">{t('topicNew.modal.addTitle')}</h2>
+                          <p className="text-sm text-gray-500 mt-1">{t('topicNew.title')}</p>
                         </div>
                         <button
                           onClick={() => {
@@ -1044,7 +1842,7 @@ export default function TopicNewPage() {
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                  Subject <span className="text-red-500">*</span>
+                                  {t('topicNew.fields.subject')} <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                   value={selectedTopic.topic_subject_id || ''}
@@ -1064,7 +1862,7 @@ export default function TopicNewPage() {
                                   }}
                                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                 >
-                                  <option value="">Select a subject...</option>
+                                  <option value="">{t('topicNew.fields.selectSubject')}</option>
                                   {subjects.map(subject => (
                                     <option key={subject.subject_id} value={subject.subject_id}>
                                       {subject.subject_name}
@@ -1074,7 +1872,7 @@ export default function TopicNewPage() {
                               </div>
                               <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                  Class <span className="text-red-500">*</span>
+                                  {t('topicNew.fields.class')} <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                   value={selectedTopic.topic_kelas_id || ''}
@@ -1100,7 +1898,7 @@ export default function TopicNewPage() {
                               <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Unit Title <span className="text-red-500">*</span>
                               </label>
-                              <div className="mb-2 flex flex-wrap gap-2">
+                              <div className="mb-2">
                                 <button 
                                   type="button" 
                                   onClick={() => openAiInputModal('en')}
@@ -1110,48 +1908,16 @@ export default function TopicNewPage() {
                                       ? 'border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 cursor-pointer'
                                       : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
                                   }`}
-                                  title={!selectedTopic.topic_subject_id ? 'Pilih subject terlebih dahulu' : ''}
+                                  title={!selectedTopic.topic_subject_id ? t('topicNew.messages.selectSubjectFirst') : ''}
                                 >
                                   <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
                                   </svg>
-                                  AI Help (EN)
-                                </button>
-                                <button 
-                                  type="button" 
-                                  onClick={() => openAiInputModal('id')}
-                                  disabled={!selectedTopic.topic_subject_id}
-                                  className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                                    selectedTopic.topic_subject_id
-                                      ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 cursor-pointer'
-                                      : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  }`}
-                                  title={!selectedTopic.topic_subject_id ? 'Pilih subject terlebih dahulu' : ''}
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                                  </svg>
-                                  AI Help (ID)
-                                </button>
-                                <button 
-                                  type="button" 
-                                  onClick={() => openAiInputModal('zh')}
-                                  disabled={!selectedTopic.topic_subject_id}
-                                  className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                                    selectedTopic.topic_subject_id
-                                      ? 'border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100 cursor-pointer'
-                                      : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  }`}
-                                  title={!selectedTopic.topic_subject_id ? 'Pilih subject terlebih dahulu' : ''}
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                                  </svg>
-                                  AI Help (ZH)
+                                  AI Help
                                 </button>
                               </div>
                               {!selectedTopic.topic_subject_id && (
-                                <p className="text-xs text-amber-600 mb-2">⚠️ Pilih subject terlebih dahulu untuk menggunakan AI Help</p>
+                                <p className="text-xs text-amber-600 mb-2">⚠️ {t('topicNew.messages.selectSubjectFirst')}</p>
                               )}
                               <input
                                 type="text"
@@ -1212,6 +1978,27 @@ export default function TopicNewPage() {
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                               Inquiry Question <span className="text-red-500">*</span>
                             </label>
+                            <div className="mb-2">
+                              <button 
+                                type="button" 
+                                onClick={() => openAiInputModal('en', 'inquiryQuestion')}
+                                disabled={!isStepCompleted(0)}
+                                className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                  isStepCompleted(0)
+                                    ? 'border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 cursor-pointer'
+                                    : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
+                                title={!isStepCompleted(0) ? 'Complete all Step 1 fields first' : ''}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                </svg>
+                                AI Help
+                              </button>
+                            </div>
+                            {!isStepCompleted(0) && (
+                              <p className="text-xs text-amber-600 mb-2">⚠️ Complete all fields in Step 1 (Basic Information) first to use AI Help</p>
+                            )}
                             <textarea
                               value={selectedTopic.topic_inquiry_question || ''}
                               onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: e.target.value }))}
@@ -1226,9 +2013,38 @@ export default function TopicNewPage() {
                         {currentStep === 2 && (
                           <>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Key Concept <span className="text-red-500">*</span>
-                              </label>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                  Key Concept <span className="text-red-500">*</span>
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isStepCompleted(0)) {
+                                      setAiHelpType('keyConcept')
+                                      setAiError('')
+                                      setSelectedKeyConcepts([])
+                                      setAiResultModalOpen(false)
+                                      requestAiHelp('keyConcept')
+                                    }
+                                  }}
+                                  disabled={!isStepCompleted(0)}
+                                  title={!isStepCompleted(0) ? 'Complete Step 1 (Basic Information) first' : 'Get AI suggestions for Key Concepts'}
+                                  className={`text-xs px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border ${
+                                    isStepCompleted(0)
+                                      ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 cursor-pointer'
+                                      : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                                  }`}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                  </svg>
+                                  AI Help
+                                </button>
+                              </div>
+                              {!isStepCompleted(0) && (
+                                <p className="text-xs text-amber-600 mb-2">⚠️ Complete all fields in Step 1 (Basic Information) first to use AI Help</p>
+                              )}
                               <p className="text-xs text-gray-600 mb-3">Select 1-3 Key Concepts from the 16 IB MYP concepts</p>
                               <div className="flex flex-wrap gap-2">
                                 {keyConcepts.map((concept) => (
@@ -1265,9 +2081,38 @@ export default function TopicNewPage() {
                               )}
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Related Concept <span className="text-red-500">*</span>
-                              </label>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                  Related Concept <span className="text-red-500">*</span>
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isStepCompleted(0)) {
+                                      setAiHelpType('relatedConcept')
+                                      setAiError('')
+                                      setSelectedRelatedConcepts([])
+                                      setAiResultModalOpen(false)
+                                      requestAiHelp('relatedConcept')
+                                    }
+                                  }}
+                                  disabled={!isStepCompleted(0)}
+                                  title={!isStepCompleted(0) ? 'Complete Step 1 (Basic Information) first' : 'Get AI suggestions for Related Concepts'}
+                                  className={`text-xs px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border ${
+                                    isStepCompleted(0)
+                                      ? 'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200 cursor-pointer'
+                                      : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                                  }`}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                  </svg>
+                                  AI Help
+                                </button>
+                              </div>
+                              {!isStepCompleted(0) && (
+                                <p className="text-xs text-amber-600 mb-2">⚠️ Complete all fields in Step 1 (Basic Information) first to use AI Help</p>
+                              )}
                               <p className="text-xs text-gray-600 mb-2">Enter subject-specific concepts, separated by commas</p>
                               <textarea
                                 value={selectedTopic.topic_related_concept || ''}
@@ -1278,9 +2123,38 @@ export default function TopicNewPage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Global Context <span className="text-red-500">*</span>
-                              </label>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                  Global Context <span className="text-red-500">*</span>
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isStepCompleted(0)) {
+                                      setAiHelpType('globalContext')
+                                      setAiError('')
+                                      setSelectedGlobalContexts([])
+                                      setAiResultModalOpen(false)
+                                      requestAiHelp('globalContext')
+                                    }
+                                  }}
+                                  disabled={!isStepCompleted(0)}
+                                  title={!isStepCompleted(0) ? 'Complete Step 1 (Basic Information) first' : 'Get AI suggestions for Global Context'}
+                                  className={`text-xs px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border ${
+                                    isStepCompleted(0)
+                                      ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 cursor-pointer'
+                                      : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                                  }`}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                  </svg>
+                                  AI Help
+                                </button>
+                              </div>
+                              {!isStepCompleted(0) && (
+                                <p className="text-xs text-amber-600 mb-2">⚠️ Complete all fields in Step 1 (Basic Information) first to use AI Help</p>
+                              )}
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {globalContexts.map((context) => (
                                   <button
@@ -1315,9 +2189,42 @@ export default function TopicNewPage() {
                         {/* Step 3: Statement of Inquiry */}
                         {currentStep === 3 && (
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                              Statement of Inquiry <span className="text-red-500">*</span>
-                            </label>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Statement of Inquiry <span className="text-red-500">*</span>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const hasRequiredFields = selectedTopic.topic_key_concept && 
+                                                           selectedTopic.topic_related_concept && 
+                                                           selectedTopic.topic_global_context &&
+                                                           selectedTopic.topic_nama
+                                  if (hasRequiredFields) {
+                                    setAiHelpType('statement')
+                                    setAiError('')
+                                    setSelectedStatements([])
+                                    setAiResultModalOpen(false)
+                                    requestAiHelp('statement')
+                                  }
+                                }}
+                                disabled={!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context || !selectedTopic.topic_nama}
+                                title={(!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context || !selectedTopic.topic_nama) ? 'Complete Unit Title, Key Concept, Related Concept, and Global Context first' : 'Get AI suggestions for Statement of Inquiry'}
+                                className={`text-xs px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border ${
+                                  (selectedTopic.topic_key_concept && selectedTopic.topic_related_concept && selectedTopic.topic_global_context && selectedTopic.topic_nama)
+                                    ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 cursor-pointer'
+                                    : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                                }`}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                </svg>
+                                AI Help
+                              </button>
+                            </div>
+                            {(!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context || !selectedTopic.topic_nama) && (
+                              <p className="text-xs text-amber-600 mb-2">⚠️ Complete Unit Title, Key Concept, Related Concept, and Global Context first to use AI Help</p>
+                            )}
                             <textarea
                               value={selectedTopic.topic_statement || ''}
                               onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_statement: e.target.value }))}
@@ -1336,6 +2243,34 @@ export default function TopicNewPage() {
                                 Learner Profile Attributes <span className="text-red-500">*</span>
                               </label>
                               <p className="text-xs text-gray-600 mb-3">Select IB Learner Profile attributes students will develop</p>
+                              <div className="mb-2">
+                                <button 
+                                  type="button" 
+                                  onClick={() => {
+                                    if (!isStepCompleted(2)) return
+                                    setAiHelpType('learnerProfile')
+                                    setAiError('')
+                                    setSelectedLearnerProfiles([])
+                                    setAiResultModalOpen(false)
+                                    requestAiHelp('learnerProfile')
+                                  }}
+                                  disabled={!isStepCompleted(2)}
+                                  className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                    isStepCompleted(2)
+                                      ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer'
+                                      : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  }`}
+                                  title={!isStepCompleted(2) ? 'Complete all Step 3 fields first' : 'Get AI suggestions for Learner Profile'}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                  </svg>
+                                  AI Help
+                                </button>
+                              </div>
+                              {!isStepCompleted(2) && (
+                                <p className="text-xs text-amber-600 mb-2">⚠️ Complete all Step 3 fields first to use AI Help</p>
+                              )}
                               <div className="flex flex-wrap gap-2">
                                 {learnerProfiles.map((profile) => (
                                   <button
@@ -1374,70 +2309,40 @@ export default function TopicNewPage() {
                               <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Service Learning <span className="text-red-500">*</span>
                               </label>
+                              <div className="mb-2">
+                                <button 
+                                  type="button" 
+                                  onClick={() => {
+                                    if (!isStepCompleted(2)) return
+                                    setAiHelpType('serviceLearning')
+                                    setAiError('')
+                                    setSelectedServiceLearning([])
+                                    setAiResultModalOpen(false)
+                                    requestAiHelp('serviceLearning')
+                                  }}
+                                  disabled={!isStepCompleted(2)}
+                                  className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                    isStepCompleted(2)
+                                      ? 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 cursor-pointer'
+                                      : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  }`}
+                                  title={!isStepCompleted(2) ? 'Complete all Step 3 fields first' : 'Get AI suggestions for Service Learning'}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                  </svg>
+                                  AI Help
+                                </button>
+                              </div>
+                              {!isStepCompleted(2) && (
+                                <p className="text-xs text-amber-600 mb-2">⚠️ Complete all Step 3 fields first to use AI Help</p>
+                              )}
                               <textarea
                                 value={selectedTopic.topic_service_learning || ''}
                                 onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_service_learning: e.target.value }))}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                 rows={3}
                                 placeholder="e.g., Community energy audit project, raising awareness about renewable energy..."
-                              />
-                            </div>
-                          </>
-                        )}
-                        
-                        {/* Step 5: Learning Process */}
-                        {currentStep === 5 && (
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                              Learning Process <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                              value={selectedTopic.topic_learning_process || ''}
-                              onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_learning_process: e.target.value }))}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                              rows={6}
-                              placeholder="Describe learning activities, teaching strategies, differentiation approaches..."
-                            />
-                          </div>
-                        )}
-                        
-                        {/* Step 6: Assessment */}
-                        {currentStep === 6 && (
-                          <>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Formative Assessment <span className="text-red-500">*</span>
-                              </label>
-                              <textarea
-                                value={selectedTopic.topic_formative_assessment || ''}
-                                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_formative_assessment: e.target.value }))}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                rows={3}
-                                placeholder="e.g., Exit tickets, peer discussions, quizzes, observations..."
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Summative Assessment <span className="text-red-500">*</span>
-                              </label>
-                              <textarea
-                                value={selectedTopic.topic_summative_assessment || ''}
-                                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_summative_assessment: e.target.value }))}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                rows={4}
-                                placeholder="e.g., Research project, presentation, written report..."
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Relationship: Assessment & Statement of Inquiry <span className="text-red-500">*</span>
-                              </label>
-                              <textarea
-                                value={selectedTopic.topic_relationship_summative_assessment_statement_of_inquiry || ''}
-                                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_relationship_summative_assessment_statement_of_inquiry: e.target.value }))}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                rows={4}
-                                placeholder="Explain how the summative assessment relates to the Statement of Inquiry..."
                               />
                             </div>
                           </>
@@ -1699,7 +2604,26 @@ export default function TopicNewPage() {
 
                   {/* Key Concept */}
                   <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Key Concept</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-cyan-500">Key Concept</h3>
+                      {lang === 'en' && isStepCompleted(0) && (
+                        <button
+                          onClick={() => {
+                            setAiHelpType('keyConcept')
+                            setAiError('')
+                            setSelectedKeyConcepts([])
+                            setAiResultModalOpen(false)
+                            requestAiHelp('keyConcept')
+                          }}
+                          className="text-xs px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border border-purple-200"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                          </svg>
+                          AI Help
+                        </button>
+                      )}
+                    </div>
                     {(editingField === 'topic_key_concept') ? (
                       <div className="space-y-3">
                         <p className="text-xs text-gray-600">Select 1-3 concepts from the 16 IB MYP Key Concepts</p>
@@ -1765,7 +2689,26 @@ export default function TopicNewPage() {
 
                   {/* Related Concept */}
                   <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Related Concept</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-cyan-500">Related Concept</h3>
+                      {lang === 'en' && isStepCompleted(0) && (
+                        <button
+                          onClick={() => {
+                            setAiHelpType('relatedConcept')
+                            setAiError('')
+                            setSelectedRelatedConcepts([])
+                            setAiResultModalOpen(false)
+                            requestAiHelp('relatedConcept')
+                          }}
+                          className="text-xs px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border border-teal-200"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                          </svg>
+                          AI Help
+                        </button>
+                      )}
+                    </div>
                     {(editingField === 'topic_related_concept') ? (
                       <textarea
                         value={editValue}
@@ -1831,7 +2774,32 @@ export default function TopicNewPage() {
 
                   {/* Learner Profile */}
                   <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Learner Profile Attributes</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-cyan-500">Learner Profile Attributes</h3>
+                      {editingField !== 'topic_learner_profile' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!selectedTopic.topic_nama || !selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context) {
+                              alert('Please complete Unit Title, Key Concept, Related Concept, and Global Context first')
+                              return
+                            }
+                            setAiHelpType('learnerProfile')
+                            setAiError('')
+                            setSelectedLearnerProfiles([])
+                            setAiResultModalOpen(false)
+                            requestAiHelp('learnerProfile')
+                          }}
+                          className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                          title="Get AI suggestions for Learner Profile"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                          </svg>
+                          AI Help
+                        </button>
+                      )}
+                    </div>
                     {(editingField === 'topic_learner_profile') ? (
                       <div className="space-y-3">
                         <p className="text-xs text-gray-600">Select IB Learner Profile attributes students will develop</p>
@@ -1897,7 +2865,32 @@ export default function TopicNewPage() {
 
                   {/* Service Learning */}
                   <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Service Learning</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-cyan-500">Service Learning</h3>
+                      {editingField !== 'topic_service_learning' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!selectedTopic.topic_nama || !selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context) {
+                              alert('Please complete Unit Title, Key Concept, Related Concept, and Global Context first')
+                              return
+                            }
+                            setAiHelpType('serviceLearning')
+                            setAiError('')
+                            setSelectedServiceLearning([])
+                            setAiResultModalOpen(false)
+                            requestAiHelp('serviceLearning')
+                          }}
+                          className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition-colors"
+                          title="Get AI suggestions for Service Learning"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                          </svg>
+                          AI Help
+                        </button>
+                      )}
+                    </div>
                     {(editingField === 'topic_service_learning') ? (
                       <textarea
                         value={editValue}
@@ -2066,81 +3059,406 @@ export default function TopicNewPage() {
             )}
             </div>
 
-            {aiResultModalOpen && (
-              <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                <SlideOver
-                  isOpen={true}
-                  inline={true}
-                  onClose={() => setAiResultModalOpen(false)}
-                  title={`Saran Unit Title dari AI ${aiLang ? `(${aiLang.toUpperCase()})` : ''}`}
-                  size="md"
-                >
-                  <div className="flex flex-col h-full">
-                    <div className="flex-1 overflow-y-auto">
-                      {aiLoading && (
-                        <div className="flex items-center justify-center py-12">
-                          <FontAwesomeIcon icon={faSpinner} spin className="text-purple-600 text-3xl mr-3" />
-                          <span className="text-gray-600">Meminta saran dari AI...</span>
-                        </div>
-                      )}
-
-                      {aiError && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                          <p className="text-red-700">{aiError}</p>
-                        </div>
-                      )}
-
-                      {!aiLoading && !aiError && aiItems.length > 0 && (
-                        <div className="space-y-4">
-                          {aiItems.map((item) => {
-                            const hasJson = typeof item.isi === 'string' || typeof item.opsi === 'string'
-                            const preview = hasJson
-                              ? `${item.opsi || ''}${item.opsi && item.isi ? '\n\n' : ''}${item.isi || ''}${item.reason ? '\n\n' + item.reason : ''}`
-                              : item.text || ''
-                            const titleToUse = hasJson ? (item.isi || item.opsi || '') : (item.text || '')
-
-                            return (
-                              <div key={item.index} className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <span className="bg-purple-100 text-purple-700 font-semibold text-sm px-2.5 py-1 rounded-full">
-                                      Usulan {item.index}
-                                    </span>
-                                  </div>
-                                  <button
-                                    onClick={() => insertAiTitle(titleToUse)}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Gunakan
-                                  </button>
-                                </div>
-                                <pre className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed">{preview}</pre>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {!aiLoading && !aiError && aiItems.length === 0 && (
-                        <div className="text-center py-12 text-gray-500">
-                          <p>Tidak ada saran yang dihasilkan</p>
-                        </div>
-                      )}
+            {(aiInputModalOpen || aiResultModalOpen) && (
+              <div className="flex-shrink-0 h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                {aiInputModalOpen && !aiResultModalOpen && (
+                  <div className="bg-white rounded-2xl shadow-2xl h-full flex flex-col" style={{ width: '400px' }}>
+                    <div className="px-6 py-4 border-b border-gray-200 bg-purple-50 flex-shrink-0 rounded-t-2xl">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          {aiHelpType === 'inquiryQuestion' ? 'AI Help for Inquiry Question' : t('topicNew.aiHelp.title')}
+                        </h2>
+                        <button
+                          onClick={() => setAiInputModalOpen(false)}
+                          className="inline-flex items-center justify-center rounded-md p-2 text-gray-500 hover:bg-gray-100"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-
-                    <div className="mt-4 flex justify-end">
+                    <div className="px-6 py-4 space-y-4 flex-1 overflow-y-auto">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {aiHelpType === 'inquiryQuestion' 
+                            ? 'What aspects or angles do you want the inquiry question to explore?' 
+                            : t('topicNew.aiHelp.inputLabel')}
+                        </label>
+                        <textarea
+                          value={aiUserInput}
+                          onChange={(e) => {
+                            setAiUserInput(e.target.value)
+                            setAiError('')
+                          }}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                          rows={6}
+                          placeholder={aiHelpType === 'inquiryQuestion'
+                            ? 'Example: Focus on environmental impact, sustainability, real-world applications...'
+                            : t('topicNew.aiHelp.inputPlaceholder')}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {aiHelpType === 'inquiryQuestion'
+                            ? '💡 Describe the focus areas, themes, or perspectives you want students to explore through the inquiry question'
+                            : t('topicNew.aiHelp.inputHint')}
+                        </p>
+                        {aiError && (
+                          <p className="text-sm text-red-600 mt-2">{aiError}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-end gap-3 flex-shrink-0 rounded-b-2xl">
                       <button
-                        onClick={() => setAiResultModalOpen(false)}
-                        className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        onClick={() => setAiInputModalOpen(false)}
+                        className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
                       >
-                        Tutup
+                        {t('topicNew.buttons.cancel')}
+                      </button>
+                      <button
+                        onClick={() => requestAiHelp(aiHelpType)}
+                        className="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors inline-flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                        </svg>
+                        {t('topicNew.buttons.requestAiHelp')}
                       </button>
                     </div>
                   </div>
-                </SlideOver>
+                )}
+                
+                {aiResultModalOpen && (
+                  <SlideOver
+                    isOpen={true}
+                    inline={true}
+                    onClose={() => setAiResultModalOpen(false)}
+                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : 'AI Suggestions: Unit Title'}
+                    size="md"
+                  >
+                    <div className="flex flex-col h-full">
+                      <div 
+                        ref={aiScrollRef} 
+                        className="flex-1 overflow-y-auto p-4"
+                        style={{ 
+                          overflowAnchor: 'none', 
+                          scrollBehavior: 'auto',
+                          willChange: 'scroll-position'
+                        }}
+                      >
+                        {aiLoading && (
+                          <div className="flex flex-col items-center justify-center py-12 px-6">
+                            <FontAwesomeIcon icon={faSpinner} spin className="text-purple-600 text-4xl mb-4" />
+                            <p className="text-gray-800 font-semibold text-lg mb-2">{t('topicNew.aiHelp.loading')}</p>
+                            <p className="text-gray-500 text-sm text-center max-w-md">
+                              {t('topicNew.aiHelp.loadingMessage')}
+                            </p>
+                          </div>
+                        )}
+
+                        {!aiLoading && aiItems.length > 0 && (
+                          <div className="space-y-4">
+                            {aiItems.map((item) => {
+                              const titleToUse = item.option || item.text || ''
+
+                              return (
+                                <div 
+                                  key={item.index} 
+                                  className={`border rounded-lg p-4 transition-colors ${
+                                    (selectedInquiryQuestions.includes(item.index) && aiHelpType === 'inquiryQuestion') ||
+                                    (selectedKeyConcepts.includes(item.index) && aiHelpType === 'keyConcept') ||
+                                    (selectedRelatedConcepts.includes(item.index) && aiHelpType === 'relatedConcept') ||
+                                    (selectedGlobalContexts.includes(item.index) && aiHelpType === 'globalContext') ||
+                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning')
+                                      ? 'border-purple-500 bg-purple-50'
+                                      : 'border-gray-200 bg-white hover:border-purple-300'
+                                  }`}
+                                  onClick={(e) => {
+                                    // Prevent any click on card from scrolling
+                                    if (e.target.type !== 'checkbox') {
+                                      e.preventDefault()
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning') && (
+                                        <input
+                                          type="checkbox"
+                                          id={`ai-item-${item.index}`}
+                                          checked={aiHelpType === 'inquiryQuestion' 
+                                            ? selectedInquiryQuestions.includes(item.index)
+                                            : aiHelpType === 'keyConcept'
+                                            ? selectedKeyConcepts.includes(item.index)
+                                            : aiHelpType === 'relatedConcept'
+                                            ? selectedRelatedConcepts.includes(item.index)
+                                            : aiHelpType === 'globalContext'
+                                            ? selectedGlobalContexts.includes(item.index)
+                                            : aiHelpType === 'statement'
+                                            ? selectedStatements.includes(item.index)
+                                            : aiHelpType === 'learnerProfile'
+                                            ? selectedLearnerProfiles.includes(item.index)
+                                            : selectedServiceLearning.includes(item.index)}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            if (aiHelpType === 'inquiryQuestion') {
+                                              toggleInquiryQuestion(item.index)
+                                            } else if (aiHelpType === 'keyConcept') {
+                                              toggleKeyConcept(item.index)
+                                            } else if (aiHelpType === 'relatedConcept') {
+                                              toggleRelatedConcept(item.index)
+                                            } else if (aiHelpType === 'globalContext') {
+                                              toggleGlobalContext(item.index)
+                                            } else if (aiHelpType === 'statement') {
+                                              toggleStatement(item.index)
+                                            } else if (aiHelpType === 'learnerProfile') {
+                                              toggleLearnerProfile(item.index)
+                                            } else {
+                                              toggleServiceLearning(item.index)
+                                            }
+                                          }}
+                                          readOnly
+                                          className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                        />
+                                      )}
+                                      <span className="bg-purple-100 text-purple-700 font-semibold text-sm px-2.5 py-1 rounded-full">
+                                        {t('topicNew.aiHelp.suggestion', { index: item.index })}
+                                      </span>
+                                      {item.category && (
+                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                          item.category === 'Factual' ? 'bg-blue-100 text-blue-700' :
+                                          item.category === 'Conceptual' ? 'bg-amber-100 text-amber-700' :
+                                          'bg-rose-100 text-rose-700'
+                                        }`}>
+                                          {item.category}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && (
+                                      <button
+                                        onClick={() => insertAiSuggestion(titleToUse)}
+                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2 flex-shrink-0"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        {t('topicNew.buttons.useThis')}
+                                      </button>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Question or Title (option) */}
+                                  {item.option && (
+                                    <div className="mb-3">
+                                      <h4 className="text-base font-bold text-gray-900 mb-1">
+                                        {aiHelpType === 'inquiryQuestion' ? 'Question:' 
+                                          : aiHelpType === 'keyConcept' ? 'Key Concept:'
+                                          : aiHelpType === 'relatedConcept' ? 'Related Concept:'
+                                          : aiHelpType === 'globalContext' ? 'Global Context:'
+                                          : aiHelpType === 'statement' ? 'Statement of Inquiry:' : aiHelpType === 'learnerProfile' ? 'Learner Profile Attribute:' : aiHelpType === 'serviceLearning' ? 'Service Learning Opportunity:' : t('topicNew.aiHelp.unitTitleLabel')}
+                                      </h4>
+                                      <p className="text-gray-800 leading-relaxed">{item.option}</p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Description (text) */}
+                                  {item.text && (
+                                    <div className="mb-3">
+                                      <h4 className="text-sm font-semibold text-gray-700 mb-1">{t('topicNew.aiHelp.descriptionLabel')}</h4>
+                                      <p className="text-gray-700 text-sm leading-relaxed">{item.text}</p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Reason */}
+                                  {item.reason && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                                      <h4 className="text-sm font-semibold text-blue-900 mb-1 flex items-center gap-1">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                        {t('topicNew.aiHelp.reasonLabel')}
+                                      </h4>
+                                      <p className="text-blue-800 text-sm leading-relaxed">{item.reason}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {!aiLoading && !aiError && aiItems.length === 0 && (
+                          <div className="text-center py-12 text-gray-500">
+                            <p>Tidak ada saran yang dihasilkan</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning') && aiItems.length > 0 && !aiLoading && (
+                        <div className="border-t border-gray-200 bg-gray-50 p-4 flex-shrink-0">
+                          {aiError && (
+                            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+                              <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                              <span>{aiError}</span>
+                            </div>
+                          )}
+                          <div className="mb-3 text-sm">
+                            <p className="font-semibold text-gray-700 mb-2">Selection Summary:</p>
+                            {aiHelpType === 'inquiryQuestion' ? (
+                              <>
+                                <div className="flex flex-wrap gap-3">
+                                  {(() => {
+                                    const factualItems = aiItems.filter(i => i.category === 'Factual')
+                                    const conceptualItems = aiItems.filter(i => i.category === 'Conceptual')
+                                    const debatableItems = aiItems.filter(i => i.category === 'Debatable')
+                                    
+                                    const factualCount = factualItems.filter(i => selectedInquiryQuestions.includes(i.index)).length
+                                    const conceptualCount = conceptualItems.filter(i => selectedInquiryQuestions.includes(i.index)).length
+                                    const debatableCount = debatableItems.filter(i => selectedInquiryQuestions.includes(i.index)).length
+                                    
+                                    return (
+                                      <>
+                                        <span className={`px-3 py-1.5 rounded-lg border ${factualCount > 0 ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                          🔵 Factual: {factualCount}/3
+                                        </span>
+                                        <span className={`px-3 py-1.5 rounded-lg border ${conceptualCount > 0 ? 'bg-amber-50 border-amber-300 text-amber-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                          🟡 Conceptual: {conceptualCount}/3
+                                        </span>
+                                        <span className={`px-3 py-1.5 rounded-lg border ${debatableCount > 0 ? 'bg-rose-50 border-rose-300 text-rose-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                          🔴 Debatable: {debatableCount}/3
+                                        </span>
+                                      </>
+                                    )
+                                  })()}
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select at least 1 question from each category
+                                </p>
+                              </>
+                            ) : aiHelpType === 'keyConcept' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedKeyConcepts.length > 0 ? 'bg-purple-50 border-purple-300 text-purple-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedKeyConcepts.length} concept(s)
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select at least 1 key concept
+                                </p>
+                              </>
+                            ) : aiHelpType === 'relatedConcept' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedRelatedConcepts.length > 0 ? 'bg-teal-50 border-teal-300 text-teal-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedRelatedConcepts.length} concept(s)
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select at least 1 related concept
+                                </p>
+                              </>
+                            ) : aiHelpType === 'globalContext' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedGlobalContexts.length > 0 ? 'bg-cyan-50 border-cyan-300 text-cyan-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedGlobalContexts.length} context(s)
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select at least 1 global context
+                                </p>
+                              </>
+                            ) : aiHelpType === 'statement' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedStatements.length > 0 ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedStatements.length} statement
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select 1 statement of inquiry
+                                </p>
+                              </>
+                            ) : aiHelpType === 'learnerProfile' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedLearnerProfiles.length > 0 ? 'bg-green-50 border-green-300 text-green-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedLearnerProfiles.length} attribute(s)
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select at least 1 learner profile attribute
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedServiceLearning.length > 0 ? 'bg-cyan-50 border-cyan-300 text-cyan-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedServiceLearning.length} option
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select 1 service learning option
+                                </p>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex justify-end gap-3">
+                            <button
+                              onClick={() => setAiResultModalOpen(false)}
+                              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : applySelectedServiceLearning}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors inline-flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : 'Apply Selected Option'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {aiHelpType === 'unitTitle' && (
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            onClick={() => setAiResultModalOpen(false)}
+                            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </SlideOver>
+                )}
               </div>
             )}
           </div>
@@ -2173,64 +3491,7 @@ export default function TopicNewPage() {
         </div>
       )}
 
-      {/* AI Input Modal */}
-      {aiInputModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={() => setAiInputModalOpen(false)}>
-          <div 
-            className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-            style={{ animation: 'modalSlideIn 0.3s ease-out' }}
-          >
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">
-                AI Help untuk Unit Title {aiLang && `(${aiLang.toUpperCase()})`}
-              </h2>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Apa yang ingin dibahas dalam unit ini?
-                </label>
-                <textarea
-                  value={aiUserInput}
-                  onChange={(e) => {
-                    setAiUserInput(e.target.value)
-                    setAiError('')
-                  }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                  rows={4}
-                  placeholder="Contoh: Energi dan transformasinya dalam kehidupan sehari-hari, fokus pada energi terbarukan..."
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  💡 Jelaskan topik, konsep, atau konteks yang ingin Anda eksplorasi dalam unit ini
-                </p>
-                {aiError && (
-                  <p className="text-sm text-red-600 mt-2">{aiError}</p>
-                )}
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={() => setAiInputModalOpen(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={requestAiHelp}
-                className="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors inline-flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                </svg>
-                Minta Saran AI
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* AI Result SlideOver is now embedded beside the Add modal when open (handled inside modalOpen block) */}
+      {/* AI Input & Result modals are now embedded beside the main modal (handled inside modalOpen block) */}
 
       <style jsx>{`
         @keyframes modalSlideIn {

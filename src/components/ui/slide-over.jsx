@@ -38,7 +38,8 @@ const SlideOver = ({ isOpen, onClose, title, children, size = 'md', inline = fal
         role="dialog"
         aria-modal="true"
         aria-label={title || 'Assistant panel'}
-        className={`relative h-full ${sizeClasses[size]} bg-white shadow-2xl overflow-y-auto`}
+        className={`relative h-full bg-white shadow-2xl overflow-y-auto rounded-lg`}
+        style={{ width: '400px', maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-purple-50">

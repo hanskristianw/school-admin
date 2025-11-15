@@ -615,5 +615,166 @@
       "udpSaveError": "Gagal menyimpan UDP: ",
       "fillInstallments": "Isi jumlah cicilan dahulu"
     }
+  },
+  "topicNew": {
+    "title": "Perencana Unit IB MYP",
+    "tabs": {
+      "planning": "Perencanaan",
+      "teaching": "Sumber Pembelajaran",
+      "reflection": "Refleksi"
+    },
+    "filters": {
+      "subject": "Filter berdasarkan Mata Pelajaran",
+      "allSubjects": "Semua Mata Pelajaran",
+      "search": "Cari unit..."
+    },
+    "buttons": {
+      "addUnit": "Tambah Unit Baru",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "saveNewUnit": "Simpan Unit Baru",
+      "nextStep": "Langkah Berikutnya",
+      "previousStep": "Sebelumnya",
+      "useThis": "Gunakan",
+      "requestAiHelp": "Minta Saran AI"
+    },
+    "table": {
+      "subject": "Mata Pelajaran",
+      "unitTitle": "Judul Unit",
+      "class": "Kelas",
+      "duration": "Durasi",
+      "actions": "Aksi",
+      "noUnits": "Tidak ada unit ditemukan",
+      "weeks": "minggu"
+    },
+    "modal": {
+      "title": "Detail Unit",
+      "addTitle": "Buat Unit Baru",
+      "clickToEdit": "Klik untuk mengedit...",
+      "clickToAdd": "Klik untuk menambah...",
+      "completionProgress": "Progress Pengisian",
+      "stepsCompleted": "{completed} dari {total} langkah selesai"
+    },
+    "steps": {
+      "basic": {
+        "title": "Informasi Dasar",
+        "description": "Mulai dengan mendefinisikan judul unit dan durasi",
+        "guidance": "Pilih mata pelajaran dan kelas untuk unit ini. Dalam IB MYP, judul unit biasanya dibentuk sebagai pertanyaan menarik yang memicu penyelidikan dan eksplorasi (misal: 'Bagaimana energi membentuk dunia kita?'). Tetapkan nomor unit dan tentukan durasi (minggu dan jam per minggu)."
+      },
+      "inquiry": {
+        "title": "Pertanyaan Penyelidikan",
+        "description": "Tentukan pertanyaan utama yang mendorong penyelidikan siswa",
+        "guidance": "Pertanyaan penyelidikan harus terbuka, merangsang pemikiran, dan selaras dengan Pernyataan Penyelidikan. Ini memandu eksplorasi siswa sepanjang unit."
+      },
+      "concepts": {
+        "title": "Konsep Kunci & Terkait",
+        "description": "Identifikasi pemahaman konseptual untuk unit ini",
+        "guidance": "Konsep Kunci adalah 16 ide luas dan dapat ditransfer dalam IB MYP (pilih 1-3). Konsep Terkait bersifat spesifik mata pelajaran dan bervariasi menurut disiplin (masukkan sebagai dipisahkan koma). Konteks Global menghubungkan pembelajaran dengan isu dunia nyata yang melampaui batas mata pelajaran."
+      },
+      "statement": {
+        "title": "Pernyataan Penyelidikan",
+        "description": "Buat pernyataan yang mensintesis konsep dan konteks",
+        "guidance": "Pernyataan Penyelidikan mengintegrasikan Konsep Kunci + Konsep Terkait + Konteks Global ke dalam pernyataan jelas yang memandu seluruh unit."
+      },
+      "attributes": {
+        "title": "Profil Pembelajar & Layanan",
+        "description": "Tentukan atribut pembelajar IB dan peluang pembelajaran layanan",
+        "guidance": "Pilih atribut Profil Pembelajar IB (misal: Penyelidik, Pemikir, Komunikator) yang akan dikembangkan siswa. Identifikasi peluang untuk pembelajaran layanan dan aksi."
+      },
+      "learning": {
+        "title": "Proses Pembelajaran",
+        "description": "Uraikan bagaimana siswa akan belajar dan terlibat",
+        "guidance": "Jelaskan pengalaman belajar, aktivitas, dan strategi pengajaran. Sertakan strategi diferensiasi dan bagaimana siswa akan membangun pemahaman."
+      },
+      "assessment": {
+        "title": "Penilaian & Hubungan",
+        "description": "Rencanakan penilaian formatif dan sumatif",
+        "guidance": "Penilaian formatif memantau kemajuan pembelajaran. Penilaian sumatif mengevaluasi pencapaian. Jelaskan bagaimana penilaian sumatif berhubungan kembali dengan Pernyataan Penyelidikan."
+      }
+    },
+    "fields": {
+      "unitTitle": "Judul Unit",
+      "subject": "Mata Pelajaran",
+      "class": "Kelas",
+      "unitNumber": "Nomor Unit",
+      "duration": "Durasi (minggu)",
+      "hoursPerWeek": "Jam per Minggu",
+      "inquiryQuestion": "Pertanyaan Penyelidikan",
+      "keyConcept": "Konsep Kunci",
+      "relatedConcept": "Konsep Terkait",
+      "globalContext": "Konteks Global",
+      "statementOfInquiry": "Pernyataan Penyelidikan",
+      "learnerProfile": "Atribut Profil Pembelajar IB",
+      "serviceLearning": "Pembelajaran Layanan & Aksi",
+      "learningProcess": "Proses Pembelajaran",
+      "formativeAssessment": "Penilaian Formatif",
+      "summativeAssessment": "Penilaian Sumatif",
+      "assessmentRelationship": "Hubungan: Penilaian Sumatif ↔ Pernyataan Penyelidikan",
+      "selectSubject": "Pilih Mata Pelajaran",
+      "selectClass": "Pilih Kelas",
+      "selectKeyConcepts": "Pilih Konsep Kunci",
+      "selectLearnerProfile": "Pilih Atribut Profil Pembelajar",
+      "noClassesAvailable": "Tidak ada kelas tersedia untuk mata pelajaran ini"
+    },
+    "aiHelp": {
+      "title": "Bantuan AI untuk Judul Unit",
+      "inputLabel": "Apa yang ingin dibahas dalam unit ini?",
+      "inputPlaceholder": "Contoh: Energi dan transformasinya dalam kehidupan sehari-hari, fokus pada energi terbarukan...",
+      "inputHint": "💡 Jelaskan topik, konsep, atau konteks yang ingin Anda eksplorasi dalam unit ini",
+      "loading": "Meminta saran dari AI...",
+      "loadingMessage": "⏳ Mohon bersabar, proses ini memerlukan waktu beberapa detik untuk menganalisis konteks dan menghasilkan usulan yang relevan",
+      "resultsTitle": "Saran Judul Unit dari AI",
+      "suggestion": "Usulan {index}",
+      "unitTitleLabel": "Judul Unit:",
+      "descriptionLabel": "Deskripsi:",
+      "reasonLabel": "Alasan:",
+      "error": "Mohon masukkan topik atau konteks yang ingin dibahas",
+      "noResults": "Tidak ada saran tersedia"
+    },
+    "globalContexts": {
+      "identities": "Identitas dan hubungan",
+      "orientation": "Orientasi dalam ruang dan waktu",
+      "expression": "Ekspresi pribadi dan budaya",
+      "innovation": "Inovasi ilmiah dan teknis",
+      "globalization": "Globalisasi dan keberlanjutan",
+      "fairness": "Keadilan dan pembangunan"
+    },
+    "keyConcepts": {
+      "aesthetics": "Estetika",
+      "change": "Perubahan",
+      "communication": "Komunikasi",
+      "communities": "Komunitas",
+      "connections": "Koneksi",
+      "creativity": "Kreativitas",
+      "culture": "Budaya",
+      "development": "Pembangunan",
+      "form": "Bentuk",
+      "globalInteractions": "Interaksi global",
+      "identity": "Identitas",
+      "logic": "Logika",
+      "perspective": "Perspektif",
+      "relationships": "Hubungan",
+      "systems": "Sistem",
+      "timePlace": "Waktu, tempat dan ruang"
+    },
+    "learnerProfiles": {
+      "inquirers": "Penyelidik",
+      "knowledgeable": "Berpengetahuan",
+      "thinkers": "Pemikir",
+      "communicators": "Komunikator",
+      "principled": "Berprinsip",
+      "openMinded": "Berpikiran terbuka",
+      "caring": "Peduli",
+      "riskTakers": "Pengambil risiko",
+      "balanced": "Seimbang",
+      "reflective": "Reflektif"
+    },
+    "messages": {
+      "saveSuccess": "Unit berhasil disimpan",
+      "saveError": "Gagal menyimpan unit",
+      "deleteConfirm": "Apakah Anda yakin ingin menghapus unit ini?",
+      "enterUnitName": "Silakan masukkan nama unit",
+      "selectSubjectFirst": "Pilih mata pelajaran terlebih dahulu"
+    }
   }
 }

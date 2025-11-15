@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
+import AcademicIntegrityChatbot from '@/components/AcademicIntegrityChatbot'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -843,6 +844,9 @@ export default function Dashboard() {
           )}
         </div>
       </Modal>
+
+      {/* Academic Integrity Chatbot */}
+      <AcademicIntegrityChatbot />
     </div>
   )
 }

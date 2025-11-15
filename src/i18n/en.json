@@ -615,5 +615,166 @@
       "udpSaveError": "Failed to save UDP: ",
       "fillInstallments": "Fill installments count first"
     }
+  },
+  "topicNew": {
+    "title": "IB MYP Unit Planner",
+    "tabs": {
+      "planning": "Planning",
+      "teaching": "Teaching Resources",
+      "reflection": "Reflection"
+    },
+    "filters": {
+      "subject": "Filter by Subject",
+      "allSubjects": "All Subjects",
+      "search": "Search units..."
+    },
+    "buttons": {
+      "addUnit": "Add New Unit",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saveNewUnit": "Save New Unit",
+      "nextStep": "Next Step",
+      "previousStep": "Previous",
+      "useThis": "Use",
+      "requestAiHelp": "Request AI Help"
+    },
+    "table": {
+      "subject": "Subject",
+      "unitTitle": "Unit Title",
+      "class": "Class",
+      "duration": "Duration",
+      "actions": "Actions",
+      "noUnits": "No units found",
+      "weeks": "weeks"
+    },
+    "modal": {
+      "title": "Unit Details",
+      "addTitle": "Create New Unit",
+      "clickToEdit": "Click to edit...",
+      "clickToAdd": "Click to add...",
+      "completionProgress": "Completion Progress",
+      "stepsCompleted": "{completed} of {total} steps completed"
+    },
+    "steps": {
+      "basic": {
+        "title": "Basic Information",
+        "description": "Start by defining the unit title and duration",
+        "guidance": "Select the subject and class for this unit. In IB MYP, unit titles are typically framed as engaging questions that provoke inquiry and exploration (e.g., 'How does energy shape our world?'). Assign a unit number and specify the duration (weeks and hours per week)."
+      },
+      "inquiry": {
+        "title": "Inquiry Question",
+        "description": "Define the central question that drives student inquiry",
+        "guidance": "The inquiry question should be open-ended, thought-provoking, and aligned with the Statement of Inquiry. It guides student exploration throughout the unit."
+      },
+      "concepts": {
+        "title": "Key & Related Concepts",
+        "description": "Identify the conceptual understanding for this unit",
+        "guidance": "Key Concepts are 16 broad, transferable ideas in IB MYP (select 1-3). Related Concepts are subject-specific and vary by discipline (enter as comma-separated). Global Context connects learning to real-world issues that transcend subject boundaries."
+      },
+      "statement": {
+        "title": "Statement of Inquiry",
+        "description": "Create the statement that synthesizes concepts and context",
+        "guidance": "The Statement of Inquiry integrates Key Concept + Related Concept + Global Context into a clear statement that guides the entire unit."
+      },
+      "attributes": {
+        "title": "Learner Profile & Service",
+        "description": "Define IB learner attributes and service learning opportunities",
+        "guidance": "Select IB Learner Profile attributes (e.g., Inquirers, Thinkers, Communicators) students will develop. Identify opportunities for service learning and action."
+      },
+      "learning": {
+        "title": "Learning Process",
+        "description": "Outline how students will learn and engage",
+        "guidance": "Describe the learning experiences, activities, and teaching strategies. Include differentiation strategies and how students will construct understanding."
+      },
+      "assessment": {
+        "title": "Assessment & Relationship",
+        "description": "Plan formative and summative assessments",
+        "guidance": "Formative assessments monitor learning progress. Summative assessments evaluate achievement. Explain how the summative assessment relates back to the Statement of Inquiry."
+      }
+    },
+    "fields": {
+      "unitTitle": "Unit Title",
+      "subject": "Subject",
+      "class": "Class",
+      "unitNumber": "Unit Number",
+      "duration": "Duration (weeks)",
+      "hoursPerWeek": "Hours per Week",
+      "inquiryQuestion": "Inquiry Question",
+      "keyConcept": "Key Concept(s)",
+      "relatedConcept": "Related Concept(s)",
+      "globalContext": "Global Context",
+      "statementOfInquiry": "Statement of Inquiry",
+      "learnerProfile": "IB Learner Profile Attributes",
+      "serviceLearning": "Service Learning & Action",
+      "learningProcess": "Learning Process",
+      "formativeAssessment": "Formative Assessment",
+      "summativeAssessment": "Summative Assessment",
+      "assessmentRelationship": "Relationship: Summative Assessment ↔ Statement of Inquiry",
+      "selectSubject": "Select Subject",
+      "selectClass": "Select Class",
+      "selectKeyConcepts": "Select Key Concept(s)",
+      "selectLearnerProfile": "Select Learner Profile Attributes",
+      "noClassesAvailable": "No classes available for this subject"
+    },
+    "aiHelp": {
+      "title": "AI Help for Unit Title",
+      "inputLabel": "What do you want to explore in this unit?",
+      "inputPlaceholder": "Example: Energy and its transformation in daily life, focusing on renewable energy...",
+      "inputHint": "💡 Describe the topic, concepts, or context you want to explore in this unit",
+      "loading": "Requesting suggestions from AI...",
+      "loadingMessage": "⏳ Please be patient, this process takes a few seconds to analyze context and generate relevant suggestions",
+      "resultsTitle": "Unit Title Suggestions from AI",
+      "suggestion": "Suggestion {index}",
+      "unitTitleLabel": "Unit Title:",
+      "descriptionLabel": "Description:",
+      "reasonLabel": "Reason:",
+      "error": "Please enter a topic or context to discuss",
+      "noResults": "No suggestions available"
+    },
+    "globalContexts": {
+      "identities": "Identities and relationships",
+      "orientation": "Orientation in space and time",
+      "expression": "Personal and cultural expression",
+      "innovation": "Scientific and technical innovation",
+      "globalization": "Globalization and sustainability",
+      "fairness": "Fairness and development"
+    },
+    "keyConcepts": {
+      "aesthetics": "Aesthetics",
+      "change": "Change",
+      "communication": "Communication",
+      "communities": "Communities",
+      "connections": "Connections",
+      "creativity": "Creativity",
+      "culture": "Culture",
+      "development": "Development",
+      "form": "Form",
+      "globalInteractions": "Global interactions",
+      "identity": "Identity",
+      "logic": "Logic",
+      "perspective": "Perspective",
+      "relationships": "Relationships",
+      "systems": "Systems",
+      "timePlace": "Time, place and space"
+    },
+    "learnerProfiles": {
+      "inquirers": "Inquirers",
+      "knowledgeable": "Knowledgeable",
+      "thinkers": "Thinkers",
+      "communicators": "Communicators",
+      "principled": "Principled",
+      "openMinded": "Open-minded",
+      "caring": "Caring",
+      "riskTakers": "Risk-takers",
+      "balanced": "Balanced",
+      "reflective": "Reflective"
+    },
+    "messages": {
+      "saveSuccess": "Unit saved successfully",
+      "saveError": "Failed to save unit",
+      "deleteConfirm": "Are you sure you want to delete this unit?",
+      "enterUnitName": "Please enter a unit name",
+      "selectSubjectFirst": "Select subject first"
+    }
   }
 }
