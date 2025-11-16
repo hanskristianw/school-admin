@@ -232,8 +232,14 @@ export default function AcademicIntegrityChatbot() {
           </div>
 
           {/* Policy Category Tabs */}
-          <div className="border-b border-gray-200 bg-gray-50 px-2 sm:px-3 py-2 overflow-x-auto flex-shrink-0 scrollbar-hide">
-            <div className="flex gap-1.5 sm:gap-2 min-w-max">
+          <div 
+            className="border-b border-gray-200 bg-gray-50 flex-shrink-0 overflow-x-auto overflow-y-hidden px-3 py-2"
+            style={{ 
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#cbd5e1 #f1f5f9'
+            }}
+          >
+            <div className="flex gap-2 min-w-max">
               {policyCategories.map((cat) => {
                 const Icon = cat.icon;
                 const isSelected = selectedCategory === cat.id;
@@ -241,15 +247,14 @@ export default function AcademicIntegrityChatbot() {
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
                       isSelected
                         ? `${cat.color} text-white shadow-md`
                         : `${cat.lightColor} ${cat.textColor} hover:shadow-sm`
                     }`}
                   >
-                    <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    <span className="hidden sm:inline">{cat.label}</span>
-                    <span className="sm:hidden">{cat.label.split(' ')[0]}</span>
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{cat.label}</span>
                   </button>
                 );
               })}
