@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import Modal from '@/components/ui/modal'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons'
 
 export default function ConsultationPage() {
   const router = useRouter()
@@ -361,12 +363,12 @@ export default function ConsultationPage() {
             <table className="min-w-full text-sm border">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="p-2 border">Tanggal</th>
-                  <th className="p-2 border">Jenis</th>
-                  <th className="p-2 border">Kelas</th>
-                  <th className="p-2 border">Siswa</th>
-                  <th className="p-2 border">Judul</th>
-                  <th className="p-2 border">Catatan</th>
+                  <th className="p-2 border w-28">Tanggal</th>
+                  <th className="p-2 border w-20">Jenis</th>
+                  <th className="p-2 border w-32">Kelas</th>
+                  <th className="p-2 border w-40">Siswa</th>
+                  <th className="p-2 border w-48">Judul</th>
+                  <th className="p-2 border w-80">Catatan</th>
                   <th className="p-2 border w-36">Aksi</th>
                 </tr>
               </thead>
@@ -379,14 +381,22 @@ export default function ConsultationPage() {
                 )}
                 {!listLoading && consultations.map(row => (
                   <tr key={row.consultation_id} className="hover:bg-gray-50">
-                    <td className="p-2 border">{row.consultation_date}</td>
-                    <td className="p-2 border capitalize">{row.consultation_type}</td>
-                    <td className="p-2 border">{row.kelas_nama}</td>
-                    <td className="p-2 border">{row.siswa_nama}</td>
-                    <td className="p-2 border">{row.consultation_title || '-'}</td>
-                    <td className="p-2 border">{row.consultation_notes || '-'}</td>
+                    <td className="p-2 border w-28">{row.consultation_date}</td>
+                    <td className="p-2 border w-20 capitalize">{row.consultation_type}</td>
+                    <td className="p-2 border w-32">{row.kelas_nama}</td>
+                    <td className="p-2 border w-40">{row.siswa_nama}</td>
+                    <td className="p-2 border w-48">{row.consultation_title || '-'}</td>
+                    <td className="p-2 border w-80 max-w-xs">
+                      <div className="truncate" title={row.consultation_notes || '-'}>
+                        {row.consultation_notes || '-'}
+                      </div>
+                    </td>
                     <td className="p-2 border">
                       <div className="flex gap-2">
+                        <Button size="sm" className="bg-purple-500 hover:bg-purple-600 text-white" onClick={() => {/* TODO: AI Help functionality */}}>
+                          <FontAwesomeIcon icon={faWandMagicSparkles} className="mr-1" />
+                          AI
+                        </Button>
                         <Button size="sm" onClick={() => openEdit(row)}>Edit</Button>
                         <Button size="sm" variant="destructive" onClick={() => removeRow(row)}>Hapus</Button>
                       </div>
