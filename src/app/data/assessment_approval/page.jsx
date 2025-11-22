@@ -34,9 +34,9 @@ export default function AssessmentApproval() {
     type: 'success'
   });
 
-  // Filter states
+  // Filter states - default to showing pending approvals
   const [filters, setFilters] = useState({
-    status: '',
+    status: '0', // Default to status 0 (waiting for approval)
     subject: '',
     user: ''
   });
@@ -267,6 +267,11 @@ export default function AssessmentApproval() {
     return `${opt.subject_name} - ${opt.kelas_nama}`;
   };
 
+  const getKelasName = (detailKelasId) => {
+    const opt = detailKelasOptions.find(o => o.detail_kelas_id === detailKelasId);
+    return opt?.kelas_nama || '';
+  };
+
   const getTopicName = (topicId) => {
     if (!topicId) return t('assessmentApproval.noTopic');
     return topicNameMap.get(topicId) || t('assessmentApproval.unknownTopic');
@@ -447,20 +452,95 @@ export default function AssessmentApproval() {
     );
   }
 
+  // Calculate statistics
+  const stats = {
+    total: assessments.length,
+    waiting: assessments.filter(a => a.assessment_status === 0).length,
+    waitingPrincipal: assessments.filter(a => a.assessment_status === 3).length,
+    approved: assessments.filter(a => a.assessment_status === 1).length,
+    rejected: assessments.filter(a => a.assessment_status === 2).length,
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('assessmentApproval.title')}</h1>
-          <p className="text-gray-600">{t('assessmentApproval.subtitle')}</p>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">{t('assessmentApproval.title')}</h1>
+        <p className="text-gray-600 mt-1">{t('assessmentApproval.subtitle')}</p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+            </div>
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-yellow-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-yellow-700">Waiting</p>
+              <p className="text-2xl font-bold text-yellow-600 mt-1">{stats.waiting}</p>
+            </div>
+            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-blue-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-700">Principal</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">{stats.waitingPrincipal}</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <FontAwesomeIcon icon={faUser} className="text-blue-600 text-xl" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-green-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-700">Approved</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">{stats.approved}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <FontAwesomeIcon icon={faCheck} className="text-green-600 text-xl" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-red-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-700">Rejected</p>
+              <p className="text-2xl font-bold text-red-600 mt-1">{stats.rejected}</p>
+            </div>
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <FontAwesomeIcon icon={faTimes} className="text-red-600 text-xl" />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Filters */}
       <Card>
@@ -528,110 +608,137 @@ export default function AssessmentApproval() {
       </Card>
 
       {/* Assessment List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('assessmentApproval.listTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredAssessments.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">{t('assessmentApproval.empty')}</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('assessmentApproval.thName')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('assessmentApproval.labelNote')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('assessmentApproval.thDate')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('assessmentApproval.thSubject')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('assessmentApproval.thTopic')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredAssessments.map((assessment) => (
-                    <tr key={assessment.assessment_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 align-top">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {assessment.assessment_nama}
-                          </div>
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {((!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)) && (
-                            <button
-                              type="button"
-                              onClick={() => handleApprovalAction(assessment, 'approve')}
-                              className="inline-flex items-center gap-1 rounded-full border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 px-2 py-0.5 text-[11px]"
-                            >
-                              <FontAwesomeIcon icon={faCheck} />
-                              <span>{t('assessmentApproval.approve')}</span>
-                            </button>
-                          )}
-                          {((!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)) && (
-                            <button
-                              type="button"
-                              onClick={() => handleApprovalAction(assessment, 'reject')}
-                              className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 px-2 py-0.5 text-[11px]"
-                            >
-                              <FontAwesomeIcon icon={faTimes} />
-                              <span>{t('assessmentApproval.reject')}</span>
-                            </button>
-                          )}
-                          {/* Delete is always available to approvers */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteAction(assessment)}
-                            className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 px-2 py-0.5 text-[11px]"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                            <span>{t('assessmentApproval.delete')}</span>
-                          </button>
-                          {((!isPrincipal && assessment.assessment_status !== 0) || (isPrincipal && assessment.assessment_status !== 3)) && (
-                            <span className="text-gray-400 text-[11px] self-center">{t('assessmentApproval.processed')}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-md">
-                        <div className="max-w-md truncate" title={assessment.assessment_keterangan || ''}>
-                          {linkifyText(assessment.assessment_keterangan)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="flex flex-col">
-                          <span>{formatDate(assessment.assessment_tanggal)}</span>
-                          <span className="mt-1">{getStatusBadge(assessment.assessment_status)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="flex flex-col">
-                          <span>{getSubjectName(assessment.assessment_detail_kelas_id)}</span>
-                          <span className="text-xs text-gray-500 inline-flex items-center gap-1">
-                            <FontAwesomeIcon icon={faUser} className="opacity-70" />
-                            {getUserName(assessment.assessment_user_id)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {getTopicName(assessment.assessment_topic_id)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <FontAwesomeIcon icon={faSpinner} spin className="text-4xl text-blue-500" />
+        </div>
+      ) : filteredAssessments.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-lg font-medium text-gray-900">{t('assessmentApproval.empty')}</p>
+            <p className="text-sm text-gray-500 mt-1">No assessments found matching your filters</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredAssessments.map((assessment) => {
+            const teacherName = getUserName(assessment.assessment_user_id)
+            const subjectKelas = getSubjectName(assessment.assessment_detail_kelas_id)
+            const kelasName = getKelasName(assessment.assessment_detail_kelas_id)
+            const gradeMatch = kelasName?.match(/(\d{1,2})/)
+            const gradeNumber = gradeMatch ? gradeMatch[1] : ''
+            const canApprove = (!isPrincipal && assessment.assessment_status === 0) || (isPrincipal && assessment.assessment_status === 3)
+            
+            return (
+              <div 
+                key={assessment.assessment_id}
+                className="relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all overflow-hidden bg-white"
+              >
+                {/* Grade Watermark */}
+                {gradeNumber && (
+                  <div className="absolute top-0 right-0 text-[120px] font-black text-gray-50 leading-none pointer-events-none select-none" style={{ transform: 'translate(20%, -20%)' }}>
+                    {gradeNumber}
+                  </div>
+                )}
+                
+                {/* Header */}
+                <div className="mb-4 pb-3 border-b border-gray-100 relative z-10">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="text-lg font-bold text-gray-800 line-clamp-2 flex-1">
+                      {assessment.assessment_nama}
+                    </h3>
+                    {getStatusBadge(assessment.assessment_status)}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
+                    <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-medium">
+                      {getSubjectName(assessment.assessment_detail_kelas_id).split(' - ')[0] || 'N/A'}
+                    </span>
+                    {kelasName && (
+                      <span className="bg-green-50 text-green-600 px-2 py-1 rounded text-xs font-medium">
+                        {kelasName}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Date */}
+                <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
+                  <span className="text-gray-500">📅</span>
+                  <span className="text-gray-700 font-medium">
+                    {formatDate(assessment.assessment_tanggal)}
+                  </span>
+                </div>
+
+                {/* Teacher */}
+                <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
+                  <FontAwesomeIcon icon={faUser} className="text-gray-500" />
+                  <span className="text-gray-700">
+                    {teacherName}
+                  </span>
+                </div>
+
+                {/* Topic */}
+                {assessment.assessment_topic_id && (
+                  <div className="mb-3 relative z-10">
+                    <p className="text-xs text-cyan-500 font-medium mb-1">Topic/Unit</p>
+                    <p className="text-sm text-gray-700 line-clamp-2">
+                      {topicNameMap.get(assessment.assessment_topic_id) || '-'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Note */}
+                {assessment.assessment_keterangan && (
+                  <div className="mb-3 relative z-10">
+                    <p className="text-xs text-cyan-500 font-medium mb-1">Note</p>
+                    <p className="text-sm text-gray-700 line-clamp-3">
+                      {linkifyText(assessment.assessment_keterangan)}
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {canApprove && (
+                  <div className="relative z-10 pt-3 border-t border-gray-100 flex gap-2">
+                    <button
+                      onClick={() => handleApprovalAction(assessment, 'approve')}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+                    >
+                      <FontAwesomeIcon icon={faCheck} />
+                      {t('assessmentApproval.approve')}
+                    </button>
+                    <button
+                      onClick={() => handleApprovalAction(assessment, 'reject')}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                    >
+                      <FontAwesomeIcon icon={faTimes} />
+                      {t('assessmentApproval.reject')}
+                    </button>
+                  </div>
+                )}
+                
+                {/* Delete Button - admin only, for rejected assessments */}
+                {!isPrincipal && assessment.assessment_status === 2 && (
+                  <div className="relative z-10 pt-3 border-t border-gray-100 mt-3">
+                    <button
+                      onClick={() => handleApprovalAction(assessment, 'delete')}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                      {t('assessmentApproval.delete')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <Modal

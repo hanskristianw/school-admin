@@ -5,8 +5,9 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash } from '@fortawesome/free-solid-svg-icons'
 import SlideOver from '@/components/ui/slide-over'
+import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
 
 export default function TopicNewPage() {
@@ -26,6 +27,31 @@ export default function TopicNewPage() {
   
   // Filters
   const [filters, setFilters] = useState({ subject: '', search: '' })
+  
+  // Assessment state
+  const [assessments, setAssessments] = useState([])
+  const [loadingAssessments, setLoadingAssessments] = useState(false)
+  const [assessmentFilters, setAssessmentFilters] = useState({ subject: '', kelas: '', status: '', search: '' })
+  const [assessmentKelasOptions, setAssessmentKelasOptions] = useState([]) // Kelas yang diajar guru untuk assessment filter
+  
+  // FAB (Floating Action Button) state
+  const [fabOpen, setFabOpen] = useState(false)
+  
+  // Assessment Form state
+  const [showAssessmentForm, setShowAssessmentForm] = useState(false)
+  const [detailKelasOptions, setDetailKelasOptions] = useState([])
+  const [assessmentFormData, setAssessmentFormData] = useState({
+    assessment_nama: '',
+    assessment_tanggal: '',
+    assessment_keterangan: '',
+    assessment_detail_kelas_id: '',
+    assessment_topic_id: ''
+  })
+  const [assessmentFormErrors, setAssessmentFormErrors] = useState({})
+  const [submittingAssessment, setSubmittingAssessment] = useState(false)
+  const [topicsForAssessment, setTopicsForAssessment] = useState([])
+  const [topicsLoadingAssessment, setTopicsLoadingAssessment] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState(null)
   
   // Modal state
   const [selectedTopic, setSelectedTopic] = useState(null)
@@ -144,7 +170,14 @@ export default function TopicNewPage() {
   // Get current user ID
   useEffect(() => {
     const userData = localStorage.getItem('user_data')
+    const kr_id = localStorage.getItem('kr_id')
     console.log('🔍 User data from localStorage:', userData)
+    
+    // Set current user ID for assessment form
+    if (kr_id) {
+      setCurrentUserId(parseInt(kr_id))
+    }
+    
     if (userData) {
       try {
         const parsed = JSON.parse(userData)
@@ -154,6 +187,7 @@ export default function TopicNewPage() {
         console.log('👤 User ID:', userId)
         if (userId) {
           fetchSubjects(userId)
+          fetchDetailKelasForAssessment(userId)
         } else {
           console.warn('⚠️ No user ID found')
           setLoading(false)
@@ -297,6 +331,489 @@ export default function TopicNewPage() {
       setLoading(false)
     }
   }
+
+  // Fetch assessments with related data (only for current user's subjects)
+  const fetchAssessments = async () => {
+    try {
+      setLoadingAssessments(true)
+      console.log('🔍 Fetching assessments')
+      
+      // Get subject IDs that belong to current user
+      const userSubjectIds = subjects.map(s => s.subject_id)
+      
+      if (userSubjectIds.length === 0) {
+        console.log('⚠️ No subjects found for user')
+        setAssessments([])
+        setLoadingAssessments(false)
+        return
+      }
+      
+      // First, get detail_kelas IDs and kelas_ids that belong to user's subjects
+      const { data: detailKelasForUser, error: dkUserError } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_id, detail_kelas_kelas_id')
+        .in('detail_kelas_subject_id', userSubjectIds)
+      
+      if (dkUserError) throw dkUserError
+      
+      const userDetailKelasIds = (detailKelasForUser || []).map(dk => dk.detail_kelas_id)
+      const userKelasIds = [...new Set((detailKelasForUser || []).map(dk => dk.detail_kelas_kelas_id).filter(Boolean))]
+      
+      // Fetch kelas names for filter dropdown
+      if (userKelasIds.length > 0) {
+        const { data: kelasData, error: kelasError } = await supabase
+          .from('kelas')
+          .select('kelas_id, kelas_nama')
+          .in('kelas_id', userKelasIds)
+          .order('kelas_nama')
+        
+        if (!kelasError && kelasData) {
+          setAssessmentKelasOptions(kelasData)
+        }
+      }
+      
+      if (userDetailKelasIds.length === 0) {
+        console.log('⚠️ No detail_kelas found for user subjects')
+        setAssessments([])
+        setLoadingAssessments(false)
+        return
+      }
+      
+      // Fetch assessments only for user's detail_kelas
+      const { data: assessmentsData, error: assessmentsError } = await supabase
+        .from('assessment')
+        .select(`
+          assessment_id,
+          assessment_nama,
+          assessment_tanggal,
+          assessment_keterangan,
+          assessment_status,
+          assessment_user_id,
+          assessment_detail_kelas_id,
+          assessment_topic_id
+        `)
+        .in('assessment_detail_kelas_id', userDetailKelasIds)
+        .order('assessment_tanggal', { ascending: false })
+      
+      if (assessmentsError) throw assessmentsError
+      
+      // Get unique detail_kelas_ids
+      const detailKelasIds = [...new Set(assessmentsData?.map(a => a.assessment_detail_kelas_id).filter(Boolean))]
+      
+      let detailKelasMap = new Map()
+      let subjectMap = new Map()
+      let kelasMap = new Map()
+      
+      if (detailKelasIds.length > 0) {
+        // Fetch detail_kelas
+        const { data: detailKelasData, error: dkError } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id')
+          .in('detail_kelas_id', detailKelasIds)
+        
+        if (!dkError && detailKelasData) {
+          const subjectIds = [...new Set(detailKelasData.map(dk => dk.detail_kelas_subject_id))]
+          const kelasIds = [...new Set(detailKelasData.map(dk => dk.detail_kelas_kelas_id))]
+          
+          // Fetch subjects
+          if (subjectIds.length > 0) {
+            const { data: subjectsData, error: sError } = await supabase
+              .from('subject')
+              .select('subject_id, subject_name')
+              .in('subject_id', subjectIds)
+            
+            if (!sError && subjectsData) {
+              subjectsData.forEach(s => subjectMap.set(s.subject_id, s.subject_name))
+            }
+          }
+          
+          // Fetch kelas
+          if (kelasIds.length > 0) {
+            const { data: kelasData, error: kError } = await supabase
+              .from('kelas')
+              .select('kelas_id, kelas_nama')
+              .in('kelas_id', kelasIds)
+            
+            if (!kError && kelasData) {
+              kelasData.forEach(k => kelasMap.set(k.kelas_id, k.kelas_nama))
+            }
+          }
+          
+          // Build detail_kelas map
+          detailKelasData.forEach(dk => {
+            detailKelasMap.set(dk.detail_kelas_id, {
+              subject_id: dk.detail_kelas_subject_id,
+              kelas_id: dk.detail_kelas_kelas_id
+            })
+          })
+        }
+      }
+      
+      // Get unique user IDs
+      const userIds = [...new Set(assessmentsData?.map(a => a.assessment_user_id).filter(Boolean))]
+      let userMap = new Map()
+      
+      if (userIds.length > 0) {
+        const { data: usersData, error: uError } = await supabase
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang')
+          .in('user_id', userIds)
+        
+        if (!uError && usersData) {
+          usersData.forEach(u => {
+            userMap.set(u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`)
+          })
+        }
+      }
+      
+      // Get unique topic IDs
+      const topicIds = [...new Set(assessmentsData?.map(a => a.assessment_topic_id).filter(Boolean))]
+      let topicMap = new Map()
+      
+      if (topicIds.length > 0) {
+        const { data: topicsData, error: tError } = await supabase
+          .from('topic')
+          .select('topic_id, topic_nama')
+          .in('topic_id', topicIds)
+        
+        if (!tError && topicsData) {
+          topicsData.forEach(t => {
+            topicMap.set(t.topic_id, t.topic_nama)
+          })
+        }
+      }
+      
+      // Merge all data
+      const enrichedAssessments = (assessmentsData || []).map(a => {
+        const detailKelas = detailKelasMap.get(a.assessment_detail_kelas_id) || {}
+        return {
+          ...a,
+          subject_id: detailKelas.subject_id,
+          subject_name: subjectMap.get(detailKelas.subject_id) || 'N/A',
+          kelas_id: detailKelas.kelas_id,
+          kelas_nama: kelasMap.get(detailKelas.kelas_id) || '',
+          teacher_name: userMap.get(a.assessment_user_id) || 'Unknown',
+          topic_nama: topicMap.get(a.assessment_topic_id) || null
+        }
+      })
+      
+      console.log('✅ Enriched assessments:', enrichedAssessments.length)
+      setAssessments(enrichedAssessments)
+    } catch (err) {
+      console.error('❌ Error fetching assessments:', err)
+    } finally {
+      setLoadingAssessments(false)
+    }
+  }
+  
+  // Fetch detail_kelas for assessment form
+  const fetchDetailKelasForAssessment = async (userId) => {
+    try {
+      // Get subjects for user
+      const { data: subjectsData, error: subjectsError } = await supabase
+        .from('subject')
+        .select('subject_id, subject_name')
+        .eq('subject_user_id', userId)
+        .order('subject_name')
+      
+      if (subjectsError) throw subjectsError
+      if (!subjectsData || subjectsData.length === 0) {
+        setDetailKelasOptions([])
+        return
+      }
+      
+      const subjectIds = subjectsData.map(s => s.subject_id)
+      
+      // Get detail_kelas
+      const { data: details, error: detailErr } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id')
+        .in('detail_kelas_subject_id', subjectIds)
+      
+      if (detailErr) throw detailErr
+      if (!details || details.length === 0) {
+        setDetailKelasOptions([])
+        return
+      }
+      
+      const kelasIds = Array.from(new Set(details.map(d => d.detail_kelas_kelas_id)))
+      
+      // Get kelas names
+      const { data: kelasData, error: kelasErr } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama')
+        .in('kelas_id', kelasIds)
+      
+      if (kelasErr) throw kelasErr
+      
+      const kelasMap = new Map((kelasData || []).map(k => [k.kelas_id, k.kelas_nama]))
+      const subjectMap = new Map((subjectsData || []).map(s => [s.subject_id, s.subject_name]))
+      
+      const options = (details || []).map(d => ({
+        detail_kelas_id: d.detail_kelas_id,
+        subject_id: d.detail_kelas_subject_id,
+        subject_name: subjectMap.get(d.detail_kelas_subject_id) || 'Unknown Subject',
+        kelas_id: d.detail_kelas_kelas_id,
+        kelas_nama: kelasMap.get(d.detail_kelas_kelas_id) || '-'
+      }))
+      
+      options.sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '') || (a.subject_name || '').localeCompare(b.subject_name || ''))
+      
+      setDetailKelasOptions(options)
+    } catch (err) {
+      console.error('Error fetching detail_kelas:', err)
+    }
+  }
+  
+  // Notify vice principal
+  const notifyVicePrincipal = async (assessmentId) => {
+    if (!assessmentId) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/notifications/assessment-submitted', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ assessmentId })
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        console.warn('Assessment notification failed', payload?.error || response.status)
+      }
+    } catch (err) {
+      console.warn('Assessment notification error', err)
+    }
+  }
+  
+  // Load topics for assessment form
+  const loadTopicsForAssessmentForm = async (subjectId, kelasId) => {
+    try {
+      setTopicsLoadingAssessment(true)
+      const { data, error } = await supabase
+        .from('topic')
+        .select('topic_id, topic_nama')
+        .eq('topic_subject_id', subjectId)
+        .eq('topic_kelas_id', kelasId)
+        .order('topic_nama')
+      
+      if (error) throw error
+      setTopicsForAssessment(data || [])
+    } catch (e) {
+      console.error('Failed loading topics:', e)
+      setTopicsForAssessment([])
+    } finally {
+      setTopicsLoadingAssessment(false)
+    }
+  }
+  
+  // Helper functions for assessment form
+  const getDaysDifference = (date1, date2) => {
+    const diffTime = Math.abs(date2 - date1)
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+  
+  const getMinimumDate = () => {
+    const minDate = new Date()
+    minDate.setDate(minDate.getDate() + 2)
+    return minDate
+  }
+  
+  // Validate assessment form
+  const validateAssessmentForm = () => {
+    const errors = {}
+    
+    if (!assessmentFormData.assessment_nama.trim()) {
+      errors.assessment_nama = 'Assessment name is required'
+    }
+    
+    if (!assessmentFormData.assessment_tanggal) {
+      errors.assessment_tanggal = 'Assessment date is required'
+    }
+    
+    if (!assessmentFormData.assessment_detail_kelas_id) {
+      errors.assessment_detail_kelas_id = 'Subject/Class is required'
+    }
+    
+    // Topic required
+    if (assessmentFormData.assessment_detail_kelas_id && topicsForAssessment.length === 0) {
+      errors.assessment_topic_id = 'No topics available for this subject/class'
+    } else if (!assessmentFormData.assessment_topic_id) {
+      errors.assessment_topic_id = 'Topic is required'
+    }
+    
+    // Date validation
+    if (assessmentFormData.assessment_tanggal) {
+      const selectedDate = new Date(assessmentFormData.assessment_tanggal)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      selectedDate.setHours(0, 0, 0, 0)
+      
+      if (selectedDate < today) {
+        errors.assessment_tanggal = 'Date cannot be in the past'
+      } else {
+        const daysDiff = getDaysDifference(today, selectedDate)
+        if (daysDiff === 1) {
+          errors.assessment_tanggal = 'Date cannot be tomorrow. Minimum 2 days ahead.'
+        }
+      }
+    }
+    
+    setAssessmentFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+  
+  // Handle assessment form input change
+  const handleAssessmentInputChange = (e) => {
+    const { name, value } = e.target
+    setAssessmentFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    
+    // Clear error
+    if (assessmentFormErrors[name]) {
+      setAssessmentFormErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }))
+    }
+    
+    // Load topics when subject changes
+    if (name === 'assessment_detail_kelas_id') {
+      const selectedDetail = detailKelasOptions.find(o => o.detail_kelas_id.toString() === value)
+      const subjId = selectedDetail?.subject_id
+      const kelasId = selectedDetail?.kelas_id
+      setAssessmentFormData(prev => ({ ...prev, assessment_topic_id: '' }))
+      if (subjId && kelasId) {
+        loadTopicsForAssessmentForm(subjId, kelasId)
+      } else {
+        setTopicsForAssessment([])
+      }
+    }
+  }
+  
+  // Delete assessment
+  const handleDeleteAssessment = async (assessmentId, assessmentName) => {
+    if (!confirm(`Are you sure you want to delete "${assessmentName}"?`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('assessment')
+        .delete()
+        .eq('assessment_id', assessmentId)
+      
+      if (error) throw error
+      
+      // Refresh assessments
+      await fetchAssessments()
+      
+      alert('Assessment deleted successfully!')
+    } catch (err) {
+      console.error('Error deleting assessment:', err)
+      alert('Failed to delete assessment: ' + err.message)
+    }
+  }
+  
+  // Submit assessment
+  const handleAssessmentSubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!validateAssessmentForm()) {
+      return
+    }
+    
+    if (!currentUserId) {
+      alert('User not authenticated')
+      return
+    }
+    
+    try {
+      setSubmittingAssessment(true)
+      
+      // Check limit: max 2 assessments per detail_kelas per date
+      const selectedDetailId = parseInt(assessmentFormData.assessment_detail_kelas_id)
+      const selectedDateStr = assessmentFormData.assessment_tanggal
+      const { count: existingCount, error: countErr } = await supabase
+        .from('assessment')
+        .select('assessment_id', { count: 'exact', head: true })
+        .eq('assessment_detail_kelas_id', selectedDetailId)
+        .eq('assessment_tanggal', selectedDateStr)
+      
+      if (countErr) throw countErr
+      if ((existingCount || 0) >= 2) {
+        alert('Maximum 2 assessments per class per day already reached. Please choose another date.')
+        setSubmittingAssessment(false)
+        return
+      }
+      
+      // Determine status based on date difference: 2-6 days => waiting for principal approval (3)
+      const selectedDate = new Date(assessmentFormData.assessment_tanggal)
+      selectedDate.setHours(0, 0, 0, 0)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const diffDays = getDaysDifference(today, selectedDate)
+      const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
+      
+      const assessmentData = {
+        assessment_nama: assessmentFormData.assessment_nama.trim(),
+        assessment_tanggal: assessmentFormData.assessment_tanggal,
+        assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
+        assessment_status: computedStatus,
+        assessment_user_id: currentUserId,
+        assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
+        assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id)
+      }
+      
+      const { data, error } = await supabase
+        .from('assessment')
+        .insert([assessmentData])
+        .select()
+      
+      if (error) throw error
+      
+      // Send notification to vice principal
+      if (data && data[0]) {
+        notifyVicePrincipal(data[0].assessment_id)
+      }
+      
+      // Refresh assessments
+      await fetchAssessments()
+      
+      // Reset form
+      setAssessmentFormData({
+        assessment_nama: '',
+        assessment_tanggal: '',
+        assessment_keterangan: '',
+        assessment_detail_kelas_id: '',
+        assessment_topic_id: ''
+      })
+      setAssessmentFormErrors({})
+      setShowAssessmentForm(false)
+      setFabOpen(false)
+      
+      alert('Assessment submitted successfully!')
+      
+    } catch (err) {
+      console.error('Error submitting assessment:', err)
+      alert('Failed to submit assessment: ' + err.message)
+    } finally {
+      setSubmittingAssessment(false)
+    }
+  }
+  
+  // Fetch assessments when tab changes
+  useEffect(() => {
+    if (activeTab === 'assessment' && assessments.length === 0) {
+      fetchAssessments()
+    }
+  }, [activeTab])
   
   // Auto-save function
   const handleSave = async (fieldName, value) => {
@@ -1399,6 +1916,71 @@ Please respond in ${selected} language and ensure valid JSON format.`
       return urutanA - urutanB
     })
 
+  // Filter and sort assessments (same logic as topics)
+  const filteredAssessments = assessments
+    .filter(assessment => {
+      const matchSubject = !assessmentFilters.subject || assessment.subject_id === parseInt(assessmentFilters.subject)
+      const matchKelas = !assessmentFilters.kelas || assessment.kelas_id === parseInt(assessmentFilters.kelas)
+      const matchStatus = !assessmentFilters.status || assessment.assessment_status.toString() === assessmentFilters.status
+      const matchSearch = !assessmentFilters.search || 
+        assessment.assessment_nama?.toLowerCase().includes(assessmentFilters.search.toLowerCase()) ||
+        assessment.teacher_name?.toLowerCase().includes(assessmentFilters.search.toLowerCase())
+      return matchSubject && matchKelas && matchStatus && matchSearch
+    })
+    .sort((a, b) => {
+      // First: sort by grade (extract from kelas_nama)
+      const gradeA = gradeOf(a.kelas_id)
+      const gradeB = gradeOf(b.kelas_id)
+      if (gradeA !== gradeB) return gradeA - gradeB
+      
+      // Second: sort by kelas name
+      const nameA = a.kelas_nama || ''
+      const nameB = b.kelas_nama || ''
+      const nameCompare = nameA.localeCompare(nameB)
+      if (nameCompare !== 0) return nameCompare
+      
+      // Third: sort by assessment date (most recent first)
+      const dateA = new Date(a.assessment_tanggal || 0)
+      const dateB = new Date(b.assessment_tanggal || 0)
+      return dateB - dateA
+    })
+
+  // Status badge helper for assessments
+  const getAssessmentStatusBadge = (status) => {
+    switch (status) {
+      case 0:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            Waiting
+          </span>
+        )
+      case 3:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+            Principal
+          </span>
+        )
+      case 1:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Approved
+          </span>
+        )
+      case 2:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            Rejected
+          </span>
+        )
+      default:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            Unknown
+          </span>
+        )
+    }
+  }
+
   const tabs = [
     { id: 'planning', label: 'Planning', icon: '📋' },
     { id: 'assignment', label: 'Assignment', icon: '📝' },
@@ -1608,20 +2190,6 @@ Please respond in ${selected} language and ensure valid JSON format.`
                           </div>
                         )})
                       )}
-                      
-                      {/* Add New Card */}
-                      <div 
-                        className="border-2 border-dashed border-gray-300 rounded-lg p-5 hover:border-red-400 hover:bg-red-50 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[300px] group"
-                        onClick={openAddModal}
-                      >
-                        <div className="w-16 h-16 rounded-full bg-gray-100 group-hover:bg-red-100 flex items-center justify-center mb-3 transition-colors">
-                          <svg className="w-8 h-8 text-gray-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </div>
-                        <p className="text-gray-500 group-hover:text-red-600 font-medium transition-colors">Add New Topic</p>
-                        <p className="text-xs text-gray-400 group-hover:text-red-400 mt-1 transition-colors">Click to create</p>
-                      </div>
                     </div>
                   )}
                 </div>
@@ -1653,8 +2221,180 @@ Please respond in ${selected} language and ensure valid JSON format.`
 
         {activeTab === 'assessment' && (
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Assessment</h2>
-            <p className="text-gray-600">Assessment management content will be displayed here.</p>
+            <h2 className="text-xl font-semibold text-gray-800 mb-6">Assessment Management</h2>
+            
+            {/* Filters */}
+            <div className="mb-6 flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('topicNew.filters.subject')}
+                </label>
+                <select
+                  value={assessmentFilters.subject}
+                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, subject: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">{t('topicNew.filters.allSubjects')}</option>
+                  {subjects.map(s => (
+                    <option key={s.subject_id} value={s.subject_id}>
+                      {s.subject_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Class
+                </label>
+                <select
+                  value={assessmentFilters.kelas}
+                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, kelas: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">All Classes</option>
+                  {assessmentKelasOptions.map(k => (
+                    <option key={k.kelas_id} value={k.kelas_id}>
+                      {k.kelas_nama}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={assessmentFilters.status}
+                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">All Status</option>
+                  <option value="0">Waiting</option>
+                  <option value="3">Waiting Principal</option>
+                  <option value="1">Approved</option>
+                  <option value="2">Rejected</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('topicNew.filters.search')}
+                </label>
+                <input
+                  type="text"
+                  value={assessmentFilters.search}
+                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, search: e.target.value })}
+                  placeholder="Search by name..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+            </div>
+
+            {/* Loading State */}
+            {loadingAssessments ? (
+              <div className="flex justify-center items-center py-12">
+                <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-red-500" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredAssessments.length === 0 && (
+                  <div className="col-span-full text-center py-12 text-gray-500">
+                    No assessments found
+                  </div>
+                )}
+                
+                {filteredAssessments.map((assessment) => {
+                  const kelasName = assessment.kelas_nama || ''
+                  const gradeMatch = kelasName.match(/(\d{1,2})/)
+                  const gradeNumber = gradeMatch ? gradeMatch[1] : ''
+                  
+                  return (
+                  <div 
+                    key={assessment.assessment_id}
+                    className="relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all overflow-hidden"
+                  >
+                    {/* Grade Watermark */}
+                    {gradeNumber && (
+                      <div className="absolute top-0 right-0 text-[120px] font-black text-gray-100 leading-none pointer-events-none select-none" style={{ transform: 'translate(20%, -20%)' }}>
+                        {gradeNumber}
+                      </div>
+                    )}
+                    
+                    {/* Header */}
+                    <div className="mb-4 pb-3 border-b border-gray-100 relative z-10">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="text-lg font-bold text-gray-800 line-clamp-2 flex-1">
+                          {assessment.assessment_nama}
+                        </h3>
+                        {getAssessmentStatusBadge(assessment.assessment_status)}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-medium">
+                          {assessment.subject_name || 'N/A'}
+                        </span>
+                        {assessment.kelas_nama && (
+                          <span className="bg-green-50 text-green-600 px-2 py-1 rounded text-xs font-medium">
+                            {assessment.kelas_nama}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Date */}
+                    <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
+                      <span className="text-gray-500">📅</span>
+                      <span className="text-gray-700">
+                        {new Date(assessment.assessment_tanggal).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Teacher */}
+                    <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
+                      <span className="text-gray-500">👤</span>
+                      <span className="text-gray-700">
+                        {assessment.teacher_name || 'Unknown Teacher'}
+                      </span>
+                    </div>
+
+                    {/* Topic */}
+                    {assessment.topic_nama && (
+                      <div className="mb-3 relative z-10">
+                        <p className="text-xs text-cyan-500 font-medium mb-1">Linked Topic</p>
+                        <p className="text-sm text-gray-700 line-clamp-2">
+                          {assessment.topic_nama}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    {assessment.assessment_keterangan && (
+                      <div className="mb-3 relative z-10">
+                        <p className="text-xs text-cyan-500 font-medium mb-1">Note</p>
+                        <p className="text-sm text-gray-700 line-clamp-3">
+                          {assessment.assessment_keterangan}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Delete Button (only for status 0 or 3 - not approved yet) */}
+                    {(assessment.assessment_status === 0 || assessment.assessment_status === 3) && assessment.assessment_user_id === currentUserId && (
+                      <div className="relative z-10 pt-3 border-t border-gray-100">
+                        <button
+                          onClick={() => handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                          Delete Assessment
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )})}
+              </div>
+            )}
           </div>
         )}
 
@@ -3493,6 +4233,251 @@ Please respond in ${selected} language and ensure valid JSON format.`
 
       {/* AI Input & Result modals are now embedded beside the main modal (handled inside modalOpen block) */}
 
+      {/* Floating Action Button (FAB) */}
+      <div className="fixed bottom-8 right-8 z-40">
+        {/* Secondary Buttons (shown when FAB is open) */}
+        <div className={`absolute bottom-20 right-0 flex flex-col items-end gap-3 transition-all duration-300 ${fabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+          {/* Add Assessment Button */}
+          <button
+            onClick={() => {
+              setShowAssessmentForm(true)
+              setFabOpen(false)
+            }}
+            disabled={detailKelasOptions.length === 0}
+            className="group flex items-center gap-3 transition-all duration-200 hover:scale-105"
+          >
+            <span className="bg-white px-4 py-2 rounded-full shadow-lg text-sm font-medium text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Add Assessment
+            </span>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-all">
+              <FontAwesomeIcon icon={faClipboardList} className="text-lg" />
+            </div>
+          </button>
+          
+          {/* Add Unit Button */}
+          <button
+            onClick={() => {
+              openAddModal()
+              setFabOpen(false)
+            }}
+            className="group flex items-center gap-3 transition-all duration-200 hover:scale-105"
+          >
+            <span className="bg-white px-4 py-2 rounded-full shadow-lg text-sm font-medium text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Add Unit
+            </span>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-all">
+              <FontAwesomeIcon icon={faBook} className="text-lg" />
+            </div>
+          </button>
+        </div>
+        
+        {/* Main FAB Button */}
+        <button
+          onClick={() => setFabOpen(!fabOpen)}
+          className={`w-16 h-16 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white flex items-center justify-center shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-110 ${fabOpen ? 'rotate-45' : 'rotate-0'}`}
+        >
+          <FontAwesomeIcon icon={faPlus} className="text-2xl" />
+        </button>
+      </div>
+      
+      {/* Click outside to close FAB menu */}
+      {fabOpen && (
+        <div
+          className="fixed inset-0 z-30"
+          onClick={() => setFabOpen(false)}
+        />
+      )}
+
+      {/* Assessment Form Modal */}
+      <Modal
+        isOpen={showAssessmentForm}
+        onClose={() => {
+          setShowAssessmentForm(false)
+          setAssessmentFormData({
+            assessment_nama: '',
+            assessment_tanggal: '',
+            assessment_keterangan: '',
+            assessment_detail_kelas_id: '',
+            assessment_topic_id: ''
+          })
+          setAssessmentFormErrors({})
+          setTopicsForAssessment([])
+        }}
+        title="Add New Assessment"
+      >
+        {/* Info Panel */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-start">
+            <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5 mr-2" />
+            <div className="text-sm text-blue-700">
+              <p className="font-medium mb-1">Date Rules:</p>
+              <ul className="text-xs space-y-1">
+                <li>• Minimum 2 days ahead from today</li>
+                <li>• Maximum 2 assessments per class per day</li>
+                <li>• Topic selection is required</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleAssessmentSubmit} className="space-y-4">
+          {/* Assessment Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assessment Name *
+            </label>
+            <input
+              name="assessment_nama"
+              type="text"
+              value={assessmentFormData.assessment_nama}
+              onChange={handleAssessmentInputChange}
+              placeholder="e.g., Chapter 3 Quiz, Midterm Exam"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                assessmentFormErrors.assessment_nama ? 'border-red-500' : 'border-gray-300'
+              }`}
+            />
+            {assessmentFormErrors.assessment_nama && (
+              <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_nama}</p>
+            )}
+          </div>
+
+          {/* Assessment Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assessment Date *
+            </label>
+            <input
+              name="assessment_tanggal"
+              type="date"
+              value={assessmentFormData.assessment_tanggal}
+              onChange={handleAssessmentInputChange}
+              min={getMinimumDate().toISOString().split('T')[0]}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                assessmentFormErrors.assessment_tanggal ? 'border-red-500' : 'border-gray-300'
+              }`}
+            />
+            {assessmentFormErrors.assessment_tanggal && (
+              <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_tanggal}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
+              Minimum date: {getMinimumDate().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+          </div>
+
+          {/* Subject/Class Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Subject / Class *
+            </label>
+            <select
+              name="assessment_detail_kelas_id"
+              value={assessmentFormData.assessment_detail_kelas_id}
+              onChange={handleAssessmentInputChange}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                assessmentFormErrors.assessment_detail_kelas_id ? 'border-red-500' : 'border-gray-300'
+              }`}
+            >
+              <option value="">Select Subject / Class</option>
+              {detailKelasOptions.map(opt => (
+                <option key={opt.detail_kelas_id} value={opt.detail_kelas_id}>
+                  {opt.subject_name} - {opt.kelas_nama}
+                </option>
+              ))}
+            </select>
+            {assessmentFormErrors.assessment_detail_kelas_id && (
+              <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_detail_kelas_id}</p>
+            )}
+          </div>
+
+          {/* Topic Selection */}
+          {assessmentFormData.assessment_detail_kelas_id && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Topic / Unit *
+              </label>
+              <select
+                name="assessment_topic_id"
+                value={assessmentFormData.assessment_topic_id}
+                onChange={handleAssessmentInputChange}
+                disabled={topicsLoadingAssessment || topicsForAssessment.length === 0}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  assessmentFormErrors.assessment_topic_id ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                <option value="">
+                  {topicsLoadingAssessment ? 'Loading topics...' : (topicsForAssessment.length === 0 ? 'No topics available' : 'Select Topic')}
+                </option>
+                {topicsForAssessment.map(tp => (
+                  <option key={tp.topic_id} value={tp.topic_id}>{tp.topic_nama}</option>
+                ))}
+              </select>
+              {assessmentFormErrors.assessment_topic_id && (
+                <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_topic_id}</p>
+              )}
+              {(!topicsLoadingAssessment && topicsForAssessment.length === 0 && assessmentFormData.assessment_detail_kelas_id) && (
+                <p className="text-xs text-red-500 mt-1">No topics available for this subject/class. Please create a unit first.</p>
+              )}
+            </div>
+          )}
+
+          {/* Note/Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Note / Description
+            </label>
+            <textarea
+              name="assessment_keterangan"
+              value={assessmentFormData.assessment_keterangan}
+              onChange={handleAssessmentInputChange}
+              placeholder="Optional notes or description"
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAssessmentForm(false)
+                setAssessmentFormData({
+                  assessment_nama: '',
+                  assessment_tanggal: '',
+                  assessment_keterangan: '',
+                  assessment_detail_kelas_id: '',
+                  assessment_topic_id: ''
+                })
+                setAssessmentFormErrors({})
+                setTopicsForAssessment([])
+              }}
+              disabled={submittingAssessment}
+              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submittingAssessment || detailKelasOptions.length === 0}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {submittingAssessment ? (
+                <>
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faPaperPlane} />
+                  Submit Assessment
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       <style jsx>{`
         @keyframes modalSlideIn {
           from {
@@ -3514,6 +4499,10 @@ Please respond in ${selected} language and ensure valid JSON format.`
             opacity: 1;
             transform: translateX(0);
           }
+        }
+        
+        .shadow-3xl {
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
         }
       `}</style>
     </div>

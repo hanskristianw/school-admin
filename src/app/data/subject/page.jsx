@@ -27,6 +27,33 @@ export default function SubjectManagement() {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   
+  // Criteria & Strands Management States
+  const [showCriteriaModal, setShowCriteriaModal] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [criteria, setCriteria] = useState([]);
+  const [strands, setStrands] = useState([]);
+  const [loadingCriteria, setLoadingCriteria] = useState(false);
+  const [showCriteriaForm, setShowCriteriaForm] = useState(false);
+  const [editingCriterion, setEditingCriterion] = useState(null);
+  const [criteriaFormData, setCriteriaFormData] = useState({ code: '', name: '' });
+  const [showStrandForm, setShowStrandForm] = useState(false);
+  const [editingStrand, setEditingStrand] = useState(null);
+  const [strandFormData, setStrandFormData] = useState({ criterion_id: '', year_level: '', label: '', content: '' });
+  
+  // Rubrics Management States
+  const [rubrics, setRubrics] = useState([]);
+  const [expandedStrands, setExpandedStrands] = useState(new Set());
+  const [showRubricForm, setShowRubricForm] = useState(false);
+  const [editingRubric, setEditingRubric] = useState(null);
+  const [selectedStrandForRubric, setSelectedStrandForRubric] = useState(null);
+  const [rubricFormData, setRubricFormData] = useState({ 
+    strand_id: '', 
+    band_label: '', 
+    min_score: '', 
+    max_score: '', 
+    description: '' 
+  });
+  
   // Notification modal states
   const [notification, setNotification] = useState({
     isOpen: false,
@@ -438,6 +465,306 @@ export default function SubjectManagement() {
     setError('');
   };
 
+  // Criteria & Strands Management Functions
+  const handleManageCriteria = async (subject) => {
+    setSelectedSubject(subject);
+    setShowCriteriaModal(true);
+    await fetchCriteria(subject.subject_id);
+  };
+
+  const fetchCriteria = async (subjectId) => {
+    setLoadingCriteria(true);
+    try {
+      const { data: criteriaData, error: criteriaError } = await supabase
+        .from('criteria')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .order('code');
+
+      if (criteriaError) throw criteriaError;
+      setCriteria(criteriaData || []);
+
+      // Fetch all strands for these criteria
+      if (criteriaData && criteriaData.length > 0) {
+        const criterionIds = criteriaData.map(c => c.criterion_id);
+        const { data: strandsData, error: strandsError } = await supabase
+          .from('strands')
+          .select('*')
+          .in('criterion_id', criterionIds)
+          .order('year_level, label');
+
+        if (strandsError) throw strandsError;
+        setStrands(strandsData || []);
+
+        // Fetch all rubrics for these strands
+        if (strandsData && strandsData.length > 0) {
+          const strandIds = strandsData.map(s => s.strand_id);
+          const { data: rubricsData, error: rubricsError } = await supabase
+            .from('rubrics')
+            .select('*')
+            .in('strand_id', strandIds)
+            .order('min_score');
+
+          if (rubricsError) throw rubricsError;
+          setRubrics(rubricsData || []);
+        } else {
+          setRubrics([]);
+        }
+      } else {
+        setStrands([]);
+        setRubrics([]);
+      }
+    } catch (err) {
+      console.error('Error fetching criteria:', err);
+      showNotification('Error', 'Gagal memuat criteria: ' + err.message, 'error');
+    } finally {
+      setLoadingCriteria(false);
+    }
+  };
+
+  const handleAddCriteria = () => {
+    setEditingCriterion(null);
+    setCriteriaFormData({ code: '', name: '' });
+    setShowCriteriaForm(true);
+  };
+
+  const handleEditCriteria = (criterion) => {
+    setEditingCriterion(criterion);
+    setCriteriaFormData({ code: criterion.code, name: criterion.name });
+    setShowCriteriaForm(true);
+  };
+
+  const handleSaveCriteria = async () => {
+    if (!criteriaFormData.code.trim() || !criteriaFormData.name.trim()) {
+      showNotification('Error', 'Code dan Name wajib diisi', 'error');
+      return;
+    }
+
+    try {
+      if (editingCriterion) {
+        const { error } = await supabase
+          .from('criteria')
+          .update({ code: criteriaFormData.code.toUpperCase(), name: criteriaFormData.name })
+          .eq('criterion_id', editingCriterion.criterion_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('criteria')
+          .insert([{
+            subject_id: selectedSubject.subject_id,
+            code: criteriaFormData.code.toUpperCase(),
+            name: criteriaFormData.name
+          }]);
+        if (error) throw error;
+      }
+      
+      await fetchCriteria(selectedSubject.subject_id);
+      setShowCriteriaForm(false);
+      showNotification('Success', editingCriterion ? 'Criterion updated!' : 'Criterion added!', 'success');
+    } catch (err) {
+      showNotification('Error', 'Gagal menyimpan criterion: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeleteCriteria = async (criterion) => {
+    if (!confirm(`Hapus criterion ${criterion.code}? Semua strands terkait juga akan terhapus.`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('criteria')
+        .delete()
+        .eq('criterion_id', criterion.criterion_id);
+      if (error) throw error;
+      
+      await fetchCriteria(selectedSubject.subject_id);
+      showNotification('Success', 'Criterion deleted!', 'success');
+    } catch (err) {
+      showNotification('Error', 'Gagal menghapus criterion: ' + err.message, 'error');
+    }
+  };
+
+  const handleAddStrand = (criterionId = null) => {
+    setEditingStrand(null);
+    setStrandFormData({ 
+      criterion_id: criterionId || (criteria[0]?.criterion_id || ''), 
+      year_level: '', 
+      label: '', 
+      content: '' 
+    });
+    setShowStrandForm(true);
+  };
+
+  const handleEditStrand = (strand) => {
+    setEditingStrand(strand);
+    setStrandFormData({
+      criterion_id: strand.criterion_id,
+      year_level: strand.year_level,
+      label: strand.label || '',
+      content: strand.content
+    });
+    setShowStrandForm(true);
+  };
+
+  const handleSaveStrand = async () => {
+    if (!strandFormData.criterion_id || !strandFormData.year_level || !strandFormData.content.trim()) {
+      showNotification('Error', 'Criterion, Year Level, dan Content wajib diisi', 'error');
+      return;
+    }
+
+    try {
+      const payload = {
+        criterion_id: Number(strandFormData.criterion_id),
+        year_level: Number(strandFormData.year_level),
+        label: strandFormData.label.trim() || null,
+        content: strandFormData.content.trim()
+      };
+
+      if (editingStrand) {
+        const { error } = await supabase
+          .from('strands')
+          .update(payload)
+          .eq('strand_id', editingStrand.strand_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('strands')
+          .insert([payload]);
+        if (error) throw error;
+      }
+      
+      await fetchCriteria(selectedSubject.subject_id);
+      setShowStrandForm(false);
+      showNotification('Success', editingStrand ? 'Strand updated!' : 'Strand added!', 'success');
+    } catch (err) {
+      showNotification('Error', 'Gagal menyimpan strand: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeleteStrand = async (strand) => {
+    if (!confirm('Hapus strand ini?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('strands')
+        .delete()
+        .eq('strand_id', strand.strand_id);
+      if (error) throw error;
+      
+      await fetchCriteria(selectedSubject.subject_id);
+      showNotification('Success', 'Strand deleted!', 'success');
+    } catch (err) {
+      showNotification('Error', 'Gagal menghapus strand: ' + err.message, 'error');
+    }
+  };
+
+  const getStrandsForCriterion = (criterionId) => {
+    return strands.filter(s => s.criterion_id === criterionId);
+  };
+
+  const getRubricsForStrand = (strandId) => {
+    return rubrics.filter(r => r.strand_id === strandId).sort((a, b) => a.min_score - b.min_score);
+  };
+
+  const toggleStrandExpansion = (strandId) => {
+    setExpandedStrands(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(strandId)) {
+        newSet.delete(strandId);
+      } else {
+        newSet.add(strandId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleAddRubric = (strand) => {
+    setSelectedStrandForRubric(strand);
+    setEditingRubric(null);
+    setRubricFormData({ 
+      strand_id: strand.strand_id, 
+      band_label: '', 
+      min_score: '', 
+      max_score: '', 
+      description: '' 
+    });
+    setShowRubricForm(true);
+  };
+
+  const handleEditRubric = (rubric) => {
+    setEditingRubric(rubric);
+    setRubricFormData({
+      strand_id: rubric.strand_id,
+      band_label: rubric.band_label,
+      min_score: rubric.min_score,
+      max_score: rubric.max_score,
+      description: rubric.description
+    });
+    setShowRubricForm(true);
+  };
+
+  const handleSaveRubric = async () => {
+    if (!rubricFormData.band_label.trim() || !rubricFormData.description.trim()) {
+      showNotification('Error', 'Band Label dan Description wajib diisi', 'error');
+      return;
+    }
+
+    try {
+      const payload = {
+        strand_id: Number(rubricFormData.strand_id),
+        band_label: rubricFormData.band_label.trim(),
+        min_score: rubricFormData.min_score ? Number(rubricFormData.min_score) : null,
+        max_score: rubricFormData.max_score ? Number(rubricFormData.max_score) : null,
+        description: rubricFormData.description.trim()
+      };
+
+      if (editingRubric) {
+        const { error } = await supabase
+          .from('rubrics')
+          .update(payload)
+          .eq('rubric_id', editingRubric.rubric_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('rubrics')
+          .insert([payload]);
+        if (error) throw error;
+      }
+      
+      await fetchCriteria(selectedSubject.subject_id);
+      setShowRubricForm(false);
+      showNotification('Success', editingRubric ? 'Rubric updated!' : 'Rubric added!', 'success');
+    } catch (err) {
+      showNotification('Error', 'Gagal menyimpan rubric: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeleteRubric = async (rubric) => {
+    if (!confirm('Hapus rubric ini?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('rubrics')
+        .delete()
+        .eq('rubric_id', rubric.rubric_id);
+      if (error) throw error;
+      
+      await fetchCriteria(selectedSubject.subject_id);
+      showNotification('Success', 'Rubric deleted!', 'success');
+    } catch (err) {
+      showNotification('Error', 'Gagal menghapus rubric: ' + err.message, 'error');
+    }
+  };
+
+  const getBandColor = (bandLabel) => {
+    const band = bandLabel.toLowerCase();
+    if (band === '0' || band.startsWith('0')) return 'bg-gray-100 text-gray-800 border-gray-300';
+    if (band.includes('1-2')) return 'bg-red-50 text-red-800 border-red-300';
+    if (band.includes('3-4')) return 'bg-yellow-50 text-yellow-800 border-yellow-300';
+    if (band.includes('5-6')) return 'bg-blue-50 text-blue-800 border-blue-300';
+    if (band.includes('7-8')) return 'bg-green-50 text-green-800 border-green-300';
+    return 'bg-gray-50 text-gray-800 border-gray-300';
+  };
+
   const filteredSubjects = getFilteredSubjects();
 
   if (loading) {
@@ -616,6 +943,14 @@ export default function SubjectManagement() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleManageCriteria(subject)}
+                          className="text-purple-600 hover:text-purple-800"
+                        >
+                          Criteria
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleDelete(subject)}
                           className="text-red-600 hover:text-red-800"
                         >
@@ -753,6 +1088,410 @@ export default function SubjectManagement() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Criteria & Strands Management Modal */}
+      <Modal 
+        isOpen={showCriteriaModal} 
+        onClose={() => setShowCriteriaModal(false)}
+        size="xl"
+      >
+        <div className="space-y-4">
+          <div className="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 className="text-2xl font-bold">Manage Criteria & Strands</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Subject: <span className="font-semibold">{selectedSubject?.subject_name}</span>
+              </p>
+            </div>
+            <Button onClick={handleAddCriteria} size="sm">+ Add Criterion</Button>
+          </div>
+
+          {loadingCriteria ? (
+            <div className="text-center py-8">Loading...</div>
+          ) : criteria.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              Belum ada criteria. Tambahkan criterion pertama (A, B, C, D)
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {criteria.map((criterion) => {
+                const criterionStrands = getStrandsForCriterion(criterion.criterion_id);
+                return (
+                  <div key={criterion.criterion_id} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-blue-900">
+                          Criterion {criterion.code}
+                        </h3>
+                        <p className="text-sm text-gray-700 mt-1">{criterion.name}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddStrand(criterion.criterion_id)}
+                        >
+                          + Strand
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditCriteria(criterion)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteCriteria(criterion)}
+                          className="text-red-600"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Strands by Year */}
+                    {criterionStrands.length === 0 ? (
+                      <p className="text-sm text-gray-500 italic">No strands yet</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Group strands by year_level */}
+                        {[...new Set(criterionStrands.map(s => s.year_level))].sort((a, b) => a - b).map(yearLevel => {
+                          const yearStrands = criterionStrands.filter(s => s.year_level === yearLevel);
+                          return (
+                            <div key={yearLevel} className="bg-white rounded-lg border border-gray-200 p-3">
+                              <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                  Year {yearLevel}
+                                </span>
+                                <span className="text-gray-500 text-xs font-normal">
+                                  ({yearStrands.length} {yearStrands.length === 1 ? 'strand' : 'strands'})
+                                </span>
+                              </h4>
+                              <div className="space-y-3">
+                                {yearStrands.map((strand) => {
+                                  const strandRubrics = getRubricsForStrand(strand.strand_id);
+                                  const isExpanded = expandedStrands.has(strand.strand_id);
+                                  
+                                  return (
+                                    <div key={strand.strand_id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                      {/* Strand Header */}
+                                      <div className="flex items-start gap-3 p-3 bg-white hover:bg-gray-50">
+                                        {strand.label && (
+                                          <span className="font-bold text-blue-700 text-sm min-w-[30px]">
+                                            {strand.label}.
+                                          </span>
+                                        )}
+                                        <div className="flex-1">
+                                          <p className="text-sm text-gray-800 font-medium">
+                                            {strand.content}
+                                          </p>
+                                          {strandRubrics.length > 0 && (
+                                            <div className="mt-2 flex items-center gap-2">
+                                              <span className="text-xs text-gray-500">
+                                                {strandRubrics.length} rubric{strandRubrics.length !== 1 ? 's' : ''}
+                                              </span>
+                                              <button
+                                                onClick={() => toggleStrandExpansion(strand.strand_id)}
+                                                className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                              >
+                                                {isExpanded ? '▼ Hide' : '▶ Show'} Rubrics
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="flex gap-2 flex-shrink-0">
+                                          <button
+                                            onClick={() => handleAddRubric(strand)}
+                                            className="text-purple-600 hover:text-purple-800 text-xs font-medium"
+                                            title="Add Rubric"
+                                          >
+                                            + Rubric
+                                          </button>
+                                          <button
+                                            onClick={() => handleEditStrand(strand)}
+                                            className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeleteStrand(strand)}
+                                            className="text-red-600 hover:text-red-800 text-xs font-medium"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {/* Rubrics Section (Expandable) */}
+                                      {isExpanded && strandRubrics.length > 0 && (
+                                        <div className="bg-gray-50 border-t border-gray-200 p-3">
+                                          <div className="space-y-2">
+                                            {strandRubrics.map((rubric) => (
+                                              <div 
+                                                key={rubric.rubric_id} 
+                                                className={`flex items-start gap-3 p-3 rounded-lg border ${getBandColor(rubric.band_label)}`}
+                                              >
+                                                <div className="flex-shrink-0">
+                                                  <span className="font-bold text-xs px-2 py-1 rounded bg-white border border-current">
+                                                    {rubric.band_label}
+                                                  </span>
+                                                  {rubric.min_score !== null && rubric.max_score !== null && (
+                                                    <div className="text-xs text-center mt-1 opacity-75">
+                                                      {rubric.min_score}-{rubric.max_score}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <p className="flex-1 text-sm">
+                                                  {rubric.description}
+                                                </p>
+                                                <div className="flex gap-2 flex-shrink-0">
+                                                  <button
+                                                    onClick={() => handleEditRubric(rubric)}
+                                                    className="text-blue-700 hover:text-blue-900 text-xs font-medium"
+                                                  >
+                                                    Edit
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handleDeleteRubric(rubric)}
+                                                    className="text-red-700 hover:text-red-900 text-xs font-medium"
+                                                  >
+                                                    Delete
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Criteria Form Modal */}
+      <Modal isOpen={showCriteriaForm} onClose={() => setShowCriteriaForm(false)}>
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold">
+            {editingCriterion ? 'Edit Criterion' : 'Add New Criterion'}
+          </h3>
+          
+          <div>
+            <Label htmlFor="criteria_code">Code (A, B, C, D) *</Label>
+            <Input
+              id="criteria_code"
+              maxLength={1}
+              placeholder="A"
+              value={criteriaFormData.code}
+              onChange={(e) => setCriteriaFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="criteria_name">Name *</Label>
+            <Input
+              id="criteria_name"
+              placeholder="e.g., Knowing and Understanding"
+              value={criteriaFormData.name}
+              onChange={(e) => setCriteriaFormData(prev => ({ ...prev, name: e.target.value }))}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setShowCriteriaForm(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCriteria}>
+              {editingCriterion ? 'Update' : 'Add'} Criterion
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Strand Form Modal */}
+      <Modal isOpen={showStrandForm} onClose={() => setShowStrandForm(false)}>
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold">
+            {editingStrand ? 'Edit Strand' : 'Add New Strand'}
+          </h3>
+
+          <div>
+            <Label htmlFor="strand_criterion">Criterion *</Label>
+            <select
+              id="strand_criterion"
+              value={strandFormData.criterion_id}
+              onChange={(e) => setStrandFormData(prev => ({ ...prev, criterion_id: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="">Select Criterion</option>
+              {criteria.map((c) => (
+                <option key={c.criterion_id} value={c.criterion_id}>
+                  Criterion {c.code} - {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <Label htmlFor="strand_year">Year Level (1-5 for MYP) *</Label>
+            <Input
+              id="strand_year"
+              type="number"
+              min="1"
+              max="5"
+              placeholder="1"
+              value={strandFormData.year_level}
+              onChange={(e) => setStrandFormData(prev => ({ ...prev, year_level: e.target.value }))}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="strand_label">Label (optional)</Label>
+            <Input
+              id="strand_label"
+              placeholder="e.g., i, ii, iii"
+              value={strandFormData.label}
+              onChange={(e) => setStrandFormData(prev => ({ ...prev, label: e.target.value }))}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="strand_content">Content *</Label>
+            <textarea
+              id="strand_content"
+              rows={4}
+              placeholder="Enter strand content/description"
+              value={strandFormData.content}
+              onChange={(e) => setStrandFormData(prev => ({ ...prev, content: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setShowStrandForm(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveStrand}>
+              {editingStrand ? 'Update' : 'Add'} Strand
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Rubric Form Modal */}
+      <Modal isOpen={showRubricForm} onClose={() => setShowRubricForm(false)}>
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold">
+            {editingRubric ? 'Edit Rubric' : 'Add New Rubric'}
+          </h3>
+
+          {selectedStrandForRubric && !editingRubric && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-900">
+                <span className="font-semibold">Adding rubric for:</span>
+                <br />
+                {selectedStrandForRubric.label && `${selectedStrandForRubric.label}. `}
+                {selectedStrandForRubric.content}
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="rubric_band">Band Label *</Label>
+              <select
+                id="rubric_band"
+                value={rubricFormData.band_label}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  let min = '', max = '';
+                  if (val === '0') { min = 0; max = 0; }
+                  else if (val === '1-2') { min = 1; max = 2; }
+                  else if (val === '3-4') { min = 3; max = 4; }
+                  else if (val === '5-6') { min = 5; max = 6; }
+                  else if (val === '7-8') { min = 7; max = 8; }
+                  setRubricFormData(prev => ({ 
+                    ...prev, 
+                    band_label: val,
+                    min_score: min,
+                    max_score: max
+                  }));
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">Select Band</option>
+                <option value="0">0 (No Achievement)</option>
+                <option value="1-2">1-2 (Limited)</option>
+                <option value="3-4">3-4 (Adequate)</option>
+                <option value="5-6">5-6 (Substantial)</option>
+                <option value="7-8">7-8 (Excellent)</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="rubric_min">Min Score</Label>
+                <Input
+                  id="rubric_min"
+                  type="number"
+                  min="0"
+                  max="8"
+                  value={rubricFormData.min_score}
+                  onChange={(e) => setRubricFormData(prev => ({ ...prev, min_score: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="rubric_max">Max Score</Label>
+                <Input
+                  id="rubric_max"
+                  type="number"
+                  min="0"
+                  max="8"
+                  value={rubricFormData.max_score}
+                  onChange={(e) => setRubricFormData(prev => ({ ...prev, max_score: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="rubric_description">Description *</Label>
+            <textarea
+              id="rubric_description"
+              rows={5}
+              placeholder="Enter rubric description for this achievement level"
+              value={rubricFormData.description}
+              onChange={(e) => setRubricFormData(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Tip: Be specific about what students need to demonstrate at this level
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setShowRubricForm(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveRubric}>
+              {editingRubric ? 'Update' : 'Add'} Rubric
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Notification Modal */}
