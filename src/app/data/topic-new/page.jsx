@@ -39,18 +39,21 @@ export default function TopicNewPage() {
   
   // Assessment Form state
   const [showAssessmentForm, setShowAssessmentForm] = useState(false)
+  const [editingAssessment, setEditingAssessment] = useState(null) // For edit mode
   const [detailKelasOptions, setDetailKelasOptions] = useState([])
   const [assessmentFormData, setAssessmentFormData] = useState({
     assessment_nama: '',
     assessment_tanggal: '',
     assessment_keterangan: '',
     assessment_detail_kelas_id: '',
-    assessment_topic_id: ''
+    assessment_topic_id: '',
+    selected_criteria: [] // Array of criterion IDs
   })
   const [assessmentFormErrors, setAssessmentFormErrors] = useState({})
   const [submittingAssessment, setSubmittingAssessment] = useState(false)
   const [topicsForAssessment, setTopicsForAssessment] = useState([])
   const [topicsLoadingAssessment, setTopicsLoadingAssessment] = useState(false)
+  const [criteriaForAssessment, setCriteriaForAssessment] = useState([])
   const [currentUserId, setCurrentUserId] = useState(null)
   
   // Modal state
@@ -483,9 +486,54 @@ export default function TopicNewPage() {
         }
       }
       
+      // Fetch criteria for assessments from junction table
+      const assessmentIds = assessmentsData?.map(a => a.assessment_id) || []
+      let assessmentCriteriaMap = new Map() // assessment_id -> array of criteria
+      
+      if (assessmentIds.length > 0) {
+        const { data: junctionData, error: jError } = await supabase
+          .from('assessment_criteria')
+          .select('assessment_id, criterion_id')
+          .in('assessment_id', assessmentIds)
+        
+        if (!jError && junctionData) {
+          // Group by assessment_id
+          junctionData.forEach(j => {
+            if (!assessmentCriteriaMap.has(j.assessment_id)) {
+              assessmentCriteriaMap.set(j.assessment_id, [])
+            }
+            assessmentCriteriaMap.get(j.assessment_id).push(j.criterion_id)
+          })
+          
+          // Fetch all unique criterion details
+          const allCriterionIds = [...new Set(junctionData.map(j => j.criterion_id))]
+          let criterionMap = new Map()
+          
+          if (allCriterionIds.length > 0) {
+            const { data: criteriaData, error: cError } = await supabase
+              .from('criteria')
+              .select('criterion_id, code, name')
+              .in('criterion_id', allCriterionIds)
+            
+            if (!cError && criteriaData) {
+              criteriaData.forEach(c => {
+                criterionMap.set(c.criterion_id, { code: c.code, name: c.name })
+              })
+            }
+          }
+          
+          // Map criteria details to assessments
+          assessmentCriteriaMap.forEach((criterionIds, assessmentId) => {
+            const criteriaDetails = criterionIds.map(id => criterionMap.get(id)).filter(Boolean)
+            assessmentCriteriaMap.set(assessmentId, criteriaDetails)
+          })
+        }
+      }
+      
       // Merge all data
       const enrichedAssessments = (assessmentsData || []).map(a => {
         const detailKelas = detailKelasMap.get(a.assessment_detail_kelas_id) || {}
+        const criteria = assessmentCriteriaMap.get(a.assessment_id) || []
         return {
           ...a,
           subject_id: detailKelas.subject_id,
@@ -493,7 +541,8 @@ export default function TopicNewPage() {
           kelas_id: detailKelas.kelas_id,
           kelas_nama: kelasMap.get(detailKelas.kelas_id) || '',
           teacher_name: userMap.get(a.assessment_user_id) || 'Unknown',
-          topic_nama: topicMap.get(a.assessment_topic_id) || null
+          topic_nama: topicMap.get(a.assessment_topic_id) || null,
+          criteria: criteria // Array of { code, name }
         }
       })
       
@@ -610,6 +659,23 @@ export default function TopicNewPage() {
     }
   }
   
+  // Load criteria for assessment form based on subject
+  const loadCriteriaForAssessmentForm = async (subjectId) => {
+    try {
+      const { data, error } = await supabase
+        .from('criteria')
+        .select('criterion_id, code, name')
+        .eq('subject_id', subjectId)
+        .order('code')
+      
+      if (error) throw error
+      setCriteriaForAssessment(data || [])
+    } catch (e) {
+      console.error('Failed loading criteria:', e)
+      setCriteriaForAssessment([])
+    }
+  }
+  
   // Helper functions for assessment form
   const getDaysDifference = (date1, date2) => {
     const diffTime = Math.abs(date2 - date1)
@@ -644,6 +710,11 @@ export default function TopicNewPage() {
       errors.assessment_topic_id = 'No topics available for this subject/class'
     } else if (!assessmentFormData.assessment_topic_id) {
       errors.assessment_topic_id = 'Topic is required'
+    }
+    
+    // Criteria required (at least one)
+    if (!assessmentFormData.selected_criteria || assessmentFormData.selected_criteria.length === 0) {
+      errors.selected_criteria = 'At least one criterion is required'
     }
     
     // Date validation
@@ -683,20 +754,76 @@ export default function TopicNewPage() {
       }))
     }
     
-    // Load topics when subject changes
+    // Load topics and criteria when subject changes
     if (name === 'assessment_detail_kelas_id') {
       const selectedDetail = detailKelasOptions.find(o => o.detail_kelas_id.toString() === value)
       const subjId = selectedDetail?.subject_id
       const kelasId = selectedDetail?.kelas_id
-      setAssessmentFormData(prev => ({ ...prev, assessment_topic_id: '' }))
+      setAssessmentFormData(prev => ({ ...prev, assessment_topic_id: '', selected_criteria: [] }))
       if (subjId && kelasId) {
         loadTopicsForAssessmentForm(subjId, kelasId)
+        loadCriteriaForAssessmentForm(subjId)
       } else {
         setTopicsForAssessment([])
+        setCriteriaForAssessment([])
       }
     }
   }
   
+  // Toggle criterion selection (checkbox)
+  const toggleCriterionSelection = (criterionId) => {
+    setAssessmentFormData(prev => {
+      const currentSelected = prev.selected_criteria || []
+      const isSelected = currentSelected.includes(criterionId)
+      
+      return {
+        ...prev,
+        selected_criteria: isSelected
+          ? currentSelected.filter(id => id !== criterionId)
+          : [...currentSelected, criterionId]
+      }
+    })
+    
+    // Clear error when user selects
+    if (assessmentFormErrors.selected_criteria) {
+      setAssessmentFormErrors(prev => ({
+        ...prev,
+        selected_criteria: ''
+      }))
+    }
+  }
+  
+  // Open edit assessment modal
+  const handleEditAssessment = async (assessment) => {
+    setEditingAssessment(assessment)
+    
+    // Fetch selected criteria from junction table
+    const { data: junctionData } = await supabase
+      .from('assessment_criteria')
+      .select('criterion_id')
+      .eq('assessment_id', assessment.assessment_id)
+    
+    const selectedCriteriaIds = (junctionData || []).map(j => j.criterion_id)
+    
+    setAssessmentFormData({
+      assessment_nama: assessment.assessment_nama || '',
+      assessment_tanggal: assessment.assessment_tanggal || '',
+      assessment_keterangan: assessment.assessment_keterangan || '',
+      assessment_detail_kelas_id: assessment.assessment_detail_kelas_id?.toString() || '',
+      assessment_topic_id: assessment.assessment_topic_id?.toString() || '',
+      selected_criteria: selectedCriteriaIds
+    })
+    
+    // Load topics and criteria for the selected subject/class
+    const selectedDetail = detailKelasOptions.find(o => o.detail_kelas_id === assessment.assessment_detail_kelas_id)
+    if (selectedDetail) {
+      loadTopicsForAssessmentForm(selectedDetail.subject_id, selectedDetail.kelas_id)
+      loadCriteriaForAssessmentForm(selectedDetail.subject_id)
+    }
+    
+    setShowAssessmentForm(true)
+  }
+
   // Delete assessment
   const handleDeleteAssessment = async (assessmentId, assessmentName) => {
     if (!confirm(`Are you sure you want to delete "${assessmentName}"?`)) {
@@ -737,68 +864,152 @@ export default function TopicNewPage() {
     try {
       setSubmittingAssessment(true)
       
-      // Check limit: max 2 assessments per detail_kelas per date
-      const selectedDetailId = parseInt(assessmentFormData.assessment_detail_kelas_id)
-      const selectedDateStr = assessmentFormData.assessment_tanggal
-      const { count: existingCount, error: countErr } = await supabase
-        .from('assessment')
-        .select('assessment_id', { count: 'exact', head: true })
-        .eq('assessment_detail_kelas_id', selectedDetailId)
-        .eq('assessment_tanggal', selectedDateStr)
+      // If editing, update the existing assessment
+      if (editingAssessment) {
+        // Determine status based on date difference: 2-6 days => waiting for principal approval (3)
+        const selectedDate = new Date(assessmentFormData.assessment_tanggal)
+        selectedDate.setHours(0, 0, 0, 0)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const diffDays = getDaysDifference(today, selectedDate)
+        const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
+        
+        const assessmentData = {
+          assessment_nama: assessmentFormData.assessment_nama.trim(),
+          assessment_tanggal: assessmentFormData.assessment_tanggal,
+          assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
+          assessment_status: computedStatus,
+          assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
+          assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id)
+        }
+        
+        const { error } = await supabase
+          .from('assessment')
+          .update(assessmentData)
+          .eq('assessment_id', editingAssessment.assessment_id)
+        
+        if (error) throw error
+        
+        // Update junction table: delete old entries and insert new ones
+        const { error: deleteError } = await supabase
+          .from('assessment_criteria')
+          .delete()
+          .eq('assessment_id', editingAssessment.assessment_id)
+        
+        if (deleteError) throw deleteError
+        
+        // Insert new criteria selections
+        const junctionRecords = assessmentFormData.selected_criteria.map(criterionId => ({
+          assessment_id: editingAssessment.assessment_id,
+          criterion_id: criterionId
+        }))
+        
+        if (junctionRecords.length > 0) {
+          const { error: insertError } = await supabase
+            .from('assessment_criteria')
+            .insert(junctionRecords)
+          
+          if (insertError) throw insertError
+        }
+        
+        // Refresh assessments
+        await fetchAssessments()
+        
+        // Reset form and close modal
+        setAssessmentFormData({
+          assessment_nama: '',
+          assessment_tanggal: '',
+          assessment_keterangan: '',
+          assessment_detail_kelas_id: '',
+          assessment_topic_id: '',
+          selected_criteria: []
+        })
+        setAssessmentFormErrors({})
+        setEditingAssessment(null)
+        setShowAssessmentForm(false)
+        setFabOpen(false)
+        alert('Assessment updated successfully!')
+      } else {
+        // Check limit: max 2 assessments per detail_kelas per date
+        const selectedDetailId = parseInt(assessmentFormData.assessment_detail_kelas_id)
+        const selectedDateStr = assessmentFormData.assessment_tanggal
+        const { count: existingCount, error: countErr } = await supabase
+          .from('assessment')
+          .select('assessment_id', { count: 'exact', head: true })
+          .eq('assessment_detail_kelas_id', selectedDetailId)
+          .eq('assessment_tanggal', selectedDateStr)
+        
+        if (countErr) throw countErr
+        if ((existingCount || 0) >= 2) {
+          alert('Maximum 2 assessments per class per day already reached. Please choose another date.')
+          setSubmittingAssessment(false)
+          return
+        }
+        
+        // Determine status based on date difference: 2-6 days => waiting for principal approval (3)
+        const selectedDate = new Date(assessmentFormData.assessment_tanggal)
+        selectedDate.setHours(0, 0, 0, 0)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const diffDays = getDaysDifference(today, selectedDate)
+        const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
+        
+        const assessmentData = {
+          assessment_nama: assessmentFormData.assessment_nama.trim(),
+          assessment_tanggal: assessmentFormData.assessment_tanggal,
+          assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
+          assessment_status: computedStatus,
+          assessment_user_id: currentUserId,
+          assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
+          assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id)
+        }
+        
+        const { data, error } = await supabase
+          .from('assessment')
+          .insert([assessmentData])
+          .select()
+        
+        if (error) throw error
+        
+        // Insert into junction table for criteria
+        const newAssessmentId = data[0].assessment_id
+        const junctionRecords = assessmentFormData.selected_criteria.map(criterionId => ({
+          assessment_id: newAssessmentId,
+          criterion_id: criterionId
+        }))
+        
+        if (junctionRecords.length > 0) {
+          const { error: junctionError } = await supabase
+            .from('assessment_criteria')
+            .insert(junctionRecords)
+          
+          if (junctionError) throw junctionError
+        }
+        
+        // Send notification to vice principal
+        if (data && data[0]) {
+          notifyVicePrincipal(data[0].assessment_id)
+        }
+        
+        // Refresh assessments
+        await fetchAssessments()
+        
+        // Reset form
+        setAssessmentFormData({
+          assessment_nama: '',
+          assessment_tanggal: '',
+          assessment_keterangan: '',
+          assessment_detail_kelas_id: '',
+          assessment_topic_id: '',
+          selected_criteria: []
+        })
+        setAssessmentFormErrors({})
+        setEditingAssessment(null)
+        setShowAssessmentForm(false)
+        setFabOpen(false)
       
-      if (countErr) throw countErr
-      if ((existingCount || 0) >= 2) {
-        alert('Maximum 2 assessments per class per day already reached. Please choose another date.')
-        setSubmittingAssessment(false)
-        return
+        alert('Assessment submitted successfully!')
       }
-      
-      // Determine status based on date difference: 2-6 days => waiting for principal approval (3)
-      const selectedDate = new Date(assessmentFormData.assessment_tanggal)
-      selectedDate.setHours(0, 0, 0, 0)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const diffDays = getDaysDifference(today, selectedDate)
-      const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
-      
-      const assessmentData = {
-        assessment_nama: assessmentFormData.assessment_nama.trim(),
-        assessment_tanggal: assessmentFormData.assessment_tanggal,
-        assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
-        assessment_status: computedStatus,
-        assessment_user_id: currentUserId,
-        assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
-        assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id)
-      }
-      
-      const { data, error } = await supabase
-        .from('assessment')
-        .insert([assessmentData])
-        .select()
-      
-      if (error) throw error
-      
-      // Send notification to vice principal
-      if (data && data[0]) {
-        notifyVicePrincipal(data[0].assessment_id)
-      }
-      
-      // Refresh assessments
-      await fetchAssessments()
-      
-      // Reset form
-      setAssessmentFormData({
-        assessment_nama: '',
-        assessment_tanggal: '',
-        assessment_keterangan: '',
-        assessment_detail_kelas_id: '',
-        assessment_topic_id: ''
-      })
-      setAssessmentFormErrors({})
-      setShowAssessmentForm(false)
-      setFabOpen(false)
-      
-      alert('Assessment submitted successfully!')
       
     } catch (err) {
       console.error('Error submitting assessment:', err)
@@ -2307,10 +2518,13 @@ Please respond in ${selected} language and ensure valid JSON format.`
                   const gradeMatch = kelasName.match(/(\d{1,2})/)
                   const gradeNumber = gradeMatch ? gradeMatch[1] : ''
                   
+                  const canEdit = (assessment.assessment_status === 0 || assessment.assessment_status === 3) && assessment.assessment_user_id === currentUserId
+                  
                   return (
                   <div 
                     key={assessment.assessment_id}
-                    className="relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all overflow-hidden"
+                    className={`relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all overflow-hidden ${canEdit ? 'cursor-pointer hover:border-cyan-300' : ''}`}
+                    onClick={() => canEdit && handleEditAssessment(assessment)}
                   >
                     {/* Grade Watermark */}
                     {gradeNumber && (
@@ -2327,7 +2541,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                         </h3>
                         {getAssessmentStatusBadge(assessment.assessment_status)}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
                         <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-medium">
                           {assessment.subject_name || 'N/A'}
                         </span>
@@ -2336,8 +2550,27 @@ Please respond in ${selected} language and ensure valid JSON format.`
                             {assessment.kelas_nama}
                           </span>
                         )}
+                        {assessment.criteria && assessment.criteria.length > 0 && assessment.criteria.map(c => (
+                          <span key={c.code} className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-bold">
+                            Criterion {c.code}
+                          </span>
+                        ))}
                       </div>
                     </div>
+
+                    {/* Criteria Names */}
+                    {assessment.criteria && assessment.criteria.length > 0 && (
+                      <div className="mb-3 relative z-10">
+                        <p className="text-xs text-purple-500 font-medium mb-1">IB MYP Criteria</p>
+                        <div className="flex flex-wrap gap-2">
+                          {assessment.criteria.map(c => (
+                            <div key={c.code} className="text-sm text-gray-700 bg-purple-50 px-2 py-1 rounded font-medium">
+                              {c.code}: {c.name}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Date */}
                     <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
@@ -2379,16 +2612,22 @@ Please respond in ${selected} language and ensure valid JSON format.`
                       </div>
                     )}
 
-                    {/* Delete Button (only for status 0 or 3 - not approved yet) */}
-                    {(assessment.assessment_status === 0 || assessment.assessment_status === 3) && assessment.assessment_user_id === currentUserId && (
-                      <div className="relative z-10 pt-3 border-t border-gray-100">
+                    {/* Action Buttons (only for status 0 or 3 - not approved yet) */}
+                    {canEdit && (
+                      <div className="relative z-10 pt-3 border-t border-gray-100 flex gap-2">
                         <button
-                          onClick={() => handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
                         >
                           <FontAwesomeIcon icon={faTrash} />
-                          Delete Assessment
+                          Delete
                         </button>
+                        <div className="flex items-center text-xs text-gray-400 px-2">
+                          Click card to edit
+                        </div>
                       </div>
                     )}
                   </div>
@@ -4298,12 +4537,15 @@ Please respond in ${selected} language and ensure valid JSON format.`
             assessment_tanggal: '',
             assessment_keterangan: '',
             assessment_detail_kelas_id: '',
-            assessment_topic_id: ''
+            assessment_topic_id: '',
+            selected_criteria: []
           })
           setAssessmentFormErrors({})
           setTopicsForAssessment([])
+          setCriteriaForAssessment([])
+          setEditingAssessment(null)
         }}
-        title="Add New Assessment"
+        title={editingAssessment ? "Edit Assessment" : "Add New Assessment"}
       >
         {/* Info Panel */}
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -4390,6 +4632,47 @@ Please respond in ${selected} language and ensure valid JSON format.`
             )}
           </div>
 
+          {/* Criteria Selection (Multiple) */}
+          {assessmentFormData.assessment_detail_kelas_id && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                IB MYP Criteria * <span className="text-xs text-gray-500">(Select one or more)</span>
+              </label>
+              {criteriaForAssessment.length === 0 ? (
+                <p className="text-sm text-red-500">No criteria available for this subject. Please add criteria in Subject Management first.</p>
+              ) : (
+                <div className={`space-y-2 p-3 border rounded-md ${
+                  assessmentFormErrors.selected_criteria ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-gray-50'
+                }`}>
+                  {criteriaForAssessment.map(c => (
+                    <label 
+                      key={c.criterion_id}
+                      className="flex items-start gap-3 p-2 hover:bg-white rounded cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={assessmentFormData.selected_criteria.includes(c.criterion_id)}
+                        onChange={() => toggleCriterionSelection(c.criterion_id)}
+                        className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">
+                          Criterion {c.code}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {c.name}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {assessmentFormErrors.selected_criteria && (
+                <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.selected_criteria}</p>
+              )}
+            </div>
+          )}
+
           {/* Topic Selection */}
           {assessmentFormData.assessment_detail_kelas_id && (
             <div>
@@ -4447,10 +4730,13 @@ Please respond in ${selected} language and ensure valid JSON format.`
                   assessment_tanggal: '',
                   assessment_keterangan: '',
                   assessment_detail_kelas_id: '',
-                  assessment_topic_id: ''
+                  assessment_topic_id: '',
+                  selected_criteria: []
                 })
                 setAssessmentFormErrors({})
                 setTopicsForAssessment([])
+                setCriteriaForAssessment([])
+                setEditingAssessment(null)
               }}
               disabled={submittingAssessment}
               className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors disabled:opacity-50"

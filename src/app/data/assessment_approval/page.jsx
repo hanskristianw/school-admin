@@ -15,6 +15,8 @@ export default function AssessmentApproval() {
   const [assessments, setAssessments] = useState([]);
   // topic_id -> topic_nama map for display
   const [topicNameMap, setTopicNameMap] = useState(new Map());
+  // criterion_id -> { code, name } map for display
+  const [criterionNameMap, setCriterionNameMap] = useState(new Map());
   // detail_kelas options across system for filtering/display
   const [detailKelasOptions, setDetailKelasOptions] = useState([]);
   const [users, setUsers] = useState([]);
@@ -119,7 +121,7 @@ export default function AssessmentApproval() {
       // Fetch assessments
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from('assessment')
-        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id, assessment_topic_id')
+        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id, assessment_topic_id, assessment_criterion_id')
         .order('assessment_tanggal', { ascending: false });
 
       if (assessmentsError) {
@@ -141,6 +143,20 @@ export default function AssessmentApproval() {
         }
       } else {
         setTopicNameMap(new Map());
+      }
+      
+      // Load criterion names for any referenced criterion IDs
+      const criterionIds = Array.from(new Set(list.map(a => a.assessment_criterion_id).filter(Boolean)));
+      if (criterionIds.length) {
+        const { data: criteriaData, error: criteriaErr } = await supabase
+          .from('criteria')
+          .select('criterion_id, code, name')
+          .in('criterion_id', criterionIds);
+        if (!criteriaErr && criteriaData) {
+          setCriterionNameMap(new Map(criteriaData.map(c => [c.criterion_id, { code: c.code, name: c.name }])));
+        }
+      } else {
+        setCriterionNameMap(new Map());
       }
       
     } catch (err) {
@@ -663,8 +679,23 @@ export default function AssessmentApproval() {
                         {kelasName}
                       </span>
                     )}
+                    {assessment.assessment_criterion_id && criterionNameMap.get(assessment.assessment_criterion_id) && (
+                      <span className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-bold">
+                        Criterion {criterionNameMap.get(assessment.assessment_criterion_id).code}
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                {/* Criterion Name */}
+                {assessment.assessment_criterion_id && criterionNameMap.get(assessment.assessment_criterion_id) && (
+                  <div className="mb-3 relative z-10">
+                    <p className="text-xs text-purple-500 font-medium mb-1">IB MYP Criterion</p>
+                    <p className="text-sm text-gray-700 font-medium">
+                      {criterionNameMap.get(assessment.assessment_criterion_id).name}
+                    </p>
+                  </div>
+                )}
 
                 {/* Date */}
                 <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
