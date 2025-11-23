@@ -591,8 +591,8 @@ export default function ClassManagement() {
       setFormData({
         kelas_nama: '',
         kelas_user_id: '',
-  kelas_unit_id: '',
-  kelas_year_id: ''
+        kelas_unit_id: '',
+        kelas_year_id: ''
       });
       setError('');
       showNotification(

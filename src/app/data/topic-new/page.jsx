@@ -47,6 +47,7 @@ export default function TopicNewPage() {
     assessment_keterangan: '',
     assessment_detail_kelas_id: '',
     assessment_topic_id: '',
+    assessment_myp_year: '',
     selected_criteria: [] // Array of criterion IDs
   })
   const [assessmentFormErrors, setAssessmentFormErrors] = useState({})
@@ -404,7 +405,8 @@ export default function TopicNewPage() {
           assessment_status,
           assessment_user_id,
           assessment_detail_kelas_id,
-          assessment_topic_id
+          assessment_topic_id,
+          assessment_myp_year
         `)
         .in('assessment_detail_kelas_id', userDetailKelasIds)
         .order('assessment_tanggal', { ascending: false })
@@ -730,6 +732,11 @@ export default function TopicNewPage() {
         errors.assessment_topic_id = 'Topic is required'
       }
       
+      // MYP Year required
+      if (!assessmentFormData.assessment_myp_year) {
+        errors.assessment_myp_year = 'MYP Year Level is required'
+      }
+      
       // Date validation
       if (assessmentFormData.assessment_tanggal) {
         const selectedDate = new Date(assessmentFormData.assessment_tanggal)
@@ -830,6 +837,7 @@ export default function TopicNewPage() {
       assessment_keterangan: assessment.assessment_keterangan || '',
       assessment_detail_kelas_id: assessment.assessment_detail_kelas_id?.toString() || '',
       assessment_topic_id: assessment.assessment_topic_id?.toString() || '',
+      assessment_myp_year: assessment.assessment_myp_year?.toString() || '',
       selected_criteria: selectedCriteriaIds
     })
     
@@ -912,7 +920,8 @@ export default function TopicNewPage() {
             assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
             assessment_status: computedStatus,
             assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
-            assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id)
+            assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id),
+            assessment_myp_year: assessmentFormData.assessment_myp_year ? parseInt(assessmentFormData.assessment_myp_year) : null
           }
         }
         
@@ -955,6 +964,7 @@ export default function TopicNewPage() {
           assessment_keterangan: '',
           assessment_detail_kelas_id: '',
           assessment_topic_id: '',
+          assessment_myp_year: '',
           selected_criteria: []
         })
         setAssessmentFormErrors({})
@@ -994,7 +1004,8 @@ export default function TopicNewPage() {
           assessment_status: computedStatus,
           assessment_user_id: currentUserId,
           assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
-          assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id)
+          assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id),
+          assessment_myp_year: assessmentFormData.assessment_myp_year ? parseInt(assessmentFormData.assessment_myp_year) : null
         }
         
         const { data, error } = await supabase
@@ -1034,6 +1045,7 @@ export default function TopicNewPage() {
           assessment_keterangan: '',
           assessment_detail_kelas_id: '',
           assessment_topic_id: '',
+          assessment_myp_year: '',
           selected_criteria: []
         })
         setAssessmentFormErrors({})
@@ -1229,9 +1241,18 @@ export default function TopicNewPage() {
       const criterionIds = criteriaWithIds.map(c => c.criterion_id).filter(id => id)
       console.log('🔢 Criterion IDs:', criterionIds)
       
-      // Get year level from kelas_id (assuming kelas_id maps to MYP year 1-5)
-      const yearLevel = kelasId
-      console.log('📊 Year level:', yearLevel)
+      // Get MYP year level from assessment
+      const yearLevel = assessment.assessment_myp_year
+      
+      if (!yearLevel) {
+        throw new Error('This assessment does not have an MYP year level set. Please edit the assessment and set the MYP year level (1-5).')
+      }
+      
+      if (![1, 3, 5].includes(yearLevel)) {
+        throw new Error(`Invalid MYP year level (${yearLevel}). Valid options are: 1, 3, or 5 (IB Standard).`)
+      }
+      
+      console.log('📊 Assessment:', assessment.assessment_nama, '| MYP Year Level:', yearLevel)
       
       const { data: strands, error: strandsError } = await supabase
         .from('strands')
@@ -5225,6 +5246,34 @@ Please respond in ${selected} language and ensure valid JSON format.`
             {assessmentFormErrors.assessment_detail_kelas_id && (
               <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_detail_kelas_id}</p>
             )}
+          </div>
+
+          {/* MYP Year Level */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              MYP Year Level *
+              <span className="ml-2 text-xs text-gray-500">(For selecting correct strands/rubrics)</span>
+            </label>
+            <select
+              name="assessment_myp_year"
+              value={assessmentFormData.assessment_myp_year}
+              onChange={handleAssessmentInputChange}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                assessmentFormErrors.assessment_myp_year ? 'border-red-500' : 'border-gray-300'
+              }`}
+            >
+              <option value="">Select MYP Year</option>
+              <option value="1">MYP Year 1</option>
+              <option value="3">MYP Year 3</option>
+              <option value="5">MYP Year 5</option>
+            </select>
+            {assessmentFormErrors.assessment_myp_year && (
+              <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_myp_year}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
+              IB Standard: Only Years 1, 3, and 5 have specific strands/rubrics
+            </p>
           </div>
 
           {/* Criteria Selection (Multiple) */}
