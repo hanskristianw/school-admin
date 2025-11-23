@@ -20,9 +20,10 @@ export default function SubjectManagement() {
   const [formData, setFormData] = useState({
     subject_name: '',
     subject_user_id: '',
-  subject_unit_id: '',
-  subject_code: '',
-  subject_guide: ''
+    subject_unit_id: '',
+    subject_code: '',
+    subject_guide: '',
+    grading_method: 'highest'
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +100,7 @@ export default function SubjectManagement() {
           subject_unit_id,
           subject_code,
           subject_guide,
+          grading_method,
           users:subject_user_id (
             user_nama_depan,
             user_nama_belakang
@@ -119,8 +121,9 @@ export default function SubjectManagement() {
         subject_name: subject.subject_name,
         subject_user_id: subject.subject_user_id,
         subject_unit_id: subject.subject_unit_id,
-  subject_code: subject.subject_code || '',
-  subject_guide: subject.subject_guide || '',
+        subject_code: subject.subject_code || '',
+        subject_guide: subject.subject_guide || '',
+        grading_method: subject.grading_method || 'highest',
         user_nama_depan: subject.users?.user_nama_depan || '',
         user_nama_belakang: subject.users?.user_nama_belakang || '',
         unit_name: subject.unit?.unit_name || ''
@@ -356,9 +359,10 @@ export default function SubjectManagement() {
       const submitData = {
         subject_name: formData.subject_name,
         subject_user_id: Number(formData.subject_user_id),
-  subject_unit_id: Number(formData.subject_unit_id),
-  subject_code: formData.subject_code?.trim() || null,
-        subject_guide: formData.subject_guide?.trim() || null
+        subject_unit_id: Number(formData.subject_unit_id),
+        subject_code: formData.subject_code?.trim() || null,
+        subject_guide: formData.subject_guide?.trim() || null,
+        grading_method: formData.grading_method || 'highest'
       };
 
       let result;
@@ -410,9 +414,10 @@ export default function SubjectManagement() {
     setFormData({
       subject_name: subject.subject_name,
       subject_user_id: subject.subject_user_id,
-  subject_unit_id: subject.subject_unit_id,
-  subject_code: subject.subject_code || '',
-      subject_guide: subject.subject_guide || ''
+      subject_unit_id: subject.subject_unit_id,
+      subject_code: subject.subject_code || '',
+      subject_guide: subject.subject_guide || '',
+      grading_method: subject.grading_method || 'highest'
     });
     setShowForm(true);
     setFormErrors({});
@@ -1023,6 +1028,27 @@ export default function SubjectManagement() {
               {formErrors.subject_guide && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.subject_guide}</p>
               )}
+            </div>
+
+            <div>
+              <Label htmlFor="grading_method">Grading Calculation Method *</Label>
+              <select
+                id="grading_method"
+                value={formData.grading_method}
+                onChange={(e) => setFormData(prev => ({ ...prev, grading_method: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="highest">Highest (Best-fit) - IB MYP Standard</option>
+                <option value="average">Average (Mean of all strands)</option>
+                <option value="median">Median (Middle value)</option>
+                <option value="mode">Mode (Most frequent)</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.grading_method === 'highest' && '✓ Takes the highest strand grade (IB MYP best-fit approach). Recommended for IB schools.'}
+                {formData.grading_method === 'average' && 'Calculates the mean of all strand grades and rounds to nearest integer.'}
+                {formData.grading_method === 'median' && 'Takes the middle value when strand grades are sorted.'}
+                {formData.grading_method === 'mode' && 'Takes the most frequently occurring strand grade.'}
+              </p>
             </div>
 
             <div>

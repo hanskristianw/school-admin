@@ -85,7 +85,7 @@ export default function AccessGuard({ children }) {
         // Counselor override: ensure consultation is allowed even if menu permission missing
         const counselorExtra = isCounselor ? ['/data/consultation'] : []
   // Teacher override: ensure teacher & room sections are allowed when role is teacher
-  const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
+  const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission', '/room', '/room/booking'] : []
         // Student override: ensure student scan is allowed when role is student
         const studentExtra = isStudent ? ['/student', '/student/scan'] : []
   let merged = Array.from(new Set([

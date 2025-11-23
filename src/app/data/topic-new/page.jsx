@@ -31,7 +31,7 @@ export default function TopicNewPage() {
   // Assessment state
   const [assessments, setAssessments] = useState([])
   const [loadingAssessments, setLoadingAssessments] = useState(false)
-  const [assessmentFilters, setAssessmentFilters] = useState({ subject: '', kelas: '', status: '', search: '' })
+  const [assessmentFilters, setAssessmentFilters] = useState({ subject: '', kelas: '', status: '', search: '', noCriteria: false })
   const [assessmentKelasOptions, setAssessmentKelasOptions] = useState([]) // Kelas yang diajar guru untuk assessment filter
   
   // FAB (Floating Action Button) state
@@ -127,6 +127,17 @@ export default function TopicNewPage() {
   const [selectedStatements, setSelectedStatements] = useState([]) // For multi-select statements of inquiry
   const [selectedLearnerProfiles, setSelectedLearnerProfiles] = useState([]) // For multi-select learner profiles
   const [selectedServiceLearning, setSelectedServiceLearning] = useState([]) // For multi-select service learning
+  
+  // Grading Modal state
+  const [gradingModalOpen, setGradingModalOpen] = useState(false)
+  const [gradingAssessment, setGradingAssessment] = useState(null)
+  const [gradingStudents, setGradingStudents] = useState([])
+  const [gradingStrands, setGradingStrands] = useState([]) // All strands for assessment criteria
+  const [gradingData, setGradingData] = useState({}) // { student_id: { grade_id, strand_grades: { strand_id: grade } } }
+  const [expandedStudents, setExpandedStudents] = useState(new Set())
+  const [expandedRubrics, setExpandedRubrics] = useState(new Set()) // Track which strands have rubrics expanded
+  const [loadingGrading, setLoadingGrading] = useState(false)
+  const [savingGrades, setSavingGrades] = useState(false)
   
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
@@ -476,12 +487,12 @@ export default function TopicNewPage() {
       if (topicIds.length > 0) {
         const { data: topicsData, error: tError } = await supabase
           .from('topic')
-          .select('topic_id, topic_nama')
+          .select('topic_id, topic_nama, topic_urutan')
           .in('topic_id', topicIds)
         
         if (!tError && topicsData) {
           topicsData.forEach(t => {
-            topicMap.set(t.topic_id, t.topic_nama)
+            topicMap.set(t.topic_id, { nama: t.topic_nama, urutan: t.topic_urutan })
           })
         }
       }
@@ -534,6 +545,7 @@ export default function TopicNewPage() {
       const enrichedAssessments = (assessmentsData || []).map(a => {
         const detailKelas = detailKelasMap.get(a.assessment_detail_kelas_id) || {}
         const criteria = assessmentCriteriaMap.get(a.assessment_id) || []
+        const topicData = topicMap.get(a.assessment_topic_id) || {}
         return {
           ...a,
           subject_id: detailKelas.subject_id,
@@ -541,7 +553,8 @@ export default function TopicNewPage() {
           kelas_id: detailKelas.kelas_id,
           kelas_nama: kelasMap.get(detailKelas.kelas_id) || '',
           teacher_name: userMap.get(a.assessment_user_id) || 'Unknown',
-          topic_nama: topicMap.get(a.assessment_topic_id) || null,
+          topic_nama: topicData.nama || null,
+          topic_urutan: topicData.urutan || 999,
           criteria: criteria // Array of { code, name }
         }
       })
@@ -693,45 +706,51 @@ export default function TopicNewPage() {
   const validateAssessmentForm = () => {
     const errors = {}
     
-    if (!assessmentFormData.assessment_nama.trim()) {
-      errors.assessment_nama = 'Assessment name is required'
-    }
+    // Check if editing approved assessment (only criteria can be changed)
+    const isEditingApproved = editingAssessment && editingAssessment.assessment_status === 1
     
-    if (!assessmentFormData.assessment_tanggal) {
-      errors.assessment_tanggal = 'Assessment date is required'
-    }
-    
-    if (!assessmentFormData.assessment_detail_kelas_id) {
-      errors.assessment_detail_kelas_id = 'Subject/Class is required'
-    }
-    
-    // Topic required
-    if (assessmentFormData.assessment_detail_kelas_id && topicsForAssessment.length === 0) {
-      errors.assessment_topic_id = 'No topics available for this subject/class'
-    } else if (!assessmentFormData.assessment_topic_id) {
-      errors.assessment_topic_id = 'Topic is required'
-    }
-    
-    // Criteria required (at least one)
-    if (!assessmentFormData.selected_criteria || assessmentFormData.selected_criteria.length === 0) {
-      errors.selected_criteria = 'At least one criterion is required'
-    }
-    
-    // Date validation
-    if (assessmentFormData.assessment_tanggal) {
-      const selectedDate = new Date(assessmentFormData.assessment_tanggal)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      selectedDate.setHours(0, 0, 0, 0)
+    if (!isEditingApproved) {
+      // Full validation for new or pending assessments
+      if (!assessmentFormData.assessment_nama.trim()) {
+        errors.assessment_nama = 'Assessment name is required'
+      }
       
-      if (selectedDate < today) {
-        errors.assessment_tanggal = 'Date cannot be in the past'
-      } else {
-        const daysDiff = getDaysDifference(today, selectedDate)
-        if (daysDiff === 1) {
-          errors.assessment_tanggal = 'Date cannot be tomorrow. Minimum 2 days ahead.'
+      if (!assessmentFormData.assessment_tanggal) {
+        errors.assessment_tanggal = 'Assessment date is required'
+      }
+      
+      if (!assessmentFormData.assessment_detail_kelas_id) {
+        errors.assessment_detail_kelas_id = 'Subject/Class is required'
+      }
+      
+      // Topic required
+      if (assessmentFormData.assessment_detail_kelas_id && topicsForAssessment.length === 0) {
+        errors.assessment_topic_id = 'No topics available for this subject/class'
+      } else if (!assessmentFormData.assessment_topic_id) {
+        errors.assessment_topic_id = 'Topic is required'
+      }
+      
+      // Date validation
+      if (assessmentFormData.assessment_tanggal) {
+        const selectedDate = new Date(assessmentFormData.assessment_tanggal)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        selectedDate.setHours(0, 0, 0, 0)
+        
+        if (selectedDate < today) {
+          errors.assessment_tanggal = 'Date cannot be in the past'
+        } else {
+          const daysDiff = getDaysDifference(today, selectedDate)
+          if (daysDiff === 1) {
+            errors.assessment_tanggal = 'Date cannot be tomorrow. Minimum 2 days ahead.'
+          }
         }
       }
+    }
+    
+    // Criteria required (always, even for approved)
+    if (!assessmentFormData.selected_criteria || assessmentFormData.selected_criteria.length === 0) {
+      errors.selected_criteria = 'At least one criterion is required'
     }
     
     setAssessmentFormErrors(errors)
@@ -866,21 +885,35 @@ export default function TopicNewPage() {
       
       // If editing, update the existing assessment
       if (editingAssessment) {
-        // Determine status based on date difference: 2-6 days => waiting for principal approval (3)
-        const selectedDate = new Date(assessmentFormData.assessment_tanggal)
-        selectedDate.setHours(0, 0, 0, 0)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const diffDays = getDaysDifference(today, selectedDate)
-        const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
+        const isApproved = editingAssessment.assessment_status === 1
         
-        const assessmentData = {
-          assessment_nama: assessmentFormData.assessment_nama.trim(),
-          assessment_tanggal: assessmentFormData.assessment_tanggal,
-          assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
-          assessment_status: computedStatus,
-          assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
-          assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id)
+        // For approved assessments, only update name and description (not date/class/topic/status)
+        // For pending assessments, allow full update
+        let assessmentData
+        
+        if (isApproved) {
+          // Approved: only update name and description
+          assessmentData = {
+            assessment_nama: assessmentFormData.assessment_nama.trim(),
+            assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null
+          }
+        } else {
+          // Pending: full update with status recalculation
+          const selectedDate = new Date(assessmentFormData.assessment_tanggal)
+          selectedDate.setHours(0, 0, 0, 0)
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const diffDays = getDaysDifference(today, selectedDate)
+          const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
+          
+          assessmentData = {
+            assessment_nama: assessmentFormData.assessment_nama.trim(),
+            assessment_tanggal: assessmentFormData.assessment_tanggal,
+            assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
+            assessment_status: computedStatus,
+            assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
+            assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id)
+          }
         }
         
         const { error } = await supabase
@@ -1060,6 +1093,463 @@ export default function TopicNewPage() {
     } finally {
       setSaving(false)
       setEditingField(null)
+    }
+  }
+
+  // Open grading modal
+  const handleOpenGrading = async (assessment, e) => {
+    e?.stopPropagation() // Prevent card click
+    
+    setGradingAssessment(assessment)
+    setLoadingGrading(true)
+    setGradingModalOpen(true)
+    setExpandedStudents(new Set())
+    setExpandedRubrics(new Set())
+    
+    try {
+      console.log('🔍 Assessment data:', assessment)
+      console.log('📋 Detail kelas ID:', assessment.assessment_detail_kelas_id)
+      
+      // Validate assessment has detail_kelas_id
+      if (!assessment.assessment_detail_kelas_id) {
+        throw new Error('Assessment does not have a class assigned (detail_kelas_id is missing)')
+      }
+      
+      // 1. Fetch detail_kelas to get kelas_id
+      const { data: detailKelas, error: dkError } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_kelas_id')
+        .eq('detail_kelas_id', assessment.assessment_detail_kelas_id)
+        .single()
+      
+      console.log('🏫 Detail kelas result:', detailKelas, 'Error:', dkError)
+      
+      if (dkError) throw dkError
+      
+      if (!detailKelas || !detailKelas.detail_kelas_kelas_id) {
+        throw new Error('Could not find class information for this assessment')
+      }
+      
+      const kelasId = detailKelas.detail_kelas_kelas_id
+      console.log('🎯 Using kelas_id:', kelasId)
+      
+      // Fetch detail_siswa records
+      const { data: detailSiswaRecords, error: studentsError } = await supabase
+        .from('detail_siswa')
+        .select('detail_siswa_id, detail_siswa_user_id')
+        .eq('detail_siswa_kelas_id', kelasId)
+      
+      console.log('👥 Students found:', detailSiswaRecords?.length, 'Error:', studentsError)
+      
+      if (studentsError) throw studentsError
+      
+      // Fetch user details separately
+      const userIds = [...new Set(detailSiswaRecords.map(ds => ds.detail_siswa_user_id))]
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang')
+        .in('user_id', userIds)
+      
+      if (usersError) throw usersError
+      
+      // Create user map
+      const userMap = new Map()
+      usersData.forEach(u => {
+        userMap.set(u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim())
+      })
+      
+      // Flatten student data
+      const flatStudents = detailSiswaRecords
+        .map(ds => ({
+          detail_siswa_id: ds.detail_siswa_id,
+          user_id: ds.detail_siswa_user_id,
+          nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown Student'
+        }))
+        .sort((a, b) => a.nama.localeCompare(b.nama))
+      
+      setGradingStudents(flatStudents)
+      
+      // 2. Fetch strands for selected criteria
+      if (!assessment.criteria || assessment.criteria.length === 0) {
+        throw new Error('This assessment has no criteria assigned. Please add criteria first.')
+      }
+      
+      console.log('📚 Assessment criteria:', assessment.criteria)
+      
+      // Get subject_id and grading_method from detail_kelas and subject
+      const { data: detailKelasWithSubject, error: dkSubjectError } = await supabase
+        .from('detail_kelas')
+        .select(`
+          detail_kelas_subject_id,
+          subject:detail_kelas_subject_id (
+            subject_id,
+            subject_name,
+            grading_method
+          )
+        `)
+        .eq('detail_kelas_id', assessment.assessment_detail_kelas_id)
+        .single()
+      
+      if (dkSubjectError) throw dkSubjectError
+      
+      const subjectId = detailKelasWithSubject.detail_kelas_subject_id
+      const gradingMethod = detailKelasWithSubject.subject?.grading_method || 'highest'
+      console.log('📖 Subject ID:', subjectId, 'Grading Method:', gradingMethod)
+      
+      // Fetch full criteria data based on codes and subject
+      const criterionCodes = assessment.criteria.map(c => c.code)
+      const { data: fullCriteria, error: criteriaError } = await supabase
+        .from('criteria')
+        .select('criterion_id, code, name, subject_id')
+        .eq('subject_id', subjectId)
+        .in('code', criterionCodes)
+      
+      if (criteriaError) throw criteriaError
+      
+      console.log('🎯 Full criteria data:', fullCriteria)
+      
+      if (!fullCriteria || fullCriteria.length === 0) {
+        throw new Error('Could not find criteria definitions for this subject. Please configure criteria in the rubrics system first.')
+      }
+      
+      // Update assessment criteria with full data
+      const criteriaWithIds = assessment.criteria.map(c => {
+        const full = fullCriteria.find(fc => fc.code === c.code)
+        return full || c
+      })
+      
+      // Update gradingAssessment with complete criteria and grading method
+      setGradingAssessment(prev => ({
+        ...prev,
+        criteria: criteriaWithIds,
+        grading_method: gradingMethod,
+        subject_name: detailKelasWithSubject.subject?.subject_name || prev.subject_name
+      }))
+      
+      const criterionIds = criteriaWithIds.map(c => c.criterion_id).filter(id => id)
+      console.log('🔢 Criterion IDs:', criterionIds)
+      
+      // Get year level from kelas_id (assuming kelas_id maps to MYP year 1-5)
+      const yearLevel = kelasId
+      console.log('📊 Year level:', yearLevel)
+      
+      const { data: strands, error: strandsError } = await supabase
+        .from('strands')
+        .select(`
+          *,
+          rubrics (
+            rubric_id,
+            band_label,
+            description,
+            min_score,
+            max_score
+          )
+        `)
+        .in('criterion_id', criterionIds)
+        .eq('year_level', yearLevel)
+        .order('criterion_id, label')
+      
+      console.log('📝 Strands found:', strands?.length, 'Error:', strandsError)
+      
+      if (strandsError) throw strandsError
+      
+      // Sort rubrics within each strand by min_score
+      const strandsWithSortedRubrics = strands.map(strand => ({
+        ...strand,
+        rubrics: (strand.rubrics || []).sort((a, b) => (a.min_score || 0) - (b.min_score || 0))
+      }))
+      
+      setGradingStrands(strandsWithSortedRubrics)
+      
+      // 3. Fetch existing grades
+      const { data: existingGrades, error: gradesError } = await supabase
+        .from('assessment_grades')
+        .select(`
+          grade_id,
+          detail_siswa_id,
+          criterion_a_grade,
+          criterion_b_grade,
+          criterion_c_grade,
+          criterion_d_grade,
+          final_grade,
+          comments,
+          assessment_grade_strands (
+            grade_strand_id,
+            strand_id,
+            strand_grade,
+            notes
+          )
+        `)
+        .eq('assessment_id', assessment.assessment_id)
+      
+      if (gradesError) throw gradesError
+      
+      // Build grading data structure
+      const gradingMap = {}
+      for (const student of flatStudents) {
+        const existingGrade = existingGrades?.find(g => g.detail_siswa_id === student.detail_siswa_id)
+        if (existingGrade) {
+          const strandGrades = {}
+          existingGrade.assessment_grade_strands?.forEach(sg => {
+            strandGrades[sg.strand_id] = {
+              grade: sg.strand_grade,
+              notes: sg.notes || ''
+            }
+          })
+          gradingMap[student.detail_siswa_id] = {
+            grade_id: existingGrade.grade_id,
+            strand_grades: strandGrades,
+            comments: existingGrade.comments || ''
+          }
+        } else {
+          // Initialize empty
+          const strandGrades = {}
+          strands.forEach(s => {
+            strandGrades[s.strand_id] = { grade: null, notes: '' }
+          })
+          gradingMap[student.detail_siswa_id] = {
+            grade_id: null,
+            strand_grades: strandGrades,
+            comments: ''
+          }
+        }
+      }
+      
+      setGradingData(gradingMap)
+      
+    } catch (err) {
+      console.error('Error loading grading data:', err)
+      alert('Failed to load grading data: ' + err.message)
+      setGradingModalOpen(false)
+    } finally {
+      setLoadingGrading(false)
+    }
+  }
+  
+  // Toggle student expansion
+  const toggleStudentExpansion = (detailSiswaId) => {
+    const newSet = new Set(expandedStudents)
+    if (newSet.has(detailSiswaId)) {
+      newSet.delete(detailSiswaId)
+    } else {
+      newSet.add(detailSiswaId)
+    }
+    setExpandedStudents(newSet)
+  }
+  
+  // Toggle rubric expansion
+  const toggleRubricExpansion = (strandId) => {
+    const newSet = new Set(expandedRubrics)
+    if (newSet.has(strandId)) {
+      newSet.delete(strandId)
+    } else {
+      newSet.add(strandId)
+    }
+    setExpandedRubrics(newSet)
+  }
+  
+  // Get available grade options for a strand based on rubrics
+  const getAvailableGrades = (strand) => {
+    if (!strand.rubrics || strand.rubrics.length === 0) {
+      // No rubrics defined, allow all grades
+      return [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    }
+    
+    // Get unique grades from rubrics
+    const grades = new Set()
+    strand.rubrics.forEach(rubric => {
+      for (let i = rubric.min_score; i <= rubric.max_score; i++) {
+        grades.add(i)
+      }
+    })
+    
+    return Array.from(grades).sort((a, b) => a - b)
+  }
+  
+  // Get rubric description for a specific grade
+  const getRubricForGrade = (strand, grade) => {
+    if (!strand.rubrics || !grade) return null
+    return strand.rubrics.find(r => grade >= r.min_score && grade <= r.max_score)
+  }
+  
+  // Get band color
+  const getBandColor = (bandLabel) => {
+    if (bandLabel === '0') return 'bg-gray-100 text-gray-700 border-gray-300'
+    if (bandLabel === '1-2') return 'bg-red-50 text-red-700 border-red-200'
+    if (bandLabel === '3-4') return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+    if (bandLabel === '5-6') return 'bg-blue-50 text-blue-700 border-blue-200'
+    if (bandLabel === '7-8') return 'bg-green-50 text-green-700 border-green-200'
+    return 'bg-gray-100 text-gray-700 border-gray-300'
+  }
+  
+  // Update strand grade
+  const updateStrandGrade = (detailSiswaId, strandId, grade) => {
+    setGradingData(prev => ({
+      ...prev,
+      [detailSiswaId]: {
+        ...prev[detailSiswaId],
+        strand_grades: {
+          ...prev[detailSiswaId].strand_grades,
+          [strandId]: {
+            ...prev[detailSiswaId].strand_grades[strandId],
+            grade: grade === '' ? null : parseInt(grade)
+          }
+        }
+      }
+    }))
+  }
+  
+  // Calculate criterion grade from strand grades using configured method
+  const calculateCriterionGrade = (detailSiswaId, criterionId) => {
+    const studentData = gradingData[detailSiswaId]
+    if (!studentData) return null
+    
+    const criterionStrands = gradingStrands.filter(s => s.criterion_id === criterionId)
+    const grades = criterionStrands
+      .map(s => studentData.strand_grades[s.strand_id]?.grade)
+      .filter(g => g !== null && g !== undefined)
+    
+    if (grades.length === 0) return null
+    
+    // Get grading method from assessment (via subject)
+    const method = gradingAssessment?.grading_method || 'highest'
+    
+    switch (method) {
+      case 'average':
+        // Calculate mean and round to nearest integer
+        const sum = grades.reduce((a, b) => a + b, 0)
+        return Math.round(sum / grades.length)
+      
+      case 'median':
+        // Sort and take middle value
+        const sorted = [...grades].sort((a, b) => a - b)
+        const mid = Math.floor(sorted.length / 2)
+        if (sorted.length % 2 === 0) {
+          // Even number: average of two middle values
+          return Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+        } else {
+          // Odd number: take middle value
+          return sorted[mid]
+        }
+      
+      case 'mode':
+        // Find most frequent grade
+        const frequency = {}
+        grades.forEach(g => {
+          frequency[g] = (frequency[g] || 0) + 1
+        })
+        const maxFreq = Math.max(...Object.values(frequency))
+        const modes = Object.keys(frequency)
+          .filter(g => frequency[g] === maxFreq)
+          .map(g => parseInt(g))
+        // If multiple modes, take the highest
+        return Math.max(...modes)
+      
+      case 'highest':
+      default:
+        // IB MYP best-fit approach (default)
+        return Math.max(...grades)
+    }
+  }
+  
+  // Save all grades
+  const handleSaveGrades = async () => {
+    setSavingGrades(true)
+    try {
+      for (const student of gradingStudents) {
+        const detailSiswaId = student.detail_siswa_id
+        const studentData = gradingData[detailSiswaId]
+        
+        // Calculate criterion grades
+        const criterionGrades = {}
+        for (const criterion of gradingAssessment.criteria) {
+          const grade = calculateCriterionGrade(detailSiswaId, criterion.criterion_id)
+          criterionGrades[criterion.code] = grade
+        }
+        
+        // Calculate final grade (sum of all criteria, then convert to 1-7)
+        const total = Object.values(criterionGrades).reduce((sum, g) => sum + (g || 0), 0)
+        
+        // Use Supabase function to calculate final grade
+        const { data: finalGradeData, error: finalError } = await supabase
+          .rpc('calculate_final_grade', { total_score: total })
+        
+        if (finalError) throw finalError
+        
+        const finalGrade = finalGradeData
+        
+        // Upsert assessment_grades
+        const gradeRecord = {
+          assessment_id: gradingAssessment.assessment_id,
+          detail_siswa_id: detailSiswaId,
+          criterion_a_grade: criterionGrades['A'] || null,
+          criterion_b_grade: criterionGrades['B'] || null,
+          criterion_c_grade: criterionGrades['C'] || null,
+          criterion_d_grade: criterionGrades['D'] || null,
+          final_grade: finalGrade,
+          comments: studentData.comments || null,
+          created_by_user_id: studentData.grade_id ? undefined : currentUserId,
+          updated_by_user_id: currentUserId
+        }
+        
+        let gradeId = studentData.grade_id
+        
+        if (gradeId) {
+          // Update existing
+          const { error: updateError } = await supabase
+            .from('assessment_grades')
+            .update(gradeRecord)
+            .eq('grade_id', gradeId)
+          
+          if (updateError) throw updateError
+        } else {
+          // Insert new
+          const { data: insertData, error: insertError } = await supabase
+            .from('assessment_grades')
+            .insert([gradeRecord])
+            .select()
+          
+          if (insertError) throw insertError
+          gradeId = insertData[0].grade_id
+        }
+        
+        // Delete old strand grades
+        await supabase
+          .from('assessment_grade_strands')
+          .delete()
+          .eq('grade_id', gradeId)
+        
+        // Insert new strand grades
+        const strandRecords = []
+        for (const strand of gradingStrands) {
+          const strandData = studentData.strand_grades[strand.strand_id]
+          if (strandData && strandData.grade !== null) {
+            strandRecords.push({
+              grade_id: gradeId,
+              strand_id: strand.strand_id,
+              strand_grade: strandData.grade,
+              notes: strandData.notes || null
+            })
+          }
+        }
+        
+        if (strandRecords.length > 0) {
+          const { error: strandsInsertError } = await supabase
+            .from('assessment_grade_strands')
+            .insert(strandRecords)
+          
+          if (strandsInsertError) throw strandsInsertError
+        }
+      }
+      
+      alert('All grades saved successfully!')
+      setGradingModalOpen(false)
+      
+    } catch (err) {
+      console.error('Error saving grades:', err)
+      alert('Failed to save grades: ' + err.message)
+    } finally {
+      setSavingGrades(false)
     }
   }
 
@@ -2136,7 +2626,8 @@ Please respond in ${selected} language and ensure valid JSON format.`
       const matchSearch = !assessmentFilters.search || 
         assessment.assessment_nama?.toLowerCase().includes(assessmentFilters.search.toLowerCase()) ||
         assessment.teacher_name?.toLowerCase().includes(assessmentFilters.search.toLowerCase())
-      return matchSubject && matchKelas && matchStatus && matchSearch
+      const matchNoCriteria = !assessmentFilters.noCriteria || !assessment.criteria || assessment.criteria.length === 0
+      return matchSubject && matchKelas && matchStatus && matchSearch && matchNoCriteria
     })
     .sort((a, b) => {
       // First: sort by grade (extract from kelas_nama)
@@ -2150,7 +2641,12 @@ Please respond in ${selected} language and ensure valid JSON format.`
       const nameCompare = nameA.localeCompare(nameB)
       if (nameCompare !== 0) return nameCompare
       
-      // Third: sort by assessment date (most recent first)
+      // Third: sort by topic_urutan
+      const urutanA = a.topic_urutan || 999
+      const urutanB = b.topic_urutan || 999
+      if (urutanA !== urutanB) return urutanA - urutanB
+      
+      // Fourth: sort by assessment date (most recent first)
       const dateA = new Date(a.assessment_tanggal || 0)
       const dateB = new Date(b.assessment_tanggal || 0)
       return dateB - dateA
@@ -2500,6 +2996,24 @@ Please respond in ${selected} language and ensure valid JSON format.`
               </div>
             </div>
 
+            {/* Additional Filters */}
+            <div className="mb-4">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:text-gray-900">
+                <input
+                  type="checkbox"
+                  checked={assessmentFilters.noCriteria}
+                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, noCriteria: e.target.checked })}
+                  className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                />
+                <span>⚠ Show only assessments without criteria</span>
+                {assessmentFilters.noCriteria && (
+                  <span className="text-xs text-orange-600 font-medium">
+                    ({filteredAssessments.length} found)
+                  </span>
+                )}
+              </label>
+            </div>
+
             {/* Loading State */}
             {loadingAssessments ? (
               <div className="flex justify-center items-center py-12">
@@ -2518,12 +3032,15 @@ Please respond in ${selected} language and ensure valid JSON format.`
                   const gradeMatch = kelasName.match(/(\d{1,2})/)
                   const gradeNumber = gradeMatch ? gradeMatch[1] : ''
                   
-                  const canEdit = (assessment.assessment_status === 0 || assessment.assessment_status === 3) && assessment.assessment_user_id === currentUserId
+                  // Can edit if: pending (0/3) OR no criteria assigned yet (for backward compatibility)
+                  const hasCriteria = assessment.criteria && assessment.criteria.length > 0
+                  const isPending = assessment.assessment_status === 0 || assessment.assessment_status === 3
+                  const canEdit = (isPending || !hasCriteria) && assessment.assessment_user_id === currentUserId
                   
                   return (
                   <div 
                     key={assessment.assessment_id}
-                    className={`relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all overflow-hidden ${canEdit ? 'cursor-pointer hover:border-cyan-300' : ''}`}
+                    className={`relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all overflow-hidden flex flex-col h-full ${canEdit ? 'cursor-pointer hover:border-cyan-300' : ''}`}
                     onClick={() => canEdit && handleEditAssessment(assessment)}
                   >
                     {/* Grade Watermark */}
@@ -2533,12 +3050,23 @@ Please respond in ${selected} language and ensure valid JSON format.`
                       </div>
                     )}
                     
+                    {/* Content Container */}
+                    <div className="flex-grow flex flex-col">
+                    
                     {/* Header */}
                     <div className="mb-4 pb-3 border-b border-gray-100 relative z-10">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="text-lg font-bold text-gray-800 line-clamp-2 flex-1">
-                          {assessment.assessment_nama}
-                        </h3>
+                        <div className="flex items-start gap-2 flex-1">
+                          {assessment.topic_urutan && assessment.topic_urutan !== 999 && (
+                            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1 flex-shrink-0">
+                              <span>Unit:</span>
+                              <span>{assessment.topic_urutan}</span>
+                            </div>
+                          )}
+                          <h3 className="text-lg font-bold text-gray-800 line-clamp-2 flex-1">
+                            {assessment.assessment_nama}
+                          </h3>
+                        </div>
                         {getAssessmentStatusBadge(assessment.assessment_status)}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
@@ -2550,16 +3078,22 @@ Please respond in ${selected} language and ensure valid JSON format.`
                             {assessment.kelas_nama}
                           </span>
                         )}
-                        {assessment.criteria && assessment.criteria.length > 0 && assessment.criteria.map(c => (
-                          <span key={c.code} className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-bold">
-                            Criterion {c.code}
+                        {assessment.criteria && assessment.criteria.length > 0 ? (
+                          assessment.criteria.map(c => (
+                            <span key={c.code} className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-bold">
+                              Criterion {c.code}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded text-xs font-bold">
+                            ⚠ No Criteria
                           </span>
-                        ))}
+                        )}
                       </div>
                     </div>
 
-                    {/* Criteria Names */}
-                    {assessment.criteria && assessment.criteria.length > 0 && (
+                    {/* Criteria Names or Warning */}
+                    {assessment.criteria && assessment.criteria.length > 0 ? (
                       <div className="mb-3 relative z-10">
                         <p className="text-xs text-purple-500 font-medium mb-1">IB MYP Criteria</p>
                         <div className="flex flex-wrap gap-2">
@@ -2568,6 +3102,15 @@ Please respond in ${selected} language and ensure valid JSON format.`
                               {c.code}: {c.name}
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-3 relative z-10">
+                        <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
+                          <p className="text-sm text-orange-700 font-medium flex items-center gap-2">
+                            <span>⚠</span>
+                            <span>No criteria assigned. Click to add criteria.</span>
+                          </p>
                         </div>
                       </div>
                     )}
@@ -2611,25 +3154,43 @@ Please respond in ${selected} language and ensure valid JSON format.`
                         </p>
                       </div>
                     )}
+                    
+                    </div>
+                    {/* End Content Container */}
 
-                    {/* Action Buttons (only for status 0 or 3 - not approved yet) */}
-                    {canEdit && (
-                      <div className="relative z-10 pt-3 border-t border-gray-100 flex gap-2">
+                    {/* Action Buttons */}
+                    <div className="relative z-10 pt-3 border-t border-gray-100 mt-auto">
+                      {/* Input Nilai button - always visible for approved assessments with criteria */}
+                      {assessment.assessment_status === 1 && hasCriteria && (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)
-                          }}
-                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                          onClick={(e) => handleOpenGrading(assessment, e)}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-md transition-all shadow-sm hover:shadow-md"
                         >
-                          <FontAwesomeIcon icon={faTrash} />
-                          Delete
+                          <span>📝</span>
+                          Input Nilai
                         </button>
-                        <div className="flex items-center text-xs text-gray-400 px-2">
-                          Click card to edit
+                      )}
+                      
+                      {canEdit && (
+                        <div className="flex gap-2">
+                          {isPending && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)
+                              }}
+                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                              Delete
+                            </button>
+                          )}
+                          <div className="flex items-center text-xs text-gray-400 px-2">
+                            {!hasCriteria ? '👆 Click to add criteria' : 'Click card to edit'}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )})}
               </div>
@@ -4547,20 +5108,44 @@ Please respond in ${selected} language and ensure valid JSON format.`
         }}
         title={editingAssessment ? "Edit Assessment" : "Add New Assessment"}
       >
-        {/* Info Panel */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-          <div className="flex items-start">
-            <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5 mr-2" />
-            <div className="text-sm text-blue-700">
-              <p className="font-medium mb-1">Date Rules:</p>
-              <ul className="text-xs space-y-1">
-                <li>• Minimum 2 days ahead from today</li>
-                <li>• Maximum 2 assessments per class per day</li>
-                <li>• Topic selection is required</li>
-              </ul>
+        {/* Approved Assessment Warning */}
+        {editingAssessment && editingAssessment.assessment_status === 1 && (
+          <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-500 rounded-md">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-green-800">
+                  Approved Assessment - Limited Editing
+                </h3>
+                <p className="mt-1 text-sm text-green-700">
+                  This assessment has been approved. You can only update the <strong>criteria</strong>. 
+                  Date and class cannot be changed.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+        
+        {/* Info Panel */}
+        {!(editingAssessment && editingAssessment.assessment_status === 1) && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-start">
+              <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5 mr-2" />
+              <div className="text-sm text-blue-700">
+                <p className="font-medium mb-1">Date Rules:</p>
+                <ul className="text-xs space-y-1">
+                  <li>• Minimum 2 days ahead from today</li>
+                  <li>• Maximum 2 assessments per class per day</li>
+                  <li>• Topic selection is required</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleAssessmentSubmit} className="space-y-4">
           {/* Assessment Name */}
@@ -4587,6 +5172,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Assessment Date *
+              {editingAssessment && editingAssessment.assessment_status === 1 && (
+                <span className="ml-2 text-xs text-gray-500">(Cannot change - already approved)</span>
+              )}
             </label>
             <input
               name="assessment_tanggal"
@@ -4594,31 +5182,38 @@ Please respond in ${selected} language and ensure valid JSON format.`
               value={assessmentFormData.assessment_tanggal}
               onChange={handleAssessmentInputChange}
               min={getMinimumDate().toISOString().split('T')[0]}
+              disabled={editingAssessment && editingAssessment.assessment_status === 1}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 assessmentFormErrors.assessment_tanggal ? 'border-red-500' : 'border-gray-300'
-              }`}
+              } ${editingAssessment && editingAssessment.assessment_status === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             />
             {assessmentFormErrors.assessment_tanggal && (
               <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_tanggal}</p>
             )}
-            <p className="text-xs text-gray-500 mt-1">
-              <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
-              Minimum date: {getMinimumDate().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
+            {!(editingAssessment && editingAssessment.assessment_status === 1) && (
+              <p className="text-xs text-gray-500 mt-1">
+                <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
+                Minimum date: {getMinimumDate().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+            )}
           </div>
 
           {/* Subject/Class Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Subject / Class *
+              {editingAssessment && editingAssessment.assessment_status === 1 && (
+                <span className="ml-2 text-xs text-gray-500">(Cannot change - already approved)</span>
+              )}
             </label>
             <select
               name="assessment_detail_kelas_id"
               value={assessmentFormData.assessment_detail_kelas_id}
               onChange={handleAssessmentInputChange}
+              disabled={editingAssessment && editingAssessment.assessment_status === 1}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 assessmentFormErrors.assessment_detail_kelas_id ? 'border-red-500' : 'border-gray-300'
-              }`}
+              } ${editingAssessment && editingAssessment.assessment_status === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             >
               <option value="">Select Subject / Class</option>
               {detailKelasOptions.map(opt => (
@@ -4678,15 +5273,18 @@ Please respond in ${selected} language and ensure valid JSON format.`
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Topic / Unit *
+                {editingAssessment && editingAssessment.assessment_status === 1 && (
+                  <span className="ml-2 text-xs text-gray-500">(Cannot change - already approved)</span>
+                )}
               </label>
               <select
                 name="assessment_topic_id"
                 value={assessmentFormData.assessment_topic_id}
                 onChange={handleAssessmentInputChange}
-                disabled={topicsLoadingAssessment || topicsForAssessment.length === 0}
+                disabled={topicsLoadingAssessment || topicsForAssessment.length === 0 || (editingAssessment && editingAssessment.assessment_status === 1)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   assessmentFormErrors.assessment_topic_id ? 'border-red-500' : 'border-gray-300'
-                }`}
+                } ${editingAssessment && editingAssessment.assessment_status === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               >
                 <option value="">
                   {topicsLoadingAssessment ? 'Loading topics...' : (topicsForAssessment.length === 0 ? 'No topics available' : 'Select Topic')}
@@ -4698,7 +5296,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
               {assessmentFormErrors.assessment_topic_id && (
                 <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_topic_id}</p>
               )}
-              {(!topicsLoadingAssessment && topicsForAssessment.length === 0 && assessmentFormData.assessment_detail_kelas_id) && (
+              {(!topicsLoadingAssessment && topicsForAssessment.length === 0 && assessmentFormData.assessment_detail_kelas_id && !(editingAssessment && editingAssessment.assessment_status === 1)) && (
                 <p className="text-xs text-red-500 mt-1">No topics available for this subject/class. Please create a unit first.</p>
               )}
             </div>
@@ -4762,6 +5360,324 @@ Please respond in ${selected} language and ensure valid JSON format.`
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Grading Modal */}
+      <Modal
+        isOpen={gradingModalOpen}
+        onClose={() => {
+          if (!savingGrades) {
+            setGradingModalOpen(false)
+            setGradingAssessment(null)
+            setGradingStudents([])
+            setGradingStrands([])
+            setGradingData({})
+            setExpandedStudents(new Set())
+            setExpandedRubrics(new Set())
+          }
+        }}
+        title={
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">Input Nilai - Grade Students</h2>
+            {gradingAssessment && (
+              <div className="text-sm text-gray-600">
+                <p className="font-semibold">{gradingAssessment.assessment_nama}</p>
+                <p>{gradingAssessment.kelas_nama} • {gradingAssessment.subject_name}</p>
+                <div className="flex gap-2 mt-2">
+                  {gradingAssessment.criteria?.map(c => (
+                    <span key={c.code} className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">
+                      {c.code}: {c.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        }
+        maxWidth="max-w-6xl"
+      >
+        {loadingGrading ? (
+          <div className="flex justify-center items-center py-12">
+            <FontAwesomeIcon icon={faSpinner} spin className="text-4xl text-blue-500" />
+          </div>
+        ) : (
+          <div className="max-h-[70vh] overflow-y-auto">
+            {/* Info Banner */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex gap-3">
+                <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-1" />
+                <div className="text-sm text-blue-800 flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-semibold">IB MYP Grading System with Rubrics</p>
+                    {gradingAssessment?.grading_method && (
+                      <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">
+                        Calculation: {gradingAssessment.grading_method.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Each criterion (A-D) has multiple strands (i, ii, iii, iv)</li>
+                    <li>Select grade for each strand based on <strong>rubric descriptors</strong></li>
+                    <li>Click <span className="underline">"Show Rubrics"</span> to view all achievement levels</li>
+                    <li>Some strands may not have rubrics for certain levels (e.g., strand ii may start at 3-4)</li>
+                    <li>
+                      <strong>Criterion grade calculation:</strong>{' '}
+                      {gradingAssessment?.grading_method === 'highest' && 'HIGHEST strand grade (IB best-fit)'}
+                      {gradingAssessment?.grading_method === 'average' && 'AVERAGE of all strand grades (rounded)'}
+                      {gradingAssessment?.grading_method === 'median' && 'MEDIAN of all strand grades'}
+                      {gradingAssessment?.grading_method === 'mode' && 'MOST FREQUENT strand grade'}
+                      {!gradingAssessment?.grading_method && 'HIGHEST strand grade (IB best-fit)'}
+                    </li>
+                    <li>Final grade (1-7) = calculated from sum of all 4 criteria (0-32 total)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Students List */}
+            <div className="space-y-3">
+              {gradingStudents.map((student, index) => {
+                const isExpanded = expandedStudents.has(student.detail_siswa_id)
+                const studentData = gradingData[student.detail_siswa_id]
+                
+                // Calculate criterion grades for display
+                const criterionGrades = {}
+                if (gradingAssessment && studentData) {
+                  gradingAssessment.criteria.forEach(criterion => {
+                    criterionGrades[criterion.code] = calculateCriterionGrade(student.detail_siswa_id, criterion.criterion_id)
+                  })
+                }
+                
+                const total = Object.values(criterionGrades).reduce((sum, g) => sum + (g || 0), 0)
+                
+                return (
+                  <div key={student.detail_siswa_id} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Student Header */}
+                    <div
+                      className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => toggleStudentExpansion(student.detail_siswa_id)}
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full font-bold text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-800">{student.nama}</h3>
+                          <div className="flex gap-2 mt-1">
+                            {Object.entries(criterionGrades).map(([code, grade]) => (
+                              <span key={code} className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">
+                                {code}: {grade !== null ? grade : '-'}
+                              </span>
+                            ))}
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">
+                              Total: {total}/32
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-gray-400">
+                        {isExpanded ? '▼' : '▶'}
+                      </div>
+                    </div>
+
+                    {/* Student Grading Form */}
+                    {isExpanded && (
+                      <div className="p-4 bg-white border-t border-gray-200">
+                        {gradingAssessment?.criteria.map(criterion => {
+                          const criterionStrands = gradingStrands.filter(s => s.criterion_id === criterion.criterion_id)
+                          const criterionGrade = calculateCriterionGrade(student.detail_siswa_id, criterion.criterion_id)
+                          
+                          return (
+                            <div key={criterion.criterion_id} className="mb-6 last:mb-0">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-bold text-gray-700 text-lg">
+                                  Criterion {criterion.code}: {criterion.name}
+                                </h4>
+                                <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                                  criterionGrade !== null 
+                                    ? criterionGrade >= 7 ? 'bg-green-100 text-green-700' 
+                                      : criterionGrade >= 5 ? 'bg-blue-100 text-blue-700'
+                                      : criterionGrade >= 3 ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                  Grade: {criterionGrade !== null ? criterionGrade : '-'}/8
+                                </span>
+                              </div>
+
+                              <div className="space-y-4">
+                                {criterionStrands.map(strand => {
+                                  const isRubricExpanded = expandedRubrics.has(strand.strand_id)
+                                  const availableGrades = getAvailableGrades(strand)
+                                  const selectedGrade = studentData?.strand_grades[strand.strand_id]?.grade
+                                  const currentRubric = getRubricForGrade(strand, selectedGrade)
+                                  const hasRubrics = strand.rubrics && strand.rubrics.length > 0
+                                  
+                                  return (
+                                    <div key={strand.strand_id} className="border border-purple-200 rounded-lg overflow-hidden bg-white">
+                                      {/* Strand Header */}
+                                      <div className="bg-purple-50 p-3 border-b border-purple-100">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <span className="font-bold text-sm text-purple-700">
+                                                Strand {strand.label}
+                                              </span>
+                                              {hasRubrics && (
+                                                <button
+                                                  onClick={() => toggleRubricExpansion(strand.strand_id)}
+                                                  className="text-xs text-purple-600 hover:text-purple-800 underline"
+                                                >
+                                                  {isRubricExpanded ? 'Hide Rubrics' : 'Show Rubrics'}
+                                                </button>
+                                              )}
+                                            </div>
+                                            <p className="text-xs text-gray-700">
+                                              {strand.content}
+                                            </p>
+                                          </div>
+                                          <div className="flex items-center gap-2 min-w-[100px]">
+                                            <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+                                              Grade:
+                                            </label>
+                                            <select
+                                              value={selectedGrade ?? ''}
+                                              onChange={(e) => updateStrandGrade(student.detail_siswa_id, strand.strand_id, e.target.value)}
+                                              className="flex-1 px-2 py-1 text-sm font-bold border border-purple-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                            >
+                                              <option value="">-</option>
+                                              {availableGrades.map(g => (
+                                                <option key={g} value={g}>{g}</option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Current Grade Rubric (if selected) */}
+                                      {selectedGrade && currentRubric && (
+                                        <div className={`p-3 border-b ${getBandColor(currentRubric.band_label)}`}>
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-xs font-bold px-2 py-0.5 rounded border border-current">
+                                              {currentRubric.band_label}
+                                            </span>
+                                            <p className="text-xs flex-1">
+                                              {currentRubric.description}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Rubrics List (expandable) */}
+                                      {hasRubrics && isRubricExpanded && (
+                                        <div className="p-3 bg-gray-50 space-y-2">
+                                          <p className="text-xs font-semibold text-gray-700 mb-2">All Achievement Levels:</p>
+                                          {strand.rubrics.map(rubric => (
+                                            <div 
+                                              key={rubric.rubric_id} 
+                                              className={`p-2 rounded border ${getBandColor(rubric.band_label)}`}
+                                            >
+                                              <div className="flex items-start gap-2">
+                                                <span className="text-xs font-bold px-2 py-0.5 rounded border border-current whitespace-nowrap">
+                                                  {rubric.band_label}
+                                                </span>
+                                                <p className="text-xs flex-1">
+                                                  {rubric.description}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      
+                                      {/* No rubrics message */}
+                                      {!hasRubrics && (
+                                        <div className="p-3 bg-yellow-50 border-t border-yellow-100">
+                                          <p className="text-xs text-yellow-700 italic">
+                                            ⚠️ No rubrics configured for this strand. All grades 0-8 are available.
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+
+                              {criterionStrands.length === 0 && (
+                                <p className="text-sm text-gray-500 italic">No strands configured for this criterion.</p>
+                              )}
+                            </div>
+                          )
+                        })}
+
+                        {/* Comments */}
+                        <div className="mt-6 pt-4 border-t border-gray-200">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Comments (Optional)
+                          </label>
+                          <textarea
+                            value={studentData?.comments || ''}
+                            onChange={(e) => setGradingData(prev => ({
+                              ...prev,
+                              [student.detail_siswa_id]: {
+                                ...prev[student.detail_siswa_id],
+                                comments: e.target.value
+                              }
+                            }))}
+                            rows={2}
+                            placeholder="Add comments about this student's performance..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {gradingStudents.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  No students found in this class.
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            {gradingStudents.length > 0 && (
+              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200 sticky bottom-0 bg-white">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!savingGrades) {
+                      setGradingModalOpen(false)
+                    }
+                  }}
+                  disabled={savingGrades}
+                  className="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveGrades}
+                  disabled={savingGrades}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {savingGrades ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} spin />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      💾 Save All Grades
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
 
       <style jsx>{`

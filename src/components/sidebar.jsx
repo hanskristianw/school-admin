@@ -35,7 +35,8 @@ import {
   faBuilding,
   faCalendarDays,
   faSitemap,
-  faSackDollar
+  faSackDollar,
+  faFlag
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -65,6 +66,7 @@ const iconMap = {
   , 'fas fa-building': faBuilding
   , 'fas fa-calendar-days': faCalendarDays
   , 'fas fa-sack-dollar': faSackDollar
+  , 'fas fa-flag': faFlag
   , 'fas fa-ruler': require('@fortawesome/free-solid-svg-icons').faRuler
   , 'fas fa-shirt': require('@fortawesome/free-solid-svg-icons').faShirt
   , 'fas fa-cart-shopping': require('@fortawesome/free-solid-svg-icons').faCartShopping
@@ -96,7 +98,8 @@ const iconMap = {
   'faSitemap': faSitemap,
   'faBuilding': faBuilding,
   'faCalendarDays': faCalendarDays,
-  'faSackDollar': faSackDollar
+  'faSackDollar': faSackDollar,
+  'faFlag': faFlag
   , 'faRuler': require('@fortawesome/free-solid-svg-icons').faRuler
   , 'faShirt': require('@fortawesome/free-solid-svg-icons').faShirt
   , 'faCartShopping': require('@fortawesome/free-solid-svg-icons').faCartShopping
@@ -227,7 +230,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
             }
             const defaults = ['/dashboard', '/profile']
             const counselorExtra = isCounselor ? ['/data/consultation'] : []
-            const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
+            const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission', '/room', '/room/booking'] : []
             const studentExtra = isStudent ? ['/student', '/student/scan'] : []
             const merged = Array.from(new Set([
               ...transformedData.map(m => normalize(m.path)),
