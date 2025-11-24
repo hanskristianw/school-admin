@@ -121,7 +121,7 @@ export default function AssessmentApproval() {
       // Fetch assessments
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from('assessment')
-        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id, assessment_topic_id, assessment_criterion_id')
+        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id, assessment_topic_id, assessment_myp_year')
         .order('assessment_tanggal', { ascending: false });
 
       if (assessmentsError) {
@@ -129,7 +129,6 @@ export default function AssessmentApproval() {
       }
 
       const list = assessmentsData || [];
-      setAssessments(list);
 
       // Load topic names for any referenced topic IDs
       const topicIds = Array.from(new Set(list.map(a => a.assessment_topic_id).filter(Boolean)));
@@ -145,18 +144,58 @@ export default function AssessmentApproval() {
         setTopicNameMap(new Map());
       }
       
-      // Load criterion names for any referenced criterion IDs
-      const criterionIds = Array.from(new Set(list.map(a => a.assessment_criterion_id).filter(Boolean)));
-      if (criterionIds.length) {
-        const { data: criteriaData, error: criteriaErr } = await supabase
-          .from('criteria')
-          .select('criterion_id, code, name')
-          .in('criterion_id', criterionIds);
-        if (!criteriaErr && criteriaData) {
-          setCriterionNameMap(new Map(criteriaData.map(c => [c.criterion_id, { code: c.code, name: c.name }])));
+      // Load criteria for assessments via junction table
+      const assessmentIds = list.map(a => a.assessment_id);
+      let assessmentCriteriaMap = new Map(); // assessment_id -> array of criteria
+      
+      if (assessmentIds.length) {
+        const { data: junctionData, error: jError } = await supabase
+          .from('assessment_criteria')
+          .select('assessment_id, criterion_id')
+          .in('assessment_id', assessmentIds);
+        
+        if (!jError && junctionData) {
+          // Group by assessment_id
+          junctionData.forEach(j => {
+            if (!assessmentCriteriaMap.has(j.assessment_id)) {
+              assessmentCriteriaMap.set(j.assessment_id, []);
+            }
+            assessmentCriteriaMap.get(j.assessment_id).push(j.criterion_id);
+          });
+          
+          // Fetch all unique criterion details
+          const allCriterionIds = [...new Set(junctionData.map(j => j.criterion_id))];
+          let criterionMap = new Map();
+          
+          if (allCriterionIds.length > 0) {
+            const { data: criteriaData, error: cError } = await supabase
+              .from('criteria')
+              .select('criterion_id, code, name')
+              .in('criterion_id', allCriterionIds);
+            
+            if (!cError && criteriaData) {
+              criteriaData.forEach(c => {
+                criterionMap.set(c.criterion_id, { code: c.code, name: c.name });
+              });
+            }
+          }
+          
+          // Map criteria details to assessments
+          const enrichedList = list.map(a => {
+            const criterionIds = assessmentCriteriaMap.get(a.assessment_id) || [];
+            const criteria = criterionIds.map(id => criterionMap.get(id)).filter(Boolean);
+            return {
+              ...a,
+              criteria: criteria // Array of { code, name }
+            };
+          });
+          
+          setAssessments(enrichedList);
+        } else {
+          setAssessments(list.map(a => ({ ...a, criteria: [] })));
         }
       } else {
-        setCriterionNameMap(new Map());
+        setAssessments(list.map(a => ({ ...a, criteria: [] })));
       }
       
     } catch (err) {
@@ -679,21 +718,36 @@ export default function AssessmentApproval() {
                         {kelasName}
                       </span>
                     )}
-                    {assessment.assessment_criterion_id && criterionNameMap.get(assessment.assessment_criterion_id) && (
-                      <span className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-bold">
-                        Criterion {criterionNameMap.get(assessment.assessment_criterion_id).code}
+                    {assessment.criteria && assessment.criteria.length > 0 ? (
+                      assessment.criteria.map(c => (
+                        <span key={c.code} className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-bold">
+                          Criterion {c.code}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded text-xs font-bold">
+                        ⚠ No Criteria
+                      </span>
+                    )}
+                    {assessment.assessment_myp_year && (
+                      <span className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-xs font-medium">
+                        MYP Y{assessment.assessment_myp_year}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Criterion Name */}
-                {assessment.assessment_criterion_id && criterionNameMap.get(assessment.assessment_criterion_id) && (
+                {/* Criteria Names */}
+                {assessment.criteria && assessment.criteria.length > 0 && (
                   <div className="mb-3 relative z-10">
-                    <p className="text-xs text-purple-500 font-medium mb-1">IB MYP Criterion</p>
-                    <p className="text-sm text-gray-700 font-medium">
-                      {criterionNameMap.get(assessment.assessment_criterion_id).name}
-                    </p>
+                    <p className="text-xs text-purple-500 font-medium mb-1">IB MYP Criteria</p>
+                    <div className="flex flex-wrap gap-2">
+                      {assessment.criteria.map(c => (
+                        <div key={c.code} className="text-sm text-gray-700 bg-purple-50 px-2 py-1 rounded font-medium">
+                          {c.code}: {c.name}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
