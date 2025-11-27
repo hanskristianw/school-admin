@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState, useCallback } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import Script from "next/script"
@@ -84,122 +84,10 @@ function LoginContent() {
 
   // Check if Google script is already loaded (e.g., after logout)
   useEffect(() => {
-    if (window.google?.accounts?.oauth2) {
+    if (typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
       setGoogleReady(true)
     }
   }, [])
-
-  // Handle Google Sign-In callback - accepts either credential response or user object
-  const handleCredentialResponse = useCallback(async (response) => {
-    setError("")
-    setIsSubmitting(true)
-
-    try {
-      let user = response.user
-      
-      // If we got a credential (from One Tap), call API to verify
-      if (response.credential && !user) {
-        console.log("📤 Verifying Google credential...")
-        
-        const res = await fetch('/api/auth/google', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credential: response.credential })
-        })
-        
-        const result = await res.json()
-        console.log("📥 Google auth result:", result)
-
-        if (!res.ok || !result.success) {
-          console.log("❌ Login failed:", result.message || result.error)
-          setError(result.message || 'Login gagal. Silakan coba lagi.')
-          setIsSubmitting(false)
-          return
-        }
-        
-        user = result.user
-      }
-      
-      if (!user) {
-        setError('Login gagal. Silakan coba lagi.')
-        setIsSubmitting(false)
-        return
-      }
-
-      console.log("✅ Google login successful")
-      
-      // Save to localStorage
-      localStorage.setItem("kr_id", user.userID)
-      localStorage.setItem("user_role", user.roleName)
-      localStorage.setItem("user_data", JSON.stringify(user))
-
-        // Mint JWT for RLS
-        try {
-          const tokenRes = await fetch('/api/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              user_id: user.userID, 
-              role: user.roleName, 
-              kr_id: user.userID 
-            })
-          })
-          const tokenJson = await tokenRes.json()
-          if (tokenRes.ok && tokenJson.token) {
-            localStorage.setItem('app_jwt', tokenJson.token)
-            setAuthToken(tokenJson.token)
-          }
-        } catch (e) {
-          console.warn('JWT mint error', e)
-        }
-
-        // Fetch allowed menu paths
-        let allowedPaths = []
-        try {
-          const menusRes = await customAuth.getMenusByRole(user.roleName, !!user.isAdmin)
-          if (menusRes?.success) {
-            const normalize = (p) => {
-              if (!p) return ''
-              let s = String(p).trim()
-              if (!s.startsWith('/')) s = '/' + s
-              if (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1)
-              return s
-            }
-            const defaults = ['/dashboard', '/profile']
-            const raw = (menusRes.menus || []).map(m => m.menu_path).filter(Boolean)
-            const counselorExtra = user.isCounselor ? ['/data/consultation'] : []
-            const teacherExtra = user.isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
-            const studentExtra = user.isStudent ? ['/student', '/student/scan'] : []
-            const merged = Array.from(new Set([
-              ...raw.map(normalize),
-              ...defaults.map(normalize),
-              ...counselorExtra.map(normalize),
-              ...teacherExtra.map(normalize),
-              ...studentExtra.map(normalize)
-            ]))
-            allowedPaths = merged
-          }
-        } catch (e) {
-          console.warn('Failed to fetch allowed menus', e)
-        }
-
-        // Set cookies for middleware
-        const maxAge = 60 * 60 * 8 // 8 hours
-        const safeJoin = encodeURIComponent((allowedPaths || []).join('|'))
-        document.cookie = `kr_id=${user.userID}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
-        document.cookie = `role_name=${encodeURIComponent(user.roleName || '')}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
-        document.cookie = `is_admin=${user.isAdmin ? '1' : '0'}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
-        document.cookie = `allowed_paths=${safeJoin}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
-        
-        console.log('🚀 Redirecting to dashboard...')
-        router.push("/dashboard")
-    } catch (err) {
-      console.error("❌ Login error:", err)
-      setError('Terjadi kesalahan saat login. Silakan coba lagi.')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [router])
 
   // Check for error from URL params
   useEffect(() => {
@@ -227,44 +115,113 @@ function LoginContent() {
 
   // Initialize Google Sign-In with OAuth2 Token (implicit) flow - no client secret needed
   useEffect(() => {
-    if (googleReady && googleClientId && window.google) {
-      // Use Token Client (implicit flow) - works for internal apps without client secret
-      window.googleTokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: googleClientId,
-        scope: 'email profile',
-        callback: async (tokenResponse) => {
-          if (tokenResponse.access_token) {
-            // Get user info with the access token
-            try {
-              const res = await fetch('/api/auth/google', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ access_token: tokenResponse.access_token })
-              })
-              const result = await res.json()
-              if (res.ok && result.success) {
-                await handleCredentialResponse({ credential: null, user: result.user })
-              } else {
-                setError(result.message || 'Login gagal')
-                setIsSubmitting(false)
+    if (!googleReady || !googleClientId || typeof window === 'undefined' || !window.google) {
+      return
+    }
+    
+    // Use Token Client (implicit flow) - works for internal apps without client secret
+    window.googleTokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: googleClientId,
+      scope: 'email profile',
+      callback: async (tokenResponse) => {
+        if (tokenResponse.access_token) {
+          // Get user info with the access token
+          try {
+            const res = await fetch('/api/auth/google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ access_token: tokenResponse.access_token })
+            })
+            const result = await res.json()
+            if (res.ok && result.success) {
+              // Process login directly here instead of calling handleCredentialResponse
+              const user = result.user
+              
+              // Save to localStorage
+              localStorage.setItem("kr_id", user.userID)
+              localStorage.setItem("user_role", user.roleName)
+              localStorage.setItem("user_data", JSON.stringify(user))
+
+              // Mint JWT for RLS
+              try {
+                const tokenRes = await fetch('/api/auth/token', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ 
+                    user_id: user.userID, 
+                    role: user.roleName, 
+                    kr_id: user.userID 
+                  })
+                })
+                const tokenJson = await tokenRes.json()
+                if (tokenRes.ok && tokenJson.token) {
+                  localStorage.setItem('app_jwt', tokenJson.token)
+                  setAuthToken(tokenJson.token)
+                }
+              } catch (e) {
+                console.warn('JWT mint error', e)
               }
-            } catch (err) {
-              console.error('Auth error:', err)
-              setError('Terjadi kesalahan saat login')
+
+              // Fetch allowed menu paths
+              let allowedPaths = []
+              try {
+                const menusRes = await customAuth.getMenusByRole(user.roleName, !!user.isAdmin)
+                if (menusRes?.success) {
+                  const normalize = (p) => {
+                    if (!p) return ''
+                    let s = String(p).trim()
+                    if (!s.startsWith('/')) s = '/' + s
+                    if (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1)
+                    return s
+                  }
+                  const defaults = ['/dashboard', '/profile']
+                  const raw = (menusRes.menus || []).map(m => m.menu_path).filter(Boolean)
+                  const counselorExtra = user.isCounselor ? ['/data/consultation'] : []
+                  const teacherExtra = user.isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
+                  const studentExtra = user.isStudent ? ['/student', '/student/scan'] : []
+                  const merged = Array.from(new Set([
+                    ...raw.map(normalize),
+                    ...defaults.map(normalize),
+                    ...counselorExtra.map(normalize),
+                    ...teacherExtra.map(normalize),
+                    ...studentExtra.map(normalize)
+                  ]))
+                  allowedPaths = merged
+                }
+              } catch (e) {
+                console.warn('Failed to fetch allowed menus', e)
+              }
+
+              // Set cookies for middleware
+              const maxAge = 60 * 60 * 8 // 8 hours
+              const safeJoin = encodeURIComponent((allowedPaths || []).join('|'))
+              document.cookie = `kr_id=${user.userID}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+              document.cookie = `role_name=${encodeURIComponent(user.roleName || '')}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+              document.cookie = `is_admin=${user.isAdmin ? '1' : '0'}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+              document.cookie = `allowed_paths=${safeJoin}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+              
+              console.log('🚀 Redirecting to dashboard...')
+              router.push("/dashboard")
+            } else {
+              setError(result.message || 'Login gagal')
               setIsSubmitting(false)
             }
-          } else {
+          } catch (err) {
+            console.error('Auth error:', err)
+            setError('Terjadi kesalahan saat login')
             setIsSubmitting(false)
           }
-        },
-        error_callback: (error) => {
-          console.error('Google OAuth error:', error)
-          setError('Gagal login dengan Google')
+        } else {
           setIsSubmitting(false)
         }
-      })
-    }
-  }, [googleReady, googleClientId, handleCredentialResponse])
+      },
+      error_callback: (err) => {
+        console.error('Google OAuth error:', err)
+        setError('Gagal login dengan Google')
+        setIsSubmitting(false)
+      }
+    })
+  }, [googleReady, googleClientId, router])
 
   const handleGoogleLogin = () => {
     if (window.googleTokenClient) {
