@@ -264,7 +264,7 @@ function LoginContent() {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="relative w-80 h-80 opacity-[0.08]">
             <Image
-              src="/images/login-logo.jpg"
+              src="/images/login-logo.png"
               alt=""
               fill
               className="object-contain rounded-full"
@@ -286,13 +286,13 @@ function LoginContent() {
             {/* Logo */}
             <div className="flex justify-center mb-8">
               <div className="relative">
-                <div className="absolute -inset-3 bg-gradient-to-r from-sky-400 to-cyan-400 rounded-full blur-lg opacity-40" />
+                <div className="absolute -inset-4 bg-gradient-to-r from-sky-400 to-cyan-400 rounded-2xl blur-lg opacity-30" />
                 <Image
-                  src="/images/login-logo.jpg"
+                  src="/images/login-logo.png"
                   alt="School Logo"
-                  width={96}
-                  height={96}
-                  className="relative rounded-full ring-2 ring-white/40 shadow-lg"
+                  width={160}
+                  height={80}
+                  className="relative object-contain drop-shadow-lg"
                   priority
                 />
               </div>

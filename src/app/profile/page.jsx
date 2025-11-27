@@ -3,13 +3,25 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from '@/lib/supabase'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faEdit, faSave, faTimes, faCamera, faUpload } from '@fortawesome/free-solid-svg-icons'
+import { 
+  faUser, faEdit, faSave, faTimes, faEnvelope, faPhone, 
+  faCalendar, faMapMarkerAlt, faIdBadge, faShieldAlt, faClock, faCheckCircle
+} from '@fortawesome/free-solid-svg-icons'
 import { useI18n } from '@/lib/i18n'
+
+// Google logo SVG component
+const GoogleIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+  </svg>
+)
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -18,25 +30,19 @@ export default function ProfilePage() {
   const [userData, setUserData] = useState(null)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({})
+  const [originalData, setOriginalData] = useState({})
   const [updating, setUpdating] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-  // Change password state
-  const [showPwdForm, setShowPwdForm] = useState(false)
-  const [pwdNew, setPwdNew] = useState('')
-  const [pwdConfirm, setPwdConfirm] = useState('')
-  const [pwdSaving, setPwdSaving] = useState(false)
-  const [pwdMsg, setPwdMsg] = useState('')
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Check if form has changes
+  const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData)
 
   useEffect(() => {
     const id = localStorage.getItem("kr_id")
     const role = localStorage.getItem("user_role")
 
-    console.log('Auth check - ID:', id, 'Role:', role)
-    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing')
-
     if (!id || !role) {
-      console.log('Missing auth data, redirecting to login')
       localStorage.clear()
       router.replace("/login")
     } else {
@@ -46,23 +52,14 @@ export default function ProfilePage() {
 
   const fetchUserProfile = async (userId) => {
     try {
-      console.log('Fetching profile for user ID:', userId)
-      
-      // Try simple query first
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('user_id', userId)
         .single()
 
-      if (userError) {
-        console.error('User query error:', userError)
-        throw userError
-      }
+      if (userError) throw userError
 
-      console.log('User data:', userData)
-
-      // Try to get role separately
       let roleData = null
       if (userData.user_role_id) {
         const { data: role, error: roleError } = await supabase
@@ -71,134 +68,46 @@ export default function ProfilePage() {
           .eq('role_id', userData.user_role_id)
           .single()
 
-        if (roleError) {
-          console.warn('Role query error (will continue without role):', roleError)
-        } else {
-          roleData = role
-        }
+        if (!roleError) roleData = role
       }
 
-      // Combine data
-      const combinedData = {
-        ...userData,
-        role: roleData
-      }
-
-      console.log('Combined user data:', combinedData)
+      const combinedData = { ...userData, role: roleData }
       setUserData(combinedData)
       
-      setFormData({
+      const initialFormData = {
         user_nama_depan: combinedData.user_nama_depan || '',
         user_nama_belakang: combinedData.user_nama_belakang || '',
-        user_email: combinedData.user_email || '',
         user_phone: combinedData.user_phone || '',
         user_bio: combinedData.user_bio || '',
         user_birth_date: combinedData.user_birth_date || '',
-        user_address: combinedData.user_address || '',
-        user_profile_picture: combinedData.user_profile_picture || ''
-      })
+        user_address: combinedData.user_address || ''
+      }
+      setFormData(initialFormData)
+      setOriginalData(initialFormData)
     } catch (error) {
       console.error('Error fetching user profile:', error)
-  setError(`${t('profile.validation.fetchFailedPrefix')} ${error.message || 'Unknown error'}`)
+      setError(`${t('profile.validation.fetchFailedPrefix')} ${error.message || 'Unknown error'}`)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError(t('profile.validation.invalidImageType'))
-      return
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError(t('profile.validation.maxFileSize'))
-      return
-    }
-
-    setUploading(true)
-    setError('')
-
-    try {
-      const userId = localStorage.getItem("kr_id")
-      
-      // Create FormData for API upload
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('userId', userId)
-
-      // Upload via API route (bypasses RLS issues)
-      const uploadResponse = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
-
-      const uploadResult = await uploadResponse.json()
-
-      if (!uploadResponse.ok) {
-        throw new Error(uploadResult.error || 'Upload failed')
-      }
-
-      // Update form data with new image URL
-      setFormData(prev => ({ ...prev, user_profile_picture: uploadResult.publicUrl }))
-
-      // If in edit mode, we'll save it later. If not in edit mode, save immediately
-      if (!editing) {
-        await supabase
-          .from('users')
-          .update({ user_profile_picture: uploadResult.publicUrl })
-          .eq('user_id', userId)
-
-        // Refresh user data
-        await fetchUserProfile(userId)
-      }
-
-    } catch (error) {
-  console.error('Error uploading file:', error)
-  setError(`${t('profile.validation.uploadFailedPrefix')} ${error.message}`)
-    } finally {
-      setUploading(false)
     }
   }
 
   const handleEdit = () => {
     setEditing(true)
     setError('')
+    setSaveSuccess(false)
   }
 
   const handleCancel = () => {
     setEditing(false)
-    setFormData({
-      user_nama_depan: userData.user_nama_depan || '',
-      user_nama_belakang: userData.user_nama_belakang || '',
-      user_email: userData.user_email || '',
-      user_phone: userData.user_phone || '',
-      user_bio: userData.user_bio || '',
-      user_birth_date: userData.user_birth_date || '',
-      user_address: userData.user_address || '',
-      user_profile_picture: userData.user_profile_picture || ''
-    })
+    setFormData(originalData)
     setError('')
   }
 
   const handleSave = async () => {
     if (!formData.user_nama_depan || !formData.user_nama_belakang) {
       setError(t('profile.validation.nameRequired'))
-      return
-    }
-
-    if (formData.user_email) {
-      const emailTrimmed = formData.user_email.trim()
-      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailPattern.test(emailTrimmed)) {
-        setError(t('profile.validation.emailInvalid'))
-        return
-      }
+      return false
     }
 
     setUpdating(true)
@@ -210,399 +119,443 @@ export default function ProfilePage() {
         .update({
           user_nama_depan: formData.user_nama_depan,
           user_nama_belakang: formData.user_nama_belakang,
-          user_email: formData.user_email ? formData.user_email.trim() : null,
           user_phone: formData.user_phone,
           user_bio: formData.user_bio,
           user_birth_date: formData.user_birth_date || null,
-          user_address: formData.user_address,
-          user_profile_picture: formData.user_profile_picture
+          user_address: formData.user_address
         })
         .eq('user_id', userData.user_id)
 
       if (error) throw error
 
-      // Refresh user data
       await fetchUserProfile(userData.user_id)
       setEditing(false)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+      return true
     } catch (error) {
-  console.error('Error updating profile:', error)
-  setError(t('profile.validation.saveFailed'))
+      console.error('Error updating profile:', error)
+      setError(t('profile.validation.saveFailed'))
+      return false
     } finally {
       setUpdating(false)
     }
   }
 
+  // Handle keyboard shortcuts globally
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!editing) return
+      
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleCancel()
+      }
+      
+      if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault()
+        if (hasChanges && !updating) handleSave()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [editing, hasChanges, updating])
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-'
+    return new Date(dateStr).toLocaleDateString(
+      lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID',
+      { year: 'numeric', month: 'long', day: 'numeric' }
+    )
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-600">{t('profile.loading')}</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">{t('profile.loading')}</p>
+        </div>
       </div>
     )
   }
 
   if (!userData) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-red-600">{t('profile.loadError')}</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FontAwesomeIcon icon={faUser} className="text-3xl text-red-500" />
+          </div>
+          <p className="text-red-600 text-lg">{t('profile.loadError')}</p>
+        </div>
       </div>
     )
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-    <h1 className="text-3xl font-bold">{t('profile.title')}</h1>
-        {!editing && (
-          <div className="flex items-center gap-2">
-            <Button onClick={handleEdit} className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faEdit} />
-              {t('profile.edit')}
-            </Button>
-            <Button onClick={() => { setShowPwdForm((v) => !v); setPwdMsg(''); }} variant="outline" className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faSave} />
-              Change Password
-            </Button>
-          </div>
-        )}
-      </div>
+  const fullName = `${userData.user_nama_depan || ''} ${userData.user_nama_belakang || ''}`.trim()
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-cyan-50 pb-20">
+      {/* Success Toast */}
+      {saveSuccess && (
+        <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+            <FontAwesomeIcon icon={faCheckCircle} />
+            <span>{t('profile.saved') || 'Saved successfully!'}</span>
+          </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Change Password Card */}
-        {showPwdForm && (
-          <Card className="lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Change Password</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pwdMsg && (
-                <div className={`mb-3 px-3 py-2 rounded border text-sm ${pwdMsg.startsWith('Success') ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                  {pwdMsg}
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="pwdNew">New Password</Label>
-                  <Input id="pwdNew" type="password" value={pwdNew} onChange={(e) => setPwdNew(e.target.value)} />
-                </div>
-                <div>
-                  <Label htmlFor="pwdConfirm">Confirm New Password</Label>
-                  <Input id="pwdConfirm" type="password" value={pwdConfirm} onChange={(e) => setPwdConfirm(e.target.value)} />
-                </div>
-              </div>
-              <div className="mt-4 flex gap-3">
-                <Button
-                  type="button"
-                  onClick={async () => {
-                    setPwdMsg('')
-                    if (!pwdNew || pwdNew.length < 6) { setPwdMsg('Password must be at least 6 characters'); return }
-                    if (pwdNew !== pwdConfirm) { setPwdMsg('Password confirmation does not match'); return }
-                    try {
-                      setPwdSaving(true)
-                      const res = await fetch('/api/profile/change-password', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ newPassword: pwdNew })
-                      })
-                      const json = await res.json().catch(() => ({}))
-                      if (!res.ok) throw new Error(json.error || 'Request failed')
-                      setPwdMsg('Success: Password updated')
-                      setPwdNew('')
-                      setPwdConfirm('')
-                    } catch (e) {
-                      console.error('Change password failed:', e)
-                      setPwdMsg('Failed to update password: ' + (e.message || 'Unknown error'))
-                    } finally {
-                      setPwdSaving(false)
-                    }
-                  }}
-                  disabled={pwdSaving}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {pwdSaving ? 'Saving...' : 'Update Password'}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => { setShowPwdForm(false); setPwdMsg(''); setPwdNew(''); setPwdConfirm(''); }}>
-                  Cancel
-                </Button>
-              </div>
-              <p className="mt-2 text-xs text-gray-500">Note: For development only. In production, use server routes and hashing.</p>
-            </CardContent>
-          </Card>
-        )}
+      {/* Hero Section with Profile Picture */}
+      <div className="relative">
+        {/* Background Pattern - extended height */}
+        <div className="absolute inset-0 bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 h-80 overflow-hidden">
+          {/* Cross pattern */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }} />
+          </div>
+          
+          {/* School Logo Overlay - Large watermark style */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <img
+              src="/images/login-logo.png"
+              alt=""
+              className="w-auto h-64 object-contain opacity-15"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
 
-        {/* Profile Picture Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faCamera} />
-              {t('profile.photo')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <div className="relative inline-block">
-              {formData.user_profile_picture ? (
-                <img
-                  src={formData.user_profile_picture}
-                  alt="Profile"
-                  className="w-32 h-32 rounded-full object-cover mx-auto border-4 border-gray-200"
-                />
-              ) : (
-                <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center mx-auto border-4 border-gray-200">
-                  <FontAwesomeIcon icon={faUser} className="text-4xl text-gray-400" />
-                </div>
-              )}
-              
-              {uploading && (
-                <div className="absolute inset-0 w-32 h-32 rounded-full bg-black bg-opacity-50 flex items-center justify-center mx-auto">
-                  <div className="text-white text-sm">{t('profile.uploading')}</div>
-                </div>
-              )}
-            </div>
-            
-            {/* File Upload */}
-            <div className="mt-4">
-              <input
-                type="file"
-                id="profile-picture-upload"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-                disabled={uploading}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => document.getElementById('profile-picture-upload').click()}
-                disabled={uploading}
-                className="flex items-center gap-2"
-              >
-                <FontAwesomeIcon icon={faUpload} />
-                {uploading ? t('profile.uploading') : t('profile.uploadPhoto')}
-              </Button>
-            </div>
-
-            {/* URL Input (Alternative) */}
-            {editing && (
-              <div className="mt-4">
-                <Label htmlFor="user_profile_picture">{t('profile.uploadAlternative')}</Label>
-                <Input
-                  id="user_profile_picture"
-                  type="url"
-                  placeholder={t('profile.urlPlaceholder')}
-                  value={formData.user_profile_picture}
-                  onChange={(e) => setFormData(prev => ({ ...prev, user_profile_picture: e.target.value }))}
-                  className="mt-2"
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Profile Information Card */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faUser} />
-              {t('profile.infoTitle')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Nama Depan */}
-              <div>
-                <Label htmlFor="user_nama_depan">{t('profile.firstName')} *</Label>
-                {editing ? (
-                  <Input
-                    id="user_nama_depan"
-                    type="text"
-                    value={formData.user_nama_depan}
-                    onChange={(e) => setFormData(prev => ({ ...prev, user_nama_depan: e.target.value }))}
-                  />
-                ) : (
-                  <p className="mt-1 p-2 bg-gray-50 rounded border">
-                    {userData.user_nama_depan || '-'}
-                  </p>
-                )}
-              </div>
-
-              {/* Nama Belakang */}
-              <div>
-                <Label htmlFor="user_nama_belakang">{t('profile.lastName')} *</Label>
-                {editing ? (
-                  <Input
-                    id="user_nama_belakang"
-                    type="text"
-                    value={formData.user_nama_belakang}
-                    onChange={(e) => setFormData(prev => ({ ...prev, user_nama_belakang: e.target.value }))}
-                  />
-                ) : (
-                  <p className="mt-1 p-2 bg-gray-50 rounded border">
-                    {userData.user_nama_belakang || '-'}
-                  </p>
-                )}
-              </div>
-
-              {/* Username (Read Only) */}
-              <div>
-                <Label>{t('profile.username')}</Label>
-                <p className="mt-1 p-2 bg-gray-100 rounded border text-gray-600">
-                  {userData.user_username}
-                </p>
-              </div>
-
-              {/* Role (Read Only) */}
-              <div>
-                <Label>{t('profile.role')}</Label>
-                <p className="mt-1 p-2 bg-gray-100 rounded border text-gray-600">
-                  {userData.role?.role_name || t('profile.noRole')}
-                </p>
-              </div>
-
-              {/* Email */}
-              <div>
-                <Label htmlFor="user_email">{t('profile.email')}</Label>
-                {editing ? (
-                  <Input
-                    id="user_email"
-                    type="email"
-                    value={formData.user_email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, user_email: e.target.value }))}
-                  />
-                ) : (
-                  <p className="mt-1 p-2 bg-gray-50 rounded border">
-                    {userData.user_email || '-'}
-                  </p>
-                )}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <Label htmlFor="user_phone">{t('profile.phone')}</Label>
-                {editing ? (
-                  <Input
-                    id="user_phone"
-                    type="tel"
-                    value={formData.user_phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, user_phone: e.target.value }))}
-                  />
-                ) : (
-                  <p className="mt-1 p-2 bg-gray-50 rounded border">
-                    {userData.user_phone || '-'}
-                  </p>
-                )}
-              </div>
-
-              {/* Birth Date */}
-              <div>
-        <Label htmlFor="user_birth_date">{t('profile.birthDate')}</Label>
-                {editing ? (
-                  <Input
-                    id="user_birth_date"
-                    type="date"
-                    value={formData.user_birth_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, user_birth_date: e.target.value }))}
-                  />
-                ) : (
-                  <p className="mt-1 p-2 bg-gray-50 rounded border">
-          {userData.user_birth_date ? new Date(userData.user_birth_date).toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID') : '-'}
-                  </p>
-                )}
-              </div>
-
-              {/* Bio */}
-              <div className="md:col-span-2">
-        <Label htmlFor="user_bio">{t('profile.bio')}</Label>
-                {editing ? (
-                  <textarea
-                    id="user_bio"
-                    rows="3"
-                    value={formData.user_bio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, user_bio: e.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder={t('profile.bioPlaceholder')}
-                  />
-                ) : (
-                  <p className="mt-1 p-2 bg-gray-50 rounded border min-h-[80px]">
-                    {userData.user_bio || '-'}
-                  </p>
-                )}
-              </div>
-
-              {/* Address */}
-              <div className="md:col-span-2">
-        <Label htmlFor="user_address">{t('profile.address')}</Label>
-                {editing ? (
-                  <textarea
-                    id="user_address"
-                    rows="2"
-                    value={formData.user_address}
-                    onChange={(e) => setFormData(prev => ({ ...prev, user_address: e.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder={t('profile.addressPlaceholder')}
-                  />
-                ) : (
-                  <p className="mt-1 p-2 bg-gray-50 rounded border min-h-[60px]">
-                    {userData.user_address || '-'}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            {editing && (
-              <div className="flex justify-end space-x-2 mt-6 pt-4 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={updating}
-                  className="flex items-center gap-2"
-                >
-                  <FontAwesomeIcon icon={faTimes} />
-          {t('profile.cancel')}
-                </Button>
+        {/* Profile Content */}
+        <div className="relative px-4 sm:px-6 lg:px-8 pt-8 pb-8">
+          <div className="max-w-5xl mx-auto">
+            {/* Edit Button - Only show when not editing */}
+            {!editing && (
+              <div className="flex justify-end mb-4">
                 <Button 
-                  onClick={handleSave}
-                  disabled={updating}
-                  className="flex items-center gap-2"
+                  onClick={handleEdit} 
+                  className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border border-white/30 shadow-lg"
                 >
-                  <FontAwesomeIcon icon={faSave} />
-          {updating ? t('profile.saving') : t('profile.save')}
+                  <FontAwesomeIcon icon={faEdit} className="mr-2" />
+                  {t('profile.edit')}
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Account Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('profile.accountInfo')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-            <div>
-              <Label>{t('profile.createdAt')}</Label>
-              <p className="mt-1">
-                {userData.user_created_at ? new Date(userData.user_created_at).toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID') : t('profile.notAvailable')}
-              </p>
-            </div>
-            <div>
-              <Label>{t('profile.updatedAt')}</Label>
-              <p className="mt-1">
-                {userData.user_updated_at ? new Date(userData.user_updated_at).toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID') : t('profile.notAvailable')}
-              </p>
+            {/* Editing Mode Indicator */}
+            {editing && (
+              <div className="flex justify-end mb-4">
+                <div className="bg-amber-500/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
+                  <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                  Editing Mode - Press Enter to save, Esc to cancel
+                </div>
+              </div>
+            )}
+
+            {/* Profile Picture & Name */}
+            <div className="text-center">
+              <div className="relative inline-block">
+                {userData?.user_profile_picture ? (
+                  <img
+                    src={userData.user_profile_picture}
+                    alt="Profile"
+                    className="w-36 h-36 rounded-full object-cover border-4 border-white shadow-2xl"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-36 h-36 rounded-full bg-white/80 backdrop-blur flex items-center justify-center border-4 border-white shadow-2xl">
+                    <FontAwesomeIcon icon={faUser} className="text-5xl text-sky-400" />
+                  </div>
+                )}
+                {/* Google Badge */}
+                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg" title={t('profile.photoFromGoogle')}>
+                  <GoogleIcon className="w-4 h-4" />
+                </div>
+              </div>
+              
+              <h1 className="mt-4 text-3xl font-bold text-white drop-shadow-lg">
+                {fullName || userData.user_username}
+              </h1>
+              
+              <div className="mt-2 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                <FontAwesomeIcon icon={faShieldAlt} className="text-white/80" />
+                <span className="text-white font-medium">
+                  {userData.role?.role_name || t('profile.noRole')}
+                </span>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="relative px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="max-w-5xl mx-auto">
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 px-6 py-4 rounded-r-lg shadow-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Info Cards Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Quick Info */}
+            <div className="space-y-6">
+              {/* Contact Card */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center">
+                    <FontAwesomeIcon icon={faIdBadge} className="text-sky-600" />
+                  </span>
+                  {t('profile.accountInfo')}
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <FontAwesomeIcon icon={faUser} className="w-5 text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.username')}</p>
+                      <p className="font-medium text-gray-800">{userData.user_username}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <FontAwesomeIcon icon={faEnvelope} className="w-5 text-gray-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.email')}</p>
+                      <p className="font-medium text-gray-800 truncate">{userData.user_email || '-'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <FontAwesomeIcon icon={faPhone} className="w-5 text-gray-400" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.phone')}</p>
+                      {editing ? (
+                        <Input
+                          type="tel"
+                          value={formData.user_phone}
+                          onChange={(e) => setFormData(prev => ({ ...prev, user_phone: e.target.value }))}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="font-medium text-gray-800">{userData.user_phone || '-'}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <FontAwesomeIcon icon={faCalendar} className="w-5 text-gray-400" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.birthDate')}</p>
+                      {editing ? (
+                        <Input
+                          type="date"
+                          value={formData.user_birth_date}
+                          onChange={(e) => setFormData(prev => ({ ...prev, user_birth_date: e.target.value }))}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="font-medium text-gray-800">{formatDate(userData.user_birth_date)}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Timeline */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
+                    <FontAwesomeIcon icon={faClock} className="text-teal-600" />
+                  </span>
+                  Timeline
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full mt-1.5 ring-4 ring-green-100"></div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.createdAt')}</p>
+                      <p className="font-medium text-gray-800">{formatDate(userData.user_created_at)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-3 h-3 bg-sky-500 rounded-full mt-1.5 ring-4 ring-sky-100"></div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.updatedAt')}</p>
+                      <p className="font-medium text-gray-800">{formatDate(userData.user_updated_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Details */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Personal Information */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                    <FontAwesomeIcon icon={faUser} className="text-cyan-600" />
+                  </span>
+                  {t('profile.infoTitle')}
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* First Name */}
+                  <div>
+                    <Label className="text-gray-500 text-sm">{t('profile.firstName')} *</Label>
+                    {editing ? (
+                      <Input
+                        value={formData.user_nama_depan}
+                        onChange={(e) => setFormData(prev => ({ ...prev, user_nama_depan: e.target.value }))}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="mt-1 text-lg font-medium text-gray-800">
+                        {userData.user_nama_depan || '-'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Last Name */}
+                  <div>
+                    <Label className="text-gray-500 text-sm">{t('profile.lastName')} *</Label>
+                    {editing ? (
+                      <Input
+                        value={formData.user_nama_belakang}
+                        onChange={(e) => setFormData(prev => ({ ...prev, user_nama_belakang: e.target.value }))}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="mt-1 text-lg font-medium text-gray-800">
+                        {userData.user_nama_belakang || '-'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio Section */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <FontAwesomeIcon icon={faEdit} className="text-purple-600" />
+                  </span>
+                  {t('profile.bio')}
+                </h3>
+
+                {editing ? (
+                  <textarea
+                    rows="4"
+                    value={formData.user_bio}
+                    onChange={(e) => setFormData(prev => ({ ...prev, user_bio: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none"
+                    placeholder={t('profile.bioPlaceholder')}
+                  />
+                ) : (
+                  <p className="text-gray-600 leading-relaxed">
+                    {userData.user_bio || (
+                      <span className="text-gray-400 italic">{t('profile.bioPlaceholder')}</span>
+                    )}
+                  </p>
+                )}
+              </div>
+
+              {/* Address Section */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <FontAwesomeIcon icon={faMapMarkerAlt} className="text-orange-600" />
+                  </span>
+                  {t('profile.address')}
+                </h3>
+
+                {editing ? (
+                  <textarea
+                    rows="3"
+                    value={formData.user_address}
+                    onChange={(e) => setFormData(prev => ({ ...prev, user_address: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none"
+                    placeholder={t('profile.addressPlaceholder')}
+                  />
+                ) : (
+                  <p className="text-gray-600 leading-relaxed">
+                    {userData.user_address || (
+                      <span className="text-gray-400 italic">{t('profile.addressPlaceholder')}</span>
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Action Bar - Shows when editing */}
+      {editing && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-gray-200 shadow-2xl">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              {/* Left side - status */}
+              <div className="flex items-center gap-3">
+                {hasChanges ? (
+                  <span className="text-amber-600 text-sm flex items-center gap-2">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                    {t('profile.unsavedChanges') || 'Unsaved changes'}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-sm">
+                    {t('profile.noChanges') || 'No changes'}
+                  </span>
+                )}
+                {error && (
+                  <span className="text-red-500 text-sm">• {error}</span>
+                )}
+              </div>
+
+              {/* Right side - actions */}
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancel} 
+                  disabled={updating}
+                  className="px-6"
+                >
+                  <FontAwesomeIcon icon={faTimes} className="mr-2" />
+                  {t('profile.cancel')}
+                </Button>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={updating || !hasChanges}
+                  className={`px-6 ${hasChanges 
+                    ? 'bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {updating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      {t('profile.saving')}
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faSave} className="mr-2" />
+                      {t('profile.save')}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

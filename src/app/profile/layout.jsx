@@ -16,15 +16,11 @@ export default function ProfileLayout({ children }) {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="flex h-screen">
-        <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-        <main className="flex-1 p-4 transition-all duration-300 overflow-y-auto">
-          <div className="max-w-7xl">
-            {children}
-          </div>
-        </main>
-      </div>
+    <div className="flex h-full">
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
     </div>
   )
 }

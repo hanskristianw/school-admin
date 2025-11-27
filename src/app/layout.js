@@ -20,11 +20,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="antialiased">
+      <body className="antialiased overflow-hidden">
         <Providers>
-          <div className="flex min-h-screen flex-col">
+          <div className="flex h-screen flex-col">
             {/* Global language switcher bar */}
-            <div className="sticky top-0 z-50 bg-white/70 backdrop-blur border-b">
+            <div className="shrink-0 z-50 bg-white/70 backdrop-blur border-b">
               <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-end">
                 {/* Render LanguageSwitcher here */}
                 <div className="flex items-center gap-2 text-sm">
@@ -33,8 +33,8 @@ export default function RootLayout({ children }) {
                 </div>
               </div>
             </div>
-            {/* Content area fills the remaining height; prevent page-level overflow */}
-            <div className="flex-1 min-h-0">
+            {/* Content area fills the remaining height */}
+            <div className="flex-1 overflow-hidden">
               {children}
             </div>
           </div>
