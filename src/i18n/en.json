@@ -7,6 +7,9 @@
     "assessmentApproval": "Assessment Approval",
     "loading": "Loading...",
     "logout": "Logout",
+    "logoutConfirmTitle": "Confirm Logout",
+    "logoutConfirmMessage": "Are you sure you want to logout from the system?",
+    "cancel": "Cancel",
     "dashboard": "Dashboard",
     "errorLoading": "Failed to load data"
   },

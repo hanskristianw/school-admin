@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, memo } from "react"
+import { createPortal } from "react-dom"
 import { useI18n } from '@/lib/i18n'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -38,7 +39,7 @@ import {
   faSackDollar,
   faFlag
 } from "@fortawesome/free-solid-svg-icons"
-import { faDoorOpen } from "@fortawesome/free-solid-svg-icons"
+import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
@@ -118,6 +119,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
   const [isCollapsed, setIsCollapsed] = useState(true) // Start collapsed
   const [activeMenu, setActiveMenu] = useState(null) // For showing popup in collapsed mode
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0, height: 0 }) // Position for popup
+  const [showLogoutModal, setShowLogoutModal] = useState(false) // Logout confirmation modal
   const pathname = usePathname()
   const router = useRouter()
   const { translateMenu, t } = useI18n()
@@ -511,32 +513,72 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
         {/* Logout button */}
         <div className="mt-8 pt-4 border-t border-gray-200">
           <button
-            onClick={async () => {
-              // Clear client storage/cache
-              try {
-                const role = localStorage.getItem('user_role')
-                if (role) sessionStorage.removeItem(`allowed_menu_paths:${role}`)
-                sessionStorage.removeItem('allowed_menu_paths:admin')
-              } catch {}
-              localStorage.clear()
-              // Clear auth cookies for middleware
-              const past = 'Thu, 01 Jan 1970 00:00:00 GMT'
-              document.cookie = `kr_id=; Path=/; Expires=${past}; SameSite=Lax`
-              document.cookie = `role_name=; Path=/; Expires=${past}; SameSite=Lax`
-              document.cookie = `is_admin=; Path=/; Expires=${past}; SameSite=Lax`
-              document.cookie = `allowed_paths=; Path=/; Expires=${past}; SameSite=Lax`
-              // Redirect to login
-              router.push('/login')
-            }}
+            onClick={() => setShowLogoutModal(true)}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : ''} px-4 py-2 text-red-600 hover:bg-red-50 rounded-md`}
             title={isCollapsed ? t('common.logout') : ''}
           >
             <span className={`${isCollapsed ? '' : 'mr-3'} inline-flex items-center justify-center w-4 h-4`}>
-              <FontAwesomeIcon icon={faUser} />
+              <FontAwesomeIcon icon={faSignOutAlt} />
             </span>
             {!isCollapsed && <span>{t('common.logout')}</span>}
           </button>
         </div>
+
+        {/* Logout Confirmation Modal - Using Portal to render at document body */}
+        {showLogoutModal && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowLogoutModal(false)}
+            />
+            {/* Modal */}
+            <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 animate-in fade-in zoom-in duration-200">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                  <FontAwesomeIcon icon={faSignOutAlt} className="text-red-600 text-2xl" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {t('common.logoutConfirmTitle') || 'Konfirmasi Logout'}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {t('common.logoutConfirmMessage') || 'Apakah Anda yakin ingin keluar dari sistem?'}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowLogoutModal(false)}
+                    className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors"
+                  >
+                    {t('common.cancel') || 'Batal'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      // Clear client storage/cache
+                      try {
+                        const role = localStorage.getItem('user_role')
+                        if (role) sessionStorage.removeItem(`allowed_menu_paths:${role}`)
+                        sessionStorage.removeItem('allowed_menu_paths:admin')
+                      } catch {}
+                      localStorage.clear()
+                      // Clear auth cookies for middleware
+                      const past = 'Thu, 01 Jan 1970 00:00:00 GMT'
+                      document.cookie = `kr_id=; Path=/; Expires=${past}; SameSite=Lax`
+                      document.cookie = `role_name=; Path=/; Expires=${past}; SameSite=Lax`
+                      document.cookie = `is_admin=; Path=/; Expires=${past}; SameSite=Lax`
+                      document.cookie = `allowed_paths=; Path=/; Expires=${past}; SameSite=Lax`
+                      // Redirect to login
+                      router.push('/login')
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-colors"
+                  >
+                    {t('common.logout') || 'Keluar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
       </nav>
     )
   }

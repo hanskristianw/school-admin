@@ -1,14 +1,17 @@
 {
   "common": {
-    "welcome": "欢迎 {name}!",
+    "welcome": "欢迎 {name}！",
     "profile": "个人资料",
     "manageUsers": "用户管理",
     "manageClasses": "班级管理",
-    "assessmentApproval": "评估审核",
+    "assessmentApproval": "评估审批",
     "loading": "加载中...",
     "logout": "退出登录",
-    "dashboard": "仪表盘",
-    "errorLoading": "加载失败"
+    "logoutConfirmTitle": "确认退出",
+    "logoutConfirmMessage": "您确定要退出系统吗？",
+    "cancel": "取消",
+    "dashboard": "仪表板",
+    "errorLoading": "数据加载失败"
   },
   "login": {
     "title": "学校管理系统",

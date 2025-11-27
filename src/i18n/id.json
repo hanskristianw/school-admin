@@ -7,6 +7,9 @@
     "assessmentApproval": "Approval Assessment",
     "loading": "Memuat...",
     "logout": "Keluar",
+    "logoutConfirmTitle": "Konfirmasi Logout",
+    "logoutConfirmMessage": "Apakah Anda yakin ingin keluar dari sistem?",
+    "cancel": "Batal",
     "dashboard": "Dashboard",
     "errorLoading": "Gagal memuat data"
   },
