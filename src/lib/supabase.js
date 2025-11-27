@@ -12,12 +12,14 @@ if (!supabaseAnonKey) {
   throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
 }
 
-console.log('🔧 Supabase config:', {
-  url: supabaseUrl,
-  keyType: 'anon',
-  keyLength: supabaseAnonKey?.length,
-  keyStart: supabaseAnonKey?.substring(0, 20) + '...'
-})
+// Debug log - only in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔧 Supabase config:', {
+    url: supabaseUrl,
+    keyType: 'anon',
+    keyLength: supabaseAnonKey?.length,
+  })
+}
 
 export const setAuthToken = (token) => {
   const headers = bearerHeaders(token)

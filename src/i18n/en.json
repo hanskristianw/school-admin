@@ -19,7 +19,9 @@
     "processing": "Processing...",
     "loading": "Loading...",
     "failed": "Login failed",
-    "error": "An error occurred during login"
+    "error": "An error occurred during login",
+    "googleSignIn": "Sign in with Google",
+    "useGoogleAccount": "Use your @ccs.sch.id Google account"
   },
   "dashboard": {
     "subtitle": "Your school overview",

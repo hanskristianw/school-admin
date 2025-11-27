@@ -582,7 +582,12 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           {/* Avatar */}
           {userData?.user_profile_picture ? (
-            <img src={userData.user_profile_picture} alt="Profile" className="w-14 h-14 md:w-16 md:h-16 rounded-full object-cover ring-2 ring-blue-200" />
+            <img 
+              src={userData.user_profile_picture} 
+              alt="Profile" 
+              className="w-14 h-14 md:w-16 md:h-16 rounded-full object-cover ring-2 ring-blue-200"
+              referrerPolicy="no-referrer"
+            />
           ) : (
             <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-gray-200 flex items-center justify-center ring-2 ring-gray-200">
               <FontAwesomeIcon icon={faUser} className="text-2xl text-gray-400" />

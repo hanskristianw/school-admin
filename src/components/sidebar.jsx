@@ -3,7 +3,7 @@
 import { useEffect, useState, memo } from "react"
 import { useI18n } from '@/lib/i18n'
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { 
   faGaugeHigh, 
@@ -119,6 +119,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
   const [activeMenu, setActiveMenu] = useState(null) // For showing popup in collapsed mode
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0, height: 0 }) // Position for popup
   const pathname = usePathname()
+  const router = useRouter()
   const { translateMenu, t } = useI18n()
 
   // Close popup when clicking outside
@@ -510,7 +511,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
         {/* Logout button */}
         <div className="mt-8 pt-4 border-t border-gray-200">
           <button
-            onClick={() => {
+            onClick={async () => {
               // Clear client storage/cache
               try {
                 const role = localStorage.getItem('user_role')
@@ -524,7 +525,8 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
               document.cookie = `role_name=; Path=/; Expires=${past}; SameSite=Lax`
               document.cookie = `is_admin=; Path=/; Expires=${past}; SameSite=Lax`
               document.cookie = `allowed_paths=; Path=/; Expires=${past}; SameSite=Lax`
-              window.location.href = "/login"
+              // Redirect to login
+              router.push('/login')
             }}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : ''} px-4 py-2 text-red-600 hover:bg-red-50 rounded-md`}
             title={isCollapsed ? t('common.logout') : ''}

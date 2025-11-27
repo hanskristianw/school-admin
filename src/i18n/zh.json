@@ -19,7 +19,9 @@
     "processing": "处理中...",
     "loading": "加载中...",
     "failed": "登录失败",
-    "error": "登录时发生错误"
+    "error": "登录时发生错误",
+    "googleSignIn": "使用 Google 登录",
+    "useGoogleAccount": "使用 @ccs.sch.id Google 账户"
   },
   "dashboard": {
     "subtitle": "学校概览",

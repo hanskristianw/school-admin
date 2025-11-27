@@ -19,7 +19,9 @@
     "processing": "Memproses...",
     "loading": "Memuat...",
     "failed": "Login gagal",
-    "error": "Terjadi kesalahan saat login"
+    "error": "Terjadi kesalahan saat login",
+    "googleSignIn": "Masuk dengan Google",
+    "useGoogleAccount": "Gunakan akun Google @ccs.sch.id"
   },
   "dashboard": {
     "subtitle": "Ringkasan aktivitas dan data sekolah Anda",
