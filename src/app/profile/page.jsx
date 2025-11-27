@@ -221,6 +221,7 @@ export default function ProfilePage() {
           
           {/* School Logo Overlay - Large watermark style */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/login-logo.png"
               alt=""

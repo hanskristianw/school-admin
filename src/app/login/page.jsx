@@ -267,6 +267,7 @@ function LoginContent() {
               src="/images/login-logo.png"
               alt=""
               fill
+              sizes="320px"
               className="object-contain rounded-full"
               priority
             />
@@ -292,6 +293,7 @@ function LoginContent() {
                   alt="School Logo"
                   width={160}
                   height={80}
+                  style={{ width: 'auto', height: 'auto' }}
                   className="relative object-contain drop-shadow-lg"
                   priority
                 />

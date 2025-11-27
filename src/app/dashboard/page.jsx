@@ -558,18 +558,18 @@ export default function Dashboard() {
 
             {/* Schedule Card */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <div className="flex items-center justify-between">
+              <div className="p-4 sm:p-6 border-b border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                      <FontAwesomeIcon icon={faClock} className="text-sky-600" />
+                    <span className="w-8 h-8 sm:w-10 sm:h-10 bg-sky-100 rounded-lg sm:rounded-xl flex items-center justify-center">
+                      <FontAwesomeIcon icon={faClock} className="text-sky-600 text-sm sm:text-base" />
                     </span>
-                    <h2 className="text-lg font-semibold text-gray-800">{t('dashboard.todaySchedule') || "Today's Schedule"}</h2>
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-800">{t('dashboard.todaySchedule') || "Today's Schedule"}</h2>
                   </div>
                   <select
                     value={selectedDay}
                     onChange={(e)=> setSelectedDay(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                    className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-200 rounded-lg sm:rounded-xl text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                   >
                     {DAYS.map(d => {
                       const label = t(`doorGreeter.days.${d}`) || d
@@ -578,26 +578,26 @@ export default function Dashboard() {
                   </select>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {studentSchedule.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <FontAwesomeIcon icon={faCalendar} className="text-4xl text-gray-300 mb-3" />
-                    <p>{t('dashboard.noScheduleToday') || 'No schedule for today.'}</p>
+                  <div className="text-center py-6 sm:py-8 text-gray-500">
+                    <FontAwesomeIcon icon={faCalendar} className="text-3xl sm:text-4xl text-gray-300 mb-3" />
+                    <p className="text-sm sm:text-base">{t('dashboard.noScheduleToday') || 'No schedule for today.'}</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {studentSchedule.map((it, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-sky-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-xl flex items-center justify-center text-white font-bold">
+                      <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-xl hover:bg-sky-50 transition-colors">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-lg sm:rounded-xl flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0">
                             {it.subject?.charAt(0) || 'S'}
                           </div>
-                          <div>
-                            <div className="font-semibold text-gray-800">{it.subject}</div>
-                            <div className="text-sm text-gray-500">{it.teacher}</div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-gray-800 text-sm sm:text-base truncate">{it.subject}</div>
+                            <div className="text-xs sm:text-sm text-gray-500 truncate">{it.teacher}</div>
                           </div>
                         </div>
-                        <div className="text-sm font-medium text-gray-600 bg-white px-3 py-1.5 rounded-lg border">
+                        <div className="text-xs sm:text-sm font-medium text-gray-600 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border self-start sm:self-auto ml-13 sm:ml-0">
                           {it.start} - {it.end}
                         </div>
                       </div>
@@ -608,11 +608,11 @@ export default function Dashboard() {
             </div>
 
             {/* Tip Card */}
-            <div className="bg-gradient-to-r from-sky-50 to-cyan-50 border border-sky-200 text-sky-800 p-4 rounded-2xl flex items-center gap-3">
-              <span className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <FontAwesomeIcon icon={faQrcode} className="text-sky-600" />
+            <div className="bg-gradient-to-r from-sky-50 to-cyan-50 border border-sky-200 text-sky-800 p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-start sm:items-center gap-3">
+              <span className="w-8 h-8 sm:w-10 sm:h-10 bg-sky-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
+                <FontAwesomeIcon icon={faQrcode} className="text-sky-600 text-sm sm:text-base" />
               </span>
-              <p className="text-sm">{t('student.scanHint') || 'Tip: Please allow location and camera access when scanning.'}</p>
+              <p className="text-xs sm:text-sm">{t('student.scanHint') || 'Tip: Please allow location and camera access when scanning.'}</p>
             </div>
           </div>
         </div>
@@ -630,10 +630,12 @@ export default function Dashboard() {
           <div className="absolute -bottom-1/2 -left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
           {/* School logo watermark */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
               src="/images/login-logo.png" 
               alt="" 
               className="h-48 w-auto opacity-10"
+              aria-hidden="true"
             />
           </div>
         </div>
@@ -674,7 +676,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="px-4 md:px-6 py-6 space-y-6 -mt-4">
+      <div className="py-6 space-y-6">
         {error && (
           <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-sm shadow-sm">
             {error}
@@ -702,14 +704,14 @@ export default function Dashboard() {
                 ? 'bg-gradient-to-br from-rose-500 to-red-600 text-white' 
                 : 'bg-gradient-to-br from-amber-400 to-orange-500 text-white'
               return (
-                <div className={`rounded-2xl shadow-lg p-5 ${baseCard}`}>
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center flex-shrink-0">
-                      <FontAwesomeIcon icon={faDoorOpen} className="text-xl" />
+                <div className={`rounded-2xl shadow-lg p-3 sm:p-5 ${baseCard}`}>
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                      <FontAwesomeIcon icon={faDoorOpen} className="text-lg sm:text-xl" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg">{tr('dashboard.doorGreeterTitle', 'Tugas Door Greeter')}</h3>
-                      <p className="text-sm text-white/90 mt-1">{message}</p>
+                      <h3 className="font-semibold text-sm sm:text-lg">{tr('dashboard.doorGreeterTitle', 'Tugas Door Greeter')}</h3>
+                      <p className="text-xs sm:text-sm text-white/90 mt-1">{message}</p>
                     </div>
                   </div>
                 </div>
@@ -717,14 +719,14 @@ export default function Dashboard() {
             }
             // Not on duty
             return (
-              <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <FontAwesomeIcon icon={faDoorOpen} className="text-gray-400 text-xl" />
+              <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-5">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FontAwesomeIcon icon={faDoorOpen} className="text-gray-400 text-lg sm:text-xl" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-800">{tr('dashboard.doorGreeterTitle', 'Tugas Door Greeter')}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{tr('dashboard.notDoorGreeter', 'Anda tidak bertugas sebagai Door Greeter.')}</p>
+                    <h3 className="font-semibold text-gray-800 text-sm sm:text-base">{tr('dashboard.doorGreeterTitle', 'Tugas Door Greeter')}</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">{tr('dashboard.notDoorGreeter', 'Anda tidak bertugas sebagai Door Greeter.')}</p>
                   </div>
                 </div>
               </div>
@@ -733,17 +735,17 @@ export default function Dashboard() {
 
           {/* Teaching schedule (selectable day) */}
           <div className="md:col-span-1 lg:col-span-3 bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <span className="w-8 h-8 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-lg flex items-center justify-center">
-                  <FontAwesomeIcon icon={faChalkboardTeacher} className="text-white text-sm" />
+            <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+              <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
+                <span className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-lg flex items-center justify-center">
+                  <FontAwesomeIcon icon={faChalkboardTeacher} className="text-white text-xs sm:text-sm" />
                 </span>
                 {tr('dashboard.teachingToday', 'Mengajar Hari Ini')}
               </h3>
               <select
                 value={teacherSelectedDay}
                 onChange={(e)=> setTeacherSelectedDay(e.target.value)}
-                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 border border-gray-200 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               >
                 {DAYS.map(d => {
                   const label = tr(`doorGreeter.days.${d}`, d)
@@ -751,28 +753,28 @@ export default function Dashboard() {
                 })}
               </select>
             </div>
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               {teacherToday.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                    <FontAwesomeIcon icon={faChalkboardTeacher} className="text-gray-400 text-2xl" />
+                <div className="text-center py-6 sm:py-8">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <FontAwesomeIcon icon={faChalkboardTeacher} className="text-gray-400 text-xl sm:text-2xl" />
                   </div>
-                  <p className="text-sm text-gray-500">{tr('dashboard.noTeachingToday', 'Tidak ada jadwal mengajar hari ini.')}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{tr('dashboard.noTeachingToday', 'Tidak ada jadwal mengajar hari ini.')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {teacherToday.map((it, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-sky-50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
+                    <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-50 rounded-xl hover:bg-sky-50 transition-colors">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-lg flex items-center justify-center text-white font-semibold text-xs sm:text-sm flex-shrink-0">
                           {it.subject?.charAt(0) || 'S'}
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-800">{it.subject}</div>
-                          <div className="text-sm text-gray-500">{it.kelas}</div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-800 text-sm truncate">{it.subject}</div>
+                          <div className="text-xs sm:text-sm text-gray-500 truncate">{it.kelas}</div>
                         </div>
                       </div>
-                      <div className="text-sm font-medium text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
+                      <div className="text-xs sm:text-sm font-medium text-gray-600 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 self-start sm:self-auto ml-10 sm:ml-0">
                         {it.start} - {it.end}
                       </div>
                     </div>
@@ -785,37 +787,38 @@ export default function Dashboard() {
 
         {/* Pending Assessments */}
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-              <span className="w-8 h-8 bg-gradient-to-br from-rose-400 to-pink-500 rounded-lg flex items-center justify-center">
-                <FontAwesomeIcon icon={faClipboardCheck} className="text-white text-sm" />
+          <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-rose-400 to-pink-500 rounded-lg flex items-center justify-center">
+                <FontAwesomeIcon icon={faClipboardCheck} className="text-white text-xs sm:text-sm" />
               </span>
-              {t('dashboard.pendingAssessments')}
+              <span className="hidden sm:inline">{t('dashboard.pendingAssessments')}</span>
+              <span className="sm:hidden">Penilaian</span>
             </h3>
-            <span className="text-sm bg-rose-100 text-rose-600 px-3 py-1 rounded-full font-medium">
-              {stats.pendingAssessments} pending
+            <span className="text-xs sm:text-sm bg-rose-100 text-rose-600 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-medium">
+              {stats.pendingAssessments}
             </span>
           </div>
-          <div className="p-4">
+          <div className="p-3 sm:p-4">
             {recentAssessments.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                  <FontAwesomeIcon icon={faClipboardCheck} className="text-gray-400 text-2xl" />
+              <div className="text-center py-6 sm:py-8">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <FontAwesomeIcon icon={faClipboardCheck} className="text-gray-400 text-xl sm:text-2xl" />
                 </div>
-                <p className="text-sm text-gray-500">{t('dashboard.noneRecent')}</p>
+                <p className="text-xs sm:text-sm text-gray-500">{t('dashboard.noneRecent')}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {recentAssessments.map((a) => (
-                  <div key={a.assessment_id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl hover:bg-sky-50 transition-colors">
+                  <div key={a.assessment_id} className="flex flex-col gap-2 p-2.5 sm:p-3 bg-gray-50 rounded-xl hover:bg-sky-50 transition-colors">
                     <div className="min-w-0">
-                      <div className="font-medium text-gray-800 truncate">{a.assessment_nama}</div>
-                      <div className="text-xs text-gray-500 truncate">
+                      <div className="font-medium text-gray-800 text-sm truncate">{a.assessment_nama}</div>
+                      <div className="text-[10px] sm:text-xs text-gray-500 truncate">
                         {detailKelasMap[a.assessment_detail_kelas_id] || 'Mata pelajaran - Kelas'} · {usersMap[a.assessment_user_id] || 'Guru'}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 md:gap-6">
-                      <div className="text-xs text-gray-600 whitespace-nowrap bg-white px-2 py-1 rounded-lg border border-gray-200">{formatDate(a.assessment_tanggal)}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[10px] sm:text-xs text-gray-600 whitespace-nowrap bg-white px-2 py-0.5 sm:py-1 rounded-lg border border-gray-200">{formatDate(a.assessment_tanggal)}</div>
                       <StatusBadge status={a.assessment_status} />
                     </div>
                   </div>
@@ -827,31 +830,32 @@ export default function Dashboard() {
 
         {/* Assessment Calendar */}
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-              <span className="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center">
-                <FontAwesomeIcon icon={faCalendar} className="text-white text-sm" />
+          <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
+              <span className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center">
+                <FontAwesomeIcon icon={faCalendar} className="text-white text-xs sm:text-sm" />
               </span>
-              Kalender Penilaian
+              <span className="hidden sm:inline">Kalender Penilaian</span>
+              <span className="sm:hidden">Kalender</span>
             </h3>
-            <div className="w-full md:w-auto overflow-x-auto">
-              <div className="inline-flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={prevMonth} className="rounded-lg">
-                  <FontAwesomeIcon icon={faChevronLeft} />
+            <div className="w-full md:w-auto overflow-x-auto -mx-1 px-1">
+              <div className="inline-flex items-center gap-1 sm:gap-2">
+                <Button variant="outline" size="sm" onClick={prevMonth} className="rounded-lg h-8 w-8 p-0">
+                  <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
                 </Button>
-                <div className="text-sm min-w-[140px] text-center font-medium text-gray-700">
-                  {calMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                <div className="text-xs sm:text-sm min-w-[100px] sm:min-w-[140px] text-center font-medium text-gray-700">
+                  {calMonth.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
                 </div>
-                <Button variant="outline" size="sm" onClick={nextMonth} className="rounded-lg">
-                  <FontAwesomeIcon icon={faChevronRight} />
+                <Button variant="outline" size="sm" onClick={nextMonth} className="rounded-lg h-8 w-8 p-0">
+                  <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={thisMonth} className="rounded-lg">Bulan Ini</Button>
+                <Button variant="outline" size="sm" onClick={thisMonth} className="rounded-lg text-xs px-2 hidden sm:inline-flex">Bulan Ini</Button>
                 <select
-                  className="ml-2 border border-gray-200 rounded-lg px-3 py-1.5 text-sm shrink-0 bg-white focus:ring-2 focus:ring-sky-500"
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs sm:text-sm shrink-0 bg-white focus:ring-2 focus:ring-sky-500 max-w-[100px] sm:max-w-none"
                   value={kelasFilter}
                   onChange={(e)=> setKelasFilter(e.target.value)}
                 >
-                  <option value="">Semua Kelas</option>
+                  <option value="">Semua</option>
                   {kelasOptions.map(k => (
                     <option key={k.id} value={k.id}>{k.nama}</option>
                   ))}
@@ -859,13 +863,13 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <div className="p-4">
+          <div className="p-2 sm:p-4">
             {calError && (
-              <div className="p-3 mb-3 rounded-xl bg-red-50 text-red-700 border border-red-200 text-sm">{calError}</div>
+              <div className="p-2 sm:p-3 mb-2 sm:mb-3 rounded-lg sm:rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs sm:text-sm">{calError}</div>
             )}
-            <div className="grid grid-cols-7 gap-1 sm:gap-2 text-[11px] sm:text-xs font-medium text-gray-500 mb-3">
-              {['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(d => (
-                <div key={d} className="text-center py-2 bg-gray-50 rounded-lg">{d}</div>
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2 text-[9px] sm:text-[11px] md:text-xs font-medium text-gray-500 mb-1 sm:mb-3">
+              {['S','S','R','K','J','S','M'].map((d, i) => (
+                <div key={i} className="text-center py-1 sm:py-2 bg-gray-50 rounded sm:rounded-lg">{d}</div>
               ))}
             </div>
             {/* Month grid */}
@@ -883,9 +887,9 @@ export default function Dashboard() {
               // pad to full weeks
               while (days.length % 7 !== 0) days.push(null)
               return (
-                <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2">
                   {days.map((d, idx) => {
-                    if (!d) return <div key={idx} className="h-20 md:h-24 rounded-xl border border-gray-100 bg-gray-50/50" />
+                    if (!d) return <div key={idx} className="h-12 sm:h-16 md:h-24 rounded-lg md:rounded-xl border border-gray-100 bg-gray-50/50" />
                     const key = toKey(d)
                     const info = calData[key]
                     const total = info?.total || 0
@@ -894,22 +898,23 @@ export default function Dashboard() {
                     return (
                       <button
                         key={idx}
-                        className={`h-20 md:h-24 rounded-xl border p-2 text-left hover:bg-sky-50 hover:border-sky-200 transition-all ${total>0 ? 'bg-white border-gray-200' : 'bg-gray-50/50 border-gray-100'}`}
+                        className={`h-12 sm:h-16 md:h-24 rounded-lg md:rounded-xl border p-1 sm:p-1.5 md:p-2 text-left hover:bg-sky-50 hover:border-sky-200 transition-all ${total>0 ? 'bg-white border-gray-200' : 'bg-gray-50/50 border-gray-100'}`}
                         onClick={() => setDayDetail({ open: true, date: key, rows: (info?.perClass || []).slice().sort((a,b)=> b.count - a.count) })}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="text-xs font-semibold text-gray-700">{d.getDate()}</div>
-                          {total>0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-medium">{total}</span>}
+                          <div className="text-[10px] sm:text-xs font-semibold text-gray-700">{d.getDate()}</div>
+                          {total>0 && <span className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-medium">{total}</span>}
                         </div>
-                        <div className="mt-1 space-y-1">
+                        {/* Hide details on mobile, show only on tablet and up */}
+                        <div className="hidden sm:block mt-1 space-y-0.5 md:space-y-1">
                           {top.map(c => (
-                            <div key={c.detail_kelas_id} className="text-[10px] truncate">
-                              <span className={`px-1 py-0.5 rounded mr-1 ${colorToChip(c.color)}`}>{c.count}</span>
-                              <span className={`${colorToText(c.color)}`}>{c.kelas_nama}{c.subject_code ? ` (${c.subject_code})` : ''}</span>
+                            <div key={c.detail_kelas_id} className="text-[8px] md:text-[10px] truncate">
+                              <span className={`px-0.5 md:px-1 py-0.5 rounded mr-0.5 md:mr-1 ${colorToChip(c.color)}`}>{c.count}</span>
+                              <span className={`${colorToText(c.color)} hidden md:inline`}>{c.kelas_nama}{c.subject_code ? ` (${c.subject_code})` : ''}</span>
                             </div>
                           ))}
                           {more>0 && (
-                            <div className="text-[10px] text-gray-500">+{more} kelas lainnya</div>
+                            <div className="text-[8px] md:text-[10px] text-gray-500 hidden md:block">+{more} kelas lainnya</div>
                           )}
                         </div>
                       </button>
