@@ -3184,7 +3184,10 @@ Please respond in ${selected} language and ensure valid JSON format.`
                       {/* Input Nilai button - always visible for approved assessments with criteria */}
                       {assessment.assessment_status === 1 && hasCriteria && (
                         <button
-                          onClick={(e) => handleOpenGrading(assessment, e)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/data/assessment_grading/${assessment.assessment_id}`)
+                          }}
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-md transition-all shadow-sm hover:shadow-md"
                         >
                           <span>📝</span>
