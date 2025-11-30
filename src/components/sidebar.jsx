@@ -100,7 +100,9 @@ const iconMap = {
   'faBuilding': faBuilding,
   'faCalendarDays': faCalendarDays,
   'faSackDollar': faSackDollar,
-  'faFlag': faFlag
+  'faFlag': faFlag,
+  'faUserGraduate': faUserGraduate,
+  'fas fa-user-graduate': faUserGraduate
   , 'faRuler': require('@fortawesome/free-solid-svg-icons').faRuler
   , 'faShirt': require('@fortawesome/free-solid-svg-icons').faShirt
   , 'faCartShopping': require('@fortawesome/free-solid-svg-icons').faCartShopping

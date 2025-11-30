@@ -24,7 +24,11 @@
     "failed": "登录失败",
     "error": "登录时发生错误",
     "googleSignIn": "使用 Google 登录",
-    "useGoogleAccount": "使用 @ccs.sch.id Google 账户"
+    "useGoogleAccount": "使用 @ccs.sch.id Google 账户",
+    "orRegister": "或",
+    "registerNewStudent": "新生报名",
+    "checkStatus": "查询状态",
+    "registerHint": "新生入学报名"
   },
   "dashboard": {
     "subtitle": "学校概览",
@@ -52,7 +56,8 @@
     "Subjects": "科目",
   "Assessment Approval": "评估审核",
   "Room Booking": "房间预订",
-  "Room Master": "房间管理"
+  "Room Master": "房间管理",
+  "Student Admission": "学生报名"
   }
   ,
   "nilai": {

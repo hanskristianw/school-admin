@@ -361,6 +361,47 @@ function LoginContent() {
             <p className="mt-6 text-center text-white/40 text-xs">
               {t('login.useGoogleAccount')}
             </p>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-slate-900/80 px-3 text-white/40">{t('login.orRegister') || 'atau'}</span>
+              </div>
+            </div>
+
+            {/* New Student Registration & Check Status Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button 
+                type="button"
+                onClick={() => router.push('/admission')}
+                variant="outline"
+                className="flex-1 h-12 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-400 font-semibold rounded-xl transition-all duration-300"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                {t('login.registerNewStudent') || 'Daftar Siswa Baru'}
+              </Button>
+
+              <Button 
+                type="button"
+                onClick={() => router.push('/admission/status')}
+                variant="outline"
+                className="flex-1 h-12 border-sky-500/50 text-sky-400 hover:bg-sky-500/10 hover:border-sky-400 font-semibold rounded-xl transition-all duration-300"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                {t('login.checkStatus') || 'Cek Status'}
+              </Button>
+            </div>
+
+            <p className="mt-3 text-center text-white/40 text-xs">
+              {t('login.registerHint') || 'Pendaftaran untuk calon siswa baru'}
+            </p>
           </div>
           
           {/* Bottom gradient line */}

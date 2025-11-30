@@ -24,7 +24,11 @@
     "failed": "Login failed",
     "error": "An error occurred during login",
     "googleSignIn": "Sign in with Google",
-    "useGoogleAccount": "Use your @ccs.sch.id Google account"
+    "useGoogleAccount": "Use your @ccs.sch.id Google account",
+    "orRegister": "or",
+    "registerNewStudent": "Register New Student",
+    "checkStatus": "Check Status",
+    "registerHint": "Registration for new student applicants"
   },
   "dashboard": {
     "subtitle": "Your school overview",
@@ -52,7 +56,8 @@
     "Subjects": "Subjects",
   "Assessment Approval": "Assessment Approval",
   "Room Booking": "Room Booking",
-  "Room Master": "Rooms"
+  "Room Master": "Rooms",
+  "Student Admission": "Student Admission"
   }
   ,
   "nilai": {

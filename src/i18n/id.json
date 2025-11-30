@@ -24,7 +24,11 @@
     "failed": "Login gagal",
     "error": "Terjadi kesalahan saat login",
     "googleSignIn": "Masuk dengan Google",
-    "useGoogleAccount": "Gunakan akun Google @ccs.sch.id"
+    "useGoogleAccount": "Gunakan akun Google @ccs.sch.id",
+    "orRegister": "atau",
+    "registerNewStudent": "Daftar Siswa Baru",
+    "checkStatus": "Cek Status",
+    "registerHint": "Pendaftaran untuk calon siswa baru"
   },
   "dashboard": {
     "subtitle": "Ringkasan aktivitas dan data sekolah Anda",
@@ -52,7 +56,8 @@
     "Subjects": "Mata Pelajaran",
   "Assessment Approval": "Approval Assessment",
   "Room Booking": "Peminjaman Ruangan",
-  "Room Master": "Master Ruangan"
+  "Room Master": "Master Ruangan",
+  "Student Admission": "Pendaftaran Siswa"
   }
   ,
   "nilai": {

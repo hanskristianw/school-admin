@@ -5,10 +5,12 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt } from '@fortawesome/free-solid-svg-icons'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 export default function TopicNewPage() {
   const router = useRouter()
@@ -139,6 +141,19 @@ export default function TopicNewPage() {
   const [expandedRubrics, setExpandedRubrics] = useState(new Set()) // Track which strands have rubrics expanded
   const [loadingGrading, setLoadingGrading] = useState(false)
   const [savingGrades, setSavingGrades] = useState(false)
+  
+  // Report state
+  const [reportFilters, setReportFilters] = useState({
+    year: '',
+    semester: '',
+    kelas: '',
+    student: ''
+  })
+  const [reportYears, setReportYears] = useState([])
+  const [reportKelasOptions, setReportKelasOptions] = useState([])
+  const [reportStudents, setReportStudents] = useState([])
+  const [loadingReport, setLoadingReport] = useState(false)
+  const [loadingReportStudents, setLoadingReportStudents] = useState(false)
   
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
@@ -1070,6 +1085,518 @@ export default function TopicNewPage() {
       fetchAssessments()
     }
   }, [activeTab])
+  
+  // Fetch report data when tab changes to report
+  useEffect(() => {
+    if (activeTab === 'report') {
+      if (reportYears.length === 0) {
+        fetchReportYears()
+      }
+      if (subjects.length > 0 && reportKelasOptions.length === 0) {
+        fetchReportKelasOptions()
+      }
+    }
+  }, [activeTab, subjects])
+  
+  // Fetch years for report filter
+  const fetchReportYears = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('year')
+        .select('year_id, year_name')
+        .order('year_name', { ascending: false })
+      
+      if (error) throw error
+      setReportYears(data || [])
+    } catch (err) {
+      console.error('Error fetching years:', err)
+    }
+  }
+  
+  // Fetch kelas options for report (only kelas that the teacher teaches)
+  const fetchReportKelasOptions = async () => {
+    try {
+      // Get user's subjects
+      const userSubjectIds = subjects.map(s => s.subject_id)
+      if (userSubjectIds.length === 0) {
+        setReportKelasOptions([])
+        return
+      }
+      
+      // Get kelas from detail_kelas that teacher teaches
+      const { data: detailKelasData, error: dkError } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_kelas_id')
+        .in('detail_kelas_subject_id', userSubjectIds)
+      
+      if (dkError) throw dkError
+      
+      const kelasIds = [...new Set((detailKelasData || []).map(dk => dk.detail_kelas_kelas_id).filter(Boolean))]
+      
+      if (kelasIds.length > 0) {
+        const { data: kelasData, error: kelasError } = await supabase
+          .from('kelas')
+          .select('kelas_id, kelas_nama')
+          .in('kelas_id', kelasIds)
+          .order('kelas_nama')
+        
+        if (!kelasError && kelasData) {
+          setReportKelasOptions(kelasData)
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching report kelas:', err)
+    }
+  }
+  
+  // Fetch students when kelas changes
+  const fetchReportStudents = async (kelasId) => {
+    if (!kelasId) {
+      setReportStudents([])
+      return
+    }
+    
+    try {
+      setLoadingReportStudents(true)
+      
+      // Fetch detail_siswa for the kelas
+      const { data: detailSiswaData, error: dsError } = await supabase
+        .from('detail_siswa')
+        .select('detail_siswa_id, detail_siswa_user_id')
+        .eq('detail_siswa_kelas_id', kelasId)
+      
+      if (dsError) throw dsError
+      
+      const userIds = [...new Set(detailSiswaData.map(ds => ds.detail_siswa_user_id))]
+      
+      if (userIds.length > 0) {
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang')
+          .in('user_id', userIds)
+        
+        if (!usersError && usersData) {
+          const userMap = new Map()
+          usersData.forEach(u => {
+            userMap.set(u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim())
+          })
+          
+          const students = detailSiswaData.map(ds => ({
+            detail_siswa_id: ds.detail_siswa_id,
+            user_id: ds.detail_siswa_user_id,
+            nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown'
+          })).sort((a, b) => a.nama.localeCompare(b.nama))
+          
+          setReportStudents(students)
+        }
+      } else {
+        setReportStudents([])
+      }
+    } catch (err) {
+      console.error('Error fetching students:', err)
+      setReportStudents([])
+    } finally {
+      setLoadingReportStudents(false)
+    }
+  }
+  
+  // Handle report filter change
+  const handleReportFilterChange = (field, value) => {
+    setReportFilters(prev => {
+      const newFilters = { ...prev, [field]: value }
+      
+      // Reset dependent fields
+      if (field === 'kelas') {
+        newFilters.student = ''
+        fetchReportStudents(value)
+      }
+      
+      return newFilters
+    })
+  }
+  
+  // Generate and download report as PDF
+  const generateReport = async () => {
+    if (!reportFilters.kelas || !reportFilters.student) {
+      alert('Silakan pilih kelas dan siswa terlebih dahulu')
+      return
+    }
+    
+    try {
+      setLoadingReport(true)
+      
+      const studentId = parseInt(reportFilters.student)
+      const kelasId = parseInt(reportFilters.kelas)
+      
+      // Get student info
+      const student = reportStudents.find(s => s.detail_siswa_id === studentId)
+      const studentName = student?.nama || 'Unknown'
+      const kelasName = reportKelasOptions.find(k => k.kelas_id === kelasId)?.kelas_nama || ''
+      const yearName = reportYears.find(y => y.year_id === parseInt(reportFilters.year))?.year_name || ''
+      const semesterName = reportFilters.semester === '1' ? 'Semester 1' : reportFilters.semester === '2' ? 'Semester 2' : ''
+      
+      // Get all detail_kelas for this kelas (to get all subjects taught in this class)
+      const { data: detailKelasData, error: dkError } = await supabase
+        .from('detail_kelas')
+        .select(`
+          detail_kelas_id,
+          detail_kelas_subject_id,
+          subject:detail_kelas_subject_id (
+            subject_id,
+            subject_name,
+            subject_user_id
+          )
+        `)
+        .eq('detail_kelas_kelas_id', kelasId)
+      
+      if (dkError) throw dkError
+      
+      const reportRows = []
+      
+      for (const dk of detailKelasData || []) {
+        if (!dk.subject) continue
+        
+        // Get teacher name
+        let teacherName = '-'
+        if (dk.subject.subject_user_id) {
+          const { data: teacherData } = await supabase
+            .from('users')
+            .select('user_nama_depan, user_nama_belakang')
+            .eq('user_id', dk.subject.subject_user_id)
+            .single()
+          
+          if (teacherData) {
+            teacherName = `${teacherData.user_nama_depan} ${teacherData.user_nama_belakang}`.trim()
+          }
+        }
+        
+        // Get assessments for this detail_kelas
+        const { data: assessmentsData, error: aError } = await supabase
+          .from('assessment')
+          .select('assessment_id')
+          .eq('assessment_detail_kelas_id', dk.detail_kelas_id)
+          .eq('assessment_status', 1) // Only approved
+        
+        if (aError) continue
+        
+        const assessmentIds = (assessmentsData || []).map(a => a.assessment_id)
+        
+        // Get grades for this student across all assessments for this subject
+        let grades = { A: null, B: null, C: null, D: null }
+        let comment = ''
+        let semesterOverview = null
+        
+        if (assessmentIds.length > 0) {
+          const { data: gradesData, error: gError } = await supabase
+            .from('assessment_grades')
+            .select('criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade, final_grade, comments')
+            .eq('detail_siswa_id', studentId)
+            .in('assessment_id', assessmentIds)
+          
+          if (!gError && gradesData && gradesData.length > 0) {
+            // Aggregate grades (take highest for each criterion)
+            const allA = gradesData.map(g => g.criterion_a_grade).filter(g => g !== null)
+            const allB = gradesData.map(g => g.criterion_b_grade).filter(g => g !== null)
+            const allC = gradesData.map(g => g.criterion_c_grade).filter(g => g !== null)
+            const allD = gradesData.map(g => g.criterion_d_grade).filter(g => g !== null)
+            const allFinal = gradesData.map(g => g.final_grade).filter(g => g !== null)
+            const allComments = gradesData.map(g => g.comments).filter(c => c)
+            
+            grades.A = allA.length > 0 ? Math.max(...allA) : null
+            grades.B = allB.length > 0 ? Math.max(...allB) : null
+            grades.C = allC.length > 0 ? Math.max(...allC) : null
+            grades.D = allD.length > 0 ? Math.max(...allD) : null
+            semesterOverview = allFinal.length > 0 ? Math.round(allFinal.reduce((a, b) => a + b, 0) / allFinal.length) : null
+            comment = allComments.join(' ') // Combine all comments
+          }
+        }
+        
+        reportRows.push({
+          subject_id: dk.subject.subject_id,
+          subject_name: dk.subject.subject_name,
+          teacher_name: teacherName,
+          grades,
+          semester_overview: semesterOverview,
+          comment
+        })
+      }
+      
+      // Sort by subject name
+      reportRows.sort((a, b) => a.subject_name.localeCompare(b.subject_name))
+      
+      if (reportRows.length === 0) {
+        alert('Tidak ada data report untuk siswa ini')
+        return
+      }
+      
+      // Generate PDF
+      const pdf = new jsPDF('portrait', 'mm', 'a4')
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 14
+      let yPos = 15
+      
+      // Title
+      pdf.setFontSize(16)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text(`Summary of ${semesterName} Student Progress`, pageWidth / 2, yPos, { align: 'center' })
+      yPos += 10
+      
+      // Table Header
+      autoTable(pdf, {
+        startY: yPos,
+        head: [[
+          { content: '', styles: { halign: 'left', cellWidth: 90 } },
+          { content: 'A', styles: { halign: 'center' } },
+          { content: 'B', styles: { halign: 'center' } },
+          { content: 'C', styles: { halign: 'center' } },
+          { content: 'D', styles: { halign: 'center' } },
+          { content: `${semesterName}\nProgress\nOverview`, styles: { halign: 'center', fontSize: 7 } }
+        ]],
+        body: [],
+        theme: 'plain',
+        styles: {
+          fontSize: 9,
+          cellPadding: 2,
+          valign: 'middle'
+        },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [100, 100, 100],
+          fontStyle: 'normal',
+          fontSize: 9
+        },
+        columnStyles: {
+          0: { cellWidth: 90 },
+          1: { cellWidth: 18 },
+          2: { cellWidth: 18 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 18 },
+          5: { cellWidth: 20 }
+        }
+      })
+      
+      yPos = pdf.lastAutoTable.finalY
+      
+      // Draw each subject row with comment below
+      for (const row of reportRows) {
+        // Check if we need a new page
+        if (yPos > 250) {
+          pdf.addPage()
+          yPos = 15
+        }
+        
+        // Subject row with icon placeholder, name, teacher and grades
+        autoTable(pdf, {
+          startY: yPos,
+          body: [[
+            { 
+              content: `${row.subject_name}\n${row.teacher_name}`, 
+              styles: { 
+                fontStyle: 'bold',
+                fontSize: 10,
+                textColor: [30, 64, 175],
+                cellPadding: { top: 3, bottom: 1, left: 3, right: 3 }
+              } 
+            },
+            { content: row.grades.A?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
+            { content: row.grades.B?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
+            { content: row.grades.C?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
+            { content: row.grades.D?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
+            { content: row.semester_overview?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 11, textColor: [30, 64, 175] } }
+          ]],
+          theme: 'plain',
+          styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            valign: 'middle',
+            lineColor: [229, 231, 235],
+            lineWidth: 0
+          },
+          columnStyles: {
+            0: { cellWidth: 90 },
+            1: { cellWidth: 18 },
+            2: { cellWidth: 18 },
+            3: { cellWidth: 18 },
+            4: { cellWidth: 18 },
+            5: { cellWidth: 20 }
+          }
+        })
+        
+        yPos = pdf.lastAutoTable.finalY
+        
+        // Comment row (if exists)
+        if (row.comment) {
+          autoTable(pdf, {
+            startY: yPos,
+            body: [[
+              { 
+                content: row.comment, 
+                colSpan: 6,
+                styles: { 
+                  fontSize: 9,
+                  textColor: [75, 85, 99],
+                  cellPadding: { top: 1, bottom: 5, left: 3, right: 3 }
+                } 
+              }
+            ]],
+            theme: 'plain',
+            styles: {
+              lineColor: [229, 231, 235],
+              lineWidth: 0
+            }
+          })
+          yPos = pdf.lastAutoTable.finalY
+        }
+        
+        // Draw separator line
+        pdf.setDrawColor(229, 231, 235)
+        pdf.setLineWidth(0.3)
+        pdf.line(margin, yPos, pageWidth - margin, yPos)
+        yPos += 3
+      }
+      
+      // Footer for summary page
+      yPos += 5
+      pdf.setFontSize(8)
+      pdf.setTextColor(150)
+      pdf.text(`Generated on ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, yPos)
+      
+      // ============= DETAIL PAGES PER SUBJECT =============
+      for (const row of reportRows) {
+        // Fetch criteria for this subject
+        const { data: criteriaData, error: criteriaError } = await supabase
+          .from('criteria')
+          .select('criterion_id, code, name')
+          .eq('subject_id', row.subject_id)
+          .order('code')
+        
+        if (criteriaError) {
+          console.error('Error fetching criteria:', criteriaError)
+          continue
+        }
+        
+        // Add new page for this subject
+        pdf.addPage()
+        yPos = margin
+        
+        // Subject Header
+        pdf.setFontSize(16)
+        pdf.setTextColor(30, 64, 175)
+        pdf.setFont('helvetica', 'bold')
+        pdf.text(row.subject_name, margin, yPos)
+        yPos += 8
+        
+        // Teacher name
+        pdf.setFontSize(11)
+        pdf.setTextColor(100)
+        pdf.setFont('helvetica', 'normal')
+        pdf.text(`Teacher: ${row.teacher_name}`, margin, yPos)
+        yPos += 10
+        
+        // Grades summary box
+        autoTable(pdf, {
+          startY: yPos,
+          head: [[
+            { content: 'Criterion A', styles: { halign: 'center', fillColor: [219, 234, 254] } },
+            { content: 'Criterion B', styles: { halign: 'center', fillColor: [219, 234, 254] } },
+            { content: 'Criterion C', styles: { halign: 'center', fillColor: [219, 234, 254] } },
+            { content: 'Criterion D', styles: { halign: 'center', fillColor: [219, 234, 254] } },
+            { content: 'Semester', styles: { halign: 'center', fillColor: [30, 64, 175], textColor: [255, 255, 255] } }
+          ]],
+          body: [[
+            { content: row.grades.A?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
+            { content: row.grades.B?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
+            { content: row.grades.C?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
+            { content: row.grades.D?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
+            { content: row.semester_overview?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 16, textColor: [30, 64, 175] } }
+          ]],
+          theme: 'grid',
+          styles: {
+            fontSize: 10,
+            cellPadding: 5,
+            valign: 'middle',
+            lineColor: [200, 200, 200],
+            lineWidth: 0.3
+          },
+          headStyles: {
+            fontSize: 10,
+            fontStyle: 'bold',
+            textColor: [50, 50, 50]
+          }
+        })
+        
+        yPos = pdf.lastAutoTable.finalY + 10
+        
+        // Criteria details section
+        pdf.setFontSize(12)
+        pdf.setTextColor(50)
+        pdf.setFont('helvetica', 'bold')
+        pdf.text('Criterion Descriptors', margin, yPos)
+        yPos += 8
+        
+        // Display each criterion
+        for (const criterion of criteriaData || []) {
+          if (yPos > 260) {
+            pdf.addPage()
+            yPos = margin
+          }
+          
+          // Criterion header (A: Analysing, B: Organizing, etc.)
+          pdf.setFillColor(243, 244, 246)
+          pdf.rect(margin, yPos - 4, pageWidth - 2 * margin, 10, 'F')
+          
+          pdf.setFontSize(11)
+          pdf.setTextColor(30, 64, 175)
+          pdf.setFont('helvetica', 'bold')
+          pdf.text(`${criterion.code}: ${criterion.name}`, margin + 3, yPos + 2)
+          
+          // Grade for this criterion
+          const gradeValue = row.grades[criterion.code]?.toString() ?? '-'
+          pdf.setFontSize(11)
+          pdf.setTextColor(50)
+          pdf.text(`Grade: ${gradeValue}`, pageWidth - margin - 25, yPos + 2)
+          
+          yPos += 12
+        }
+        
+        // Comment section if exists
+        if (row.comment) {
+          yPos += 5
+          pdf.setFontSize(11)
+          pdf.setTextColor(50)
+          pdf.setFont('helvetica', 'bold')
+          pdf.text('Teacher Comment:', margin, yPos)
+          yPos += 6
+          
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(10)
+          pdf.setTextColor(75, 85, 99)
+          
+          // Word wrap for long comments
+          const splitComment = pdf.splitTextToSize(row.comment, pageWidth - 2 * margin)
+          pdf.text(splitComment, margin, yPos)
+          yPos += splitComment.length * 5
+        }
+        
+        // Footer for detail page
+        pdf.setFontSize(8)
+        pdf.setTextColor(150)
+        pdf.text(`${studentName} - ${kelasName} - ${semesterName}`, margin, pageHeight - 10)
+        pdf.text(`Page ${pdf.internal.getNumberOfPages()}`, pageWidth - margin - 15, pageHeight - 10)
+      }
+      
+      // Save PDF
+      const fileName = `student-report-${studentName.replace(/[^a-z0-9]/gi, '-')}-${semesterName.replace(/\s/g, '')}.pdf`
+      pdf.save(fileName)
+      
+    } catch (err) {
+      console.error('Error generating report:', err)
+      alert('Gagal menghasilkan report: ' + err.message)
+    } finally {
+      setLoadingReport(false)
+    }
+  }
   
   // Auto-save function
   const handleSave = async (fieldName, value) => {
@@ -3231,8 +3758,109 @@ Please respond in ${selected} language and ensure valid JSON format.`
 
         {activeTab === 'report' && (
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Report</h2>
-            <p className="text-gray-600">Report generation content will be displayed here.</p>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">Student Progress Report</h2>
+              <p className="text-gray-600 text-sm">Generate and download student progress reports as PDF</p>
+            </div>
+            
+            {/* Filters */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Year Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
+                  <select
+                    value={reportFilters.year}
+                    onChange={(e) => handleReportFilterChange('year', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Pilih Tahun</option>
+                    {reportYears.map(year => (
+                      <option key={year.year_id} value={year.year_id}>{year.year_name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Semester Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                  <select
+                    value={reportFilters.semester}
+                    onChange={(e) => handleReportFilterChange('semester', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Pilih Semester</option>
+                    <option value="1">Semester 1</option>
+                    <option value="2">Semester 2</option>
+                  </select>
+                </div>
+                
+                {/* Kelas Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                  <select
+                    value={reportFilters.kelas}
+                    onChange={(e) => handleReportFilterChange('kelas', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Pilih Kelas</option>
+                    {reportKelasOptions.map(kelas => (
+                      <option key={kelas.kelas_id} value={kelas.kelas_id}>{kelas.kelas_nama}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Student Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Siswa</label>
+                  <select
+                    value={reportFilters.student}
+                    onChange={(e) => handleReportFilterChange('student', e.target.value)}
+                    disabled={!reportFilters.kelas || loadingReportStudents}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {loadingReportStudents ? 'Loading...' : !reportFilters.kelas ? 'Pilih kelas dulu' : 'Pilih Siswa'}
+                    </option>
+                    {reportStudents.map(student => (
+                      <option key={student.detail_siswa_id} value={student.detail_siswa_id}>{student.nama}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={generateReport}
+                  disabled={!reportFilters.kelas || !reportFilters.student || loadingReport}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingReport ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faPrint} />
+                      Download PDF Report
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5" />
+                <div>
+                  <p className="text-sm text-blue-800">
+                    Pilih tahun ajaran, semester, kelas, dan siswa kemudian klik tombol "Download PDF Report" untuk mengunduh laporan progress siswa dalam format PDF.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
