@@ -50,6 +50,7 @@ export default function TopicNewPage() {
     assessment_detail_kelas_id: '',
     assessment_topic_id: '',
     assessment_myp_year: '',
+    assessment_semester: '',
     selected_criteria: [] // Array of criterion IDs
   })
   const [assessmentFormErrors, setAssessmentFormErrors] = useState({})
@@ -421,7 +422,8 @@ export default function TopicNewPage() {
           assessment_user_id,
           assessment_detail_kelas_id,
           assessment_topic_id,
-          assessment_myp_year
+          assessment_myp_year,
+          assessment_semester
         `)
         .in('assessment_detail_kelas_id', userDetailKelasIds)
         .order('assessment_tanggal', { ascending: false })
@@ -853,6 +855,7 @@ export default function TopicNewPage() {
       assessment_detail_kelas_id: assessment.assessment_detail_kelas_id?.toString() || '',
       assessment_topic_id: assessment.assessment_topic_id?.toString() || '',
       assessment_myp_year: assessment.assessment_myp_year?.toString() || '',
+      assessment_semester: assessment.assessment_semester?.toString() || '',
       selected_criteria: selectedCriteriaIds
     })
     
@@ -936,7 +939,8 @@ export default function TopicNewPage() {
             assessment_status: computedStatus,
             assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
             assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id),
-            assessment_myp_year: assessmentFormData.assessment_myp_year ? parseInt(assessmentFormData.assessment_myp_year) : null
+            assessment_myp_year: assessmentFormData.assessment_myp_year ? parseInt(assessmentFormData.assessment_myp_year) : null,
+            assessment_semester: assessmentFormData.assessment_semester ? parseInt(assessmentFormData.assessment_semester) : null
           }
         }
         
@@ -980,6 +984,7 @@ export default function TopicNewPage() {
           assessment_detail_kelas_id: '',
           assessment_topic_id: '',
           assessment_myp_year: '',
+          assessment_semester: '',
           selected_criteria: []
         })
         setAssessmentFormErrors({})
@@ -1020,7 +1025,8 @@ export default function TopicNewPage() {
           assessment_user_id: currentUserId,
           assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
           assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id),
-          assessment_myp_year: assessmentFormData.assessment_myp_year ? parseInt(assessmentFormData.assessment_myp_year) : null
+          assessment_myp_year: assessmentFormData.assessment_myp_year ? parseInt(assessmentFormData.assessment_myp_year) : null,
+          assessment_semester: assessmentFormData.assessment_semester ? parseInt(assessmentFormData.assessment_semester) : null
         }
         
         const { data, error } = await supabase
@@ -1061,6 +1067,7 @@ export default function TopicNewPage() {
           assessment_detail_kelas_id: '',
           assessment_topic_id: '',
           assessment_myp_year: '',
+          assessment_semester: '',
           selected_criteria: []
         })
         setAssessmentFormErrors({})
@@ -1092,11 +1099,8 @@ export default function TopicNewPage() {
       if (reportYears.length === 0) {
         fetchReportYears()
       }
-      if (subjects.length > 0 && reportKelasOptions.length === 0) {
-        fetchReportKelasOptions()
-      }
     }
-  }, [activeTab, subjects])
+  }, [activeTab])
   
   // Fetch years for report filter
   const fetchReportYears = async () => {
@@ -1113,8 +1117,13 @@ export default function TopicNewPage() {
     }
   }
   
-  // Fetch kelas options for report (only kelas that the teacher teaches)
-  const fetchReportKelasOptions = async () => {
+  // Fetch kelas options for report (only kelas that the teacher teaches AND belongs to selected year)
+  const fetchReportKelasOptions = async (yearId) => {
+    if (!yearId) {
+      setReportKelasOptions([])
+      return
+    }
+    
     try {
       // Get user's subjects
       const userSubjectIds = subjects.map(s => s.subject_id)
@@ -1134,18 +1143,23 @@ export default function TopicNewPage() {
       const kelasIds = [...new Set((detailKelasData || []).map(dk => dk.detail_kelas_kelas_id).filter(Boolean))]
       
       if (kelasIds.length > 0) {
+        // Filter by year_id
         const { data: kelasData, error: kelasError } = await supabase
           .from('kelas')
           .select('kelas_id, kelas_nama')
           .in('kelas_id', kelasIds)
+          .eq('kelas_year_id', yearId)
           .order('kelas_nama')
         
         if (!kelasError && kelasData) {
           setReportKelasOptions(kelasData)
         }
+      } else {
+        setReportKelasOptions([])
       }
     } catch (err) {
       console.error('Error fetching report kelas:', err)
+      setReportKelasOptions([])
     }
   }
   
@@ -1205,7 +1219,18 @@ export default function TopicNewPage() {
     setReportFilters(prev => {
       const newFilters = { ...prev, [field]: value }
       
-      // Reset dependent fields
+      // Reset dependent fields based on what changed
+      if (field === 'year') {
+        newFilters.kelas = ''
+        newFilters.student = ''
+        setReportStudents([])
+        if (value) {
+          fetchReportKelasOptions(parseInt(value))
+        } else {
+          setReportKelasOptions([])
+        }
+      }
+      
       if (field === 'kelas') {
         newFilters.student = ''
         fetchReportStudents(value)
@@ -3626,6 +3651,11 @@ Please respond in ${selected} language and ensure valid JSON format.`
                             {assessment.kelas_nama}
                           </span>
                         )}
+                        {assessment.assessment_semester && (
+                          <span className="bg-amber-50 text-amber-600 px-2 py-1 rounded text-xs font-medium">
+                            Sem {assessment.assessment_semester}
+                          </span>
+                        )}
                         {assessment.criteria && assessment.criteria.length > 0 ? (
                           assessment.criteria.map(c => (
                             <span key={c.code} className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-bold">
@@ -3781,6 +3811,24 @@ Please respond in ${selected} language and ensure valid JSON format.`
                   </select>
                 </div>
                 
+                {/* Kelas Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                  <select
+                    value={reportFilters.kelas}
+                    onChange={(e) => handleReportFilterChange('kelas', e.target.value)}
+                    disabled={!reportFilters.year}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {!reportFilters.year ? 'Pilih tahun dulu' : (reportKelasOptions.length === 0 ? 'Tidak ada kelas' : 'Pilih Kelas')}
+                    </option>
+                    {reportKelasOptions.map(kelas => (
+                      <option key={kelas.kelas_id} value={kelas.kelas_id}>{kelas.kelas_nama}</option>
+                    ))}
+                  </select>
+                </div>
+                
                 {/* Semester Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
@@ -3792,21 +3840,6 @@ Please respond in ${selected} language and ensure valid JSON format.`
                     <option value="">Pilih Semester</option>
                     <option value="1">Semester 1</option>
                     <option value="2">Semester 2</option>
-                  </select>
-                </div>
-                
-                {/* Kelas Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
-                  <select
-                    value={reportFilters.kelas}
-                    onChange={(e) => handleReportFilterChange('kelas', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Pilih Kelas</option>
-                    {reportKelasOptions.map(kelas => (
-                      <option key={kelas.kelas_id} value={kelas.kelas_id}>{kelas.kelas_nama}</option>
-                    ))}
                   </select>
                 </div>
                 
@@ -5905,6 +5938,23 @@ Please respond in ${selected} language and ensure valid JSON format.`
               <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
               IB Standard: Only Years 1, 3, and 5 have specific strands/rubrics
             </p>
+          </div>
+
+          {/* Semester Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Semester
+            </label>
+            <select
+              name="assessment_semester"
+              value={assessmentFormData.assessment_semester}
+              onChange={handleAssessmentInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Semester</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+            </select>
           </div>
 
           {/* Criteria Selection (Multiple) */}
