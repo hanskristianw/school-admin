@@ -156,6 +156,10 @@ export default function TopicNewPage() {
   const [loadingReport, setLoadingReport] = useState(false)
   const [loadingReportStudents, setLoadingReportStudents] = useState(false)
   
+  // Class Recap state (for assessment tab)
+  const [recapSemesterFilter, setRecapSemesterFilter] = useState('')
+  const [loadingClassRecap, setLoadingClassRecap] = useState(false)
+  
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
   
@@ -1620,6 +1624,210 @@ export default function TopicNewPage() {
       alert('Gagal menghasilkan report: ' + err.message)
     } finally {
       setLoadingReport(false)
+    }
+  }
+  
+  // Fetch class recap data
+  const generateClassRecapPDF = async (kelasId, semester, subjectId) => {
+    if (!kelasId) {
+      alert('Silakan pilih kelas terlebih dahulu')
+      return
+    }
+    
+    if (!subjectId) {
+      alert('Silakan pilih mata pelajaran terlebih dahulu')
+      return
+    }
+    
+    try {
+      setLoadingClassRecap(true)
+      
+      const parsedKelasId = parseInt(kelasId)
+      const parsedSubjectId = parseInt(subjectId)
+      const semesterFilter = semester ? parseInt(semester) : null
+      
+      // Get kelas name and subject name
+      const kelasInfo = assessmentKelasOptions.find(k => k.kelas_id === parsedKelasId)
+      const kelasName = kelasInfo?.kelas_nama || 'Unknown Class'
+      const subjectInfo = subjects.find(s => s.subject_id === parsedSubjectId)
+      const subjectName = subjectInfo?.subject_name || 'Unknown Subject'
+      
+      // 1. Get all students in this class
+      const { data: detailSiswaData, error: dsError } = await supabase
+        .from('detail_siswa')
+        .select('detail_siswa_id, detail_siswa_user_id')
+        .eq('detail_siswa_kelas_id', parsedKelasId)
+      
+      if (dsError) throw dsError
+      
+      const userIds = [...new Set(detailSiswaData.map(ds => ds.detail_siswa_user_id))]
+      
+      // Get user names
+      let userMap = new Map()
+      if (userIds.length > 0) {
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang')
+          .in('user_id', userIds)
+        
+        if (!usersError && usersData) {
+          usersData.forEach(u => {
+            userMap.set(u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim())
+          })
+        }
+      }
+      
+      const students = detailSiswaData.map(ds => ({
+        detail_siswa_id: ds.detail_siswa_id,
+        user_id: ds.detail_siswa_user_id,
+        nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown'
+      })).sort((a, b) => a.nama.localeCompare(b.nama))
+      
+      // 2. Get detail_kelas for this kelas and subject (to find assessments)
+      const { data: detailKelasData, error: dkError } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_id')
+        .eq('detail_kelas_kelas_id', parsedKelasId)
+        .eq('detail_kelas_subject_id', parsedSubjectId)
+      
+      if (dkError) throw dkError
+      
+      const detailKelasIds = detailKelasData.map(dk => dk.detail_kelas_id)
+      
+      if (detailKelasIds.length === 0) {
+        alert('Tidak ada data mata pelajaran untuk kelas ini.')
+        return
+      }
+      
+      // 3. Get approved assessments for this class and subject
+      let assessmentQuery = supabase
+        .from('assessment')
+        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_semester')
+        .in('assessment_detail_kelas_id', detailKelasIds)
+        .eq('assessment_status', 1) // Only approved
+        .order('assessment_tanggal', { ascending: true })
+      
+      // Filter by semester if selected
+      if (semesterFilter) {
+        assessmentQuery = assessmentQuery.eq('assessment_semester', semesterFilter)
+      }
+      
+      const { data: assessmentsData, error: aError } = await assessmentQuery
+      
+      if (aError) throw aError
+      
+      if (!assessmentsData || assessmentsData.length === 0) {
+        alert(`Tidak ada assessment yang sudah disetujui untuk ${subjectName} di kelas ini${semesterFilter ? ` pada semester ${semesterFilter}` : ''}.`)
+        return
+      }
+      
+      const assessmentIds = assessmentsData.map(a => a.assessment_id)
+      
+      // 4. Get all grades for these assessments
+      const { data: gradesData, error: gError } = await supabase
+        .from('assessment_grades')
+        .select('assessment_id, detail_siswa_id, criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade')
+        .in('assessment_id', assessmentIds)
+      
+      if (gError) throw gError
+      
+      // Build grades map: { assessment_id: { detail_siswa_id: { A, B, C, D } } }
+      const gradesMap = {}
+      assessmentIds.forEach(aid => {
+        gradesMap[aid] = {}
+      })
+      
+      if (gradesData) {
+        gradesData.forEach(g => {
+          gradesMap[g.assessment_id][g.detail_siswa_id] = {
+            A: g.criterion_a_grade,
+            B: g.criterion_b_grade,
+            C: g.criterion_c_grade,
+            D: g.criterion_d_grade
+          }
+        })
+      }
+      
+      // Generate PDF
+      const doc = new jsPDF('landscape', 'mm', 'a4')
+      const pageWidth = doc.internal.pageSize.getWidth()
+      
+      // Title
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`Rekap Nilai: ${subjectName} - ${kelasName}`, 14, 15)
+      
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`${semesterFilter ? `Semester ${semesterFilter} • ` : ''}Generated: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 14, 22)
+      
+      let yPosition = 30
+      
+      // Generate table for each assessment
+      assessmentsData.forEach((assessment, idx) => {
+        // Check if need new page
+        if (yPosition > 170) {
+          doc.addPage()
+          yPosition = 15
+        }
+        
+        // Assessment header
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`${idx + 1}. ${assessment.assessment_nama}`, 14, yPosition)
+        
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        const dateStr = new Date(assessment.assessment_tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+        doc.text(`${dateStr}${assessment.assessment_semester ? ` • Semester ${assessment.assessment_semester}` : ''}`, 14, yPosition + 5)
+        
+        yPosition += 10
+        
+        // Table data
+        const tableData = students.map((student, sIdx) => {
+          const grades = gradesMap[assessment.assessment_id]?.[student.detail_siswa_id] || {}
+          return [
+            sIdx + 1,
+            student.nama,
+            grades.A !== null && grades.A !== undefined ? grades.A : '-',
+            grades.B !== null && grades.B !== undefined ? grades.B : '-',
+            grades.C !== null && grades.C !== undefined ? grades.C : '-',
+            grades.D !== null && grades.D !== undefined ? grades.D : '-',
+            '' // Placeholder for final grade
+          ]
+        })
+        
+        autoTable(doc, {
+          startY: yPosition,
+          head: [['No', 'Nama Siswa', 'Crit. A', 'Crit. B', 'Crit. C', 'Crit. D', 'Final']],
+          body: tableData,
+          styles: { fontSize: 9, cellPadding: 2 },
+          headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+          columnStyles: {
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 18, halign: 'center' },
+            3: { cellWidth: 18, halign: 'center' },
+            4: { cellWidth: 18, halign: 'center' },
+            5: { cellWidth: 18, halign: 'center' },
+            6: { cellWidth: 18, halign: 'center' }
+          },
+          alternateRowStyles: { fillColor: [245, 245, 245] },
+          margin: { left: 14, right: 14 }
+        })
+        
+        yPosition = doc.lastAutoTable.finalY + 10
+      })
+      
+      // Save PDF
+      const fileName = `rekap-nilai-${subjectName.replace(/\s+/g, '-').toLowerCase()}-${kelasName.replace(/\s+/g, '-').toLowerCase()}${semesterFilter ? `-sem${semesterFilter}` : ''}.pdf`
+      doc.save(fileName)
+      
+    } catch (err) {
+      console.error('Error generating class recap PDF:', err)
+      alert('Gagal membuat PDF rekap: ' + err.message)
+    } finally {
+      setLoadingClassRecap(false)
     }
   }
   
@@ -3570,7 +3778,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
             </div>
 
             {/* Additional Filters */}
-            <div className="mb-4">
+            <div className="mb-4 flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:text-gray-900">
                 <input
                   type="checkbox"
@@ -3585,6 +3793,36 @@ Please respond in ${selected} language and ensure valid JSON format.`
                   </span>
                 )}
               </label>
+              
+              {/* Rekap Nilai Kelas Section */}
+              <div className="flex items-center gap-3">
+                <select
+                  value={recapSemesterFilter}
+                  onChange={(e) => setRecapSemesterFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                >
+                  <option value="">Semua Semester</option>
+                  <option value="1">Semester 1</option>
+                  <option value="2">Semester 2</option>
+                </select>
+                <button
+                  onClick={() => generateClassRecapPDF(assessmentFilters.kelas, recapSemesterFilter, assessmentFilters.subject)}
+                  disabled={!assessmentFilters.kelas || !assessmentFilters.subject || loadingClassRecap}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                >
+                  {loadingClassRecap ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faClipboardList} />
+                      Rekap Nilai Kelas
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Loading State */}
@@ -3863,6 +4101,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
               </div>
               
               <div className="mt-4 flex justify-end">
+                {/* Download PDF Report Button */}
                 <button
                   onClick={generateReport}
                   disabled={!reportFilters.kelas || !reportFilters.student || loadingReport}
