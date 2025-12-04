@@ -106,7 +106,7 @@ export default function TopicNewPage() {
     'Thinkers',
     'Communicators',
     'Principled',
-    'Open-minded',
+    'Open-Minded',
     'Caring',
     'Risk-takers',
     'Balanced',
@@ -321,6 +321,7 @@ export default function TopicNewPage() {
           topic_nama,
           topic_subject_id,
           topic_kelas_id,
+          topic_year,
           topic_urutan,
           topic_duration,
           topic_hours_per_week,
@@ -1837,18 +1838,24 @@ export default function TopicNewPage() {
     
     setSaving(true)
     try {
+      // Convert topic_year to integer for database
+      let saveValue = value
+      if (fieldName === 'topic_year') {
+        saveValue = value ? parseInt(value) : null
+      }
+      
       const { error } = await supabase
         .from('topic')
-        .update({ [fieldName]: value })
+        .update({ [fieldName]: saveValue })
         .eq('topic_id', selectedTopic.topic_id)
       
       if (error) throw error
       
       // Update local state
-      setSelectedTopic(prev => ({ ...prev, [fieldName]: value }))
+      setSelectedTopic(prev => ({ ...prev, [fieldName]: saveValue }))
       setTopics(prev => prev.map(t => 
         t.topic_id === selectedTopic.topic_id 
-          ? { ...t, [fieldName]: value }
+          ? { ...t, [fieldName]: saveValue }
           : t
       ))
       
@@ -2383,6 +2390,7 @@ export default function TopicNewPage() {
       topic_nama: '',
       topic_subject_id: '', // Start with empty - user must select
       topic_kelas_id: '',
+      topic_year: '', // MYP Year (1, 3, or 5)
       topic_urutan: '',
       topic_duration: '',
       topic_hours_per_week: '',
@@ -2690,7 +2698,7 @@ The 10 IB Learner Profile attributes are:
 3. Thinkers - They exercise initiative in applying thinking skills critically and creatively
 4. Communicators - They express themselves confidently and creatively in multiple ways
 5. Principled - They act with integrity and honesty, with a strong sense of fairness and justice
-6. Open-minded - They understand and appreciate their own cultures and personal histories, and are open to perspectives of others
+6. Open-Minded - They understand and appreciate their own cultures and personal histories, and are open to perspectives of others
 7. Caring - They show empathy, compassion and respect towards the needs and feelings of others
 8. Risk-takers - They approach unfamiliar situations and uncertainty with courage
 9. Balanced - They understand the importance of intellectual, physical and emotional balance
@@ -3329,12 +3337,22 @@ Please respond in ${selected} language and ensure valid JSON format.`
       alert('Please enter a topic name')
       return
     }
+    if (!selectedTopic.topic_year) {
+      alert('Please select MYP Year')
+      return
+    }
 
     setSaving(true)
     try {
+      // Prepare data with proper types
+      const topicData = {
+        ...selectedTopic,
+        topic_year: selectedTopic.topic_year ? parseInt(selectedTopic.topic_year) : null
+      }
+      
       const { data, error } = await supabase
         .from('topic')
-        .insert([selectedTopic])
+        .insert([topicData])
         .select()
       
       if (error) throw error
@@ -3624,13 +3642,18 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   #{topic.topic_urutan || '-'}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
                                 <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-medium">
                                   {subjectMap.get(topic.topic_subject_id) || 'N/A'}
                                 </span>
                                 {topic.topic_kelas_id && (
                                   <span className="bg-green-50 text-green-600 px-2 py-1 rounded text-xs font-medium">
                                     {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
+                                  </span>
+                                )}
+                                {topic.topic_year && (
+                                  <span className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-medium">
+                                    MYP Year {topic.topic_year}
                                   </span>
                                 )}
                               </div>
@@ -4357,6 +4380,21 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   <p className="text-xs text-amber-600 mt-1">⚠️ No classes mapped to this subject in detail_kelas</p>
                                 )}
                               </div>
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                  MYP Year <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                  value={selectedTopic.topic_year || ''}
+                                  onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_year: e.target.value }))}
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                >
+                                  <option value="">Select MYP Year...</option>
+                                  <option value="1">MYP Year 1</option>
+                                  <option value="3">MYP Year 3</option>
+                                  <option value="5">MYP Year 5</option>
+                                </select>
+                              </div>
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -4950,6 +4988,34 @@ Please respond in ${selected} language and ensure valid JSON format.`
                           {selectedTopic.topic_hours_per_week && selectedTopic.topic_hours_per_week !== '0' && selectedTopic.topic_hours_per_week !== 0
                             ? `${selectedTopic.topic_hours_per_week} hours`
                             : '-'}
+                        </p>
+                      )}
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-sm text-gray-500 mb-1">MYP Year <span className="text-red-500">*</span></p>
+                      {(editingField === 'topic_year') ? (
+                        <select
+                          value={editValue}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setEditValue(val)
+                            // Auto-save when value selected
+                            if (val) {
+                              handleSave('topic_year', val)
+                            }
+                          }}
+                          className="w-full px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-lg font-semibold"
+                        >
+                          <option value="1">Year 1</option>
+                          <option value="3">Year 3</option>
+                          <option value="5">Year 5</option>
+                        </select>
+                      ) : (
+                        <p 
+                          className={`text-lg font-semibold cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors ${selectedTopic.topic_year ? 'text-gray-800' : 'text-red-500'}`}
+                          onClick={() => startEdit('topic_year', selectedTopic.topic_year ? String(selectedTopic.topic_year) : '1')}
+                        >
+                          {selectedTopic.topic_year ? `Year ${selectedTopic.topic_year}` : 'Click to set MYP Year'}
                         </p>
                       )}
                     </div>
