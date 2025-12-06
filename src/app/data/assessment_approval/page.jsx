@@ -121,7 +121,7 @@ export default function AssessmentApproval() {
       // Fetch assessments
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from('assessment')
-        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id, assessment_topic_id, assessment_myp_year')
+        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id, assessment_topic_id')
         .order('assessment_tanggal', { ascending: false });
 
       if (assessmentsError) {
@@ -729,11 +729,7 @@ export default function AssessmentApproval() {
                         ⚠ No Criteria
                       </span>
                     )}
-                    {assessment.assessment_myp_year && (
-                      <span className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-xs font-medium">
-                        MYP Y{assessment.assessment_myp_year}
-                      </span>
-                    )}
+
                   </div>
                 </div>
 
