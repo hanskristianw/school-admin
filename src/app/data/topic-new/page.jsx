@@ -68,6 +68,12 @@ export default function TopicNewPage() {
   const [saveNotification, setSaveNotification] = useState(false)
   const [isAddMode, setIsAddMode] = useState(false)
   
+  // Topic Assessment state (for edit mode)
+  const [topicAssessment, setTopicAssessment] = useState(null)
+  const [topicAssessmentCriteria, setTopicAssessmentCriteria] = useState([])
+  const [editingAssessmentInTopic, setEditingAssessmentInTopic] = useState(false)
+  const [savingTopicAssessment, setSavingTopicAssessment] = useState(false)
+  
   // IB Global Contexts
   const globalContexts = [
     'Identities and relationships',
@@ -160,6 +166,16 @@ export default function TopicNewPage() {
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
   
+  // Assessment data for wizard step 6
+  const [wizardAssessment, setWizardAssessment] = useState({
+    assessment_nama: '',
+    assessment_tanggal: '',
+    assessment_keterangan: '',
+    assessment_semester: '',
+    selected_criteria: []
+  })
+  const [wizardCriteria, setWizardCriteria] = useState([]) // Criteria options loaded when subject is selected
+  
   // IB Unit Planner Steps with guidance
   const plannerSteps = [
     {
@@ -196,6 +212,13 @@ export default function TopicNewPage() {
       description: 'Define IB learner attributes and service learning opportunities',
       fields: ['topic_learner_profile', 'topic_service_learning'],
       guidance: 'Select IB Learner Profile attributes (e.g., Inquirers, Thinkers, Communicators) students will develop. Identify opportunities for service learning and action.'
+    },
+    {
+      id: 'assessment',
+      title: 'Assessment',
+      description: 'Define the assessment task for this unit',
+      fields: ['assessment_nama', 'assessment_tanggal', 'assessment_semester', 'selected_criteria'],
+      guidance: 'Create an assessment task that allows students to demonstrate their understanding of the unit. Select the criteria that will be assessed and specify the assessment date.'
     }
   ]
   
@@ -268,11 +291,35 @@ export default function TopicNewPage() {
       
       console.log('📚 Kelas loaded:', kelasList)
       setAllKelas(kelasList)
+      
+      // Also fetch criteria for this subject (for wizard step 6)
+      fetchCriteriaForSubject(subjectId)
     } catch (err) {
       console.error('❌ Error fetching kelas:', err)
       setAllKelas([])
     } finally {
       setKelasLoading(false)
+    }
+  }
+  
+  // Fetch criteria for a subject (used in wizard step 6)
+  const fetchCriteriaForSubject = async (subjectId) => {
+    if (!subjectId) {
+      setWizardCriteria([])
+      return
+    }
+    try {
+      const { data, error } = await supabase
+        .from('criteria')
+        .select('criterion_id, code, name')
+        .eq('subject_id', subjectId)
+        .order('code')
+      
+      if (error) throw error
+      setWizardCriteria(data || [])
+    } catch (err) {
+      console.error('❌ Error fetching criteria:', err)
+      setWizardCriteria([])
     }
   }
 
@@ -3094,6 +3141,15 @@ Please respond in ${selected} language and ensure valid JSON format.`
   // Check if current step is completed
   const isStepCompleted = (stepIndex) => {
     const step = plannerSteps[stepIndex]
+    
+    // Step 6 (Assessment) has different validation
+    if (step.id === 'assessment') {
+      return wizardAssessment.assessment_nama?.trim() !== '' &&
+             wizardAssessment.assessment_tanggal?.trim() !== '' &&
+             wizardAssessment.assessment_semester?.trim() !== '' &&
+             wizardAssessment.selected_criteria?.length > 0
+    }
+    
     return step.fields.every(field => {
       const value = selectedTopic[field]
       return value && value.toString().trim() !== '' && value !== '0'
@@ -3124,6 +3180,12 @@ Please respond in ${selected} language and ensure valid JSON format.`
       alert('Please select MYP Year')
       return
     }
+    // Validate assessment
+    if (!wizardAssessment.assessment_nama || !wizardAssessment.assessment_tanggal || 
+        !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0) {
+      alert('Please complete all assessment fields')
+      return
+    }
 
     setSaving(true)
     try {
@@ -3141,8 +3203,69 @@ Please respond in ${selected} language and ensure valid JSON format.`
       if (error) throw error
       
       if (data && data[0]) {
+        const newTopic = data[0]
+        
+        // Now create the assessment
+        // First, find detail_kelas_id for subject + kelas combination
+        const { data: dkData, error: dkError } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_id')
+          .eq('detail_kelas_subject_id', selectedTopic.topic_subject_id)
+          .eq('detail_kelas_kelas_id', selectedTopic.topic_kelas_id)
+          .single()
+        
+        if (dkError) {
+          console.error('❌ Error finding detail_kelas:', dkError)
+          throw new Error('Could not find class-subject mapping. Please check detail_kelas.')
+        }
+        
+        // Create assessment
+        const assessmentData = {
+          assessment_nama: wizardAssessment.assessment_nama,
+          assessment_tanggal: wizardAssessment.assessment_tanggal,
+          assessment_keterangan: wizardAssessment.assessment_keterangan || null,
+          assessment_detail_kelas_id: dkData.detail_kelas_id,
+          assessment_topic_id: newTopic.topic_id,
+          assessment_semester: parseInt(wizardAssessment.assessment_semester),
+          assessment_status: 0, // waiting for approval
+          assessment_user_id: currentUserId
+        }
+        
+        const { data: assessmentResult, error: assessmentError } = await supabase
+          .from('assessment')
+          .insert([assessmentData])
+          .select()
+        
+        if (assessmentError) throw assessmentError
+        
+        // Insert assessment_criteria junction records
+        if (assessmentResult && assessmentResult[0]) {
+          const assessmentId = assessmentResult[0].assessment_id
+          const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
+            assessment_id: assessmentId,
+            criterion_id: criterionId
+          }))
+          
+          const { error: criteriaError } = await supabase
+            .from('assessment_criteria')
+            .insert(criteriaRecords)
+          
+          if (criteriaError) {
+            console.error('❌ Error inserting assessment criteria:', criteriaError)
+          }
+        }
+        
         // Add to local state
-        setTopics(prev => [...prev, data[0]])
+        setTopics(prev => [...prev, newTopic])
+        
+        // Reset wizard assessment state
+        setWizardAssessment({
+          assessment_nama: '',
+          assessment_tanggal: '',
+          assessment_keterangan: '',
+          assessment_semester: '',
+          selected_criteria: []
+        })
         
         // Show success notification
         setSaveNotification(true)
@@ -3157,6 +3280,170 @@ Please respond in ${selected} language and ensure valid JSON format.`
       alert('Failed to create topic: ' + err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Fetch assessment for a topic (edit mode)
+  const fetchTopicAssessment = async (topicId, subjectId) => {
+    try {
+      setTopicAssessment(null)
+      setTopicAssessmentCriteria([])
+      setEditingAssessmentInTopic(false)
+      
+      // Fetch criteria for this subject
+      if (subjectId) {
+        const { data: criteriaData } = await supabase
+          .from('criteria')
+          .select('criterion_id, code, name')
+          .eq('subject_id', subjectId)
+          .order('code')
+        
+        setWizardCriteria(criteriaData || [])
+      }
+      
+      // Fetch assessment linked to this topic
+      const { data: assessmentData, error } = await supabase
+        .from('assessment')
+        .select(`
+          assessment_id,
+          assessment_nama,
+          assessment_tanggal,
+          assessment_keterangan,
+          assessment_semester,
+          assessment_status,
+          assessment_criteria (criterion_id)
+        `)
+        .eq('assessment_topic_id', topicId)
+        .single()
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching topic assessment:', error)
+        return
+      }
+      
+      if (assessmentData) {
+        setTopicAssessment({
+          ...assessmentData,
+          selected_criteria: assessmentData.assessment_criteria?.map(c => c.criterion_id) || []
+        })
+        setTopicAssessmentCriteria(assessmentData.assessment_criteria?.map(c => c.criterion_id) || [])
+      } else {
+        // No assessment yet, set up empty state for creating one
+        setTopicAssessment({
+          assessment_id: null,
+          assessment_nama: '',
+          assessment_tanggal: '',
+          assessment_keterangan: '',
+          assessment_semester: '',
+          assessment_status: 0,
+          selected_criteria: []
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching topic assessment:', err)
+    }
+  }
+
+  // Save/update assessment for topic (edit mode)
+  const saveTopicAssessment = async () => {
+    if (!topicAssessment) return
+    
+    // Validate
+    if (!topicAssessment.assessment_nama?.trim()) {
+      alert('Please enter assessment name')
+      return
+    }
+    if (!topicAssessment.assessment_tanggal) {
+      alert('Please select assessment date')
+      return
+    }
+    if (!topicAssessment.assessment_semester) {
+      alert('Please select semester')
+      return
+    }
+    if (!topicAssessment.selected_criteria || topicAssessment.selected_criteria.length === 0) {
+      alert('Please select at least one criteria')
+      return
+    }
+    
+    setSavingTopicAssessment(true)
+    try {
+      // Find detail_kelas_id
+      const { data: dkData, error: dkError } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_id')
+        .eq('detail_kelas_subject_id', selectedTopic.topic_subject_id)
+        .eq('detail_kelas_kelas_id', selectedTopic.topic_kelas_id)
+        .single()
+      
+      if (dkError) throw new Error('Could not find class-subject mapping')
+      
+      const assessmentPayload = {
+        assessment_nama: topicAssessment.assessment_nama,
+        assessment_tanggal: topicAssessment.assessment_tanggal,
+        assessment_keterangan: topicAssessment.assessment_keterangan || null,
+        assessment_semester: parseInt(topicAssessment.assessment_semester),
+        assessment_detail_kelas_id: dkData.detail_kelas_id,
+        assessment_topic_id: selectedTopic.topic_id,
+        assessment_status: topicAssessment.assessment_status || 0,
+        assessment_user_id: currentUserId
+      }
+      
+      let assessmentId = topicAssessment.assessment_id
+      
+      if (assessmentId) {
+        // Update existing
+        const { error: updateError } = await supabase
+          .from('assessment')
+          .update(assessmentPayload)
+          .eq('assessment_id', assessmentId)
+        
+        if (updateError) throw updateError
+      } else {
+        // Insert new
+        const { data: insertData, error: insertError } = await supabase
+          .from('assessment')
+          .insert([assessmentPayload])
+          .select()
+        
+        if (insertError) throw insertError
+        assessmentId = insertData[0].assessment_id
+      }
+      
+      // Update criteria junction
+      // First delete existing
+      await supabase
+        .from('assessment_criteria')
+        .delete()
+        .eq('assessment_id', assessmentId)
+      
+      // Insert new criteria
+      const criteriaRecords = topicAssessment.selected_criteria.map(criterionId => ({
+        assessment_id: assessmentId,
+        criterion_id: criterionId
+      }))
+      
+      if (criteriaRecords.length > 0) {
+        const { error: criteriaError } = await supabase
+          .from('assessment_criteria')
+          .insert(criteriaRecords)
+        
+        if (criteriaError) console.error('Error inserting criteria:', criteriaError)
+      }
+      
+      // Update local state
+      setTopicAssessment(prev => ({ ...prev, assessment_id: assessmentId }))
+      setEditingAssessmentInTopic(false)
+      
+      // Show success
+      setSaveNotification(true)
+      setTimeout(() => setSaveNotification(false), 2000)
+      
+    } catch (err) {
+      console.error('Error saving topic assessment:', err)
+      alert('Failed to save assessment: ' + err.message)
+    } finally {
+      setSavingTopicAssessment(false)
     }
   }
 
@@ -3406,6 +3693,8 @@ Please respond in ${selected} language and ensure valid JSON format.`
                             onClick={() => {
                               setSelectedTopic(topic)
                               setModalOpen(true)
+                              // Fetch assessment for this topic
+                              fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
                             }}
                           >
                             {/* Grade Watermark */}
@@ -4632,6 +4921,121 @@ Please respond in ${selected} language and ensure valid JSON format.`
                             </div>
                           </>
                         )}
+                        
+                        {/* Step 5: Assessment */}
+                        {currentStep === 5 && (
+                          <>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="col-span-2">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                  Assessment Name <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={wizardAssessment.assessment_nama}
+                                  onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_nama: e.target.value }))}
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                  placeholder="e.g., Energy Conservation Project"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                  Assessment Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="date"
+                                  value={wizardAssessment.assessment_tanggal}
+                                  onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_tanggal: e.target.value }))}
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                  Semester <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                  value={wizardAssessment.assessment_semester}
+                                  onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_semester: e.target.value }))}
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                >
+                                  <option value="">Select Semester...</option>
+                                  <option value="1">Semester 1</option>
+                                  <option value="2">Semester 2</option>
+                                </select>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Description (Optional)
+                              </label>
+                              <textarea
+                                value={wizardAssessment.assessment_keterangan}
+                                onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_keterangan: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                rows={2}
+                                placeholder="Brief description of the assessment task..."
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Criteria to Assess <span className="text-red-500">*</span>
+                              </label>
+                              {wizardCriteria.length === 0 ? (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                  <p className="text-sm text-amber-700">
+                                    ⚠️ No criteria found for this subject. Please add criteria in Subject Management first.
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                  {wizardCriteria.map(criterion => {
+                                    const isSelected = wizardAssessment.selected_criteria.includes(criterion.criterion_id)
+                                    return (
+                                      <button
+                                        key={criterion.criterion_id}
+                                        type="button"
+                                        onClick={() => {
+                                          setWizardAssessment(prev => ({
+                                            ...prev,
+                                            selected_criteria: isSelected
+                                              ? prev.selected_criteria.filter(id => id !== criterion.criterion_id)
+                                              : [...prev.selected_criteria, criterion.criterion_id]
+                                          }))
+                                        }}
+                                        className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all text-left ${
+                                          isSelected
+                                            ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
+                                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                                        }`}
+                                      >
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                                          isSelected ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-500'
+                                        }`}>
+                                          {criterion.code}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-sm">{criterion.name}</p>
+                                        </div>
+                                        {isSelected && (
+                                          <svg className="w-5 h-5 text-cyan-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                          </svg>
+                                        )}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {wizardAssessment.selected_criteria.length > 0 && (
+                                <p className="text-xs text-green-600 mt-2">
+                                  ✓ Selected: {wizardAssessment.selected_criteria.length} criteria
+                                </p>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                       
                       {/* Navigation Buttons */}
@@ -5363,6 +5767,187 @@ Please respond in ${selected} language and ensure valid JSON format.`
                       >
                         {selectedTopic.topic_relationship_summative_assessment_statement_of_inquiry || 'Click to add relationship...'}
                       </p>
+                    )}
+                  </div>
+
+                  {/* Assessment Task */}
+                  <div className="border-t border-gray-200 pt-6 mt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-cyan-600">Assessment Task</h3>
+                      {topicAssessment && !editingAssessmentInTopic && (
+                        <button
+                          onClick={() => setEditingAssessmentInTopic(true)}
+                          className="text-sm text-cyan-600 hover:text-cyan-700 font-medium"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                    
+                    {topicAssessment && (editingAssessmentInTopic || !topicAssessment.assessment_id) ? (
+                      // Edit/Create Assessment Form
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Assessment Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={topicAssessment.assessment_nama || ''}
+                              onChange={(e) => setTopicAssessment(prev => ({ ...prev, assessment_nama: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              placeholder="e.g., Energy Conservation Project"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Date <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="date"
+                              value={topicAssessment.assessment_tanggal || ''}
+                              onChange={(e) => setTopicAssessment(prev => ({ ...prev, assessment_tanggal: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Semester <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              value={topicAssessment.assessment_semester || ''}
+                              onChange={(e) => setTopicAssessment(prev => ({ ...prev, assessment_semester: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            >
+                              <option value="">Select...</option>
+                              <option value="1">Semester 1</option>
+                              <option value="2">Semester 2</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Description (Optional)
+                          </label>
+                          <textarea
+                            value={topicAssessment.assessment_keterangan || ''}
+                            onChange={(e) => setTopicAssessment(prev => ({ ...prev, assessment_keterangan: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            rows={2}
+                            placeholder="Brief description..."
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Criteria <span className="text-red-500">*</span>
+                          </label>
+                          {wizardCriteria.length === 0 ? (
+                            <p className="text-sm text-amber-600">⚠️ No criteria found for this subject</p>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              {wizardCriteria.map(criterion => {
+                                const isSelected = topicAssessment.selected_criteria?.includes(criterion.criterion_id)
+                                return (
+                                  <button
+                                    key={criterion.criterion_id}
+                                    type="button"
+                                    onClick={() => {
+                                      setTopicAssessment(prev => ({
+                                        ...prev,
+                                        selected_criteria: isSelected
+                                          ? prev.selected_criteria.filter(id => id !== criterion.criterion_id)
+                                          : [...(prev.selected_criteria || []), criterion.criterion_id]
+                                      }))
+                                    }}
+                                    className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left text-sm ${
+                                      isSelected
+                                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
+                                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                                    }`}
+                                  >
+                                    <span className={`w-8 h-8 rounded flex items-center justify-center font-bold ${
+                                      isSelected ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {criterion.code}
+                                    </span>
+                                    <span className="flex-1 truncate">{criterion.name}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-3 pt-2">
+                          <button
+                            onClick={saveTopicAssessment}
+                            disabled={savingTopicAssessment}
+                            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+                          >
+                            {savingTopicAssessment ? (
+                              <>
+                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              'Save Assessment'
+                            )}
+                          </button>
+                          {topicAssessment.assessment_id && (
+                            <button
+                              onClick={() => setEditingAssessmentInTopic(false)}
+                              className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg font-medium text-sm hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : topicAssessment ? (
+                      // Display Assessment (Read-only)
+                      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg p-4 border border-cyan-200">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h4 className="font-bold text-gray-800">{topicAssessment.assessment_nama}</h4>
+                            <p className="text-sm text-gray-500">
+                              {topicAssessment.assessment_tanggal && new Date(topicAssessment.assessment_tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              {topicAssessment.assessment_semester && ` • Semester ${topicAssessment.assessment_semester}`}
+                            </p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            topicAssessment.assessment_status === 1 ? 'bg-green-100 text-green-700' :
+                            topicAssessment.assessment_status === 3 ? 'bg-purple-100 text-purple-700' :
+                            topicAssessment.assessment_status === 2 ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {topicAssessment.assessment_status === 1 ? 'Approved' :
+                             topicAssessment.assessment_status === 3 ? 'Waiting Principal' :
+                             topicAssessment.assessment_status === 2 ? 'Rejected' : 'Waiting Approval'}
+                          </span>
+                        </div>
+                        {topicAssessment.assessment_keterangan && (
+                          <p className="text-sm text-gray-600 mb-3">{topicAssessment.assessment_keterangan}</p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {topicAssessment.selected_criteria?.map(criterionId => {
+                            const criterion = wizardCriteria.find(c => c.criterion_id === criterionId)
+                            return criterion ? (
+                              <span key={criterionId} className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded border border-cyan-200 text-sm">
+                                <span className="w-5 h-5 rounded bg-cyan-500 text-white text-xs flex items-center justify-center font-bold">{criterion.code}</span>
+                                <span className="text-gray-700">{criterion.name}</span>
+                              </span>
+                            ) : null
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-500">
+                        <FontAwesomeIcon icon={faSpinner} spin className="mr-2" />
+                        Loading assessment...
+                      </div>
                     )}
                   </div>
                     </div>

@@ -10,6 +10,10 @@ API key sudah diperbaiki dengan menggunakan secret key yang benar.
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://gzucqoupjfnwkesgyybc.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6dWNxb3VwamZud2tlc2d5eWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0NzcyMDIsImV4cCI6MjA2ODA1MzIwMn0.8arMBFFlzG5L_1ctcTp6j6boBES1lDCpxawM903KwdI
+
+# Google OAuth (for Google Calendar integration)
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
 ### ✅ API Key Fixed

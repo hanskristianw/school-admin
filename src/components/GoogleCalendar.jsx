@@ -54,9 +54,75 @@ export default function GoogleCalendar({ className = '' }) {
   })
   const [selectedDate, setSelectedDate] = useState(null)
 
+  // Helper function to refresh access token using refresh_token
+  const refreshAccessToken = async () => {
+    const refreshToken = localStorage.getItem('google_refresh_token')
+    if (!refreshToken) {
+      console.log('No refresh token available')
+      return null
+    }
+
+    try {
+      console.log('🔄 Attempting to refresh access token...')
+      const res = await fetch('/api/auth/google/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok && data.access_token) {
+        console.log('✅ Access token refreshed successfully')
+        localStorage.setItem('google_access_token', data.access_token)
+        // Update expiry time (current time + expires_in seconds - 5 min buffer)
+        const expiresAt = Date.now() + ((data.expires_in || 3600) - 300) * 1000
+        localStorage.setItem('google_token_expires_at', expiresAt.toString())
+        return data.access_token
+      } else {
+        console.error('Failed to refresh token:', data)
+        if (data.needsReauth) {
+          // Refresh token is also expired/revoked, need full re-auth
+          localStorage.removeItem('google_access_token')
+          localStorage.removeItem('google_refresh_token')
+          localStorage.removeItem('google_token_expires_at')
+        }
+        return null
+      }
+    } catch (err) {
+      console.error('Token refresh error:', err)
+      return null
+    }
+  }
+
+  // Get valid access token (refresh if needed)
+  const getValidAccessToken = async () => {
+    const accessToken = localStorage.getItem('google_access_token')
+    const expiresAt = localStorage.getItem('google_token_expires_at')
+    
+    if (!accessToken) {
+      return null
+    }
+    
+    // Check if token is expired or will expire soon
+    if (expiresAt && Date.now() > parseInt(expiresAt, 10)) {
+      console.log('Access token expired, attempting refresh...')
+      const newToken = await refreshAccessToken()
+      return newToken
+    }
+    
+    return accessToken
+  }
+
   // Fetch calendar events
   const fetchEvents = async () => {
-    const googleToken = localStorage.getItem('google_access_token')
+    const googleToken = await getValidAccessToken()
+    
+    if (!googleToken) {
+      setNeedsAuth(true)
+      setLoading(false)
+      return
+    }
     
     if (!googleToken) {
       setNeedsAuth(true)
@@ -91,8 +157,29 @@ export default function GoogleCalendar({ className = '' }) {
       
       if (!res.ok) {
         if (data.needsReauth) {
+          // Try to refresh the token first
+          console.log('Token expired, attempting refresh...')
+          const newToken = await refreshAccessToken()
+          if (newToken) {
+            // Retry with new token
+            console.log('Retrying with refreshed token...')
+            const retryRes = await fetch(`/api/calendar/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}&maxResults=100`, {
+              headers: {
+                'Authorization': `Bearer ${newToken}`
+              }
+            })
+            const retryData = await retryRes.json()
+            if (retryRes.ok) {
+              setEvents(retryData.events || [])
+              setNeedsAuth(false)
+              setLoading(false)
+              return
+            }
+          }
+          // Refresh failed or retry failed, need re-auth
           setNeedsAuth(true)
           localStorage.removeItem('google_access_token')
+          localStorage.removeItem('google_token_expires_at')
         } else {
           setError(data.error || 'Gagal memuat kalender')
         }
@@ -214,8 +301,8 @@ export default function GoogleCalendar({ className = '' }) {
 
   // Handle re-auth by triggering Google login
   const handleReAuth = () => {
-    if (window.googleTokenClient) {
-      window.googleTokenClient.requestAccessToken()
+    if (window.googleCodeClient) {
+      window.googleCodeClient.requestCode()
     } else {
       // Fallback: redirect to login
       window.location.href = '/login?reauth=calendar'

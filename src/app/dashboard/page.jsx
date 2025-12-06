@@ -450,9 +450,52 @@ export default function Dashboard() {
       }
     }
     
+    // Helper function to refresh access token
+    const refreshGoogleToken = async () => {
+      const refreshToken = localStorage.getItem('google_refresh_token')
+      if (!refreshToken) return null
+
+      try {
+        console.log('🔄 Dashboard: Refreshing Google access token...')
+        const res = await fetch('/api/auth/google/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken })
+        })
+        const data = await res.json()
+        if (res.ok && data.access_token) {
+          console.log('✅ Dashboard: Token refreshed')
+          localStorage.setItem('google_access_token', data.access_token)
+          const expiresAt = Date.now() + ((data.expires_in || 3600) - 300) * 1000
+          localStorage.setItem('google_token_expires_at', expiresAt.toString())
+          return data.access_token
+        }
+        if (data.needsReauth) {
+          localStorage.removeItem('google_access_token')
+          localStorage.removeItem('google_refresh_token')
+          localStorage.removeItem('google_token_expires_at')
+        }
+        return null
+      } catch (e) {
+        console.error('Token refresh error:', e)
+        return null
+      }
+    }
+
+    // Get valid access token
+    const getValidGoogleToken = async () => {
+      const accessToken = localStorage.getItem('google_access_token')
+      const expiresAt = localStorage.getItem('google_token_expires_at')
+      if (!accessToken) return null
+      if (expiresAt && Date.now() > parseInt(expiresAt, 10)) {
+        return await refreshGoogleToken()
+      }
+      return accessToken
+    }
+    
     // Fetch Google Calendar events
     const fetchGoogleCalendar = async () => {
-      const googleToken = localStorage.getItem('google_access_token')
+      const googleToken = await getValidGoogleToken()
       console.log('🗓️ Google Calendar: checking token...', googleToken ? 'Token exists' : 'No token')
       
       if (!googleToken) {
@@ -484,8 +527,29 @@ export default function Dashboard() {
         
         if (!res.ok) {
           if (data.needsReauth) {
-            console.log('🗓️ Google Calendar: needs reauth, removing token')
+            console.log('🗓️ Google Calendar: needs reauth, attempting refresh...')
+            const newToken = await refreshGoogleToken()
+            if (newToken) {
+              // Retry with new token
+              const retryRes = await fetch(`/api/calendar/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}&maxResults=100`, {
+                headers: { 'Authorization': `Bearer ${newToken}` }
+              })
+              const retryData = await retryRes.json()
+              if (retryRes.ok) {
+                const eventsMap = {}
+                for (const event of (retryData.events || [])) {
+                  const dateKey = event.start?.split('T')[0] || event.start
+                  if (!eventsMap[dateKey]) eventsMap[dateKey] = []
+                  eventsMap[dateKey].push(event)
+                }
+                setGoogleEvents(eventsMap)
+                setGoogleCalError('')
+                return
+              }
+            }
+            console.log('🗓️ Google Calendar: refresh failed, removing tokens')
             localStorage.removeItem('google_access_token')
+            localStorage.removeItem('google_token_expires_at')
           }
           setGoogleCalError(data.error || '')
           setGoogleEvents({})
