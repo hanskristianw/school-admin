@@ -62,11 +62,13 @@ export default function Dashboard() {
   })
   const [calLoading, setCalLoading] = useState(false)
   const [calError, setCalError] = useState('')
-  // calData: { 'YYYY-MM-DD': { total: number, perClass: Array<{kelas_id, kelas_nama, count}> } }
+  // calData: { 'YYYY-MM-DD': { total: number, perClass: Array<{kelas_id, kelas_nama, count}>, googleEvents: Array } }
   const [calData, setCalData] = useState({})
+  const [googleEvents, setGoogleEvents] = useState({}) // { 'YYYY-MM-DD': [events] }
+  const [googleCalError, setGoogleCalError] = useState('')
   const [kelasOptions, setKelasOptions] = useState([]) // from current month data
   const [kelasFilter, setKelasFilter] = useState('')
-  const [dayDetail, setDayDetail] = useState({ open: false, date: '', rows: [] })
+  const [dayDetail, setDayDetail] = useState({ open: false, date: '', rows: [], googleEvents: [] })
   // Student dashboard
   const [studentSchedule, setStudentSchedule] = useState([]) // [{start,end,subject,teacher}]
   const [studentInfo, setStudentInfo] = useState({ kelas_nama: '' })
@@ -447,7 +449,67 @@ export default function Dashboard() {
         setCalLoading(false)
       }
     }
+    
+    // Fetch Google Calendar events
+    const fetchGoogleCalendar = async () => {
+      const googleToken = localStorage.getItem('google_access_token')
+      console.log('🗓️ Google Calendar: checking token...', googleToken ? 'Token exists' : 'No token')
+      
+      if (!googleToken) {
+        setGoogleEvents({})
+        return
+      }
+      
+      try {
+        const from = startOfMonth(calMonth)
+        const to = endOfMonth(calMonth)
+        
+        // Extend range to show full weeks
+        const startDay = from.getDay()
+        const timeMin = new Date(from)
+        timeMin.setDate(timeMin.getDate() - (startDay === 0 ? 6 : startDay - 1))
+        
+        const endDay = to.getDay()
+        const timeMax = new Date(to)
+        timeMax.setDate(timeMax.getDate() + (endDay === 0 ? 1 : 8 - endDay))
+        
+        console.log('🗓️ Google Calendar: fetching events...', { timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString() })
+        
+        const res = await fetch(`/api/calendar/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}&maxResults=100`, {
+          headers: { 'Authorization': `Bearer ${googleToken}` }
+        })
+        
+        const data = await res.json()
+        console.log('🗓️ Google Calendar: response', res.status, data)
+        
+        if (!res.ok) {
+          if (data.needsReauth) {
+            console.log('🗓️ Google Calendar: needs reauth, removing token')
+            localStorage.removeItem('google_access_token')
+          }
+          setGoogleCalError(data.error || '')
+          setGoogleEvents({})
+          return
+        }
+        
+        // Group events by date
+        const eventsMap = {}
+        for (const event of (data.events || [])) {
+          const dateKey = event.start?.split('T')[0] || event.start
+          if (!eventsMap[dateKey]) eventsMap[dateKey] = []
+          eventsMap[dateKey].push(event)
+        }
+        console.log('🗓️ Google Calendar: events loaded', Object.keys(eventsMap).length, 'days with events')
+        setGoogleEvents(eventsMap)
+        setGoogleCalError('')
+      } catch (e) {
+        console.error('🗓️ Google Calendar error:', e)
+        setGoogleEvents({})
+      }
+    }
+    
     fetchMonth()
+    fetchGoogleCalendar()
   }, [calMonth, kelasFilter])
 
   // Map semantic color to Tailwind chip classes
@@ -828,15 +890,26 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Assessment Calendar */}
+        {/* Combined Calendar (Assessment + Google) */}
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
             <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
               <span className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center">
                 <FontAwesomeIcon icon={faCalendar} className="text-white text-xs sm:text-sm" />
               </span>
-              <span className="hidden sm:inline">Kalender Penilaian</span>
+              <span className="hidden sm:inline">Kalender</span>
               <span className="sm:hidden">Kalender</span>
+              {/* Legend */}
+              <div className="hidden md:flex items-center gap-3 ml-3 text-xs">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500"></span>
+                  <span className="text-gray-500">Penilaian</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-red-500 to-orange-500"></span>
+                  <span className="text-gray-500">Google</span>
+                </span>
+              </div>
             </h3>
             <div className="w-full md:w-auto overflow-x-auto -mx-1 px-1">
               <div className="inline-flex items-center gap-1 sm:gap-2">
@@ -892,29 +965,41 @@ export default function Dashboard() {
                     if (!d) return <div key={idx} className="h-12 sm:h-16 md:h-24 rounded-lg md:rounded-xl border border-gray-100 bg-gray-50/50" />
                     const key = toKey(d)
                     const info = calData[key]
+                    const gEvents = googleEvents[key] || []
                     const total = info?.total || 0
+                    const hasGoogleEvents = gEvents.length > 0
                     const top = (info?.perClass || []).slice().sort((a,b)=> b.count - a.count).slice(0,2)
                     const more = Math.max(0, (info?.perClass?.length || 0) - top.length)
                     return (
                       <button
                         key={idx}
-                        className={`h-12 sm:h-16 md:h-24 rounded-lg md:rounded-xl border p-1 sm:p-1.5 md:p-2 text-left hover:bg-sky-50 hover:border-sky-200 transition-all ${total>0 ? 'bg-white border-gray-200' : 'bg-gray-50/50 border-gray-100'}`}
-                        onClick={() => setDayDetail({ open: true, date: key, rows: (info?.perClass || []).slice().sort((a,b)=> b.count - a.count) })}
+                        className={`h-12 sm:h-16 md:h-24 rounded-lg md:rounded-xl border p-1 sm:p-1.5 md:p-2 text-left hover:bg-sky-50 hover:border-sky-200 transition-all ${(total>0 || hasGoogleEvents) ? 'bg-white border-gray-200' : 'bg-gray-50/50 border-gray-100'}`}
+                        onClick={() => setDayDetail({ open: true, date: key, rows: (info?.perClass || []).slice().sort((a,b)=> b.count - a.count), googleEvents: gEvents })}
                       >
                         <div className="flex items-center justify-between">
                           <div className="text-[10px] sm:text-xs font-semibold text-gray-700">{d.getDate()}</div>
-                          {total>0 && <span className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-medium">{total}</span>}
+                          <div className="flex gap-0.5">
+                            {hasGoogleEvents && <span className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-medium">{gEvents.length}</span>}
+                            {total>0 && <span className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-medium">{total}</span>}
+                          </div>
                         </div>
                         {/* Hide details on mobile, show only on tablet and up */}
                         <div className="hidden sm:block mt-1 space-y-0.5 md:space-y-1">
-                          {top.map(c => (
+                          {/* Google events first */}
+                          {gEvents.slice(0, 1).map((ev, i) => (
+                            <div key={`g-${i}`} className="text-[8px] md:text-[10px] truncate">
+                              <span className="px-0.5 md:px-1 py-0.5 rounded mr-0.5 md:mr-1 bg-red-100 text-red-700">G</span>
+                              <span className="text-red-700 hidden md:inline">{ev.title}</span>
+                            </div>
+                          ))}
+                          {top.slice(0, gEvents.length > 0 ? 1 : 2).map(c => (
                             <div key={c.detail_kelas_id} className="text-[8px] md:text-[10px] truncate">
                               <span className={`px-0.5 md:px-1 py-0.5 rounded mr-0.5 md:mr-1 ${colorToChip(c.color)}`}>{c.count}</span>
                               <span className={`${colorToText(c.color)} hidden md:inline`}>{c.kelas_nama}{c.subject_code ? ` (${c.subject_code})` : ''}</span>
                             </div>
                           ))}
-                          {more>0 && (
-                            <div className="text-[8px] md:text-[10px] text-gray-500 hidden md:block">+{more} kelas lainnya</div>
+                          {(more>0 || gEvents.length > 1) && (
+                            <div className="text-[8px] md:text-[10px] text-gray-500 hidden md:block">+{more + Math.max(0, gEvents.length - 1)} lainnya</div>
                           )}
                         </div>
                       </button>
@@ -930,19 +1015,51 @@ export default function Dashboard() {
       {/* Day detail modal */}
       <Modal
         isOpen={dayDetail.open}
-        onClose={() => setDayDetail({ open: false, date: '', rows: [] })}
+        onClose={() => setDayDetail({ open: false, date: '', rows: [], googleEvents: [] })}
         title={`Detail ${dayDetail.date}`}
       >
-        <div className="space-y-2">
-          {dayDetail.rows.length === 0 ? (
-            <div className="text-sm text-gray-500">Tidak ada assessment</div>
-          ) : (
-            dayDetail.rows.map(r => (
-              <div key={r.detail_kelas_id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-lg">
-                <div className={`${colorToText(r.color)}`}>{r.kelas_nama}{r.subject_code ? ` (${r.subject_code})` : ''}</div>
-                <div className={`px-2 py-0.5 rounded text-xs ${colorToChip(r.color)}`}>{r.count}</div>
+        <div className="space-y-3">
+          {/* Google Calendar Events */}
+          {dayDetail.googleEvents && dayDetail.googleEvents.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold text-red-600 mb-2 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                Google Calendar
               </div>
-            ))
+              <div className="space-y-2">
+                {dayDetail.googleEvents.map((ev, i) => (
+                  <div key={`g-${i}`} className="p-2 bg-red-50 rounded-lg border border-red-200">
+                    <div className="font-medium text-sm text-red-800">{ev.title}</div>
+                    <div className="text-xs text-red-600 mt-1">
+                      {ev.isAllDay ? 'Sepanjang hari' : `${ev.start?.split('T')[1]?.slice(0,5) || ''} - ${ev.end?.split('T')[1]?.slice(0,5) || ''}`}
+                    </div>
+                    {ev.location && <div className="text-xs text-gray-500 mt-1">📍 {ev.location}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Assessment Events */}
+          {dayDetail.rows && dayDetail.rows.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold text-sky-600 mb-2 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+                Penilaian
+              </div>
+              <div className="space-y-2">
+                {dayDetail.rows.map(r => (
+                  <div key={r.detail_kelas_id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-lg">
+                    <div className={`${colorToText(r.color)}`}>{r.kelas_nama}{r.subject_code ? ` (${r.subject_code})` : ''}</div>
+                    <div className={`px-2 py-0.5 rounded text-xs ${colorToChip(r.color)}`}>{r.count}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {(!dayDetail.googleEvents || dayDetail.googleEvents.length === 0) && (!dayDetail.rows || dayDetail.rows.length === 0) && (
+            <div className="text-sm text-gray-500">Tidak ada event</div>
           )}
         </div>
       </Modal>

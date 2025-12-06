@@ -120,11 +120,17 @@ function LoginContent() {
     }
     
     // Use Token Client (implicit flow) - works for internal apps without client secret
+    // Include calendar scope for Google Calendar integration
     window.googleTokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: googleClientId,
-      scope: 'email profile',
+      scope: 'email profile https://www.googleapis.com/auth/calendar.readonly',
       callback: async (tokenResponse) => {
+        console.log('🔐 Google OAuth callback:', tokenResponse.access_token ? 'Token received' : 'No token')
         if (tokenResponse.access_token) {
+          // Save Google access token for Calendar API
+          localStorage.setItem('google_access_token', tokenResponse.access_token)
+          console.log('🔐 Google access token saved to localStorage')
+          
           // Get user info with the access token
           try {
             const res = await fetch('/api/auth/google', {
