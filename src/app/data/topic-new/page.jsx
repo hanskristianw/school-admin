@@ -3144,10 +3144,37 @@ Please respond in ${selected} language and ensure valid JSON format.`
     
     // Step 6 (Assessment) has different validation
     if (step.id === 'assessment') {
-      return wizardAssessment.assessment_nama?.trim() !== '' &&
-             wizardAssessment.assessment_tanggal?.trim() !== '' &&
-             wizardAssessment.assessment_semester?.trim() !== '' &&
-             wizardAssessment.selected_criteria?.length > 0
+      // Check required fields
+      if (!wizardAssessment.assessment_nama?.trim() ||
+          !wizardAssessment.assessment_tanggal?.trim() ||
+          !wizardAssessment.assessment_semester?.trim() ||
+          !wizardAssessment.selected_criteria?.length) {
+        return false
+      }
+      
+      // Validate date (must be at least 2 days in the future)
+      const selectedDate = new Date(wizardAssessment.assessment_tanggal)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      selectedDate.setHours(0, 0, 0, 0)
+      
+      // Check if date is in the past
+      if (selectedDate < today) {
+        return false
+      }
+      
+      // Check if date is tomorrow (must be minimum 2 days ahead)
+      const getDaysDifference = (date1, date2) => {
+        const diffTime = Math.abs(date2 - date1)
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      }
+      
+      const daysDiff = getDaysDifference(today, selectedDate)
+      if (daysDiff === 1) {
+        return false // Tomorrow is not allowed
+      }
+      
+      return true
     }
     
     return step.fields.every(field => {
@@ -3180,10 +3207,35 @@ Please respond in ${selected} language and ensure valid JSON format.`
       alert('Please select MYP Year')
       return
     }
-    // Validate assessment
+    
+    // Validate assessment required fields
     if (!wizardAssessment.assessment_nama || !wizardAssessment.assessment_tanggal || 
         !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0) {
       alert('Please complete all assessment fields')
+      return
+    }
+    
+    // Validate assessment date (must be at least 2 days in the future)
+    const selectedDate = new Date(wizardAssessment.assessment_tanggal)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    selectedDate.setHours(0, 0, 0, 0)
+    
+    // Check if date is in the past
+    if (selectedDate < today) {
+      alert('Assessment date cannot be in the past. Please select a future date.')
+      return
+    }
+    
+    // Check if date is tomorrow (must be minimum 2 days ahead)
+    const getDaysDifference = (date1, date2) => {
+      const diffTime = Math.abs(date2 - date1)
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    }
+    
+    const daysDiff = getDaysDifference(today, selectedDate)
+    if (daysDiff === 1) {
+      alert('Assessment date cannot be tomorrow. Minimum 2 days ahead is required.')
       return
     }
 
@@ -3343,6 +3395,220 @@ Please respond in ${selected} language and ensure valid JSON format.`
       console.error('Error fetching topic assessment:', err)
     }
   }
+
+  // Generate PDF for a topic
+  const handleGeneratePDF = async (topic, event) => {
+    if (event) {
+      event.stopPropagation() // Prevent card click
+    }
+    
+    try {
+      // Load complete topic data
+      const { data: topicData, error: topicErr } = await supabase
+        .from("topic")
+        .select("*")
+        .eq("topic_id", topic.topic_id)
+        .single();
+      
+      if (topicErr) throw new Error(topicErr.message);
+
+      // Load subject data
+      let subject = null;
+      let teacher = null;
+      if (topicData.topic_subject_id) {
+        const { data: subjectData, error: subjectErr } = await supabase
+          .from("subject")
+          .select("subject_name, subject_user_id")
+          .eq("subject_id", topicData.topic_subject_id)
+          .single();
+        
+        if (!subjectErr && subjectData) {
+          subject = subjectData;
+
+          // Load teacher data from subject_user_id
+          if (subjectData?.subject_user_id) {
+            const { data: teacherData, error: teacherErr } = await supabase
+              .from("users")
+              .select("user_nama_depan, user_nama_belakang")
+              .eq("user_id", subjectData.subject_user_id)
+              .single();
+            
+            if (!teacherErr && teacherData) {
+              teacher = {
+                name: `${teacherData.user_nama_depan || ''} ${teacherData.user_nama_belakang || ''}`.trim()
+              };
+            }
+          }
+        }
+      }
+
+      // Fallback: if teacher still null, try to get current user name
+      if (!teacher && currentUserId) {
+        const { data: currentUser, error: userErr } = await supabase
+          .from("users")
+          .select("user_nama_depan, user_nama_belakang")
+          .eq("user_id", currentUserId)
+          .single();
+        
+        if (!userErr && currentUser) {
+          teacher = {
+            name: `${currentUser.user_nama_depan || ''} ${currentUser.user_nama_belakang || ''}`.trim()
+          };
+        }
+      }
+
+      // Load kelas data
+      let kelas = null;
+      if (topicData.topic_kelas_id) {
+        const { data: kelasData, error: kelasErr } = await supabase
+          .from("kelas")
+          .select("kelas_nama")
+          .eq("kelas_id", topicData.topic_kelas_id)
+          .single();
+        
+        if (!kelasErr && kelasData) {
+          kelas = kelasData;
+        }
+      }
+
+      // Generate PDF
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 14;
+      let yPos = 10;
+
+      // Calculate total hours
+      const duration = parseFloat(topicData.topic_duration) || 0;
+      const hoursPerWeek = parseFloat(topicData.topic_hours_per_week) || 0;
+      const totalHours = duration * hoursPerWeek;
+      
+      console.log('PDF Data - Duration:', topicData.topic_duration, 'Hours/Week:', topicData.topic_hours_per_week, 'Total:', totalHours);
+
+      const availableWidth = pageWidth - (margin * 2);
+
+      // Header Table  
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: [
+          [
+            { content: 'Teacher(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: teacher?.name || 'N/A', colSpan: 2 },
+            { content: 'Subject group and discipline', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: subject?.subject_name || 'N/A', colSpan: 2 },
+          ],
+          [
+            { content: 'Unit title', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topicData.topic_nama || 'N/A' },
+            { content: 'MYP year', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topicData.topic_year ? `Year ${topicData.topic_year}` : 'N/A' },
+            { content: 'Unit duration (hrs)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: totalHours > 0 ? totalHours.toString() : (topicData.topic_duration || 'N/A') },
+          ],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5 },
+        columnStyles: {
+          0: { cellWidth: availableWidth * 0.15 },
+          1: { cellWidth: availableWidth * 0.18 },
+          2: { cellWidth: availableWidth * 0.17 },
+          3: { cellWidth: availableWidth * 0.17 },
+          4: { cellWidth: availableWidth * 0.15 },
+          5: { cellWidth: availableWidth * 0.18 },
+        },
+      });
+
+      // Inquiry section
+      yPos = pdf.lastAutoTable.finalY + 8;
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Inquiry:', margin, yPos);
+      yPos += 6;
+
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: [
+          [
+            { content: 'Key concept', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topicData.topic_key_concept || 'N/A' },
+            { content: 'Related concept(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topicData.topic_related_concept || 'N/A' },
+            { content: 'Global context', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: topicData.topic_global_context || 'N/A' },
+          ],
+          [
+            { content: 'Statement of inquiry', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
+          ],
+          [
+            { content: topicData.topic_statement || 'N/A', colSpan: 6, styles: { cellPadding: 3 } },
+          ],
+          [
+            { content: 'Inquiry questions', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
+          ],
+          [
+            { content: topicData.topic_inquiry_question || 'N/A', colSpan: 6, styles: { cellPadding: 3 } },
+          ],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5, valign: 'top' },
+        columnStyles: {
+          0: { cellWidth: availableWidth * 0.15 },
+          1: { cellWidth: availableWidth * 0.18 },
+          2: { cellWidth: availableWidth * 0.17 },
+          3: { cellWidth: availableWidth * 0.17 },
+          4: { cellWidth: availableWidth * 0.15 },
+          5: { cellWidth: availableWidth * 0.18 },
+        },
+      });
+
+      // Add new page for remaining sections
+      pdf.addPage();
+      yPos = 10;
+
+      const sections = [
+        { label: 'Middle Years Programme objectives', content: topicData.topic_myp_objectives },
+        { label: 'Summative assessment task(s)', content: topicData.topic_summative_assessment },
+        { label: 'Relationship between summative assessment task(s) and statement of inquiry', content: topicData.topic_relationship },
+        { label: 'Approaches to learning (ATL) skills', content: topicData.topic_atl_skills },
+        { label: 'Content', content: topicData.topic_content },
+        { label: 'Learning experiences and teaching strategies', content: topicData.topic_learning_experiences },
+        { label: 'Formative assessment', content: topicData.topic_formative_assessment },
+        { label: 'Differentiation', content: topicData.topic_differentiation },
+        { label: 'Resources', content: topicData.topic_resources },
+        { label: 'Reflection', content: topicData.topic_reflection },
+      ];
+
+      sections.forEach((section) => {
+        if (section.content) {
+          autoTable(pdf, {
+            startY: yPos,
+            head: [],
+            body: [
+              [{ content: section.label, styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 8 }],
+              [{ content: section.content, colSpan: 8, styles: { cellPadding: 3 } }],
+            ],
+            theme: 'grid',
+            styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5 },
+          });
+          yPos = pdf.lastAutoTable.finalY + 5;
+        }
+      });
+
+      // Save PDF
+      const fileName = `unit-planner-${topicData.topic_nama?.replace(/[^a-z0-9]/gi, '-') || 'topic'}.pdf`;
+      pdf.save(fileName);
+      
+      // Show success notification
+      setSaveNotification(true);
+      setTimeout(() => setSaveNotification(false), 2000);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert(`Failed to generate PDF: ${error.message}`);
+    }
+  };
 
   // Save/update assessment for topic (edit mode)
   const saveTopicAssessment = async () => {
@@ -3710,9 +3976,18 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                 <h3 className="text-lg font-bold text-gray-800 line-clamp-2 flex-1">
                                   {topic.topic_nama}
                                 </h3>
-                                <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full font-medium whitespace-nowrap">
-                                  #{topic.topic_urutan || '-'}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full font-medium whitespace-nowrap">
+                                    #{topic.topic_urutan || '-'}
+                                  </span>
+                                  <button
+                                    onClick={(e) => handleGeneratePDF(topic, e)}
+                                    className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                                    title="Download PDF"
+                                  >
+                                    <FontAwesomeIcon icon={faPrint} className="text-sm" />
+                                  </button>
+                                </div>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
                                 <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-medium">
@@ -4946,6 +5221,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   type="date"
                                   value={wizardAssessment.assessment_tanggal}
                                   onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_tanggal: e.target.value }))}
+                                  min={getMinimumDate().toISOString().split('T')[0]}
                                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                 />
                               </div>
@@ -5674,239 +5950,34 @@ Please respond in ${selected} language and ensure valid JSON format.`
                   {/* Formative Assessment */}
                   <div>
                     <h3 className="text-sm font-semibold text-cyan-500 mb-2">Formative Assessment</h3>
-                    {(editingField === 'topic_formative_assessment') ? (
-                      <textarea
-                        value={editValue}
-                        onChange={(e) => {
-                          if (false) {
-                            setSelectedTopic(prev => ({ ...prev, topic_formative_assessment: e.target.value }))
-                          } else {
-                            setEditValue(e.target.value)
-                          }
-                        }}
-                        onBlur={() => {
-                          if (true && editingField === 'topic_formative_assessment') {
-                            handleSave('topic_formative_assessment', editValue)
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Escape' && !isAddMode) cancelEdit() }}
-                        className="w-full px-3 py-2 border border-cyan-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-700 leading-relaxed"
-                        rows={3}
-                        placeholder=""
-                      />
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_formative_assessment', selectedTopic.topic_formative_assessment)}
-                      >
-                        {selectedTopic.topic_formative_assessment || 'Click to add formative assessment...'}
-                      </p>
-                    )}
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap p-2 bg-gray-50 rounded">
+                      {selectedTopic.topic_formative_assessment || '-'}
+                    </p>
                   </div>
 
                   {/* Summative Assessment */}
                   <div>
                     <h3 className="text-sm font-semibold text-cyan-500 mb-2">Summative Assessment</h3>
-                    {(editingField === 'topic_summative_assessment') ? (
-                      <textarea
-                        value={editValue}
-                        onChange={(e) => {
-                          if (false) {
-                            setSelectedTopic(prev => ({ ...prev, topic_summative_assessment: e.target.value }))
-                          } else {
-                            setEditValue(e.target.value)
-                          }
-                        }}
-                        onBlur={() => {
-                          if (true && editingField === 'topic_summative_assessment') {
-                            handleSave('topic_summative_assessment', editValue)
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Escape' && !isAddMode) cancelEdit() }}
-                        className="w-full px-3 py-2 border border-cyan-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-700 leading-relaxed"
-                        rows={4}
-                        placeholder=""
-                      />
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_summative_assessment', selectedTopic.topic_summative_assessment)}
-                      >
-                        {selectedTopic.topic_summative_assessment || 'Click to add summative assessment...'}
-                      </p>
-                    )}
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap p-2 bg-gray-50 rounded">
+                      {selectedTopic.topic_summative_assessment || '-'}
+                    </p>
                   </div>
 
                   {/* Relationship */}
                   <div>
                     <h3 className="text-sm font-semibold text-cyan-500 mb-2">Relationship: Summative Assessment & Statement of Inquiry</h3>
-                    {(editingField === 'topic_relationship_summative_assessment_statement_of_inquiry') ? (
-                      <textarea
-                        value={editValue}
-                        onChange={(e) => {
-                          if (false) {
-                            setSelectedTopic(prev => ({ ...prev, topic_relationship_summative_assessment_statement_of_inquiry: e.target.value }))
-                          } else {
-                            setEditValue(e.target.value)
-                          }
-                        }}
-                        onBlur={() => {
-                          if (true && editingField === 'topic_relationship_summative_assessment_statement_of_inquiry') {
-                            handleSave('topic_relationship_summative_assessment_statement_of_inquiry', editValue)
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Escape' && !isAddMode) cancelEdit() }}
-                        className="w-full px-3 py-2 border border-cyan-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-700 leading-relaxed"
-                        rows={4}
-                        placeholder=""
-                      />
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_relationship_summative_assessment_statement_of_inquiry', selectedTopic.topic_relationship_summative_assessment_statement_of_inquiry)}
-                      >
-                        {selectedTopic.topic_relationship_summative_assessment_statement_of_inquiry || 'Click to add relationship...'}
-                      </p>
-                    )}
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap p-2 bg-gray-50 rounded">
+                      {selectedTopic.topic_relationship_summative_assessment_statement_of_inquiry || '-'}
+                    </p>
                   </div>
 
                   {/* Assessment Task */}
                   <div className="border-t border-gray-200 pt-6 mt-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-bold text-cyan-600">Assessment Task</h3>
-                      {topicAssessment && !editingAssessmentInTopic && (
-                        <button
-                          onClick={() => setEditingAssessmentInTopic(true)}
-                          className="text-sm text-cyan-600 hover:text-cyan-700 font-medium"
-                        >
-                          Edit
-                        </button>
-                      )}
                     </div>
                     
-                    {topicAssessment && (editingAssessmentInTopic || !topicAssessment.assessment_id) ? (
-                      // Edit/Create Assessment Form
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Assessment Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={topicAssessment.assessment_nama || ''}
-                              onChange={(e) => setTopicAssessment(prev => ({ ...prev, assessment_nama: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                              placeholder="e.g., Energy Conservation Project"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Date <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="date"
-                              value={topicAssessment.assessment_tanggal || ''}
-                              onChange={(e) => setTopicAssessment(prev => ({ ...prev, assessment_tanggal: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Semester <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                              value={topicAssessment.assessment_semester || ''}
-                              onChange={(e) => setTopicAssessment(prev => ({ ...prev, assessment_semester: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            >
-                              <option value="">Select...</option>
-                              <option value="1">Semester 1</option>
-                              <option value="2">Semester 2</option>
-                            </select>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Description (Optional)
-                          </label>
-                          <textarea
-                            value={topicAssessment.assessment_keterangan || ''}
-                            onChange={(e) => setTopicAssessment(prev => ({ ...prev, assessment_keterangan: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            rows={2}
-                            placeholder="Brief description..."
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Criteria <span className="text-red-500">*</span>
-                          </label>
-                          {wizardCriteria.length === 0 ? (
-                            <p className="text-sm text-amber-600">⚠️ No criteria found for this subject</p>
-                          ) : (
-                            <div className="grid grid-cols-2 gap-2">
-                              {wizardCriteria.map(criterion => {
-                                const isSelected = topicAssessment.selected_criteria?.includes(criterion.criterion_id)
-                                return (
-                                  <button
-                                    key={criterion.criterion_id}
-                                    type="button"
-                                    onClick={() => {
-                                      setTopicAssessment(prev => ({
-                                        ...prev,
-                                        selected_criteria: isSelected
-                                          ? prev.selected_criteria.filter(id => id !== criterion.criterion_id)
-                                          : [...(prev.selected_criteria || []), criterion.criterion_id]
-                                      }))
-                                    }}
-                                    className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left text-sm ${
-                                      isSelected
-                                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-                                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                                    }`}
-                                  >
-                                    <span className={`w-8 h-8 rounded flex items-center justify-center font-bold ${
-                                      isSelected ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-500'
-                                    }`}>
-                                      {criterion.code}
-                                    </span>
-                                    <span className="flex-1 truncate">{criterion.name}</span>
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-3 pt-2">
-                          <button
-                            onClick={saveTopicAssessment}
-                            disabled={savingTopicAssessment}
-                            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
-                          >
-                            {savingTopicAssessment ? (
-                              <>
-                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                                Saving...
-                              </>
-                            ) : (
-                              'Save Assessment'
-                            )}
-                          </button>
-                          {topicAssessment.assessment_id && (
-                            <button
-                              onClick={() => setEditingAssessmentInTopic(false)}
-                              className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg font-medium text-sm hover:bg-gray-50 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ) : topicAssessment ? (
+                    {topicAssessment ? (
                       // Display Assessment (Read-only)
                       <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg p-4 border border-cyan-200">
                         <div className="flex items-start justify-between mb-3">
@@ -5945,8 +6016,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                       </div>
                     ) : (
                       <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-500">
-                        <FontAwesomeIcon icon={faSpinner} spin className="mr-2" />
-                        Loading assessment...
+                        No assessment linked to this unit
                       </div>
                     )}
                   </div>
