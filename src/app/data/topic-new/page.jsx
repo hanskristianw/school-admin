@@ -128,7 +128,7 @@ export default function TopicNewPage() {
   const [aiError, setAiError] = useState('')
   const [aiItems, setAiItems] = useState([])
   const [aiLang, setAiLang] = useState('')
-  const [aiHelpType, setAiHelpType] = useState('') // 'unitTitle', 'inquiryQuestion', 'keyConcept', 'relatedConcept', 'globalContext', 'statement', 'learnerProfile', or 'serviceLearning'
+  const [aiHelpType, setAiHelpType] = useState('') // 'unitTitle', 'inquiryQuestion', 'keyConcept', 'relatedConcept', 'globalContext', 'statement', 'learnerProfile', 'serviceLearning', or 'assessmentRelationship'
   const [selectedInquiryQuestions, setSelectedInquiryQuestions] = useState([]) // For multi-select inquiry questions
   const [selectedKeyConcepts, setSelectedKeyConcepts] = useState([]) // For multi-select key concepts
   const [selectedRelatedConcepts, setSelectedRelatedConcepts] = useState([]) // For multi-select related concepts
@@ -169,9 +169,9 @@ export default function TopicNewPage() {
   // Assessment data for wizard step 6
   const [wizardAssessment, setWizardAssessment] = useState({
     assessment_nama: '',
-    assessment_tanggal: '',
     assessment_keterangan: '',
     assessment_semester: '',
+    assessment_relationship: '',
     selected_criteria: []
   })
   const [wizardCriteria, setWizardCriteria] = useState([]) // Criteria options loaded when subject is selected
@@ -219,6 +219,13 @@ export default function TopicNewPage() {
       description: 'Define the assessment task for this unit',
       fields: ['assessment_nama', 'assessment_tanggal', 'assessment_semester', 'selected_criteria'],
       guidance: 'Create an assessment task that allows students to demonstrate their understanding of the unit. Select the criteria that will be assessed and specify the assessment date.'
+    },
+    {
+      id: 'relationship',
+      title: 'Assessment Relationship',
+      description: 'Explain the connection between assessment and inquiry',
+      fields: ['assessment_relationship'],
+      guidance: 'Describe how the summative assessment relates to and measures the Statement of Inquiry. This connection ensures that the assessment is aligned with the conceptual understanding of the unit.'
     }
   ]
   
@@ -2236,6 +2243,15 @@ export default function TopicNewPage() {
       topic_summative_assessment: '',
       topic_relationship_summative_assessment_statement_of_inquiry: ''
     })
+    // Reset wizard assessment data for new unit
+    setWizardAssessment({
+      assessment_nama: '',
+      assessment_keterangan: '',
+      assessment_semester: '',
+      assessment_relationship: '',
+      selected_criteria: []
+    })
+    setWizardCriteria([]) // Reset criteria options
     setModalOpen(true)
   }
   
@@ -2250,7 +2266,10 @@ export default function TopicNewPage() {
   }
   
   const requestAiHelp = async (helpType = aiHelpType) => {
-    if (helpType !== 'keyConcept' && helpType !== 'relatedConcept' && helpType !== 'inquiryQuestion' && helpType !== 'globalContext' && helpType !== 'statement' && helpType !== 'learnerProfile' && !aiUserInput.trim()) {
+    // Types that don't require user input (they get context from existing fields)
+    const noInputRequired = ['keyConcept', 'relatedConcept', 'inquiryQuestion', 'globalContext', 'statement', 'learnerProfile', 'serviceLearning', 'assessmentName', 'assessmentRelationship']
+    
+    if (!noInputRequired.includes(helpType) && !aiUserInput.trim()) {
       setAiError('Mohon masukkan topik atau konteks yang ingin dibahas')
       return
     }
@@ -2278,6 +2297,8 @@ export default function TopicNewPage() {
         ruleColumn = 'ai_rule_learner_profile'
       } else if (helpType === 'serviceLearning') {
         ruleColumn = 'ai_rule_service_learning'
+      } else if (helpType === 'assessmentRelationship') {
+        ruleColumn = 'ai_rule_relationship_sa_soi'
       }
       
       const { data: rule, error: rErr } = await supabase.from('ai_rule').select(ruleColumn).limit(1).single()
@@ -2603,6 +2624,196 @@ JSON FORMAT:
 }
 
 Please respond in English and ensure valid JSON format.`
+      } else if (helpType === 'assessmentName') {
+        // Prompt for Assessment Name
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const statement = selectedTopic?.topic_statement || 'Not yet defined'
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        
+        // Get selected criteria names
+        const selectedCriteriaNames = wizardCriteria
+          .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
+          .map(c => `${c.code}: ${c.name}`)
+          .join(', ')
+        
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Statement of Inquiry: ${statement}
+- Key Concepts: ${keyConcept}
+- Related Concepts: ${relatedConcept}
+- Global Context: ${globalContext}
+- Criteria to Assess: ${selectedCriteriaNames}
+- Subject: ${subjName}
+- Grade/Class: ${kelasName}
+
+INSTRUCTIONS:
+Based on the information above, suggest 3 creative and descriptive Assessment Names that:
+- Clearly connect to the unit's concepts and statement of inquiry
+- Reflect the criteria being assessed (${selectedCriteriaNames})
+- Are engaging and meaningful for ${kelasName} students
+- Are appropriate for the subject "${subjName}"
+
+For each Assessment Name suggestion, provide:
+- The assessment name (option)
+- A brief description of what the assessment could involve (text)
+- Why this assessment name is suitable for the unit and criteria (reason)
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Creative Assessment Name",
+      "text": "Brief description of what this assessment task could involve, connecting to ${keyConcept} and ${relatedConcept}",
+      "reason": "Why this assessment name is suitable for assessing ${selectedCriteriaNames} in the context of '${unitTitle}'"
+    },
+    {
+      "option": "Creative Assessment Name",
+      "text": "Brief description of the assessment task",
+      "reason": "Why this is suitable for the unit and criteria"
+    },
+    {
+      "option": "Creative Assessment Name",
+      "text": "Brief description of the assessment task",
+      "reason": "Why this is suitable for the unit and criteria"
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format.`
+      } else if (helpType === 'assessmentRelationship') {
+        // Prompt for Assessment Relationship - Include ALL information from Steps 1-6
+        
+        // Step 1: Basic Information
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const unitNumber = selectedTopic?.topic_urutan || 'Not yet defined'
+        const duration = selectedTopic?.topic_duration || 'Not yet defined'
+        const hoursPerWeek = selectedTopic?.topic_hours_per_week || 'Not yet defined'
+        const mypYear = selectedTopic?.topic_year || 'Not yet defined'
+        
+        // Step 2: Inquiry Question
+        const inquiryQuestion = selectedTopic?.topic_inquiry_question || 'Not yet defined'
+        
+        // Step 3: Key & Related Concepts, Global Context
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        
+        // Step 4: Statement of Inquiry
+        const statement = selectedTopic?.topic_statement || 'Not yet defined'
+        
+        // Step 5: Learner Profile & Service Learning
+        const learnerProfile = selectedTopic?.topic_learner_profile || 'Not yet defined'
+        const serviceLearning = selectedTopic?.topic_service_learning || 'Not yet defined'
+        
+        // Step 6: Assessment Details
+        const assessmentName = wizardAssessment?.assessment_nama || 'Not yet defined'
+        const assessmentSemester = wizardAssessment?.assessment_semester || 'Not yet defined'
+        const assessmentDescription = wizardAssessment?.assessment_keterangan || 'Not provided'
+        
+        // Get selected criteria names
+        const selectedCriteriaNames = wizardCriteria
+          .filter(c => wizardAssessment.selected_criteria?.includes(c.criterion_id))
+          .map(c => `${c.code}: ${c.name}`)
+          .join(', ') || 'Not yet selected'
+        
+        // Build comprehensive context object for debugging
+        const fullContext = {
+          // Step 1
+          unitTitle,
+          unitNumber,
+          duration: `${duration} weeks`,
+          hoursPerWeek: `${hoursPerWeek} hours/week`,
+          mypYear: `MYP Year ${mypYear}`,
+          subject: subjName,
+          class: kelasName,
+          // Step 2
+          inquiryQuestion,
+          // Step 3
+          keyConcept,
+          relatedConcept,
+          globalContext,
+          // Step 4
+          statement,
+          // Step 5
+          learnerProfile,
+          serviceLearning,
+          // Step 6
+          assessmentName,
+          assessmentSemester: `Semester ${assessmentSemester}`,
+          assessmentDescription,
+          criteriaToAssess: selectedCriteriaNames
+        }
+        
+        console.log('🤖 ==========================================');
+        console.log('🤖 AI Prompt for Assessment Relationship');
+        console.log('🤖 ==========================================');
+        console.log('📋 Full Context (Steps 1-6):');
+        console.log(JSON.stringify(fullContext, null, 2));
+        
+        promptWithLang = `${context ? context + "\n\n" : ''}COMPLETE UNIT PLANNER CONTEXT (Steps 1-6):
+
+=== STEP 1: BASIC INFORMATION ===
+- Unit Title: ${unitTitle}
+- Unit Number: ${unitNumber}
+- Duration: ${duration} weeks (${hoursPerWeek} hours per week)
+- MYP Year: ${mypYear}
+- Subject: ${subjName}
+- Grade/Class: ${kelasName}
+
+=== STEP 2: INQUIRY QUESTION ===
+${inquiryQuestion}
+
+=== STEP 3: KEY & RELATED CONCEPTS ===
+- Key Concepts: ${keyConcept}
+- Related Concepts: ${relatedConcept}
+- Global Context: ${globalContext}
+
+=== STEP 4: STATEMENT OF INQUIRY ===
+${statement}
+
+=== STEP 5: LEARNER PROFILE & SERVICE LEARNING ===
+- Learner Profile Attributes: ${learnerProfile}
+- Service Learning: ${serviceLearning}
+
+=== STEP 6: ASSESSMENT DETAILS ===
+- Assessment Name: ${assessmentName}
+- Semester: ${assessmentSemester}
+- Description: ${assessmentDescription}
+- Criteria to Assess: ${selectedCriteriaNames}
+
+=== YOUR TASK ===
+Based on ALL the information above, write a comprehensive explanation of the RELATIONSHIP between:
+1. The Summative Assessment: "${assessmentName}"
+2. The Statement of Inquiry: "${statement}"
+
+Your explanation should:
+1. Clearly describe HOW the assessment task allows students to demonstrate their understanding of the Statement of Inquiry
+2. Explain the CONNECTION between the assessment and the Key Concepts (${keyConcept}) and Related Concepts (${relatedConcept})
+3. Show how the assessment criteria (${selectedCriteriaNames}) align with measuring conceptual understanding
+4. Reference the Global Context (${globalContext}) and how it frames the assessment
+5. Explain how completing this assessment helps develop the Learner Profile attributes (${learnerProfile})
+6. Be specific, detailed, and directly connected to this particular unit
+
+Generate 3 different but equally valid relationship explanations.
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "A complete, detailed paragraph explaining how the summative assessment '${assessmentName}' relates to and measures the Statement of Inquiry. This should be 3-5 sentences that a teacher can directly use in their unit planner.",
+      "text": "Additional details on how students will demonstrate understanding of ${keyConcept} and ${relatedConcept} through this assessment, and how the criteria ${selectedCriteriaNames} will be used to evaluate their work.",
+      "reason": "Why this relationship explanation is strong and demonstrates clear alignment between the assessment task and the conceptual understanding goals of the unit."
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format.`
+
+        console.log('📝 Prompt being sent to AI:');
+        console.log(promptWithLang);
+        console.log('🤖 ==========================================');
       } else {
         // Prompt for Unit Title
         promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
@@ -2774,6 +2985,10 @@ Please respond in ${selected} language and ensure valid JSON format.`
     
     if (aiHelpType === 'inquiryQuestion') {
       setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: firstLine }))
+    } else if (aiHelpType === 'assessmentName') {
+      setWizardAssessment(prev => ({ ...prev, assessment_nama: firstLine }))
+    } else if (aiHelpType === 'assessmentRelationship') {
+      setWizardAssessment(prev => ({ ...prev, assessment_relationship: txt }))
     } else {
       setSelectedTopic(prev => ({ ...prev, topic_nama: firstLine }))
     }
@@ -2936,7 +3151,8 @@ Please respond in ${selected} language and ensure valid JSON format.`
     
     // Get selected statement
     const selectedItems = aiItems.filter(item => selectedStatements.includes(item.index))
-    const statementText = selectedItems[0].option // Only take the first one
+    // Remove bold formatting (**text**) from AI response
+    const statementText = selectedItems[0].option.replace(/\*\*/g, '')
     
     setSelectedTopic(prev => ({ ...prev, topic_statement: statementText }))
     setAiResultModalOpen(false)
@@ -3076,6 +3292,27 @@ Please respond in ${selected} language and ensure valid JSON format.`
     setAiError('')
   }
   
+  // Apply selected assessment relationship
+  const [selectedAssessmentRelationship, setSelectedAssessmentRelationship] = useState([])
+  const applySelectedAssessmentRelationship = () => {
+    setAiError('')
+    
+    if (selectedAssessmentRelationship.length === 0) {
+      setAiError('⚠️ Please select one relationship explanation.')
+      return
+    }
+    
+    // Get selected relationship option
+    const selectedItem = aiItems.find(item => selectedAssessmentRelationship.includes(item.index))
+    if (selectedItem) {
+      setWizardAssessment(prev => ({ ...prev, assessment_relationship: selectedItem.option }))
+    }
+    
+    setAiResultModalOpen(false)
+    setSelectedAssessmentRelationship([])
+    setAiError('')
+  }
+  
   // Apply selected inquiry questions
   const applySelectedInquiryQuestions = () => {
     // Clear previous errors
@@ -3142,39 +3379,21 @@ Please respond in ${selected} language and ensure valid JSON format.`
   const isStepCompleted = (stepIndex) => {
     const step = plannerSteps[stepIndex]
     
-    // Step 6 (Assessment) has different validation
+    // Step 5 (Assessment) has different validation - uses wizardAssessment state
     if (step.id === 'assessment') {
-      // Check required fields
+      // Check required fields (date will be submitted later)
       if (!wizardAssessment.assessment_nama?.trim() ||
-          !wizardAssessment.assessment_tanggal?.trim() ||
           !wizardAssessment.assessment_semester?.trim() ||
           !wizardAssessment.selected_criteria?.length) {
         return false
       }
       
-      // Validate date (must be at least 2 days in the future)
-      const selectedDate = new Date(wizardAssessment.assessment_tanggal)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      selectedDate.setHours(0, 0, 0, 0)
-      
-      // Check if date is in the past
-      if (selectedDate < today) {
-        return false
-      }
-      
-      // Check if date is tomorrow (must be minimum 2 days ahead)
-      const getDaysDifference = (date1, date2) => {
-        const diffTime = Math.abs(date2 - date1)
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      }
-      
-      const daysDiff = getDaysDifference(today, selectedDate)
-      if (daysDiff === 1) {
-        return false // Tomorrow is not allowed
-      }
-      
       return true
+    }
+    
+    // Step 6 (Relationship) - uses wizardAssessment.assessment_relationship
+    if (step.id === 'relationship') {
+      return wizardAssessment.assessment_relationship?.trim() !== ''
     }
     
     return step.fields.every(field => {
@@ -3187,6 +3406,44 @@ Please respond in ${selected} language and ensure valid JSON format.`
   const getCompletionProgress = () => {
     const completedSteps = plannerSteps.filter((_, index) => isStepCompleted(index)).length
     return { completed: completedSteps, total: plannerSteps.length }
+  }
+
+  // Get list of missing required fields
+  const getMissingFields = () => {
+    const missing = []
+    
+    // Step 0: Basic Information
+    if (!selectedTopic.topic_nama?.trim()) missing.push({ step: 1, field: 'Unit Title' })
+    if (!selectedTopic.topic_subject_id) missing.push({ step: 1, field: 'Subject' })
+    if (!selectedTopic.topic_kelas_id) missing.push({ step: 1, field: 'Class' })
+    if (!selectedTopic.topic_urutan) missing.push({ step: 1, field: 'Unit Number' })
+    if (!selectedTopic.topic_duration) missing.push({ step: 1, field: 'Duration (weeks)' })
+    if (!selectedTopic.topic_hours_per_week) missing.push({ step: 1, field: 'Hours per Week' })
+    
+    // Step 1: Inquiry Question
+    if (!selectedTopic.topic_inquiry_question?.trim()) missing.push({ step: 2, field: 'Inquiry Question' })
+    
+    // Step 2: Key & Related Concepts
+    if (!selectedTopic.topic_key_concept?.trim()) missing.push({ step: 3, field: 'Key Concept' })
+    if (!selectedTopic.topic_related_concept?.trim()) missing.push({ step: 3, field: 'Related Concept' })
+    if (!selectedTopic.topic_global_context?.trim()) missing.push({ step: 3, field: 'Global Context' })
+    
+    // Step 3: Statement of Inquiry
+    if (!selectedTopic.topic_statement?.trim()) missing.push({ step: 4, field: 'Statement of Inquiry' })
+    
+    // Step 4: Learner Profile & Service
+    if (!selectedTopic.topic_learner_profile?.trim()) missing.push({ step: 5, field: 'Learner Profile' })
+    if (!selectedTopic.topic_service_learning?.trim()) missing.push({ step: 5, field: 'Service Learning' })
+    
+    // Step 5: Assessment
+    if (!wizardAssessment.selected_criteria?.length) missing.push({ step: 6, field: 'Criteria to Assess' })
+    if (!wizardAssessment.assessment_nama?.trim()) missing.push({ step: 6, field: 'Assessment Name' })
+    if (!wizardAssessment.assessment_semester?.trim()) missing.push({ step: 6, field: 'Semester' })
+    
+    // Step 6: Relationship
+    if (!wizardAssessment.assessment_relationship?.trim()) missing.push({ step: 7, field: 'Relationship: Assessment & Statement of Inquiry' })
+    
+    return missing
   }
 
   // Save new topic
@@ -3238,13 +3495,16 @@ Please respond in ${selected} language and ensure valid JSON format.`
       alert('Assessment date cannot be tomorrow. Minimum 2 days ahead is required.')
       return
     }
+    
+    // Date validation removed - date will be submitted later
 
     setSaving(true)
     try {
       // Prepare data with proper types
       const topicData = {
         ...selectedTopic,
-        topic_year: selectedTopic.topic_year ? parseInt(selectedTopic.topic_year) : null
+        topic_year: selectedTopic.topic_year ? parseInt(selectedTopic.topic_year) : null,
+        topic_relationship_summative_assessment_statement_of_inquiry: wizardAssessment.assessment_relationship || null
       }
       
       const { data, error } = await supabase
@@ -3307,8 +3567,11 @@ Please respond in ${selected} language and ensure valid JSON format.`
           }
         }
         
-        // Add to local state
-        setTopics(prev => [...prev, newTopic])
+        // Refresh topics list from server to ensure consistency
+        const subjectIds = subjects.map(s => s.subject_id)
+        if (subjectIds.length > 0) {
+          await fetchTopics(subjectIds)
+        }
         
         // Reset wizard assessment state
         setWizardAssessment({
@@ -3316,6 +3579,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
           assessment_tanggal: '',
           assessment_keterangan: '',
           assessment_semester: '',
+          assessment_relationship: '',
           selected_criteria: []
         })
         
@@ -3330,6 +3594,54 @@ Please respond in ${selected} language and ensure valid JSON format.`
     } catch (err) {
       console.error('❌ Error saving new topic:', err)
       alert('Failed to create topic: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Update existing topic (edit mode)
+  const updateExistingTopic = async () => {
+    if (!selectedTopic.topic_nama) {
+      alert('Please enter a topic name')
+      return
+    }
+    if (!selectedTopic.topic_year) {
+      alert('Please select MYP Year')
+      return
+    }
+
+    setSaving(true)
+    try {
+      // Prepare data with proper types
+      const topicData = {
+        ...selectedTopic,
+        topic_year: selectedTopic.topic_year ? parseInt(selectedTopic.topic_year) : null,
+        topic_relationship_summative_assessment_statement_of_inquiry: wizardAssessment.assessment_relationship || null
+      }
+      
+      const { error } = await supabase
+        .from('topic')
+        .update(topicData)
+        .eq('topic_id', selectedTopic.topic_id)
+      
+      if (error) throw error
+      
+      // Refresh topics list - get subject IDs from current subjects state
+      const subjectIds = subjects.map(s => s.subject_id)
+      if (subjectIds.length > 0) {
+        await fetchTopics(subjectIds)
+      }
+      
+      setSaveNotification(true)
+      setTimeout(() => setSaveNotification(false), 2000)
+      
+      // Close modal
+      setModalOpen(false)
+      setIsAddMode(false)
+      setCurrentStep(0)
+    } catch (err) {
+      console.error('❌ Error updating topic:', err)
+      alert('Failed to update topic: ' + err.message)
     } finally {
       setSaving(false)
     }
@@ -3486,6 +3798,12 @@ Please respond in ${selected} language and ensure valid JSON format.`
 
       const availableWidth = pageWidth - (margin * 2);
 
+      // MYP unit planner title
+      pdf.setFontSize(13.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('MYP unit planner', margin, yPos);
+      yPos += 8;
+
       // Header Table  
       autoTable(pdf, {
         startY: yPos,
@@ -3508,7 +3826,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
           ],
         ],
         theme: 'grid',
-        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5 },
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
         columnStyles: {
           0: { cellWidth: availableWidth * 0.15 },
           1: { cellWidth: availableWidth * 0.18 },
@@ -3523,7 +3841,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
       yPos = pdf.lastAutoTable.finalY + 8;
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Inquiry:', margin, yPos);
+      pdf.text('Inquiry: Establishing the purpose of the unit', margin, yPos);
       yPos += 6;
 
       autoTable(pdf, {
@@ -3553,7 +3871,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
           ],
         ],
         theme: 'grid',
-        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5, valign: 'top' },
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
         columnStyles: {
           0: { cellWidth: availableWidth * 0.15 },
           1: { cellWidth: availableWidth * 0.18 },
@@ -3568,17 +3886,141 @@ Please respond in ${selected} language and ensure valid JSON format.`
       pdf.addPage();
       yPos = 10;
 
+      // Objectives section
+      if (topicData.topic_myp_objectives) {
+        autoTable(pdf, {
+          startY: yPos,
+          head: [],
+          body: [
+            [{ content: 'Objectives', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
+            [{ content: topicData.topic_myp_objectives || 'N/A', styles: { cellPadding: 3 } }],
+          ],
+          theme: 'grid',
+          styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
+        });
+        yPos = pdf.lastAutoTable.finalY + 5;
+      }
+
+      // Summative assessment - special 2-row structure
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: [
+          [
+            { content: 'Objectives', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, rowSpan: 2 },
+            { content: 'Summative assessment', styles: { fontStyle: 'bold', fillColor: [232, 232, 232], halign: 'center' }, colSpan: 2 },
+          ],
+          [
+            { content: 'Outline of summative assessment task(s) including assessment criteria:', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: 'Relationship between summative assessment task(s) and statement of inquiry:', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          ],
+          [
+            { content: '', styles: { cellPadding: 3 }},
+            { content: topicData.topic_summative_assessment || 'N/A', styles: { cellPadding: 3 }},
+            { content: topicData.topic_relationship_summative_assessment_statement_of_inquiry || 'N/A', styles: { cellPadding: 3 }},
+          ],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+        columnStyles: {
+          0: { cellWidth: availableWidth * 0.33 },
+          1: { cellWidth: availableWidth * 0.335 },
+          2: { cellWidth: availableWidth * 0.335 },
+        },
+      });
+      yPos = pdf.lastAutoTable.finalY + 5;
+
+      // ATL section - special 2-row table
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: [
+          [{ content: 'Approaches to learning (ATL)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
+          [{ content: topicData.topic_atl_skills || '', styles: { cellPadding: 3 }}],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      });
+      yPos = pdf.lastAutoTable.finalY + 5;
+
+      // Content & Learning process section - special 3-row table
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: [
+          [
+            { content: 'Content', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: 'Learning process', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          ],
+          [
+            { content: '', styles: { cellPadding: 3 }, rowSpan: 2 },
+            { content: '', styles: { cellPadding: 3 }},
+          ],
+          [
+            { content: `Formative assessment:\n\n${topicData.topic_formative_assessment || ''}`, styles: { cellPadding: 3 }},
+          ],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+        columnStyles: {
+          0: { cellWidth: availableWidth * 0.33 },
+          1: { cellWidth: availableWidth * 0.67 },
+        },
+      });
+      yPos = pdf.lastAutoTable.finalY + 5;
+
+      // Resources section - 2-row table
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: [
+          [{ content: 'Resources', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
+          [{ content: topicData.topic_resources || '', styles: { cellPadding: 3 }}],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      });
+      yPos = pdf.lastAutoTable.finalY + 5;
+
+      // Reflection section with special text and 3-column table
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Reflection: Considering the planning, process and impact of the inquiry', margin, yPos);
+      yPos += 6;
+
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: [
+          [
+            { content: 'Prior to teaching the unit', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: 'During teaching', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+            { content: 'After teaching the unit', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          ],
+          [
+            { content: '', styles: { cellPadding: 3 }},
+            { content: '', styles: { cellPadding: 3 }},
+            { content: '', styles: { cellPadding: 3 }},
+          ],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+        columnStyles: {
+          0: { cellWidth: availableWidth * 0.33 },
+          1: { cellWidth: availableWidth * 0.33 },
+          2: { cellWidth: availableWidth * 0.34 },
+        },
+      });
+      yPos = pdf.lastAutoTable.finalY + 5;
+
+      // Remaining sections
       const sections = [
-        { label: 'Middle Years Programme objectives', content: topicData.topic_myp_objectives },
-        { label: 'Summative assessment task(s)', content: topicData.topic_summative_assessment },
-        { label: 'Relationship between summative assessment task(s) and statement of inquiry', content: topicData.topic_relationship },
-        { label: 'Approaches to learning (ATL) skills', content: topicData.topic_atl_skills },
-        { label: 'Content', content: topicData.topic_content },
-        { label: 'Learning experiences and teaching strategies', content: topicData.topic_learning_experiences },
-        { label: 'Formative assessment', content: topicData.topic_formative_assessment },
         { label: 'Differentiation', content: topicData.topic_differentiation },
-        { label: 'Resources', content: topicData.topic_resources },
-        { label: 'Reflection', content: topicData.topic_reflection },
       ];
 
       sections.forEach((section) => {
@@ -3591,7 +4033,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
               [{ content: section.content, colSpan: 8, styles: { cellPadding: 3 } }],
             ],
             theme: 'grid',
-            styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5 },
+            styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
           });
           yPos = pdf.lastAutoTable.finalY + 5;
         }
@@ -3956,11 +4398,68 @@ Please respond in ${selected} language and ensure valid JSON format.`
                           <div 
                             key={topic.topic_id}
                             className="relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all cursor-pointer hover:border-red-300 overflow-hidden"
-                            onClick={() => {
+                            onClick={async () => {
+                              // Reset AI modal states when opening a new unit
+                              setAiInputModalOpen(false)
+                              setAiResultModalOpen(false)
+                              setAiLoading(false)
+                              setAiError('')
+                              setAiItems([])
+                              
                               setSelectedTopic(topic)
                               setModalOpen(true)
-                              // Fetch assessment for this topic
-                              fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
+                              setIsAddMode(false)
+                              setCurrentStep(0)
+                              
+                              // Pre-fill wizard with existing data
+                              setSelectedTopic(topic)
+                              
+                              // Fetch assessment for this topic and load into wizard
+                              await fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
+                              
+                              // Load assessment data into wizard state
+                              const { data: assessmentData } = await supabase
+                                .from('assessment')
+                                .select(`
+                                  assessment_id,
+                                  assessment_nama,
+                                  assessment_keterangan,
+                                  assessment_semester,
+                                  assessment_criteria (criterion_id)
+                                `)
+                                .eq('assessment_topic_id', topic.topic_id)
+                                .single()
+                              
+                              if (assessmentData) {
+                                const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || []
+                                setWizardAssessment({
+                                  assessment_nama: assessmentData.assessment_nama || '',
+                                  assessment_keterangan: assessmentData.assessment_keterangan || '',
+                                  assessment_semester: assessmentData.assessment_semester?.toString() || '',
+                                  assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
+                                  selected_criteria: criteriaIds
+                                })
+                              } else {
+                                // No assessment yet, clear wizard assessment
+                                setWizardAssessment({
+                                  assessment_nama: '',
+                                  assessment_keterangan: '',
+                                  assessment_semester: '',
+                                  assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
+                                  selected_criteria: []
+                                })
+                              }
+                              
+                              // Load criteria for subject
+                              if (topic.topic_subject_id) {
+                                await fetchKelasForSubject(topic.topic_subject_id)
+                                const { data: criteriaData } = await supabase
+                                  .from('criteria')
+                                  .select('criterion_id, code, name')
+                                  .eq('subject_id', topic.topic_subject_id)
+                                  .order('code')
+                                setWizardCriteria(criteriaData || [])
+                              }
                             }}
                           >
                             {/* Grade Watermark */}
@@ -4511,7 +5010,15 @@ Please respond in ${selected} language and ensure valid JSON format.`
       {modalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black bg-opacity-50 transition-opacity duration-300"
-          onClick={() => setModalOpen(false)}
+          onClick={() => {
+            setModalOpen(false)
+            // Reset AI modal states when closing main modal
+            setAiInputModalOpen(false)
+            setAiResultModalOpen(false)
+            setAiLoading(false)
+            setAiError('')
+            setAiItems([])
+          }}
         >
           <div className="w-full flex justify-center items-start gap-4 max-w-[1400px] mt-8" onClick={(e) => e.stopPropagation()}>
             <div 
@@ -4569,10 +5076,16 @@ Please respond in ${selected} language and ensure valid JSON format.`
                       {/* Stepper */}
                       <div className="flex items-center justify-between">
                         {plannerSteps.map((step, index) => (
-                          <div key={step.id} className="flex items-center">
+                          <div key={step.id} className="flex-1 flex items-center justify-center relative">
+                            {/* Connector line */}
+                            {index > 0 && (
+                              <div className={`absolute top-1/2 right-1/2 w-full h-1 -translate-y-1/2 -z-10 ${
+                                isStepCompleted(index - 1) ? 'bg-green-500' : 'bg-gray-300'
+                              }`} />
+                            )}
                             <button
                               onClick={() => setCurrentStep(index)}
-                              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all ${
+                              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all z-10 ${
                                 index === currentStep
                                   ? 'bg-cyan-500 text-white scale-110'
                                   : isStepCompleted(index)
@@ -4589,68 +5102,80 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                 index + 1
                               )}
                             </button>
-                            {index < plannerSteps.length - 1 && (
-                              <div className={`w-8 h-1 ${isStepCompleted(index) ? 'bg-green-500' : 'bg-gray-300'}`} />
-                            )}
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    /* Edit Mode Header */
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 mr-4">
-                        {editingField === 'topic_nama' ? (
-                          <input
-                            type="text"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={() => handleSave('topic_nama', editValue)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSave('topic_nama', editValue)
-                              if (e.key === 'Escape') cancelEdit()
-                            }}
-                            className="text-2xl font-bold text-gray-800 w-full px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            autoFocus
-                          />
-                        ) : (
-                          <h2 
-                            className="text-2xl font-bold text-gray-800 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded transition-colors"
-                            onClick={() => startEdit('topic_nama', selectedTopic.topic_nama)}
-                          >
-                            {selectedTopic.topic_nama || 'Untitled Topic'}
-                          </h2>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded text-sm font-medium">
-                            {subjectMap.get(selectedTopic.topic_subject_id) || 'N/A'}
-                          </span>
-                          {selectedTopic.topic_kelas_id && (
-                            <span className="bg-green-50 text-green-600 px-3 py-1 rounded text-sm font-medium">
-                              {kelasNameMap.get(selectedTopic.topic_kelas_id) || 'N/A'}
-                            </span>
-                          )}
-                          <span className="bg-red-50 text-red-600 px-3 py-1 rounded text-sm font-medium">
-                            Unit #{selectedTopic.topic_urutan || '-'}
-                          </span>
+                    /* Edit Mode Header - Now Using Wizard */
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h2 className="text-2xl font-bold text-gray-800">Edit Unit Plan</h2>
+                          <p className="text-sm text-gray-500 mt-1">{selectedTopic.topic_nama || 'Unit Plan'}</p>
                         </div>
+                        <button
+                          onClick={() => {
+                            setModalOpen(false)
+                            setIsAddMode(false)
+                            setCurrentStep(0)
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setModalOpen(false)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+
+                      {/* Wizard Progress Bar */}
+                      <div className="flex items-start justify-between mb-6">
+                        {plannerSteps.map((step, index) => (
+                          <button 
+                            key={step.id} 
+                            type="button"
+                            onClick={() => setCurrentStep(index)}
+                            className="flex-1 flex flex-col items-center relative group cursor-pointer"
+                            title={`Go to ${step.title}`}
+                          >
+                            {/* Connector line - before circle */}
+                            {index > 0 && (
+                              <div className={`absolute top-5 right-1/2 w-full h-1 -z-10 ${
+                                isStepCompleted(index - 1) ? 'bg-green-500' : 'bg-gray-200'
+                              }`} />
+                            )}
+                            {/* Circle */}
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all z-10 group-hover:scale-110 ${
+                              index === currentStep 
+                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white ring-4 ring-cyan-200' 
+                                : isStepCompleted(index)
+                                ? 'bg-green-500 text-white group-hover:bg-green-600' 
+                                : 'bg-gray-200 text-gray-500 group-hover:bg-gray-300'
+                            }`}>
+                              {isStepCompleted(index) ? (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <span>{index + 1}</span>
+                              )}
+                            </div>
+                            {/* Label */}
+                            <span className={`text-xs mt-2 text-center font-medium leading-tight max-w-[80px] group-hover:text-cyan-600 transition-colors ${
+                              index === currentStep ? 'text-cyan-600' : 'text-gray-500'
+                            }`}>
+                              {step.title}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* Modal Content */}
                 <div className="px-6 py-6">
-                  {isAddMode ? (
-                    /* Wizard Content */
+                  {/* Wizard Content (both add and edit mode) */}
                     <div className="space-y-6">
                       {/* Step Title and Description */}
                       <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded">
@@ -5093,31 +5618,40 @@ Please respond in ${selected} language and ensure valid JSON format.`
                               </label>
                               <p className="text-xs text-gray-600 mb-3">Select IB Learner Profile attributes students will develop</p>
                               <div className="mb-2">
-                                <button 
-                                  type="button" 
-                                  onClick={() => {
-                                    if (!isStepCompleted(2)) return
-                                    setAiHelpType('learnerProfile')
-                                    setAiError('')
-                                    setSelectedLearnerProfiles([])
-                                    setAiResultModalOpen(false)
-                                    requestAiHelp('learnerProfile')
-                                  }}
-                                  disabled={!isStepCompleted(2)}
-                                  className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                                    isStepCompleted(2)
-                                      ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer'
-                                      : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  }`}
-                                  title={!isStepCompleted(2) ? 'Complete all Step 3 fields first' : 'Get AI suggestions for Learner Profile'}
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                                  </svg>
-                                  AI Help
-                                </button>
+                                {(() => {
+                                  // Check if required data for AI is available
+                                  // In Edit mode, always enable since data is loaded from DB
+                                  // In Add mode, check if step 2 (concepts) is completed
+                                  const canUseAiHelp = !isAddMode || isStepCompleted(2)
+                                  
+                                  return (
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        if (!canUseAiHelp) return
+                                        setAiHelpType('learnerProfile')
+                                        setAiError('')
+                                        setSelectedLearnerProfiles([])
+                                        setAiResultModalOpen(false)
+                                        requestAiHelp('learnerProfile')
+                                      }}
+                                      disabled={!canUseAiHelp}
+                                      className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                        canUseAiHelp
+                                          ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer'
+                                          : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                      }`}
+                                      title={!canUseAiHelp ? 'Complete Key Concept, Related Concept, and Global Context first' : 'Get AI suggestions for Learner Profile'}
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                      </svg>
+                                      AI Help
+                                    </button>
+                                  )
+                                })()}
                               </div>
-                              {!isStepCompleted(2) && (
+                              {isAddMode && !isStepCompleted(2) && (
                                 <p className="text-xs text-amber-600 mb-2">⚠️ Complete all Step 3 fields first to use AI Help</p>
                               )}
                               <div className="flex flex-wrap gap-2">
@@ -5159,31 +5693,40 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                 Service Learning <span className="text-red-500">*</span>
                               </label>
                               <div className="mb-2">
-                                <button 
-                                  type="button" 
-                                  onClick={() => {
-                                    if (!isStepCompleted(2)) return
-                                    setAiHelpType('serviceLearning')
-                                    setAiError('')
-                                    setSelectedServiceLearning([])
-                                    setAiResultModalOpen(false)
-                                    requestAiHelp('serviceLearning')
-                                  }}
-                                  disabled={!isStepCompleted(2)}
-                                  className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                                    isStepCompleted(2)
-                                      ? 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 cursor-pointer'
-                                      : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  }`}
-                                  title={!isStepCompleted(2) ? 'Complete all Step 3 fields first' : 'Get AI suggestions for Service Learning'}
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                                  </svg>
-                                  AI Help
-                                </button>
+                                {(() => {
+                                  // Check if required data for AI is available
+                                  // In Edit mode, always enable since data is loaded from DB
+                                  // In Add mode, check if step 2 (concepts) is completed
+                                  const canUseAiHelp = !isAddMode || isStepCompleted(2)
+                                  
+                                  return (
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        if (!canUseAiHelp) return
+                                        setAiHelpType('serviceLearning')
+                                        setAiError('')
+                                        setSelectedServiceLearning([])
+                                        setAiResultModalOpen(false)
+                                        requestAiHelp('serviceLearning')
+                                      }}
+                                      disabled={!canUseAiHelp}
+                                      className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                        canUseAiHelp
+                                          ? 'border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 cursor-pointer'
+                                          : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                      }`}
+                                      title={!canUseAiHelp ? 'Complete Key Concept, Related Concept, and Global Context first' : 'Get AI suggestions for Service Learning'}
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                      </svg>
+                                      AI Help
+                                    </button>
+                                  )
+                                })()}
                               </div>
-                              {!isStepCompleted(2) && (
+                              {isAddMode && !isStepCompleted(2) && (
                                 <p className="text-xs text-amber-600 mb-2">⚠️ Complete all Step 3 fields first to use AI Help</p>
                               )}
                               <textarea
@@ -5200,61 +5743,30 @@ Please respond in ${selected} language and ensure valid JSON format.`
                         {/* Step 5: Assessment */}
                         {currentStep === 5 && (
                           <>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="col-span-2">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                  Assessment Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  value={wizardAssessment.assessment_nama}
-                                  onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_nama: e.target.value }))}
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                  placeholder="e.g., Energy Conservation Project"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                  Assessment Date <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                  type="date"
-                                  value={wizardAssessment.assessment_tanggal}
-                                  onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_tanggal: e.target.value }))}
-                                  min={getMinimumDate().toISOString().split('T')[0]}
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                  Semester <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                  value={wizardAssessment.assessment_semester}
-                                  onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_semester: e.target.value }))}
-                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                >
-                                  <option value="">Select Semester...</option>
-                                  <option value="1">Semester 1</option>
-                                  <option value="2">Semester 2</option>
-                                </select>
-                              </div>
-                            </div>
+                            {(() => {
+                              // Check if assessment is approved (status === 1)
+                              const isAssessmentApproved = !isAddMode && topicAssessment && topicAssessment.assessment_status === 1
+                              const isAssessmentReadOnly = !isAddMode || isAssessmentApproved
+                              
+                              return (
+                                <>
+                                  {isAssessmentApproved && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                                      <p className="text-sm text-green-700">
+                                        <strong>✅ Approved:</strong> This assessment has been approved and cannot be edited. Contact an administrator if changes are required.
+                                      </p>
+                                    </div>
+                                  )}
+                                  {!isAddMode && !isAssessmentApproved && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                      <p className="text-sm text-blue-700">
+                                        <strong>ℹ️ Note:</strong> Assessment fields are read-only in edit mode. To modify assessment details, please use the Assessment tab.
+                                      </p>
+                                    </div>
+                                  )}
                             
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Description (Optional)
-                              </label>
-                              <textarea
-                                value={wizardAssessment.assessment_keterangan}
-                                onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_keterangan: e.target.value }))}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                rows={2}
-                                placeholder="Brief description of the assessment task..."
-                              />
-                            </div>
-                            
-                            <div>
+                            {/* Criteria to Assess - Moved to top */}
+                            <div className="mb-4">
                               <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Criteria to Assess <span className="text-red-500">*</span>
                               </label>
@@ -5273,18 +5785,21 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                         key={criterion.criterion_id}
                                         type="button"
                                         onClick={() => {
-                                          setWizardAssessment(prev => ({
-                                            ...prev,
-                                            selected_criteria: isSelected
-                                              ? prev.selected_criteria.filter(id => id !== criterion.criterion_id)
-                                              : [...prev.selected_criteria, criterion.criterion_id]
-                                          }))
+                                          if (!isAssessmentReadOnly) {
+                                            setWizardAssessment(prev => ({
+                                              ...prev,
+                                              selected_criteria: isSelected
+                                                ? prev.selected_criteria.filter(id => id !== criterion.criterion_id)
+                                                : [...prev.selected_criteria, criterion.criterion_id]
+                                            }))
+                                          }
                                         }}
+                                        disabled={isAssessmentReadOnly}
                                         className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all text-left ${
                                           isSelected
                                             ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
                                             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                                        }`}
+                                        } ${isAssessmentReadOnly ? 'cursor-not-allowed opacity-75' : ''}`}
                                       >
                                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
                                           isSelected ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-500'
@@ -5310,6 +5825,159 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                 </p>
                               )}
                             </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="col-span-2">
+                                <div className="flex items-center justify-between mb-2">
+                                  <label className="block text-sm font-semibold text-gray-700">
+                                    Assessment Name <span className="text-red-500">*</span>
+                                  </label>
+                                  {(() => {
+                                    const canUseAiHelp = wizardAssessment.selected_criteria.length > 0 && !isAssessmentReadOnly
+                                    return (
+                                      <button 
+                                        type="button" 
+                                        onClick={() => {
+                                          if (!canUseAiHelp) return
+                                          setAiHelpType('assessmentName')
+                                          setAiError('')
+                                          setAiResultModalOpen(false)
+                                          requestAiHelp('assessmentName')
+                                        }}
+                                        disabled={!canUseAiHelp}
+                                        className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                          canUseAiHelp
+                                            ? 'border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 cursor-pointer'
+                                            : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        }`}
+                                        title={!canUseAiHelp ? 'Select at least one Criteria to Assess first' : 'Get AI suggestions for Assessment Name'}
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                          <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                        </svg>
+                                        AI Help
+                                      </button>
+                                    )
+                                  })()}
+                                </div>
+                                {wizardAssessment.selected_criteria.length === 0 && (
+                                  <p className="text-xs text-amber-600 mb-2">⚠️ Select Criteria to Assess first to use AI Help</p>
+                                )}
+                                <input
+                                  type="text"
+                                  value={wizardAssessment.assessment_nama}
+                                  onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_nama: e.target.value }))}
+                                  disabled={isAssessmentReadOnly}
+                                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="e.g., Energy Conservation Project"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                  Semester <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                  value={wizardAssessment.assessment_semester}
+                                  onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_semester: e.target.value }))}
+                                  disabled={isAssessmentReadOnly}
+                                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                >
+                                  <option value="">Select Semester...</option>
+                                  <option value="1">Semester 1</option>
+                                  <option value="2">Semester 2</option>
+                                </select>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Description (Optional)
+                              </label>
+                              <textarea
+                                value={wizardAssessment.assessment_keterangan}
+                                onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_keterangan: e.target.value }))}
+                                disabled={isAssessmentReadOnly}
+                                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                rows={2}
+                                placeholder="Brief description of the assessment task..."
+                              />
+                            </div>
+                                </>
+                              )
+                            })()}
+                          </>
+                        )}
+
+                        {/* Step 6: Relationship */}
+                        {currentStep === 6 && (
+                          <>
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                  Relationship: Summative Assessment & Statement of Inquiry
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Validasi bahwa step 1-6 sudah diisi
+                                    const requiredFields = [
+                                      selectedTopic.topic_nama,
+                                      selectedTopic.topic_inquiry_question,
+                                      selectedTopic.topic_key_concept,
+                                      selectedTopic.topic_statement,
+                                      wizardAssessment.assessment_nama
+                                    ];
+                                    
+                                    const allFilled = requiredFields.every(field => field && field.toString().trim() !== '');
+                                    
+                                    if (!allFilled) {
+                                      alert('Please complete all previous steps (1-6) before using AI assistance.');
+                                      return;
+                                    }
+                                    
+                                    // Langsung request AI help tanpa input modal
+                                    setAiHelpType('assessmentRelationship');
+                                    setAiError('');
+                                    setAiResultModalOpen(false);
+                                    requestAiHelp('assessmentRelationship');
+                                  }}
+                                  disabled={
+                                    aiLoading || 
+                                    !selectedTopic.topic_nama || 
+                                    !selectedTopic.topic_inquiry_question || 
+                                    !selectedTopic.topic_key_concept || 
+                                    !selectedTopic.topic_statement || 
+                                    !wizardAssessment.assessment_nama
+                                  }
+                                  className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                                    aiLoading || 
+                                    !selectedTopic.topic_nama || 
+                                    !selectedTopic.topic_inquiry_question || 
+                                    !selectedTopic.topic_key_concept || 
+                                    !selectedTopic.topic_statement || 
+                                    !wizardAssessment.assessment_nama
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                                  }`}
+                                >
+                                  <FontAwesomeIcon icon={faSpinner} spin={aiLoading} className="text-xs" />
+                                  AI Help
+                                </button>
+                              </div>
+                              <textarea
+                                value={wizardAssessment.assessment_relationship}
+                                onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_relationship: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                rows={4}
+                                placeholder="Explain how the summative assessment relates to the statement of inquiry..."
+                              />
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                              <p className="text-sm text-blue-700">
+                                💡 <strong>Tip:</strong> A strong relationship statement explains how the assessment task allows students to demonstrate their understanding of the Statement of Inquiry and the conceptual understanding developed in this unit.
+                              </p>
+                            </div>
                           </>
                         )}
                       </div>
@@ -5327,17 +5995,44 @@ Please respond in ${selected} language and ensure valid JSON format.`
                           Previous
                         </button>
                         
-                        <div className="text-center">
-                          {isStepCompleted(currentStep) ? (
-                            <div className="flex items-center gap-2 text-green-600">
-                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                              <span className="text-sm font-medium">Step completed</span>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-gray-500">Fill all required fields</p>
-                          )}
+                        <div className="text-center flex-1">
+                          {(() => {
+                            const missingFields = getMissingFields()
+                            const progress = getCompletionProgress()
+                            
+                            if (progress.completed === plannerSteps.length) {
+                              return (
+                                <div className="flex items-center justify-center gap-2 text-green-600">
+                                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                  </svg>
+                                  <span className="text-sm font-medium">All steps completed - Ready to save!</span>
+                                </div>
+                              )
+                            } else if (missingFields.length > 0) {
+                              // Group missing fields by step
+                              const groupedByStep = missingFields.reduce((acc, item) => {
+                                if (!acc[item.step]) acc[item.step] = []
+                                acc[item.step].push(item.field)
+                                return acc
+                              }, {})
+                              
+                              return (
+                                <div className="text-left">
+                                  <p className="text-xs text-red-600 font-semibold mb-1">⚠️ Missing required fields:</p>
+                                  <div className="max-h-20 overflow-y-auto">
+                                    {Object.entries(groupedByStep).map(([step, fields]) => (
+                                      <p key={step} className="text-xs text-gray-600">
+                                        <span className="font-medium text-red-500">Step {step}:</span> {fields.join(', ')}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )
+                            } else {
+                              return <p className="text-sm text-gray-500">Fill all required fields</p>
+                            }
+                          })()}
                         </div>
                         
                         {currentStep < plannerSteps.length - 1 ? (
@@ -5352,676 +6047,27 @@ Please respond in ${selected} language and ensure valid JSON format.`
                           </button>
                         ) : (
                           <button
-                            onClick={saveNewTopic}
-                            disabled={saving || getCompletionProgress().completed < plannerSteps.length}
+                            onClick={isAddMode ? saveNewTopic : updateExistingTopic}
+                            disabled={saving || getMissingFields().length > 0}
                             className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                           >
                             {saving ? (
                               <>
                                 <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                                Saving...
+                                {isAddMode ? 'Saving...' : 'Updating...'}
                               </>
                             ) : (
                               <>
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
-                                Save Unit
+                                {isAddMode ? 'Create Unit' : 'Update Unit'}
                               </>
                             )}
                           </button>
                         )}
                       </div>
                     </div>
-                  ) : (
-                    /* Edit Mode Content */
-                    <div className="space-y-6">
-                  {/* Duration and Hours */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500 mb-1">Duration</p>
-                      {(editingField === 'topic_duration') ? (
-                        <input
-                          type="number"
-                          value={editValue}
-                          onChange={(e) => {
-                            if (false) {
-                              setSelectedTopic(prev => ({ ...prev, topic_duration: e.target.value }))
-                            } else {
-                              setEditValue(e.target.value)
-                            }
-                          }}
-                          onBlur={() => {
-                            if (true && editingField === 'topic_duration') {
-                              handleSave('topic_duration', editValue)
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !isAddMode) handleSave('topic_duration', editValue)
-                            if (e.key === 'Escape') {
-                              if (true) cancelEdit()
-                            }
-                          }}
-                          className="w-full px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-lg font-semibold"
-                          placeholder="0"
-                        />
-                      ) : (
-                        <p 
-                          className="text-lg font-semibold text-gray-800 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
-                          onClick={() => startEdit('topic_duration', selectedTopic.topic_duration || '')}
-                        >
-                          {selectedTopic.topic_duration && selectedTopic.topic_duration !== '0' && selectedTopic.topic_duration !== 0 
-                            ? `${selectedTopic.topic_duration} weeks` 
-                            : '-'}
-                        </p>
-                      )}
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500 mb-1">Hours per Week</p>
-                      {(editingField === 'topic_hours_per_week') ? (
-                        <input
-                          type="number"
-                          value={editValue}
-                          onChange={(e) => {
-                            if (false) {
-                              setSelectedTopic(prev => ({ ...prev, topic_hours_per_week: e.target.value }))
-                            } else {
-                              setEditValue(e.target.value)
-                            }
-                          }}
-                          onBlur={() => {
-                            if (true && editingField === 'topic_hours_per_week') {
-                              handleSave('topic_hours_per_week', editValue)
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !isAddMode) handleSave('topic_hours_per_week', editValue)
-                            if (e.key === 'Escape') {
-                              if (true) cancelEdit()
-                            }
-                          }}
-                          className="w-full px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-lg font-semibold"
-                          placeholder="0"
-                        />
-                      ) : (
-                        <p 
-                          className="text-lg font-semibold text-gray-800 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
-                          onClick={() => startEdit('topic_hours_per_week', selectedTopic.topic_hours_per_week || '')}
-                        >
-                          {selectedTopic.topic_hours_per_week && selectedTopic.topic_hours_per_week !== '0' && selectedTopic.topic_hours_per_week !== 0
-                            ? `${selectedTopic.topic_hours_per_week} hours`
-                            : '-'}
-                        </p>
-                      )}
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500 mb-1">MYP Year <span className="text-red-500">*</span></p>
-                      {(editingField === 'topic_year') ? (
-                        <select
-                          value={editValue}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            setEditValue(val)
-                            // Auto-save when value selected
-                            if (val) {
-                              handleSave('topic_year', val)
-                            }
-                          }}
-                          className="w-full px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-lg font-semibold"
-                        >
-                          <option value="1">Year 1</option>
-                          <option value="3">Year 3</option>
-                          <option value="5">Year 5</option>
-                        </select>
-                      ) : (
-                        <p 
-                          className={`text-lg font-semibold cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors ${selectedTopic.topic_year ? 'text-gray-800' : 'text-red-500'}`}
-                          onClick={() => startEdit('topic_year', selectedTopic.topic_year ? String(selectedTopic.topic_year) : '1')}
-                        >
-                          {selectedTopic.topic_year ? `Year ${selectedTopic.topic_year}` : 'Click to set MYP Year'}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Inquiry Question */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Inquiry Question</h3>
-                    {(editingField === 'topic_inquiry_question') ? (
-                      <textarea
-                        value={editValue}
-                        onChange={(e) => {
-                          if (false) {
-                            setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: e.target.value }))
-                          } else {
-                            setEditValue(e.target.value)
-                          }
-                        }}
-                        onBlur={() => {
-                          if (true && editingField === 'topic_inquiry_question') {
-                            handleSave('topic_inquiry_question', editValue)
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape' && !isAddMode) cancelEdit()
-                        }}
-                        className="w-full px-3 py-2 border border-cyan-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-700 leading-relaxed"
-                        rows={3}
-                        placeholder=""
-                      />
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_inquiry_question', selectedTopic.topic_inquiry_question)}
-                      >
-                        {selectedTopic.topic_inquiry_question || 'Click to add inquiry question...'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Global Context */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Global Context</h3>
-                    {(editingField === 'topic_global_context') ? (
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                          {globalContexts.map((context) => (
-                            <button
-                              key={context}
-                              onClick={() => {
-                                if (false) {
-                                  // In add mode, directly update selectedTopic
-                                  const current = selectedTopic.topic_global_context || ''
-                                  const currentArray = current ? current.split(', ').filter(c => c) : []
-                                  const newArray = currentArray.includes(context)
-                                    ? currentArray.filter(c => c !== context)
-                                    : [...currentArray, context]
-                                  setSelectedTopic(prev => ({ ...prev, topic_global_context: newArray.join(', ') }))
-                                } else {
-                                  // In edit mode, use selectedContexts
-                                  toggleContext(context)
-                                }
-                              }}
-                              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                (isAddMode 
-                                  ? (selectedTopic.topic_global_context || '').split(', ').includes(context)
-                                  : selectedContexts.includes(context))
-                                  ? 'bg-cyan-500 text-white shadow-md scale-105'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {(isAddMode 
-                                ? (selectedTopic.topic_global_context || '').split(', ').includes(context)
-                                : selectedContexts.includes(context)) && (
-                                <svg className="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                              {context}
-                            </button>
-                          ))}
-                        </div>
-                        {!isAddMode && (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={saveGlobalContexts}
-                              className="px-4 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 transition-colors font-medium"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        )}
-                        {((isAddMode && selectedTopic.topic_global_context) || (!isAddMode && selectedContexts.length > 0)) && (
-                          <p className="text-xs text-gray-500">
-                            Selected: {isAddMode 
-                              ? (selectedTopic.topic_global_context || '').split(', ').filter(c => c).length
-                              : selectedContexts.length} context{((isAddMode ? (selectedTopic.topic_global_context || '').split(', ').filter(c => c).length : selectedContexts.length) > 1) ? 's' : ''}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_global_context', selectedTopic.topic_global_context)}
-                      >
-                        {selectedTopic.topic_global_context || 'Click to select global context...'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Key Concept */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-cyan-500">Key Concept</h3>
-                      {lang === 'en' && isStepCompleted(0) && (
-                        <button
-                          onClick={() => {
-                            setAiHelpType('keyConcept')
-                            setAiError('')
-                            setSelectedKeyConcepts([])
-                            setAiResultModalOpen(false)
-                            requestAiHelp('keyConcept')
-                          }}
-                          className="text-xs px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border border-purple-200"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                          </svg>
-                          AI Help
-                        </button>
-                      )}
-                    </div>
-                    {(editingField === 'topic_key_concept') ? (
-                      <div className="space-y-3">
-                        <p className="text-xs text-gray-600">Select 1-3 concepts from the 16 IB MYP Key Concepts</p>
-                        <div className="flex flex-wrap gap-2">
-                          {keyConcepts.map((concept) => {
-                            const currentArray = editValue ? editValue.split(',').map(s => s.trim()).filter(Boolean) : []
-                            const isSelected = currentArray.includes(concept)
-                            return (
-                              <button
-                                key={concept}
-                                type="button"
-                                onClick={() => {
-                                  const newArray = isSelected
-                                    ? currentArray.filter(c => c !== concept)
-                                    : [...currentArray, concept]
-                                  setEditValue(newArray.join(', '))
-                                }}
-                                className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
-                                  isSelected
-                                    ? 'bg-purple-500 text-white shadow-md scale-105'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                              >
-                                {isSelected && (
-                                  <svg className="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
-                                {concept}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        {editValue && (
-                          <p className="text-xs text-purple-600">
-                            ✓ Selected: {editValue.split(',').map(s => s.trim()).filter(Boolean).length} concept(s)
-                          </p>
-                        )}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleSave('topic_key_concept', editValue)}
-                            className="px-4 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 transition-colors font-medium text-sm"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium text-sm"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_key_concept', selectedTopic.topic_key_concept)}
-                      >
-                        {selectedTopic.topic_key_concept || 'Click to add key concept...'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Related Concept */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-cyan-500">Related Concept</h3>
-                      {lang === 'en' && isStepCompleted(0) && (
-                        <button
-                          onClick={() => {
-                            setAiHelpType('relatedConcept')
-                            setAiError('')
-                            setSelectedRelatedConcepts([])
-                            setAiResultModalOpen(false)
-                            requestAiHelp('relatedConcept')
-                          }}
-                          className="text-xs px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border border-teal-200"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                          </svg>
-                          AI Help
-                        </button>
-                      )}
-                    </div>
-                    {(editingField === 'topic_related_concept') ? (
-                      <textarea
-                        value={editValue}
-                        onChange={(e) => {
-                          if (false) {
-                            setSelectedTopic(prev => ({ ...prev, topic_related_concept: e.target.value }))
-                          } else {
-                            setEditValue(e.target.value)
-                          }
-                        }}
-                        onBlur={() => {
-                          if (true && editingField === 'topic_related_concept') {
-                            handleSave('topic_related_concept', editValue)
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Escape' && !isAddMode) cancelEdit() }}
-                        className="w-full px-3 py-2 border border-cyan-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-700 leading-relaxed"
-                        rows={2}
-                        placeholder=""
-                      />
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_related_concept', selectedTopic.topic_related_concept)}
-                      >
-                        {selectedTopic.topic_related_concept || 'Click to add related concept...'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Statement of Inquiry */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Statement of Inquiry</h3>
-                    {(editingField === 'topic_statement') ? (
-                      <textarea
-                        value={editValue}
-                        onChange={(e) => {
-                          if (false) {
-                            setSelectedTopic(prev => ({ ...prev, topic_statement: e.target.value }))
-                          } else {
-                            setEditValue(e.target.value)
-                          }
-                        }}
-                        onBlur={() => {
-                          if (true && editingField === 'topic_statement') {
-                            handleSave('topic_statement', editValue)
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Escape' && !isAddMode) cancelEdit() }}
-                        className="w-full px-3 py-2 border border-cyan-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-700 leading-relaxed"
-                        rows={3}
-                        placeholder=""
-                      />
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_statement', selectedTopic.topic_statement)}
-                      >
-                        {selectedTopic.topic_statement || 'Click to add statement of inquiry...'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Learner Profile */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-cyan-500">Learner Profile Attributes</h3>
-                      {editingField !== 'topic_learner_profile' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!selectedTopic.topic_nama || !selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context) {
-                              alert('Please complete Unit Title, Key Concept, Related Concept, and Global Context first')
-                              return
-                            }
-                            setAiHelpType('learnerProfile')
-                            setAiError('')
-                            setSelectedLearnerProfiles([])
-                            setAiResultModalOpen(false)
-                            requestAiHelp('learnerProfile')
-                          }}
-                          className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
-                          title="Get AI suggestions for Learner Profile"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                          </svg>
-                          AI Help
-                        </button>
-                      )}
-                    </div>
-                    {(editingField === 'topic_learner_profile') ? (
-                      <div className="space-y-3">
-                        <p className="text-xs text-gray-600">Select IB Learner Profile attributes students will develop</p>
-                        <div className="flex flex-wrap gap-2">
-                          {learnerProfiles.map((profile) => {
-                            const currentArray = editValue ? editValue.split(',').map(s => s.trim()).filter(Boolean) : []
-                            const isSelected = currentArray.includes(profile)
-                            return (
-                              <button
-                                key={profile}
-                                type="button"
-                                onClick={() => {
-                                  const newArray = isSelected
-                                    ? currentArray.filter(c => c !== profile)
-                                    : [...currentArray, profile]
-                                  setEditValue(newArray.join(', '))
-                                }}
-                                className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
-                                  isSelected
-                                    ? 'bg-green-500 text-white shadow-md scale-105'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                              >
-                                {isSelected && (
-                                  <svg className="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
-                                {profile}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        {editValue && (
-                          <p className="text-xs text-green-600">
-                            ✓ Selected: {editValue.split(',').map(s => s.trim()).filter(Boolean).length} attribute(s)
-                          </p>
-                        )}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleSave('topic_learner_profile', editValue)}
-                            className="px-4 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 transition-colors font-medium text-sm"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium text-sm"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_learner_profile', selectedTopic.topic_learner_profile)}
-                      >
-                        {selectedTopic.topic_learner_profile || 'Click to add learner profile...'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Service Learning */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-cyan-500">Service Learning</h3>
-                      {editingField !== 'topic_service_learning' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!selectedTopic.topic_nama || !selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context) {
-                              alert('Please complete Unit Title, Key Concept, Related Concept, and Global Context first')
-                              return
-                            }
-                            setAiHelpType('serviceLearning')
-                            setAiError('')
-                            setSelectedServiceLearning([])
-                            setAiResultModalOpen(false)
-                            requestAiHelp('serviceLearning')
-                          }}
-                          className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition-colors"
-                          title="Get AI suggestions for Service Learning"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-                          </svg>
-                          AI Help
-                        </button>
-                      )}
-                    </div>
-                    {(editingField === 'topic_service_learning') ? (
-                      <textarea
-                        value={editValue}
-                        onChange={(e) => {
-                          if (false) {
-                            setSelectedTopic(prev => ({ ...prev, topic_service_learning: e.target.value }))
-                          } else {
-                            setEditValue(e.target.value)
-                          }
-                        }}
-                        onBlur={() => {
-                          if (true && editingField === 'topic_service_learning') {
-                            handleSave('topic_service_learning', editValue)
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Escape' && !isAddMode) cancelEdit() }}
-                        className="w-full px-3 py-2 border border-cyan-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-700 leading-relaxed"
-                        rows={3}
-                        placeholder=""
-                      />
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_service_learning', selectedTopic.topic_service_learning)}
-                      >
-                        {selectedTopic.topic_service_learning || 'Click to add service learning...'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Learning Process */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Learning Process</h3>
-                    {(editingField === 'topic_learning_process') ? (
-                      <textarea
-                        value={editValue}
-                        onChange={(e) => {
-                          if (false) {
-                            setSelectedTopic(prev => ({ ...prev, topic_learning_process: e.target.value }))
-                          } else {
-                            setEditValue(e.target.value)
-                          }
-                        }}
-                        onBlur={() => {
-                          if (true && editingField === 'topic_learning_process') {
-                            handleSave('topic_learning_process', editValue)
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Escape' && !isAddMode) cancelEdit() }}
-                        className="w-full px-3 py-2 border border-cyan-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-gray-700 leading-relaxed"
-                        rows={5}
-                        placeholder=""
-                      />
-                    ) : (
-                      <p 
-                        className="text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                        onClick={() => startEdit('topic_learning_process', selectedTopic.topic_learning_process)}
-                      >
-                        {selectedTopic.topic_learning_process || 'Click to add learning process...'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Formative Assessment */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Formative Assessment</h3>
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap p-2 bg-gray-50 rounded">
-                      {selectedTopic.topic_formative_assessment || '-'}
-                    </p>
-                  </div>
-
-                  {/* Summative Assessment */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Summative Assessment</h3>
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap p-2 bg-gray-50 rounded">
-                      {selectedTopic.topic_summative_assessment || '-'}
-                    </p>
-                  </div>
-
-                  {/* Relationship */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-cyan-500 mb-2">Relationship: Summative Assessment & Statement of Inquiry</h3>
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap p-2 bg-gray-50 rounded">
-                      {selectedTopic.topic_relationship_summative_assessment_statement_of_inquiry || '-'}
-                    </p>
-                  </div>
-
-                  {/* Assessment Task */}
-                  <div className="border-t border-gray-200 pt-6 mt-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-bold text-cyan-600">Assessment Task</h3>
-                    </div>
-                    
-                    {topicAssessment ? (
-                      // Display Assessment (Read-only)
-                      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg p-4 border border-cyan-200">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h4 className="font-bold text-gray-800">{topicAssessment.assessment_nama}</h4>
-                            <p className="text-sm text-gray-500">
-                              {topicAssessment.assessment_tanggal && new Date(topicAssessment.assessment_tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                              {topicAssessment.assessment_semester && ` • Semester ${topicAssessment.assessment_semester}`}
-                            </p>
-                          </div>
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            topicAssessment.assessment_status === 1 ? 'bg-green-100 text-green-700' :
-                            topicAssessment.assessment_status === 3 ? 'bg-purple-100 text-purple-700' :
-                            topicAssessment.assessment_status === 2 ? 'bg-red-100 text-red-700' :
-                            'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {topicAssessment.assessment_status === 1 ? 'Approved' :
-                             topicAssessment.assessment_status === 3 ? 'Waiting Principal' :
-                             topicAssessment.assessment_status === 2 ? 'Rejected' : 'Waiting Approval'}
-                          </span>
-                        </div>
-                        {topicAssessment.assessment_keterangan && (
-                          <p className="text-sm text-gray-600 mb-3">{topicAssessment.assessment_keterangan}</p>
-                        )}
-                        <div className="flex flex-wrap gap-2">
-                          {topicAssessment.selected_criteria?.map(criterionId => {
-                            const criterion = wizardCriteria.find(c => c.criterion_id === criterionId)
-                            return criterion ? (
-                              <span key={criterionId} className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded border border-cyan-200 text-sm">
-                                <span className="w-5 h-5 rounded bg-cyan-500 text-white text-xs flex items-center justify-center font-bold">{criterion.code}</span>
-                                <span className="text-gray-700">{criterion.name}</span>
-                              </span>
-                            ) : null
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-500">
-                        No assessment linked to this unit
-                      </div>
-                    )}
-                  </div>
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -6075,7 +6121,8 @@ Please respond in ${selected} language and ensure valid JSON format.`
                         )}
                       </div>
                     </div>
-                    <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-end gap-3 flex-shrink-0 rounded-b-2xl">
+
+                    <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0 bg-gray-50 rounded-b-2xl flex items-center justify-between">
                       <button
                         onClick={() => setAiInputModalOpen(false)}
                         className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
@@ -6100,7 +6147,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                     isOpen={true}
                     inline={true}
                     onClose={() => setAiResultModalOpen(false)}
-                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : 'AI Suggestions: Unit Title'}
+                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Name' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
                     size="md"
                   >
                     <div className="flex flex-col h-full">
@@ -6126,7 +6173,11 @@ Please respond in ${selected} language and ensure valid JSON format.`
                         {!aiLoading && aiItems.length > 0 && (
                           <div className="space-y-4">
                             {aiItems.map((item) => {
-                              const titleToUse = item.option || item.text || ''
+                              // Remove bold formatting (**text**) from AI response
+                              const cleanOption = (item.option || '').replace(/\*\*/g, '')
+                              const cleanText = (item.text || '').replace(/\*\*/g, '')
+                              const cleanReason = (item.reason || '').replace(/\*\*/g, '')
+                              const titleToUse = cleanOption || cleanText || ''
 
                               return (
                                 <div 
@@ -6216,29 +6267,34 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   </div>
                                   
                                   {/* Question or Title (option) */}
-                                  {item.option && (
+                                  {cleanOption && (
                                     <div className="mb-3">
                                       <h4 className="text-base font-bold text-gray-900 mb-1">
                                         {aiHelpType === 'inquiryQuestion' ? 'Question:' 
                                           : aiHelpType === 'keyConcept' ? 'Key Concept:'
                                           : aiHelpType === 'relatedConcept' ? 'Related Concept:'
                                           : aiHelpType === 'globalContext' ? 'Global Context:'
-                                          : aiHelpType === 'statement' ? 'Statement of Inquiry:' : aiHelpType === 'learnerProfile' ? 'Learner Profile Attribute:' : aiHelpType === 'serviceLearning' ? 'Service Learning Opportunity:' : t('topicNew.aiHelp.unitTitleLabel')}
+                                          : aiHelpType === 'statement' ? 'Statement of Inquiry:' 
+                                          : aiHelpType === 'learnerProfile' ? 'Learner Profile Attribute:' 
+                                          : aiHelpType === 'serviceLearning' ? 'Service Learning Opportunity:' 
+                                          : aiHelpType === 'assessmentName' ? 'Assessment Name:'
+                                          : aiHelpType === 'assessmentRelationship' ? 'Relationship Explanation:'
+                                          : t('topicNew.aiHelp.unitTitleLabel')}
                                       </h4>
-                                      <p className="text-gray-800 leading-relaxed">{item.option}</p>
+                                      <p className="text-gray-800 leading-relaxed">{cleanOption}</p>
                                     </div>
                                   )}
                                   
                                   {/* Description (text) */}
-                                  {item.text && (
+                                  {cleanText && (
                                     <div className="mb-3">
                                       <h4 className="text-sm font-semibold text-gray-700 mb-1">{t('topicNew.aiHelp.descriptionLabel')}</h4>
-                                      <p className="text-gray-700 text-sm leading-relaxed">{item.text}</p>
+                                      <p className="text-gray-700 text-sm leading-relaxed">{cleanText}</p>
                                     </div>
                                   )}
                                   
                                   {/* Reason */}
-                                  {item.reason && (
+                                  {cleanReason && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                                       <h4 className="text-sm font-semibold text-blue-900 mb-1 flex items-center gap-1">
                                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -6246,7 +6302,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                         </svg>
                                         {t('topicNew.aiHelp.reasonLabel')}
                                       </h4>
-                                      <p className="text-blue-800 text-sm leading-relaxed">{item.reason}</p>
+                                      <p className="text-blue-800 text-sm leading-relaxed">{cleanReason}</p>
                                     </div>
                                   )}
                                 </div>
@@ -6432,17 +6488,6 @@ Please respond in ${selected} language and ensure valid JSON format.`
           </div>
         </div>
       )}
-
-      {/* Floating Action Button */}
-      <button
-        onClick={openAddModal}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group z-40"
-        title="Add New Topic"
-      >
-        <svg className="w-7 h-7 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
 
       {/* Save Notification Toast */}
       {saveNotification && (
