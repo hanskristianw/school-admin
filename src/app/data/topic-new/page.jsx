@@ -128,7 +128,7 @@ export default function TopicNewPage() {
   const [aiError, setAiError] = useState('')
   const [aiItems, setAiItems] = useState([])
   const [aiLang, setAiLang] = useState('')
-  const [aiHelpType, setAiHelpType] = useState('') // 'unitTitle', 'inquiryQuestion', 'keyConcept', 'relatedConcept', 'globalContext', 'statement', 'learnerProfile', 'serviceLearning', or 'assessmentRelationship'
+  const [aiHelpType, setAiHelpType] = useState('') // 'unitTitle', 'inquiryQuestion', 'keyConcept', 'relatedConcept', 'globalContext', 'statement', 'learnerProfile', 'serviceLearning', 'resources', or 'assessmentRelationship'
   const [selectedInquiryQuestions, setSelectedInquiryQuestions] = useState([]) // For multi-select inquiry questions
   const [selectedKeyConcepts, setSelectedKeyConcepts] = useState([]) // For multi-select key concepts
   const [selectedRelatedConcepts, setSelectedRelatedConcepts] = useState([]) // For multi-select related concepts
@@ -136,6 +136,7 @@ export default function TopicNewPage() {
   const [selectedStatements, setSelectedStatements] = useState([]) // For multi-select statements of inquiry
   const [selectedLearnerProfiles, setSelectedLearnerProfiles] = useState([]) // For multi-select learner profiles
   const [selectedServiceLearning, setSelectedServiceLearning] = useState([]) // For multi-select service learning
+  const [selectedResources, setSelectedResources] = useState([]) // For multi-select resources
   
   // Grading Modal state
   const [gradingModalOpen, setGradingModalOpen] = useState(false)
@@ -172,6 +173,9 @@ export default function TopicNewPage() {
     assessment_keterangan: '',
     assessment_semester: '',
     assessment_relationship: '',
+    assessment_conceptual_understanding: '',
+    assessment_task_specific_description: '',
+    assessment_instructions: '',
     selected_criteria: []
   })
   const [wizardCriteria, setWizardCriteria] = useState([]) // Criteria options loaded when subject is selected
@@ -2238,6 +2242,7 @@ export default function TopicNewPage() {
       topic_statement: '',
       topic_learner_profile: '',
       topic_service_learning: '',
+      topic_resources: '',
       topic_learning_process: '',
       topic_formative_assessment: '',
       topic_summative_assessment: '',
@@ -2249,6 +2254,9 @@ export default function TopicNewPage() {
       assessment_keterangan: '',
       assessment_semester: '',
       assessment_relationship: '',
+      assessment_conceptual_understanding: '',
+      assessment_task_specific_description: '',
+      assessment_instructions: '',
       selected_criteria: []
     })
     setWizardCriteria([]) // Reset criteria options
@@ -2267,7 +2275,7 @@ export default function TopicNewPage() {
   
   const requestAiHelp = async (helpType = aiHelpType) => {
     // Types that don't require user input (they get context from existing fields)
-    const noInputRequired = ['keyConcept', 'relatedConcept', 'inquiryQuestion', 'globalContext', 'statement', 'learnerProfile', 'serviceLearning', 'assessmentName', 'assessmentRelationship']
+    const noInputRequired = ['keyConcept', 'relatedConcept', 'inquiryQuestion', 'globalContext', 'statement', 'learnerProfile', 'serviceLearning', 'resources', 'assessmentName', 'assessmentRelationship']
     
     if (!noInputRequired.includes(helpType) && !aiUserInput.trim()) {
       setAiError('Mohon masukkan topik atau konteks yang ingin dibahas')
@@ -2624,64 +2632,146 @@ JSON FORMAT:
 }
 
 Please respond in English and ensure valid JSON format.`
-      } else if (helpType === 'assessmentName') {
-        // Prompt for Assessment Name
+      } else if (helpType === 'resources') {
+        // Prompt for Resources / Bibliography (no AI rule needed, hardcoded prompt)
         const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
-        const statement = selectedTopic?.topic_statement || 'Not yet defined'
         const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
         const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
         const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        const statement = selectedTopic?.topic_statement || 'Not yet defined'
         
-        // Get selected criteria names
-        const selectedCriteriaNames = wizardCriteria
-          .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
-          .map(c => `${c.code}: ${c.name}`)
-          .join(', ')
-        
-        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+        promptWithLang = `LEARNING CONTEXT:
 - Unit Title: ${unitTitle}
 - Statement of Inquiry: ${statement}
 - Key Concepts: ${keyConcept}
 - Related Concepts: ${relatedConcept}
 - Global Context: ${globalContext}
-- Criteria to Assess: ${selectedCriteriaNames}
 - Subject: ${subjName}
 - Grade/Class: ${kelasName}
 
 INSTRUCTIONS:
-Based on the information above, suggest 3 creative and descriptive Assessment Names that:
-- Clearly connect to the unit's concepts and statement of inquiry
-- Reflect the criteria being assessed (${selectedCriteriaNames})
-- Are engaging and meaningful for ${kelasName} students
-- Are appropriate for the subject "${subjName}"
+Based on the information above, suggest 5-6 educational resources/references (bibliography) that teachers and students can use for this unit. Include a variety of resource types:
 
-For each Assessment Name suggestion, provide:
-- The assessment name (option)
-- A brief description of what the assessment could involve (text)
-- Why this assessment name is suitable for the unit and criteria (reason)
+Resources should:
+- Be relevant to the unit's concepts, statement of inquiry, and global context
+- Be age-appropriate for ${kelasName} students
+- Include a mix of: books, websites, videos, articles, educational platforms, etc.
+- Support both teacher instruction and student research
+- Be from reputable educational sources
+- Include actual, real, and accessible URLs/links when available
+
+For each resource suggestion, provide:
+- The resource name/title with type (e.g., "Book: Title" or "Website: Name") (option)
+- The URL/link to access the resource (link) - use real, working URLs. For books, provide Amazon, Google Books, or publisher links. For websites, provide the actual website URL.
+- A brief description of the resource and how it connects to the unit (text)
+- Why this resource is valuable for teaching/learning this unit (reason)
 
 JSON FORMAT:
 {
   "jawaban": [
     {
-      "option": "Creative Assessment Name",
-      "text": "Brief description of what this assessment task could involve, connecting to ${keyConcept} and ${relatedConcept}",
-      "reason": "Why this assessment name is suitable for assessing ${selectedCriteriaNames} in the context of '${unitTitle}'"
+      "option": "Book/Website/Video/Article: Resource Title or Name",
+      "link": "https://example.com/resource-url",
+      "text": "Brief description of the resource and how it relates to '${unitTitle}' and concepts like ${keyConcept}",
+      "reason": "Why this resource is valuable for ${kelasName} students learning about ${relatedConcept} in ${subjName}"
     },
     {
-      "option": "Creative Assessment Name",
-      "text": "Brief description of the assessment task",
-      "reason": "Why this is suitable for the unit and criteria"
-    },
-    {
-      "option": "Creative Assessment Name",
-      "text": "Brief description of the assessment task",
-      "reason": "Why this is suitable for the unit and criteria"
+      "option": "Book/Website/Video/Article: Resource Title or Name",
+      "link": "https://example.com/another-resource",
+      "text": "Description of the resource and its connection to the unit",
+      "reason": "Why this resource is valuable"
     }
   ]
 }
 
 Please respond in English and ensure valid JSON format.`
+
+        // Console log the prompt for debugging
+        console.log('🤖 ==========================================')
+        console.log('🤖 AI Prompt for Resources')
+        console.log('🤖 ==========================================')
+        console.log('📋 Context:')
+        console.log('  - Unit Title:', unitTitle)
+        console.log('  - Statement:', statement)
+        console.log('  - Key Concepts:', keyConcept)
+        console.log('  - Related Concepts:', relatedConcept)
+        console.log('  - Global Context:', globalContext)
+        console.log('  - Subject:', subjName)
+        console.log('  - Class:', kelasName)
+        console.log('📝 Full Prompt:')
+        console.log(promptWithLang)
+        console.log('🤖 ==========================================')
+      } else if (helpType === 'assessmentName') {
+        // Prompt for Assessment Details (Name, Conceptual Understanding, Task Description, Instructions)
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const statement = selectedTopic?.topic_statement || 'Not yet defined'
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        const inquiryQuestion = selectedTopic?.topic_inquiry_question || 'Not yet defined'
+        const learnerProfile = selectedTopic?.topic_learner_profile || 'Not yet defined'
+        
+        // Get selected criteria with full details
+        const selectedCriteriaDetails = wizardCriteria
+          .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
+          .map(c => `${c.code}: ${c.name}`)
+        const selectedCriteriaNames = selectedCriteriaDetails.join(', ')
+        
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Statement of Inquiry: ${statement}
+- Inquiry Question: ${inquiryQuestion}
+- Key Concepts: ${keyConcept}
+- Related Concepts: ${relatedConcept}
+- Global Context: ${globalContext}
+- Learner Profile Attributes: ${learnerProfile}
+- Criteria to Assess: ${selectedCriteriaNames}
+- Subject: ${subjName}
+- Grade/Class: ${kelasName}
+
+INSTRUCTIONS:
+Based on the information above, generate 2 complete assessment suggestions. Each suggestion must include:
+
+1. **Assessment Name**: A creative and engaging title for the assessment
+2. **Conceptual Understanding**: What conceptual understanding students should demonstrate (connect to Key Concepts: ${keyConcept} and Related Concepts: ${relatedConcept})
+3. **Task Specific Description**: Detailed description of what students need to do, specifically aligned with the criteria being assessed (${selectedCriteriaNames})
+4. **Assessment Instructions**: Step-by-step instructions for students to complete the assessment, ensuring they can demonstrate mastery of each criterion (${selectedCriteriaNames})
+
+Requirements:
+- The assessment must clearly connect to the Statement of Inquiry: "${statement}"
+- The Task Description MUST specifically address how students will demonstrate each criterion: ${selectedCriteriaNames}
+- Instructions should be clear, numbered steps that guide students through the task
+- Everything should be appropriate for ${kelasName} students in ${subjName}
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Creative Assessment Name/Title",
+      "conceptual_understanding": "A paragraph explaining what conceptual understanding students will demonstrate through this assessment, connecting to ${keyConcept} and ${relatedConcept}. This should explain how the assessment helps students understand the big ideas of the unit.",
+      "task_description": "Detailed task description that specifically explains how students will demonstrate each criterion (${selectedCriteriaNames}). Be specific about what product or performance students will create and how it connects to the criteria.",
+      "instructions": "1. First step of the assessment\\n2. Second step\\n3. Third step\\n4. Fourth step\\n5. Fifth step (include at least 5 clear, actionable steps)",
+      "text": "Brief summary of the assessment approach",
+      "reason": "Why this assessment effectively measures ${selectedCriteriaNames} in the context of '${unitTitle}'"
+    }
+  ]
+}
+
+Please respond in English and ensure valid JSON format. Each instruction step should be on a new line (use \\n for line breaks).`
+
+        // Console log for debugging
+        console.log('🤖 ==========================================')
+        console.log('🤖 AI Prompt for Assessment Details')
+        console.log('🤖 ==========================================')
+        console.log('📋 Context:')
+        console.log('  - Unit Title:', unitTitle)
+        console.log('  - Statement:', statement)
+        console.log('  - Key Concepts:', keyConcept)
+        console.log('  - Related Concepts:', relatedConcept)
+        console.log('  - Criteria:', selectedCriteriaNames)
+        console.log('📝 Full Prompt:')
+        console.log(promptWithLang)
+        console.log('🤖 ==========================================')
       } else if (helpType === 'assessmentRelationship') {
         // Prompt for Assessment Relationship - Include ALL information from Steps 1-6
         
@@ -2950,8 +3040,13 @@ Please respond in ${selected} language and ensure valid JSON format.`
           items = parsed.jawaban.map((a, idx) => ({
             index: idx + 1,
             option: (a?.option ?? '').toString().trim(),
+            link: (a?.link ?? '').toString().trim(),
             text: (a?.text ?? '').toString().trim(),
             reason: (a?.reason ?? '').toString().trim(),
+            // Assessment details fields
+            conceptual_understanding: (a?.conceptual_understanding ?? '').toString().trim(),
+            task_description: (a?.task_description ?? '').toString().trim(),
+            instructions: (a?.instructions ?? '').toString().trim().replace(/\\n/g, '\n'),
           }))
           console.log('✅ Parsed JSON items:', items)
         }
@@ -2979,14 +3074,34 @@ Please respond in ${selected} language and ensure valid JSON format.`
     }
   }
   
-  const insertAiSuggestion = (txt) => {
-    if (!txt) return
+  const insertAiSuggestion = (txtOrItem) => {
+    if (!txtOrItem) return
+    
+    // For assessmentName, receive the full item object with all 4 fields
+    if (aiHelpType === 'assessmentName' && typeof txtOrItem === 'object') {
+      const item = txtOrItem
+      const cleanOption = (item.option || '').replace(/\*\*/g, '').trim()
+      const cleanConceptual = (item.conceptual_understanding || '').replace(/\*\*/g, '').trim()
+      const cleanTaskDesc = (item.task_description || '').replace(/\*\*/g, '').trim()
+      const cleanInstructions = (item.instructions || '').replace(/\*\*/g, '').trim()
+      
+      setWizardAssessment(prev => ({ 
+        ...prev, 
+        assessment_nama: cleanOption,
+        assessment_conceptual_understanding: cleanConceptual,
+        assessment_task_specific_description: cleanTaskDesc,
+        assessment_instructions: cleanInstructions
+      }))
+      setAiResultModalOpen(false)
+      return
+    }
+    
+    // For other types, process as text
+    const txt = typeof txtOrItem === 'string' ? txtOrItem : (txtOrItem?.option || txtOrItem?.text || '')
     const firstLine = String(txt).split(/\r?\n/)[0].replace(/\*\*/g, '').trim()
     
     if (aiHelpType === 'inquiryQuestion') {
       setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: firstLine }))
-    } else if (aiHelpType === 'assessmentName') {
-      setWizardAssessment(prev => ({ ...prev, assessment_nama: firstLine }))
     } else if (aiHelpType === 'assessmentRelationship') {
       setWizardAssessment(prev => ({ ...prev, assessment_relationship: txt }))
     } else {
@@ -3273,6 +3388,30 @@ Please respond in ${selected} language and ensure valid JSON format.`
     })
   }
   
+  // Toggle checkbox for resources selection (multi-select)
+  const toggleResources = (index) => {
+    const scrollContainer = aiScrollRef.current
+    if (!scrollContainer) return
+    
+    const currentScrollPos = scrollContainer.scrollTop
+    const scrollElem = scrollContainer
+    
+    setSelectedResources(prev => {
+      const newVal = prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+      
+      // Force scroll restore in next tick
+      Promise.resolve().then(() => {
+        scrollElem.scrollTop = currentScrollPos
+        setTimeout(() => scrollElem.scrollTop = currentScrollPos, 0)
+        requestAnimationFrame(() => scrollElem.scrollTop = currentScrollPos)
+      })
+      
+      return newVal
+    })
+  }
+  
   // Apply selected service learning
   const applySelectedServiceLearning = () => {
     setAiError('')
@@ -3289,6 +3428,30 @@ Please respond in ${selected} language and ensure valid JSON format.`
     setSelectedTopic(prev => ({ ...prev, topic_service_learning: serviceLearningText }))
     setAiResultModalOpen(false)
     setSelectedServiceLearning([])
+    setAiError('')
+  }
+  
+  // Apply selected resources
+  const applySelectedResources = () => {
+    setAiError('')
+    
+    if (selectedResources.length === 0) {
+      setAiError('⚠️ Please select at least one resource.')
+      return
+    }
+    
+    // Get all selected resources and format with link for better readability
+    const selectedItems = aiItems.filter(item => selectedResources.includes(item.index))
+    const resourcesText = selectedItems.map(item => {
+      const title = (item.option || '').replace(/\*\*/g, '')
+      const link = (item.link || '').replace(/\*\*/g, '')
+      // Format: "Resource Title (URL)" or just "Resource Title" if no link
+      return link ? `${title}\n${link}` : title
+    }).join('\n\n')
+    
+    setSelectedTopic(prev => ({ ...prev, topic_resources: resourcesText }))
+    setAiResultModalOpen(false)
+    setSelectedResources([])
     setAiError('')
   }
   
@@ -3439,6 +3602,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
     if (!wizardAssessment.selected_criteria?.length) missing.push({ step: 6, field: 'Criteria to Assess' })
     if (!wizardAssessment.assessment_nama?.trim()) missing.push({ step: 6, field: 'Assessment Name' })
     if (!wizardAssessment.assessment_semester?.trim()) missing.push({ step: 6, field: 'Semester' })
+    if (!wizardAssessment.assessment_conceptual_understanding?.trim()) missing.push({ step: 6, field: 'Conceptual Understanding' })
+    if (!wizardAssessment.assessment_task_specific_description?.trim()) missing.push({ step: 6, field: 'Task Specific Description' })
+    if (!wizardAssessment.assessment_instructions?.trim()) missing.push({ step: 6, field: 'Assessment Instructions' })
     
     // Step 6: Relationship
     if (!wizardAssessment.assessment_relationship?.trim()) missing.push({ step: 7, field: 'Relationship: Assessment & Statement of Inquiry' })
@@ -3467,8 +3633,11 @@ Please respond in ${selected} language and ensure valid JSON format.`
     
     // Validate assessment required fields
     if (!wizardAssessment.assessment_nama || !wizardAssessment.assessment_tanggal || 
-        !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0) {
-      alert('Please complete all assessment fields')
+        !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0 ||
+        !wizardAssessment.assessment_conceptual_understanding?.trim() ||
+        !wizardAssessment.assessment_task_specific_description?.trim() ||
+        !wizardAssessment.assessment_instructions?.trim()) {
+      alert('Please complete all assessment fields including Conceptual Understanding, Task Description, and Instructions')
       return
     }
     
@@ -3536,6 +3705,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
           assessment_nama: wizardAssessment.assessment_nama,
           assessment_tanggal: wizardAssessment.assessment_tanggal,
           assessment_keterangan: wizardAssessment.assessment_keterangan || null,
+          assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
+          assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
+          assessment_instructions: wizardAssessment.assessment_instructions || null,
           assessment_detail_kelas_id: dkData.detail_kelas_id,
           assessment_topic_id: newTopic.topic_id,
           assessment_semester: parseInt(wizardAssessment.assessment_semester),
@@ -3580,6 +3752,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
           assessment_keterangan: '',
           assessment_semester: '',
           assessment_relationship: '',
+          assessment_conceptual_understanding: '',
+          assessment_task_specific_description: '',
+          assessment_instructions: '',
           selected_criteria: []
         })
         
@@ -4052,6 +4227,772 @@ Please respond in ${selected} language and ensure valid JSON format.`
     }
   };
 
+  // Generate Assessment PDF
+  const handleGenerateAssessmentPDF = async () => {
+    try {
+      // Get current topic data
+      const topicData = selectedTopic;
+      if (!topicData || !wizardAssessment.assessment_nama) {
+        alert('Please complete assessment name first');
+        return;
+      }
+
+      // Get subject name
+      const subjectName = subjectMap.get(topicData.topic_subject_id) || 'N/A';
+      
+      // Get class name
+      const kelasName = kelasNameMap.get(topicData.topic_kelas_id) || 'N/A';
+      
+      // Get teacher name
+      let teacherName = 'N/A';
+      if (currentUserId) {
+        const { data: userData, error: userErr } = await supabase
+          .from("users")
+          .select("user_nama_depan, user_nama_belakang")
+          .eq("user_id", currentUserId)
+          .single();
+        
+        if (!userErr && userData) {
+          teacherName = `${userData.user_nama_depan || ''} ${userData.user_nama_belakang || ''}`.trim();
+        }
+      }
+
+      // Get selected criteria names
+      const selectedCriteriaNames = wizardCriteria
+        .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
+        .map(c => c.code)
+        .join('/');
+
+      // Get proficiency level (MYP Year)
+      const proficiencyLevel = topicData.topic_year ? `Phase ${topicData.topic_year}` : 'N/A';
+
+      // Generate PDF - Portrait A4
+      const pdf = new jsPDF('portrait', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 14;
+      let yPos = 15;
+      const availableWidth = pageWidth - (margin * 2);
+
+      // Header: ASSESSMENT title (no background, just bold text)
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('ASSESSMENT', margin, yPos);
+      
+      yPos += 8;
+
+      // Info section without grid lines
+      pdf.setFontSize(9);
+      const leftCol = margin;
+      const midCol = margin + 90;
+      const lineHeight = 6;
+      
+      // Row 1: Name / Subject
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Name', leftCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('', leftCol + 25, yPos);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Subject', midCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(subjectName, midCol + 25, yPos);
+      yPos += lineHeight;
+      
+      // Row 2: Class / Unit
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Class', leftCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(kelasName, leftCol + 25, yPos);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Unit', midCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      // Use topic_urutan instead of topic_nama
+      const unitNumber = topicData.topic_urutan ? topicData.topic_urutan.toString() : '-';
+      pdf.text(unitNumber, midCol + 25, yPos);
+      yPos += lineHeight;
+      
+      // Row 3: Day/Date / Teacher
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Day/Date', leftCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('', leftCol + 25, yPos);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Teacher', midCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(teacherName, midCol + 25, yPos);
+      
+      // Logo and RESULT box on the right
+      const resultBoxXWizard = pageWidth - margin - 30;
+      const logoYWizard = yPos - 20;
+      const resultBoxWidthWizard = 30;
+      const resultBoxHeightWizard = 18;
+      const borderRadiusWizard = 3;
+      
+      // Add school logo
+      try {
+        const logoImg = new Image();
+        logoImg.src = '/images/login-logo.png';
+        pdf.addImage(logoImg, 'PNG', resultBoxXWizard + 2, logoYWizard, resultBoxWidthWizard - 4, 15);
+      } catch (e) {
+        console.warn('Could not load logo image:', e);
+      }
+      
+      // Draw rounded rectangle for RESULT box (below logo)
+      const resultBoxYWizard = logoYWizard + 17;
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.3);
+      pdf.roundedRect(resultBoxXWizard, resultBoxYWizard, resultBoxWidthWizard, resultBoxHeightWizard, borderRadiusWizard, borderRadiusWizard, 'S');
+      
+      // RESULT label below the box
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('RESULT', resultBoxXWizard + resultBoxWidthWizard/2, resultBoxYWizard + resultBoxHeightWizard + 5, { align: 'center' });
+      
+      yPos += 25;
+
+      // Assessment Title (large) - moved below header section
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(wizardAssessment.assessment_nama.toUpperCase(), pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
+
+      // TASK OVERVIEW section (no blue background)
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('TASK OVERVIEW', margin, yPos + 3);
+      yPos += 8;
+
+      // Task Overview table (no gray background)
+      const taskOverviewData = [
+        ['Criterion', selectedCriteriaNames || 'N/A'],
+        ['Proficiency Level', proficiencyLevel],
+        ['Key Concept', topicData.topic_key_concept || 'N/A'],
+        ['Related Concepts', topicData.topic_related_concept || 'N/A'],
+        ['Conceptual Understanding', wizardAssessment.assessment_conceptual_understanding || 'N/A'],
+        ['Global Context Exploration', topicData.topic_global_context || 'N/A'],
+        ['Statement of Inquiry', topicData.topic_statement || 'N/A'],
+        ['Task Specific Description', wizardAssessment.assessment_task_specific_description || 'N/A'],
+      ];
+
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: taskOverviewData.map(row => [
+          { content: row[0], styles: { fontStyle: 'bold', cellWidth: 50 }},
+          { content: `: ${row[1]}`, styles: { cellWidth: availableWidth - 50 }},
+        ]),
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 4, lineColor: [200, 200, 200], lineWidth: 0.1, valign: 'top', textColor: [0, 0, 0] },
+        columnStyles: {
+          0: { cellWidth: 50 },
+          1: { cellWidth: availableWidth - 50 },
+        },
+      });
+      yPos = pdf.lastAutoTable.finalY + 8;
+
+      // Assessment Instructions section - always on page 2
+      if (wizardAssessment.assessment_instructions) {
+        // Always start instructions on a new page (page 2)
+        pdf.addPage();
+        yPos = 25;
+
+        // INSTRUCTIONS header
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('INSTRUCTIONS:', margin, yPos);
+        yPos += 8;
+
+        // Parse instructions - split by numbered items (1., 2., 3., etc.)
+        const instructionText = wizardAssessment.assessment_instructions;
+        const instructionItems = [];
+        
+        // Match numbered items like "1.", "2.", etc.
+        const regex = /(\d+\.\s*)/g;
+        const parts = instructionText.split(regex).filter(p => p.trim());
+        
+        // Combine number with its content
+        for (let i = 0; i < parts.length; i++) {
+          if (/^\d+\.\s*$/.test(parts[i]) && parts[i + 1]) {
+            instructionItems.push([parts[i].trim(), parts[i + 1].trim()]);
+            i++; // Skip the next part as we've combined it
+          } else if (!/^\d+\.\s*$/.test(parts[i])) {
+            // If no number prefix, add as single item
+            instructionItems.push(['', parts[i].trim()]);
+          }
+        }
+
+        // Create table without borders for numbered list
+        autoTable(pdf, {
+          startY: yPos,
+          margin: { left: margin, right: margin },
+          head: [],
+          body: instructionItems.map(item => [
+            { content: item[0], styles: { fontStyle: 'bold', cellWidth: 8 }},
+            { content: item[1], styles: { cellWidth: 'auto' }},
+          ]),
+          theme: 'plain',
+          styles: { 
+            fontSize: 9, 
+            cellPadding: { top: 2, bottom: 2, left: 1, right: 1 }, 
+            valign: 'top', 
+            textColor: [0, 0, 0],
+            lineWidth: 0,
+          },
+          columnStyles: {
+            0: { cellWidth: 8 },
+            1: { cellWidth: 'auto' },
+          },
+        });
+      }
+
+      // Fetch strands and rubrics for selected criteria
+      const selectedCriteriaIds = wizardAssessment.selected_criteria || [];
+      if (selectedCriteriaIds.length > 0) {
+        // Get strands for selected criteria and year level
+        const { data: strandsData } = await supabase
+          .from('strands')
+          .select('*')
+          .in('criterion_id', selectedCriteriaIds)
+          .eq('year_level', topicData.topic_year || 1)
+          .order('label');
+
+        if (strandsData && strandsData.length > 0) {
+          const strandIds = strandsData.map(s => s.strand_id);
+          
+          // Get rubrics for these strands
+          const { data: rubricsData } = await supabase
+            .from('rubrics')
+            .select('*')
+            .in('strand_id', strandIds)
+            .order('max_score', { ascending: false });
+
+          // Group strands by criterion
+          for (const criterionId of selectedCriteriaIds) {
+            const criterion = wizardCriteria.find(c => c.criterion_id === criterionId);
+            if (!criterion) continue;
+
+            const criterionStrands = strandsData.filter(s => s.criterion_id === criterionId);
+            if (criterionStrands.length === 0) continue;
+
+            // Add new page for each criterion rubric table
+            pdf.addPage();
+            yPos = 25;
+
+            // Section title
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('SUBJECT CRITERIA AND TASK-SPECIFIC CLARIFICATION', margin, yPos);
+            yPos += 8;
+
+            pdf.setFontSize(10);
+            pdf.text(`Criteria ${criterion.code}`, margin, yPos);
+            yPos += 8;
+
+            // Build table data for this criterion
+            // Get all rubrics for strands of this criterion
+            const criterionRubrics = (rubricsData || []).filter(r => 
+              criterionStrands.some(s => s.strand_id === r.strand_id)
+            );
+
+            // Roman numeral order helper
+            const romanOrder = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+            const getRomanIndex = (label) => {
+              const idx = romanOrder.indexOf(label.toLowerCase());
+              return idx >= 0 ? idx : 999;
+            };
+
+            // Group by band score - collect rubric descriptions for each band
+            const bandGroups = {};
+            criterionRubrics.forEach(rubric => {
+              const bandKey = `${rubric.max_score}-${rubric.min_score}`;
+              if (!bandGroups[bandKey]) {
+                bandGroups[bandKey] = {
+                  band_label: rubric.band_label || bandKey,
+                  max_score: rubric.max_score,
+                  min_score: rubric.min_score,
+                  rubricsData: []
+                };
+              }
+              // Find the strand for this rubric to get its label
+              const strand = criterionStrands.find(s => s.strand_id === rubric.strand_id);
+              if (strand) {
+                bandGroups[bandKey].rubricsData.push({
+                  label: strand.label || '',
+                  description: rubric.description || '' // Use rubric description, not strand content
+                });
+              }
+            });
+
+            // Sort bands by max_score descending and sort rubrics within each band by strand label
+            const sortedBands = Object.values(bandGroups).sort((a, b) => b.max_score - a.max_score);
+            sortedBands.forEach(band => {
+              band.rubricsData.sort((a, b) => getRomanIndex(a.label) - getRomanIndex(b.label));
+              band.strandsContent = band.rubricsData.map(r => {
+                const labelPrefix = r.label ? `${r.label}. ` : '';
+                return `${labelPrefix}${r.description}`;
+              });
+            });
+
+            if (sortedBands.length > 0) {
+              // Create table with headers
+              const tableHead = [['', 'SUBJECT CRITERIA', 'TASK-SPECIFIC CLARIFICATION']];
+              const tableBody = sortedBands.map(band => [
+                band.band_label,
+                'The student:\n' + band.strandsContent.join('\n'),
+                '' // Empty - to be filled by teacher
+              ]);
+
+              autoTable(pdf, {
+                startY: yPos,
+                margin: { left: margin, right: margin },
+                head: tableHead,
+                body: tableBody,
+                theme: 'grid',
+                styles: { 
+                  fontSize: 8, 
+                  cellPadding: 3, 
+                  valign: 'top', 
+                  textColor: [0, 0, 0],
+                  lineColor: [0, 0, 0],
+                  lineWidth: 0.2,
+                },
+                headStyles: {
+                  fillColor: [255, 255, 255],
+                  textColor: [0, 0, 0],
+                  fontStyle: 'bold',
+                  halign: 'center',
+                },
+                columnStyles: {
+                  0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
+                  1: { cellWidth: (availableWidth - 12) / 2 },
+                  2: { cellWidth: (availableWidth - 12) / 2 },
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // Save PDF
+      const fileName = `assessment-${wizardAssessment.assessment_nama?.replace(/[^a-z0-9]/gi, '-') || 'assessment'}.pdf`;
+      pdf.save(fileName);
+      
+      // Show success notification
+      setSaveNotification(true);
+      setTimeout(() => setSaveNotification(false), 2000);
+    } catch (error) {
+      console.error('Error generating Assessment PDF:', error);
+      alert(`Failed to generate Assessment PDF: ${error.message}`);
+    }
+  };
+
+  // Generate Assessment PDF from topic card (fetches data from database)
+  const handleGenerateAssessmentPDFFromCard = async (topic, event) => {
+    if (event) {
+      event.stopPropagation(); // Prevent card click
+    }
+    
+    try {
+      // Fetch assessment data for this topic
+      const { data: assessmentData, error: assessmentErr } = await supabase
+        .from('assessment')
+        .select(`
+          assessment_id,
+          assessment_nama,
+          assessment_keterangan,
+          assessment_semester,
+          assessment_conceptual_understanding,
+          assessment_task_specific_description,
+          assessment_instructions,
+          assessment_criteria (criterion_id)
+        `)
+        .eq('assessment_topic_id', topic.topic_id)
+        .single();
+      
+      if (assessmentErr || !assessmentData) {
+        alert('No assessment found for this unit. Please create an assessment first.');
+        return;
+      }
+
+      // Get subject name
+      const subjectName = subjectMap.get(topic.topic_subject_id) || 'N/A';
+      
+      // Get class name
+      const kelasName = kelasNameMap.get(topic.topic_kelas_id) || 'N/A';
+      
+      // Get teacher name
+      let teacherName = 'N/A';
+      if (currentUserId) {
+        const { data: userData, error: userErr } = await supabase
+          .from("users")
+          .select("user_nama_depan, user_nama_belakang")
+          .eq("user_id", currentUserId)
+          .single();
+        
+        if (!userErr && userData) {
+          teacherName = `${userData.user_nama_depan || ''} ${userData.user_nama_belakang || ''}`.trim();
+        }
+      }
+
+      // Get criteria for this subject
+      const { data: criteriaData } = await supabase
+        .from('criteria')
+        .select('criterion_id, code, name')
+        .eq('subject_id', topic.topic_subject_id)
+        .order('code');
+      
+      // Get selected criteria names
+      const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || [];
+      const selectedCriteriaNames = (criteriaData || [])
+        .filter(c => criteriaIds.includes(c.criterion_id))
+        .map(c => c.code)
+        .join('/');
+
+      // Get proficiency level (MYP Year)
+      const proficiencyLevel = topic.topic_year ? `Phase ${topic.topic_year}` : 'N/A';
+
+      // Generate PDF - Portrait A4
+      const pdf = new jsPDF('portrait', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 20;
+      let yPos = 20;
+      const availableWidth = pageWidth - (margin * 2);
+
+      // Header: ASSESSMENT title (no background, just bold text)
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('ASSESSMENT', margin, yPos);
+      
+      yPos += 8;
+
+      // Info section without grid lines
+      pdf.setFontSize(9);
+      const leftCol = margin;
+      const midCol = margin + 90;
+      const lineHeight = 6;
+      
+      // Row 1: Name / Subject
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Name', leftCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('', leftCol + 25, yPos);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Subject', midCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(subjectName, midCol + 25, yPos);
+      yPos += lineHeight;
+      
+      // Row 2: Class / Unit
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Class', leftCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(kelasName, leftCol + 25, yPos);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Unit', midCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      // Use topic_urutan instead of topic_nama
+      const unitNumber = topic.topic_urutan ? topic.topic_urutan.toString() : '-';
+      pdf.text(unitNumber, midCol + 25, yPos);
+      yPos += lineHeight;
+      
+      // Row 3: Day/Date / Teacher
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Day/Date', leftCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('', leftCol + 25, yPos);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Teacher', midCol, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(teacherName, midCol + 25, yPos);
+      
+      // Logo and RESULT box on the right
+      const resultBoxX = pageWidth - margin - 30;
+      const logoY = yPos - 20;
+      const resultBoxWidth = 30;
+      const resultBoxHeight = 18;
+      const borderRadius = 3;
+      
+      // Add school logo
+      try {
+        const logoImg = new Image();
+        logoImg.src = '/images/login-logo.png';
+        pdf.addImage(logoImg, 'PNG', resultBoxX + 2, logoY, resultBoxWidth - 4, 15);
+      } catch (e) {
+        console.warn('Could not load logo image:', e);
+      }
+      
+      // Draw rounded rectangle for RESULT box (below logo)
+      const resultBoxY = logoY + 17;
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.3);
+      pdf.roundedRect(resultBoxX, resultBoxY, resultBoxWidth, resultBoxHeight, borderRadius, borderRadius, 'S');
+      
+      // RESULT label below the box
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('RESULT', resultBoxX + resultBoxWidth/2, resultBoxY + resultBoxHeight + 5, { align: 'center' });
+      
+      yPos += 25;
+
+      // Assessment Title (large) - moved below header section
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(assessmentData.assessment_nama.toUpperCase(), pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
+
+      // TASK OVERVIEW section (no blue background)
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('TASK OVERVIEW', margin, yPos + 3);
+      yPos += 8;
+
+      // Task Overview table (no gray background)
+      const taskOverviewData = [
+        ['Criterion', selectedCriteriaNames || 'N/A'],
+        ['Proficiency Level', proficiencyLevel],
+        ['Key Concept', topic.topic_key_concept || 'N/A'],
+        ['Related Concepts', topic.topic_related_concept || 'N/A'],
+        ['Conceptual Understanding', assessmentData.assessment_conceptual_understanding || 'N/A'],
+        ['Global Context Exploration', topic.topic_global_context || 'N/A'],
+        ['Statement of Inquiry', topic.topic_statement || 'N/A'],
+        ['Task Specific Description', assessmentData.assessment_task_specific_description || 'N/A'],
+      ];
+
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [],
+        body: taskOverviewData.map(row => [
+          { content: row[0], styles: { fontStyle: 'bold', cellWidth: 50 }},
+          { content: `: ${row[1]}`, styles: { cellWidth: availableWidth - 50 }},
+        ]),
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 4, lineColor: [200, 200, 200], lineWidth: 0.1, valign: 'top', textColor: [0, 0, 0] },
+        columnStyles: {
+          0: { cellWidth: 50 },
+          1: { cellWidth: availableWidth - 50 },
+        },
+      });
+      yPos = pdf.lastAutoTable.finalY + 8;
+
+      // Assessment Instructions section - always on page 2
+      if (assessmentData.assessment_instructions) {
+        // Always start instructions on a new page (page 2)
+        pdf.addPage();
+        yPos = 25;
+
+        // INSTRUCTIONS header
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('INSTRUCTIONS:', margin, yPos);
+        yPos += 8;
+
+        // Parse instructions - split by numbered items (1., 2., 3., etc.)
+        const instructionText = assessmentData.assessment_instructions;
+        const instructionItems = [];
+        
+        // Match numbered items like "1.", "2.", etc.
+        const regex = /(\d+\.\s*)/g;
+        const parts = instructionText.split(regex).filter(p => p.trim());
+        
+        // Combine number with its content
+        for (let i = 0; i < parts.length; i++) {
+          if (/^\d+\.\s*$/.test(parts[i]) && parts[i + 1]) {
+            instructionItems.push([parts[i].trim(), parts[i + 1].trim()]);
+            i++; // Skip the next part as we've combined it
+          } else if (!/^\d+\.\s*$/.test(parts[i])) {
+            // If no number prefix, add as single item
+            instructionItems.push(['', parts[i].trim()]);
+          }
+        }
+
+        // Create table without borders for numbered list
+        autoTable(pdf, {
+          startY: yPos,
+          margin: { left: margin, right: margin },
+          head: [],
+          body: instructionItems.map(item => [
+            { content: item[0], styles: { fontStyle: 'bold', cellWidth: 8 }},
+            { content: item[1], styles: { cellWidth: 'auto' }},
+          ]),
+          theme: 'plain',
+          styles: { 
+            fontSize: 9, 
+            cellPadding: { top: 2, bottom: 2, left: 1, right: 1 }, 
+            valign: 'top', 
+            textColor: [0, 0, 0],
+            lineWidth: 0,
+          },
+          columnStyles: {
+            0: { cellWidth: 8 },
+            1: { cellWidth: 'auto' },
+          },
+        });
+      }
+
+      // Fetch strands and rubrics for selected criteria
+      const selectedCriteriaIds = criteriaIds || [];
+      if (selectedCriteriaIds.length > 0) {
+        // Get criteria details
+        const { data: criteriaDetails } = await supabase
+          .from('criteria')
+          .select('criterion_id, code, name')
+          .in('criterion_id', selectedCriteriaIds);
+
+        // Get strands for selected criteria and year level
+        const { data: strandsData } = await supabase
+          .from('strands')
+          .select('*')
+          .in('criterion_id', selectedCriteriaIds)
+          .eq('year_level', topic.topic_year || 1)
+          .order('label');
+
+        if (strandsData && strandsData.length > 0) {
+          const strandIds = strandsData.map(s => s.strand_id);
+          
+          // Get rubrics for these strands
+          const { data: rubricsData } = await supabase
+            .from('rubrics')
+            .select('*')
+            .in('strand_id', strandIds)
+            .order('max_score', { ascending: false });
+
+          // Group strands by criterion
+          for (const criterionId of selectedCriteriaIds) {
+            const criterion = (criteriaDetails || []).find(c => c.criterion_id === criterionId);
+            if (!criterion) continue;
+
+            const criterionStrands = strandsData.filter(s => s.criterion_id === criterionId);
+            if (criterionStrands.length === 0) continue;
+
+            // Add new page for each criterion rubric table
+            pdf.addPage();
+            yPos = 25;
+
+            // Section title
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('SUBJECT CRITERIA AND TASK-SPECIFIC CLARIFICATION', margin, yPos);
+            yPos += 8;
+
+            pdf.setFontSize(10);
+            pdf.text(`Criteria ${criterion.code}`, margin, yPos);
+            yPos += 8;
+
+            // Build table data for this criterion
+            // Get all rubrics for strands of this criterion
+            const criterionRubrics = (rubricsData || []).filter(r => 
+              criterionStrands.some(s => s.strand_id === r.strand_id)
+            );
+
+            // Roman numeral order helper
+            const romanOrderCard = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+            const getRomanIndexCard = (label) => {
+              const idx = romanOrderCard.indexOf(label.toLowerCase());
+              return idx >= 0 ? idx : 999;
+            };
+
+            // Group by band score - collect rubric descriptions for each band
+            const bandGroupsCard = {};
+            criterionRubrics.forEach(rubric => {
+              const bandKey = `${rubric.max_score}-${rubric.min_score}`;
+              if (!bandGroupsCard[bandKey]) {
+                bandGroupsCard[bandKey] = {
+                  band_label: rubric.band_label || bandKey,
+                  max_score: rubric.max_score,
+                  min_score: rubric.min_score,
+                  rubricsData: []
+                };
+              }
+              // Find the strand for this rubric to get its label
+              const strand = criterionStrands.find(s => s.strand_id === rubric.strand_id);
+              if (strand) {
+                bandGroupsCard[bandKey].rubricsData.push({
+                  label: strand.label || '',
+                  description: rubric.description || '' // Use rubric description, not strand content
+                });
+              }
+            });
+
+            // Sort bands by max_score descending and sort rubrics within each band by strand label
+            const sortedBandsCard = Object.values(bandGroupsCard).sort((a, b) => b.max_score - a.max_score);
+            sortedBandsCard.forEach(band => {
+              band.rubricsData.sort((a, b) => getRomanIndexCard(a.label) - getRomanIndexCard(b.label));
+              band.strandsContent = band.rubricsData.map(r => {
+                const labelPrefix = r.label ? `${r.label}. ` : '';
+                return `${labelPrefix}${r.description}`;
+              });
+            });
+
+            if (sortedBandsCard.length > 0) {
+              // Create table with headers
+              const tableHead = [['', 'SUBJECT CRITERIA', 'TASK-SPECIFIC CLARIFICATION']];
+              const tableBody = sortedBandsCard.map(band => [
+                band.band_label,
+                'The student:\n' + band.strandsContent.join('\n'),
+                '' // Empty - to be filled by teacher
+              ]);
+
+              autoTable(pdf, {
+                startY: yPos,
+                margin: { left: margin, right: margin },
+                head: tableHead,
+                body: tableBody,
+                theme: 'grid',
+                styles: { 
+                  fontSize: 8, 
+                  cellPadding: 3, 
+                  valign: 'top', 
+                  textColor: [0, 0, 0],
+                  lineColor: [0, 0, 0],
+                  lineWidth: 0.2,
+                },
+                headStyles: {
+                  fillColor: [255, 255, 255],
+                  textColor: [0, 0, 0],
+                  fontStyle: 'bold',
+                  halign: 'center',
+                },
+                columnStyles: {
+                  0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
+                  1: { cellWidth: (availableWidth - 12) / 2 },
+                  2: { cellWidth: (availableWidth - 12) / 2 },
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // Save PDF
+      const fileName = `assessment-${assessmentData.assessment_nama?.replace(/[^a-z0-9]/gi, '-') || 'assessment'}.pdf`;
+      pdf.save(fileName);
+      
+      // Show success notification
+      setSaveNotification(true);
+      setTimeout(() => setSaveNotification(false), 2000);
+    } catch (error) {
+      console.error('Error generating Assessment PDF:', error);
+      alert(`Failed to generate Assessment PDF: ${error.message}`);
+    }
+  };
+
   // Save/update assessment for topic (edit mode)
   const saveTopicAssessment = async () => {
     if (!topicAssessment) return
@@ -4425,6 +5366,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   assessment_nama,
                                   assessment_keterangan,
                                   assessment_semester,
+                                  assessment_conceptual_understanding,
+                                  assessment_task_specific_description,
+                                  assessment_instructions,
                                   assessment_criteria (criterion_id)
                                 `)
                                 .eq('assessment_topic_id', topic.topic_id)
@@ -4437,6 +5381,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   assessment_keterangan: assessmentData.assessment_keterangan || '',
                                   assessment_semester: assessmentData.assessment_semester?.toString() || '',
                                   assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
+                                  assessment_conceptual_understanding: assessmentData.assessment_conceptual_understanding || '',
+                                  assessment_task_specific_description: assessmentData.assessment_task_specific_description || '',
+                                  assessment_instructions: assessmentData.assessment_instructions || '',
                                   selected_criteria: criteriaIds
                                 })
                               } else {
@@ -4446,6 +5393,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   assessment_keterangan: '',
                                   assessment_semester: '',
                                   assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
+                                  assessment_conceptual_understanding: '',
+                                  assessment_task_specific_description: '',
+                                  assessment_instructions: '',
                                   selected_criteria: []
                                 })
                               }
@@ -4482,9 +5432,16 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   <button
                                     onClick={(e) => handleGeneratePDF(topic, e)}
                                     className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-                                    title="Download PDF"
+                                    title="Download Unit Planner PDF"
                                   >
                                     <FontAwesomeIcon icon={faPrint} className="text-sm" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)}
+                                    className="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
+                                    title="Download Assessment PDF"
+                                  >
+                                    <FontAwesomeIcon icon={faFileAlt} className="text-sm" />
                                   </button>
                                 </div>
                               </div>
@@ -5737,6 +6694,58 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                 placeholder="e.g., Community energy audit project, raising awareness about renewable energy..."
                               />
                             </div>
+                            
+                            {/* Resources / Bibliography */}
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Resources / Bibliography
+                              </label>
+                              <div className="mb-2">
+                                {(() => {
+                                  // Check if required data for AI is available
+                                  // In Edit mode, always enable since data is loaded from DB
+                                  // In Add mode, check if step 2 (concepts) is completed
+                                  const canUseAiHelp = !isAddMode || isStepCompleted(2)
+                                  
+                                  return (
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        if (!canUseAiHelp) return
+                                        setAiHelpType('resources')
+                                        setAiError('')
+                                        setSelectedResources([])
+                                        setAiResultModalOpen(false)
+                                        requestAiHelp('resources')
+                                      }}
+                                      disabled={!canUseAiHelp}
+                                      className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                        canUseAiHelp
+                                          ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 cursor-pointer'
+                                          : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                      }`}
+                                      title={!canUseAiHelp ? 'Complete Key Concept, Related Concept, and Global Context first' : 'Get AI suggestions for Resources'}
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                      </svg>
+                                      AI Help
+                                    </button>
+                                  )
+                                })()}
+                              </div>
+                              {isAddMode && !isStepCompleted(2) && (
+                                <p className="text-xs text-amber-600 mb-2">⚠️ Complete all Step 3 fields first to use AI Help</p>
+                              )}
+                              <p className="text-xs text-gray-600 mb-2">List books, websites, articles, videos, or other educational resources for this unit</p>
+                              <textarea
+                                value={selectedTopic.topic_resources || ''}
+                                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_resources: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                rows={4}
+                                placeholder="e.g., Book: 'The Energy Bus' by Jon Gordon&#10;Website: National Geographic Education&#10;Video: TED-Ed - How Solar Panels Work..."
+                              />
+                            </div>
                           </>
                         )}
                         
@@ -5902,6 +6911,51 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                 placeholder="Brief description of the assessment task..."
                               />
                             </div>
+                            
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Conceptual Understanding <span className="text-red-500">*</span>
+                              </label>
+                              <p className="text-xs text-gray-500 mb-2">Describe what conceptual understanding students should demonstrate through this assessment</p>
+                              <textarea
+                                value={wizardAssessment.assessment_conceptual_understanding}
+                                onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_conceptual_understanding: e.target.value }))}
+                                disabled={isAssessmentReadOnly}
+                                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                rows={3}
+                                placeholder="e.g., Students will demonstrate understanding of how energy transformation affects ecosystems..."
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Task Specific Description <span className="text-red-500">*</span>
+                              </label>
+                              <p className="text-xs text-gray-500 mb-2">Provide specific details about what students need to do in this assessment</p>
+                              <textarea
+                                value={wizardAssessment.assessment_task_specific_description}
+                                onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_task_specific_description: e.target.value }))}
+                                disabled={isAssessmentReadOnly}
+                                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                rows={3}
+                                placeholder="e.g., Create a multimedia presentation that explains the impact of human activities on local ecosystems..."
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Assessment Instructions <span className="text-red-500">*</span>
+                              </label>
+                              <p className="text-xs text-gray-500 mb-2">Step-by-step instructions for students to complete the assessment</p>
+                              <textarea
+                                value={wizardAssessment.assessment_instructions}
+                                onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_instructions: e.target.value }))}
+                                disabled={isAssessmentReadOnly}
+                                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                rows={4}
+                                placeholder="1. Research your chosen topic using at least 3 credible sources&#10;2. Create an outline of your presentation&#10;3. Design visuals that support your key points&#10;4. Prepare a 5-minute presentation..."
+                              />
+                            </div>
                                 </>
                               )
                             })()}
@@ -5984,16 +7038,19 @@ Please respond in ${selected} language and ensure valid JSON format.`
                       
                       {/* Navigation Buttons */}
                       <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-                        <button
-                          onClick={goToPreviousStep}
-                          disabled={currentStep === 0}
-                          className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                          </svg>
-                          Previous
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={goToPreviousStep}
+                            disabled={currentStep === 0}
+                            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            Previous
+                          </button>
+                          
+                        </div>
                         
                         <div className="text-center flex-1">
                           {(() => {
@@ -6147,7 +7204,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                     isOpen={true}
                     inline={true}
                     onClose={() => setAiResultModalOpen(false)}
-                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Name' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
+                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
                     size="md"
                   >
                     <div className="flex flex-col h-full">
@@ -6177,6 +7234,11 @@ Please respond in ${selected} language and ensure valid JSON format.`
                               const cleanOption = (item.option || '').replace(/\*\*/g, '')
                               const cleanText = (item.text || '').replace(/\*\*/g, '')
                               const cleanReason = (item.reason || '').replace(/\*\*/g, '')
+                              const cleanLink = (item.link || '').replace(/\*\*/g, '')
+                              // Assessment details fields
+                              const cleanConceptualUnderstanding = (item.conceptual_understanding || '').replace(/\*\*/g, '')
+                              const cleanTaskDescription = (item.task_description || '').replace(/\*\*/g, '')
+                              const cleanInstructions = (item.instructions || '').replace(/\*\*/g, '')
                               const titleToUse = cleanOption || cleanText || ''
 
                               return (
@@ -6187,7 +7249,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                     (selectedKeyConcepts.includes(item.index) && aiHelpType === 'keyConcept') ||
                                     (selectedRelatedConcepts.includes(item.index) && aiHelpType === 'relatedConcept') ||
                                     (selectedGlobalContexts.includes(item.index) && aiHelpType === 'globalContext') ||
-                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning')
+                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning') || (selectedResources.includes(item.index) && aiHelpType === 'resources')
                                       ? 'border-purple-500 bg-purple-50'
                                       : 'border-gray-200 bg-white hover:border-purple-300'
                                   }`}
@@ -6200,7 +7262,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                 >
                                   <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-2">
-                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning') && (
+                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'resources') && (
                                         <input
                                           type="checkbox"
                                           id={`ai-item-${item.index}`}
@@ -6216,7 +7278,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                             ? selectedStatements.includes(item.index)
                                             : aiHelpType === 'learnerProfile'
                                             ? selectedLearnerProfiles.includes(item.index)
-                                            : selectedServiceLearning.includes(item.index)}
+                                            : aiHelpType === 'serviceLearning'
+                                            ? selectedServiceLearning.includes(item.index)
+                                            : selectedResources.includes(item.index)}
                                           onMouseDown={(e) => {
                                             e.preventDefault()
                                             e.stopPropagation()
@@ -6232,8 +7296,10 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                               toggleStatement(item.index)
                                             } else if (aiHelpType === 'learnerProfile') {
                                               toggleLearnerProfile(item.index)
-                                            } else {
+                                            } else if (aiHelpType === 'serviceLearning') {
                                               toggleServiceLearning(item.index)
+                                            } else {
+                                              toggleResources(item.index)
                                             }
                                           }}
                                           readOnly
@@ -6253,9 +7319,9 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                         </span>
                                       )}
                                     </div>
-                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && (
+                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && aiHelpType !== 'resources' && (
                                       <button
-                                        onClick={() => insertAiSuggestion(titleToUse)}
+                                        onClick={() => aiHelpType === 'assessmentName' ? insertAiSuggestion(item) : insertAiSuggestion(titleToUse)}
                                         className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2 flex-shrink-0"
                                       >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -6276,13 +7342,73 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                           : aiHelpType === 'globalContext' ? 'Global Context:'
                                           : aiHelpType === 'statement' ? 'Statement of Inquiry:' 
                                           : aiHelpType === 'learnerProfile' ? 'Learner Profile Attribute:' 
-                                          : aiHelpType === 'serviceLearning' ? 'Service Learning Opportunity:' 
+                                          : aiHelpType === 'serviceLearning' ? 'Service Learning Opportunity:'
+                                          : aiHelpType === 'resources' ? 'Resource:' 
                                           : aiHelpType === 'assessmentName' ? 'Assessment Name:'
                                           : aiHelpType === 'assessmentRelationship' ? 'Relationship Explanation:'
                                           : t('topicNew.aiHelp.unitTitleLabel')}
                                       </h4>
                                       <p className="text-gray-800 leading-relaxed">{cleanOption}</p>
                                     </div>
+                                  )}
+                                  
+                                  {/* Link (for resources) */}
+                                  {cleanLink && aiHelpType === 'resources' && (
+                                    <div className="mb-3">
+                                      <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                        </svg>
+                                        Link:
+                                      </h4>
+                                      <a 
+                                        href={cleanLink} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 hover:underline text-sm break-all"
+                                      >
+                                        {cleanLink}
+                                      </a>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Assessment Details Fields (for assessmentName) */}
+                                  {aiHelpType === 'assessmentName' && (
+                                    <>
+                                      {cleanConceptualUnderstanding && (
+                                        <div className="mb-3">
+                                          <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                            </svg>
+                                            Conceptual Understanding:
+                                          </h4>
+                                          <p className="text-gray-700 text-sm leading-relaxed bg-gray-50 p-2 rounded">{cleanConceptualUnderstanding}</p>
+                                        </div>
+                                      )}
+                                      {cleanTaskDescription && (
+                                        <div className="mb-3">
+                                          <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                            </svg>
+                                            Task Specific Description:
+                                          </h4>
+                                          <p className="text-gray-700 text-sm leading-relaxed bg-gray-50 p-2 rounded">{cleanTaskDescription}</p>
+                                        </div>
+                                      )}
+                                      {cleanInstructions && (
+                                        <div className="mb-3">
+                                          <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                            </svg>
+                                            Assessment Instructions:
+                                          </h4>
+                                          <pre className="text-gray-700 text-sm leading-relaxed bg-gray-50 p-2 rounded whitespace-pre-wrap font-sans">{cleanInstructions}</pre>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                   
                                   {/* Description (text) */}
@@ -6318,7 +7444,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                         )}
                       </div>
 
-                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning') && aiItems.length > 0 && !aiLoading && (
+                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'resources') && aiItems.length > 0 && !aiLoading && (
                         <div className="border-t border-gray-200 bg-gray-50 p-4 flex-shrink-0">
                           {aiError && (
                             <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
@@ -6434,6 +7560,20 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   Select at least 1 learner profile attribute
                                 </p>
                               </>
+                            ) : aiHelpType === 'resources' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedResources.length > 0 ? 'bg-amber-50 border-amber-300 text-amber-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedResources.length} resource(s)
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select one or more resources
+                                </p>
+                              </>
                             ) : (
                               <>
                                 <div className="flex items-center gap-2">
@@ -6458,13 +7598,13 @@ Please respond in ${selected} language and ensure valid JSON format.`
                               Cancel
                             </button>
                             <button
-                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : applySelectedServiceLearning}
+                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : aiHelpType === 'serviceLearning' ? applySelectedServiceLearning : applySelectedResources}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors inline-flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : 'Apply Selected Option'}
+                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : aiHelpType === 'resources' ? 'Apply Selected Resources' : 'Apply Selected Option'}
                             </button>
                           </div>
                         </div>
