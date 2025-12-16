@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord } from '@fortawesome/free-solid-svg-icons'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
@@ -28,7 +28,7 @@ export default function TopicNewPage() {
   const [loading, setLoading] = useState(true)
   
   // Filters
-  const [filters, setFilters] = useState({ subject: '', search: '' })
+  const [filters, setFilters] = useState({ subject: '', kelas: '', search: '' })
   
   // Assessment state
   const [assessments, setAssessments] = useState([])
@@ -176,9 +176,13 @@ export default function TopicNewPage() {
     assessment_conceptual_understanding: '',
     assessment_task_specific_description: '',
     assessment_instructions: '',
-    selected_criteria: []
+    selected_criteria: [],
+    assessment_tsc: {} // Task Specific Clarification: { "criterionId_bandLabel_strandLabel": "content" }
   })
   const [wizardCriteria, setWizardCriteria] = useState([]) // Criteria options loaded when subject is selected
+  const [wizardStrands, setWizardStrands] = useState([]) // Strands for selected criteria and MYP year
+  const [wizardRubrics, setWizardRubrics] = useState([]) // Rubrics for the strands
+  const [loadingStrands, setLoadingStrands] = useState(false)
   
   // IB Unit Planner Steps with guidance
   const plannerSteps = [
@@ -230,6 +234,13 @@ export default function TopicNewPage() {
       description: 'Explain the connection between assessment and inquiry',
       fields: ['assessment_relationship'],
       guidance: 'Describe how the summative assessment relates to and measures the Statement of Inquiry. This connection ensures that the assessment is aligned with the conceptual understanding of the unit.'
+    },
+    {
+      id: 'tsc',
+      title: 'Task Specific Clarification',
+      description: 'Define what students should demonstrate at each level',
+      fields: ['assessment_tsc'],
+      guidance: 'Task Specific Clarification (TSC) helps students understand what is expected at each achievement level (7-8, 5-6, 3-4, 1-2, 0) for this specific assessment task. Fill in the clarifications for each strand to customize the rubric.'
     }
   ]
   
@@ -254,6 +265,7 @@ export default function TopicNewPage() {
         if (userId) {
           fetchSubjects(userId)
           fetchDetailKelasForAssessment(userId)
+          fetchAllKelas() // Fetch all kelas for filter dropdown
         } else {
           console.warn('⚠️ No user ID found')
           setLoading(false)
@@ -267,6 +279,22 @@ export default function TopicNewPage() {
       setLoading(false)
     }
   }, [])
+
+  // Fetch all kelas for filter dropdown
+  const fetchAllKelas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama')
+        .order('kelas_nama')
+      
+      if (error) throw error
+      setAllKelas(data || [])
+      console.log('📚 All kelas loaded for filter:', data)
+    } catch (err) {
+      console.error('❌ Error fetching all kelas:', err)
+    }
+  }
 
   // Fetch kelas for selected subject via detail_kelas mapping
   const fetchKelasForSubject = async (subjectId) => {
@@ -331,6 +359,51 @@ export default function TopicNewPage() {
     } catch (err) {
       console.error('❌ Error fetching criteria:', err)
       setWizardCriteria([])
+    }
+  }
+
+  // Fetch strands and rubrics for selected criteria (used in TSC step)
+  const fetchStrandsForCriteria = async (criteriaIds, mypYear) => {
+    if (!criteriaIds || criteriaIds.length === 0 || !mypYear) {
+      setWizardStrands([])
+      setWizardRubrics([])
+      return
+    }
+    
+    setLoadingStrands(true)
+    try {
+      // Fetch strands for selected criteria and year level
+      const { data: strandsData, error: strandsError } = await supabase
+        .from('strands')
+        .select('strand_id, criterion_id, year_level, label, content')
+        .in('criterion_id', criteriaIds)
+        .eq('year_level', mypYear)
+        .order('label')
+      
+      if (strandsError) throw strandsError
+      
+      setWizardStrands(strandsData || [])
+      
+      // Fetch rubrics for these strands
+      if (strandsData && strandsData.length > 0) {
+        const strandIds = strandsData.map(s => s.strand_id)
+        const { data: rubricsData, error: rubricsError } = await supabase
+          .from('rubrics')
+          .select('rubric_id, strand_id, band_label, description, min_score, max_score')
+          .in('strand_id', strandIds)
+          .order('max_score', { ascending: false })
+        
+        if (rubricsError) throw rubricsError
+        setWizardRubrics(rubricsData || [])
+      } else {
+        setWizardRubrics([])
+      }
+    } catch (err) {
+      console.error('❌ Error fetching strands:', err)
+      setWizardStrands([])
+      setWizardRubrics([])
+    } finally {
+      setLoadingStrands(false)
     }
   }
 
@@ -3073,6 +3146,182 @@ Please respond in ${selected} language and ensure valid JSON format.`
       setAiLoading(false)
     }
   }
+
+  // AI Help for TSC - generates all TSC clarifications
+  const requestAiHelpTSC = async () => {
+    setAiLoading(true)
+    setAiError('')
+    
+    try {
+      // Get context information
+      const subj = subjects.find(s => String(s.subject_id) === String(selectedTopic?.topic_subject_id))
+      const subjName = subj?.subject_name || 'Unknown Subject'
+      const kelasName = kelasNameMap.get(parseInt(selectedTopic?.topic_kelas_id)) || 'Unknown Class'
+      const unitTitle = selectedTopic?.topic_nama || 'Unit Title'
+      const assessmentName = wizardAssessment.assessment_nama || 'Assessment'
+      const taskDescription = wizardAssessment.assessment_task_specific_description || ''
+      const instructions = wizardAssessment.assessment_instructions || ''
+      const conceptualUnderstanding = wizardAssessment.assessment_conceptual_understanding || ''
+      const mypYear = selectedTopic?.topic_year || 1
+      
+      // Build structure of what we need
+      const tscStructure = []
+      
+      for (const criterionId of wizardAssessment.selected_criteria) {
+        const criterion = wizardCriteria.find(c => c.criterion_id === criterionId)
+        if (!criterion) continue
+        
+        const criterionStrands = wizardStrands.filter(s => s.criterion_id === criterionId)
+        const bandLevels = ['7-8', '5-6', '3-4', '1-2']
+        
+        for (const bandLabel of bandLevels) {
+          for (const strand of criterionStrands) {
+            const rubric = wizardRubrics.find(r => 
+              r.strand_id === strand.strand_id && r.band_label === bandLabel
+            )
+            
+            if (rubric) {
+              tscStructure.push({
+                criterionCode: criterion.code,
+                criterionName: criterion.name,
+                criterionId: criterionId,
+                bandLabel: bandLabel,
+                strandLabel: strand.label,
+                strandContent: strand.content,
+                subjectCriteria: rubric.description,
+                tscKey: `${criterionId}_${bandLabel}_${strand.label}`
+              })
+            }
+          }
+        }
+      }
+      
+      // Build prompt
+      const prompt = `You are an IB MYP assessment expert. Generate Task-Specific Clarifications (TSC) for a summative assessment.
+
+CONTEXT:
+- Subject: ${subjName}
+- Grade: ${kelasName}
+- MYP Year: ${mypYear}
+- Unit: ${unitTitle}
+- Assessment Name: ${assessmentName}
+- Task Description: ${taskDescription}
+- Conceptual Understanding: ${conceptualUnderstanding}
+- Instructions: ${instructions}
+
+WHAT IS TSC:
+Task-Specific Clarification (TSC) adapts the general subject criteria to THIS SPECIFIC assessment task. 
+
+IMPORTANT RULES:
+1. DO NOT change or rewrite the core strand criteria
+2. ONLY add specific details about HOW students demonstrate it in THIS assessment
+3. Keep the original action verbs and key concepts from the strand criteria
+4. Add task-specific elements (quantities, formats, requirements) that clarify expectations
+
+CRITERIA STRUCTURE:
+${tscStructure.map((item, idx) => `
+${idx + 1}. Criterion ${item.criterionCode} - Band ${item.bandLabel} - Strand ${item.strandLabel}
+   Original Strand Criteria: "${item.subjectCriteria}"
+   TSC Key: ${item.tscKey}
+`).join('')}
+
+INSTRUCTIONS:
+For each strand criteria above, create a TSC that:
+1. KEEPS the core criteria wording (action verbs and key concepts)
+2. ADDS specific details about this assessment (e.g., "in your presentation", "using 3-5 sources", "in a 300-word essay")
+3. CLARIFIES quantities, formats, or methods specific to THIS task
+4. MAINTAINS the achievement level implied by the band (7-8=excellent depth, 5-6=good depth, 3-4=basic, 1-2=limited)
+
+EXAMPLE:
+If strand criteria says: "explains and justifies the need for a solution to a problem"
+- Band 7-8 TSC: "explains and justifies the need for a solution to a problem, supported by detailed research from at least 5 credible sources in your presentation"
+- Band 5-6 TSC: "explains and justifies the need for a solution to a problem, supported by research from 3-4 credible sources in your presentation"
+- Band 3-4 TSC: "explains and justifies the need for a solution to a problem, with some research evidence (2-3 sources) in your presentation"
+- Band 1-2 TSC: "explains and justifies the need for a solution to a problem, with limited research (1-2 sources) in your presentation"
+
+Notice: The core phrase "explains and justifies the need for a solution to a problem" stays the same. Only task-specific details are added.
+
+RESPONSE FORMAT (JSON):
+{
+  "tsc": {
+    "criterionId_bandLabel_strandLabel": "TSC text that keeps original criteria + adds task specifics",
+    ...
+  }
+}
+
+Generate TSC for all ${tscStructure.length} items. Keep original strand wording, only add task-specific clarifications. Respond ONLY with valid JSON.`
+
+      console.log('🤖 AI TSC Prompt:', prompt)
+      console.log('📊 TSC Structure to generate:', tscStructure)
+      
+      // Call API
+      const body = { 
+        prompt: prompt, 
+        model: 'gemini-2.5-flash', 
+        context: 'Generate TSC for IB MYP assessment'
+      }
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData?.error || 'Failed to get AI response')
+      }
+      
+      const data = await response.json()
+      const aiText = data?.text || ''
+      
+      console.log('📥 AI TSC Response:', aiText)
+      
+      // Parse JSON response
+      let parsed
+      try {
+        parsed = JSON.parse(aiText)
+      } catch (jsonErr) {
+        // Try to extract JSON from markdown code blocks
+        const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/```\s*([\s\S]*?)\s*```/)
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[1])
+        } else {
+          // Try to find JSON object in text
+          const objMatch = aiText.match(/\{[\s\S]*"tsc"[\s\S]*\}/)
+          if (objMatch) {
+            parsed = JSON.parse(objMatch[0])
+          } else {
+            throw new Error('Invalid JSON response from AI')
+          }
+        }
+      }
+      
+      console.log('✅ Parsed TSC JSON:', parsed)
+      
+      if (parsed && parsed.tsc) {
+        // Update wizardAssessment with all TSC values
+        setWizardAssessment(prev => ({
+          ...prev,
+          assessment_tsc: {
+            ...prev.assessment_tsc,
+            ...parsed.tsc
+          }
+        }))
+        
+        console.log('✅ TSC values applied to assessment')
+        alert('✅ AI successfully generated all TSC clarifications!')
+      } else {
+        throw new Error('Invalid TSC structure in response')
+      }
+      
+    } catch (e) {
+      console.error('❌ AI TSC Help error:', e)
+      setAiError(e.message)
+      alert('Failed to generate TSC: ' + e.message)
+    } finally {
+      setAiLoading(false)
+    }
+  }
   
   const insertAiSuggestion = (txtOrItem) => {
     if (!txtOrItem) return
@@ -3526,9 +3775,20 @@ Please respond in ${selected} language and ensure valid JSON format.`
   }
   
   // Wizard navigation
+  const goToStep = (stepIndex) => {
+    setCurrentStep(stepIndex)
+    
+    // If going to TSC step, fetch strands
+    if (plannerSteps[stepIndex]?.id === 'tsc') {
+      if (wizardAssessment.selected_criteria.length > 0 && selectedTopic.topic_year) {
+        fetchStrandsForCriteria(wizardAssessment.selected_criteria, selectedTopic.topic_year)
+      }
+    }
+  }
+  
   const goToNextStep = () => {
     if (currentStep < plannerSteps.length - 1) {
-      setCurrentStep(currentStep + 1)
+      goToStep(currentStep + 1)
     }
   }
   
@@ -3557,6 +3817,11 @@ Please respond in ${selected} language and ensure valid JSON format.`
     // Step 6 (Relationship) - uses wizardAssessment.assessment_relationship
     if (step.id === 'relationship') {
       return wizardAssessment.assessment_relationship?.trim() !== ''
+    }
+    
+    // Step 7 (TSC) - optional, always considered complete
+    if (step.id === 'tsc') {
+      return true
     }
     
     return step.fields.every(field => {
@@ -3708,6 +3973,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
           assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
           assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
           assessment_instructions: wizardAssessment.assessment_instructions || null,
+          assessment_tsc: wizardAssessment.assessment_tsc || {}, // Task Specific Clarification JSON
           assessment_detail_kelas_id: dkData.detail_kelas_id,
           assessment_topic_id: newTopic.topic_id,
           assessment_semester: parseInt(wizardAssessment.assessment_semester),
@@ -3715,12 +3981,20 @@ Please respond in ${selected} language and ensure valid JSON format.`
           assessment_user_id: currentUserId
         }
         
+        console.log('📝 Saving assessment with TSC:', JSON.stringify(wizardAssessment.assessment_tsc, null, 2))
+        console.log('📝 Full assessmentData being saved:', JSON.stringify(assessmentData, null, 2))
+        
         const { data: assessmentResult, error: assessmentError } = await supabase
           .from('assessment')
           .insert([assessmentData])
           .select()
         
-        if (assessmentError) throw assessmentError
+        if (assessmentError) {
+          console.error('❌ Assessment insert error:', assessmentError)
+          throw assessmentError
+        }
+        
+        console.log('✅ Assessment saved successfully:', assessmentResult)
         
         // Insert assessment_criteria junction records
         if (assessmentResult && assessmentResult[0]) {
@@ -3755,8 +4029,11 @@ Please respond in ${selected} language and ensure valid JSON format.`
           assessment_conceptual_understanding: '',
           assessment_task_specific_description: '',
           assessment_instructions: '',
-          selected_criteria: []
+          selected_criteria: [],
+          assessment_tsc: {}
         })
+        setWizardStrands([])
+        setWizardRubrics([])
         
         // Show success notification
         setSaveNotification(true)
@@ -3800,6 +4077,29 @@ Please respond in ${selected} language and ensure valid JSON format.`
         .eq('topic_id', selectedTopic.topic_id)
       
       if (error) throw error
+      
+      // Update assessment including TSC
+      const { data: existingAssessment } = await supabase
+        .from('assessment')
+        .select('assessment_id')
+        .eq('assessment_topic_id', selectedTopic.topic_id)
+        .single()
+      
+      if (existingAssessment) {
+        console.log('📝 Updating assessment with TSC:', wizardAssessment.assessment_tsc)
+        const { error: assessmentError } = await supabase
+          .from('assessment')
+          .update({
+            assessment_tsc: wizardAssessment.assessment_tsc || {}
+          })
+          .eq('assessment_id', existingAssessment.assessment_id)
+        
+        if (assessmentError) {
+          console.error('❌ Error updating assessment TSC:', assessmentError)
+        } else {
+          console.log('✅ Assessment TSC updated successfully')
+        }
+      }
       
       // Refresh topics list - get subject IDs from current subjects state
       const subjectIds = subjects.map(s => s.subject_id)
@@ -3850,6 +4150,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
           assessment_keterangan,
           assessment_semester,
           assessment_status,
+          assessment_tsc,
           assessment_criteria (criterion_id)
         `)
         .eq('assessment_topic_id', topicId)
@@ -3863,9 +4164,21 @@ Please respond in ${selected} language and ensure valid JSON format.`
       if (assessmentData) {
         setTopicAssessment({
           ...assessmentData,
-          selected_criteria: assessmentData.assessment_criteria?.map(c => c.criterion_id) || []
+          selected_criteria: assessmentData.assessment_criteria?.map(c => c.criterion_id) || [],
+          assessment_tsc: assessmentData.assessment_tsc || {}
         })
         setTopicAssessmentCriteria(assessmentData.assessment_criteria?.map(c => c.criterion_id) || [])
+        
+        // Also sync to wizardAssessment for Step 7 TSC editing
+        setWizardAssessment(prev => ({
+          ...prev,
+          assessment_nama: assessmentData.assessment_nama || '',
+          assessment_tanggal: assessmentData.assessment_tanggal || '',
+          assessment_keterangan: assessmentData.assessment_keterangan || '',
+          assessment_semester: assessmentData.assessment_semester?.toString() || '',
+          selected_criteria: assessmentData.assessment_criteria?.map(c => c.criterion_id) || [],
+          assessment_tsc: assessmentData.assessment_tsc || {}
+        }))
       } else {
         // No assessment yet, set up empty state for creating one
         setTopicAssessment({
@@ -4227,6 +4540,135 @@ Please respond in ${selected} language and ensure valid JSON format.`
     }
   };
 
+  const openAssessmentHtml = async (payload) => {
+    const res = await fetch('/api/assessment-html', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let message = '';
+      try {
+        const err = await res.json();
+        message = err?.message || err?.error || '';
+      } catch {
+        message = await res.text().catch(() => '');
+      }
+      throw new Error(message || `HTTP ${res.status}`);
+    }
+    const html = await res.text();
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    // Clean up after a delay to ensure the window opens
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  };
+
+  const downloadAssessmentDocx = async (payload, fileName) => {
+    const res = await fetch('/api/assessment-docx', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let message = '';
+      try {
+        const err = await res.json();
+        message = err?.message || err?.error || '';
+      } catch {
+        message = await res.text().catch(() => '');
+      }
+      throw new Error(message || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const buildAssessmentCriteriaForPdf = ({
+    selectedCriteriaIds,
+    criteriaList,
+    strandsData,
+    rubricsData,
+    tscMap,
+  }) => {
+    const romanOrder = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+    const getRomanIndex = (label) => {
+      const idx = romanOrder.indexOf((label || '').toLowerCase());
+      return idx >= 0 ? idx : 999;
+    };
+
+    const criteriaById = new Map((criteriaList || []).map(c => [c.criterion_id, c]));
+    const result = [];
+
+    for (const criterionId of selectedCriteriaIds || []) {
+      const criterion = criteriaById.get(criterionId);
+      const criterionCode = criterion?.code || '';
+
+      const criterionStrands = (strandsData || []).filter(s => s.criterion_id === criterionId);
+      if (criterionStrands.length === 0) continue;
+
+      const strandById = new Map(criterionStrands.map(s => [s.strand_id, s]));
+      const criterionRubrics = (rubricsData || []).filter(r => strandById.has(r.strand_id));
+      if (criterionRubrics.length === 0) continue;
+
+      const bandGroups = {};
+      for (const rubric of criterionRubrics) {
+        const bandKey = `${rubric.max_score}-${rubric.min_score}`;
+        if (!bandGroups[bandKey]) {
+          bandGroups[bandKey] = {
+            bandLabel: rubric.band_label || bandKey,
+            maxScore: rubric.max_score,
+            minScore: rubric.min_score,
+            subjectItems: [],
+          };
+        }
+        const strand = strandById.get(rubric.strand_id);
+        if (!strand) continue;
+        bandGroups[bandKey].subjectItems.push({
+          label: strand.label || '',
+          text: rubric.description || '',
+        });
+      }
+
+      const bands = Object.values(bandGroups)
+        .sort((a, b) => (b.maxScore || 0) - (a.maxScore || 0))
+        .map(band => {
+          const subjectItems = (band.subjectItems || []).slice().sort((a, b) => {
+            return getRomanIndex(a.label) - getRomanIndex(b.label);
+          });
+          const tscItems = subjectItems
+            .map(item => {
+              const tscKey = `${criterionId}_${band.bandLabel}_${item.label}`;
+              const tsc = (tscMap || {})?.[tscKey] || '';
+              return tsc ? { label: item.label, text: tsc } : null;
+            })
+            .filter(Boolean);
+
+          return {
+            bandLabel: band.bandLabel,
+            subjectItems,
+            tscItems,
+          };
+        });
+
+      if (bands.length > 0) {
+        result.push({
+          code: criterionCode,
+          bands,
+        });
+      }
+    }
+
+    return result;
+  };
+
   // Generate Assessment PDF
   const handleGenerateAssessmentPDF = async () => {
     try {
@@ -4265,6 +4707,67 @@ Please respond in ${selected} language and ensure valid JSON format.`
 
       // Get proficiency level (MYP Year)
       const proficiencyLevel = topicData.topic_year ? `Phase ${topicData.topic_year}` : 'N/A';
+
+      // Prefer server-side HTML->PDF (true hanging indent via CSS). Fallback to jsPDF if it fails.
+      try {
+        const selectedCriteriaIds = wizardAssessment.selected_criteria || [];
+        const yearLevel = topicData.topic_year || 1;
+        const { data: strandsData } = await supabase
+          .from('strands')
+          .select('*')
+          .in('criterion_id', selectedCriteriaIds)
+          .eq('year_level', yearLevel)
+          .order('label');
+
+        const strandIds = (strandsData || []).map(s => s.strand_id);
+        const { data: rubricsData } = await supabase
+          .from('rubrics')
+          .select('*')
+          .in('strand_id', strandIds)
+          .order('max_score', { ascending: false });
+
+        const criteriaList = wizardCriteria || [];
+        const criteriaSections = buildAssessmentCriteriaForPdf({
+          selectedCriteriaIds,
+          criteriaList,
+          strandsData,
+          rubricsData,
+          tscMap: wizardAssessment.assessment_tsc || {},
+        });
+
+        const unitName = topicData.topic_urutan
+          ? `Unit ${topicData.topic_urutan}`
+          : (topicData.topic_nama || 'N/A');
+
+        // Build payload for HTML endpoint matching original PDF format
+        const payload = {
+          meta: {
+            subjectName,
+            kelasName,
+            unitName,
+            assessmentTitle: wizardAssessment.assessment_nama || '',
+            teacherName,
+            criteriaCodes: selectedCriteriaNames,
+            proficiencyLevel,
+            keyConcept: topicData.topic_key_concept || 'N/A',
+            relatedConcepts: topicData.topic_related_concept || 'N/A',
+            conceptualUnderstanding: wizardAssessment.assessment_conceptual_understanding || 'N/A',
+            globalContext: topicData.topic_global_context || 'N/A',
+            statementOfInquiry: topicData.topic_statement || 'N/A',
+            taskSpecificDescription: wizardAssessment.assessment_task_specific_description || 'N/A',
+            instructions: wizardAssessment.assessment_instructions || '',
+          },
+          criteria: criteriaSections,
+        };
+
+        await openAssessmentHtml(payload);
+
+        setSaveNotification(true);
+        setTimeout(() => setSaveNotification(false), 2000);
+        return;
+      } catch (serverErr) {
+        console.warn('Server-side assessment PDF failed, falling back to jsPDF:', serverErr);
+      }
 
       // Generate PDF - Portrait A4
       const pdf = new jsPDF('portrait', 'mm', 'a4');
@@ -4450,6 +4953,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
             1: { cellWidth: 'auto' },
           },
         });
+        yPos = pdf.lastAutoTable.finalY + 8;
       }
 
       // Fetch strands and rubrics for selected criteria
@@ -4473,7 +4977,15 @@ Please respond in ${selected} language and ensure valid JSON format.`
             .in('strand_id', strandIds)
             .order('max_score', { ascending: false });
 
+          // Show section title once before all criteria
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(0, 0, 0);
+          pdf.text('SUBJECT CRITERIA AND TASK-SPECIFIC CLARIFICATION', margin, yPos);
+          yPos += 6;
+
           // Group strands by criterion
+          let isFirstCriterion = true;
           for (const criterionId of selectedCriteriaIds) {
             const criterion = wizardCriteria.find(c => c.criterion_id === criterionId);
             if (!criterion) continue;
@@ -4481,20 +4993,19 @@ Please respond in ${selected} language and ensure valid JSON format.`
             const criterionStrands = strandsData.filter(s => s.criterion_id === criterionId);
             if (criterionStrands.length === 0) continue;
 
-            // Add new page for each criterion rubric table
-            pdf.addPage();
-            yPos = 25;
+            // Check if we need a new page (only if content would overflow)
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            if (yPos > pageHeight - 40) {
+              pdf.addPage();
+              yPos = 25;
+            }
 
-            // Section title
-            pdf.setFontSize(11);
+            // Criteria label only
+            pdf.setFontSize(10);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(0, 0, 0);
-            pdf.text('SUBJECT CRITERIA AND TASK-SPECIFIC CLARIFICATION', margin, yPos);
-            yPos += 8;
-
-            pdf.setFontSize(10);
             pdf.text(`Criteria ${criterion.code}`, margin, yPos);
-            yPos += 8;
+            yPos += 6;
 
             // Build table data for this criterion
             // Get all rubrics for strands of this criterion
@@ -4535,20 +5046,81 @@ Please respond in ${selected} language and ensure valid JSON format.`
             const sortedBands = Object.values(bandGroups).sort((a, b) => b.max_score - a.max_score);
             sortedBands.forEach(band => {
               band.rubricsData.sort((a, b) => getRomanIndex(a.label) - getRomanIndex(b.label));
+              // Format each strand with proper indentation: "i.    description"
               band.strandsContent = band.rubricsData.map(r => {
-                const labelPrefix = r.label ? `${r.label}. ` : '';
-                return `${labelPrefix}${r.description}`;
+                const label = r.label || '';
+                // Pad the label to create consistent indentation (e.g., "i.  ", "ii. ", "iii.")
+                const paddedLabel = label ? `${label}.`.padEnd(5, ' ') : '     ';
+                return `${paddedLabel}${r.description}`;
               });
+              // Build TSC content per strand using criterionId_bandLabel_strandLabel key format
+              band.tscContent = band.rubricsData.map(r => {
+                const tscKey = `${criterionId}_${band.band_label}_${r.label}`;
+                const tsc = wizardAssessment.assessment_tsc?.[tscKey] || '';
+                if (tsc) {
+                  const paddedLabel = r.label ? `${r.label}.`.padEnd(5, ' ') : '     ';
+                  return `${paddedLabel}${tsc}`;
+                }
+                return '';
+              }).filter(t => t);
             });
 
             if (sortedBands.length > 0) {
               // Create table with headers
               const tableHead = [['', 'SUBJECT CRITERIA', 'TASK-SPECIFIC CLARIFICATION']];
-              const tableBody = sortedBands.map(band => [
-                band.band_label,
-                'The student:\n' + band.strandsContent.join('\n'),
-                '' // Empty - to be filled by teacher
-              ]);
+
+              // Build hanging-indented content as plain text lines so autoTable can measure height correctly
+              pdf.setFont('helvetica', 'normal');
+              pdf.setFontSize(8);
+              const colWidth = (availableWidth - 12) / 2;
+              const innerWidth = colWidth - 4; // cellPadding (2 left + 2 right)
+              const spaceWidth = Math.max(0.1, pdf.getTextWidth(' '));
+              const labelColWidth = pdf.getTextWidth('viii. ');
+              const buildHangingContent = (pairs) => {
+                if (!pairs || pairs.length === 0) return '';
+                const lines = ['The student:'];
+                for (const p of pairs) {
+                  const cleanText = (p?.text ?? '').toString().trim();
+                  if (!cleanText) continue;
+                  const cleanLabel = (p?.label ?? '').toString().trim();
+                  const labelToken = cleanLabel ? `${cleanLabel}.` : '';
+                  const maxDescWidth = Math.max(12, innerWidth - labelColWidth);
+                  const wrapped = pdf.splitTextToSize(cleanText, maxDescWidth);
+                  if (!wrapped || wrapped.length === 0) continue;
+
+                  const labelWidth = labelToken ? pdf.getTextWidth(labelToken) : 0;
+                  const padWidth = labelToken ? Math.max(0, labelColWidth - labelWidth) : 0;
+                  const padSpacesCount = labelToken ? Math.max(1, Math.ceil(padWidth / spaceWidth)) : 0;
+                  const prefix = labelToken ? `${labelToken}${' '.repeat(padSpacesCount)}` : '';
+                  const indentSpacesCount = Math.max(0, Math.ceil(labelColWidth / spaceWidth));
+                  const indent = indentSpacesCount > 0 ? ' '.repeat(indentSpacesCount) : '';
+
+                  lines.push(`${prefix}${wrapped[0]}`.trimEnd());
+                  for (let i = 1; i < wrapped.length; i++) {
+                    lines.push(`${indent}${wrapped[i]}`.trimEnd());
+                  }
+                }
+                return lines.length > 1 ? lines.join('\n') : '';
+              };
+              
+              // Build simple text content - let autoTable handle wrapping
+              const tableBody = sortedBands.map(band => {
+                const subjectPairs = (band.rubricsData || []).map(r => ({
+                  label: r.label,
+                  text: r.description,
+                }));
+                const subjectContent = buildHangingContent(subjectPairs);
+                
+                // TSC content
+                const tscPairs = (band.rubricsData || []).map(r => {
+                  const tscKey = `${criterionId}_${band.band_label}_${r.label}`;
+                  const tsc = wizardAssessment.assessment_tsc?.[tscKey] || '';
+                  return tsc ? { label: r.label, text: tsc } : null;
+                }).filter(Boolean);
+                const tscContent = tscPairs.length > 0 ? buildHangingContent(tscPairs) : '';
+                
+                return [band.band_label, subjectContent, tscContent];
+              });
 
               autoTable(pdf, {
                 startY: yPos,
@@ -4558,7 +5130,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                 theme: 'grid',
                 styles: { 
                   fontSize: 8, 
-                  cellPadding: 3, 
+                  cellPadding: 2, 
                   valign: 'top', 
                   textColor: [0, 0, 0],
                   lineColor: [0, 0, 0],
@@ -4581,6 +5153,17 @@ Please respond in ${selected} language and ensure valid JSON format.`
         }
       }
 
+      // Add page numbers to all pages
+      const totalPages = pdf.internal.getNumberOfPages();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`${i}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+      }
+
       // Save PDF
       const fileName = `assessment-${wizardAssessment.assessment_nama?.replace(/[^a-z0-9]/gi, '-') || 'assessment'}.pdf`;
       pdf.save(fileName);
@@ -4591,6 +5174,98 @@ Please respond in ${selected} language and ensure valid JSON format.`
     } catch (error) {
       console.error('Error generating Assessment PDF:', error);
       alert(`Failed to generate Assessment PDF: ${error.message}`);
+    }
+  };
+
+  // Export Assessment to Word
+  const handleExportAssessmentWord = async () => {
+    try {
+      const topicData = selectedTopic;
+      if (!topicData || !wizardAssessment.assessment_nama) {
+        alert('Please complete assessment name first');
+        return;
+      }
+
+      const subjectName = subjectMap.get(topicData.topic_subject_id) || 'N/A';
+      const kelasName = kelasNameMap.get(topicData.topic_kelas_id) || 'N/A';
+      
+      let teacherName = 'N/A';
+      if (currentUserId) {
+        const { data: userData, error: userErr } = await supabase
+          .from("users")
+          .select("user_nama_depan, user_nama_belakang")
+          .eq("user_id", currentUserId)
+          .single();
+        
+        if (!userErr && userData) {
+          teacherName = `${userData.user_nama_depan || ''} ${userData.user_nama_belakang || ''}`.trim();
+        }
+      }
+
+      const selectedCriteriaNames = wizardCriteria
+        .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
+        .map(c => c.code)
+        .join('/');
+
+      const proficiencyLevel = topicData.topic_year ? `Phase ${topicData.topic_year}` : 'N/A';
+
+      const selectedCriteriaIds = wizardAssessment.selected_criteria || [];
+      const yearLevel = topicData.topic_year || 1;
+      const { data: strandsData } = await supabase
+        .from('strands')
+        .select('*')
+        .in('criterion_id', selectedCriteriaIds)
+        .eq('year_level', yearLevel)
+        .order('label');
+
+      const strandIds = (strandsData || []).map(s => s.strand_id);
+      const { data: rubricsData } = await supabase
+        .from('rubrics')
+        .select('*')
+        .in('strand_id', strandIds)
+        .order('max_score', { ascending: false });
+
+      const criteriaList = wizardCriteria || [];
+      const criteriaSections = buildAssessmentCriteriaForPdf({
+        selectedCriteriaIds,
+        criteriaList,
+        strandsData,
+        rubricsData,
+        tscMap: wizardAssessment.assessment_tsc || {},
+      });
+
+      const unitName = topicData.topic_urutan
+        ? `Unit ${topicData.topic_urutan}`
+        : (topicData.topic_nama || 'N/A');
+
+      const payload = {
+        meta: {
+          subjectName,
+          kelasName,
+          unitName,
+          assessmentTitle: wizardAssessment.assessment_nama || '',
+          teacherName,
+          criteriaCodes: selectedCriteriaNames,
+          proficiencyLevel,
+          keyConcept: topicData.topic_key_concept || 'N/A',
+          relatedConcepts: topicData.topic_related_concept || 'N/A',
+          conceptualUnderstanding: wizardAssessment.assessment_conceptual_understanding || 'N/A',
+          globalContext: topicData.topic_global_context || 'N/A',
+          statementOfInquiry: topicData.topic_statement || 'N/A',
+          taskSpecificDescription: wizardAssessment.assessment_task_specific_description || 'N/A',
+          instructions: wizardAssessment.assessment_instructions || '',
+        },
+        criteria: criteriaSections,
+      };
+
+      const fileName = `assessment-${wizardAssessment.assessment_nama?.replace(/[^a-z0-9]/gi, '-') || 'assessment'}.docx`;
+      await downloadAssessmentDocx(payload, fileName);
+
+      setSaveNotification(true);
+      setTimeout(() => setSaveNotification(false), 2000);
+    } catch (error) {
+      console.error('Error exporting Assessment to Word:', error);
+      alert(`Failed to export Assessment to Word: ${error.message}`);
     }
   };
 
@@ -4612,6 +5287,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
           assessment_conceptual_understanding,
           assessment_task_specific_description,
           assessment_instructions,
+          assessment_tsc,
           assessment_criteria (criterion_id)
         `)
         .eq('assessment_topic_id', topic.topic_id)
@@ -4658,6 +5334,66 @@ Please respond in ${selected} language and ensure valid JSON format.`
 
       // Get proficiency level (MYP Year)
       const proficiencyLevel = topic.topic_year ? `Phase ${topic.topic_year}` : 'N/A';
+
+      // Prefer server-side HTML->PDF (true hanging indent via CSS). Fallback to jsPDF if it fails.
+      try {
+        const selectedCriteriaIds = criteriaIds;
+        const yearLevel = topic.topic_year || 1;
+        const { data: strandsData } = await supabase
+          .from('strands')
+          .select('*')
+          .in('criterion_id', selectedCriteriaIds)
+          .eq('year_level', yearLevel)
+          .order('label');
+
+        const strandIds = (strandsData || []).map(s => s.strand_id);
+        const { data: rubricsData } = await supabase
+          .from('rubrics')
+          .select('*')
+          .in('strand_id', strandIds)
+          .order('max_score', { ascending: false });
+
+        const criteriaSections = buildAssessmentCriteriaForPdf({
+          selectedCriteriaIds,
+          criteriaList: criteriaData || [],
+          strandsData,
+          rubricsData,
+          tscMap: assessmentData.assessment_tsc || {},
+        });
+
+        const unitName = topic.topic_urutan
+          ? `Unit ${topic.topic_urutan}`
+          : (topic.topic_nama || 'N/A');
+
+        // Build payload for HTML endpoint matching original PDF format
+        const payload = {
+          meta: {
+            subjectName,
+            kelasName,
+            unitName,
+            assessmentTitle: assessmentData.assessment_nama || '',
+            teacherName,
+            criteriaCodes: selectedCriteriaNames,
+            proficiencyLevel,
+            keyConcept: topic.topic_key_concept || 'N/A',
+            relatedConcepts: topic.topic_related_concept || 'N/A',
+            conceptualUnderstanding: assessmentData.assessment_conceptual_understanding || 'N/A',
+            globalContext: topic.topic_global_context || 'N/A',
+            statementOfInquiry: topic.topic_statement || 'N/A',
+            taskSpecificDescription: assessmentData.assessment_task_specific_description || 'N/A',
+            instructions: assessmentData.assessment_instructions || '',
+          },
+          criteria: criteriaSections,
+        };
+
+        await openAssessmentHtml(payload);
+
+        setSaveNotification(true);
+        setTimeout(() => setSaveNotification(false), 2000);
+        return;
+      } catch (serverErr) {
+        console.warn('Server-side assessment PDF failed, falling back to jsPDF:', serverErr);
+      }
 
       // Generate PDF - Portrait A4
       const pdf = new jsPDF('portrait', 'mm', 'a4');
@@ -4843,6 +5579,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
             1: { cellWidth: 'auto' },
           },
         });
+        yPos = pdf.lastAutoTable.finalY + 8;
       }
 
       // Fetch strands and rubrics for selected criteria
@@ -4872,7 +5609,15 @@ Please respond in ${selected} language and ensure valid JSON format.`
             .in('strand_id', strandIds)
             .order('max_score', { ascending: false });
 
+          // Show section title once before all criteria
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(0, 0, 0);
+          pdf.text('SUBJECT CRITERIA AND TASK-SPECIFIC CLARIFICATION', margin, yPos);
+          yPos += 6;
+
           // Group strands by criterion
+          let isFirstCriterionCard = true;
           for (const criterionId of selectedCriteriaIds) {
             const criterion = (criteriaDetails || []).find(c => c.criterion_id === criterionId);
             if (!criterion) continue;
@@ -4880,20 +5625,19 @@ Please respond in ${selected} language and ensure valid JSON format.`
             const criterionStrands = strandsData.filter(s => s.criterion_id === criterionId);
             if (criterionStrands.length === 0) continue;
 
-            // Add new page for each criterion rubric table
-            pdf.addPage();
-            yPos = 25;
+            // Check if we need a new page (only if content would overflow)
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            if (yPos > pageHeight - 40) {
+              pdf.addPage();
+              yPos = 25;
+            }
 
-            // Section title
-            pdf.setFontSize(11);
+            // Criteria label only
+            pdf.setFontSize(10);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(0, 0, 0);
-            pdf.text('SUBJECT CRITERIA AND TASK-SPECIFIC CLARIFICATION', margin, yPos);
-            yPos += 8;
-
-            pdf.setFontSize(10);
             pdf.text(`Criteria ${criterion.code}`, margin, yPos);
-            yPos += 8;
+            yPos += 6;
 
             // Build table data for this criterion
             // Get all rubrics for strands of this criterion
@@ -4934,30 +5678,74 @@ Please respond in ${selected} language and ensure valid JSON format.`
             const sortedBandsCard = Object.values(bandGroupsCard).sort((a, b) => b.max_score - a.max_score);
             sortedBandsCard.forEach(band => {
               band.rubricsData.sort((a, b) => getRomanIndexCard(a.label) - getRomanIndexCard(b.label));
-              band.strandsContent = band.rubricsData.map(r => {
-                const labelPrefix = r.label ? `${r.label}. ` : '';
-                return `${labelPrefix}${r.description}`;
-              });
             });
 
             if (sortedBandsCard.length > 0) {
               // Create table with headers
-              const tableHead = [['', 'SUBJECT CRITERIA', 'TASK-SPECIFIC CLARIFICATION']];
-              const tableBody = sortedBandsCard.map(band => [
-                band.band_label,
-                'The student:\n' + band.strandsContent.join('\n'),
-                '' // Empty - to be filled by teacher
-              ]);
+              const tableHeadCard = [['', 'SUBJECT CRITERIA', 'TASK-SPECIFIC CLARIFICATION']];
+
+              // Build hanging-indented content as plain text lines so autoTable can measure height correctly
+              pdf.setFont('helvetica', 'normal');
+              pdf.setFontSize(8);
+              const colWidthCard = (availableWidth - 12) / 2;
+              const innerWidthCard = colWidthCard - 4; // cellPadding (2 left + 2 right)
+              const spaceWidthCard = Math.max(0.1, pdf.getTextWidth(' '));
+              const labelColWidthCard = pdf.getTextWidth('viii. ');
+              const buildHangingContentCard = (pairs) => {
+                if (!pairs || pairs.length === 0) return '';
+                const lines = ['The student:'];
+                for (const p of pairs) {
+                  const cleanText = (p?.text ?? '').toString().trim();
+                  if (!cleanText) continue;
+                  const cleanLabel = (p?.label ?? '').toString().trim();
+                  const labelToken = cleanLabel ? `${cleanLabel}.` : '';
+                  const maxDescWidth = Math.max(12, innerWidthCard - labelColWidthCard);
+                  const wrapped = pdf.splitTextToSize(cleanText, maxDescWidth);
+                  if (!wrapped || wrapped.length === 0) continue;
+
+                  const labelWidth = labelToken ? pdf.getTextWidth(labelToken) : 0;
+                  const padWidth = labelToken ? Math.max(0, labelColWidthCard - labelWidth) : 0;
+                  const padSpacesCount = labelToken ? Math.max(1, Math.ceil(padWidth / spaceWidthCard)) : 0;
+                  const prefix = labelToken ? `${labelToken}${' '.repeat(padSpacesCount)}` : '';
+                  const indentSpacesCount = Math.max(0, Math.ceil(labelColWidthCard / spaceWidthCard));
+                  const indent = indentSpacesCount > 0 ? ' '.repeat(indentSpacesCount) : '';
+
+                  lines.push(`${prefix}${wrapped[0]}`.trimEnd());
+                  for (let i = 1; i < wrapped.length; i++) {
+                    lines.push(`${indent}${wrapped[i]}`.trimEnd());
+                  }
+                }
+                return lines.length > 1 ? lines.join('\n') : '';
+              };
+              
+              // Build simple text content - let autoTable handle wrapping
+              const tableBodyCard = sortedBandsCard.map(band => {
+                const subjectPairs = (band.rubricsData || []).map(r => ({
+                  label: r.label,
+                  text: r.description,
+                }));
+                const subjectContent = buildHangingContentCard(subjectPairs);
+                
+                // TSC content
+                const tscPairs = (band.rubricsData || []).map(r => {
+                  const tscKey = `${criterionId}_${band.band_label}_${r.label}`;
+                  const tsc = assessmentData.assessment_tsc?.[tscKey] || '';
+                  return tsc ? { label: r.label, text: tsc } : null;
+                }).filter(Boolean);
+                const tscContent = tscPairs.length > 0 ? buildHangingContentCard(tscPairs) : '';
+                
+                return [band.band_label, subjectContent, tscContent];
+              });
 
               autoTable(pdf, {
                 startY: yPos,
                 margin: { left: margin, right: margin },
-                head: tableHead,
-                body: tableBody,
+                head: tableHeadCard,
+                body: tableBodyCard,
                 theme: 'grid',
                 styles: { 
                   fontSize: 8, 
-                  cellPadding: 3, 
+                  cellPadding: 2, 
                   valign: 'top', 
                   textColor: [0, 0, 0],
                   lineColor: [0, 0, 0],
@@ -4975,9 +5763,21 @@ Please respond in ${selected} language and ensure valid JSON format.`
                   2: { cellWidth: (availableWidth - 12) / 2 },
                 },
               });
+              yPos = pdf.lastAutoTable.finalY + 8; // Add spacing after table before next criteria
             }
           }
         }
+      }
+
+      // Add page numbers to all pages
+      const totalPages = pdf.internal.getNumberOfPages();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`${i}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
       }
 
       // Save PDF
@@ -4990,6 +5790,128 @@ Please respond in ${selected} language and ensure valid JSON format.`
     } catch (error) {
       console.error('Error generating Assessment PDF:', error);
       alert(`Failed to generate Assessment PDF: ${error.message}`);
+    }
+  };
+
+  // Export assessment to Word from card
+  const handleExportAssessmentWordFromCard = async (topic, event) => {
+    if (event) {
+      event.stopPropagation(); // Prevent card click
+    }
+    
+    try {
+      // Fetch assessment data for this topic
+      const { data: assessmentData, error: assessmentErr } = await supabase
+        .from('assessment')
+        .select(`
+          assessment_id,
+          assessment_nama,
+          assessment_keterangan,
+          assessment_semester,
+          assessment_conceptual_understanding,
+          assessment_task_specific_description,
+          assessment_instructions,
+          assessment_tsc,
+          assessment_criteria (criterion_id)
+        `)
+        .eq('assessment_topic_id', topic.topic_id)
+        .single();
+      
+      if (assessmentErr || !assessmentData) {
+        alert('No assessment found for this unit. Please create an assessment first.');
+        return;
+      }
+
+      // Get subject name
+      const subjectName = subjectMap.get(topic.topic_subject_id) || 'N/A';
+      
+      // Get class name
+      const kelasName = kelasNameMap.get(topic.topic_kelas_id) || 'N/A';
+      
+      // Get teacher name
+      let teacherName = 'N/A';
+      if (currentUserId) {
+        const { data: userData, error: userErr } = await supabase
+          .from("users")
+          .select("user_nama_depan, user_nama_belakang")
+          .eq("user_id", currentUserId)
+          .single();
+        
+        if (!userErr && userData) {
+          teacherName = `${userData.user_nama_depan || ''} ${userData.user_nama_belakang || ''}`.trim();
+        }
+      }
+
+      // Get criteria for this subject
+      const { data: criteriaData } = await supabase
+        .from('criteria')
+        .select('criterion_id, code, name')
+        .eq('subject_id', topic.topic_subject_id)
+        .order('code');
+      
+      // Get selected criteria names
+      const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || [];
+      const selectedCriteriaNames = (criteriaData || [])
+        .filter(c => criteriaIds.includes(c.criterion_id))
+        .map(c => c.code)
+        .join('/');
+
+      // Get proficiency level (MYP Year)
+      const proficiencyLevel = topic.topic_year ? `Phase ${topic.topic_year}` : 'N/A';
+
+      // Fetch strands and rubrics
+      const { data: strandsData } = await supabase
+        .from('strands')
+        .select('*')
+        .in('criterion_id', criteriaIds)
+        .eq('year_level', topic.topic_year || 1)
+        .order('label');
+
+      const strandIds = strandsData?.map(s => s.strand_id) || [];
+      
+      const { data: rubricsData } = await supabase
+        .from('rubrics')
+        .select('*')
+        .in('strand_id', strandIds)
+        .order('max_score', { ascending: false });
+
+      // Build criteria structure
+      const criteriaStructure = buildAssessmentCriteriaForPdf({
+        selectedCriteriaIds: criteriaIds,
+        criteriaList: criteriaData || [],
+        strandsData: strandsData || [],
+        rubricsData: rubricsData || [],
+        tscMap: assessmentData.assessment_tsc || {}
+      });
+
+      // Build payload
+      const payload = {
+        meta: {
+          subjectName,
+          kelasName,
+          unitName: topic.topic_urutan ? topic.topic_urutan.toString() : '-',
+          assessmentTitle: assessmentData.assessment_nama || '',
+          teacherName,
+          criteriaCodes: selectedCriteriaNames,
+          proficiencyLevel,
+          keyConcept: topic.topic_key_concept || '',
+          relatedConcepts: topic.topic_related_concept || '',
+          conceptualUnderstanding: assessmentData.assessment_conceptual_understanding || topic.topic_conceptual_understanding || '',
+          globalContext: topic.topic_global_context || '',
+          statementOfInquiry: topic.topic_statement || '',
+          taskSpecificDescription: assessmentData.assessment_task_specific_description || '',
+          instructions: assessmentData.assessment_instructions || '',
+        },
+        criteria: criteriaStructure,
+      };
+
+      // Download DOCX
+      const fileName = `${assessmentData.assessment_nama.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+      await downloadAssessmentDocx(payload, fileName);
+
+    } catch (error) {
+      console.error('Error exporting Word:', error);
+      alert('Failed to export Word document. Check console for details.');
     }
   };
 
@@ -5035,7 +5957,8 @@ Please respond in ${selected} language and ensure valid JSON format.`
         assessment_detail_kelas_id: dkData.detail_kelas_id,
         assessment_topic_id: selectedTopic.topic_id,
         assessment_status: topicAssessment.assessment_status || 0,
-        assessment_user_id: currentUserId
+        assessment_user_id: currentUserId,
+        assessment_tsc: topicAssessment.assessment_tsc || {}
       }
       
       let assessmentId = topicAssessment.assessment_id
@@ -5112,10 +6035,11 @@ Please respond in ${selected} language and ensure valid JSON format.`
   const filteredTopics = topics
     .filter(topic => {
       const matchSubject = !filters.subject || topic.topic_subject_id === parseInt(filters.subject)
+      const matchKelas = !filters.kelas || topic.topic_kelas_id === parseInt(filters.kelas)
       const matchSearch = !filters.search || 
         topic.topic_nama?.toLowerCase().includes(filters.search.toLowerCase()) ||
         subjectMap.get(topic.topic_subject_id)?.toLowerCase().includes(filters.search.toLowerCase())
-      return matchSubject && matchSearch
+      return matchSubject && matchKelas && matchSearch
     })
     .sort((a, b) => {
       // First: sort by grade
@@ -5304,6 +6228,23 @@ Please respond in ${selected} language and ensure valid JSON format.`
                     </div>
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Class/Grade
+                      </label>
+                      <select
+                        value={filters.kelas}
+                        onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                      >
+                        <option value="">All Classes</option>
+                        {allKelas.map(k => (
+                          <option key={k.kelas_id} value={k.kelas_id}>
+                            {k.kelas_nama}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         {t('topicNew.filters.search')}
                       </label>
                       <input
@@ -5369,6 +6310,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   assessment_conceptual_understanding,
                                   assessment_task_specific_description,
                                   assessment_instructions,
+                                  assessment_tsc,
                                   assessment_criteria (criterion_id)
                                 `)
                                 .eq('assessment_topic_id', topic.topic_id)
@@ -5384,7 +6326,8 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   assessment_conceptual_understanding: assessmentData.assessment_conceptual_understanding || '',
                                   assessment_task_specific_description: assessmentData.assessment_task_specific_description || '',
                                   assessment_instructions: assessmentData.assessment_instructions || '',
-                                  selected_criteria: criteriaIds
+                                  selected_criteria: criteriaIds,
+                                  assessment_tsc: assessmentData.assessment_tsc || {}
                                 })
                               } else {
                                 // No assessment yet, clear wizard assessment
@@ -5396,7 +6339,8 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                   assessment_conceptual_understanding: '',
                                   assessment_task_specific_description: '',
                                   assessment_instructions: '',
-                                  selected_criteria: []
+                                  selected_criteria: [],
+                                  assessment_tsc: {}
                                 })
                               }
                               
@@ -5442,6 +6386,13 @@ Please respond in ${selected} language and ensure valid JSON format.`
                                     title="Download Assessment PDF"
                                   >
                                     <FontAwesomeIcon icon={faFileAlt} className="text-sm" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleExportAssessmentWordFromCard(topic, e)}
+                                    className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    title="Download Assessment Word"
+                                  >
+                                    <FontAwesomeIcon icon={faFileWord} className="text-sm" />
                                   </button>
                                 </div>
                               </div>
@@ -6041,7 +6992,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                               }`} />
                             )}
                             <button
-                              onClick={() => setCurrentStep(index)}
+                              onClick={() => goToStep(index)}
                               className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all z-10 ${
                                 index === currentStep
                                   ? 'bg-cyan-500 text-white scale-110'
@@ -6091,7 +7042,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                           <button 
                             key={step.id} 
                             type="button"
-                            onClick={() => setCurrentStep(index)}
+                            onClick={() => goToStep(index)}
                             className="flex-1 flex flex-col items-center relative group cursor-pointer"
                             title={`Go to ${step.title}`}
                           >
@@ -7034,6 +7985,189 @@ Please respond in ${selected} language and ensure valid JSON format.`
                             </div>
                           </>
                         )}
+
+                        {/* Step 7: Task Specific Clarification (TSC) */}
+                        {currentStep === 7 && (
+                          <>
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                              <div className="flex items-start justify-between">
+                                <p className="text-sm text-amber-700 flex-1">
+                                  <strong>📝 Task Specific Clarification (TSC)</strong> helps students understand what is expected at each achievement level for this specific assessment task. Fill in the clarifications below to customize the rubric for your assessment.
+                                </p>
+                                {wizardStrands.length > 0 && (
+                                  <button
+                                    onClick={() => requestAiHelpTSC()}
+                                    disabled={aiLoading || !wizardAssessment.assessment_nama?.trim() || !wizardAssessment.assessment_task_specific_description?.trim()}
+                                    className="ml-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                                  >
+                                    {aiLoading ? (
+                                      <>
+                                        <FontAwesomeIcon icon={faSpinner} spin className="w-4 h-4" />
+                                        <span>Generating TSC...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        AI Help
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                              {wizardStrands.length > 0 && (!wizardAssessment.assessment_nama?.trim() || !wizardAssessment.assessment_task_specific_description?.trim()) && (
+                                <p className="text-xs text-amber-600 mt-2">⚠️ Complete Assessment Name and Task Specific Description in Step 6 first to use AI Help</p>
+                              )}
+                            </div>
+
+                            {loadingStrands ? (
+                              <div className="flex items-center justify-center py-8">
+                                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl text-cyan-500 mr-3" />
+                                <span className="text-gray-600">Loading rubric structure...</span>
+                              </div>
+                            ) : wizardStrands.length === 0 ? (
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                                <p className="text-gray-600">
+                                  No strands found for the selected criteria and MYP Year level.
+                                </p>
+                                <p className="text-sm text-gray-500 mt-2">
+                                  Please ensure you have selected criteria in Step 6 and the MYP Year is set in Step 1.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (wizardAssessment.selected_criteria.length > 0 && selectedTopic.topic_year) {
+                                      fetchStrandsForCriteria(wizardAssessment.selected_criteria, selectedTopic.topic_year)
+                                    }
+                                  }}
+                                  className="mt-4 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors"
+                                >
+                                  Reload Strands
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                {/* Group by Criterion */}
+                                {wizardAssessment.selected_criteria.map(criterionId => {
+                                  const criterion = wizardCriteria.find(c => c.criterion_id === criterionId)
+                                  if (!criterion) return null
+                                  
+                                  const criterionStrands = wizardStrands.filter(s => s.criterion_id === criterionId)
+                                  if (criterionStrands.length === 0) return null
+                                  
+                                  // Band levels in order (excluding 0)
+                                  const bandLevels = ['7-8', '5-6', '3-4', '1-2']
+                                  
+                                  return (
+                                    <div key={criterionId} className="mb-6 border border-gray-200 rounded-lg overflow-hidden">
+                                      {/* Criterion Header */}
+                                      <div className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-3">
+                                        <h4 className="font-bold text-lg">Criterion {criterion.code}: {criterion.name}</h4>
+                                      </div>
+                                      
+                                      {/* Band Levels */}
+                                      <div className="divide-y divide-gray-200">
+                                        {bandLevels.map(bandLabel => {
+                                          // Get rubrics for this band from wizardRubrics
+                                          const bandRubrics = wizardRubrics.filter(r => {
+                                            const strand = criterionStrands.find(s => s.strand_id === r.strand_id)
+                                            return strand && r.band_label === bandLabel
+                                          })
+                                          
+                                          // Get band color
+                                          const getBandColor = (band) => {
+                                            switch(band) {
+                                              case '7-8': return 'bg-green-100 text-green-800 border-green-300'
+                                              case '5-6': return 'bg-blue-100 text-blue-800 border-blue-300'
+                                              case '3-4': return 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                                              case '1-2': return 'bg-red-100 text-red-800 border-red-300'
+                                              case '0': return 'bg-gray-100 text-gray-800 border-gray-300'
+                                              default: return 'bg-gray-100 text-gray-800 border-gray-300'
+                                            }
+                                          }
+                                          
+                                          return (
+                                            <div key={bandLabel} className="p-4">
+                                              <div className="flex items-start gap-4">
+                                                {/* Band Label */}
+                                                <div className={`flex-shrink-0 w-14 h-10 rounded-lg border flex items-center justify-center font-bold text-sm ${getBandColor(bandLabel)}`}>
+                                                  {bandLabel}
+                                                </div>
+                                                
+                                                {/* Content Area - Per Strand */}
+                                                <div className="flex-1 space-y-3">
+                                                  {criterionStrands.map(strand => {
+                                                    const rubric = bandRubrics.find(r => r.strand_id === strand.strand_id)
+                                                    const tscKey = `${criterionId}_${bandLabel}_${strand.label}` // criterionId_bandLabel_strandLabel
+                                                    
+                                                    // Skip if no rubric defined for this strand at this band level
+                                                    if (!rubric) return null
+                                                    
+                                                    return (
+                                                      <div key={strand.strand_id} className="bg-gray-50 rounded-lg p-3">
+                                                        {/* Strand Header */}
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                          <span className="inline-flex items-center justify-center w-6 h-6 bg-cyan-100 text-cyan-700 rounded-full text-xs font-bold">
+                                                            {strand.label}
+                                                          </span>
+                                                          <p className="text-xs font-semibold text-gray-500">STRAND {strand.label.toUpperCase()}</p>
+                                                        </div>
+                                                        
+                                                        {/* Subject Criteria for this strand */}
+                                                        <div className="mb-2">
+                                                          <p className="text-xs text-gray-400 mb-1">Subject Criteria:</p>
+                                                          <p className="text-sm text-gray-700">
+                                                            <span className="font-medium">{strand.label}.</span> {rubric.description}
+                                                          </p>
+                                                        </div>
+                                                        
+                                                        {/* TSC Input for this strand */}
+                                                        <div>
+                                                          <label className="text-xs text-gray-400 mb-1 block">Task-Specific Clarification:</label>
+                                                          <textarea
+                                                            value={wizardAssessment.assessment_tsc?.[tscKey] || ''}
+                                                            onChange={(e) => {
+                                                              console.log('🔄 Updating TSC:', tscKey, '=', e.target.value)
+                                                              setWizardAssessment(prev => {
+                                                                const newState = {
+                                                                  ...prev,
+                                                                  assessment_tsc: {
+                                                                    ...prev.assessment_tsc,
+                                                                    [tscKey]: e.target.value
+                                                                  }
+                                                                }
+                                                                console.log('📊 New assessment_tsc state:', newState.assessment_tsc)
+                                                                return newState
+                                                              })
+                                                            }}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
+                                                            rows={2}
+                                                            placeholder={`TSC for strand ${strand.label} at level ${bandLabel}...`}
+                                                          />
+                                                        </div>
+                                                      </div>
+                                                    )
+                                                  })}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                                
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                  <p className="text-sm text-green-700">
+                                    💡 <strong>Tip:</strong> TSC fields are optional. You can save the unit without filling them all. The TSC will be included when you print the assessment PDF.
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </>
+                        )}
                       </div>
                       
                       {/* Navigation Buttons */}
@@ -7105,7 +8239,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
                         ) : (
                           <button
                             onClick={isAddMode ? saveNewTopic : updateExistingTopic}
-                            disabled={saving || getMissingFields().length > 0}
+                            disabled={saving}
                             className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                           >
                             {saving ? (
