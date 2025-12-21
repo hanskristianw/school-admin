@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb } from '@fortawesome/free-solid-svg-icons'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
@@ -137,6 +137,14 @@ export default function TopicNewPage() {
   const [selectedLearnerProfiles, setSelectedLearnerProfiles] = useState([]) // For multi-select learner profiles
   const [selectedServiceLearning, setSelectedServiceLearning] = useState([]) // For multi-select service learning
   const [selectedResources, setSelectedResources] = useState([]) // For multi-select resources
+  const [selectedAtlSkills, setSelectedAtlSkills] = useState([]) // For multi-select ATL skills
+  
+  // Weekly Plan state
+  const [selectedTopicForWeekly, setSelectedTopicForWeekly] = useState(null)
+  const [weeklyPlans, setWeeklyPlans] = useState([]) // Array of { id, week_number, week_objectives, week_activities, week_resources }
+  const [loadingWeeklyPlans, setLoadingWeeklyPlans] = useState(false)
+  const [savingWeeklyPlans, setSavingWeeklyPlans] = useState(false)
+  const [weeklyPlanNotification, setWeeklyPlanNotification] = useState({ show: false, message: '', type: 'success' })
   
   // Grading Modal state
   const [gradingModalOpen, setGradingModalOpen] = useState(false)
@@ -241,6 +249,13 @@ export default function TopicNewPage() {
       description: 'Define what students should demonstrate at each level',
       fields: ['assessment_tsc'],
       guidance: 'Task Specific Clarification (TSC) helps students understand what is expected at each achievement level (7-8, 5-6, 3-4, 1-2, 0) for this specific assessment task. Fill in the clarifications for each strand to customize the rubric.'
+    },
+    {
+      id: 'reflection',
+      title: 'Unit Reflection',
+      description: 'Prior and After teaching reflections',
+      fields: ['topic_reflection_prior', 'topic_reflection_after'],
+      guidance: 'Prior Reflection: Before you begin teaching, reflect on your expectations, potential challenges, and how you will engage students. After Reflection: After completing the unit, reflect on what worked well, what could be improved, and student outcomes.'
     }
   ]
   
@@ -461,10 +476,13 @@ export default function TopicNewPage() {
           topic_statement,
           topic_learner_profile,
           topic_service_learning,
+          topic_atl,
           topic_learning_process,
           topic_formative_assessment,
           topic_summative_assessment,
-          topic_relationship_summative_assessment_statement_of_inquiry
+          topic_relationship_summative_assessment_statement_of_inquiry,
+          topic_reflection_prior,
+          topic_reflection_after
         `)
         .in('topic_subject_id', subjectIds)
         .order('topic_nama')
@@ -837,6 +855,192 @@ export default function TopicNewPage() {
     } catch (e) {
       console.error('Failed loading criteria:', e)
       setCriteriaForAssessment([])
+    }
+  }
+  
+  // Weekly Plan Functions
+  const fetchWeeklyPlans = async (topicId) => {
+    try {
+      setLoadingWeeklyPlans(true)
+      const { data, error } = await supabase
+        .from('topic_weekly_plan')
+        .select('*')
+        .eq('topic_id', topicId)
+        .order('week_number')
+      
+      if (error) throw error
+      setWeeklyPlans(data || [])
+    } catch (err) {
+      console.error('Error fetching weekly plans:', err)
+      setWeeklyPlans([])
+    } finally {
+      setLoadingWeeklyPlans(false)
+    }
+  }
+  
+  const handleWeeklyPlanChange = (weekNumber, field, value) => {
+    setWeeklyPlans(prev => 
+      prev.map(plan => 
+        plan.week_number === weekNumber 
+          ? { ...plan, [field]: value }
+          : plan
+      )
+    )
+  }
+  
+  const saveWeeklyPlans = async () => {
+    if (!selectedTopicForWeekly) return
+    
+    try {
+      setSavingWeeklyPlans(true)
+      
+      // Upsert all weekly plans
+      const { error } = await supabase
+        .from('topic_weekly_plan')
+        .upsert(
+          weeklyPlans.map(plan => ({
+            id: plan.id || undefined,
+            topic_id: selectedTopicForWeekly.topic_id,
+            week_number: plan.week_number,
+            week_objectives: plan.week_objectives || null,
+            week_activities: plan.week_activities || null,
+            week_resources: plan.week_resources || null,
+            week_reflection: plan.week_reflection || null,
+            updated_at: new Date().toISOString()
+          })),
+          { onConflict: 'topic_id,week_number' }
+        )
+      
+      if (error) throw error
+      
+      setWeeklyPlanNotification({
+        show: true,
+        message: 'Weekly plans saved successfully!',
+        type: 'success'
+      })
+      
+      // Refresh data
+      await fetchWeeklyPlans(selectedTopicForWeekly.topic_id)
+      
+      setTimeout(() => {
+        setWeeklyPlanNotification({ show: false, message: '', type: 'success' })
+      }, 3000)
+    } catch (err) {
+      console.error('Error saving weekly plans:', err)
+      setWeeklyPlanNotification({
+        show: true,
+        message: 'Failed to save weekly plans',
+        type: 'error'
+      })
+    } finally {
+      setSavingWeeklyPlans(false)
+    }
+  }
+  
+  const deleteAllWeeklyPlans = async () => {
+    if (!selectedTopicForWeekly) return
+    
+    const confirmed = confirm(
+      `Are you sure you want to delete all weekly plans for "${selectedTopicForWeekly.topic_nama}"? This action cannot be undone.`
+    )
+    
+    if (!confirmed) return
+    
+    try {
+      setSavingWeeklyPlans(true)
+      
+      // Delete all weekly plans for this topic
+      const { error } = await supabase
+        .from('topic_weekly_plan')
+        .delete()
+        .eq('topic_id', selectedTopicForWeekly.topic_id)
+      
+      if (error) throw error
+      
+      setWeeklyPlanNotification({
+        show: true,
+        message: 'All weekly plans deleted successfully!',
+        type: 'success'
+      })
+      
+      // Clear local state
+      setWeeklyPlans([])
+      
+      setTimeout(() => {
+        setWeeklyPlanNotification({ show: false, message: '', type: 'success' })
+      }, 3000)
+    } catch (err) {
+      console.error('Error deleting weekly plans:', err)
+      setWeeklyPlanNotification({
+        show: true,
+        message: 'Failed to delete weekly plans',
+        type: 'error'
+      })
+    } finally {
+      setSavingWeeklyPlans(false)
+    }
+  }
+  
+  const handleTopicSelectionForWeekly = async (topicId) => {
+    const topic = topics.find(t => t.topic_id === parseInt(topicId))
+    setSelectedTopicForWeekly(topic)
+    
+    if (!topic) {
+      setWeeklyPlans([])
+      return
+    }
+    
+    try {
+      setLoadingWeeklyPlans(true)
+      
+      // Check if weekly plans exist for this topic
+      const { data: existingPlans, error: fetchError } = await supabase
+        .from('topic_weekly_plan')
+        .select('*')
+        .eq('topic_id', topic.topic_id)
+        .order('week_number')
+      
+      if (fetchError) throw fetchError
+      
+      // If no plans exist and topic has duration, create them
+      if ((!existingPlans || existingPlans.length === 0) && topic.topic_duration > 0) {
+        console.log('No weekly plans found, generating for', topic.topic_duration, 'weeks')
+        
+        // Generate empty weekly plans based on topic_duration
+        const newPlans = []
+        for (let i = 1; i <= topic.topic_duration; i++) {
+          newPlans.push({
+            topic_id: topic.topic_id,
+            week_number: i,
+            week_objectives: null,
+            week_activities: null,
+            week_resources: null
+          })
+        }
+        
+        // Insert new plans
+        const { data: insertedPlans, error: insertError } = await supabase
+          .from('topic_weekly_plan')
+          .insert(newPlans)
+          .select()
+        
+        if (insertError) throw insertError
+        
+        setWeeklyPlans(insertedPlans || newPlans)
+      } else {
+        // Plans exist, load them
+        setWeeklyPlans(existingPlans || [])
+      }
+    } catch (err) {
+      console.error('Error handling weekly plan selection:', err)
+      setWeeklyPlans([])
+      setWeeklyPlanNotification({
+        show: true,
+        message: 'Failed to load weekly plans',
+        type: 'error'
+      })
+    } finally {
+      setLoadingWeeklyPlans(false)
     }
   }
   
@@ -2315,11 +2519,14 @@ export default function TopicNewPage() {
       topic_statement: '',
       topic_learner_profile: '',
       topic_service_learning: '',
+      topic_atl: '',
       topic_resources: '',
       topic_learning_process: '',
       topic_formative_assessment: '',
       topic_summative_assessment: '',
-      topic_relationship_summative_assessment_statement_of_inquiry: ''
+      topic_relationship_summative_assessment_statement_of_inquiry: '',
+      topic_reflection_prior: '',
+      topic_reflection_after: ''
     })
     // Reset wizard assessment data for new unit
     setWizardAssessment({
@@ -3147,6 +3354,204 @@ Please respond in ${selected} language and ensure valid JSON format.`
     }
   }
 
+  // AI Help for ATL (Approaches to Learning)
+  const requestAiHelpAtl = async () => {
+    if (!selectedTopic.topic_kelas_id) {
+      alert('Please select Class in Step 1 first')
+      return
+    }
+
+    setAiLoading(true)
+    setAiError('')
+    setAiResultModalOpen(true) // Show modal with loading state
+    
+    try {
+      // Get kelas_nama to send to AI
+      const { data: kelasData, error: kelasError } = await supabase
+        .from('kelas')
+        .select('kelas_nama')
+        .eq('kelas_id', selectedTopic.topic_kelas_id)
+        .single()
+      
+      if (kelasError) throw kelasError
+      
+      const kelasNama = kelasData?.kelas_nama || ''
+      console.log('📚 Fetching ATL for class:', kelasNama)
+      
+      // Fetch ALL ATL descriptors (AI will filter by grade)
+      const { data: atlDescriptors, error: atlError } = await supabase
+        .from('atl_descriptors')
+        .select('id, skill_category, strand, cluster, descriptor_text, min_grade, max_grade')
+        .order('skill_category')
+        .order('strand')
+      
+      if (atlError) throw atlError
+      
+      if (!atlDescriptors || atlDescriptors.length === 0) {
+        setAiError('No ATL descriptors found in database. Please add ATL descriptors in ATL Management first.')
+        setAiLoading(false)
+        return
+      }
+
+      // Build context from previous steps
+      const context = {
+        unit_title: selectedTopic.topic_nama || '',
+        class_name: kelasNama, // Send class name as-is
+        subject: subjects.find(s => s.subject_id === selectedTopic.topic_subject_id)?.subject_name || '',
+        inquiry_question: selectedTopic.topic_inquiry_question || '',
+        key_concept: selectedTopic.topic_key_concept || '',
+        related_concept: selectedTopic.topic_related_concept || '',
+        global_context: selectedTopic.topic_global_context || '',
+        statement_of_inquiry: selectedTopic.topic_statement || '',
+        learner_profile: selectedTopic.topic_learner_profile || '',
+        service_learning: selectedTopic.topic_service_learning || ''
+      }
+
+      // Format ATL descriptors for prompt
+      const atlDescriptorsText = atlDescriptors.map((atl, idx) => 
+        `${idx + 1}. [ID: ${atl.id}] ${atl.skill_category} - ${atl.strand} - ${atl.cluster}: ${atl.descriptor_text}`
+      ).join('\n')
+
+      // Build prompt
+      const prompt = `You are an IB MYP curriculum expert. Based on the unit plan context below, suggest the 3 most relevant ATL (Approaches to Learning) skills from the provided list.
+
+=== UNIT PLAN CONTEXT ===
+Unit Title: ${context.unit_title}
+Class: ${context.class_name}
+Subject: ${context.subject}
+Inquiry Question: ${context.inquiry_question}
+Key Concept: ${context.key_concept}
+Related Concept: ${context.related_concept}
+Global Context: ${context.global_context}
+Statement of Inquiry: ${context.statement_of_inquiry}
+Learner Profile Attributes: ${context.learner_profile}
+Service Learning: ${context.service_learning}
+
+=== AVAILABLE ATL DESCRIPTORS ===
+${atlDescriptorsText}
+
+=== INSTRUCTIONS ===
+Select exactly 3 ATL skills that:
+1. Best align with the unit's inquiry question and statement of inquiry
+2. Support the learner profile attributes being developed
+3. Are most relevant to the subject and global context
+4. Will help students achieve the learning objectives
+
+IMPORTANT - Return array of 3 ATL skills. Each skill must have:
+- id, skill_category, strand, cluster, descriptor_text
+- reason (why relevant to this unit)
+- summary_sentence (ONE complete sentence following this template):
+  "In order for me to [component/goal/product], I must [skill indicator]. ([ATL skill category and/or cluster]). I will learn to do this through [strategy]."
+
+Response format (array of skills):
+[
+  {
+    "id": 5,
+    "skill_category": "Communication",
+    "strand": "Exchanging Information",
+    "cluster": "Giving and receiving meaningful feedback",
+    "descriptor_text": "Give and receive meaningful feedback",
+    "reason": "This skill supports the inquiry question by helping students exchange ideas about digital design and receive constructive feedback on their work.",
+    "summary_sentence": "In order for me to create effective digital designs, I must give and receive meaningful feedback. (Communication - Exchanging Information). I will learn to do this through collaborative design critiques and peer review sessions."
+  },
+  {
+    "id": 12,
+    "skill_category": "Thinking",
+    "strand": "Critical Thinking",
+    "cluster": "Analyzing complex concepts",
+    "descriptor_text": "Analyze complex concepts and projects into their constituent parts",
+    "reason": "Students need to break down digital design problems into manageable components to understand how design can inspire positive change.",
+    "summary_sentence": "In order for me to understand complex design problems, I must analyze concepts into their parts. (Thinking - Critical Thinking). I will learn to do this through structured design thinking exercises."
+  },
+  {
+    "id": 18,
+    "skill_category": "Research",
+    "strand": "Information Literacy",
+    "cluster": "Accessing information",
+    "descriptor_text": "Access information to be informed and inform others",
+    "reason": "Essential for gathering information about positive change initiatives and sharing findings with others.",
+    "summary_sentence": "In order for me to make informed design decisions, I must access and evaluate reliable information. (Research - Information Literacy). I will learn to do this through research projects and information literacy workshops."
+  }
+]
+
+Requirements:
+- Select from the provided list above using the [ID: X] numbers
+- Choose skills from different categories when possible for balanced development
+- Each summary_sentence must be unique and specific to that ATL skill
+- Connect the unit goal with the specific ATL skill indicator and learning strategy
+- No markdown, no code blocks, just raw JSON array`
+
+      console.log('=== ATL AI HELP PROMPT ===')
+      console.log(prompt)
+      console.log('==========================')
+
+      // Send to Gemini API
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          model: 'gemini-2.0-flash-exp',
+          context: JSON.stringify(context)
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to get AI suggestions')
+      }
+
+      const data = await response.json()
+      let suggestions = data.text // Changed from data.response to data.text
+
+      console.log('🔍 Raw AI Response:', suggestions)
+      console.log('🔍 Response Type:', typeof suggestions)
+
+      // Clean up response (remove markdown code blocks if present)
+      if (typeof suggestions === 'string') {
+        suggestions = suggestions.trim()
+        console.log('📝 Trimmed Response:', suggestions)
+        
+        if (suggestions.startsWith('```json')) {
+          suggestions = suggestions.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        } else if (suggestions.startsWith('```')) {
+          suggestions = suggestions.replace(/```\n?/g, '').trim()
+        }
+        
+        console.log('🧹 Cleaned Response:', suggestions)
+        
+        try {
+          suggestions = JSON.parse(suggestions)
+          console.log('✅ Parsed JSON:', suggestions)
+        } catch (parseError) {
+          console.error('❌ JSON Parse Error:', parseError)
+          throw new Error('Failed to parse AI response as JSON: ' + parseError.message)
+        }
+      }
+
+      // Expect array of skills, each with summary_sentence
+      if (!Array.isArray(suggestions)) {
+        console.error('❌ Response is not an array:', suggestions)
+        throw new Error('AI response is not an array. Received: ' + typeof suggestions)
+      }
+
+      console.log('✅ AI ATL Suggestions:', suggestions)
+
+      // Add index to each item for display
+      const itemsWithIndex = suggestions.map((item, idx) => ({ ...item, index: idx + 1 }))
+
+      // Set suggestions for user to select
+      setAiItems(itemsWithIndex)
+      setSelectedAtlSkills([])
+
+    } catch (err) {
+      console.error('❌ Error getting ATL AI help:', err)
+      setAiError(err.message || 'Failed to get AI suggestions. Please try again.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   // AI Help for TSC - generates all TSC clarifications
   const requestAiHelpTSC = async () => {
     setAiLoading(true)
@@ -3679,6 +4084,42 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     setSelectedServiceLearning([])
     setAiError('')
   }
+
+  // Apply selected ATL skills to the form
+  const applySelectedAtlSkills = () => {
+    console.log('🎯 Apply ATL Skills - selectedAtlSkills:', selectedAtlSkills)
+    console.log('🎯 Apply ATL Skills - aiItems:', aiItems)
+    
+    if (selectedAtlSkills.length === 0) {
+      alert('Please select at least one ATL skill')
+      return
+    }
+
+    // Format selected ATL skills as text with strand, descriptor, then summary at the end
+    const selectedItems = aiItems.filter(item => selectedAtlSkills.includes(Number(item.id)))
+    console.log('🎯 Filtered selectedItems:', selectedItems)
+    
+    const atlText = selectedItems.map(item => {
+      // Strand and cluster
+      const strandLine = `${item.strand} - ${item.cluster}\n`
+      // Descriptor text
+      const descriptorLine = `${item.descriptor_text}`
+      // Summary sentence at the end (just the text, no quotes)
+      const summaryLine = item.summary_sentence ? `\n${item.summary_sentence}` : ''
+      return strandLine + descriptorLine + summaryLine
+    }).join('\n\n')
+    
+    console.log('🎯 Final ATL text:', atlText)
+
+    setSelectedTopic(prev => {
+      const updated = { ...prev, topic_atl: atlText }
+      console.log('🎯 Updated topic:', updated)
+      return updated
+    })
+    setAiResultModalOpen(false)
+    setSelectedAtlSkills([])
+    setAiError('')
+  }
   
   // Apply selected resources
   const applySelectedResources = () => {
@@ -3819,9 +4260,46 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       return wizardAssessment.assessment_relationship?.trim() !== ''
     }
     
-    // Step 7 (TSC) - optional, always considered complete
+    // Step 7 (TSC) - check if all expected TSC fields are filled
     if (step.id === 'tsc') {
-      return true
+      // If no criteria selected or no strands, cannot be complete
+      if (!wizardAssessment.selected_criteria?.length || wizardStrands.length === 0) {
+        return false
+      }
+      
+      // Check if all required TSC fields are filled
+      const requiredTSCKeys = []
+      const bandLevels = ['7-8', '5-6', '3-4', '1-2']
+      
+      wizardAssessment.selected_criteria.forEach(criterionId => {
+        const criterionStrands = wizardStrands.filter(s => s.criterion_id === criterionId)
+        criterionStrands.forEach(strand => {
+          bandLevels.forEach(bandLabel => {
+            const rubric = wizardRubrics.find(r => r.strand_id === strand.strand_id && r.band_label === bandLabel)
+            if (rubric) {
+              requiredTSCKeys.push(`${criterionId}_${bandLabel}_${strand.label}`)
+            }
+          })
+        })
+      })
+      
+      // If no TSC data at all, incomplete
+      if (!wizardAssessment.assessment_tsc || Object.keys(wizardAssessment.assessment_tsc).length === 0) {
+        return false
+      }
+      
+      // All required TSC keys must have content
+      const allFilled = requiredTSCKeys.every(key => {
+        const value = wizardAssessment.assessment_tsc[key]
+        return value && value.trim() !== ''
+      })
+      
+      return allFilled
+    }
+    
+    // Step 8 (Reflection) - at least prior reflection should be filled
+    if (step.id === 'reflection') {
+      return selectedTopic.topic_reflection_prior?.trim() !== ''
     }
     
     return step.fields.every(field => {
@@ -3862,6 +4340,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     // Step 4: Learner Profile & Service
     if (!selectedTopic.topic_learner_profile?.trim()) missing.push({ step: 5, field: 'Learner Profile' })
     if (!selectedTopic.topic_service_learning?.trim()) missing.push({ step: 5, field: 'Service Learning' })
+    if (!selectedTopic.topic_atl?.trim()) missing.push({ step: 5, field: 'ATL Skills' })
     
     // Step 5: Assessment
     if (!wizardAssessment.selected_criteria?.length) missing.push({ step: 6, field: 'Criteria to Assess' })
@@ -3893,6 +4372,12 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     }
     if (!selectedTopic.topic_year) {
       alert('Please select MYP Year')
+      return
+    }
+    
+    // Validate ATL field
+    if (!selectedTopic.topic_atl?.trim()) {
+      alert('Please fill in ATL Skills (Approaches to Learning)')
       return
     }
     
@@ -4419,14 +4904,14 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       });
       yPos = pdf.lastAutoTable.finalY + 5;
 
-      // ATL section - special 2-row table
+      // ATL section - use text field directly
       autoTable(pdf, {
         startY: yPos,
         margin: { left: margin, right: margin },
         head: [],
         body: [
           [{ content: 'Approaches to learning (ATL)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
-          [{ content: topicData.topic_atl_skills || '', styles: { cellPadding: 3 }}],
+          [{ content: topicData.topic_atl || 'No ATL skills defined', styles: { cellPadding: 3 }}],
         ],
         theme: 'grid',
         styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
@@ -6179,8 +6664,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
               <nav className="space-y-1">
                 {[
                   { id: 'overview', label: 'Overview', icon: '📋' },
-                  { id: 'weekly-plan', label: 'Weekly Plan', icon: '📅' },
-                  { id: 'reflection', label: 'Reflection', icon: '💭' }
+                  { id: 'weekly-plan', label: 'Weekly Plan', icon: '📅' }
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -6288,13 +6772,14 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                               setAiError('')
                               setAiItems([])
                               
-                              setSelectedTopic(topic)
+                              setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
                               setModalOpen(true)
                               setIsAddMode(false)
                               setCurrentStep(0)
                               
                               // Pre-fill wizard with existing data
-                              setSelectedTopic(topic)
+                              // topic_atl default to empty string if not in DB yet
+                              setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
                               
                               // Fetch assessment for this topic and load into wizard
                               await fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
@@ -6462,15 +6947,195 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
 
             {activeSubMenu === 'weekly-plan' && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Weekly Plan</h2>
-                <p className="text-gray-600">Weekly planning content will be displayed here.</p>
-              </div>
-            )}
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-2">Weekly Plan</h2>
+                  <p className="text-sm text-gray-600 mb-4">Break down your unit into weekly objectives, activities, and resources</p>
+                  
+                  {/* Topic Selection */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Topic/Unit
+                    </label>
+                    <select
+                      value={selectedTopicForWeekly?.topic_id || ''}
+                      onChange={(e) => handleTopicSelectionForWeekly(e.target.value)}
+                      className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="">-- Choose a Topic --</option>
+                      {topics
+                        .sort((a, b) => {
+                          const kelasA = kelasNameMap.get(a.topic_kelas_id) || ''
+                          const kelasB = kelasNameMap.get(b.topic_kelas_id) || ''
+                          
+                          // Sort by grade first
+                          if (kelasA !== kelasB) {
+                            return kelasA.localeCompare(kelasB)
+                          }
+                          
+                          // Then by topic_urutan
+                          return (a.topic_urutan || 0) - (b.topic_urutan || 0)
+                        })
+                        .map(topic => (
+                          <option key={topic.topic_id} value={topic.topic_id}>
+                            {topic.topic_nama} ({kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}) - Unit {topic.topic_urutan}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                </div>
 
-            {activeSubMenu === 'reflection' && (
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Reflection</h2>
-                <p className="text-gray-600">Reflection content will be displayed here.</p>
+                {/* Weekly Plans Display */}
+                {loadingWeeklyPlans ? (
+                  <div className="flex justify-center py-12">
+                    <FontAwesomeIcon icon={faSpinner} className="text-3xl text-red-500 animate-spin" />
+                  </div>
+                ) : selectedTopicForWeekly && weeklyPlans.length > 0 ? (
+                  <div>
+                    {/* Topic Info and Actions */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-blue-900 mb-1">{selectedTopicForWeekly.topic_nama}</h3>
+                          <div className="text-sm text-blue-700">
+                            <span>Duration: {selectedTopicForWeekly.topic_duration} weeks</span>
+                            <span className="mx-2">•</span>
+                            <span>Hours per week: {selectedTopicForWeekly.topic_hours_per_week || 'N/A'}</span>
+                          </div>
+                        </div>
+                        <button
+                          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2 text-sm"
+                          onClick={() => {/* AI Help functionality */}}
+                        >
+                          <FontAwesomeIcon icon={faLightbulb} />
+                          AI Help
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Notification */}
+                    {weeklyPlanNotification.show && (
+                      <div className={`mb-4 p-4 rounded-lg ${
+                        weeklyPlanNotification.type === 'success' 
+                          ? 'bg-green-50 border border-green-200 text-green-800'
+                          : 'bg-red-50 border border-red-200 text-red-800'
+                      }`}>
+                        {weeklyPlanNotification.message}
+                      </div>
+                    )}
+
+                    {/* Weekly Plan Forms */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {weeklyPlans.map((plan) => (
+                        <div key={plan.week_number} className="bg-white border border-gray-200 rounded-lg p-4">
+                          <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <span className="flex items-center justify-center w-7 h-7 bg-red-100 text-red-600 rounded-full text-sm font-bold">
+                              {plan.week_number}
+                            </span>
+                            Week {plan.week_number}
+                          </h3>
+                          
+                          <div className="space-y-3">
+                            {/* Objectives */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Learning Objectives
+                              </label>
+                              <textarea
+                                value={plan.week_objectives || ''}
+                                onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_objectives', e.target.value)}
+                                placeholder="What will students learn this week?"
+                                rows={3}
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                              />
+                            </div>
+
+                            {/* Activities */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Learning Activities
+                              </label>
+                              <textarea
+                                value={plan.week_activities || ''}
+                                onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_activities', e.target.value)}
+                                placeholder="What activities will students do?"
+                                rows={3}
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                              />
+                            </div>
+
+                            {/* Resources */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Resources Needed
+                              </label>
+                              <textarea
+                                value={plan.week_resources || ''}
+                                onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_resources', e.target.value)}
+                                placeholder="What materials or resources are needed?"
+                                rows={2}
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                              />
+                            </div>
+
+                            {/* Reflection (During Teaching) */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Reflection <span className="text-gray-500">(During Teaching)</span>
+                              </label>
+                              <textarea
+                                value={plan.week_reflection || ''}
+                                onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_reflection', e.target.value)}
+                                placeholder="How did this week go? What worked well? What needs adjustment?"
+                                rows={2}
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs bg-purple-50"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-6 flex justify-end gap-3">
+                      <button
+                        onClick={deleteAllWeeklyPlans}
+                        disabled={savingWeeklyPlans || weeklyPlans.length === 0}
+                        className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                        Delete All
+                      </button>
+                      <button
+                        onClick={saveWeeklyPlans}
+                        disabled={savingWeeklyPlans}
+                        className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {savingWeeklyPlans ? (
+                          <>
+                            <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <FontAwesomeIcon icon={faSave} />
+                            Save Weekly Plans
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : selectedTopicForWeekly ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <p>No weekly plan data available for this topic.</p>
+                    <p className="text-sm mt-2">The trigger should auto-generate weeks based on topic_duration.</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-400">
+                    <FontAwesomeIcon icon={faClipboardList} className="text-5xl mb-3 opacity-50" />
+                    <p>Select a topic to view and edit weekly plans</p>
+                  </div>
+                )}
               </div>
             )}
             </div>
@@ -7596,6 +8261,66 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                 </p>
                               )}
                             </div>
+
+                            {/* ATL (Approaches to Learning) */}
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                  ATL Skills (Approaches to Learning) <span className="text-red-500">*</span>
+                                </label>
+                                {(() => {
+                                  // Check if required data for AI is available
+                                  // Need: step 1 (basic info with year), step 2 (inquiry), step 3 (concepts), step 4 (statement), and learner profile
+                                  const canUseAiHelp = !isAddMode || (
+                                    isStepCompleted(0) && 
+                                    isStepCompleted(1) && 
+                                    isStepCompleted(2) && 
+                                    isStepCompleted(3) &&
+                                    selectedTopic.topic_learner_profile?.trim()
+                                  )
+                                  
+                                  return (
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        if (!canUseAiHelp) return
+                                        setAiHelpType('atl')
+                                        setAiError('')
+                                        setSelectedAtlSkills([])
+                                        setAiResultModalOpen(false)
+                                        requestAiHelpAtl()
+                                      }}
+                                      disabled={!canUseAiHelp}
+                                      className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                        canUseAiHelp
+                                          ? 'border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 cursor-pointer'
+                                          : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                      }`}
+                                      title={!canUseAiHelp ? 'Complete all previous steps and select Learner Profile first' : 'Get AI suggestions for ATL skills based on your unit plan'}
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                                      </svg>
+                                      AI Help
+                                    </button>
+                                  )
+                                })()}
+                              </div>
+                              {isAddMode && !selectedTopic.topic_learner_profile?.trim() && (
+                                <p className="text-xs text-amber-600 mb-2">⚠️ Complete all previous steps and select Learner Profile first to use AI Help</p>
+                              )}
+                              <p className="text-xs text-gray-600 mb-2">
+                                List the ATL skills students will develop in this unit. Use AI Help to get suggestions based on your unit plan.
+                              </p>
+                              <textarea
+                                value={selectedTopic.topic_atl || ''}
+                                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_atl: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                rows={4}
+                                placeholder="e.g., Communication - Exchanging Information - Giving feedback: Give and receive meaningful feedback&#10;Thinking - Critical Thinking - Analyzing concepts: Analyze complex concepts into parts&#10;Research - Information Literacy - Accessing information: Access information to inform others..."
+                              />
+                            </div>
+
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Service Learning <span className="text-red-500">*</span>
@@ -8159,13 +8884,78 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                   )
                                 })}
                                 
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                  <p className="text-sm text-green-700">
-                                    💡 <strong>Tip:</strong> TSC fields are optional. You can save the unit without filling them all. The TSC will be included when you print the assessment PDF.
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                  <p className="text-sm text-amber-700">
+                                    ⚠️ <strong>Important:</strong> Task Specific Clarification (TSC) must be completed before giving this assessment to students. Each achievement level should have clear descriptions.
                                   </p>
                                 </div>
                               </>
                             )}
+                          </>
+                        )}
+                        
+                        {/* Step 8: Unit Reflection (Prior & After) */}
+                        {currentStep === 8 && (
+                          <>
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                              <p className="text-sm text-purple-700">
+                                <strong>💭 Unit Reflection</strong> - Reflect on your planning before teaching and your outcomes after teaching. This helps improve your practice and future unit planning.
+                              </p>
+                            </div>
+
+                            {/* Prior Reflection */}
+                            <div className="mb-6">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg">📝</span>
+                                <label className="block text-base font-semibold text-gray-800">
+                                  Prior Reflection (Before Teaching)
+                                </label>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-3">
+                                Before you begin teaching, reflect on your expectations and planning:
+                                <br/>• What do you hope students will achieve?
+                                <br/>• What potential challenges do you foresee?
+                                <br/>• How will you engage different learners?
+                                <br/>• What prior knowledge should students have?
+                              </p>
+                              <textarea
+                                value={selectedTopic.topic_reflection_prior || ''}
+                                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_reflection_prior: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                rows={5}
+                                placeholder="Reflect on your planning, expectations, and anticipated challenges..."
+                              />
+                            </div>
+
+                            {/* After Reflection */}
+                            <div className="mb-6">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg">✅</span>
+                                <label className="block text-base font-semibold text-gray-800">
+                                  After Reflection (After Teaching)
+                                </label>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-3">
+                                After completing the unit, reflect on the outcomes:
+                                <br/>• What worked well in this unit?
+                                <br/>• What would you change or improve next time?
+                                <br/>• How did students perform and engage?
+                                <br/>• What did you learn as an educator?
+                              </p>
+                              <textarea
+                                value={selectedTopic.topic_reflection_after || ''}
+                                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_reflection_after: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                rows={5}
+                                placeholder="Complete this after teaching the unit. Reflect on successes, improvements, and learning outcomes..."
+                              />
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                              <p className="text-sm text-blue-700">
+                                💡 <strong>Note:</strong> You can fill "After Reflection" later by editing this unit after you've completed teaching it. The "Prior Reflection" helps you start with clear intentions.
+                              </p>
+                            </div>
                           </>
                         )}
                       </div>
@@ -8338,7 +9128,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                     isOpen={true}
                     inline={true}
                     onClose={() => setAiResultModalOpen(false)}
-                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
+                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'atl' ? 'AI Suggestions: ATL Skills' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
                     size="md"
                   >
                     <div className="flex flex-col h-full">
@@ -8383,7 +9173,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                     (selectedKeyConcepts.includes(item.index) && aiHelpType === 'keyConcept') ||
                                     (selectedRelatedConcepts.includes(item.index) && aiHelpType === 'relatedConcept') ||
                                     (selectedGlobalContexts.includes(item.index) && aiHelpType === 'globalContext') ||
-                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning') || (selectedResources.includes(item.index) && aiHelpType === 'resources')
+                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning') || (selectedAtlSkills.includes(item.id) && aiHelpType === 'atl') || (selectedResources.includes(item.index) && aiHelpType === 'resources')
                                       ? 'border-purple-500 bg-purple-50'
                                       : 'border-gray-200 bg-white hover:border-purple-300'
                                   }`}
@@ -8396,10 +9186,10 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                 >
                                   <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-2">
-                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'resources') && (
+                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'atl' || aiHelpType === 'resources') && (
                                         <input
                                           type="checkbox"
-                                          id={`ai-item-${item.index}`}
+                                          id={`ai-item-${aiHelpType === 'atl' ? item.id : item.index}`}
                                           checked={aiHelpType === 'inquiryQuestion' 
                                             ? selectedInquiryQuestions.includes(item.index)
                                             : aiHelpType === 'keyConcept'
@@ -8414,6 +9204,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                             ? selectedLearnerProfiles.includes(item.index)
                                             : aiHelpType === 'serviceLearning'
                                             ? selectedServiceLearning.includes(item.index)
+                                            : aiHelpType === 'atl'
+                                            ? selectedAtlSkills.includes(Number(item.id))
                                             : selectedResources.includes(item.index)}
                                           onMouseDown={(e) => {
                                             e.preventDefault()
@@ -8432,6 +9224,25 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                               toggleLearnerProfile(item.index)
                                             } else if (aiHelpType === 'serviceLearning') {
                                               toggleServiceLearning(item.index)
+                                            } else if (aiHelpType === 'atl') {
+                                              console.log('☑️ ATL Checkbox clicked - item:', item)
+                                              console.log('☑️ Current selectedAtlSkills:', selectedAtlSkills)
+                                              const itemId = Number(item.id) // Ensure number
+                                              const isSelected = selectedAtlSkills.includes(itemId)
+                                              console.log('☑️ Is selected:', isSelected, 'itemId:', itemId, 'type:', typeof itemId)
+                                              if (isSelected) {
+                                                setSelectedAtlSkills(prev => {
+                                                  const updated = prev.filter(id => id !== itemId)
+                                                  console.log('☑️ After uncheck:', updated)
+                                                  return updated
+                                                })
+                                              } else {
+                                                setSelectedAtlSkills(prev => {
+                                                  const updated = [...prev, itemId]
+                                                  console.log('☑️ After check:', updated)
+                                                  return updated
+                                                })
+                                              }
                                             } else {
                                               toggleResources(item.index)
                                             }
@@ -8441,7 +9252,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                         />
                                       )}
                                       <span className="bg-purple-100 text-purple-700 font-semibold text-sm px-2.5 py-1 rounded-full">
-                                        {t('topicNew.aiHelp.suggestion', { index: item.index })}
+                                        {aiHelpType === 'atl' ? `ATL Skill ${item.index || aiItems.indexOf(item) + 1}` : t('topicNew.aiHelp.suggestion', { index: item.index })}
                                       </span>
                                       {item.category && (
                                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${
@@ -8453,7 +9264,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                         </span>
                                       )}
                                     </div>
-                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && aiHelpType !== 'resources' && (
+                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && aiHelpType !== 'atl' && aiHelpType !== 'resources' && (
                                       <button
                                         onClick={() => aiHelpType === 'assessmentName' ? insertAiSuggestion(item) : insertAiSuggestion(titleToUse)}
                                         className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2 flex-shrink-0"
@@ -8466,6 +9277,35 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                     )}
                                   </div>
                                   
+                                  {/* ATL Skills Display */}
+                                  {aiHelpType === 'atl' && (
+                                    <div className="space-y-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                                          {item.skill_category}
+                                        </span>
+                                        <span className="text-xs text-gray-600">
+                                          {item.strand} • {item.cluster}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-1">Descriptor:</h4>
+                                        <p className="text-sm text-gray-800 leading-relaxed">{item.descriptor_text}</p>
+                                      </div>
+                                      {item.summary_sentence && (
+                                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-400 p-3 rounded">
+                                          <p className="text-sm text-gray-800 leading-relaxed italic">"{item.summary_sentence}"</p>
+                                        </div>
+                                      )}
+                                      {item.reason && (
+                                        <div className="bg-purple-50 border-l-3 border-purple-400 p-3 rounded">
+                                          <h4 className="text-xs font-semibold text-purple-900 mb-1">💡 Why this ATL?</h4>
+                                          <p className="text-xs text-purple-800 leading-relaxed">{item.reason}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
                                   {/* Question or Title (option) */}
                                   {cleanOption && (
                                     <div className="mb-3">
@@ -8553,8 +9393,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                     </div>
                                   )}
                                   
-                                  {/* Reason */}
-                                  {cleanReason && (
+                                  {/* Reason - skip for ATL as it has its own Why this ATL section */}
+                                  {cleanReason && aiHelpType !== 'atl' && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                                       <h4 className="text-sm font-semibold text-blue-900 mb-1 flex items-center gap-1">
                                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -8578,7 +9418,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                         )}
                       </div>
 
-                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'resources') && aiItems.length > 0 && !aiLoading && (
+                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'atl' || aiHelpType === 'resources') && aiItems.length > 0 && !aiLoading && (
                         <div className="border-t border-gray-200 bg-gray-50 p-4 flex-shrink-0">
                           {aiError && (
                             <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
@@ -8694,6 +9534,20 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                   Select at least 1 learner profile attribute
                                 </p>
                               </>
+                            ) : aiHelpType === 'atl' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedAtlSkills.length > 0 ? 'bg-purple-50 border-purple-300 text-purple-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedAtlSkills.length} ATL skill(s)
+                                  </span>
+                                </div>
+                                <p className="text-xs text-purple-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select at least 1 ATL skill (3 recommended)
+                                </p>
+                              </>
                             ) : aiHelpType === 'resources' ? (
                               <>
                                 <div className="flex items-center gap-2">
@@ -8732,13 +9586,13 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                               Cancel
                             </button>
                             <button
-                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : aiHelpType === 'serviceLearning' ? applySelectedServiceLearning : applySelectedResources}
+                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : aiHelpType === 'serviceLearning' ? applySelectedServiceLearning : aiHelpType === 'atl' ? applySelectedAtlSkills : applySelectedResources}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors inline-flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : aiHelpType === 'resources' ? 'Apply Selected Resources' : 'Apply Selected Option'}
+                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : aiHelpType === 'serviceLearning' ? 'Apply Selected Option' : aiHelpType === 'atl' ? 'Apply Selected Skills' : aiHelpType === 'resources' ? 'Apply Selected Resources' : 'Apply Selected Option'}
                             </button>
                           </div>
                         </div>
