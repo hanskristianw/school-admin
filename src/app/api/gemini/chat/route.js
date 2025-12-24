@@ -10,7 +10,7 @@ export async function POST(req) {
     if (!apiKey) {
       return NextResponse.json({ error: 'Server missing GEMINI_API_KEY' }, { status: 500 })
     }
-    const model = (typeof modelFromBody === 'string' && modelFromBody.trim()) || process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+    const model = (typeof modelFromBody === 'string' && modelFromBody.trim()) || process.env.GEMINI_MODEL || 'gemini-2.5-flash'
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
     // Convert history to Gemini format: array of {role, parts:[{text}]}

@@ -378,7 +378,7 @@ export default function TopicPage() {
   const unitTitleCurrent = (formData.topic_nama || '').trim()
   const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nKelas: ${kelasName}\nUnit Title (current): ${unitTitleCurrent || '-' }\n\nBuatkan beberapa usulan Unit Title yang relevan. Mohon jawab dalam bahasa ${selected}.`
   setAiPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -396,8 +396,7 @@ export default function TopicPage() {
           // Normalize both legacy (opsi/isi) and new (option/text) keys
           opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
           isi: (a?.isi ?? a?.text ?? '').toString().trim(),
-          reason: (a?.reason ?? '').toString().trim(),
-        }))
+          reason: (a?.reason ?? '').toString().trim() }))
       } else {
         items = parseAiOutput(text)
       }
@@ -441,7 +440,7 @@ export default function TopicPage() {
       const selected = bahasaMap[lang] || 'Indonesia'
       const promptWithLang = `${formData.topic_nama.trim()}\n\nBuat dalam bahasa ${selected}.`
       setGcPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
       })
@@ -456,8 +455,7 @@ export default function TopicPage() {
           index: idx + 1,
           opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
           isi: (a?.isi ?? a?.text ?? '').toString().trim(),
-          reason: (a?.reason ?? '').toString().trim(),
-        }))
+          reason: (a?.reason ?? '').toString().trim() }))
       } else {
         items = parseAiOutput(text).slice(0, 2)
       }
@@ -500,7 +498,7 @@ export default function TopicPage() {
       const gc = (formData.topic_global_context || '').trim()
       const promptWithLang = `${context ? context + "\n\n" : ''}Unit Title: ${unit}${gc ? `\nGlobal Context: ${gc}` : ''}\n\nBuat dalam bahasa ${selected}. Jawab HANYA dalam format JSON dengan schema: {"jawaban":[{"option":"...","text":"...","reason":"..."}]}`
       setKcPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -513,8 +511,7 @@ export default function TopicPage() {
           index: idx + 1,
           opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
           isi: (a?.isi ?? a?.text ?? '').toString().trim(),
-          reason: (a?.reason ?? '').toString().trim(),
-        }))
+          reason: (a?.reason ?? '').toString().trim() }))
       } else {
         items = parseAiOutput(text)
       }
@@ -571,7 +568,7 @@ export default function TopicPage() {
       const selected = bahasaMap[lang] || 'Indonesia'
       const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\n\nBuat dalam bahasa ${selected}.`
       setRcPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -584,8 +581,7 @@ export default function TopicPage() {
           index: idx + 1,
           opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
           isi: (a?.isi ?? a?.text ?? '').toString().trim(),
-          reason: (a?.reason ?? '').toString().trim(),
-        }))
+          reason: (a?.reason ?? '').toString().trim() }))
       } else {
         items = parseAiOutput(text)
       }
@@ -632,7 +628,7 @@ export default function TopicPage() {
       const selected = bahasaMap[lang] || 'Indonesia'
       const promptWithLang = `${context ? context + "\n\n" : ''}Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuat dalam bahasa ${selected}.`
       setLpPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -645,8 +641,7 @@ export default function TopicPage() {
           index: idx + 1,
           opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
           isi: (a?.isi ?? a?.text ?? '').toString().trim(),
-          reason: (a?.reason ?? '').toString().trim(),
-        }))
+          reason: (a?.reason ?? '').toString().trim() }))
       } else {
         items = parseAiOutput(text).slice(0, 3)
       }
@@ -702,7 +697,7 @@ export default function TopicPage() {
       const selected = bahasaMap[lang] || 'Indonesia'
       const promptWithLang = `Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuatkan tepat 3 opsi rencana Service Learning yang relevan dan aplikatif. Buat dalam bahasa ${selected}.`
       setSlPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -756,7 +751,7 @@ export default function TopicPage() {
   const context = rule?.ai_rule_statement || ''
   const promptWithLang = `${context ? context + "\n\n" : ''}Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}`
       setSoPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -769,8 +764,7 @@ export default function TopicPage() {
           index: idx + 1,
           opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
           isi: (a?.isi ?? a?.text ?? '').toString().trim(),
-          reason: (a?.reason ?? '').toString().trim(),
-        }))
+          reason: (a?.reason ?? '').toString().trim() }))
       } else {
         items = parseAiOutput(text).slice(0, 3)
       }
@@ -841,7 +835,7 @@ export default function TopicPage() {
   const selected = bahasaMap[lang] || 'Indonesia'
   const promptWithLang = `${context ? context + "\n\n" : ''}Unit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuat dalam bahasa ${selected}.`
       setFaPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -854,8 +848,7 @@ export default function TopicPage() {
           index: idx + 1,
           opsi: (a?.opsi ?? a?.option ?? '').toString().trim(),
           isi: (a?.isi ?? a?.text ?? '').toString().trim(),
-          reason: (a?.reason ?? '').toString().trim(),
-        }))
+          reason: (a?.reason ?? '').toString().trim() }))
       } else {
         items = parseAiOutput(text).slice(0, 3)
       }
@@ -931,7 +924,7 @@ export default function TopicPage() {
       const selected = bahasaMap[lang] || 'Indonesia'
   const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuat dalam bahasa ${selected}.`
       setSaPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -1024,7 +1017,7 @@ export default function TopicPage() {
       const selected = bahasaMap[lang] || 'Indonesia'
       const promptWithLang = `${context ? context + "\n\n" : ''}Subject: ${subjName}\nUnit Title: ${unit}\nGlobal Context: ${gc}\nKey Concept: ${kc}\nRelated Concept: ${rc}\n\nBuat dalam bahasa ${selected}.`
       setIqPrompt(promptWithLang)
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -1142,7 +1135,7 @@ export default function TopicPage() {
       
       setLprocPrompt(promptWithLang)
       
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -1231,7 +1224,7 @@ Respond in ${selectedLang}.`
 
       setRelPrompt(promptWithLang)
 
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await resp.json()
       if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
@@ -1528,8 +1521,7 @@ Respond in ${selectedLang}.`
         topic_learning_process: formData.topic_learning_process?.trim() || null,
   topic_formative_assessment: formData.topic_formative_assessment?.trim() || null,
   topic_summative_assessment: formData.topic_summative_assessment?.trim() || null,
-        topic_relationship_summative_assessment_statement_of_inquiry: formData.topic_relationship_summative_assessment_statement_of_inquiry?.trim() || null,
-      };
+        topic_relationship_summative_assessment_statement_of_inquiry: formData.topic_relationship_summative_assessment_statement_of_inquiry?.trim() || null };
       if (editing) {
   const { data, error: upErr } = await supabase.from("topic").update(payload).eq("topic_id", editing.topic_id).select();
         if (upErr) throw new Error(upErr.message);
@@ -1742,9 +1734,7 @@ Respond in ${selectedLang}.`
           4: { cellWidth: 21 },
           5: { cellWidth: 21 },
           6: { cellWidth: 19 },
-          7: { cellWidth: 13 },
-        },
-      });
+          7: { cellWidth: 13 } } });
 
       // Inquiry section
       yPos = pdf.lastAutoTable.finalY + 8;
@@ -1788,9 +1778,7 @@ Respond in ${selectedLang}.`
           2: { cellWidth: availableWidth * 0.17 },
           3: { cellWidth: availableWidth * 0.17 },
           4: { cellWidth: availableWidth * 0.15 },
-          5: { cellWidth: availableWidth * 0.18 },
-        },
-      });
+          5: { cellWidth: availableWidth * 0.18 } } });
 
       // Add new page for remaining sections
       pdf.addPage();
@@ -1819,8 +1807,7 @@ Respond in ${selectedLang}.`
               [{ content: section.content, colSpan: 8, styles: { cellPadding: 3 } }],
             ],
             theme: 'grid',
-            styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5 },
-          });
+            styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.5 } });
           yPos = pdf.lastAutoTable.finalY + 5;
         }
       });

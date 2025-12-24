@@ -145,6 +145,10 @@ export default function TopicNewPage() {
   const [loadingWeeklyPlans, setLoadingWeeklyPlans] = useState(false)
   const [savingWeeklyPlans, setSavingWeeklyPlans] = useState(false)
   const [weeklyPlanNotification, setWeeklyPlanNotification] = useState({ show: false, message: '', type: 'success' })
+  const [weeklyAiModalOpen, setWeeklyAiModalOpen] = useState(false)
+  const [weeklyAiInput, setWeeklyAiInput] = useState({ assessmentDuration: '', specialRequests: '' })
+  const [weeklyAiLoading, setWeeklyAiLoading] = useState(false)
+  const [weeklyAiResults, setWeeklyAiResults] = useState(null)
   
   // Grading Modal state
   const [gradingModalOpen, setGradingModalOpen] = useState(false)
@@ -233,8 +237,8 @@ export default function TopicNewPage() {
       id: 'assessment',
       title: 'Assessment',
       description: 'Define the assessment task for this unit',
-      fields: ['assessment_nama', 'assessment_tanggal', 'assessment_semester', 'selected_criteria'],
-      guidance: 'Create an assessment task that allows students to demonstrate their understanding of the unit. Select the criteria that will be assessed and specify the assessment date.'
+      fields: ['assessment_nama', 'assessment_semester', 'selected_criteria'],
+      guidance: 'Create an assessment task that allows students to demonstrate their understanding of the unit. Select the criteria that will be assessed. Assessment date can be set later.'
     },
     {
       id: 'relationship',
@@ -1042,6 +1046,215 @@ export default function TopicNewPage() {
     } finally {
       setLoadingWeeklyPlans(false)
     }
+  }
+  
+  // Weekly Plan AI Help Functions
+  const requestWeeklyPlanAiHelp = async () => {
+    if (!selectedTopicForWeekly) {
+      alert('Please select a topic first')
+      return
+    }
+    
+    if (!weeklyAiInput.assessmentDuration || parseInt(weeklyAiInput.assessmentDuration) < 1) {
+      alert('Please specify how many weeks the assessment will take')
+      return
+    }
+    
+    try {
+      setWeeklyAiLoading(true)
+      
+      // Build comprehensive context from all unit data
+      const context = {
+        // Step 0: Basic Info
+        unitTitle: selectedTopicForWeekly.topic_nama,
+        subject: subjects.find(s => s.subject_id === selectedTopicForWeekly.topic_subject_id)?.subject_name || 'N/A',
+        grade: kelasNameMap.get(selectedTopicForWeekly.topic_kelas_id) || 'N/A',
+        mypYear: selectedTopicForWeekly.topic_year,
+        unitNumber: selectedTopicForWeekly.topic_urutan,
+        duration: selectedTopicForWeekly.topic_duration,
+        hoursPerWeek: selectedTopicForWeekly.topic_hours_per_week,
+        
+        // Step 1: Inquiry
+        inquiryQuestion: selectedTopicForWeekly.topic_inquiry_question,
+        
+        // Step 2: Concepts
+        keyConcept: selectedTopicForWeekly.topic_key_concept,
+        relatedConcept: selectedTopicForWeekly.topic_related_concept,
+        globalContext: selectedTopicForWeekly.topic_global_context,
+        
+        // Step 3: Statement
+        statementOfInquiry: selectedTopicForWeekly.topic_statement,
+        
+        // Step 4: Attributes
+        learnerProfile: selectedTopicForWeekly.topic_learner_profile,
+        serviceLearning: selectedTopicForWeekly.topic_service_learning,
+        atl: selectedTopicForWeekly.topic_atl,
+        
+        // Additional
+        resources: selectedTopicForWeekly.topic_resources,
+        learningProcess: selectedTopicForWeekly.topic_learning_process,
+        formativeAssessment: selectedTopicForWeekly.topic_formative_assessment,
+        
+        // User inputs
+        assessmentDuration: parseInt(weeklyAiInput.assessmentDuration),
+        specialRequests: weeklyAiInput.specialRequests
+      }
+      
+      // Build prompt
+      const prompt = `You are an experienced IB MYP teacher planning a ${context.duration}-week unit.
+
+UNIT CONTEXT:
+- Title: ${context.unitTitle}
+- Subject: ${context.subject}
+- Grade: ${context.grade} (MYP Year ${context.mypYear})
+- Duration: ${context.duration} weeks (${context.hoursPerWeek} hours per week)
+- Unit Number: ${context.unitNumber}
+
+INQUIRY & CONCEPTS:
+- Inquiry Question: ${context.inquiryQuestion}
+- Key Concept: ${context.keyConcept}
+- Related Concept: ${context.relatedConcept}
+- Global Context: ${context.globalContext}
+- Statement of Inquiry: ${context.statementOfInquiry}
+
+IB LEARNER PROFILE & ATL:
+- Learner Profile: ${context.learnerProfile}
+- ATL Skills: ${context.atl}
+- Service Learning: ${context.serviceLearning}
+
+ASSESSMENT:
+- Summative assessment will take ${context.assessmentDuration} week(s) to complete
+
+${context.specialRequests ? `SPECIAL REQUESTS:\n${context.specialRequests}\n` : ''}
+
+Please create a detailed weekly plan for all ${context.duration} weeks. For each week, provide:
+1. **week_objectives**: Clear learning objectives for that week (what students will learn/understand)
+2. **week_activities**: Specific learning activities and teaching strategies (MAXIMUM 300 characters)
+3. **week_resources**: Materials and resources needed
+
+Important guidelines:
+- Build progressively toward the summative assessment
+- Integrate ATL skills throughout
+- Connect to the Statement of Inquiry
+- Make activities engaging and age-appropriate for MYP Year ${context.mypYear}
+- Include formative assessment opportunities
+- Reserve the last ${context.assessmentDuration} week(s) for summative assessment execution and completion
+- **CRITICAL: Keep week_activities under 300 characters - be concise and direct**
+
+Return ONLY a valid JSON array with ${context.duration} objects, each with this structure:
+[
+  {
+    "week_number": 1,
+    "week_objectives": "...",
+    "week_activities": "...",
+    "week_resources": "..."
+  },
+  ...
+]
+
+Do not include any markdown formatting, code blocks, or explanations. Return only the JSON array.`
+
+      console.log('=== WEEKLY PLAN AI PROMPT ===')
+      console.log(prompt)
+      console.log('=== END PROMPT ===')
+      
+      // Call Gemini API
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API Error Response:', errorText)
+        throw new Error(`Failed to get AI response (${response.status}): ${errorText}`)
+      }
+      
+      const data = await response.json()
+      console.log('=== AI RAW RESPONSE ===')
+      console.log(data.text)
+      console.log('=== END RESPONSE ===')
+      
+      if (!data.text) {
+        throw new Error('AI response is empty')
+      }
+      
+      // Parse JSON response
+      let weeklyPlansFromAI
+      try {
+        // Remove markdown code blocks if present
+        let cleanText = data.text.trim()
+        if (cleanText.startsWith('```json')) {
+          cleanText = cleanText.replace(/^```json\n/, '').replace(/\n```$/, '')
+        } else if (cleanText.startsWith('```')) {
+          cleanText = cleanText.replace(/^```\n/, '').replace(/\n```$/, '')
+        }
+        
+        weeklyPlansFromAI = JSON.parse(cleanText)
+        console.log('=== PARSED WEEKLY PLANS ===')
+        console.log(weeklyPlansFromAI)
+        console.log('=== END PARSED ===')
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', parseError)
+        throw new Error('AI returned invalid JSON format')
+      }
+      
+      // Validate response
+      if (!Array.isArray(weeklyPlansFromAI) || weeklyPlansFromAI.length === 0) {
+        throw new Error('AI response is not a valid array')
+      }
+      
+      setWeeklyAiResults(weeklyPlansFromAI)
+      setWeeklyAiModalOpen(false)
+      
+    } catch (err) {
+      console.error('Error getting AI help:', err)
+      
+      // Show more helpful error message
+      let errorMessage = 'Failed to get AI suggestions: ' + err.message
+      
+      if (err.message.includes('502')) {
+        errorMessage += '\n\nPossible causes:\n• Gemini API key not configured\n• Request timeout (prompt too long)\n• Gemini API temporarily unavailable'
+      } else if (err.message.includes('invalid JSON')) {
+        errorMessage += '\n\nAI returned an invalid response format. Please try again with different input.'
+      }
+      
+      alert(errorMessage)
+    } finally {
+      setWeeklyAiLoading(false)
+    }
+  }
+  
+  const insertAiWeeklyPlans = () => {
+    if (!weeklyAiResults || !selectedTopicForWeekly) return
+    
+    // Update weekly plans with AI suggestions
+    const updatedPlans = weeklyPlans.map(plan => {
+      const aiPlan = weeklyAiResults.find(ai => ai.week_number === plan.week_number)
+      if (aiPlan) {
+        return {
+          ...plan,
+          week_objectives: aiPlan.week_objectives || plan.week_objectives,
+          week_activities: aiPlan.week_activities || plan.week_activities,
+          week_resources: aiPlan.week_resources || plan.week_resources
+        }
+      }
+      return plan
+    })
+    
+    setWeeklyPlans(updatedPlans)
+    setWeeklyAiResults(null)
+    
+    setWeeklyPlanNotification({
+      show: true,
+      message: 'AI suggestions inserted successfully!',
+      type: 'success'
+    })
+    
+    setTimeout(() => {
+      setWeeklyPlanNotification({ show: false, message: '', type: 'success' })
+    }, 3000)
   }
   
   // Helper functions for assessment form
@@ -3230,7 +3443,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
       console.log(promptWithLang)
       console.log('─────────────────────────────────────')
       
-      const body = { prompt: promptWithLang, model: 'gemini-2.5-flash', context }
+      const body = { prompt: promptWithLang, context }
       const resp = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3326,8 +3539,7 @@ Please respond in ${selected} language and ensure valid JSON format.`
             // Assessment details fields
             conceptual_understanding: (a?.conceptual_understanding ?? '').toString().trim(),
             task_description: (a?.task_description ?? '').toString().trim(),
-            instructions: (a?.instructions ?? '').toString().trim().replace(/\\n/g, '\n'),
-          }))
+            instructions: (a?.instructions ?? '').toString().trim().replace(/\\n/g, '\n') }))
           console.log('✅ Parsed JSON items:', items)
         }
       } catch (e) {
@@ -3491,7 +3703,6 @@ Requirements:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          model: 'gemini-2.0-flash-exp',
           context: JSON.stringify(context)
         })
       })
@@ -3662,7 +3873,6 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       // Call API
       const body = { 
         prompt: prompt, 
-        model: 'gemini-2.5-flash', 
         context: 'Generate TSC for IB MYP assessment'
       }
       const response = await fetch('/api/gemini', {
@@ -4381,8 +4591,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       return
     }
     
-    // Validate assessment required fields
-    if (!wizardAssessment.assessment_nama || !wizardAssessment.assessment_tanggal || 
+    // Validate assessment required fields (tanggal tidak wajib saat create)
+    if (!wizardAssessment.assessment_nama || 
         !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0 ||
         !wizardAssessment.assessment_conceptual_understanding?.trim() ||
         !wizardAssessment.assessment_task_specific_description?.trim() ||
@@ -4391,31 +4601,31 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       return
     }
     
-    // Validate assessment date (must be at least 2 days in the future)
-    const selectedDate = new Date(wizardAssessment.assessment_tanggal)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    selectedDate.setHours(0, 0, 0, 0)
-    
-    // Check if date is in the past
-    if (selectedDate < today) {
-      alert('Assessment date cannot be in the past. Please select a future date.')
-      return
+    // Validate assessment date only if provided
+    if (wizardAssessment.assessment_tanggal) {
+      const selectedDate = new Date(wizardAssessment.assessment_tanggal)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      selectedDate.setHours(0, 0, 0, 0)
+      
+      // Check if date is in the past
+      if (selectedDate < today) {
+        alert('Assessment date cannot be in the past. Please select a future date.')
+        return
+      }
+      
+      // Check if date is tomorrow (must be minimum 2 days ahead)
+      const getDaysDiff = (date1, date2) => {
+        const diffTime = Math.abs(date2 - date1)
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      }
+      
+      const daysDiff = getDaysDiff(today, selectedDate)
+      if (daysDiff === 1) {
+        alert('Assessment date cannot be tomorrow. Minimum 2 days ahead is required.')
+        return
+      }
     }
-    
-    // Check if date is tomorrow (must be minimum 2 days ahead)
-    const getDaysDifference = (date1, date2) => {
-      const diffTime = Math.abs(date2 - date1)
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    }
-    
-    const daysDiff = getDaysDifference(today, selectedDate)
-    if (daysDiff === 1) {
-      alert('Assessment date cannot be tomorrow. Minimum 2 days ahead is required.')
-      return
-    }
-    
-    // Date validation removed - date will be submitted later
 
     setSaving(true)
     try {
@@ -4453,7 +4663,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         // Create assessment
         const assessmentData = {
           assessment_nama: wizardAssessment.assessment_nama,
-          assessment_tanggal: wizardAssessment.assessment_tanggal,
+          assessment_tanggal: wizardAssessment.assessment_tanggal || null,
           assessment_keterangan: wizardAssessment.assessment_keterangan || null,
           assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
           assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
@@ -4756,6 +4966,15 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         }
       }
 
+      // Load weekly planner data
+      const { data: weeklyPlans, error: weeklyErr } = await supabase
+        .from("topic_weekly_plan")
+        .select("*")
+        .eq("topic_id", topic.topic_id)
+        .order("week_number", { ascending: true });
+      
+      console.log('Weekly plans for PDF:', weeklyPlans);
+
       // Generate PDF
       const pdf = new jsPDF('landscape', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -4806,9 +5025,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           2: { cellWidth: availableWidth * 0.17 },
           3: { cellWidth: availableWidth * 0.17 },
           4: { cellWidth: availableWidth * 0.15 },
-          5: { cellWidth: availableWidth * 0.18 },
-        },
-      });
+          5: { cellWidth: availableWidth * 0.18 } } });
 
       // Inquiry section
       yPos = pdf.lastAutoTable.finalY + 8;
@@ -4851,9 +5068,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           2: { cellWidth: availableWidth * 0.17 },
           3: { cellWidth: availableWidth * 0.17 },
           4: { cellWidth: availableWidth * 0.15 },
-          5: { cellWidth: availableWidth * 0.18 },
-        },
-      });
+          5: { cellWidth: availableWidth * 0.18 } } });
 
       // Add new page for remaining sections
       pdf.addPage();
@@ -4869,8 +5084,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
             [{ content: topicData.topic_myp_objectives || 'N/A', styles: { cellPadding: 3 } }],
           ],
           theme: 'grid',
-          styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
-        });
+          styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] } });
         yPos = pdf.lastAutoTable.finalY + 5;
       }
 
@@ -4899,9 +5113,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         columnStyles: {
           0: { cellWidth: availableWidth * 0.33 },
           1: { cellWidth: availableWidth * 0.335 },
-          2: { cellWidth: availableWidth * 0.335 },
-        },
-      });
+          2: { cellWidth: availableWidth * 0.335 } } });
       yPos = pdf.lastAutoTable.finalY + 5;
 
       // ATL section - use text field directly
@@ -4914,11 +5126,20 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           [{ content: topicData.topic_atl || 'No ATL skills defined', styles: { cellPadding: 3 }}],
         ],
         theme: 'grid',
-        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
-      });
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
       yPos = pdf.lastAutoTable.finalY + 5;
 
-      // Content & Learning process section - special 3-row table
+      // Content & Learning process section - only show activities
+      // Format weekly plans into single string (only activities)
+      let learningProcessContent = '';
+      if (weeklyPlans && weeklyPlans.length > 0) {
+        learningProcessContent = weeklyPlans.map(week => {
+          let weekText = `Week ${week.week_number}\n`;
+          if (week.week_activities) weekText += week.week_activities;
+          return weekText;
+        }).join('\n\n');
+      }
+
       autoTable(pdf, {
         startY: yPos,
         margin: { left: margin, right: margin },
@@ -4930,7 +5151,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           ],
           [
             { content: '', styles: { cellPadding: 3 }, rowSpan: 2 },
-            { content: '', styles: { cellPadding: 3 }},
+            { content: learningProcessContent, styles: { cellPadding: 3 }},
           ],
           [
             { content: `Formative assessment:\n\n${topicData.topic_formative_assessment || ''}`, styles: { cellPadding: 3 }},
@@ -4940,9 +5161,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
         columnStyles: {
           0: { cellWidth: availableWidth * 0.33 },
-          1: { cellWidth: availableWidth * 0.67 },
-        },
-      });
+          1: { cellWidth: availableWidth * 0.67 } } });
       yPos = pdf.lastAutoTable.finalY + 5;
 
       // Resources section - 2-row table
@@ -4955,8 +5174,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           [{ content: topicData.topic_resources || '', styles: { cellPadding: 3 }}],
         ],
         theme: 'grid',
-        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
-      });
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
       yPos = pdf.lastAutoTable.finalY + 5;
 
       // Reflection section with special text and 3-column table
@@ -4965,6 +5183,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       pdf.text('Reflection: Considering the planning, process and impact of the inquiry', margin, yPos);
       yPos += 6;
 
+      // Reflection section
       autoTable(pdf, {
         startY: yPos,
         margin: { left: margin, right: margin },
@@ -4976,9 +5195,9 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
             { content: 'After teaching the unit', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
           ],
           [
-            { content: '', styles: { cellPadding: 3 }},
-            { content: '', styles: { cellPadding: 3 }},
-            { content: '', styles: { cellPadding: 3 }},
+            { content: topicData.topic_reflection_prior || '', styles: { cellPadding: 3 }},
+            { content: topicData.topic_reflection_during || '', styles: { cellPadding: 3 }},
+            { content: topicData.topic_reflection_after || '', styles: { cellPadding: 3 }},
           ],
         ],
         theme: 'grid',
@@ -4986,9 +5205,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         columnStyles: {
           0: { cellWidth: availableWidth * 0.33 },
           1: { cellWidth: availableWidth * 0.33 },
-          2: { cellWidth: availableWidth * 0.34 },
-        },
-      });
+          2: { cellWidth: availableWidth * 0.34 } } });
       yPos = pdf.lastAutoTable.finalY + 5;
 
       // Remaining sections
@@ -5006,7 +5223,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
               [{ content: section.content, colSpan: 8, styles: { cellPadding: 3 } }],
             ],
             theme: 'grid',
-            styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
+            styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] }
           });
           yPos = pdf.lastAutoTable.finalY + 5;
         }
@@ -5029,8 +5246,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     const res = await fetch('/api/assessment-html', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+      body: JSON.stringify(payload) });
     if (!res.ok) {
       let message = '';
       try {
@@ -5053,8 +5269,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     const res = await fetch('/api/assessment-docx', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+      body: JSON.stringify(payload) });
     if (!res.ok) {
       let message = '';
       try {
@@ -5081,8 +5296,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     criteriaList,
     strandsData,
     rubricsData,
-    tscMap,
-  }) => {
+    tscMap }) => {
     const romanOrder = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
     const getRomanIndex = (label) => {
       const idx = romanOrder.indexOf((label || '').toLowerCase());
@@ -5111,15 +5325,13 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
             bandLabel: rubric.band_label || bandKey,
             maxScore: rubric.max_score,
             minScore: rubric.min_score,
-            subjectItems: [],
-          };
+            subjectItems: [] };
         }
         const strand = strandById.get(rubric.strand_id);
         if (!strand) continue;
         bandGroups[bandKey].subjectItems.push({
           label: strand.label || '',
-          text: rubric.description || '',
-        });
+          text: rubric.description || '' });
       }
 
       const bands = Object.values(bandGroups)
@@ -5139,15 +5351,13 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           return {
             bandLabel: band.bandLabel,
             subjectItems,
-            tscItems,
-          };
+            tscItems };
         });
 
       if (bands.length > 0) {
         result.push({
           code: criterionCode,
-          bands,
-        });
+          bands });
       }
     }
 
@@ -5217,8 +5427,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           criteriaList,
           strandsData,
           rubricsData,
-          tscMap: wizardAssessment.assessment_tsc || {},
-        });
+          tscMap: wizardAssessment.assessment_tsc || {} });
 
         const unitName = topicData.topic_urutan
           ? `Unit ${topicData.topic_urutan}`
@@ -5240,10 +5449,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
             globalContext: topicData.topic_global_context || 'N/A',
             statementOfInquiry: topicData.topic_statement || 'N/A',
             taskSpecificDescription: wizardAssessment.assessment_task_specific_description || 'N/A',
-            instructions: wizardAssessment.assessment_instructions || '',
-          },
-          criteria: criteriaSections,
-        };
+            instructions: wizardAssessment.assessment_instructions || '' },
+          criteria: criteriaSections };
 
         await openAssessmentHtml(payload);
 
@@ -5379,9 +5586,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         styles: { fontSize: 9, cellPadding: 4, lineColor: [200, 200, 200], lineWidth: 0.1, valign: 'top', textColor: [0, 0, 0] },
         columnStyles: {
           0: { cellWidth: 50 },
-          1: { cellWidth: availableWidth - 50 },
-        },
-      });
+          1: { cellWidth: availableWidth - 50 } } });
       yPos = pdf.lastAutoTable.finalY + 8;
 
       // Assessment Instructions section - always on page 2
@@ -5431,13 +5636,10 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
             cellPadding: { top: 2, bottom: 2, left: 1, right: 1 }, 
             valign: 'top', 
             textColor: [0, 0, 0],
-            lineWidth: 0,
-          },
+            lineWidth: 0 },
           columnStyles: {
             0: { cellWidth: 8 },
-            1: { cellWidth: 'auto' },
-          },
-        });
+            1: { cellWidth: 'auto' } } });
         yPos = pdf.lastAutoTable.finalY + 8;
       }
 
@@ -5592,8 +5794,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
               const tableBody = sortedBands.map(band => {
                 const subjectPairs = (band.rubricsData || []).map(r => ({
                   label: r.label,
-                  text: r.description,
-                }));
+                  text: r.description }));
                 const subjectContent = buildHangingContent(subjectPairs);
                 
                 // TSC content
@@ -5619,20 +5820,16 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                   valign: 'top', 
                   textColor: [0, 0, 0],
                   lineColor: [0, 0, 0],
-                  lineWidth: 0.2,
-                },
+                  lineWidth: 0.2 },
                 headStyles: {
                   fillColor: [255, 255, 255],
                   textColor: [0, 0, 0],
                   fontStyle: 'bold',
-                  halign: 'center',
-                },
+                  halign: 'center' },
                 columnStyles: {
                   0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
                   1: { cellWidth: (availableWidth - 12) / 2 },
-                  2: { cellWidth: (availableWidth - 12) / 2 },
-                },
-              });
+                  2: { cellWidth: (availableWidth - 12) / 2 } } });
             }
           }
         }
@@ -5716,8 +5913,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         criteriaList,
         strandsData,
         rubricsData,
-        tscMap: wizardAssessment.assessment_tsc || {},
-      });
+        tscMap: wizardAssessment.assessment_tsc || {} });
 
       const unitName = topicData.topic_urutan
         ? `Unit ${topicData.topic_urutan}`
@@ -5738,10 +5934,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           globalContext: topicData.topic_global_context || 'N/A',
           statementOfInquiry: topicData.topic_statement || 'N/A',
           taskSpecificDescription: wizardAssessment.assessment_task_specific_description || 'N/A',
-          instructions: wizardAssessment.assessment_instructions || '',
-        },
-        criteria: criteriaSections,
-      };
+          instructions: wizardAssessment.assessment_instructions || '' },
+        criteria: criteriaSections };
 
       const fileName = `assessment-${wizardAssessment.assessment_nama?.replace(/[^a-z0-9]/gi, '-') || 'assessment'}.docx`;
       await downloadAssessmentDocx(payload, fileName);
@@ -5843,8 +6037,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           criteriaList: criteriaData || [],
           strandsData,
           rubricsData,
-          tscMap: assessmentData.assessment_tsc || {},
-        });
+          tscMap: assessmentData.assessment_tsc || {} });
 
         const unitName = topic.topic_urutan
           ? `Unit ${topic.topic_urutan}`
@@ -5866,10 +6059,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
             globalContext: topic.topic_global_context || 'N/A',
             statementOfInquiry: topic.topic_statement || 'N/A',
             taskSpecificDescription: assessmentData.assessment_task_specific_description || 'N/A',
-            instructions: assessmentData.assessment_instructions || '',
-          },
-          criteria: criteriaSections,
-        };
+            instructions: assessmentData.assessment_instructions || '' },
+          criteria: criteriaSections };
 
         await openAssessmentHtml(payload);
 
@@ -6005,9 +6196,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         styles: { fontSize: 9, cellPadding: 4, lineColor: [200, 200, 200], lineWidth: 0.1, valign: 'top', textColor: [0, 0, 0] },
         columnStyles: {
           0: { cellWidth: 50 },
-          1: { cellWidth: availableWidth - 50 },
-        },
-      });
+          1: { cellWidth: availableWidth - 50 } } });
       yPos = pdf.lastAutoTable.finalY + 8;
 
       // Assessment Instructions section - always on page 2
@@ -6057,13 +6246,10 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
             cellPadding: { top: 2, bottom: 2, left: 1, right: 1 }, 
             valign: 'top', 
             textColor: [0, 0, 0],
-            lineWidth: 0,
-          },
+            lineWidth: 0 },
           columnStyles: {
             0: { cellWidth: 8 },
-            1: { cellWidth: 'auto' },
-          },
-        });
+            1: { cellWidth: 'auto' } } });
         yPos = pdf.lastAutoTable.finalY + 8;
       }
 
@@ -6207,8 +6393,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
               const tableBodyCard = sortedBandsCard.map(band => {
                 const subjectPairs = (band.rubricsData || []).map(r => ({
                   label: r.label,
-                  text: r.description,
-                }));
+                  text: r.description }));
                 const subjectContent = buildHangingContentCard(subjectPairs);
                 
                 // TSC content
@@ -6234,20 +6419,16 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                   valign: 'top', 
                   textColor: [0, 0, 0],
                   lineColor: [0, 0, 0],
-                  lineWidth: 0.2,
-                },
+                  lineWidth: 0.2 },
                 headStyles: {
                   fillColor: [255, 255, 255],
                   textColor: [0, 0, 0],
                   fontStyle: 'bold',
-                  halign: 'center',
-                },
+                  halign: 'center' },
                 columnStyles: {
                   0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
                   1: { cellWidth: (availableWidth - 12) / 2 },
-                  2: { cellWidth: (availableWidth - 12) / 2 },
-                },
-              });
+                  2: { cellWidth: (availableWidth - 12) / 2 } } });
               yPos = pdf.lastAutoTable.finalY + 8; // Add spacing after table before next criteria
             }
           }
@@ -6385,10 +6566,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           globalContext: topic.topic_global_context || '',
           statementOfInquiry: topic.topic_statement || '',
           taskSpecificDescription: assessmentData.assessment_task_specific_description || '',
-          instructions: assessmentData.assessment_instructions || '',
-        },
-        criteria: criteriaStructure,
-      };
+          instructions: assessmentData.assessment_instructions || '' },
+        criteria: criteriaStructure };
 
       // Download DOCX
       const fileName = `${assessmentData.assessment_nama.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
@@ -7005,7 +7184,10 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                         </div>
                         <button
                           className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2 text-sm"
-                          onClick={() => {/* AI Help functionality */}}
+                          onClick={() => {
+                            setWeeklyAiInput({ assessmentDuration: '', specialRequests: '' })
+                            setWeeklyAiModalOpen(true)
+                          }}
                         >
                           <FontAwesomeIcon icon={faLightbulb} />
                           AI Help
@@ -7053,15 +7235,19 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                             {/* Activities */}
                             <div>
                               <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Learning Activities
+                                Learning Activities (max 300 characters)
                               </label>
                               <textarea
                                 value={plan.week_activities || ''}
                                 onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_activities', e.target.value)}
                                 placeholder="What activities will students do?"
                                 rows={3}
+                                maxLength={300}
                                 className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
                               />
+                              <div className="text-xs text-gray-500 mt-1 text-right">
+                                {(plan.week_activities || '').length}/300
+                              </div>
                             </div>
 
                             {/* Resources */}
@@ -10197,6 +10383,135 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
         }
       `}</style>
+      
+      {/* Weekly Plan AI Help Modal */}
+      <Modal
+        isOpen={weeklyAiModalOpen}
+        onClose={() => !weeklyAiLoading && setWeeklyAiModalOpen(false)}
+        title="AI Help - Weekly Planning"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Let AI help you create a detailed weekly plan based on your unit information.
+          </p>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              How many weeks will the assessment take? <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              max={selectedTopicForWeekly?.topic_duration || 10}
+              value={weeklyAiInput.assessmentDuration}
+              onChange={(e) => setWeeklyAiInput(prev => ({ ...prev, assessmentDuration: e.target.value }))}
+              placeholder="Number of weeks (e.g., 2)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Enter how many weeks students need to complete the summative assessment
+            </p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Special Requests (Optional)
+            </label>
+            <textarea
+              value={weeklyAiInput.specialRequests}
+              onChange={(e) => setWeeklyAiInput(prev => ({ ...prev, specialRequests: e.target.value }))}
+              placeholder="Any specific requirements, teaching approaches, or topics to emphasize..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => setWeeklyAiModalOpen(false)}
+              disabled={weeklyAiLoading}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={requestWeeklyPlanAiHelp}
+              disabled={weeklyAiLoading}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-400 flex items-center gap-2"
+            >
+              {weeklyAiLoading ? (
+                <>
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faLightbulb} />
+                  Get AI Suggestions
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+      
+      {/* AI Results Preview Modal */}
+      {weeklyAiResults && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800">AI Weekly Plan Suggestions</h3>
+              <p className="text-sm text-gray-600 mt-1">Review and insert the AI-generated plan</p>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                {weeklyAiResults.map((week) => (
+                  <div key={week.week_number} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 bg-purple-100 text-purple-600 rounded-full text-sm font-bold">
+                        {week.week_number}
+                      </span>
+                      Week {week.week_number}
+                    </h4>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Objectives:</span>
+                        <p className="text-gray-600 mt-1">{week.week_objectives}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Activities:</span>
+                        <p className="text-gray-600 mt-1">{week.week_activities}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Resources:</span>
+                        <p className="text-gray-600 mt-1">{week.week_resources}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setWeeklyAiResults(null)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={insertAiWeeklyPlans}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faSave} />
+                Insert to Weekly Plans
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
