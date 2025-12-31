@@ -6,7 +6,8 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Only guard app sections under these prefixes
-  const protectedPrefixes = ['/data', '/settings', '/teacher', '/student', '/room']
+  // REMOVED /data from middleware - let AccessGuard handle it client-side
+  const protectedPrefixes = ['/settings', '/teacher', '/student', '/room']
   const isProtected = protectedPrefixes.some(p => pathname === p || pathname.startsWith(p + '/'))
   if (!isProtected) return NextResponse.next()
 
@@ -47,5 +48,6 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/data/:path*', '/settings/:path*', '/teacher/:path*', '/student/:path*', '/room/:path*']
+  // REMOVED /data/:path* - let AccessGuard handle /data routes client-side
+  matcher: ['/settings/:path*', '/teacher/:path*', '/student/:path*', '/room/:path*']
 }
