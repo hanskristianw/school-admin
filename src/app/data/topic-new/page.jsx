@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar } from '@fortawesome/free-solid-svg-icons'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
@@ -4661,6 +4661,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         }
         
         // Create assessment
+        // Status logic: null if no date (draft), 0 if date is set (waiting for approval)
+        const hasDate = wizardAssessment.assessment_tanggal && wizardAssessment.assessment_tanggal.trim() !== ''
         const assessmentData = {
           assessment_nama: wizardAssessment.assessment_nama,
           assessment_tanggal: wizardAssessment.assessment_tanggal || null,
@@ -4672,7 +4674,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           assessment_detail_kelas_id: dkData.detail_kelas_id,
           assessment_topic_id: newTopic.topic_id,
           assessment_semester: parseInt(wizardAssessment.assessment_semester),
-          assessment_status: 0, // waiting for approval
+          assessment_status: 0, // Always 0; draft is indicated by null date + status 0
           assessment_user_id: currentUserId
         }
         
@@ -4690,6 +4692,11 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         }
         
         console.log('✅ Assessment saved successfully:', assessmentResult)
+        
+        // Send notification only if date is set (status = 0 with date = approval request)
+        if (assessmentResult && assessmentResult[0] && hasDate) {
+          notifyVicePrincipal(assessmentResult[0].assessment_id)
+        }
         
         // Insert assessment_criteria junction records
         if (assessmentResult && assessmentResult[0]) {
@@ -6588,10 +6595,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       alert('Please enter assessment name')
       return
     }
-    if (!topicAssessment.assessment_tanggal) {
-      alert('Please select assessment date')
-      return
-    }
+    // Date is now optional - allow saving without date as draft
     if (!topicAssessment.assessment_semester) {
       alert('Please select semester')
       return
@@ -6613,14 +6617,52 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       
       if (dkError) throw new Error('Could not find class-subject mapping')
       
+      // Fetch original data if updating (to detect date changes)
+      let originalDate = null
+      if (topicAssessment.assessment_id) {
+        const { data: originalData } = await supabase
+          .from('assessment')
+          .select('assessment_tanggal')
+          .eq('assessment_id', topicAssessment.assessment_id)
+          .single()
+        originalDate = originalData?.assessment_tanggal
+      }
+      
+      // Determine status based on date and current status
+      const hasDate = topicAssessment.assessment_tanggal && topicAssessment.assessment_tanggal.trim() !== ''
+      const wasApproved = topicAssessment.assessment_status === 1
+      const dateChanged = originalDate !== topicAssessment.assessment_tanggal
+      let newStatus
+      let shouldNotify = false
+      
+      if (!hasDate) {
+        // No date = draft (null status)
+        newStatus = null
+      } else if (wasApproved && dateChanged) {
+        // Had approval but date changed = request approval again
+        newStatus = 0
+        shouldNotify = true
+      } else if ((topicAssessment.assessment_status === null || topicAssessment.assessment_status === undefined) && hasDate) {
+        // Was draft, now has date = request approval
+        newStatus = 0
+        shouldNotify = true
+      } else if (hasDate && !originalDate) {
+        // New assessment with date = request approval
+        newStatus = 0
+        shouldNotify = true
+      } else {
+        // Keep existing status (0, 2, 3)
+        newStatus = topicAssessment.assessment_status
+      }
+      
       const assessmentPayload = {
         assessment_nama: topicAssessment.assessment_nama,
-        assessment_tanggal: topicAssessment.assessment_tanggal,
+        assessment_tanggal: topicAssessment.assessment_tanggal || null,
         assessment_keterangan: topicAssessment.assessment_keterangan || null,
         assessment_semester: parseInt(topicAssessment.assessment_semester),
         assessment_detail_kelas_id: dkData.detail_kelas_id,
         assessment_topic_id: selectedTopic.topic_id,
-        assessment_status: topicAssessment.assessment_status || 0,
+        assessment_status: newStatus,
         assessment_user_id: currentUserId,
         assessment_tsc: topicAssessment.assessment_tsc || {}
       }
@@ -6668,8 +6710,13 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       }
       
       // Update local state
-      setTopicAssessment(prev => ({ ...prev, assessment_id: assessmentId }))
+      setTopicAssessment(prev => ({ ...prev, assessment_id: assessmentId, assessment_status: newStatus }))
       setEditingAssessmentInTopic(false)
+      
+      // Send notification only if should notify (date was just set or changed)
+      if (shouldNotify) {
+        notifyVicePrincipal(assessmentId)
+      }
       
       // Show success
       setSaveNotification(true)
@@ -7563,11 +7610,15 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                     <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
                       <span className="text-gray-500">📅</span>
                       <span className="text-gray-700">
-                        {new Date(assessment.assessment_tanggal).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
+                        {assessment.assessment_tanggal ? (
+                          new Date(assessment.assessment_tanggal).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        ) : (
+                          <span className="text-gray-400 italic">No date set (Draft)</span>
+                        )}
                       </span>
                     </div>
 
@@ -9820,27 +9871,10 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
 
       {/* AI Input & Result modals are now embedded beside the main modal (handled inside modalOpen block) */}
 
-      {/* Floating Action Button (FAB) */}
+      {/* Floating Action Button (FAB) - Only Add Unit */}
       <div className="fixed bottom-8 right-8 z-40">
         {/* Secondary Buttons (shown when FAB is open) */}
         <div className={`absolute bottom-20 right-0 flex flex-col items-end gap-3 transition-all duration-300 ${fabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-          {/* Add Assessment Button */}
-          <button
-            onClick={() => {
-              setShowAssessmentForm(true)
-              setFabOpen(false)
-            }}
-            disabled={detailKelasOptions.length === 0}
-            className="group flex items-center gap-3 transition-all duration-200 hover:scale-105"
-          >
-            <span className="bg-white px-4 py-2 rounded-full shadow-lg text-sm font-medium text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              Add Assessment
-            </span>
-            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-all">
-              <FontAwesomeIcon icon={faClipboardList} className="text-lg" />
-            </div>
-          </button>
-          
           {/* Add Unit Button */}
           <button
             onClick={() => {
@@ -9906,19 +9940,28 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
               </div>
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-green-800">
-                  Approved Assessment - Limited Editing
+                  Approved Assessment - Cannot Edit
                 </h3>
                 <p className="mt-1 text-sm text-green-700">
-                  This assessment has been approved. You can only update the <strong>criteria</strong>. 
-                  Date and class cannot be changed.
+                  This assessment has been approved and cannot be edited. Contact an administrator if changes are required.
                 </p>
               </div>
             </div>
           </div>
         )}
         
-        {/* Info Panel */}
-        {!(editingAssessment && editingAssessment.assessment_status === 1) && (
+        {/* Edit Mode Sub-header */}
+        {editingAssessment && editingAssessment.assessment_status !== 1 && (
+          <div className="mb-4 pb-3 border-b border-gray-200">
+            <p className="text-sm text-gray-600">
+              Editing <span className="font-semibold text-gray-800">assessment date</span> only. 
+              Use Planning tab for other changes.
+            </p>
+          </div>
+        )}
+        
+        {/* Info Panel for New Assessment */}
+        {!editingAssessment && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <div className="flex items-start">
               <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5 mr-2" />
@@ -9934,33 +9977,126 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
           </div>
         )}
 
-        <form onSubmit={handleAssessmentSubmit} className="space-y-4">
-          {/* Assessment Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Assessment Name *
-            </label>
-            <input
-              name="assessment_nama"
-              type="text"
-              value={assessmentFormData.assessment_nama}
-              onChange={handleAssessmentInputChange}
-              placeholder="e.g., Chapter 3 Quiz, Midterm Exam"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                assessmentFormErrors.assessment_nama ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            {assessmentFormErrors.assessment_nama && (
-              <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_nama}</p>
-            )}
-          </div>
+        <form onSubmit={handleAssessmentSubmit} className="space-y-6">
+          {/* Summary Card - Read-Only Information (Edit Mode Only) */}
+          {editingAssessment && (
+            <div className="bg-gray-50 rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FontAwesomeIcon icon={faInfoCircle} className="text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Assessment Details</h3>
+              </div>
 
-          {/* Assessment Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {/* Assessment Name */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Assessment Name
+                </label>
+                <p className="text-base font-semibold text-gray-900">{assessmentFormData.assessment_nama}</p>
+              </div>
+
+              {/* Subject/Class & Semester - Grid 2 kolom */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Subject / Class
+                  </label>
+                  <p className="text-sm text-gray-800">
+                    {(() => {
+                      const selected = detailKelasOptions.find(opt => opt.detail_kelas_id == assessmentFormData.assessment_detail_kelas_id)
+                      return selected ? `${selected.subject_name} - ${selected.kelas_nama}` : '-'
+                    })()}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Semester
+                  </label>
+                  <p className="text-sm text-gray-800">
+                    {assessmentFormData.assessment_semester == 1 ? 'Semester 1' : assessmentFormData.assessment_semester == 2 ? 'Semester 2' : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {/* IB MYP Criteria */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-2">
+                  IB MYP Criteria
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {criteriaForAssessment
+                    .filter(c => assessmentFormData.selected_criteria.includes(c.criterion_id))
+                    .map(c => (
+                      <span key={c.criterion_id} className="inline-flex items-center px-3 py-1.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 text-sm">
+                        <span className="font-bold mr-1.5">Criterion {c.code}:</span>
+                        <span>{c.name}</span>
+                      </span>
+                    ))}
+                </div>
+              </div>
+
+              {/* Topic */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Topic / Unit
+                </label>
+                <p className="text-sm text-gray-800">
+                  {(() => {
+                    const selected = topicsForAssessment.find(tp => tp.topic_id == assessmentFormData.assessment_topic_id)
+                    return selected ? selected.topic_nama : '-'
+                  })()}
+                </p>
+              </div>
+
+              {/* Note/Description */}
+              {assessmentFormData.assessment_keterangan && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Note / Description
+                  </label>
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                    {assessmentFormData.assessment_keterangan}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Form Fields for New Assessment (Only shown when NOT editing) */}
+          {!editingAssessment && (
+            <>
+              {/* Assessment Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assessment Name *
+                </label>
+                <input
+                  name="assessment_nama"
+                  type="text"
+                  value={assessmentFormData.assessment_nama}
+                  onChange={handleAssessmentInputChange}
+                  placeholder="e.g., Chapter 3 Quiz, Midterm Exam"
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    assessmentFormErrors.assessment_nama ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {assessmentFormErrors.assessment_nama && (
+                  <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_nama}</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Assessment Date - Editable (Highlighted untuk Edit Mode) */}
+          <div className={editingAssessment ? 'bg-blue-50 border-2 border-blue-400 rounded-xl p-5 shadow-sm' : ''}>
+            <label className={`block font-semibold mb-2 flex items-center gap-2 ${
+              editingAssessment ? 'text-base text-blue-900' : 'text-sm text-gray-700'
+            }`}>
+              <FontAwesomeIcon icon={faCalendar} className={editingAssessment ? 'text-blue-600' : 'text-gray-400'} />
               Assessment Date *
               {editingAssessment && editingAssessment.assessment_status === 1 && (
-                <span className="ml-2 text-xs text-gray-500">(Cannot change - already approved)</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                  Approved - Locked
+                </span>
               )}
             </label>
             <input
@@ -9970,159 +10106,166 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
               onChange={handleAssessmentInputChange}
               min={getMinimumDate().toISOString().split('T')[0]}
               disabled={editingAssessment && editingAssessment.assessment_status === 1}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                assessmentFormErrors.assessment_tanggal ? 'border-red-500' : 'border-gray-300'
-              } ${editingAssessment && editingAssessment.assessment_status === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              className={`w-full px-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                editingAssessment ? 'py-3.5 text-lg font-medium' : 'py-2.5'
+              } ${
+                assessmentFormErrors.assessment_tanggal ? 'border-red-500' : editingAssessment ? 'border-blue-500' : 'border-gray-300'
+              } ${editingAssessment && editingAssessment.assessment_status === 1 ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
             />
             {assessmentFormErrors.assessment_tanggal && (
-              <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_tanggal}</p>
+              <p className="text-red-500 text-sm mt-2">{assessmentFormErrors.assessment_tanggal}</p>
             )}
             {!(editingAssessment && editingAssessment.assessment_status === 1) && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className={`text-xs mt-2 ${
+                editingAssessment ? 'text-blue-700 font-medium' : 'text-gray-500'
+              }`}>
                 <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
-                Minimum date: {getMinimumDate().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {editingAssessment 
+                  ? 'Leave empty to save as draft (no approval required)'
+                  : `Minimum date: ${getMinimumDate().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                }
               </p>
             )}
           </div>
 
           {/* Subject/Class Selection */}
+          {!editingAssessment && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Subject / Class *
-              {editingAssessment && editingAssessment.assessment_status === 1 && (
-                <span className="ml-2 text-xs text-gray-500">(Cannot change - already approved)</span>
-              )}
             </label>
-            <select
-              name="assessment_detail_kelas_id"
-              value={assessmentFormData.assessment_detail_kelas_id}
-              onChange={handleAssessmentInputChange}
-              disabled={editingAssessment && editingAssessment.assessment_status === 1}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                assessmentFormErrors.assessment_detail_kelas_id ? 'border-red-500' : 'border-gray-300'
-              } ${editingAssessment && editingAssessment.assessment_status === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-            >
-              <option value="">Select Subject / Class</option>
-              {detailKelasOptions.map(opt => (
-                <option key={opt.detail_kelas_id} value={opt.detail_kelas_id}>
-                  {opt.subject_name} - {opt.kelas_nama}
-                </option>
-              ))}
-            </select>
-            {assessmentFormErrors.assessment_detail_kelas_id && (
-              <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_detail_kelas_id}</p>
-            )}
+                <select
+                  name="assessment_detail_kelas_id"
+                  value={assessmentFormData.assessment_detail_kelas_id}
+                  onChange={handleAssessmentInputChange}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    assessmentFormErrors.assessment_detail_kelas_id ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">Select Subject / Class</option>
+                  {detailKelasOptions.map(opt => (
+                    <option key={opt.detail_kelas_id} value={opt.detail_kelas_id}>
+                      {opt.subject_name} - {opt.kelas_nama}
+                    </option>
+                  ))}
+                </select>
+                {assessmentFormErrors.assessment_detail_kelas_id && (
+                  <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_detail_kelas_id}</p>
+                )}
           </div>
+          )}
 
           {/* Semester Selection */}
+          {!editingAssessment && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Semester
             </label>
-            <select
-              name="assessment_semester"
-              value={assessmentFormData.assessment_semester}
-              onChange={handleAssessmentInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Semester</option>
-              <option value="1">Semester 1</option>
-              <option value="2">Semester 2</option>
-            </select>
+              <select
+                name="assessment_semester"
+                value={assessmentFormData.assessment_semester}
+                onChange={handleAssessmentInputChange}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              >
+                <option value="">Select Semester</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
           </div>
+          )}
 
           {/* Criteria Selection (Multiple) */}
-          {assessmentFormData.assessment_detail_kelas_id && (
+          {!editingAssessment && assessmentFormData.assessment_detail_kelas_id && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                IB MYP Criteria * <span className="text-xs text-gray-500">(Select one or more)</span>
+                IB MYP Criteria *
+                <span className="text-xs text-gray-500 font-normal ml-1">(Select one or more)</span>
               </label>
-              {criteriaForAssessment.length === 0 ? (
-                <p className="text-sm text-red-500">No criteria available for this subject. Please add criteria in Subject Management first.</p>
-              ) : (
-                <div className={`space-y-2 p-3 border rounded-md ${
-                  assessmentFormErrors.selected_criteria ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-gray-50'
-                }`}>
-                  {criteriaForAssessment.map(c => (
-                    <label 
-                      key={c.criterion_id}
-                      className="flex items-start gap-3 p-2 hover:bg-white rounded cursor-pointer transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={assessmentFormData.selected_criteria.includes(c.criterion_id)}
-                        onChange={() => toggleCriterionSelection(c.criterion_id)}
-                        className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-800">
-                          Criterion {c.code}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {c.name}
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              )}
-              {assessmentFormErrors.selected_criteria && (
-                <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.selected_criteria}</p>
-              )}
+                  {criteriaForAssessment.length === 0 ? (
+                    <p className="text-sm text-red-500">No criteria available for this subject. Please add criteria in Subject Management first.</p>
+                  ) : (
+                    <div className={`space-y-2 p-4 border rounded-lg ${
+                      assessmentFormErrors.selected_criteria ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white'
+                    }`}>
+                      {criteriaForAssessment.map(c => (
+                        <label 
+                          key={c.criterion_id}
+                          className="flex items-start gap-3 p-3 rounded-lg border border-transparent hover:bg-blue-50 hover:border-blue-200 cursor-pointer transition-all"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={assessmentFormData.selected_criteria.includes(c.criterion_id)}
+                            onChange={() => toggleCriterionSelection(c.criterion_id)}
+                            className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-800 text-sm">
+                              Criterion {c.code}
+                            </div>
+                            <div className="text-sm text-gray-600 mt-0.5">
+                              {c.name}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {assessmentFormErrors.selected_criteria && (
+                    <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.selected_criteria}</p>
+                  )}
             </div>
           )}
 
           {/* Topic Selection */}
-          {assessmentFormData.assessment_detail_kelas_id && (
+          {!editingAssessment && assessmentFormData.assessment_detail_kelas_id && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Topic / Unit *
-                {editingAssessment && editingAssessment.assessment_status === 1 && (
-                  <span className="ml-2 text-xs text-gray-500">(Cannot change - already approved)</span>
-                )}
               </label>
-              <select
-                name="assessment_topic_id"
-                value={assessmentFormData.assessment_topic_id}
-                onChange={handleAssessmentInputChange}
-                disabled={topicsLoadingAssessment || topicsForAssessment.length === 0 || (editingAssessment && editingAssessment.assessment_status === 1)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  assessmentFormErrors.assessment_topic_id ? 'border-red-500' : 'border-gray-300'
-                } ${editingAssessment && editingAssessment.assessment_status === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              >
-                <option value="">
-                  {topicsLoadingAssessment ? 'Loading topics...' : (topicsForAssessment.length === 0 ? 'No topics available' : 'Select Topic')}
-                </option>
-                {topicsForAssessment.map(tp => (
-                  <option key={tp.topic_id} value={tp.topic_id}>{tp.topic_nama}</option>
-                ))}
-              </select>
-              {assessmentFormErrors.assessment_topic_id && (
-                <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_topic_id}</p>
-              )}
-              {(!topicsLoadingAssessment && topicsForAssessment.length === 0 && assessmentFormData.assessment_detail_kelas_id && !(editingAssessment && editingAssessment.assessment_status === 1)) && (
-                <p className="text-xs text-red-500 mt-1">No topics available for this subject/class. Please create a unit first.</p>
-              )}
+                  <select
+                    name="assessment_topic_id"
+                    value={assessmentFormData.assessment_topic_id}
+                    onChange={handleAssessmentInputChange}
+                    disabled={topicsLoadingAssessment || topicsForAssessment.length === 0}
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                      assessmentFormErrors.assessment_topic_id ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">
+                      {topicsLoadingAssessment ? 'Loading topics...' : (topicsForAssessment.length === 0 ? 'No topics available' : 'Select Topic')}
+                    </option>
+                    {topicsForAssessment.map(tp => (
+                      <option key={tp.topic_id} value={tp.topic_id}>{tp.topic_nama}</option>
+                    ))}
+                  </select>
+                  {assessmentFormErrors.assessment_topic_id && (
+                    <p className="text-red-500 text-sm mt-1">{assessmentFormErrors.assessment_topic_id}</p>
+                  )}
+                  {(!topicsLoadingAssessment && topicsForAssessment.length === 0 && assessmentFormData.assessment_detail_kelas_id) && (
+                    <p className="text-xs text-red-500 mt-1">No topics available for this subject/class. Please create a unit first.</p>
+                  )}
             </div>
           )}
 
           {/* Note/Description */}
+          {!editingAssessment && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Note / Description
             </label>
-            <textarea
-              name="assessment_keterangan"
-              value={assessmentFormData.assessment_keterangan}
-              onChange={handleAssessmentInputChange}
-              placeholder="Optional notes or description"
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              <textarea
+                name="assessment_keterangan"
+                value={assessmentFormData.assessment_keterangan}
+                onChange={handleAssessmentInputChange}
+                placeholder="Optional notes or description"
+                rows={3}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
+              />
           </div>
+          )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end space-x-3 pt-4 border-t">
+          <div className="flex justify-end space-x-3 pt-6 mt-2 border-t border-gray-200">
             <button
               type="button"
               onClick={() => {
@@ -10141,14 +10284,14 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                 setEditingAssessment(null)
               }}
               disabled={submittingAssessment}
-              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submittingAssessment || detailKelasOptions.length === 0}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 font-medium"
             >
               {submittingAssessment ? (
                 <>

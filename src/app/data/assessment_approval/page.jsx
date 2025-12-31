@@ -122,6 +122,7 @@ export default function AssessmentApproval() {
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from('assessment')
         .select('assessment_id, assessment_nama, assessment_tanggal, assessment_keterangan, assessment_status, assessment_user_id, assessment_detail_kelas_id, assessment_topic_id')
+        .not('assessment_tanggal', 'is', null)
         .order('assessment_tanggal', { ascending: false });
 
       if (assessmentsError) {

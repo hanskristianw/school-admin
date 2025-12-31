@@ -145,6 +145,7 @@ export default function Dashboard() {
       .select('*', { count: 'exact', head: true })
       .eq('assessment_user_id', userId)
       .in('assessment_status', [0, 3])
+      .not('assessment_tanggal', 'is', null)
 
     setStats((s) => ({ ...s, pendingAssessments: pendingCount ?? 0 }))
 
@@ -175,6 +176,7 @@ export default function Dashboard() {
     .select('assessment_id, assessment_nama, assessment_tanggal, assessment_status, assessment_user_id, assessment_detail_kelas_id')
     .eq('assessment_user_id', userId)
     .in('assessment_status', [0, 3])
+        .not('assessment_tanggal', 'is', null)
         .order('assessment_tanggal', { ascending: false })
         .limit(5),
       supabase
