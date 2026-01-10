@@ -17,6 +17,10 @@ export default function UniformPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterGender, setFilterGender] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
+
   const [form, setForm] = useState({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true })
   const [variants, setVariants] = useState([]) // {size_id, hpp, price}
   const [editing, setEditing] = useState(null)
@@ -160,54 +164,192 @@ export default function UniformPage() {
     } catch (e) { setError(e.message) }
   }
 
+  const filteredRows = useMemo(() => {
+    return rows.filter(r => {
+      const matchSearch = !searchTerm || 
+        r.uniform_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.uniform_code?.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchGender = filterGender === 'all' || r.gender === filterGender
+      const matchStatus = filterStatus === 'all' || 
+        (filterStatus === 'active' && r.is_active) ||
+        (filterStatus === 'inactive' && !r.is_active)
+      return matchSearch && matchGender && matchStatus
+    })
+  }, [rows, searchTerm, filterGender, filterStatus])
+
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Master Seragam</h1>
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-semibold">Master Seragam</h1>
+        <Button onClick={startCreate} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">+ Seragam Baru</Button>
+      </div>
 
-      <Card className="p-4 space-y-4">
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-          <div>
-            <Label>Unit</Label>
-            <select className="mt-1 w-full border rounded px-2 py-2" value={unitId} onChange={e => setUnitId(e.target.value)}>
-              {units.map(u => <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>)}
-            </select>
+      <div className="flex gap-6">
+        {/* Left Sidebar - Unit Tabs (Desktop only) */}
+        <Card className="hidden md:block p-4 w-64 flex-shrink-0 h-fit">
+          <h3 className="font-semibold mb-3 text-sm text-gray-700">Unit</h3>
+          <div className="space-y-1">
+            {units.map(u => (
+              <button
+                key={u.unit_id}
+                onClick={() => setUnitId(String(u.unit_id))}
+                className={`w-full text-left px-4 py-2 rounded transition-colors ${
+                  String(unitId) === String(u.unit_id)
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                {u.unit_name}
+              </button>
+            ))}
           </div>
-          <div className="md:col-span-2 flex items-end justify-end">
-            <Button onClick={startCreate} className="bg-blue-600 hover:bg-blue-700 text-white">Seragam Baru</Button>
-          </div>
-        </div>
-      </Card>
+        </Card>
 
-      <Card className="p-4">
-        <div className="overflow-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left border-b">
-                <th className="py-2 pr-4">Nama</th>
-                <th className="py-2 pr-4">Kode</th>
-                <th className="py-2 pr-4">Gender</th>
-                <th className="py-2 pr-4">Aktif</th>
-                <th className="py-2 pr-4">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r.uniform_id} className="border-b">
-                  <td className="py-2 pr-4">{r.uniform_name}</td>
-                  <td className="py-2 pr-4">{r.uniform_code || '-'}</td>
-                  <td className="py-2 pr-4">{r.gender || '-'}</td>
-                  <td className="py-2 pr-4">{r.is_active ? 'Ya' : 'Tidak'}</td>
-                  <td className="py-2 pr-4">
-                    <Button onClick={() => openEditUniform(r)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1">Edit</Button>
-                    <Button onClick={() => openEditVariants(r)} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1">Harga/HPP</Button>
-                    <Button onClick={() => onDelete(r)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1">Hapus</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Main Content */}
+        <div className="flex-1 space-y-3 md:space-y-4">
+          {/* Search & Filter */}
+          <Card className="p-3 md:p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+              <div>
+                <Label>Cari Seragam</Label>
+                <Input 
+                  placeholder="Nama atau kode seragam..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Filter Gender</Label>
+                <select 
+                  className="mt-1 w-full border rounded px-2 py-2"
+                  value={filterGender}
+                  onChange={e => setFilterGender(e.target.value)}
+                >
+                  <option value="all">Semua</option>
+                  <option value="unisex">Unisex</option>
+                  <option value="boy">Putra</option>
+                  <option value="girl">Putri</option>
+                </select>
+              </div>
+              <div>
+                <Label>Filter Status</Label>
+                <select 
+                  className="mt-1 w-full border rounded px-2 py-2"
+                  value={filterStatus}
+                  onChange={e => setFilterStatus(e.target.value)}
+                >
+                  <option value="all">Semua</option>
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Tidak Aktif</option>
+                </select>
+              </div>
+            </div>
+          </Card>
+
+          {/* Data Table */}
+          <Card className="p-3 md:p-4">
+            {filteredRows.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm md:text-base">
+                {rows.length === 0 ? 'Tidak ada data seragam' : 'Tidak ada data yang sesuai dengan filter'}
+              </div>
+            ) : (
+              <>
+                {/* Mobile Card Layout */}
+                <div className="md:hidden space-y-3">
+                  {filteredRows.map(r => (
+                    <div key={r.uniform_id} className="border rounded-lg p-3 space-y-2 bg-white hover:bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-sm">{r.uniform_name}</h3>
+                          <p className="text-xs text-gray-500">Kode: {r.uniform_code || '-'}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {r.is_active ? 'Aktif' : 'Tidak Aktif'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Gender: <span className="font-medium">{r.gender === 'boy' ? 'Putra' : r.gender === 'girl' ? 'Putri' : r.gender || '-'}</span>
+                      </div>
+                      <div className="flex flex-col gap-2 pt-2">
+                        <Button 
+                          onClick={() => openEditUniform(r)} 
+                          className="bg-amber-500 hover:bg-amber-600 text-white py-2 text-xs rounded-md font-medium transition-colors w-full"
+                        >
+                          Edit
+                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button 
+                            onClick={() => openEditVariants(r)} 
+                            className="bg-green-600 hover:bg-green-700 text-white py-2 text-xs rounded-md font-medium transition-colors"
+                          >
+                            Harga/HPP
+                          </Button>
+                          <Button 
+                            onClick={() => onDelete(r)} 
+                            className="bg-red-600 hover:bg-red-700 text-white py-2 text-xs rounded-md font-medium transition-colors"
+                          >
+                            Hapus
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table Layout */}
+                <div className="hidden md:block overflow-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b">
+                        <th className="py-2 pr-4">Nama</th>
+                        <th className="py-2 pr-4">Kode</th>
+                        <th className="py-2 pr-4">Gender</th>
+                        <th className="py-2 pr-4">Aktif</th>
+                        <th className="py-2 pr-4">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRows.map(r => (
+                        <tr key={r.uniform_id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 pr-4">{r.uniform_name}</td>
+                          <td className="py-3 pr-4">{r.uniform_code || '-'}</td>
+                          <td className="py-3 pr-4 capitalize">{r.gender === 'boy' ? 'Putra' : r.gender === 'girl' ? 'Putri' : r.gender || '-'}</td>
+                          <td className="py-3 pr-4">{r.is_active ? 'Ya' : 'Tidak'}</td>
+                          <td className="py-3 pr-4">
+                            <div className="flex gap-2">
+                              <Button 
+                                onClick={() => openEditUniform(r)} 
+                                className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 text-xs rounded-md font-medium transition-colors"
+                              >
+                                Edit
+                              </Button>
+                              <Button 
+                                onClick={() => openEditVariants(r)} 
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 text-xs rounded-md font-medium transition-colors"
+                              >
+                                Harga/HPP
+                              </Button>
+                              <Button 
+                                onClick={() => onDelete(r)} 
+                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 text-xs rounded-md font-medium transition-colors"
+                              >
+                                Hapus
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </Card>
         </div>
-      </Card>
+      </div>
 
       {/* Uniform Modal */}
       <Modal isOpen={showUniformModal} onClose={() => setShowUniformModal(false)} title={editing ? 'Edit Seragam' : 'Seragam Baru'} size="lg">
