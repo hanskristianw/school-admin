@@ -21,7 +21,7 @@ export default function UniformPage() {
   const [filterGender, setFilterGender] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
 
-  const [form, setForm] = useState({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true })
+  const [form, setForm] = useState({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true, is_universal: false })
   const [variants, setVariants] = useState([]) // {size_id, hpp, price}
   const [editing, setEditing] = useState(null)
   const [showUniformModal, setShowUniformModal] = useState(false)
@@ -52,8 +52,10 @@ export default function UniformPage() {
       setLoading(true)
       try {
         const [{ data: s }, { data: u }] = await Promise.all([
-          supabase.from('uniform_size').select('*').eq('unit_id', Number(unitId)).order('display_order'),
-          supabase.from('uniform').select('*').eq('unit_id', Number(unitId)).order('uniform_name')
+          supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order'),
+          // Get unit-specific items for this unit OR universal items (unit_id = NULL)
+          // Order by is_universal DESC so universal items appear first, then by name
+          supabase.from('uniform').select('*').or(`unit_id.eq.${Number(unitId)},unit_id.is.null`).order('is_universal', { ascending: false }).order('uniform_name')
         ])
         setSizes(s || [])
         setRows(u || [])
@@ -64,7 +66,7 @@ export default function UniformPage() {
 
   const startCreate = () => {
     setEditing(null)
-    setForm({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true })
+    setForm({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true, is_universal: false })
     setVariants((sizes || []).map(sz => ({ size_id: sz.size_id, hpp: '', price: '' })))
     setShowUniformModal(true)
   }
@@ -88,7 +90,8 @@ export default function UniformPage() {
       gender: row.gender || 'unisex',
       image_url: row.image_url || '',
       notes: row.notes || '',
-      is_active: !!row.is_active
+      is_active: !!row.is_active,
+      is_universal: !!row.is_universal
     })
     setShowUniformModal(true)
   }
@@ -118,13 +121,15 @@ export default function UniformPage() {
   const onSubmitUniform = async () => {
     if (!unitId) return
     const payload = {
-      unit_id: Number(unitId),
+      // Universal items: unit_id = NULL, else use selected unit
+      unit_id: form.is_universal ? null : Number(unitId),
       uniform_code: (form.uniform_code || '').trim() || null,
       uniform_name: (form.uniform_name || '').trim(),
       gender: form.gender || null,
       image_url: (form.image_url || '').trim() || null,
       notes: (form.notes || '').trim() || null,
-      is_active: !!form.is_active
+      is_active: !!form.is_active,
+      is_universal: !!form.is_universal
     }
     if (!payload.uniform_name) { setError('Nama seragam wajib'); return }
     setSaving(true)
@@ -137,9 +142,9 @@ export default function UniformPage() {
         if (error) throw error
       }
       // reload
-      const { data: u2 } = await supabase.from('uniform').select('*').eq('unit_id', Number(unitId)).order('uniform_name')
+      const { data: u2 } = await supabase.from('uniform').select('*').or(`unit_id.eq.${Number(unitId)},unit_id.is.null`).order('is_universal', { ascending: false }).order('uniform_name')
       setRows(u2 || [])
-      setForm({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true })
+      setForm({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true, is_universal: false })
       setEditing(null)
       setError('')
       setShowUniformModal(false)
@@ -264,11 +269,18 @@ export default function UniformPage() {
                           <h3 className="font-semibold text-sm">{r.uniform_name}</h3>
                           <p className="text-xs text-gray-500">Kode: {r.uniform_code || '-'}</p>
                         </div>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {r.is_active ? 'Aktif' : 'Tidak Aktif'}
-                        </span>
+                        <div className="flex flex-col gap-1 items-end">
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {r.is_active ? 'Aktif' : 'Tidak Aktif'}
+                          </span>
+                          {r.is_universal && (
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                              Universal
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-xs text-gray-600">
                         Gender: <span className="font-medium">{r.gender === 'boy' ? 'Putra' : r.gender === 'girl' ? 'Putri' : r.gender || '-'}</span>
@@ -307,6 +319,7 @@ export default function UniformPage() {
                         <th className="py-2 pr-4">Nama</th>
                         <th className="py-2 pr-4">Kode</th>
                         <th className="py-2 pr-4">Gender</th>
+                        <th className="py-2 pr-4">Scope</th>
                         <th className="py-2 pr-4">Aktif</th>
                         <th className="py-2 pr-4">Aksi</th>
                       </tr>
@@ -317,6 +330,13 @@ export default function UniformPage() {
                           <td className="py-3 pr-4">{r.uniform_name}</td>
                           <td className="py-3 pr-4">{r.uniform_code || '-'}</td>
                           <td className="py-3 pr-4 capitalize">{r.gender === 'boy' ? 'Putra' : r.gender === 'girl' ? 'Putri' : r.gender || '-'}</td>
+                          <td className="py-3 pr-4">
+                            {r.is_universal ? (
+                              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Universal</span>
+                            ) : (
+                              <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">Unit Saja</span>
+                            )}
+                          </td>
                           <td className="py-3 pr-4">{r.is_active ? 'Ya' : 'Tidak'}</td>
                           <td className="py-3 pr-4">
                             <div className="flex gap-2">
@@ -381,6 +401,13 @@ export default function UniformPage() {
           <div className="flex items-center gap-2">
             <input id="active2" type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} />
             <Label htmlFor="active2">Aktif</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input id="universal" type="checkbox" checked={form.is_universal} onChange={e => setForm({ ...form, is_universal: e.target.checked })} />
+            <Label htmlFor="universal" className="cursor-pointer">
+              <span className="font-semibold">Universal (Semua Unit)</span>
+              <span className="block text-xs text-gray-500 mt-0.5">Item bisa dibeli oleh siswa dari unit manapun</span>
+            </Label>
           </div>
         </div>
         {error && <div className="text-sm text-red-600 mt-2">{error}</div>}

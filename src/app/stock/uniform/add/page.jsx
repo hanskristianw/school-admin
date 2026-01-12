@@ -17,9 +17,8 @@ export default function AddUniformStockPage() {
   const [suppliers, setSuppliers] = useState([])
   const [supplierId, setSupplierId] = useState('')
   const [uniforms, setUniforms] = useState([]) // All uniforms (for displaying in table)
-  const [sizes, setSizes] = useState([]) // All sizes (for displaying in table)
+  const [sizes, setSizes] = useState([]) // All sizes - universal (no longer filtered by unit)
   const [uniformsByUnit, setUniformsByUnit] = useState({}) // Cache: unit_id -> uniforms[]
-  const [sizesByUnit, setSizesByUnit] = useState({}) // Cache: unit_id -> sizes[]
   const [variants, setVariants] = useState([])
   const [items, setItems] = useState([]) // {unit_id, uniform_id, size_id, qty, unit_cost, update_hpp:boolean}
   const [purchaseId, setPurchaseId] = useState(null)
@@ -29,7 +28,6 @@ export default function AddUniformStockPage() {
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0,10))
   const [invoiceNo, setInvoiceNo] = useState('')
   const [notes, setNotes] = useState('')
-  const [attachment, setAttachment] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
@@ -56,40 +54,37 @@ export default function AddUniformStockPage() {
       if (schools.length && !unitId) setUnitId(String(schools[0].unit_id))
     }
     const fetchSuppliers = async () => {
-      const { data, error } = await supabase.from('uniform_supplier').select('supplier_id, supplier_name, is_active').eq('is_active', true).order('supplier_name')
+      const { data, error } = await supabase.from('uniform_supplier').select('supplier_id, supplier_name, supplier_code, is_active').eq('is_active', true).order('supplier_code')
       if (!error) setSuppliers(data || [])
     }
     const fetchAllUniforms = async () => {
       const [uRes, sRes, vRes] = await Promise.all([
-        supabase.from('uniform').select('uniform_id, uniform_name, unit_id').eq('is_active', true).order('uniform_name'),
+        supabase.from('uniform').select('uniform_id, uniform_name, unit_id, is_universal').eq('is_active', true).order('uniform_name'),
         supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order'),
         supabase.from('uniform_variant').select('uniform_id, size_id, hpp, price')
       ])
       if (!uRes.error) setUniforms(uRes.data || [])
-      if (!sRes.error) setSizes(sRes.data || [])
+      if (!sRes.error) setSizes(sRes.data || []) // Universal sizes, no unit filter
       if (!vRes.error) setVariants(vRes.data || [])
     }
     fetchUnits(); fetchSuppliers(); fetchAllUniforms()
   }, [])
 
-  // Load uniforms and sizes for selected unit in modal
+  // Load uniforms for selected unit in modal (sizes are universal, loaded once)
   useEffect(() => {
     if (!newItem.unit_id) return
     // Check cache first
-    if (uniformsByUnit[newItem.unit_id] && sizesByUnit[newItem.unit_id]) return
+    if (uniformsByUnit[newItem.unit_id]) return
     
     const load = async () => {
       const uid = Number(newItem.unit_id)
-      const [uRes, sRes] = await Promise.all([
-        supabase.from('uniform').select('uniform_id, uniform_name, unit_id').eq('unit_id', uid).eq('is_active', true).order('uniform_name'),
-        supabase.from('uniform_size').select('*').eq('unit_id', uid).eq('is_active', true).order('display_order'),
-      ])
-      if (uRes.error || sRes.error) { setError(uRes.error?.message || sRes.error?.message); return }
+      // Get unit-specific items OR universal items (unit_id = NULL)
+      const uRes = await supabase.from('uniform').select('uniform_id, uniform_name, unit_id, is_universal').or(`unit_id.eq.${uid},unit_id.is.null`).eq('is_active', true).order('uniform_name')
+      if (uRes.error) { setError(uRes.error.message); return }
       setUniformsByUnit(prev => ({ ...prev, [newItem.unit_id]: uRes.data || [] }))
-      setSizesByUnit(prev => ({ ...prev, [newItem.unit_id]: sRes.data || [] }))
     }
     load();
-  }, [newItem.unit_id, uniformsByUnit, sizesByUnit])
+  }, [newItem.unit_id, uniformsByUnit])
 
   // Auto-load data when switching tabs
   useEffect(() => {
@@ -143,11 +138,25 @@ export default function AddUniformStockPage() {
   }
 
   const confirmAddItem = () => {
-    if (!newItem.unit_id || !newItem.uniform_id || !newItem.size_id || !Number(newItem.qty)) {
+    const selectedUniform = uniforms.find(u => u.uniform_id === newItem.uniform_id)
+    const isUniversal = selectedUniform?.is_universal || false
+    
+    // Validation: universal items don't need unit_id
+    if (!isUniversal && !newItem.unit_id) {
+      setError('Unit harus dipilih untuk item non-universal')
+      return
+    }
+    if (!newItem.uniform_id || !newItem.size_id || !Number(newItem.qty)) {
       setError('Lengkapi semua field item')
       return
     }
-    setItems(prev => [...prev, { ...newItem }])
+    
+    // Set unit_id to NULL for universal items
+    const itemToAdd = {
+      ...newItem,
+      unit_id: isUniversal ? null : newItem.unit_id
+    }
+    setItems(prev => [...prev, itemToAdd])
     
     // Show success message
     setItemAddedSuccess(true)
@@ -182,7 +191,9 @@ export default function AddUniformStockPage() {
       if (!items.length) missing.push('Belum ada item yang ditambahkan')
       for (let i = 0; i < items.length; i++) {
         const it = items[i]
-        if (!it.unit_id) missing.push(`Item #${i+1}: Unit belum dipilih`)
+        // unit_id optional for universal items
+        const uniform = uniforms.find(u => u.uniform_id === it.uniform_id)
+        if (!uniform?.is_universal && !it.unit_id) missing.push(`Item #${i+1}: Unit belum dipilih (item non-universal)`)
         if (!it.uniform_id) missing.push(`Item #${i+1}: Seragam belum dipilih`)
         if (!it.size_id) missing.push(`Item #${i+1}: Ukuran belum dipilih`)
         if (!Number(it.qty) || Number(it.qty) <= 0) missing.push(`Item #${i+1}: Qty harus lebih dari 0`)
@@ -217,16 +228,6 @@ export default function AddUniformStockPage() {
     return ''
   }
 
-  const uploadAttachment = async (purchaseId) => {
-    if (!attachment) return null
-    const ext = attachment.name.split('.').pop()
-    const path = `${purchaseId}/${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('uniform-purchases').upload(path, attachment, { cacheControl: '3600', upsert: false })
-    if (error) throw error
-    const { data } = await supabase.storage.from('uniform-purchases').getPublicUrl(path)
-    return data?.publicUrl || null
-  }
-
   const save = async () => {
     const msg = validate(); if (msg) { setError(msg); return }
     setSaving(true); setError('')
@@ -238,15 +239,11 @@ export default function AddUniformStockPage() {
       const { data: header, error: herr } = await supabase.from('uniform_purchase').insert([{ unit_id: Number(firstUnitId), supplier_id: Number(supplierId), purchase_date: purchaseDate, invoice_no: invoiceNo || null, notes: notes || null, status: 'draft' }]).select('purchase_id').single()
       if (herr) throw herr
       const pid = header.purchase_id; setPurchaseId(pid)
-      // 2) attachment upload (header-level)
-      if (attachment) {
-        const url = await uploadAttachment(pid)
-        await supabase.from('uniform_purchase').update({ attachment_url: url }).eq('purchase_id', pid)
-      }
-      // 3) insert items (ordered) with unit_id per item
+      // 2) insert items (ordered) with unit_id per item
       const payload = items.map(it => ({ 
         purchase_id: pid, 
-        unit_id: Number(it.unit_id),
+        // Universal items: set unit_id to NULL, else use selected unit
+        unit_id: it.unit_id ? Number(it.unit_id) : null,
         uniform_id: it.uniform_id, 
         size_id: it.size_id, 
         qty: Number(it.qty), 
@@ -261,7 +258,7 @@ export default function AddUniformStockPage() {
       setReceiveRows(rows)
       setReceipts([])
       // clear form for next order
-      setItems([]); setAttachment(null); setInvoiceNo(''); setNotes('')
+      setItems([]); setInvoiceNo(''); setNotes('')
       setCurrentStep(1)
       // refresh pending list and switch to receive tab
       loadPending()
@@ -271,7 +268,7 @@ export default function AddUniformStockPage() {
   }
 
   const loadProgress = async (pid) => {
-    const { data: rec, error: re } = await supabase.from('uniform_purchase_receipt').select('receipt_id, receipt_date, notes, attachment_url, created_at').eq('purchase_id', pid).order('receipt_id',{ascending:false})
+    const { data: rec, error: re } = await supabase.from('uniform_purchase_receipt').select('receipt_id, receipt_date, notes, created_at').eq('purchase_id', pid).order('receipt_id',{ascending:false})
     if (!re) setReceipts(rec || [])
     const remMap = await getRemainingMap(pid)
     setReceiveRows(prev => prev.map(r => ({ ...r, qty_remaining: remMap.get(r.purchase_item_id) ?? r.qty_remaining })))
@@ -344,7 +341,7 @@ export default function AddUniformStockPage() {
     // Receipts list
     const { data: rec } = await supabase
       .from('uniform_purchase_receipt')
-      .select('receipt_id, receipt_date, notes, attachment_url, created_at')
+      .select('receipt_id, receipt_date, notes, created_at')
       .eq('purchase_id', pid)
       .order('receipt_id', { ascending: false })
     setHistoryReceipts(rec || [])
@@ -357,6 +354,15 @@ export default function AddUniformStockPage() {
     if (!anyQty) { setError('Isi jumlah diterima'); return }
     setSaving(true); setError('')
     try {
+      // 0) Get supplier_id from purchase header
+      const { data: purchaseHeader, error: phErr } = await supabase
+        .from('uniform_purchase')
+        .select('supplier_id')
+        .eq('purchase_id', purchaseId)
+        .single()
+      if (phErr) throw phErr
+      const supplierId = purchaseHeader?.supplier_id || null
+      
       // 1) create receipt header
       const { data: rec, error: rerr } = await supabase.from('uniform_purchase_receipt').insert([{ purchase_id: purchaseId, receipt_date: new Date().toISOString().slice(0,10) }]).select('receipt_id').single()
       if (rerr) throw rerr
@@ -365,10 +371,19 @@ export default function AddUniformStockPage() {
       const ritems = receiveRows.filter(r => Number(r.qty_receive) > 0).map(r => ({ receipt_id: rid, purchase_item_id: r.purchase_item_id, qty_received: Number(r.qty_receive), unit_cost: Number(r.unit_cost||0) }))
       const { error: rierr } = await supabase.from('uniform_purchase_receipt_item').insert(ritems)
       if (rierr) throw rierr
-      // 3) post stock for each receipt item
+      // 3) post stock for each receipt item with supplier_id
       for (const r of ritems) {
         const base = receiveRows.find(x=>x.purchase_item_id===r.purchase_item_id)
-        await supabase.from('uniform_stock_txn').insert([{ uniform_id: base.uniform_id, size_id: base.size_id, qty_delta: r.qty_received, txn_type: 'purchase', ref_table: 'uniform_purchase_receipt', ref_id: rid, notes: invoiceNo ? `inv:${invoiceNo}` : 'purchase receipt' }])
+        await supabase.from('uniform_stock_txn').insert([{ 
+          uniform_id: base.uniform_id, 
+          size_id: base.size_id, 
+          qty_delta: r.qty_received, 
+          txn_type: 'purchase', 
+          ref_table: 'uniform_purchase_receipt', 
+          ref_id: rid, 
+          supplier_id: supplierId,
+          notes: invoiceNo ? `inv:${invoiceNo}` : 'purchase receipt' 
+        }])
         if (base.update_hpp) {
           await supabase.from('uniform_variant').update({ hpp: r.unit_cost }).eq('uniform_id', base.uniform_id).eq('size_id', base.size_id)
         }
@@ -389,7 +404,7 @@ export default function AddUniformStockPage() {
 
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
-      <h1 className="text-xl md:text-2xl font-semibold">Manajemen Stok Seragam</h1>
+      <h1 className="text-xl md:text-2xl font-semibold">Purchase Order</h1>
 
       {/* Tab Navigation */}
       <div className="border-b border-gray-200">
@@ -536,14 +551,6 @@ export default function AddUniformStockPage() {
                   placeholder="Opsional"
                 />
               </div>
-              <div>
-                <Label>Lampiran</Label>
-                <input 
-                  type="file" 
-                  onChange={e=>setAttachment(e.target.files?.[0]||null)}
-                  className="mt-1 w-full text-sm"
-                />
-              </div>
             </div>
             
             {/* Navigation Buttons */}
@@ -653,11 +660,16 @@ export default function AddUniformStockPage() {
                       // Find uniform from all units (may be different from current selection)
                       const uniform = (it.uniform_id && uniforms.find(u => u.uniform_id === it.uniform_id)) || null
                       const size = (it.size_id && sizes.find(s => s.size_id === it.size_id)) || null
+                      const isUniversal = uniform?.is_universal || false
                       return (
                         <tr key={idx} className={`border-b hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
                           <td className="py-3 px-3 text-gray-600">{idx + 1}</td>
                           <td className="py-3 px-3">
-                            {unit ? (
+                            {isUniversal ? (
+                              <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded font-medium">
+                                Universal
+                              </span>
+                            ) : unit ? (
                               <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-medium">
                                 {unit.unit_name}
                               </span>
@@ -778,12 +790,19 @@ export default function AddUniformStockPage() {
                       const uniform = uniforms.find(u => u.uniform_id === it.uniform_id)
                       const size = sizes.find(s => s.size_id === it.size_id)
                       const subtotal = Number(it.qty || 0) * Number(it.unit_cost || 0)
+                      const isUniversal = uniform?.is_universal || false
                       return (
                         <tr key={idx} className="border-b">
                           <td className="py-2 pr-3">
-                            <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
-                              {unit?.unit_name || '-'}
-                            </span>
+                            {isUniversal ? (
+                              <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded">
+                                Universal
+                              </span>
+                            ) : (
+                              <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
+                                {unit?.unit_name || '-'}
+                              </span>
+                            )}
                           </td>
                           <td className="py-2 pr-3">{uniform?.uniform_name}</td>
                           <td className="py-2 pr-3">{size?.size_name}</td>
@@ -876,7 +895,8 @@ export default function AddUniformStockPage() {
       <Modal isOpen={showAddItemModal} onClose={closeAddItemModal} title="📦 Tambah Item Baru" size="md">
         {(() => {
           const currentUniforms = uniformsByUnit[newItem.unit_id] || []
-          const currentSizes = sizesByUnit[newItem.unit_id] || []
+          const selectedUniform = uniforms.find(u => u.uniform_id === newItem.uniform_id)
+          const isUniversal = selectedUniform?.is_universal || false
           
           return (
             <div className="space-y-4">
@@ -888,18 +908,30 @@ export default function AddUniformStockPage() {
                 </div>
               )}
 
+              {/* Universal Item Indicator */}
+              {isUniversal && (
+                <div className="bg-purple-50 border border-purple-200 text-purple-800 px-4 py-3 rounded flex items-center gap-2">
+                  <span className="text-lg">🌐</span>
+                  <div>
+                    <div className="font-semibold">Item Universal</div>
+                    <div className="text-xs">Item ini bisa dibeli oleh siswa dari unit manapun</div>
+                  </div>
+                </div>
+              )}
+
               {/* Unit Selection */}
               <div>
-                <Label>Unit <span className="text-red-500">*</span></Label>
+                <Label>Unit {!isUniversal && <span className="text-red-500">*</span>}</Label>
                 <select 
-                  className={`mt-1 w-full border rounded px-3 py-2 ${!newItem.unit_id ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                  className={`mt-1 w-full border rounded px-3 py-2 ${!isUniversal && !newItem.unit_id ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                   value={newItem.unit_id}
                   onChange={e => setNewItem({ ...newItem, unit_id: e.target.value, uniform_id: '', size_id: '', unit_cost: 0 })}
                 >
                   <option value="">-- Pilih Unit --</option>
                   {units.map(u => <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>)}
                 </select>
-                {!newItem.unit_id && <p className="text-xs text-red-600 mt-1">Pilih unit terlebih dahulu</p>}
+                {!isUniversal && !newItem.unit_id && <p className="text-xs text-red-600 mt-1">Pilih unit terlebih dahulu</p>}
+                {isUniversal && <p className="text-xs text-purple-600 mt-1">Opsional untuk item universal</p>}
               </div>
 
               <div>
@@ -910,12 +942,16 @@ export default function AddUniformStockPage() {
                   disabled={!newItem.unit_id}
                   onChange={e => {
                     const uid = Number(e.target.value)
-                    const sid = currentSizes[0]?.size_id || ''
+                    const sid = sizes[0]?.size_id || ''
                     setNewItem({ ...newItem, uniform_id: uid, size_id: sid, unit_cost: getHpp(uid, sid) })
                   }}
                 >
                   <option value="">-- Pilih Seragam --</option>
-                  {currentUniforms.map(u => <option key={u.uniform_id} value={u.uniform_id}>{u.uniform_name}</option>)}
+                  {currentUniforms.map(u => (
+                    <option key={u.uniform_id} value={u.uniform_id}>
+                      {u.uniform_name}{u.is_universal ? ' 🌐' : ''}
+                    </option>
+                  ))}
                 </select>
                 {!newItem.uniform_id && newItem.unit_id && <p className="text-xs text-red-600 mt-1">Pilih seragam terlebih dahulu</p>}
               </div>
@@ -932,9 +968,10 @@ export default function AddUniformStockPage() {
                   disabled={!newItem.uniform_id}
                 >
                   <option value="">-- Pilih Ukuran --</option>
-                  {currentSizes.map(s => <option key={s.size_id} value={s.size_id}>{s.size_name}</option>)}
+                  {sizes.map(s => <option key={s.size_id} value={s.size_id}>{s.size_name}</option>)}
                 </select>
                 {!newItem.size_id && newItem.uniform_id && <p className="text-xs text-red-600 mt-1">Pilih ukuran</p>}
+                <p className="text-xs text-gray-500 mt-1">💡 Ukuran berlaku untuk semua unit</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1247,11 +1284,6 @@ export default function AddUniformStockPage() {
             {historyReceipts.map(r => (
               <li key={r.receipt_id}>
                 #{r.receipt_id} • {r.receipt_date} {r.notes ? '• '+r.notes : ''}
-                {r.attachment_url && (
-                  <>
-                    {' '}• <a href={r.attachment_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Lampiran</a>
-                  </>
-                )}
               </li>
             ))}
             {!historyReceipts.length && <li className="text-gray-500">Belum ada penerimaan</li>}

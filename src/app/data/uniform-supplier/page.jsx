@@ -22,7 +22,7 @@ export default function UniformSupplierPage() {
     setLoading(true)
     setError('')
     try {
-      const { data, error } = await supabase.from('uniform_supplier').select('*').order('supplier_name')
+      const { data, error } = await supabase.from('uniform_supplier').select('*').order('supplier_code')
       if (error) throw error
       setRows(data || [])
     } catch (e) { setError(e.message) } finally { setLoading(false) }

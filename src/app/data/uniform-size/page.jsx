@@ -9,8 +9,6 @@ import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
 
 export default function UniformSizePage() {
-  const [units, setUnits] = useState([])
-  const [unitId, setUnitId] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -22,35 +20,12 @@ export default function UniformSizePage() {
   const [filterStatus, setFilterStatus] = useState('all') // all, active, inactive
 
   useEffect(() => {
-    const loadUnits = async () => {
-      setLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('unit')
-          .select('unit_id, unit_name, is_school')
-          .order('unit_name')
-        if (error) throw error
-        const schools = (data || []).filter(u => u.is_school)
-        setUnits(schools)
-        if (schools.length && !unitId) setUnitId(String(schools[0].unit_id))
-      } catch (e) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadUnits()
-  }, [])
-
-  useEffect(() => {
-    if (!unitId) return
     const loadSizes = async () => {
       setLoading(true)
       try {
         const { data, error } = await supabase
           .from('uniform_size')
           .select('*')
-          .eq('unit_id', Number(unitId))
           .order('display_order')
         if (error) throw error
         setRows(data || [])
@@ -61,7 +36,7 @@ export default function UniformSizePage() {
       }
     }
     loadSizes()
-  }, [unitId])
+  }, [])
 
   // Filtered data
   const filteredRows = useMemo(() => {
@@ -85,9 +60,7 @@ export default function UniformSizePage() {
   }, [rows, searchTerm, filterStatus])
 
   const onSubmit = async () => {
-    if (!unitId) return
     const payload = {
-      unit_id: Number(unitId),
       size_name: (form.size_name || '').trim(),
       display_order: Number(form.display_order || 0),
       is_active: !!form.is_active,
@@ -117,7 +90,6 @@ export default function UniformSizePage() {
       const { data } = await supabase
         .from('uniform_size')
         .select('*')
-        .eq('unit_id', Number(unitId))
         .order('display_order')
       setRows(data || [])
       setError('')
@@ -165,7 +137,10 @@ export default function UniformSizePage() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-xl md:text-2xl font-semibold">Master Ukuran Seragam</h1>
+        <div>
+          <h1 className="text-xl md:text-2xl font-semibold">Master Ukuran Seragam</h1>
+          <p className="text-sm text-gray-600 mt-1">Ukuran berlaku untuk semua unit</p>
+        </div>
         <Button 
           onClick={onAdd}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold w-full sm:w-auto"
@@ -174,149 +149,67 @@ export default function UniformSizePage() {
         </Button>
       </div>
 
-      {/* Unit Selection - Tab Sidebar Style */}
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Sidebar - Desktop */}
-        <Card className="hidden md:block p-4 md:w-64 h-fit">
-          <h3 className="font-semibold text-gray-700 mb-3 text-sm">Pilih Unit</h3>
-          <div className="space-y-1">
-            {units.map(u => (
-              <button
-                key={u.unit_id}
-                onClick={() => setUnitId(String(u.unit_id))}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                  String(unitId) === String(u.unit_id)
-                    ? 'bg-blue-600 text-white font-medium'
-                    : 'hover:bg-gray-100 text-gray-700'
-                }`}
-              >
-                {u.unit_name}
-              </button>
-            ))}
+      {/* Search and Filter */}
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <Input
+              placeholder="🔍 Cari ukuran..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
           </div>
-        </Card>
-
-        {/* Horizontal Scroll Tabs - Mobile */}
-        <div className="md:hidden overflow-x-auto">
-          <div className="flex gap-2 pb-2">
-            {units.map(u => (
-              <button
-                key={u.unit_id}
-                onClick={() => setUnitId(String(u.unit_id))}
-                className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${
-                  String(unitId) === String(u.unit_id)
-                    ? 'bg-blue-600 text-white font-medium'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {u.unit_name}
-              </button>
-            ))}
+          <div className="sm:w-48">
+            <select
+              className="w-full border rounded px-3 py-2 text-sm"
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+            >
+              <option value="all">Semua Status</option>
+              <option value="active">Aktif Saja</option>
+              <option value="inactive">Tidak Aktif</option>
+            </select>
           </div>
         </div>
+      </Card>
 
-        {/* Main Content */}
-        <div className="flex-1 space-y-4">
-          {/* Search and Filter */}
-          <Card className="p-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <Input
-                  placeholder="🔍 Cari ukuran..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              <div className="sm:w-48">
-                <select
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  value={filterStatus}
-                  onChange={e => setFilterStatus(e.target.value)}
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="active">Aktif Saja</option>
-                  <option value="inactive">Tidak Aktif</option>
-                </select>
-              </div>
-            </div>
-          </Card>
-
-          {/* Data Table */}
-          <Card className="p-4">
-            {loading ? (
-              <div className="text-center py-8 text-gray-500">
-                <div className="animate-spin text-3xl mb-2">⏳</div>
-                <p>Memuat data...</p>
-              </div>
-            ) : filteredRows.length === 0 ? (
-              <div className="text-center py-12 px-4">
-                <div className="text-4xl mb-3">📏</div>
-                <p className="text-gray-600 font-medium mb-1">
-                  {rows.length === 0 ? 'Belum ada data ukuran seragam' : 'Tidak ada data yang sesuai filter'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {rows.length === 0 ? 'Klik tombol "Tambah Ukuran" untuk memulai' : 'Coba ubah kriteria pencarian atau filter'}
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Desktop Table */}
-                <div className="hidden md:block overflow-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-left border-b bg-gray-50">
-                        <th className="py-3 px-3 font-semibold text-gray-700">Nama Ukuran</th>
-                        <th className="py-3 px-3 font-semibold text-gray-700">Urutan</th>
-                        <th className="py-3 px-3 font-semibold text-gray-700">Status</th>
-                        <th className="py-3 px-3 font-semibold text-gray-700">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRows.map((r, idx) => (
-                        <tr key={r.size_id} className={`border-b hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                          <td className="py-3 px-3 font-medium text-gray-900">{r.size_name}</td>
-                          <td className="py-3 px-3 text-gray-600">{r.display_order}</td>
-                          <td className="py-3 px-3">
-                            <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                              r.is_active 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {r.is_active ? 'Aktif' : 'Tidak Aktif'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="flex gap-2">
-                              <Button 
-                                onClick={() => onEdit(r)} 
-                                className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 text-xs"
-                              >
-                                Edit
-                              </Button>
-                              <Button 
-                                onClick={() => onDelete(r)} 
-                                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs"
-                              >
-                                Hapus
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Card Layout */}
-                <div className="md:hidden space-y-3">
-                  {filteredRows.map(r => (
-                    <Card key={r.size_id} className="p-4 bg-gray-50">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <div className="font-semibold text-gray-900 mb-1">{r.size_name}</div>
-                          <div className="text-xs text-gray-500">Urutan: {r.display_order}</div>
-                        </div>
+      {/* Data Table */}
+      <Card className="p-4">
+        {loading ? (
+          <div className="text-center py-8 text-gray-500">
+            <div className="animate-spin text-3xl mb-2">⏳</div>
+            <p>Memuat data...</p>
+          </div>
+        ) : filteredRows.length === 0 ? (
+          <div className="text-center py-12 px-4">
+            <div className="text-4xl mb-3">📏</div>
+            <p className="text-gray-600 font-medium mb-1">
+              {rows.length === 0 ? 'Belum ada data ukuran seragam' : 'Tidak ada data yang sesuai filter'}
+            </p>
+            <p className="text-sm text-gray-500">
+              {rows.length === 0 ? 'Klik tombol "Tambah Ukuran" untuk memulai' : 'Coba ubah kriteria pencarian atau filter'}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left border-b bg-gray-50">
+                    <th className="py-3 px-3 font-semibold text-gray-700">Nama Ukuran</th>
+                    <th className="py-3 px-3 font-semibold text-gray-700">Urutan</th>
+                    <th className="py-3 px-3 font-semibold text-gray-700">Status</th>
+                    <th className="py-3 px-3 font-semibold text-gray-700">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((r, idx) => (
+                    <tr key={r.size_id} className={`border-b hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                      <td className="py-3 px-3 font-medium text-gray-900">{r.size_name}</td>
+                      <td className="py-3 px-3 text-gray-600">{r.display_order}</td>
+                      <td className="py-3 px-3">
                         <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                           r.is_active 
                             ? 'bg-green-100 text-green-800' 
@@ -324,34 +217,71 @@ export default function UniformSizePage() {
                         }`}>
                           {r.is_active ? 'Aktif' : 'Tidak Aktif'}
                         </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          onClick={() => onEdit(r)} 
-                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 text-sm"
-                        >
-                          Edit
-                        </Button>
-                        <Button 
-                          onClick={() => onDelete(r)} 
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 text-sm"
-                        >
-                          Hapus
-                        </Button>
-                      </div>
-                    </Card>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => onEdit(r)} 
+                            className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 text-xs"
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            onClick={() => onDelete(r)} 
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs"
+                          >
+                            Hapus
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </div>
+                </tbody>
+              </table>
+            </div>
 
-                {/* Summary */}
-                <div className="mt-4 pt-4 border-t text-sm text-gray-600">
-                  Menampilkan {filteredRows.length} dari {rows.length} ukuran
-                </div>
-              </>
-            )}
-          </Card>
-        </div>
-      </div>
+            {/* Mobile Card Layout */}
+            <div className="md:hidden space-y-3">
+              {filteredRows.map(r => (
+                <Card key={r.size_id} className="p-4 bg-gray-50">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <div className="font-semibold text-gray-900 mb-1">{r.size_name}</div>
+                      <div className="text-xs text-gray-500">Urutan: {r.display_order}</div>
+                    </div>
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                      r.is_active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {r.is_active ? 'Aktif' : 'Tidak Aktif'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => onEdit(r)} 
+                      className="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 text-sm"
+                    >
+                      Edit
+                    </Button>
+                    <Button 
+                      onClick={() => onDelete(r)} 
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 text-sm"
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Summary */}
+            <div className="mt-4 pt-4 border-t text-sm text-gray-600">
+              Menampilkan {filteredRows.length} dari {rows.length} ukuran
+            </div>
+          </>
+        )}
+      </Card>
 
       {/* Modal for Add/Edit */}
       <Modal 

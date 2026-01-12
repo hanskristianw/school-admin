@@ -39,7 +39,7 @@ export default function UniformReportsPage() {
       if (!unitId) return
       const [{ data: u }, { data: s }] = await Promise.all([
         supabase.from('uniform').select('uniform_id, uniform_name').eq('unit_id', Number(unitId)).order('uniform_name'),
-        supabase.from('uniform_size').select('*').eq('unit_id', Number(unitId)).order('display_order')
+        supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order')
       ])
       setUniforms(u || [])
       setSizes(s || [])
