@@ -151,10 +151,11 @@ export default function AddUniformStockPage() {
       return
     }
     
-    // Set unit_id to NULL for universal items
+    // Keep user's selected unit_id for tracking/display, even for universal items
+    // We'll set it to NULL when posting to database
     const itemToAdd = {
       ...newItem,
-      unit_id: isUniversal ? null : newItem.unit_id
+      _is_universal: isUniversal // Store flag for later use
     }
     setItems(prev => [...prev, itemToAdd])
     
@@ -242,8 +243,8 @@ export default function AddUniformStockPage() {
       // 2) insert items (ordered) with unit_id per item
       const payload = items.map(it => ({ 
         purchase_id: pid, 
-        // Universal items: set unit_id to NULL, else use selected unit
-        unit_id: it.unit_id ? Number(it.unit_id) : null,
+        // Universal items: set unit_id to NULL for database, else use selected unit
+        unit_id: it._is_universal ? null : (it.unit_id ? Number(it.unit_id) : null),
         uniform_id: it.uniform_id, 
         size_id: it.size_id, 
         qty: Number(it.qty), 
@@ -656,9 +657,14 @@ export default function AddUniformStockPage() {
                   <tbody>
                     {items.map((it, idx) => {
                       const subtotal = Number(it.qty || 0) * Number(it.unit_cost || 0)
-                      const unit = units.find(u => u.unit_id === it.unit_id)
+                      // Convert unit_id to number for comparison
+                      const unit = units.find(u => u.unit_id === Number(it.unit_id))
                       // Find uniform from all units (may be different from current selection)
-                      const uniform = (it.uniform_id && uniforms.find(u => u.uniform_id === it.uniform_id)) || null
+                      // Try uniforms first, then check uniformsByUnit cache
+                      let uniform = (it.uniform_id && uniforms.find(u => u.uniform_id === it.uniform_id)) || null
+                      if (!uniform && it.unit_id && uniformsByUnit[it.unit_id]) {
+                        uniform = uniformsByUnit[it.unit_id].find(u => u.uniform_id === it.uniform_id) || null
+                      }
                       const size = (it.size_id && sizes.find(s => s.size_id === it.size_id)) || null
                       const isUniversal = uniform?.is_universal || false
                       return (
@@ -786,8 +792,13 @@ export default function AddUniformStockPage() {
                   </thead>
                   <tbody>
                     {items.map((it, idx) => {
-                      const unit = units.find(u => u.unit_id === it.unit_id)
-                      const uniform = uniforms.find(u => u.uniform_id === it.uniform_id)
+                      // Convert unit_id to number for comparison
+                      const unit = units.find(u => u.unit_id === Number(it.unit_id))
+                      // Try to find uniform from main list or cache
+                      let uniform = uniforms.find(u => u.uniform_id === it.uniform_id)
+                      if (!uniform && it.unit_id && uniformsByUnit[it.unit_id]) {
+                        uniform = uniformsByUnit[it.unit_id].find(u => u.uniform_id === it.uniform_id)
+                      }
                       const size = sizes.find(s => s.size_id === it.size_id)
                       const subtotal = Number(it.qty || 0) * Number(it.unit_cost || 0)
                       const isUniversal = uniform?.is_universal || false
