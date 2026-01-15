@@ -8668,7 +8668,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                             {(() => {
                               // Check if assessment is approved (status === 1)
                               const isAssessmentApproved = !isAddMode && topicAssessment && topicAssessment.assessment_status === 1
-                              const isAssessmentReadOnly = !isAddMode || isAssessmentApproved
+                              const isAssessmentReadOnly = isAssessmentApproved // Only readonly if approved
                               
                               return (
                                 <>
@@ -8682,7 +8682,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                   {!isAddMode && !isAssessmentApproved && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                                       <p className="text-sm text-blue-700">
-                                        <strong>ℹ️ Note:</strong> Assessment fields are read-only in edit mode. To modify assessment details, please use the Assessment tab.
+                                        <strong>ℹ️ Note:</strong> You can edit assessment details here. Changes will require re-approval if the assessment date is set.
                                       </p>
                                     </div>
                                   )}
