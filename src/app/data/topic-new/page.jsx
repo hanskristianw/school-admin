@@ -8668,14 +8668,14 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                             {(() => {
                               // Check if assessment is approved (status === 1)
                               const isAssessmentApproved = !isAddMode && topicAssessment && topicAssessment.assessment_status === 1
-                              const isAssessmentReadOnly = isAssessmentApproved // Only readonly if approved
+                              const isAssessmentReadOnly = false // TEMPORARY: Allow editing even if approved
                               
                               return (
                                 <>
                                   {isAssessmentApproved && (
-                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                                      <p className="text-sm text-green-700">
-                                        <strong>✅ Approved:</strong> This assessment has been approved and cannot be edited. Contact an administrator if changes are required.
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                                      <p className="text-sm text-amber-700">
+                                        <strong>⚠️ Temporary:</strong> This assessment is approved but can still be edited. Changes may require re-approval.
                                       </p>
                                     </div>
                                   )}
