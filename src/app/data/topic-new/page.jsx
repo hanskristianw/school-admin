@@ -4788,18 +4788,53 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         .single()
       
       if (existingAssessment) {
-        console.log('📝 Updating assessment with TSC:', wizardAssessment.assessment_tsc)
+        console.log('📝 Updating assessment with all fields including TSC:', wizardAssessment)
         const { error: assessmentError } = await supabase
           .from('assessment')
           .update({
+            assessment_nama: wizardAssessment.assessment_nama || null,
+            assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : null,
+            assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
+            assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
+            assessment_instructions: wizardAssessment.assessment_instructions || null,
             assessment_tsc: wizardAssessment.assessment_tsc || {}
           })
           .eq('assessment_id', existingAssessment.assessment_id)
         
         if (assessmentError) {
-          console.error('❌ Error updating assessment TSC:', assessmentError)
+          console.error('❌ Error updating assessment:', assessmentError)
+          throw assessmentError
         } else {
-          console.log('✅ Assessment TSC updated successfully')
+          console.log('✅ Assessment updated successfully with all fields')
+        }
+        
+        // Update assessment_criteria junction table
+        // First, delete existing criteria
+        const { error: deleteCriteriaError } = await supabase
+          .from('assessment_criteria')
+          .delete()
+          .eq('assessment_id', existingAssessment.assessment_id)
+        
+        if (deleteCriteriaError) {
+          console.error('❌ Error deleting old criteria:', deleteCriteriaError)
+        }
+        
+        // Then insert new criteria
+        if (wizardAssessment.selected_criteria && wizardAssessment.selected_criteria.length > 0) {
+          const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
+            assessment_id: existingAssessment.assessment_id,
+            criterion_id: criterionId
+          }))
+          
+          const { error: insertCriteriaError } = await supabase
+            .from('assessment_criteria')
+            .insert(criteriaRecords)
+          
+          if (insertCriteriaError) {
+            console.error('❌ Error inserting new criteria:', insertCriteriaError)
+          } else {
+            console.log('✅ Assessment criteria updated successfully')
+          }
         }
       }
       
@@ -6664,7 +6699,11 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         assessment_topic_id: selectedTopic.topic_id,
         assessment_status: newStatus,
         assessment_user_id: currentUserId,
-        assessment_tsc: topicAssessment.assessment_tsc || {}
+        assessment_tsc: topicAssessment.assessment_tsc || {},
+        assessment_relationship: topicAssessment.assessment_relationship || null,
+        assessment_conceptual_understanding: topicAssessment.assessment_conceptual_understanding || null,
+        assessment_task_specific_description: topicAssessment.assessment_task_specific_description || null,
+        assessment_instructions: topicAssessment.assessment_instructions || null
       }
       
       let assessmentId = topicAssessment.assessment_id
