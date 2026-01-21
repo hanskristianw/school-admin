@@ -14,9 +14,13 @@ export default function InitialStockPage() {
   const [sizes, setSizes] = useState([])
   const [suppliers, setSuppliers] = useState([])
   const [initialStockItems, setInitialStockItems] = useState([])
+  const [historyData, setHistoryData] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
+  const [filterSupplier, setFilterSupplier] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [itemAddedSuccess, setItemAddedSuccess] = useState(false)
   const [saving, setSaving] = useState(false)
   
   const [formData, setFormData] = useState({
@@ -45,7 +49,34 @@ export default function InitialStockPage() {
       if (!suppRes.error) setSuppliers(suppRes.data || [])
     }
     fetchMasterData()
+    fetchHistory()
   }, [])
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      const { data, error } = await supabase
+        .from('uniform_stock_txn')
+        .select(`
+          txn_id,
+          qty_delta,
+          notes,
+          created_at,
+          uniform:uniform_id(uniform_id, uniform_name, is_universal),
+          size:size_id(size_id, size_name),
+          supplier:supplier_id(supplier_id, supplier_name, supplier_code)
+        `)
+        .eq('txn_type', 'init')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setHistoryData(data || [])
+    } catch (e) {
+      console.error('Error loading history:', e)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
 
   const openAddModal = () => {
     setFormData({
@@ -90,6 +121,10 @@ export default function InitialStockPage() {
 
     setInitialStockItems(prev => [...prev, newItem])
     
+    // Show success message
+    setItemAddedSuccess(true)
+    setTimeout(() => setItemAddedSuccess(false), 2000)
+    
     // Reset form but keep unit
     setFormData(prev => ({
       unit_id: prev.unit_id,
@@ -121,7 +156,7 @@ export default function InitialStockPage() {
         size_id: Number(item.size_id),
         supplier_id: item.supplier_id ? Number(item.supplier_id) : null,
         qty_delta: Number(item.qty),
-        txn_type: 'initial',
+        txn_type: 'init',
         ref_table: 'manual',
         ref_id: null,
         notes: item.notes || 'Stock awal sistem'
@@ -136,6 +171,7 @@ export default function InitialStockPage() {
       setSuccess(`Berhasil menginput ${initialStockItems.length} item stock awal`)
       setTimeout(() => setSuccess(''), 3000)
       setInitialStockItems([])
+      fetchHistory() // Refresh history data
       closeModal()
     } catch (e) {
       setError(e.message)
@@ -174,6 +210,111 @@ export default function InitialStockPage() {
           {success}
         </div>
       )}
+
+      {/* History Table */}
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h2 className="font-semibold">History Stock Awal yang Sudah Diinput</h2>
+          
+          {/* Filter Supplier */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="filterSupplier" className="text-sm whitespace-nowrap">Filter Supplier:</Label>
+            <select
+              id="filterSupplier"
+              value={filterSupplier}
+              onChange={(e) => setFilterSupplier(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Semua Supplier</option>
+              <option value="null">Stock Awal (Tanpa Supplier)</option>
+              {suppliers.map(s => (
+                <option key={s.supplier_id} value={s.supplier_id}>
+                  {s.supplier_code} - {s.supplier_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        {loadingHistory ? (
+          <div className="text-center py-8 text-gray-500">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p>Memuat data...</p>
+          </div>
+        ) : (() => {
+          // Apply filter
+          const filteredData = historyData.filter(row => {
+            if (filterSupplier === 'all') return true
+            if (filterSupplier === 'null') return !row.supplier
+            return row.supplier?.supplier_id === Number(filterSupplier)
+          })
+          
+          return filteredData.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <div className="text-4xl mb-2">📋</div>
+              <p>{historyData.length === 0 ? 'Belum ada stock awal yang diinput' : 'Tidak ada data sesuai filter'}</p>
+            </div>
+          ) : (
+            <div className="overflow-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left border-b bg-gray-50">
+                  <th className="py-3 px-3 font-semibold text-gray-700">Tanggal</th>
+                  <th className="py-3 px-3 font-semibold text-gray-700">Seragam</th>
+                  <th className="py-3 px-3 font-semibold text-gray-700">Ukuran</th>
+                  <th className="py-3 px-3 font-semibold text-gray-700">Qty</th>
+                  <th className="py-3 px-3 font-semibold text-gray-700">Supplier</th>
+                  <th className="py-3 px-3 font-semibold text-gray-700">Catatan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredData.map((row) => (
+                  <tr key={row.txn_id} className="border-b hover:bg-gray-50">
+                    <td className="py-3 px-3">
+                      {new Date(row.created_at).toLocaleDateString('id-ID', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2">
+                        {row.uniform?.uniform_name || '-'}
+                        {row.uniform?.is_universal && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                            🌐 Universal
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3">{row.size?.size_name || '-'}</td>
+                    <td className="py-3 px-3 font-semibold">{row.qty_delta}</td>
+                    <td className="py-3 px-3">
+                      {row.supplier ? (
+                        <span className="text-sm">
+                          {row.supplier.supplier_code} - {row.supplier.supplier_name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic">Stock Awal</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-gray-600">{row.notes || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="mt-4 text-sm text-gray-600">
+              Total: <span className="font-semibold">{filteredData.length} transaksi</span>
+              {filterSupplier !== 'all' && (
+                <span className="ml-2 text-gray-500">(dari {historyData.length} total)</span>
+              )}
+            </div>
+          </div>
+        )
+        })()}
+      </Card>
 
       {/* List of Items */}
       <Card className="p-4">
@@ -300,6 +441,14 @@ export default function InitialStockPage() {
         size="md"
       >
         <div className="space-y-4">
+          {/* Success Message */}
+          {itemAddedSuccess && (
+            <div className="bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded flex items-center gap-2">
+              <span className="text-lg">✓</span>
+              <span className="font-medium">Item berhasil ditambahkan!</span>
+            </div>
+          )}
+          
           <div>
             <Label>Unit *</Label>
             <select

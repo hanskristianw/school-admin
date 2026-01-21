@@ -243,8 +243,8 @@ export default function AddUniformStockPage() {
       // 2) insert items (ordered) with unit_id per item
       const payload = items.map(it => ({ 
         purchase_id: pid, 
-        // Universal items: set unit_id to NULL for database, else use selected unit
-        unit_id: it._is_universal ? null : (it.unit_id ? Number(it.unit_id) : null),
+        // Keep unit_id from the item (purchase is done by a specific unit even if item is universal)
+        unit_id: it.unit_id ? Number(it.unit_id) : null,
         uniform_id: it.uniform_id, 
         size_id: it.size_id, 
         qty: Number(it.qty), 
@@ -400,6 +400,10 @@ export default function AddUniformStockPage() {
       setReceiveRows(prev => prev.map(r => ({ ...r, qty_receive: 0 })))
       // refresh pending list (it may drop if completed)
       loadPending()
+      // Show success notification and close modal
+      setSuccess(allZero ? 'Penerimaan berhasil disimpan. Purchase order selesai!' : 'Penerimaan barang berhasil disimpan')
+      setTimeout(() => setSuccess(''), 3000)
+      setShowReceive(false)
     } catch (e) { setError(e.message) } finally { setSaving(false) }
   }
 
