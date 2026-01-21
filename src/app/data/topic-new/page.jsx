@@ -4755,6 +4755,10 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
 
   // Update existing topic (edit mode)
   const updateExistingTopic = async () => {
+    console.log('🔍 [UPDATE START] Starting updateExistingTopic')
+    console.log('🔍 [TOPIC DATA] selectedTopic:', selectedTopic)
+    console.log('🔍 [WIZARD ASSESSMENT] wizardAssessment:', wizardAssessment)
+    
     if (!selectedTopic.topic_nama) {
       alert('Please enter a topic name')
       return
@@ -4773,41 +4777,193 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         topic_relationship_summative_assessment_statement_of_inquiry: wizardAssessment.assessment_relationship || null
       }
       
+      console.log('🔍 [TOPIC UPDATE] Updating topic with data:', topicData)
+      
       const { error } = await supabase
         .from('topic')
         .update(topicData)
         .eq('topic_id', selectedTopic.topic_id)
       
-      if (error) throw error
+      if (error) {
+        console.error('❌ [TOPIC ERROR] Failed to update topic:', error)
+        throw error
+      }
+      
+      console.log('✅ [TOPIC SUCCESS] Topic updated successfully')
       
       // Update assessment including TSC
-      const { data: existingAssessment } = await supabase
+      console.log('🔍 [ASSESSMENT SEARCH] Looking for assessment with topic_id:', selectedTopic.topic_id)
+      
+      const { data: existingAssessment, error: assessmentSearchError } = await supabase
         .from('assessment')
         .select('assessment_id')
         .eq('assessment_topic_id', selectedTopic.topic_id)
         .single()
       
+      if (assessmentSearchError) {
+        console.error('❌ [ASSESSMENT SEARCH ERROR]:', assessmentSearchError)
+        if (assessmentSearchError.code === 'PGRST116') {
+          console.warn('⚠️ No assessment found for this topic')
+        } else {
+          throw assessmentSearchError
+        }
+      }
+      
       if (existingAssessment) {
-        console.log('📝 Updating assessment with TSC:', wizardAssessment.assessment_tsc)
+        console.log('✅ [ASSESSMENT FOUND] assessment_id:', existingAssessment.assessment_id)
+        console.log('🔍 [ASSESSMENT DATA] Will update with:', {
+          assessment_nama: wizardAssessment.assessment_nama,
+          assessment_semester: wizardAssessment.assessment_semester,
+          assessment_relationship: wizardAssessment.assessment_relationship,
+          assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding?.substring(0, 50) + '...',
+          assessment_task_specific_description: wizardAssessment.assessment_task_specific_description?.substring(0, 50) + '...',
+          assessment_instructions: wizardAssessment.assessment_instructions?.substring(0, 50) + '...',
+          selected_criteria: wizardAssessment.selected_criteria,
+          assessment_tsc: wizardAssessment.assessment_tsc
+        })
+        
+        const assessmentUpdatePayload = {
+          assessment_nama: wizardAssessment.assessment_nama || null,
+          assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : null,
+          assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
+          assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
+          assessment_instructions: wizardAssessment.assessment_instructions || null,
+          assessment_tsc: wizardAssessment.assessment_tsc || {}
+        }
+        
+        console.log('🔍 [ASSESSMENT PAYLOAD] Full payload:', assessmentUpdatePayload)
+        
         const { error: assessmentError } = await supabase
           .from('assessment')
-          .update({
-            assessment_tsc: wizardAssessment.assessment_tsc || {}
-          })
+          .update(assessmentUpdatePayload)
           .eq('assessment_id', existingAssessment.assessment_id)
         
         if (assessmentError) {
-          console.error('❌ Error updating assessment TSC:', assessmentError)
+          console.error('❌ [ASSESSMENT UPDATE ERROR]:', assessmentError)
+          console.error('❌ [ERROR DETAILS] Message:', assessmentError.message)
+          console.error('❌ [ERROR DETAILS] Code:', assessmentError.code)
+          console.error('❌ [ERROR DETAILS] Details:', assessmentError.details)
+          throw assessmentError
         } else {
-          console.log('✅ Assessment TSC updated successfully')
+          console.log('✅ [ASSESSMENT SUCCESS] Assessment updated successfully')
+        }
+        
+        // Update assessment_criteria junction table
+        console.log('🔍 [CRITERIA UPDATE] Deleting old criteria for assessment_id:', existingAssessment.assessment_id)
+        
+        const { error: deleteCriteriaError } = await supabase
+          .from('assessment_criteria')
+          .delete()
+          .eq('assessment_id', existingAssessment.assessment_id)
+        
+        if (deleteCriteriaError) {
+          console.error('❌ [CRITERIA DELETE ERROR]:', deleteCriteriaError)
+        } else {
+          console.log('✅ [CRITERIA DELETE] Old criteria deleted')
+        }
+        
+        // Then insert new criteria
+        if (wizardAssessment.selected_criteria && wizardAssessment.selected_criteria.length > 0) {
+          const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
+            assessment_id: existingAssessment.assessment_id,
+            criterion_id: criterionId
+          }))
+          
+          console.log('🔍 [CRITERIA INSERT] Inserting new criteria:', criteriaRecords)
+          
+          const { error: insertCriteriaError } = await supabase
+            .from('assessment_criteria')
+            .insert(criteriaRecords)
+          
+          if (insertCriteriaError) {
+            console.error('❌ [CRITERIA INSERT ERROR]:', insertCriteriaError)
+            console.error('❌ [ERROR DETAILS] Message:', insertCriteriaError.message)
+            console.error('❌ [ERROR DETAILS] Code:', insertCriteriaError.code)
+          } else {
+            console.log('✅ [CRITERIA SUCCESS] Assessment criteria updated successfully')
+          }
+        } else {
+          console.warn('⚠️ [CRITERIA EMPTY] No criteria selected to insert')
+        }
+      } else {
+        // No assessment exists yet, create a new one
+        console.log('🆕 [CREATE ASSESSMENT] No existing assessment, creating new one')
+        
+        // Find detail_kelas_id for subject + kelas combination
+        const { data: dkData, error: dkError } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_id')
+          .eq('detail_kelas_subject_id', selectedTopic.topic_subject_id)
+          .eq('detail_kelas_kelas_id', selectedTopic.topic_kelas_id)
+          .single()
+        
+        if (dkError) {
+          console.error('❌ [DETAIL_KELAS ERROR]:', dkError)
+          throw new Error('Could not find class-subject mapping. Please check detail_kelas.')
+        }
+        
+        console.log('✅ [DETAIL_KELAS FOUND] detail_kelas_id:', dkData.detail_kelas_id)
+        
+        // Create new assessment
+        const assessmentInsertPayload = {
+          assessment_nama: wizardAssessment.assessment_nama || 'Untitled Assessment',
+          assessment_tanggal: null, // Will be set later via Assessment tab
+          assessment_keterangan: wizardAssessment.assessment_keterangan || null,
+          assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
+          assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
+          assessment_instructions: wizardAssessment.assessment_instructions || null,
+          assessment_tsc: wizardAssessment.assessment_tsc || {},
+          assessment_detail_kelas_id: dkData.detail_kelas_id,
+          assessment_topic_id: selectedTopic.topic_id,
+          assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : null,
+          assessment_status: 0,
+          assessment_user_id: currentUserId
+        }
+        
+        console.log('🔍 [CREATE PAYLOAD] Assessment insert payload:', assessmentInsertPayload)
+        
+        const { data: newAssessment, error: createError } = await supabase
+          .from('assessment')
+          .insert([assessmentInsertPayload])
+          .select()
+        
+        if (createError) {
+          console.error('❌ [CREATE ERROR]:', createError)
+          throw createError
+        }
+        
+        console.log('✅ [ASSESSMENT CREATED] New assessment:', newAssessment)
+        
+        // Insert assessment_criteria
+        if (newAssessment && newAssessment[0] && wizardAssessment.selected_criteria && wizardAssessment.selected_criteria.length > 0) {
+          const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
+            assessment_id: newAssessment[0].assessment_id,
+            criterion_id: criterionId
+          }))
+          
+          console.log('🔍 [CRITERIA INSERT NEW] Inserting criteria for new assessment:', criteriaRecords)
+          
+          const { error: criteriaInsertError } = await supabase
+            .from('assessment_criteria')
+            .insert(criteriaRecords)
+          
+          if (criteriaInsertError) {
+            console.error('❌ [CRITERIA INSERT ERROR]:', criteriaInsertError)
+          } else {
+            console.log('✅ [CRITERIA SUCCESS] Criteria inserted for new assessment')
+          }
         }
       }
+      
+      console.log('🔍 [REFRESH] Refreshing topics list')
       
       // Refresh topics list - get subject IDs from current subjects state
       const subjectIds = subjects.map(s => s.subject_id)
       if (subjectIds.length > 0) {
         await fetchTopics(subjectIds)
       }
+      
+      console.log('✅ [COMPLETE] Update completed successfully')
       
       setSaveNotification(true)
       setTimeout(() => setSaveNotification(false), 2000)
@@ -4817,10 +4973,12 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
       setIsAddMode(false)
       setCurrentStep(0)
     } catch (err) {
-      console.error('❌ Error updating topic:', err)
+      console.error('❌ [FATAL ERROR] Error updating topic:', err)
+      console.error('❌ [ERROR STACK]:', err.stack)
       alert('Failed to update topic: ' + err.message)
     } finally {
       setSaving(false)
+      console.log('🔍 [CLEANUP] Save state reset')
     }
   }
 
@@ -6664,7 +6822,11 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
         assessment_topic_id: selectedTopic.topic_id,
         assessment_status: newStatus,
         assessment_user_id: currentUserId,
-        assessment_tsc: topicAssessment.assessment_tsc || {}
+        assessment_tsc: topicAssessment.assessment_tsc || {},
+        assessment_relationship: topicAssessment.assessment_relationship || null,
+        assessment_conceptual_understanding: topicAssessment.assessment_conceptual_understanding || null,
+        assessment_task_specific_description: topicAssessment.assessment_task_specific_description || null,
+        assessment_instructions: topicAssessment.assessment_instructions || null
       }
       
       let assessmentId = topicAssessment.assessment_id
@@ -6998,6 +7160,8 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                               setAiError('')
                               setAiItems([])
                               
+                              console.log('🔍 [MODAL OPEN] Opening edit modal for topic:', topic)
+                              
                               setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
                               setModalOpen(true)
                               setIsAddMode(false)
@@ -7008,10 +7172,11 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                               setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
                               
                               // Fetch assessment for this topic and load into wizard
+                              console.log('🔍 [FETCH ASSESSMENT] Fetching assessment for topic_id:', topic.topic_id)
                               await fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
                               
                               // Load assessment data into wizard state
-                              const { data: assessmentData } = await supabase
+                              const { data: assessmentData, error: assessmentLoadError } = await supabase
                                 .from('assessment')
                                 .select(`
                                   assessment_id,
@@ -7027,9 +7192,16 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                 .eq('assessment_topic_id', topic.topic_id)
                                 .single()
                               
+                              if (assessmentLoadError) {
+                                console.error('❌ [FETCH ERROR] Error loading assessment:', assessmentLoadError)
+                              }
+                              
                               if (assessmentData) {
+                                console.log('✅ [ASSESSMENT LOADED] Assessment data:', assessmentData)
+                                console.log('🔍 [TOPIC RELATIONSHIP] topic.topic_relationship_summative_assessment_statement_of_inquiry:', topic.topic_relationship_summative_assessment_statement_of_inquiry)
+                                
                                 const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || []
-                                setWizardAssessment({
+                                const wizardData = {
                                   assessment_nama: assessmentData.assessment_nama || '',
                                   assessment_keterangan: assessmentData.assessment_keterangan || '',
                                   assessment_semester: assessmentData.assessment_semester?.toString() || '',
@@ -7039,8 +7211,12 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                                   assessment_instructions: assessmentData.assessment_instructions || '',
                                   selected_criteria: criteriaIds,
                                   assessment_tsc: assessmentData.assessment_tsc || {}
-                                })
+                                }
+                                
+                                console.log('✅ [WIZARD POPULATED] Setting wizardAssessment to:', wizardData)
+                                setWizardAssessment(wizardData)
                               } else {
+                                console.warn('⚠️ [NO ASSESSMENT] No assessment data found, clearing wizard')
                                 // No assessment yet, clear wizard assessment
                                 setWizardAssessment({
                                   assessment_nama: '',
@@ -8668,21 +8844,21 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
                             {(() => {
                               // Check if assessment is approved (status === 1)
                               const isAssessmentApproved = !isAddMode && topicAssessment && topicAssessment.assessment_status === 1
-                              const isAssessmentReadOnly = !isAddMode || isAssessmentApproved
+                              const isAssessmentReadOnly = false // TEMPORARY: Allow editing even if approved
                               
                               return (
                                 <>
                                   {isAssessmentApproved && (
-                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                                      <p className="text-sm text-green-700">
-                                        <strong>✅ Approved:</strong> This assessment has been approved and cannot be edited. Contact an administrator if changes are required.
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                                      <p className="text-sm text-amber-700">
+                                        <strong>⚠️ Temporary:</strong> This assessment is approved but can still be edited. Changes may require re-approval.
                                       </p>
                                     </div>
                                   )}
                                   {!isAddMode && !isAssessmentApproved && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                                       <p className="text-sm text-blue-700">
-                                        <strong>ℹ️ Note:</strong> Assessment fields are read-only in edit mode. To modify assessment details, please use the Assessment tab.
+                                        <strong>ℹ️ Note:</strong> You can edit assessment details here. Changes will require re-approval if the assessment date is set.
                                       </p>
                                     </div>
                                   )}
