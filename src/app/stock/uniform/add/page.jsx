@@ -30,7 +30,9 @@ export default function AddUniformStockPage() {
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showItemAddedConfirm, setShowItemAddedConfirm] = useState(false)
   const [pending, setPending] = useState([])
   const [loadingPending, setLoadingPending] = useState(false)
   const [completed, setCompleted] = useState([])
@@ -44,6 +46,10 @@ export default function AddUniformStockPage() {
   const [showAddItemModal, setShowAddItemModal] = useState(false)
   const [newItem, setNewItem] = useState({ unit_id: '', uniform_id: '', size_id: '', qty: 1, unit_cost: 0, update_hpp: false })
   const [itemAddedSuccess, setItemAddedSuccess] = useState(false)
+  const [currentStock, setCurrentStock] = useState([]) // {size_id, qty} for selected uniform
+  const [showVoidModal, setShowVoidModal] = useState(false)
+  const [voidingPurchase, setVoidingPurchase] = useState(null)
+  const [voidReason, setVoidReason] = useState('')
 
   useEffect(() => {
     const fetchUnits = async () => {
@@ -95,6 +101,44 @@ export default function AddUniformStockPage() {
     }
   }, [activeTab])
 
+  const fetchStockForUniform = async (uniformId) => {
+    if (!uniformId) {
+      setCurrentStock([])
+      return
+    }
+    try {
+      // Query directly from stock transactions to get accurate total stock
+      const { data, error } = await supabase
+        .from('uniform_stock_txn')
+        .select('size_id, qty_delta')
+        .eq('uniform_id', uniformId)
+      
+      if (error) {
+        console.error('Error fetching stock:', error)
+        setCurrentStock([])
+        return
+      }
+      
+      // Group by size_id and sum qty_delta
+      const stockMap = new Map()
+      data?.forEach(row => {
+        const currentQty = stockMap.get(row.size_id) || 0
+        stockMap.set(row.size_id, currentQty + (row.qty_delta || 0))
+      })
+      
+      // Convert to array format
+      const stockArray = Array.from(stockMap.entries()).map(([size_id, qty]) => ({
+        size_id,
+        qty: Math.max(0, qty) // Ensure non-negative
+      }))
+      
+      setCurrentStock(stockArray)
+    } catch (e) {
+      console.error('Error fetching stock:', e)
+      setCurrentStock([])
+    }
+  }
+
   const loadPending = async () => {
     setLoadingPending(true)
     const { data, error } = await supabase
@@ -122,10 +166,12 @@ export default function AddUniformStockPage() {
         purchase_date, 
         invoice_no, 
         status, 
+        is_voided,
         supplier:uniform_supplier(supplier_name),
         items:uniform_purchase_item(unit_id, unit:unit(unit_name))
       `)
       .eq('status', 'posted')
+      .eq('is_voided', false)
       .order('purchase_id', { ascending: false })
     if (!error) setCompleted(data || [])
     setLoadingCompleted(false)
@@ -151,23 +197,49 @@ export default function AddUniformStockPage() {
       return
     }
     
-    // Keep user's selected unit_id for tracking/display, even for universal items
-    // We'll set it to NULL when posting to database
-    const itemToAdd = {
-      ...newItem,
-      _is_universal: isUniversal // Store flag for later use
+    // Check if item with same uniform_id and size_id already exists
+    const existingItemIndex = items.findIndex(
+      item => item.uniform_id === newItem.uniform_id && item.size_id === newItem.size_id
+    )
+    
+    if (existingItemIndex !== -1) {
+      // Item exists, update quantity and unit_cost
+      setItems(prev => prev.map((item, idx) => {
+        if (idx === existingItemIndex) {
+          return {
+            ...item,
+            qty: Number(item.qty) + Number(newItem.qty),
+            unit_cost: Number(newItem.unit_cost) || Number(item.unit_cost) // Use new cost if provided
+          }
+        }
+        return item
+      }))
+    } else {
+      // New item, add to list
+      const itemToAdd = {
+        ...newItem,
+        _is_universal: isUniversal // Store flag for later use
+      }
+      setItems(prev => [...prev, itemToAdd])
     }
-    setItems(prev => [...prev, itemToAdd])
     
-    // Show success message
-    setItemAddedSuccess(true)
-    setTimeout(() => setItemAddedSuccess(false), 2000)
-    
+    // Show confirmation modal with options
+    setShowItemAddedConfirm(true)
+    setError('')
+  }
+
+  const continueAddingItems = () => {
     // Reset form for next item (keep unit_id for convenience)
     const currentUnit = newItem.unit_id
     setNewItem({ unit_id: currentUnit, uniform_id: '', size_id: '', qty: 1, unit_cost: 0, update_hpp: false })
-    setError('')
+    setShowItemAddedConfirm(false)
     // Keep modal open for quick add more items
+  }
+
+  const finishAddingItems = () => {
+    setShowItemAddedConfirm(false)
+    setShowAddItemModal(false)
+    setNewItem({ unit_id: '', uniform_id: '', size_id: '', qty: 1, unit_cost: 0, update_hpp: false })
   }
 
   const closeAddItemModal = () => {
@@ -407,6 +479,150 @@ export default function AddUniformStockPage() {
     } catch (e) { setError(e.message) } finally { setSaving(false) }
   }
 
+  const receiveAllForRow = (idx) => {
+    setReceiveRows(prev => prev.map((x, i) => 
+      i === idx ? { ...x, qty_receive: Number(x.qty_remaining || 0) } : x
+    ))
+  }
+
+  const receiveAllRows = () => {
+    setReceiveRows(prev => prev.map(x => ({
+      ...x,
+      qty_receive: Number(x.qty_remaining || 0)
+    })))
+  }
+
+  const deleteDraftPurchase = async (purchaseId) => {
+    if (!confirm('Yakin ingin menghapus pesanan ini? Tindakan ini tidak dapat dibatalkan.')) {
+      return
+    }
+
+    try {
+      // Check if still draft
+      const { data: purchase, error: checkError } = await supabase
+        .from('uniform_purchase')
+        .select('status')
+        .eq('purchase_id', purchaseId)
+        .single()
+
+      if (checkError) throw checkError
+
+      if (purchase.status !== 'draft') {
+        alert('Hanya pesanan draft yang bisa dihapus. Gunakan "Batalkan" untuk pesanan yang sudah diposting.')
+        return
+      }
+
+      // Delete purchase items first
+      const { error: itemsError } = await supabase
+        .from('uniform_purchase_item')
+        .delete()
+        .eq('purchase_id', purchaseId)
+
+      if (itemsError) throw itemsError
+
+      // Delete purchase
+      const { error: deleteError } = await supabase
+        .from('uniform_purchase')
+        .delete()
+        .eq('purchase_id', purchaseId)
+
+      if (deleteError) throw deleteError
+
+      setSuccess('Pesanan berhasil dihapus')
+      loadPending()
+    } catch (err) {
+      console.error('Error deleting purchase:', err)
+      setError('Gagal menghapus pesanan: ' + err.message)
+    }
+  }
+
+  const voidPurchase = async () => {
+    if (!voidingPurchase || !voidReason.trim()) {
+      setError('Alasan pembatalan harus diisi')
+      return
+    }
+
+    try {
+      // Check if already voided
+      const { data: purchase, error: checkError } = await supabase
+        .from('uniform_purchase')
+        .select('is_voided, status')
+        .eq('purchase_id', voidingPurchase.purchase_id)
+        .single()
+
+      if (checkError) throw checkError
+
+      if (purchase.is_voided) {
+        setError('Pesanan ini sudah dibatalkan')
+        return
+      }
+
+      if (purchase.status === 'draft') {
+        setError('Pesanan draft sebaiknya dihapus, bukan dibatalkan')
+        return
+      }
+
+      // Get all receipt items to reverse stock
+      const { data: receiptItems, error: receiptError } = await supabase
+        .from('uniform_receipt_item')
+        .select(`
+          uniform_id,
+          size_id,
+          qty_received,
+          supplier_id,
+          receipt:uniform_receipt!inner(purchase_id)
+        `)
+        .eq('receipt.purchase_id', voidingPurchase.purchase_id)
+
+      if (receiptError) throw receiptError
+
+      // Create reverse transactions
+      const reverseTransactions = []
+      receiptItems?.forEach((item) => {
+        if (item.qty_received > 0) {
+          reverseTransactions.push({
+            uniform_id: item.uniform_id,
+            size_id: item.size_id,
+            supplier_id: item.supplier_id,
+            txn_type: 'adjust',
+            qty_delta: -item.qty_received,
+            notes: `Pembatalan Pesanan #${voidingPurchase.purchase_id}: ${voidReason}`
+          })
+        }
+      })
+
+      // Insert reverse transactions
+      if (reverseTransactions.length > 0) {
+        const { error: txnError } = await supabase
+          .from('uniform_stock_txn')
+          .insert(reverseTransactions)
+
+        if (txnError) throw txnError
+      }
+
+      // Mark purchase as voided
+      const { error: voidError } = await supabase
+        .from('uniform_purchase')
+        .update({
+          is_voided: true,
+          voided_at: new Date().toISOString(),
+          void_reason: voidReason
+        })
+        .eq('purchase_id', voidingPurchase.purchase_id)
+
+      if (voidError) throw voidError
+
+      setSuccess(`Pesanan #${voidingPurchase.purchase_id} berhasil dibatalkan dan stok telah disesuaikan`)
+      setShowVoidModal(false)
+      setVoidingPurchase(null)
+      setVoidReason('')
+      loadCompleted()
+    } catch (err) {
+      console.error('Error voiding purchase:', err)
+      setError('Gagal membatalkan pesanan: ' + err.message)
+    }
+  }
+
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       <h1 className="text-xl md:text-2xl font-semibold">Purchase Order</h1>
@@ -520,21 +736,46 @@ export default function AddUniformStockPage() {
               )
             })()}
             
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-              <div className="md:col-span-2">
-                <Label>Supplier <span className="text-red-500">*</span></Label>
-                <select 
-                  className={`mt-1 w-full border rounded px-3 py-2 ${
-                    !supplierId ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                  value={supplierId} 
-                  onChange={e=>setSupplierId(e.target.value)}
-                >
-                  <option value="">-- Pilih Supplier --</option>
-                  {suppliers.map(s => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
-                </select>
-                {!supplierId && <p className="text-xs text-red-600 mt-1">Pilih supplier terlebih dahulu</p>}
+            <div>
+              <Label>Supplier <span className="text-red-500">*</span></Label>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
+                {suppliers.map(s => (
+                  <button
+                    key={s.supplier_id}
+                    type="button"
+                    onClick={() => setSupplierId(String(s.supplier_id))}
+                    className={`p-4 border-2 rounded-lg text-left transition-all ${
+                      String(supplierId) === String(s.supplier_id)
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-300 hover:border-blue-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={`w-5 h-5 rounded-full border-2 mt-0.5 flex items-center justify-center flex-shrink-0 ${
+                        String(supplierId) === String(s.supplier_id)
+                          ? 'border-blue-500 bg-blue-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {String(supplierId) === String(s.supplier_id) && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{s.supplier_name}</div>
+                        {s.supplier_code && (
+                          <div className="text-xs text-gray-500 mt-0.5">{s.supplier_code}</div>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
+              {!supplierId && <p className="text-xs text-red-600 mt-2">Pilih supplier terlebih dahulu</p>}
+            </div>
+
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 mt-4">
               <div>
                 <Label>Tanggal Order <span className="text-red-500">*</span></Label>
                 <Input 
@@ -545,9 +786,6 @@ export default function AddUniformStockPage() {
                 />
                 {!purchaseDate && <p className="text-xs text-red-600 mt-1">Pilih tanggal order</p>}
               </div>
-            </div>
-
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 mt-4">
               <div>
                 <Label>No. Invoice</Label>
                 <Input 
@@ -934,17 +1172,38 @@ export default function AddUniformStockPage() {
                 </div>
               )}
 
-              {/* Unit Selection */}
+              {/* Unit Selection - Card Style */}
               <div>
                 <Label>Unit {!isUniversal && <span className="text-red-500">*</span>}</Label>
-                <select 
-                  className={`mt-1 w-full border rounded px-3 py-2 ${!isUniversal && !newItem.unit_id ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                  value={newItem.unit_id}
-                  onChange={e => setNewItem({ ...newItem, unit_id: e.target.value, uniform_id: '', size_id: '', unit_cost: 0 })}
-                >
-                  <option value="">-- Pilih Unit --</option>
-                  {units.map(u => <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>)}
-                </select>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  {units.map(u => (
+                    <button
+                      key={u.unit_id}
+                      type="button"
+                      onClick={() => setNewItem({ ...newItem, unit_id: String(u.unit_id), uniform_id: '', size_id: '', unit_cost: 0 })}
+                      className={`
+                        px-4 py-3 rounded-lg border-2 text-left transition-all
+                        ${newItem.unit_id === String(u.unit_id)
+                          ? 'border-blue-500 bg-blue-50 text-blue-900 font-semibold shadow-md'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          newItem.unit_id === String(u.unit_id)
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {newItem.unit_id === String(u.unit_id) && (
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          )}
+                        </div>
+                        <span>{u.unit_name}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
                 {!isUniversal && !newItem.unit_id && <p className="text-xs text-red-600 mt-1">Pilih unit terlebih dahulu</p>}
                 {isUniversal && <p className="text-xs text-purple-600 mt-1">Opsional untuk item universal</p>}
               </div>
@@ -959,6 +1218,7 @@ export default function AddUniformStockPage() {
                     const uid = Number(e.target.value)
                     const sid = sizes[0]?.size_id || ''
                     setNewItem({ ...newItem, uniform_id: uid, size_id: sid, unit_cost: getHpp(uid, sid) })
+                    fetchStockForUniform(uid)
                   }}
                 >
                   <option value="">-- Pilih Seragam --</option>
@@ -983,7 +1243,15 @@ export default function AddUniformStockPage() {
                   disabled={!newItem.uniform_id}
                 >
                   <option value="">-- Pilih Ukuran --</option>
-                  {sizes.map(s => <option key={s.size_id} value={s.size_id}>{s.size_name}</option>)}
+                  {sizes.map(s => {
+                    const stock = currentStock.find(st => st.size_id === s.size_id)
+                    const stockQty = stock ? stock.qty : 0
+                    return (
+                      <option key={s.size_id} value={s.size_id}>
+                        {s.size_name} (Stok: {stockQty})
+                      </option>
+                    )
+                  })}
                 </select>
                 {!newItem.size_id && newItem.uniform_id && <p className="text-xs text-red-600 mt-1">Pilih ukuran</p>}
                 <p className="text-xs text-gray-500 mt-1">💡 Ukuran berlaku untuk semua unit</p>
@@ -1083,6 +1351,7 @@ export default function AddUniformStockPage() {
                   <th className="py-2 pr-4">Unit</th>
                   <th className="py-2 pr-4">Invoice</th>
                   <th className="py-2 pr-4">Aksi</th>
+                  <th className="py-2 pr-4">Kelola</th>
                 </tr>
               </thead>
               <tbody>
@@ -1109,12 +1378,21 @@ export default function AddUniformStockPage() {
                       <td className="py-2 pr-4">
                         <Button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 text-xs" onClick={()=>openReceive(p.purchase_id)}>Terima Barang</Button>
                       </td>
+                      <td className="py-2 pr-4">
+                        <button
+                          className="text-red-600 hover:text-red-800 text-xs underline"
+                          onClick={() => deleteDraftPurchase(p.purchase_id)}
+                          title="Hapus pesanan draft"
+                        >
+                          🗑️ Hapus
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
                 {!pending.length && (
                   <tr>
-                    <td className="py-8 text-gray-500 text-center" colSpan={6}>
+                    <td className="py-8 text-gray-500 text-center" colSpan={7}>
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-4xl">✅</span>
                         <span>Tidak ada order pending.</span>
@@ -1145,6 +1423,7 @@ export default function AddUniformStockPage() {
                   <th className="py-2 pr-4">Unit</th>
                   <th className="py-2 pr-4">Invoice</th>
                   <th className="py-2 pr-4">Aksi</th>
+                  <th className="py-2 pr-4">Kelola</th>
                 </tr>
               </thead>
               <tbody>
@@ -1171,12 +1450,24 @@ export default function AddUniformStockPage() {
                       <td className="py-2 pr-4">
                         <Button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 text-xs" onClick={()=>openHistory(p.purchase_id)}>Lihat Detail</Button>
                       </td>
+                      <td className="py-2 pr-4">
+                        <button
+                          className="text-orange-600 hover:text-orange-800 text-xs underline"
+                          onClick={() => {
+                            setVoidingPurchase(p)
+                            setShowVoidModal(true)
+                          }}
+                          title="Batalkan pesanan (stock akan dikembalikan)"
+                        >
+                          ⚠️ Batalkan
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
                 {!completed.length && (
                   <tr>
-                    <td className="py-8 text-gray-500 text-center" colSpan={6}>
+                    <td className="py-8 text-gray-500 text-center" colSpan={7}>
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-4xl">📭</span>
                         <span>Belum ada transaksi selesai.</span>
@@ -1189,6 +1480,30 @@ export default function AddUniformStockPage() {
           </div>
         </Card>
       )}
+
+      {/* Item Added Confirmation Modal */}
+      <Modal isOpen={showItemAddedConfirm} onClose={finishAddingItems} title="✅ Item Berhasil Ditambahkan" size="sm">
+        <div className="text-center py-4">
+          <div className="text-5xl mb-4">✅</div>
+          <p className="text-lg font-semibold text-green-600 mb-2">Item berhasil ditambahkan ke daftar!</p>
+          <p className="text-sm text-gray-600 mb-6">Apakah Anda ingin menambahkan item lagi?</p>
+          
+          <div className="flex gap-3 justify-center">
+            <Button 
+              onClick={continueAddingItems}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 font-semibold"
+            >
+              ➕ Lanjut Menambahkan
+            </Button>
+            <Button 
+              onClick={finishAddingItems}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 font-semibold"
+            >
+              ✓ Selesai
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal isOpen={showConfirm} onClose={()=>setShowConfirm(false)} title="✅ Order Berhasil Disimpan" size="sm">
         <p className="text-sm mb-2">Order telah disimpan sebagai draft (pending).</p>
@@ -1208,6 +1523,7 @@ export default function AddUniformStockPage() {
                 <th className="py-2 pr-4">Ukuran</th>
                 <th className="py-2 pr-4">Sisa</th>
                 <th className="py-2 pr-4">Terima</th>
+                <th className="py-2 pr-4">Aksi</th>
                 <th className="py-2 pr-4">Biaya/Unit</th>
                 <th className="py-2 pr-4">Update HPP?</th>
               </tr>
@@ -1225,6 +1541,16 @@ export default function AddUniformStockPage() {
                     }} />
                   </td>
                   <td className="py-2 pr-4">
+                    <button
+                      type="button"
+                      onClick={() => receiveAllForRow(idx)}
+                      className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded font-medium whitespace-nowrap"
+                      title="Terima semua qty di baris ini"
+                    >
+                      Terima Semua
+                    </button>
+                  </td>
+                  <td className="py-2 pr-4">
                     <Input inputMode="numeric" value={r.unit_cost} onChange={e=>{
                       setReceiveRows(prev=> prev.map((x,i)=> i===idx ? { ...x, unit_cost: toNumber(e.target.value) } : x))
                     }} />
@@ -1237,7 +1563,13 @@ export default function AddUniformStockPage() {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 flex gap-2 justify-end">
+        <div className="mt-3 flex gap-2 justify-between items-center">
+          <Button 
+            onClick={receiveAllRows}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium"
+          >
+            ✓ Terima Semua Barang
+          </Button>
           <Button onClick={postReceipt} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">Simpan Penerimaan</Button>
         </div>
         <div className="mt-6">
@@ -1303,6 +1635,65 @@ export default function AddUniformStockPage() {
             ))}
             {!historyReceipts.length && <li className="text-gray-500">Belum ada penerimaan</li>}
           </ul>
+        </div>
+      </Modal>
+
+      {/* Void Reason Modal */}
+      <Modal isOpen={showVoidModal} onClose={() => {
+        setShowVoidModal(false)
+        setVoidingPurchase(null)
+        setVoidReason('')
+      }}>
+        <div className="p-6">
+          <h3 className="text-xl font-bold mb-4 text-red-600">⚠️ Batalkan Pesanan</h3>
+          
+          {voidingPurchase && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-sm mb-2">
+                <strong>Pesanan:</strong> #{voidingPurchase.purchase_id}
+              </p>
+              <p className="text-sm mb-2">
+                <strong>Supplier:</strong> {voidingPurchase.supplier?.supplier_name || '-'}
+              </p>
+              <p className="text-sm mb-2">
+                <strong>Tanggal:</strong> {voidingPurchase.purchase_date}
+              </p>
+              <p className="text-sm text-yellow-700 mt-3">
+                ⚠️ <strong>Perhatian:</strong> Pembatalan akan mengembalikan stok yang sudah diterima.
+              </p>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <Label>Alasan Pembatalan <span className="text-red-500">*</span></Label>
+            <textarea
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              className="mt-1 w-full border rounded p-2"
+              rows={4}
+              placeholder="Masukkan alasan pembatalan pesanan ini..."
+            />
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button
+              onClick={() => {
+                setShowVoidModal(false)
+                setVoidingPurchase(null)
+                setVoidReason('')
+              }}
+              className="bg-gray-500 hover:bg-gray-600 text-white"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={voidPurchase}
+              disabled={!voidReason.trim()}
+              className="bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              ⚠️ Ya, Batalkan Pesanan
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

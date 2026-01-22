@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 export default function InitialStockPage() {
   const [units, setUnits] = useState([])
@@ -15,8 +16,12 @@ export default function InitialStockPage() {
   const [suppliers, setSuppliers] = useState([])
   const [initialStockItems, setInitialStockItems] = useState([])
   const [historyData, setHistoryData] = useState([])
+  const [summaryData, setSummaryData] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(true)
+  const [loadingSummary, setLoadingSummary] = useState(true)
   const [filterSupplier, setFilterSupplier] = useState('all')
+  const [viewMode, setViewMode] = useState('chart') // 'chart', 'table', 'cards'
+  const [showHistory, setShowHistory] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -50,7 +55,58 @@ export default function InitialStockPage() {
     }
     fetchMasterData()
     fetchHistory()
+    fetchSummary()
   }, [])
+
+  const fetchSummary = async () => {
+    setLoadingSummary(true)
+    try {
+      // Get all init transactions and group by uniform, size, supplier
+      const { data, error } = await supabase
+        .from('uniform_stock_txn')
+        .select(`
+          uniform_id,
+          size_id,
+          supplier_id,
+          qty_delta,
+          uniform:uniform_id(uniform_id, uniform_name, is_universal),
+          size:size_id(size_id, size_name),
+          supplier:supplier_id(supplier_id, supplier_name, supplier_code)
+        `)
+        // Include all transaction types to get accurate total stock
+
+      if (error) throw error
+      
+      // Group and sum quantities
+      const grouped = new Map()
+      for (const row of (data || [])) {
+        const key = `${row.uniform_id}|${row.size_id}|${row.supplier_id || 'null'}`
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            uniform_id: row.uniform_id,
+            size_id: row.size_id,
+            supplier_id: row.supplier_id,
+            uniform: row.uniform,
+            size: row.size,
+            supplier: row.supplier,
+            total_qty: 0
+          })
+        }
+        grouped.get(key).total_qty += row.qty_delta
+      }
+      
+      setSummaryData(Array.from(grouped.values()).sort((a, b) => {
+        // Sort by uniform name, then size
+        const nameCompare = (a.uniform?.uniform_name || '').localeCompare(b.uniform?.uniform_name || '')
+        if (nameCompare !== 0) return nameCompare
+        return (a.size?.size_name || '').localeCompare(b.size?.size_name || '')
+      }))
+    } catch (e) {
+      console.error('Error loading summary:', e)
+    } finally {
+      setLoadingSummary(false)
+    }
+  }
 
   const fetchHistory = async () => {
     setLoadingHistory(true)
@@ -59,6 +115,7 @@ export default function InitialStockPage() {
         .from('uniform_stock_txn')
         .select(`
           txn_id,
+          txn_type,
           qty_delta,
           notes,
           created_at,
@@ -66,8 +123,8 @@ export default function InitialStockPage() {
           size:size_id(size_id, size_name),
           supplier:supplier_id(supplier_id, supplier_name, supplier_code)
         `)
-        .eq('txn_type', 'init')
         .order('created_at', { ascending: false })
+        // Show all transaction types for complete history
 
       if (error) throw error
       setHistoryData(data || [])
@@ -172,6 +229,7 @@ export default function InitialStockPage() {
       setTimeout(() => setSuccess(''), 3000)
       setInitialStockItems([])
       fetchHistory() // Refresh history data
+      fetchSummary() // Refresh summary data
       closeModal()
     } catch (e) {
       setError(e.message)
@@ -188,14 +246,14 @@ export default function InitialStockPage() {
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold">Input Stock Awal Seragam</h1>
-          <p className="text-sm text-gray-600 mt-1">Input stock awal/lama yang sudah ada di gudang</p>
+          <h1 className="text-xl md:text-2xl font-semibold">Stok Seragam</h1>
+          <p className="text-sm text-gray-600 mt-1">Pantau dan kelola stok seragam</p>
         </div>
         <Button
           onClick={openAddModal}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold w-full sm:w-auto"
         >
-          + Tambah Item
+          + Input Stock Awal
         </Button>
       </div>
 
@@ -211,32 +269,282 @@ export default function InitialStockPage() {
         </div>
       )}
 
-      {/* History Table */}
+      {/* Summary Section dengan Multiple Views */}
       <Card className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <h2 className="font-semibold">History Stock Awal yang Sudah Diinput</h2>
+          <h2 className="font-semibold">Ringkasan Stok per Jenis & Supplier</h2>
           
-          {/* Filter Supplier */}
           <div className="flex items-center gap-2">
-            <Label htmlFor="filterSupplier" className="text-sm whitespace-nowrap">Filter Supplier:</Label>
-            <select
-              id="filterSupplier"
-              value={filterSupplier}
-              onChange={(e) => setFilterSupplier(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Semua Supplier</option>
-              <option value="null">Stock Awal (Tanpa Supplier)</option>
-              {suppliers.map(s => (
-                <option key={s.supplier_id} value={s.supplier_id}>
-                  {s.supplier_code} - {s.supplier_name}
-                </option>
-              ))}
-            </select>
+            {/* View Mode Toggle */}
+            <div className="inline-flex rounded-md shadow-sm" role="group">
+              <button
+                onClick={() => setViewMode('chart')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-l-lg border ${
+                  viewMode === 'chart'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                📊 Chart
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1.5 text-sm font-medium border-t border-b ${
+                  viewMode === 'table'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                📋 Table
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-r-lg border ${
+                  viewMode === 'cards'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                🎴 Cards
+              </button>
+            </div>
+            
+            <Button onClick={fetchSummary} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 text-sm" disabled={loadingSummary}>
+              🔄 Refresh
+            </Button>
           </div>
         </div>
         
-        {loadingHistory ? (
+        {loadingSummary ? (
+          <div className="text-center py-8 text-gray-500">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p>Memuat data...</p>
+          </div>
+        ) : summaryData.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <div className="text-4xl mb-2">�</div>
+            <p>Belum ada data stok</p>
+          </div>
+        ) : (
+          <>
+            {/* Chart View */}
+            {viewMode === 'chart' && (() => {
+          // Transform data for chart: group by uniform, then by size
+          const chartDataMap = new Map()
+          
+          summaryData.forEach(row => {
+            const uniformName = row.uniform?.uniform_name || 'Unknown'
+            const sizeName = row.size?.size_name || 'Unknown'
+            const supplierName = row.supplier ? row.supplier.supplier_name : 'Tanpa Supplier'
+            
+            if (!chartDataMap.has(uniformName)) {
+              chartDataMap.set(uniformName, { name: uniformName, sizes: new Map() })
+            }
+            
+            const uniformData = chartDataMap.get(uniformName)
+            const sizeKey = `${sizeName} - ${supplierName}`
+            uniformData.sizes.set(sizeKey, (uniformData.sizes.get(sizeKey) || 0) + row.total_qty)
+          })
+          
+          // Convert to array format for Recharts
+          const chartData = Array.from(chartDataMap.values()).map(uniform => {
+            const dataPoint = { name: uniform.name }
+            uniform.sizes.forEach((qty, sizeSupplier) => {
+              dataPoint[sizeSupplier] = qty
+            })
+            return dataPoint
+          })
+          
+          // Get all unique size_supplier combinations for bars
+          const allKeys = new Set()
+          chartData.forEach(item => {
+            Object.keys(item).forEach(key => {
+              if (key !== 'name') allKeys.add(key)
+            })
+          })
+          
+          // Color palette
+          const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+          
+          return (
+            <div className="overflow-x-auto">
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={100}
+                    style={{ fontSize: '12px' }}
+                  />
+                  <YAxis label={{ value: 'Quantity', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                    iconType="rect"
+                  />
+                  {Array.from(allKeys).map((key, idx) => (
+                    <Bar 
+                      key={key} 
+                      dataKey={key} 
+                      fill={colors[idx % colors.length]} 
+                      name={key}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-4 text-xs text-gray-600 text-center">
+                <p>💡 Chart bisa di-scroll horizontal jika data banyak. Gunakan toggle untuk switch ke Table atau Cards view.</p>
+              </div>
+            </div>
+          )
+        })()}
+
+            {/* Table View */}
+            {viewMode === 'table' && (
+              <div className="overflow-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left border-b bg-gray-50">
+                      <th className="py-3 px-3 font-semibold text-gray-700">Seragam</th>
+                      <th className="py-3 px-3 font-semibold text-gray-700">Ukuran</th>
+                      <th className="py-3 px-3 font-semibold text-gray-700">Total Qty</th>
+                      <th className="py-3 px-3 font-semibold text-gray-700">Supplier</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summaryData.map((row, idx) => (
+                      <tr key={idx} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-2">
+                            {row.uniform?.uniform_name || '-'}
+                            {row.uniform?.is_universal && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                🌐 Universal
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">{row.size?.size_name || '-'}</td>
+                        <td className="py-3 px-3">
+                          <span className="font-semibold text-lg text-blue-600">{row.total_qty}</span>
+                        </td>
+                        <td className="py-3 px-3">
+                          {row.supplier ? (
+                            <span className="text-sm">
+                              {row.supplier.supplier_code} - {row.supplier.supplier_name}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic">Stock Awal (Tanpa Supplier)</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="mt-4 text-sm text-gray-600">
+                  Total: <span className="font-semibold">{summaryData.length} kombinasi item</span>
+                  <span className="mx-2">•</span>
+                  Total Qty: <span className="font-semibold">{summaryData.reduce((sum, row) => sum + row.total_qty, 0)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Cards View */}
+            {viewMode === 'cards' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {summaryData.map((row, idx) => {
+                    const supplierColors = [
+                      'border-blue-300 bg-blue-50',
+                      'border-green-300 bg-green-50',
+                      'border-orange-300 bg-orange-50',
+                      'border-purple-300 bg-purple-50',
+                      'border-pink-300 bg-pink-50',
+                      'border-teal-300 bg-teal-50'
+                    ]
+                    const colorClass = supplierColors[idx % supplierColors.length]
+                    
+                    return (
+                      <div key={idx} className={`border-2 rounded-lg p-4 ${colorClass} hover:shadow-md transition-shadow`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-semibold text-gray-900 text-sm leading-tight flex-1">
+                            {row.uniform?.uniform_name || '-'}
+                          </h3>
+                          {row.uniform?.is_universal && (
+                            <span className="text-xs">🌐</span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-baseline gap-2 mb-3">
+                          <span className="text-3xl font-bold text-gray-900">{row.total_qty}</span>
+                          <span className="text-sm text-gray-600">pcs</span>
+                        </div>
+                        
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-500">Ukuran:</span>
+                            <span className="font-medium">{row.size?.size_name || '-'}</span>
+                          </div>
+                          <div className="flex items-start gap-1">
+                            <span className="text-gray-500 whitespace-nowrap">Supplier:</span>
+                            <span className="font-medium text-gray-700 leading-tight">
+                              {row.supplier ? row.supplier.supplier_name : 'Tanpa Supplier'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-4 text-sm text-gray-600 text-center">
+                  Total: <span className="font-semibold">{summaryData.length} kombinasi item</span>
+                  <span className="mx-2">•</span>
+                  Total Qty: <span className="font-semibold">{summaryData.reduce((sum, row) => sum + row.total_qty, 0)}</span>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </Card>
+
+      {/* History Table */}
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold">History Stock Awal yang Sudah Diinput</h2>
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="text-gray-600 hover:text-gray-900 transition-transform duration-200"
+              style={{ transform: showHistory ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            >
+              ▼
+            </button>
+          </div>
+          
+          {showHistory && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="filterSupplier" className="text-sm whitespace-nowrap">Filter Supplier:</Label>
+              <select
+                id="filterSupplier"
+                value={filterSupplier}
+                onChange={(e) => setFilterSupplier(e.target.value)}
+                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Semua Supplier</option>
+                <option value="null">Stock Awal (Tanpa Supplier)</option>
+                {suppliers.map(s => (
+                  <option key={s.supplier_id} value={s.supplier_id}>
+                    {s.supplier_code} - {s.supplier_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        
+        {showHistory && (loadingHistory ? (
           <div className="text-center py-8 text-gray-500">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
             <p>Memuat data...</p>
@@ -260,6 +568,7 @@ export default function InitialStockPage() {
               <thead>
                 <tr className="text-left border-b bg-gray-50">
                   <th className="py-3 px-3 font-semibold text-gray-700">Tanggal</th>
+                  <th className="py-3 px-3 font-semibold text-gray-700">Jenis</th>
                   <th className="py-3 px-3 font-semibold text-gray-700">Seragam</th>
                   <th className="py-3 px-3 font-semibold text-gray-700">Ukuran</th>
                   <th className="py-3 px-3 font-semibold text-gray-700">Qty</th>
@@ -268,7 +577,19 @@ export default function InitialStockPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((row) => (
+                {filteredData.map((row) => {
+                  // Transaction type badges
+                  const txnTypeMap = {
+                    'init': { label: 'Stock Awal', color: 'bg-gray-100 text-gray-800' },
+                    'purchase': { label: 'Purchase', color: 'bg-blue-100 text-blue-800' },
+                    'adjust': { label: 'Adjustment', color: 'bg-orange-100 text-orange-800' },
+                    'sale': { label: 'Penjualan', color: 'bg-green-100 text-green-800' },
+                    'return_in': { label: 'Return In', color: 'bg-purple-100 text-purple-800' },
+                    'return_out': { label: 'Return Out', color: 'bg-red-100 text-red-800' }
+                  }
+                  const txnInfo = txnTypeMap[row.txn_type] || { label: row.txn_type, color: 'bg-gray-100 text-gray-600' }
+                  
+                  return (
                   <tr key={row.txn_id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-3">
                       {new Date(row.created_at).toLocaleDateString('id-ID', {
@@ -278,6 +599,11 @@ export default function InitialStockPage() {
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${txnInfo.color}`}>
+                        {txnInfo.label}
+                      </span>
                     </td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-2">
@@ -290,19 +616,24 @@ export default function InitialStockPage() {
                       </div>
                     </td>
                     <td className="py-3 px-3">{row.size?.size_name || '-'}</td>
-                    <td className="py-3 px-3 font-semibold">{row.qty_delta}</td>
+                    <td className="py-3 px-3">
+                      <span className={`font-semibold ${row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {row.qty_delta >= 0 ? '+' : ''}{row.qty_delta}
+                      </span>
+                    </td>
                     <td className="py-3 px-3">
                       {row.supplier ? (
                         <span className="text-sm">
                           {row.supplier.supplier_code} - {row.supplier.supplier_name}
                         </span>
                       ) : (
-                        <span className="text-gray-400 italic">Stock Awal</span>
+                        <span className="text-gray-400 italic">-</span>
                       )}
                     </td>
                     <td className="py-3 px-3 text-gray-600">{row.notes || '-'}</td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
             <div className="mt-4 text-sm text-gray-600">
@@ -313,17 +644,17 @@ export default function InitialStockPage() {
             </div>
           </div>
         )
-        })()}
+        })())}
       </Card>
 
       {/* List of Items */}
       <Card className="p-4">
-        <h2 className="font-semibold mb-4">Daftar Stock yang Akan Di-input</h2>
+        <h2 className="font-semibold mb-4">Daftar Item Stock Awal (Pending Input)</h2>
         
         {initialStockItems.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <div className="text-4xl mb-2">📦</div>
-            <p>Belum ada item. Klik "Tambah Item" untuk mulai.</p>
+            <p>Belum ada item pending. Klik "+ Input Stock Awal" untuk menambah.</p>
           </div>
         ) : (
           <>
