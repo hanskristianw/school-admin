@@ -52,6 +52,12 @@ export default function UniformReportsPage() {
     setLoading(true)
     setError('')
     try {
+      // Load reference data first - load ALL uniforms for proper mapping (not filtered by unit)
+      const [{ data: uniformsData }, { data: sizesData }] = await Promise.all([
+        supabase.from('uniform').select('uniform_id, uniform_name, is_active').eq('is_active', true).order('uniform_name'),
+        supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order')
+      ])
+      
       // Load paid sales within date (filter by sale_date)
       let q = supabase.from('uniform_sale').select('sale_id, sale_date, total_amount, total_cost').eq('unit_id', Number(unitId)).eq('status', 'paid')
       if (from) q = q.gte('sale_date', `${from} 00:00:00+00`)
@@ -68,13 +74,13 @@ export default function UniformReportsPage() {
       // Optional filters on items
       if (uniformId) items = items.filter(r => String(r.uniform_id) === String(uniformId))
       if (sizeId) items = items.filter(r => String(r.size_id) === String(sizeId))
-      // Join names
-      const uMap = new Map((uniforms || []).map(u => [u.uniform_id, u.uniform_name]))
-      const sMap = new Map((sizes || []).map(s => [s.size_id, s.size_name]))
+      // Join names using fresh data
+      const uMap = new Map((uniformsData || []).map(u => [u.uniform_id, u.uniform_name]))
+      const sMap = new Map((sizesData || []).map(s => [s.size_id, s.size_name]))
       const list = items.map(r => ({
         ...r,
-        uniform_name: uMap.get(r.uniform_id) || r.uniform_id,
-        size_name: sMap.get(r.size_id) || r.size_id,
+        uniform_name: uMap.get(r.uniform_id) || `ID:${r.uniform_id}`,
+        size_name: sMap.get(r.size_id) || `ID:${r.size_id}`,
         amount: Number(r.subtotal || 0),
         cost: Number(r.qty || 0) * Number(r.unit_hpp || 0),
         profit: (Number(r.subtotal || 0) - (Number(r.qty || 0) * Number(r.unit_hpp || 0)))

@@ -3,7 +3,7 @@
 ## Overview
 Implementasi fitur untuk menghapus dan membatalkan purchase order seragam dengan dua mekanisme berbeda:
 - **Opsi 1 (Delete)**: Hapus pesanan draft (belum ada dampak stok)
-- **Opsi 2 (Void/Cancel)**: Batalkan pesanan posted dengan reversal stok otomatis
+- **Opsi 2 (Void/Cancel)**: Batalkan pesanan posted dengan **penghapusan transaksi stok original**
 
 ## Database Changes
 
@@ -19,6 +19,49 @@ ADD COLUMN IF NOT EXISTS void_reason TEXT;
 **Jalankan migration:**
 ```bash
 psql $env:DATABASE_URL -f migrations/add-void-status-to-purchase.sql
+```
+
+### Cleanup Script: `cleanup-voided-purchase-stock.sql`
+Script untuk membersihkan transaksi stok dari purchase order yang sudah di-void.
+**Gunakan jika ada data lama yang sudah voided tapi transaksi stoknya belum dihapus.**
+
+```bash
+psql $env:DATABASE_URL -f migrations/cleanup-voided-purchase-stock.sql
+```
+
+## Stock Transaction Mechanism
+
+### Original Stock Recording (saat receive barang)
+Saat barang diterima via `receiveAllForRow()`:
+```javascript
+// Insert stock transaction
+await supabase.from('uniform_stock_txn').insert([{
+  uniform_id, 
+  size_id, 
+  qty_delta: qty_received,  // POSITIVE
+  txn_type: 'purchase',
+  ref_table: 'uniform_purchase_receipt',  // ← Penting!
+  ref_id: receipt_id,                      // ← Penting!
+  notes: 'purchase receipt'
+}])
+```
+
+### Void Mechanism (DELETE transaksi, bukan reverse)
+**PENTING**: Saat void, kita **HAPUS transaksi original**, BUKAN create reverse transaction.
+
+Alasan:
+- ✅ Menghindari nilai stok minus yang membingungkan
+- ✅ Data lebih bersih (transaksi voided tidak muncul di history)
+- ✅ Stok kembali seperti sebelum receive barang
+- ❌ Jika pakai reverse (qty_delta negative), stok bisa minus dan membingungkan user
+
+```javascript
+// DELETE stock transactions from voided receipts
+const { data: deletedTxns } = await supabase
+  .from('uniform_stock_txn')
+  .delete()
+  .eq('ref_table', 'uniform_purchase_receipt')
+  .in('ref_id', receiptIds)  // receiptIds dari purchase yang di-void
 ```
 
 ## Frontend Implementation

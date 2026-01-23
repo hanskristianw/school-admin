@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 export default function InitialStockPage() {
   const [units, setUnits] = useState([])
@@ -20,7 +20,8 @@ export default function InitialStockPage() {
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [loadingSummary, setLoadingSummary] = useState(true)
   const [filterSupplier, setFilterSupplier] = useState('all')
-  const [viewMode, setViewMode] = useState('chart') // 'chart', 'table', 'cards'
+  const [viewMode, setViewMode] = useState('pie') // 'pie', 'chart', 'table', 'cards'
+  const [searchQuery, setSearchQuery] = useState('')
   const [showHistory, setShowHistory] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
@@ -278,8 +279,18 @@ export default function InitialStockPage() {
             {/* View Mode Toggle */}
             <div className="inline-flex rounded-md shadow-sm" role="group">
               <button
-                onClick={() => setViewMode('chart')}
+                onClick={() => setViewMode('pie')}
                 className={`px-3 py-1.5 text-sm font-medium rounded-l-lg border ${
+                  viewMode === 'pie'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                🥧 Pie
+              </button>
+              <button
+                onClick={() => setViewMode('chart')}
+                className={`px-3 py-1.5 text-sm font-medium border-t border-b ${
                   viewMode === 'chart'
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -401,8 +412,134 @@ export default function InitialStockPage() {
           )
         })()}
 
+            {/* Pie Chart View */}
+            {viewMode === 'pie' && (() => {
+              // Aggregate data by uniform name
+              const pieDataMap = new Map()
+              
+              summaryData.forEach(row => {
+                const uniformName = row.uniform?.uniform_name || 'Unknown'
+                pieDataMap.set(uniformName, (pieDataMap.get(uniformName) || 0) + row.total_qty)
+              })
+              
+              const pieData = Array.from(pieDataMap.entries())
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value)
+              
+              const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16']
+              
+              const totalQty = pieData.reduce((sum, item) => sum + item.value, 0)
+              
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-col lg:flex-row gap-6 items-center">
+                    {/* Pie Chart */}
+                    <div className="w-full lg:w-1/2">
+                      <ResponsiveContainer width="100%" height={400}>
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                            outerRadius={120}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    {/* Legend with details */}
+                    <div className="w-full lg:w-1/2">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h3 className="font-semibold mb-3 text-gray-700">Detail per Jenis Seragam</h3>
+                        <div className="space-y-2 max-h-80 overflow-y-auto">
+                          {pieData.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border">
+                              <div className="flex items-center gap-3">
+                                <div 
+                                  className="w-4 h-4 rounded" 
+                                  style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                                ></div>
+                                <span className="text-sm font-medium">{item.name}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-semibold text-blue-600">{item.value} pcs</div>
+                                <div className="text-xs text-gray-500">
+                                  {((item.value / totalQty) * 100).toFixed(1)}%
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 pt-3 border-t">
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-gray-700">Total Stok</span>
+                            <span className="text-lg font-bold text-blue-600">{totalQty} pcs</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-gray-600 text-center">
+                    <p>💡 Pie chart menampilkan distribusi stok per jenis seragam. Gunakan toggle untuk switch ke view lain.</p>
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* Table View */}
-            {viewMode === 'table' && (
+            {viewMode === 'table' && (() => {
+              // Filter data based on search query
+              const filteredData = summaryData.filter(row => {
+                if (!searchQuery.trim()) return true
+                const query = searchQuery.toLowerCase()
+                const uniformName = (row.uniform?.uniform_name || '').toLowerCase()
+                const sizeName = (row.size?.size_name || '').toLowerCase()
+                const supplierName = (row.supplier?.supplier_name || '').toLowerCase()
+                return uniformName.includes(query) || sizeName.includes(query) || supplierName.includes(query)
+              })
+              
+              return (
+              <div className="space-y-3">
+                {/* Search Input */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 max-w-md">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Cari seragam, ukuran, atau supplier..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                
+                {filteredData.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="text-4xl mb-2">🔍</div>
+                    <p>Tidak ada data yang sesuai dengan pencarian "{searchQuery}"</p>
+                  </div>
+                ) : (
               <div className="overflow-auto">
                 <table className="min-w-full text-sm">
                   <thead>
@@ -414,7 +551,7 @@ export default function InitialStockPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {summaryData.map((row, idx) => (
+                    {filteredData.map((row, idx) => (
                       <tr key={idx} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2">
@@ -444,12 +581,26 @@ export default function InitialStockPage() {
                   </tbody>
                 </table>
                 <div className="mt-4 text-sm text-gray-600">
-                  Total: <span className="font-semibold">{summaryData.length} kombinasi item</span>
-                  <span className="mx-2">•</span>
-                  Total Qty: <span className="font-semibold">{summaryData.reduce((sum, row) => sum + row.total_qty, 0)}</span>
+                  {searchQuery ? (
+                    <>
+                      Menampilkan: <span className="font-semibold">{filteredData.length} item</span> 
+                      <span className="mx-2">•</span>
+                      Dari total: <span className="font-semibold">{summaryData.length} item</span>
+                    </>
+                  ) : (
+                    <>
+                      Total: <span className="font-semibold">{summaryData.length} kombinasi item</span>
+                      <span className="mx-2">•</span>
+                      Total Qty: <span className="font-semibold">{summaryData.reduce((sum, row) => sum + row.total_qty, 0)}</span>
+                    </>
+                  )}
                 </div>
               </div>
-            )}
+                )}
+              </div>
+              )
+            })()}
+
 
             {/* Cards View */}
             {viewMode === 'cards' && (
@@ -585,7 +736,8 @@ export default function InitialStockPage() {
                     'adjust': { label: 'Adjustment', color: 'bg-orange-100 text-orange-800' },
                     'sale': { label: 'Penjualan', color: 'bg-green-100 text-green-800' },
                     'return_in': { label: 'Return In', color: 'bg-purple-100 text-purple-800' },
-                    'return_out': { label: 'Return Out', color: 'bg-red-100 text-red-800' }
+                    'return_out': { label: 'Return Out', color: 'bg-red-100 text-red-800' },
+                    'void': { label: 'VOID/Batal', color: 'bg-red-200 text-red-900 font-bold' }
                   }
                   const txnInfo = txnTypeMap[row.txn_type] || { label: row.txn_type, color: 'bg-gray-100 text-gray-600' }
                   

@@ -543,6 +543,8 @@ export default function AddUniformStockPage() {
     }
 
     try {
+      console.log('🔄 Starting void process for purchase:', voidingPurchase.purchase_id)
+      
       // Check if already voided
       const { data: purchase, error: checkError } = await supabase
         .from('uniform_purchase')
@@ -550,55 +552,222 @@ export default function AddUniformStockPage() {
         .eq('purchase_id', voidingPurchase.purchase_id)
         .single()
 
-      if (checkError) throw checkError
+      console.log('✅ Purchase status check:', { purchase, checkError })
+      if (checkError) {
+        console.error('❌ Error checking purchase:', checkError)
+        throw checkError
+      }
 
       if (purchase.is_voided) {
+        console.warn('⚠️ Purchase already voided')
         setError('Pesanan ini sudah dibatalkan')
         return
       }
 
       if (purchase.status === 'draft') {
+        console.warn('⚠️ Trying to void draft purchase')
         setError('Pesanan draft sebaiknya dihapus, bukan dibatalkan')
         return
       }
 
       // Get all receipt items to reverse stock
-      const { data: receiptItems, error: receiptError } = await supabase
-        .from('uniform_receipt_item')
-        .select(`
-          uniform_id,
-          size_id,
-          qty_received,
-          supplier_id,
-          receipt:uniform_receipt!inner(purchase_id)
-        `)
-        .eq('receipt.purchase_id', voidingPurchase.purchase_id)
+      console.log('🔍 Fetching receipt items for purchase:', voidingPurchase.purchase_id)
+      
+      // First, get receipts for this purchase
+      const { data: receipts, error: receiptsError } = await supabase
+        .from('uniform_purchase_receipt')
+        .select('receipt_id')
+        .eq('purchase_id', voidingPurchase.purchase_id)
 
-      if (receiptError) throw receiptError
-
-      // Create reverse transactions
-      const reverseTransactions = []
-      receiptItems?.forEach((item) => {
-        if (item.qty_received > 0) {
-          reverseTransactions.push({
-            uniform_id: item.uniform_id,
-            size_id: item.size_id,
-            supplier_id: item.supplier_id,
-            txn_type: 'adjust',
-            qty_delta: -item.qty_received,
-            notes: `Pembatalan Pesanan #${voidingPurchase.purchase_id}: ${voidReason}`
-          })
-        }
-      })
-
-      // Insert reverse transactions
-      if (reverseTransactions.length > 0) {
-        const { error: txnError } = await supabase
-          .from('uniform_stock_txn')
-          .insert(reverseTransactions)
-
-        if (txnError) throw txnError
+      console.log('📦 Receipts found:', { receipts, receiptsError })
+      
+      if (receiptsError) {
+        console.error('❌ Error fetching receipts:', receiptsError)
+        throw receiptsError
       }
+
+      if (!receipts || receipts.length === 0) {
+        console.warn('⚠️ No receipts found for this purchase, nothing to reverse')
+        // No receipts = no stock to reverse, just mark as voided
+        const { error: voidError } = await supabase
+          .from('uniform_purchase')
+          .update({
+            is_voided: true,
+            voided_at: new Date().toISOString(),
+            void_reason: voidReason
+          })
+          .eq('purchase_id', voidingPurchase.purchase_id)
+
+        if (voidError) throw voidError
+
+        setSuccess(`Pesanan #${voidingPurchase.purchase_id} berhasil dibatalkan (tidak ada barang yang perlu dikembalikan)`)
+        setShowVoidModal(false)
+        setVoidingPurchase(null)
+        setVoidReason('')
+        loadCompleted()
+        return
+      }
+
+      // Get receipt items with JOIN to get uniform_id and size_id
+      const receiptIds = receipts.map(r => r.receipt_id)
+      console.log('🔗 Fetching receipt items for receipt_ids:', receiptIds)
+      
+      const { data: receiptItems, error: itemsError } = await supabase
+        .from('uniform_purchase_receipt_item')
+        .select(`
+          qty_received,
+          uniform_purchase_item!inner (
+            uniform_id,
+            size_id
+          )
+        `)
+        .in('receipt_id', receiptIds)
+
+      console.log('📋 Receipt items found:', { receiptItems, itemsError })
+      
+      if (itemsError) {
+        console.error('❌ Error fetching receipt items:', itemsError)
+        throw itemsError
+      }
+      
+      // Transform data to flat structure
+      const flatItems = receiptItems?.map(item => ({
+        uniform_id: item.uniform_purchase_item.uniform_id,
+        size_id: item.uniform_purchase_item.size_id,
+        qty_received: item.qty_received,
+        supplier_id: voidingPurchase.supplier_id // Use supplier from purchase
+      })) || []
+      
+      console.log('📋 Transformed items:', flatItems)
+
+      // ========== STOCK VALIDATION BEFORE VOID ==========
+      console.log('🔍 Starting stock validation...')
+      const stockValidationErrors = []
+      
+      for (const item of flatItems || []) {
+        if (item.qty_received > 0) {
+          console.log(`📊 Checking stock for uniform_id=${item.uniform_id}, size_id=${item.size_id}`)
+          
+          // Get current stock for this item
+          const { data: stockData, error: stockError } = await supabase
+            .from('uniform_stock_txn')
+            .select('qty_delta')
+            .eq('uniform_id', item.uniform_id)
+            .eq('size_id', item.size_id)
+          
+          if (stockError) {
+            console.error('❌ Error checking stock:', stockError)
+            continue
+          }
+          
+          console.log(`📊 Stock transactions:`, stockData)
+          
+          // Calculate current stock
+          const currentStock = stockData?.reduce((sum, txn) => sum + (txn.qty_delta || 0), 0) || 0
+          
+          console.log(`📊 Current stock: ${currentStock}, Need to reverse: ${item.qty_received}`)
+          
+          // Check if stock is sufficient
+          if (currentStock < item.qty_received) {
+            console.warn(`⚠️ Insufficient stock for uniform_id=${item.uniform_id}, size_id=${item.size_id}`)
+            
+            const { data: uniformData } = await supabase
+              .from('uniform')
+              .select('uniform_name')
+              .eq('uniform_id', item.uniform_id)
+              .single()
+            
+            const { data: sizeData } = await supabase
+              .from('uniform_size')
+              .select('size_name')
+              .eq('size_id', item.size_id)
+              .single()
+            
+            stockValidationErrors.push({
+              uniform_name: uniformData?.uniform_name || 'Unknown',
+              size_name: sizeData?.size_name || 'Unknown',
+              qty_to_reverse: item.qty_received,
+              current_stock: currentStock,
+              shortage: item.qty_received - currentStock
+            })
+          }
+        }
+      }
+      
+      
+      console.log('📊 Validation complete. Errors found:', stockValidationErrors.length)
+      
+      // If there are stock validation errors, show detailed message
+      if (stockValidationErrors.length > 0) {
+        console.error('❌ Stock validation failed:', stockValidationErrors)
+        
+        let errorMsg = '⚠️ TIDAK BISA VOID: Stok tidak cukup untuk dikembalikan!\n\n'
+        errorMsg += 'Detail masalah:\n'
+        stockValidationErrors.forEach((err, idx) => {
+          errorMsg += `${idx + 1}. ${err.uniform_name} (${err.size_name}):\n`
+          errorMsg += `   • Perlu dikembalikan: ${err.qty_to_reverse} pcs\n`
+          errorMsg += `   • Stok saat ini: ${err.current_stock} pcs\n`
+          errorMsg += `   • Kurang: ${err.shortage} pcs\n\n`
+        })
+        errorMsg += '💡 Kemungkinan penyebab:\n'
+        errorMsg += '• Barang sudah terjual sebagian/seluruhnya\n'
+        errorMsg += '• Ada adjustment stok keluar\n'
+        errorMsg += '• Ada return ke supplier\n\n'
+        errorMsg += '🔧 Solusi:\n'
+        errorMsg += '1. Pastikan stok mencukupi sebelum void\n'
+        errorMsg += '2. Atau buat adjustment manual untuk balance stok\n'
+        errorMsg += '3. Hubungi admin jika perlu bantuan'
+        
+        setError(errorMsg)
+        return
+      }
+      // ========== END STOCK VALIDATION ==========
+
+      console.log('✅ Stock validation passed. Deleting original stock transactions...')
+      
+      // Delete original stock transactions from these receipts
+      // (transactions were created with ref_table='uniform_purchase_receipt' and ref_id=receipt_id)
+      const { data: deletedTxns, error: deleteTxnError } = await supabase
+        .from('uniform_stock_txn')
+        .delete()
+        .eq('ref_table', 'uniform_purchase_receipt')
+        .in('ref_id', receiptIds)
+        .select()
+
+      console.log('🗑️ Deleted stock transactions:', { deletedTxns, deleteTxnError })
+      
+      if (deleteTxnError) {
+        console.error('❌ Error deleting stock transactions:', deleteTxnError)
+        throw deleteTxnError
+      }
+
+      // Create void history transactions (qty_delta = 0 for tracking only, no stock impact)
+      console.log('📝 Creating void history records...')
+      const voidHistoryTxns = flatItems?.map(item => ({
+        uniform_id: item.uniform_id,
+        size_id: item.size_id,
+        supplier_id: item.supplier_id,
+        qty_delta: 0, // No stock impact, just for history
+        txn_type: 'void',
+        ref_table: 'uniform_purchase',
+        ref_id: voidingPurchase.purchase_id,
+        notes: `VOID PO #${voidingPurchase.purchase_id}: ${voidReason} (reversed ${item.qty_received} pcs)`
+      })) || []
+
+      if (voidHistoryTxns.length > 0) {
+        const { error: historyError } = await supabase
+          .from('uniform_stock_txn')
+          .insert(voidHistoryTxns)
+        
+        if (historyError) {
+          console.warn('⚠️ Failed to create void history:', historyError)
+          // Don't throw - history is optional
+        } else {
+          console.log('✅ Void history created')
+        }
+      }
+
+      console.log('✅ Stock transactions deleted. Marking purchase as voided...')
 
       // Mark purchase as voided
       const { error: voidError } = await supabase
@@ -610,16 +779,28 @@ export default function AddUniformStockPage() {
         })
         .eq('purchase_id', voidingPurchase.purchase_id)
 
-      if (voidError) throw voidError
+      if (voidError) {
+        console.error('❌ Error marking as voided:', voidError)
+        throw voidError
+      }
 
+      console.log('✅ Void process completed successfully!')
+      
       setSuccess(`Pesanan #${voidingPurchase.purchase_id} berhasil dibatalkan dan stok telah disesuaikan`)
       setShowVoidModal(false)
       setVoidingPurchase(null)
       setVoidReason('')
       loadCompleted()
     } catch (err) {
-      console.error('Error voiding purchase:', err)
-      setError('Gagal membatalkan pesanan: ' + err.message)
+      console.error('❌ CRITICAL ERROR in voidPurchase:', {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        details: err.details,
+        hint: err.hint,
+        code: err.code
+      })
+      setError('Gagal membatalkan pesanan: ' + (err.message || JSON.stringify(err)))
     }
   }
 
@@ -1661,6 +1842,13 @@ export default function AddUniformStockPage() {
               <p className="text-sm text-yellow-700 mt-3">
                 ⚠️ <strong>Perhatian:</strong> Pembatalan akan mengembalikan stok yang sudah diterima.
               </p>
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-xs text-red-800 font-semibold mb-1">🛡️ VALIDASI OTOMATIS:</p>
+                <p className="text-xs text-red-700">
+                  Sistem akan mengecek apakah stok tersedia cukup untuk dikembalikan. 
+                  Jika barang sudah terjual/digunakan, void akan ditolak.
+                </p>
+              </div>
             </div>
           )}
 
