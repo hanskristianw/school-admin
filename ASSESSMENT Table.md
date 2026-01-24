@@ -126,5 +126,3 @@ after INSERT
 or
 update OF topic_duration on topic for EACH row
 execute FUNCTION generate_topic_weeks ();
-
-ada pertanyaan lagi?

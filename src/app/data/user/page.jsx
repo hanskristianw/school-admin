@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
+import ImageCropModal from '@/components/ImageCropModal';
 import { supabase } from '@/lib/supabase';
 
 export default function UserManagement() {
@@ -22,13 +23,17 @@ export default function UserManagement() {
     user_nama_belakang: '',
     user_username: '',
     user_email: '',
-    password: '',
+    user_manual_picture: '',
     user_role_id: '',
     user_unit_id: '',
     is_active: true
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [tempImageSrc, setTempImageSrc] = useState(null);
   
   // Notification modal states
   const [notification, setNotification] = useState({
@@ -221,7 +226,6 @@ export default function UserManagement() {
         user_nama_belakang: '',
         user_username: '',
         user_email: '',
-        user_password: '',
         user_role_id: '',
         user_unit_id: '',
         is_active: true
@@ -253,17 +257,6 @@ export default function UserManagement() {
           rowErrors.push('Invalid email format');
         } else {
           validRow.user_email = emailValue;
-        }
-      }
-
-      if (!row.user_password && !row.password) {
-        rowErrors.push('Password is required');
-      } else {
-        const pw = (row.user_password || row.password || '').trim();
-        if (pw.length < 6) {
-          rowErrors.push('Password must be at least 6 characters');
-        } else {
-          validRow.user_password = pw;
         }
       }
 
@@ -367,7 +360,7 @@ export default function UserManagement() {
 
         // Additional validation before sending
     if (!cleanedUserData.user_nama_depan || !cleanedUserData.user_nama_belakang || 
-      !cleanedUserData.user_username || !cleanedUserData.user_password || 
+      !cleanedUserData.user_username || 
             !cleanedUserData.user_role_id) {
           throw new Error('Missing required fields after cleaning');
         }
@@ -390,17 +383,6 @@ export default function UserManagement() {
 
         const createdId = result.data?.user_id;
         if (!createdId) throw new Error('Gagal membuat user');
-
-        // Set password via secure admin API
-        const res = await fetch('/api/admin/users/set-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: createdId, newPassword: cleanedUserData.user_password })
-        });
-        if (!res.ok) {
-          const msg = await res.json().catch(() => ({}));
-          throw new Error(msg?.error || 'Gagal set password');
-        }
 
         results.success++;
       } catch (err) {
@@ -465,7 +447,7 @@ export default function UserManagement() {
     const sampleUnit1 = availableUnits[0] || 'PYP';
     const sampleUnit2 = availableUnits.length > 1 ? availableUnits[1] : availableUnits[0] || 'MYP';
     
-  const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}email${delimiter}user_password${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}john@example.com${delimiter}password123${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}jane@example.com${delimiter}password456${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
+  const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}email${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}john@ccs.sch.id${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}jane@ccs.sch.id${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -476,6 +458,43 @@ export default function UserManagement() {
     window.URL.revokeObjectURL(url);
   };
 
+  const uploadImage = async (userId) => {
+    if (!imageFile) return null;
+
+    try {
+      setUploadingImage(true);
+      const file = imageFile;
+      const ext = file.name.split('.').pop();
+      const path = `user-profiles/${userId}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('uniform-receipts')
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('uniform-receipts')
+        .getPublicUrl(path);
+
+      return publicUrlData?.publicUrl || null;
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      throw err;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleCropComplete = (croppedFile) => {
+    setImageFile(croppedFile);
+    setTempImageSrc(null);
+    setShowCropModal(false);
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -484,7 +503,7 @@ export default function UserManagement() {
       // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_email, user_role_id, user_unit_id, is_active')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active')
         .order('user_id');
 
       if (usersError) {
@@ -520,6 +539,8 @@ export default function UserManagement() {
           user_nama_belakang: user.user_nama_belakang,
           user_username: user.user_username,
           user_email: user.user_email || null,
+          user_profile_picture: user.user_profile_picture || null,
+          user_manual_picture: user.user_manual_picture || null,
           user_role_id: user.user_role_id,
           user_unit_id: user.user_unit_id,
           role_name: role?.role_name || '',
@@ -641,35 +662,25 @@ export default function UserManagement() {
       }
 
       let result;
-  const newPassword = submitData.password?.trim() || '';
-      // Never send plaintext password directly to the users table
-    const baseData = { ...submitData };
-  // Never send any password fields to users table
-  delete baseData.password;
-  delete baseData.user_password;
+      const baseData = { ...submitData };
 
       if (editingUser) {
-        // Update existing user fields (without password)
+        // Upload image if new file selected
+        if (imageFile) {
+          const imageUrl = await uploadImage(editingUser.user_id);
+          if (imageUrl) {
+            baseData.user_manual_picture = imageUrl;
+          }
+        }
+
+        // Update existing user
         result = await supabase
           .from('users')
           .update(baseData)
           .eq('user_id', editingUser.user_id);
         if (result.error) throw new Error(result.error.message);
-
-        // If password provided, set via secure server API (hashes and clears plaintext in DB)
-        if (newPassword) {
-          const res = await fetch('/api/admin/users/set-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: editingUser.user_id, newPassword })
-          });
-          if (!res.ok) {
-            const msg = await res.json().catch(() => ({}));
-            throw new Error(msg?.error || 'Gagal mengubah password');
-          }
-        }
       } else {
-        // Create new user without password first
+        // Create new user first to get user_id
         const insertRes = await supabase
           .from('users')
           .insert([baseData])
@@ -677,17 +688,15 @@ export default function UserManagement() {
           .single();
         if (insertRes.error) throw new Error(insertRes.error.message);
 
-        const createdId = insertRes.data?.user_id;
-        // For new user, password is required by validation; set via secure server API
-        if (newPassword && createdId) {
-          const res = await fetch('/api/admin/users/set-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: createdId, newPassword })
-          });
-          if (!res.ok) {
-            const msg = await res.json().catch(() => ({}));
-            throw new Error(msg?.error || 'Gagal set password awal');
+        // Upload image if file selected
+        if (imageFile && insertRes.data) {
+          const imageUrl = await uploadImage(insertRes.data.user_id);
+          if (imageUrl) {
+            // Update user with image URL
+            await supabase
+              .from('users')
+              .update({ user_manual_picture: imageUrl })
+              .eq('user_id', insertRes.data.user_id);
           }
         }
       }
@@ -696,8 +705,7 @@ export default function UserManagement() {
       await fetchUsers(); // Refresh the list
       resetForm();
       setError('');
-  const pwdNote = newPassword ? ' (termasuk password)' : '';
-  showNotification('Berhasil!', editingUser ? `Data user berhasil diupdate${pwdNote}!` : `User baru berhasil ditambahkan${pwdNote}!`, 'success');
+      showNotification('Berhasil!', editingUser ? `Data user berhasil diupdate!` : `User baru berhasil ditambahkan!`, 'success');
     } catch (err) {
       const errorMessage = processErrorMessage(err.message);
       setError('Error: ' + errorMessage);
@@ -713,11 +721,12 @@ export default function UserManagement() {
       user_nama_belakang: user.user_nama_belakang,
       user_username: user.user_username,
       user_email: user.user_email || '',
-  password: '', // Don't fill password for editing
+      user_manual_picture: user.user_manual_picture || '',
       user_role_id: user.user_role_id,
       user_unit_id: user.user_unit_id || '',
       is_active: user.is_active
     });
+    setImageFile(null);
     setShowForm(true);
     setFormErrors({});
   };
@@ -730,11 +739,14 @@ export default function UserManagement() {
       user_nama_belakang: '',
       user_username: '',
       user_email: '',
-  password: '',
+      user_manual_picture: '',
       user_role_id: '',
       user_unit_id: '',
       is_active: true
     });
+    setImageFile(null);
+    setTempImageSrc(null);
+    setShowCropModal(false);
     setEditingUser(null);
     setShowForm(false);
     setFormErrors({});
@@ -878,23 +890,54 @@ export default function UserManagement() {
               {formErrors.user_email && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.user_email}</p>
               )}
+              <p className="text-xs text-gray-500 mt-1">
+                Login menggunakan Google OAuth (@ccs.sch.id). Password tidak diperlukan.
+              </p>
             </div>
 
             <div>
-              <Label htmlFor="password">
-                Password {editingUser ? '(kosongkan jika tidak ingin mengubah)' : '*'}
-              </Label>
+              <Label htmlFor="user_manual_picture">Profile Picture (Opsional)</Label>
               <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className={formErrors.user_password ? 'border-red-500' : ''}
-                disabled={submitting}
+                id="user_manual_picture"
+                name="user_manual_picture"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      setTempImageSrc(reader.result);
+                      setShowCropModal(true);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                disabled={submitting || uploadingImage}
+                className="cursor-pointer"
               />
-              {formErrors.user_password && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.user_password}</p>
+              {imageFile && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm font-medium">Preview:</p>
+                  <img 
+                    src={URL.createObjectURL(imageFile)} 
+                    alt="Preview" 
+                    className="w-24 h-24 object-cover rounded-full border"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Size: {(imageFile.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              )}
+              {!imageFile && formData.user_manual_picture && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium mb-1">Current:</p>
+                  <img 
+                    src={formData.user_manual_picture} 
+                    alt="Current" 
+                    className="w-24 h-24 object-cover rounded-full border"
+                  />
+                </div>
               )}
             </div>
 
@@ -1013,7 +1056,7 @@ export default function UserManagement() {
               <li>• <strong>nama_depan</strong> or <strong>first_name</strong> (required)</li>
               <li>• <strong>nama_belakang</strong> or <strong>last_name</strong> (required)</li>
               <li>• <strong>username</strong> (required, must be unique)</li>
-              <li>• <strong>password</strong> (required, min 6 characters)</li>
+              <li>• <strong>email</strong> (required, must be @ccs.sch.id domain for Google OAuth)</li>
               <li>• <strong>role</strong> (required, available: {roles.map(r => r.role_name).join(', ') || 'Loading...'})</li>
               <li>• <strong>unit</strong> (optional, available: {units.map(u => u.unit_name).join(', ') || 'Loading...'})</li>
               <li>• <strong>status</strong> (optional: active/inactive, default: active)</li>
@@ -1393,6 +1436,18 @@ export default function UserManagement() {
         title={notification.title}
         message={notification.message}
         type={notification.type}
+      />
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={showCropModal}
+        onClose={() => {
+          setShowCropModal(false);
+          setTempImageSrc(null);
+        }}
+        imageSrc={tempImageSrc}
+        onCropComplete={handleCropComplete}
+        aspectRatio={1}
       />
     </div>
   );
