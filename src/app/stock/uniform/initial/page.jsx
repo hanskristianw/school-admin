@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import * as XLSX from 'xlsx'
 
 export default function InitialStockPage() {
   const [units, setUnits] = useState([])
@@ -130,6 +131,99 @@ export default function InitialStockPage() {
       console.error('Error loading history:', e)
     } finally {
       setLoadingHistory(false)
+    }
+  }
+
+  const handleExportToExcel = () => {
+    if (summaryData.length === 0) {
+      alert('Tidak ada data stock untuk di-export')
+      return
+    }
+
+    try {
+      const wb = XLSX.utils.book_new()
+
+      // Group data by supplier
+      const dataBySupplier = new Map()
+      
+      // Add "Tanpa Supplier" group
+      dataBySupplier.set('Tanpa Supplier', [])
+      
+      // Group by supplier
+      summaryData.forEach(item => {
+        if (item.total_qty <= 0) return // Skip zero stock
+        
+        const supplierKey = item.supplier 
+          ? `${item.supplier.supplier_code} - ${item.supplier.supplier_name}`
+          : 'Tanpa Supplier'
+        
+        if (!dataBySupplier.has(supplierKey)) {
+          dataBySupplier.set(supplierKey, [])
+        }
+        
+        dataBySupplier.get(supplierKey).push({
+          'Seragam': item.uniform.uniform_name,
+          'Ukuran': item.size.size_name,
+          'Jumlah': item.total_qty,
+          'Universal': item.uniform.is_universal ? 'Ya' : 'Tidak'
+        })
+      })
+
+      // Create sheet for each supplier
+      let sheetIndex = 0
+      dataBySupplier.forEach((items, supplierName) => {
+        if (items.length === 0) return // Skip empty suppliers
+
+        // Sort by uniform name, then size
+        items.sort((a, b) => {
+          const uniformCompare = a.Seragam.localeCompare(b.Seragam)
+          if (uniformCompare !== 0) return uniformCompare
+          return a.Ukuran.localeCompare(b.Ukuran)
+        })
+
+        // Add summary at the top
+        const totalItems = items.reduce((sum, item) => sum + item.Jumlah, 0)
+        const sheetData = [
+          [supplierName],
+          ['Total Stock: ' + totalItems + ' pcs'],
+          ['Tanggal: ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })],
+          [''],
+          // Headers will be added by json_to_sheet
+        ]
+
+        const ws = XLSX.utils.aoa_to_sheet(sheetData)
+        XLSX.utils.sheet_add_json(ws, items, { origin: 'A5' })
+
+        // Set column widths
+        ws['!cols'] = [
+          { wch: 30 }, // Seragam
+          { wch: 12 }, // Ukuran
+          { wch: 10 }, // Jumlah
+          { wch: 10 }  // Universal
+        ]
+
+        // Sanitize sheet name (max 31 chars, no special chars)
+        let sheetName = supplierName
+          .replace(/[\\/*\[\]:?]/g, '')
+          .substring(0, 31)
+        
+        // Ensure unique sheet name
+        if (sheetIndex > 0 && sheetName.length > 28) {
+          sheetName = sheetName.substring(0, 28) + '_' + sheetIndex
+        }
+
+        XLSX.utils.book_append_sheet(wb, ws, sheetName)
+        sheetIndex++
+      })
+
+      // Generate filename
+      const filename = `Stock_Seragam_${new Date().toISOString().slice(0, 10)}.xlsx`
+
+      // Export
+      XLSX.writeFile(wb, filename)
+    } catch (e) {
+      console.error('Error exporting to Excel:', e)
+      alert('Gagal export ke Excel: ' + e.message)
     }
   }
 
@@ -273,6 +367,16 @@ export default function InitialStockPage() {
           <h2 className="font-semibold">📊 Ringkasan Stock Seragam</h2>
           
           <div className="flex flex-wrap gap-2 items-center">
+            {/* Export Button */}
+            {summaryData.length > 0 && (
+              <Button
+                onClick={handleExportToExcel}
+                className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2"
+              >
+                📥 Export Excel
+              </Button>
+            )}
+            
             {/* View Mode Toggle - Without Cards */}
             <div className="inline-flex rounded-lg border border-gray-300">
               <button

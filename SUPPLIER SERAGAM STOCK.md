@@ -112,7 +112,7 @@ create index IF not exists idx_uniform_purchase_receipt_item_pi on public.unifor
 
 create table public.uniform_sale (
   sale_id bigserial not null,
-  detail_siswa_id integer not null,
+  user_id integer not null,
   unit_id integer not null,
   sale_date timestamp with time zone not null default now(),
   status text not null default 'pending'::text,
@@ -123,8 +123,12 @@ create table public.uniform_sale (
   total_cost numeric(12, 2) not null default 0,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
+  is_voided boolean not null default false,
+  voided_at timestamp with time zone null,
+  voided_by text null,
+  void_reason text null,
   constraint uniform_sale_pkey primary key (sale_id),
-  constraint uniform_sale_detail_siswa_id_fkey foreign KEY (detail_siswa_id) references detail_siswa (detail_siswa_id) on delete RESTRICT,
+  constraint uniform_sale_user_id_fkey foreign KEY (user_id) references users (user_id) on delete RESTRICT,
   constraint uniform_sale_unit_id_fkey foreign KEY (unit_id) references unit (unit_id) on delete RESTRICT,
   constraint uniform_sale_payment_method_check check ((payment_method = 'transfer'::text)),
   constraint uniform_sale_status_check check (
@@ -136,9 +140,11 @@ create table public.uniform_sale (
   )
 ) TABLESPACE pg_default;
 
-create index IF not exists idx_uniform_sale_detail_siswa on public.uniform_sale using btree (detail_siswa_id) TABLESPACE pg_default;
+create index IF not exists idx_uniform_sale_user on public.uniform_sale using btree (user_id) TABLESPACE pg_default;
 
 create index IF not exists idx_uniform_sale_unit on public.uniform_sale using btree (unit_id) TABLESPACE pg_default;
+
+create index IF not exists idx_uniform_sale_is_voided on public.uniform_sale using btree (is_voided) TABLESPACE pg_default;
 
 create table public.uniform_sale_item (
   item_id bigserial not null,

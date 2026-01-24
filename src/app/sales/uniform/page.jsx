@@ -7,18 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
+import KwitansiModal from '@/components/KwitansiModal'
 import { formatCurrency, toNumber } from '@/lib/utils'
+import * as XLSX from 'xlsx'
 
 export default function UniformSalesPage() {
-  const [units, setUnits] = useState([])
-  const [unitId, setUnitId] = useState('')
-  const [students, setStudents] = useState([])
+  const [allStudents, setAllStudents] = useState([]) // All students loaded once
   const [searchStudent, setSearchStudent] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-  const [detailSiswaId, setDetailSiswaId] = useState('')
+  const [userId, setUserId] = useState('') // Changed from detailSiswaId to userId
   const [selectedStudent, setSelectedStudent] = useState(null)
-  const [uniforms, setUniforms] = useState([]) // { uniform_id, uniform_name }
-  const [sizes, setSizes] = useState([]) // by unit
+  const [uniforms, setUniforms] = useState([]) // All uniforms (universal + unit-specific)
+  const [sizes, setSizes] = useState([])
   const [suppliers, setSuppliers] = useState([]) // All active suppliers
   const [variants, setVariants] = useState([]) // uniform_variant with size
   const [stockMap, setStockMap] = useState(new Map()) // key `${u}_${s}` -> qty
@@ -29,94 +29,95 @@ export default function UniformSalesPage() {
   const [error, setError] = useState('')
   const [receiptFile, setReceiptFile] = useState(null)
   const [showConfirm, setShowConfirm] = useState(false)
+  
+  // Tab and history states
+  const [activeTab, setActiveTab] = useState('penjualan') // 'penjualan', 'history', or 'laporan'
+  const [salesHistory, setSalesHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyFilter, setHistoryFilter] = useState('all') // 'all', 'pending', 'paid', 'cancelled', 'voided'
+  const [showKwitansi, setShowKwitansi] = useState(false)
+  const [selectedSaleForKwitansi, setSelectedSaleForKwitansi] = useState(null)
+  const [kwitansiItems, setKwitansiItems] = useState([])
+  
+  // Void states
+  const [showVoidModal, setShowVoidModal] = useState(false)
+  const [selectedSaleForVoid, setSelectedSaleForVoid] = useState(null)
+  const [voidReason, setVoidReason] = useState('')
+  const [voiding, setVoiding] = useState(false)
 
-  // Load units
-  useEffect(() => {
-    const fetchUnits = async () => {
-      try {
-        const [uRes, suppRes] = await Promise.all([
-          supabase.from('unit').select('unit_id, unit_name, is_school').order('unit_name'),
-          supabase.from('uniform_supplier').select('*').eq('is_active', true).order('supplier_name')
-        ])
-        if (uRes.error) throw uRes.error
-        const schools = (uRes.data || []).filter(u => u.is_school)
-        setUnits(schools)
-        if (schools.length && !unitId) setUnitId(String(schools[0].unit_id))
-        if (!suppRes.error) setSuppliers(suppRes.data || [])
-      } catch (e) { setError(e.message) }
-    }
-    fetchUnits()
-  }, [])
+  // Laporan states
+  const [reportPeriod, setReportPeriod] = useState('month') // 'month' or 'custom'
+  const [reportMonth, setReportMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
+  const [reportStartDate, setReportStartDate] = useState('')
+  const [reportEndDate, setReportEndDate] = useState('')
+  const [reportData, setReportData] = useState([])
+  const [reportSummary, setReportSummary] = useState({ total_sales: 0, total_amount: 0, total_cost: 0, total_profit: 0, total_items: 0 })
+  const [loadingReport, setLoadingReport] = useState(false)
 
-  // Resolve logged-in student's detail_siswa_id, then load uniforms, sizes, variants, stock for unit
+  // Load initial data on mount
   useEffect(() => {
-    if (!unitId) return
-    const load = async () => {
+    const fetchInitialData = async () => {
       setLoading(true)
       try {
-        // Load kelas for selected unit first
-        const { data: kelasData, error: kelasErr } = await supabase
-          .from('kelas')
-          .select('kelas_id')
-          .eq('kelas_unit_id', Number(unitId))
-        if (kelasErr) throw kelasErr
+        // Get student role ID first
+        const { data: roleData, error: roleErr } = await supabase
+          .from('role')
+          .select('role_id')
+          .eq('role_name', 'Student')
+          .single()
         
-        const kelasIds = (kelasData || []).map(k => k.kelas_id)
-        
-        if (kelasIds.length === 0) {
-          setStudents([])
-        } else {
-          // Load students for those kelas with join to users for names
-          const { data: studentsData, error: studErr } = await supabase
-            .from('detail_siswa')
-            .select('detail_siswa_id, detail_siswa_user_id, detail_siswa_kelas_id')
-            .in('detail_siswa_kelas_id', kelasIds)
-          if (studErr) throw studErr
-          
-          // Get user names
-          const userIds = (studentsData || []).map(s => s.detail_siswa_user_id)
-          if (userIds.length > 0) {
-            const { data: usersData } = await supabase
-              .from('users')
-              .select('user_id, user_nama_depan, user_nama_belakang')
-              .in('user_id', userIds)
-            
-            const nameMap = new Map((usersData || []).map(u => [
-              u.user_id, 
-              `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()
-            ]))
-            
-            const mergedStudents = (studentsData || []).map(s => ({
-              detail_siswa_id: s.detail_siswa_id,
-              detail_siswa_user_id: s.detail_siswa_user_id,
-              detail_siswa_nama: nameMap.get(s.detail_siswa_user_id) || `User ${s.detail_siswa_user_id}`
-            }))
-            
-            setStudents(mergedStudents.sort((a, b) => a.detail_siswa_nama.localeCompare(b.detail_siswa_nama)))
-          } else {
-            setStudents([])
-          }
-        }
+        if (roleErr) throw roleErr
+        const studentRoleId = roleData?.role_id
 
-        const [uRes, sRes, vRes, stRes] = await Promise.all([
-          // Get unit-specific items OR universal items (unit_id = NULL)
-          supabase.from('uniform').select('uniform_id, uniform_name, is_universal').or(`unit_id.eq.${Number(unitId)},unit_id.is.null`).eq('is_active', true).order('uniform_name'),
+        const [studentsRes, unitsRes, uniformsRes, sizesRes, variantsRes, stockRes, suppRes] = await Promise.all([
+          // Load all users with student role - include manual photos
+          supabase
+            .from('users')
+            .select('user_id, user_nama_depan, user_nama_belakang, user_unit_id, user_manual_picture')
+            .eq('user_role_id', studentRoleId)
+            .eq('is_active', true)
+            .order('user_nama_depan'),
+          // Load units for mapping
+          supabase.from('unit').select('unit_id, unit_name'),
+          // Get all active uniforms (universal + unit-specific)
+          supabase.from('uniform').select('uniform_id, uniform_name, unit_id, is_universal').eq('is_active', true).order('uniform_name'),
           supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order'),
           supabase.from('uniform_variant').select('uniform_id, size_id, hpp, price'),
-          supabase.from('uniform_stock_txn').select('uniform_id, size_id, supplier_id, qty_delta')
+          supabase.from('uniform_stock_txn').select('uniform_id, size_id, supplier_id, qty_delta'),
+          supabase.from('uniform_supplier').select('*').eq('is_active', true).order('supplier_name')
         ])
-        if (uRes.error) throw uRes.error
-        if (sRes.error) throw sRes.error
-        if (vRes.error) throw vRes.error
-        if (stRes.error) throw stRes.error
-        setUniforms(uRes.data || [])
-        setSizes(sRes.data || [])
-        setVariants(vRes.data || [])
-        
+
+        if (studentsRes.error) throw studentsRes.error
+        if (unitsRes.error) throw unitsRes.error
+        if (uniformsRes.error) throw uniformsRes.error
+        if (sizesRes.error) throw sizesRes.error
+        if (variantsRes.error) throw variantsRes.error
+        if (stockRes.error) throw stockRes.error
+
+        // Create unit map for quick lookup
+        const unitMap = new Map((unitsRes.data || []).map(u => [u.unit_id, u.unit_name]))
+
+        // Format students data with photos
+        const students = (studentsRes.data || []).map(u => ({
+          user_id: u.user_id,
+          user_name: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim(),
+          user_nama_depan: u.user_nama_depan,
+          user_nama_belakang: u.user_nama_belakang,
+          user_unit_id: u.user_unit_id,
+          user_unit_name: unitMap.get(u.user_unit_id) || '-',
+          user_photo: u.user_manual_picture || null
+        }))
+
+        setAllStudents(students)
+        setUniforms(uniformsRes.data || [])
+        setSizes(sizesRes.data || [])
+        setVariants(variantsRes.data || [])
+        if (!suppRes.error) setSuppliers(suppRes.data || [])
+
         // Calculate total stock and stock by supplier
         const sm = new Map()
         const sbs = new Map()
-        for (const row of (stRes.data || [])) {
+        for (const row of (stockRes.data || [])) {
           const key = `${row.uniform_id}_${row.size_id}`
           const suppKey = `${row.uniform_id}_${row.size_id}_${row.supplier_id || 'null'}`
           sm.set(key, (sm.get(key) || 0) + Number(row.qty_delta))
@@ -124,12 +125,32 @@ export default function UniformSalesPage() {
         }
         setStockMap(sm)
         setStockBySupplier(sbs)
-        setItems([])
-        setReceiptFile(null)
-      } catch (e) { setError(e.message) } finally { setLoading(false) }
+      } catch (e) {
+        setError(e.message)
+      } finally {
+        setLoading(false)
+      }
     }
-    load()
-  }, [unitId])
+    fetchInitialData()
+  }, [])
+
+  // Filter students based on search query
+  const filteredStudents = useMemo(() => {
+    if (!searchStudent.trim()) return []
+    const query = searchStudent.toLowerCase()
+    return allStudents.filter(s => 
+      s.user_name.toLowerCase().includes(query)
+    ).slice(0, 20) // Limit to 20 results
+  }, [allStudents, searchStudent])
+
+  // Get available uniforms based on selected student's unit
+  const availableUniforms = useMemo(() => {
+    if (!selectedStudent) return []
+    // Show universal uniforms + uniforms specific to student's unit
+    return uniforms.filter(u => 
+      u.is_universal || u.unit_id === selectedStudent.user_unit_id
+    )
+  }, [uniforms, selectedStudent])
 
   const getPrice = (uid, sid) => variants.find(v => v.uniform_id === uid && v.size_id === sid)?.price || 0
   const getHpp = (uid, sid) => variants.find(v => v.uniform_id === uid && v.size_id === sid)?.hpp || 0
@@ -138,7 +159,7 @@ export default function UniformSalesPage() {
 
   // Get uniforms that have stock available
   const uniformsWithStock = useMemo(() => {
-    return uniforms.filter(u => {
+    return availableUniforms.filter(u => {
       // Check if this uniform has any stock across all sizes
       for (const size of sizes) {
         const stock = stockOf(u.uniform_id, size.size_id)
@@ -146,7 +167,7 @@ export default function UniformSalesPage() {
       }
       return false
     })
-  }, [uniforms, sizes, stockMap])
+  }, [availableUniforms, sizes, stockMap])
 
   const addItem = () => {
     if (!uniformsWithStock.length || !sizes.length) return
@@ -209,8 +230,8 @@ export default function UniformSalesPage() {
   }, [items])
 
   const validate = () => {
-    if (!unitId) return 'Pilih unit'
-    if (!detailSiswaId) return 'Pilih siswa'
+    if (!userId) return 'Pilih siswa'
+    if (!selectedStudent) return 'Pilih siswa'
     if (!items.length) return 'Tambahkan item'
     for (const it of items) {
       if (!it.uniform_id || !it.size_id || !Number(it.qty)) return 'Item tidak valid'
@@ -218,7 +239,7 @@ export default function UniformSalesPage() {
         ? stockOfSupplier(it.uniform_id, it.size_id, it.supplier_id)
         : stockOf(it.uniform_id, it.size_id)
       if (Number(it.qty) > available) {
-        const uName = uniforms.find(u=>u.uniform_id===it.uniform_id)?.uniform_name || ''
+        const uName = availableUniforms.find(u=>u.uniform_id===it.uniform_id)?.uniform_name || ''
         const sName = sizes.find(s=>s.size_id===it.size_id)?.size_name || ''
         return `Stok tidak cukup untuk ${uName} - ${sName}`
       }
@@ -243,8 +264,15 @@ export default function UniformSalesPage() {
     setSaving(true)
     setError('')
     try {
-      // 1) Insert sale pending
-      const { data: sale, error: saleErr } = await supabase.from('uniform_sale').insert([{ detail_siswa_id: Number(detailSiswaId), unit_id: Number(unitId), status: 'pending', payment_method: 'transfer', total_amount: totals.amount, total_cost: totals.cost }]).select('sale_id').single()
+      // 1) Insert sale pending with user_id and their unit_id
+      const { data: sale, error: saleErr } = await supabase.from('uniform_sale').insert([{ 
+        user_id: Number(userId), 
+        unit_id: Number(selectedStudent.user_unit_id), 
+        status: 'pending', 
+        payment_method: 'transfer', 
+        total_amount: totals.amount, 
+        total_cost: totals.cost 
+      }]).select('sale_id').single()
       if (saleErr) throw saleErr
       const saleId = sale.sale_id
 
@@ -272,8 +300,8 @@ export default function UniformSalesPage() {
     // Reduce stock by posting stock_txn, then set sale.status = paid
     setSaving(true)
     try {
-      // Find latest sale pending for this student and totals
-      const { data: sale, error: selErr } = await supabase.from('uniform_sale').select('*').eq('detail_siswa_id', Number(detailSiswaId)).eq('status', 'pending').order('sale_id', { ascending: false }).limit(1).single()
+      // Find latest sale pending for this user
+      const { data: sale, error: selErr } = await supabase.from('uniform_sale').select('*').eq('user_id', Number(userId)).eq('status', 'pending').order('sale_id', { ascending: false }).limit(1).single()
       if (selErr || !sale) throw new Error(selErr?.message || 'Transaksi tidak ditemukan')
       // Load its items
       const { data: saleItems, error: itemsErr } = await supabase.from('uniform_sale_item').select('*').eq('sale_id', sale.sale_id)
@@ -320,6 +348,408 @@ export default function UniformSalesPage() {
     } catch (e) { setError(e.message) } finally { setSaving(false) }
   }
 
+  const fetchSalesHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      // Fetch sales with user info (including void columns)
+      const { data: sales, error: salesErr } = await supabase
+        .from('uniform_sale')
+        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason')
+        .order('sale_id', { ascending: false })
+        .limit(100)
+
+      if (salesErr) throw salesErr
+
+      // Get unique user IDs and unit IDs
+      const userIds = [...new Set(sales.map(s => s.user_id))]
+      const unitIds = [...new Set(sales.map(s => s.unit_id))]
+
+      // Fetch users and units info
+      const [usersRes, unitsRes] = await Promise.all([
+        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_manual_picture').in('user_id', userIds),
+        supabase.from('unit').select('unit_id, unit_name').in('unit_id', unitIds)
+      ])
+
+      const userMap = new Map((usersRes.data || []).map(u => [
+        u.user_id,
+        {
+          name: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim(),
+          photo: u.user_manual_picture
+        }
+      ]))
+      const unitMap = new Map((unitsRes.data || []).map(u => [u.unit_id, u.unit_name]))
+
+      // Get sale items for each sale
+      const saleIds = sales.map(s => s.sale_id)
+      const { data: items } = await supabase
+        .from('uniform_sale_item')
+        .select('sale_id, uniform_id, size_id, qty, unit_price, subtotal')
+        .in('sale_id', saleIds)
+
+      // Group items by sale_id
+      const itemsBySale = new Map()
+      for (const item of (items || [])) {
+        if (!itemsBySale.has(item.sale_id)) {
+          itemsBySale.set(item.sale_id, [])
+        }
+        itemsBySale.get(item.sale_id).push(item)
+      }
+
+      // Merge data
+      const enrichedSales = sales.map(s => ({
+        ...s,
+        user_name: userMap.get(s.user_id)?.name || 'Unknown',
+        user_photo: userMap.get(s.user_id)?.photo || null,
+        unit_name: unitMap.get(s.unit_id) || '-',
+        items: itemsBySale.get(s.sale_id) || [],
+        item_count: (itemsBySale.get(s.sale_id) || []).reduce((sum, i) => sum + i.qty, 0)
+      }))
+
+      setSalesHistory(enrichedSales)
+    } catch (e) {
+      console.error('Error fetching sales history:', e)
+      setError(e.message)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  // Load history when switching to history tab
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchSalesHistory()
+    }
+  }, [activeTab])
+
+  const handlePrintKwitansi = async (sale) => {
+    try {
+      // Fetch detailed items for this sale
+      const { data: items, error } = await supabase
+        .from('uniform_sale_item')
+        .select('*')
+        .eq('sale_id', sale.sale_id)
+      
+      if (error) throw error
+      
+      setKwitansiItems(items || [])
+      setSelectedSaleForKwitansi(sale)
+      setShowKwitansi(true)
+    } catch (e) {
+      console.error('Error fetching sale items:', e)
+      setError('Gagal memuat detail penjualan')
+    }
+  }
+
+  const handleVoidSale = async () => {
+    if (!selectedSaleForVoid || !voidReason.trim()) {
+      setError('Alasan pembatalan harus diisi')
+      return
+    }
+
+    setVoiding(true)
+    setError('')
+
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('user_data') || '{}')
+      const userName = `${currentUser.user_nama_depan || ''} ${currentUser.user_nama_belakang || ''}`.trim()
+
+      // 1. Get all items from this sale
+      const { data: saleItems, error: itemsError } = await supabase
+        .from('uniform_sale_item')
+        .select('*')
+        .eq('sale_id', selectedSaleForVoid.sale_id)
+
+      if (itemsError) throw itemsError
+
+      // 2. Get original stock transactions to find supplier_id
+      const { data: originalTxns, error: txnError } = await supabase
+        .from('uniform_stock_txn')
+        .select('uniform_id, size_id, supplier_id')
+        .eq('txn_type', 'sale')
+        .eq('ref_table', 'uniform_sale')
+        .eq('ref_id', selectedSaleForVoid.sale_id)
+
+      if (txnError) throw txnError
+
+      // Create map for supplier lookup
+      const supplierMap = new Map()
+      for (const txn of (originalTxns || [])) {
+        const key = `${txn.uniform_id}_${txn.size_id}`
+        supplierMap.set(key, txn.supplier_id)
+      }
+
+      // 3. Create reverse stock transactions (return stock)
+      const reverseTransactions = saleItems.map(item => {
+        const key = `${item.uniform_id}_${item.size_id}`
+        return {
+          uniform_id: item.uniform_id,
+          size_id: item.size_id,
+          qty_delta: item.qty, // POSITIVE - return stock
+          txn_type: 'void',
+          ref_table: 'uniform_sale',
+          ref_id: selectedSaleForVoid.sale_id,
+          supplier_id: supplierMap.get(key) || null,
+          notes: `Void sale #${selectedSaleForVoid.sale_id}: ${voidReason}`,
+          created_at: new Date().toISOString()
+        }
+      })
+
+      const { error: insertTxnError } = await supabase
+        .from('uniform_stock_txn')
+        .insert(reverseTransactions)
+
+      if (insertTxnError) throw insertTxnError
+
+      // 4. Update sale as voided
+      const { error: updateError } = await supabase
+        .from('uniform_sale')
+        .update({
+          is_voided: true,
+          voided_at: new Date().toISOString(),
+          voided_by: userName,
+          void_reason: voidReason
+        })
+        .eq('sale_id', selectedSaleForVoid.sale_id)
+
+      if (updateError) throw updateError
+
+      // Success - refresh history
+      setShowVoidModal(false)
+      setSelectedSaleForVoid(null)
+      setVoidReason('')
+      await fetchSalesHistory()
+      
+      // Show success message
+      setError('')
+      alert('Transaksi berhasil dibatalkan dan stock telah dikembalikan')
+    } catch (e) {
+      console.error('Error voiding sale:', e)
+      setError('Gagal membatalkan transaksi: ' + e.message)
+    } finally {
+      setVoiding(false)
+    }
+  }
+
+  const fetchSalesReport = async () => {
+    setLoadingReport(true)
+    setError('')
+    
+    try {
+      let startDate, endDate
+      
+      if (reportPeriod === 'month') {
+        // Use selected month
+        startDate = `${reportMonth}-01`
+        const nextMonth = new Date(reportMonth + '-01')
+        nextMonth.setMonth(nextMonth.getMonth() + 1)
+        endDate = nextMonth.toISOString().slice(0, 10)
+      } else {
+        // Use custom range
+        if (!reportStartDate || !reportEndDate) {
+          setError('Pilih tanggal mulai dan tanggal akhir')
+          setLoadingReport(false)
+          return
+        }
+        startDate = reportStartDate
+        endDate = reportEndDate
+      }
+
+      // Fetch sales in date range (exclude voided)
+      const { data: sales, error: salesErr } = await supabase
+        .from('uniform_sale')
+        .select('sale_id, user_id, unit_id, sale_date, status, total_amount, total_cost, is_voided')
+        .gte('sale_date', startDate)
+        .lte('sale_date', endDate)
+        .eq('is_voided', false)
+        .order('sale_date', { ascending: false })
+
+      if (salesErr) throw salesErr
+
+      // Get unique user IDs and unit IDs
+      const userIds = [...new Set(sales.map(s => s.user_id))]
+      const unitIds = [...new Set(sales.map(s => s.unit_id))]
+
+      // Fetch users and units info
+      const [usersRes, unitsRes] = await Promise.all([
+        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').in('user_id', userIds),
+        supabase.from('unit').select('unit_id, unit_name').in('unit_id', unitIds)
+      ])
+
+      const userMap = new Map((usersRes.data || []).map(u => [
+        u.user_id,
+        `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()
+      ]))
+      const unitMap = new Map((unitsRes.data || []).map(u => [u.unit_id, u.unit_name]))
+
+      // Get sale items with details (uniform name, size)
+      const saleIds = sales.map(s => s.sale_id)
+      const { data: items } = await supabase
+        .from('uniform_sale_item')
+        .select('sale_id, uniform_id, size_id, qty, unit_price')
+        .in('sale_id', saleIds)
+
+      // Get uniform and size info
+      const uniformIds = [...new Set((items || []).map(i => i.uniform_id))]
+      const sizeIds = [...new Set((items || []).map(i => i.size_id))]
+
+      const [uniformsRes, sizesRes] = await Promise.all([
+        supabase.from('uniform').select('uniform_id, uniform_name').in('uniform_id', uniformIds),
+        supabase.from('uniform_size').select('size_id, size_name').in('size_id', sizeIds)
+      ])
+
+      const uniformMap = new Map((uniformsRes.data || []).map(u => [u.uniform_id, u.uniform_name]))
+      const sizeMap = new Map((sizesRes.data || []).map(s => [s.size_id, s.size_name]))
+
+      // Group items by sale_id with details
+      const itemsBySale = new Map()
+      const itemDetailsBySale = new Map()
+      
+      for (const item of (items || [])) {
+        // Count total qty
+        if (!itemsBySale.has(item.sale_id)) {
+          itemsBySale.set(item.sale_id, 0)
+        }
+        itemsBySale.set(item.sale_id, itemsBySale.get(item.sale_id) + item.qty)
+
+        // Store item details
+        if (!itemDetailsBySale.has(item.sale_id)) {
+          itemDetailsBySale.set(item.sale_id, [])
+        }
+        itemDetailsBySale.get(item.sale_id).push({
+          uniform_name: uniformMap.get(item.uniform_id) || 'Unknown',
+          size_name: sizeMap.get(item.size_id) || '-',
+          qty: item.qty,
+          unit_price: item.unit_price
+        })
+      }
+
+      // Enrich sales data
+      const enrichedSales = sales.map(s => ({
+        ...s,
+        user_name: userMap.get(s.user_id) || 'Unknown',
+        unit_name: unitMap.get(s.unit_id) || '-',
+        item_count: itemsBySale.get(s.sale_id) || 0,
+        item_details: itemDetailsBySale.get(s.sale_id) || []
+      }))
+
+      // Calculate summary
+      const summary = {
+        total_sales: enrichedSales.length,
+        total_amount: enrichedSales.reduce((sum, s) => sum + Number(s.total_amount || 0), 0),
+        total_cost: enrichedSales.reduce((sum, s) => sum + Number(s.total_cost || 0), 0),
+        total_items: enrichedSales.reduce((sum, s) => sum + s.item_count, 0),
+        pending_count: enrichedSales.filter(s => s.status === 'pending').length,
+        paid_count: enrichedSales.filter(s => s.status === 'paid').length,
+      }
+      summary.total_profit = summary.total_amount - summary.total_cost
+
+      setReportData(enrichedSales)
+      setReportSummary(summary)
+    } catch (e) {
+      console.error('Error fetching sales report:', e)
+      setError('Gagal memuat laporan: ' + e.message)
+    } finally {
+      setLoadingReport(false)
+    }
+  }
+
+  const handleExportToExcel = () => {
+    if (reportData.length === 0) {
+      alert('Tidak ada data untuk di-export')
+      return
+    }
+
+    try {
+      // Create workbook
+      const wb = XLSX.utils.book_new()
+
+      // Prepare period info
+      let periodText = ''
+      if (reportPeriod === 'month') {
+        const date = new Date(reportMonth + '-01')
+        periodText = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+      } else {
+        const start = new Date(reportStartDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+        const end = new Date(reportEndDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+        periodText = `${start} - ${end}`
+      }
+
+      // Sheet 1: Summary
+      const summaryData = [
+        ['LAPORAN PENJUALAN SERAGAM'],
+        ['Chung Chung Christian School'],
+        ['Periode: ' + periodText],
+        [''],
+        ['RINGKASAN'],
+        ['Total Penjualan', reportSummary.total_sales + ' transaksi'],
+        ['Penjualan Lunas', reportSummary.paid_count + ' transaksi'],
+        ['Penjualan Pending', reportSummary.pending_count + ' transaksi'],
+        ['Total Item Terjual', reportSummary.total_items + ' pcs'],
+        [''],
+        ['Total Pendapatan', reportSummary.total_amount],
+        ['Total HPP', reportSummary.total_cost],
+        ['Total Profit', reportSummary.total_profit],
+        ['Margin', reportSummary.total_amount > 0 ? ((reportSummary.total_profit / reportSummary.total_amount) * 100).toFixed(2) + '%' : '0%'],
+      ]
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData)
+      
+      // Set column widths for summary
+      wsSummary['!cols'] = [{ wch: 25 }, { wch: 20 }]
+      
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Ringkasan')
+
+      // Sheet 2: Detail Transactions
+      const detailData = reportData.map(sale => {
+        // Format item details: "Kemeja Putih (M) x2, Rok Kotak (L) x1"
+        const itemsText = sale.item_details
+          .map(item => `${item.uniform_name} (${item.size_name}) x${item.qty}`)
+          .join(', ')
+
+        return {
+          'ID': sale.sale_id,
+          'Tanggal': new Date(sale.sale_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          'Siswa': sale.user_name,
+          'Unit': sale.unit_name,
+          'Detail Seragam': itemsText,
+          'Jumlah Item': sale.item_count,
+          'Total Harga': sale.total_amount,
+          'HPP': sale.total_cost,
+          'Profit': sale.total_amount - sale.total_cost,
+          'Margin %': sale.total_amount > 0 ? (((sale.total_amount - sale.total_cost) / sale.total_amount) * 100).toFixed(2) : 0,
+          'Status': sale.status === 'paid' ? 'Lunas' : 'Pending'
+        }
+      })
+
+      const wsDetail = XLSX.utils.json_to_sheet(detailData)
+      
+      // Set column widths for detail
+      wsDetail['!cols'] = [
+        { wch: 8 },  // ID
+        { wch: 12 }, // Tanggal
+        { wch: 25 }, // Siswa
+        { wch: 15 }, // Unit
+        { wch: 50 }, // Detail Seragam
+        { wch: 12 }, // Jumlah Item
+        { wch: 15 }, // Total Harga
+        { wch: 15 }, // HPP
+        { wch: 15 }, // Profit
+        { wch: 10 }, // Margin %
+        { wch: 10 }  // Status
+      ]
+
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Detail Penjualan')
+
+      // Generate filename
+      const filename = `Laporan_Penjualan_${reportPeriod === 'month' ? reportMonth : reportStartDate + '_' + reportEndDate}.xlsx`
+
+      // Export
+      XLSX.writeFile(wb, filename)
+    } catch (e) {
+      console.error('Error exporting to Excel:', e)
+      alert('Gagal export ke Excel: ' + e.message)
+    }
+  }
+
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       <div className="flex items-center justify-between">
@@ -335,78 +765,176 @@ export default function UniformSalesPage() {
         </div>
       )}
 
-      {/* Selection Card */}
-      <Card className="p-4">
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-          <div>
-            <Label>Unit *</Label>
-            <select 
-              className="mt-1 w-full border rounded px-3 py-2" 
-              value={unitId} 
-              onChange={e => {
-                setUnitId(e.target.value)
-                setDetailSiswaId('')
-                setSelectedStudent(null)
-                setSearchStudent('')
-                setShowDropdown(false)
-                setItems([])
-              }}
-            >
-              <option value="">-- Pilih Unit --</option>
-              {units.map(u => <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <Label>Cari Siswa *</Label>
-            <div className="relative mt-1">
-              <Input
-                placeholder="🔍 Ketik nama siswa..."
-                value={searchStudent}
-                onChange={e => {
-                  setSearchStudent(e.target.value)
-                  setShowDropdown(true)
-                }}
-                onFocus={() => setShowDropdown(true)}
-                disabled={!unitId}
-              />
-              {showDropdown && searchStudent && students.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
-                  {students
-                    .filter(s => 
-                      s.detail_siswa_nama.toLowerCase().includes(searchStudent.toLowerCase())
-                    )
-                    .slice(0, 10)
-                    .map(s => (
-                      <button
-                        key={s.detail_siswa_id}
-                        onClick={() => {
-                          setDetailSiswaId(String(s.detail_siswa_id))
-                          setSelectedStudent(s)
-                          setSearchStudent(s.detail_siswa_nama)
-                          setShowDropdown(false)
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b last:border-b-0"
-                      >
-                        <div className="font-medium text-sm">{s.detail_siswa_nama}</div>
-                        <div className="text-xs text-gray-500">ID: {s.detail_siswa_id}</div>
-                      </button>
-                    ))}
-                </div>
-              )}
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('penjualan')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'penjualan'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span>Penjualan</span>
             </div>
-            {selectedStudent && (
-              <div className="mt-2 bg-blue-50 border border-blue-200 rounded px-3 py-2 text-sm">
-                <div className="font-semibold text-blue-900">{selectedStudent.detail_siswa_nama}</div>
-                <div className="text-blue-700 text-xs">ID: {selectedStudent.detail_siswa_id}</div>
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'history'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>History</span>
+            </div>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('laporan')
+              if (reportData.length === 0) {
+                fetchSalesReport()
+              }
+            }}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'laporan'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Laporan Penjualan</span>
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'penjualan' ? (
+        // Existing sales form
+        <>
+        <Card className="p-4">
+        <div>
+          <Label>Cari Siswa *</Label>
+          <div className="relative mt-1">
+            <Input
+              placeholder="🔍 Ketik nama siswa untuk mencari..."
+              value={searchStudent}
+              onChange={e => {
+                setSearchStudent(e.target.value)
+                setShowDropdown(true)
+              }}
+              onFocus={() => setShowDropdown(true)}
+            />
+            {showDropdown && searchStudent && filteredStudents.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto">
+                {filteredStudents.map(s => (
+                  <button
+                    key={s.user_id}
+                    onClick={() => {
+                      setUserId(String(s.user_id))
+                      setSelectedStudent(s)
+                      setSearchStudent(s.user_name)
+                      setShowDropdown(false)
+                      setItems([]) // Clear items when changing student
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b last:border-b-0"
+                  >
+                    <div className="font-medium text-sm">{s.user_name}</div>
+                    <div className="text-xs text-gray-500">ID: {s.user_id}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {showDropdown && searchStudent && filteredStudents.length === 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-3 text-sm text-gray-500 text-center">
+                Tidak ditemukan siswa
               </div>
             )}
           </div>
+          {selectedStudent && (
+            <div className="mt-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-4">
+                {/* Profile Photo */}
+                <div className="flex-shrink-0">
+                  {selectedStudent.user_photo ? (
+                    <img 
+                      src={selectedStudent.user_photo} 
+                      alt={selectedStudent.user_name}
+                      className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md"
+                      onError={(e) => {
+                        e.target.onerror = null
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%236B7280"%3E%3Cpath d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/%3E%3C/svg%3E'
+                      }}
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-2xl font-bold shadow-md border-4 border-white">
+                      {selectedStudent.user_nama_depan?.charAt(0) || 'S'}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Student Info */}
+                <div className="flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {selectedStudent.user_name}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                          </svg>
+                          ID: {selectedStudent.user_id}
+                        </span>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                          </svg>
+                          {selectedStudent.user_unit_name}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setUserId('')
+                        setSelectedStudent(null)
+                        setSearchStudent('')
+                        setItems([])
+                      }}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                      title="Ganti siswa"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    ✓ Siswa terpilih untuk transaksi penjualan
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
       {/* Items Card */}
-      {detailSiswaId && (
+      {userId && selectedStudent && (
         <Card className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Daftar Item</h2>
@@ -692,9 +1220,9 @@ export default function UniformSalesPage() {
       {/* Confirm modal to mark as paid */}
       <Modal isOpen={showConfirm} onClose={()=>setShowConfirm(false)} title="✅ Konfirmasi Pembayaran" size="md">
         <div className="space-y-4">
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded p-4">
             <p className="text-sm text-gray-700">
-              <strong>Perhatian:</strong> Setelah ditandai Lunas, stok akan berkurang sesuai jumlah penjualan dan transaksi tidak dapat dibatalkan.
+              <strong>Perhatian:</strong> Setelah ditandai Lunas, stok akan berkurang sesuai jumlah penjualan. Transaksi yang sudah lunas masih dapat dibatalkan (void) jika diperlukan.
             </p>
           </div>
           
@@ -726,6 +1254,535 @@ export default function UniformSalesPage() {
               className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 font-semibold disabled:opacity-50"
             >
               {saving ? '⏳ Memproses...' : '✓ Tandai Lunas'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      </>
+      ) : activeTab === 'history' ? (
+        // History Tab
+        <div className="space-y-4">
+          {/* Filter */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setHistoryFilter('all')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    historyFilter === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Semua
+                </button>
+                <button
+                  onClick={() => setHistoryFilter('pending')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    historyFilter === 'pending'
+                      ? 'bg-yellow-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Pending
+                </button>
+                <button
+                  onClick={() => setHistoryFilter('paid')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    historyFilter === 'paid'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Lunas
+                </button>
+                <button
+                  onClick={() => setHistoryFilter('cancelled')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    historyFilter === 'cancelled'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => setHistoryFilter('voided')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    historyFilter === 'voided'
+                      ? 'bg-gray-800 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Dibatalkan (Void)
+                </button>
+              </div>
+              <Button
+                onClick={fetchSalesHistory}
+                disabled={loadingHistory}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {loadingHistory ? 'Loading...' : '🔄 Refresh'}
+              </Button>
+            </div>
+          </Card>
+
+          {/* History List */}
+          {loadingHistory ? (
+            <Card className="p-8 text-center text-gray-500">
+              <div className="text-4xl mb-2">⏳</div>
+              <p>Memuat history...</p>
+            </Card>
+          ) : salesHistory.filter(s => {
+            if (historyFilter === 'all') return true
+            if (historyFilter === 'voided') return s.is_voided
+            return s.status === historyFilter && !s.is_voided
+          }).length === 0 ? (
+            <Card className="p-8 text-center text-gray-500">
+              <div className="text-4xl mb-2">📋</div>
+              <p>Tidak ada data penjualan</p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {salesHistory
+                .filter(s => {
+                  if (historyFilter === 'all') return true
+                  if (historyFilter === 'voided') return s.is_voided
+                  return s.status === historyFilter && !s.is_voided
+                })
+                .map(sale => (
+                  <Card key={sale.sale_id} className="p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-4">
+                      {/* Student Photo */}
+                      <div className="flex-shrink-0">
+                        {sale.user_photo ? (
+                          <img
+                            src={sale.user_photo}
+                            alt={sale.user_name}
+                            className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                            onError={(e) => {
+                              e.target.onerror = null
+                              e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%236B7280"%3E%3Cpath d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/%3E%3C/svg%3E'
+                            }}
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xl font-bold">
+                            {sale.user_name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Sale Info */}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{sale.user_name}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-gray-500">
+                                #{sale.sale_id}
+                              </span>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(sale.sale_date).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-gray-500">
+                                {sale.unit_name}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                sale.is_voided
+                                  ? 'bg-gray-800 text-white'
+                                  : sale.status === 'paid'
+                                  ? 'bg-green-100 text-green-800'
+                                  : sale.status === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {sale.is_voided
+                                ? '🚫 VOID'
+                                : sale.status === 'paid'
+                                ? 'Lunas'
+                                : sale.status === 'pending'
+                                ? 'Pending'
+                                : 'Batal'}
+                            </span>
+                            {sale.is_voided && (
+                              <span className="text-xs text-gray-500">
+                                {new Date(sale.voided_at).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">{sale.item_count} item</span>
+                            {sale.receipt_url && (
+                              <>
+                                <span className="mx-2">•</span>
+                                <a
+                                  href={sale.receipt_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  📄 Bukti Transfer
+                                </a>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-sm text-gray-500">Total</div>
+                              <div className="text-lg font-bold text-gray-900">
+                                {formatCurrency(sale.total_amount)}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              {sale.status === 'paid' && !sale.is_voided && (
+                                <Button
+                                  onClick={() => handlePrintKwitansi(sale)}
+                                  className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2 whitespace-nowrap"
+                                >
+                                  🖨️ Cetak Kwitansi
+                                </Button>
+                              )}
+                              {sale.is_voided && (
+                                <Button
+                                  onClick={() => handlePrintKwitansi(sale)}
+                                  className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-3 py-2 whitespace-nowrap"
+                                >
+                                  🖨️ Kwitansi (VOID)
+                                </Button>
+                              )}
+                              {!sale.is_voided && (sale.status === 'pending' || sale.status === 'paid') && (
+                                <Button
+                                  onClick={() => {
+                                    setSelectedSaleForVoid(sale)
+                                    setShowVoidModal(true)
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 whitespace-nowrap"
+                                >
+                                  🚫 Batalkan
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+            </div>
+          )}
+        </div>
+      ) : activeTab === 'laporan' ? (
+        // Laporan Tab
+        <div className="space-y-4">
+          {/* Period Filter */}
+          <Card className="p-4">
+            <h3 className="font-semibold mb-4">Filter Periode</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Period Type */}
+              <div>
+                <Label>Tipe Periode</Label>
+                <select
+                  value={reportPeriod}
+                  onChange={(e) => setReportPeriod(e.target.value)}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="month">Bulanan</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              {reportPeriod === 'month' ? (
+                <div>
+                  <Label>Pilih Bulan</Label>
+                  <input
+                    type="month"
+                    value={reportMonth}
+                    onChange={(e) => setReportMonth(e.target.value)}
+                    className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <Label>Tanggal Mulai</Label>
+                    <input
+                      type="date"
+                      value={reportStartDate}
+                      onChange={(e) => setReportStartDate(e.target.value)}
+                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label>Tanggal Akhir</Label>
+                    <input
+                      type="date"
+                      value={reportEndDate}
+                      onChange={(e) => setReportEndDate(e.target.value)}
+                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end gap-3">
+              <Button
+                onClick={fetchSalesReport}
+                disabled={loadingReport}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {loadingReport ? '⏳ Loading...' : '📊 Tampilkan Laporan'}
+              </Button>
+              {reportData.length > 0 && (
+                <Button
+                  onClick={handleExportToExcel}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  📥 Export Excel
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Summary Cards */}
+          {reportData.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <div className="text-sm text-blue-600 font-medium mb-1">Total Penjualan</div>
+                <div className="text-2xl font-bold text-blue-900">{reportSummary.total_sales}</div>
+                <div className="text-xs text-blue-600 mt-1">
+                  {reportSummary.paid_count} lunas, {reportSummary.pending_count} pending
+                </div>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                <div className="text-sm text-green-600 font-medium mb-1">Total Pendapatan</div>
+                <div className="text-2xl font-bold text-green-900">{formatCurrency(reportSummary.total_amount)}</div>
+                <div className="text-xs text-green-600 mt-1">{reportSummary.total_items} item terjual</div>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                <div className="text-sm text-orange-600 font-medium mb-1">Total HPP</div>
+                <div className="text-2xl font-bold text-orange-900">{formatCurrency(reportSummary.total_cost)}</div>
+                <div className="text-xs text-orange-600 mt-1">Harga Pokok Penjualan</div>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                <div className="text-sm text-purple-600 font-medium mb-1">Total Profit</div>
+                <div className="text-2xl font-bold text-purple-900">{formatCurrency(reportSummary.total_profit)}</div>
+                <div className="text-xs text-purple-600 mt-1">
+                  Margin: {reportSummary.total_amount > 0 ? ((reportSummary.total_profit / reportSummary.total_amount) * 100).toFixed(1) : 0}%
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Sales List */}
+          {loadingReport ? (
+            <Card className="p-8 text-center text-gray-500">
+              <div className="text-4xl mb-2">⏳</div>
+              <p>Memuat laporan...</p>
+            </Card>
+          ) : reportData.length === 0 ? (
+            <Card className="p-8 text-center text-gray-500">
+              <div className="text-4xl mb-2">📊</div>
+              <p>Tidak ada data penjualan pada periode ini</p>
+            </Card>
+          ) : (
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Detail Penjualan</h3>
+                <span className="text-sm text-gray-600">{reportData.length} transaksi</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="py-3 px-3 text-left font-semibold">ID</th>
+                      <th className="py-3 px-3 text-left font-semibold">Tanggal</th>
+                      <th className="py-3 px-3 text-left font-semibold">Siswa</th>
+                      <th className="py-3 px-3 text-left font-semibold">Unit</th>
+                      <th className="py-3 px-3 text-center font-semibold">Items</th>
+                      <th className="py-3 px-3 text-right font-semibold">Total</th>
+                      <th className="py-3 px-3 text-right font-semibold">HPP</th>
+                      <th className="py-3 px-3 text-right font-semibold">Profit</th>
+                      <th className="py-3 px-3 text-center font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.map(sale => (
+                      <tr key={sale.sale_id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-3 text-gray-900">#{sale.sale_id}</td>
+                        <td className="py-3 px-3 text-gray-700">
+                          {new Date(sale.sale_date).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td className="py-3 px-3 text-gray-900">{sale.user_name}</td>
+                        <td className="py-3 px-3 text-gray-600">{sale.unit_name}</td>
+                        <td className="py-3 px-3 text-center text-gray-700">{sale.item_count}</td>
+                        <td className="py-3 px-3 text-right font-semibold text-gray-900">
+                          {formatCurrency(sale.total_amount)}
+                        </td>
+                        <td className="py-3 px-3 text-right text-gray-700">
+                          {formatCurrency(sale.total_cost)}
+                        </td>
+                        <td className="py-3 px-3 text-right font-semibold text-green-700">
+                          {formatCurrency(sale.total_amount - sale.total_cost)}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              sale.status === 'paid'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}
+                          >
+                            {sale.status === 'paid' ? 'Lunas' : 'Pending'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 bg-gray-50 font-bold">
+                      <td colSpan="5" className="py-3 px-3 text-right">TOTAL:</td>
+                      <td className="py-3 px-3 text-right text-gray-900">
+                        {formatCurrency(reportSummary.total_amount)}
+                      </td>
+                      <td className="py-3 px-3 text-right text-gray-900">
+                        {formatCurrency(reportSummary.total_cost)}
+                      </td>
+                      <td className="py-3 px-3 text-right text-green-700">
+                        {formatCurrency(reportSummary.total_profit)}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </Card>
+          )}
+        </div>
+      ) : null}
+
+      {/* Kwitansi Modal */}
+      <KwitansiModal
+        isOpen={showKwitansi}
+        onClose={() => {
+          setShowKwitansi(false)
+          setSelectedSaleForKwitansi(null)
+          setKwitansiItems([])
+        }}
+        sale={selectedSaleForKwitansi}
+        items={kwitansiItems}
+        uniforms={uniforms}
+        sizes={sizes}
+      />
+
+      {/* Void Modal */}
+      <Modal
+        isOpen={showVoidModal}
+        onClose={() => {
+          if (!voiding) {
+            setShowVoidModal(false)
+            setSelectedSaleForVoid(null)
+            setVoidReason('')
+          }
+        }}
+        title="🚫 Batalkan Transaksi"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded p-4">
+            <p className="text-sm text-red-800">
+              <strong>Perhatian:</strong> Pembatalan transaksi akan mengembalikan stock ke supplier yang sama. Transaksi yang sudah dibatalkan tidak dapat dikembalikan.
+            </p>
+          </div>
+
+          {selectedSaleForVoid && (
+            <div className="bg-gray-50 border rounded p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">ID Transaksi:</span>
+                <span className="font-semibold">#{selectedSaleForVoid.sale_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Siswa:</span>
+                <span className="font-semibold">{selectedSaleForVoid.user_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Status:</span>
+                <span className={`font-semibold ${selectedSaleForVoid.status === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>
+                  {selectedSaleForVoid.status === 'paid' ? 'Lunas' : 'Pending'}
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-gray-700 font-medium">Total:</span>
+                <span className="font-bold text-lg text-gray-900">
+                  {formatCurrency(selectedSaleForVoid.total_amount)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <Label className="text-red-700 font-medium">
+              Alasan Pembatalan <span className="text-red-500">*</span>
+            </Label>
+            <textarea
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="Masukkan alasan pembatalan transaksi..."
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+              rows={4}
+              disabled={voiding}
+            />
+            {!voidReason.trim() && (
+              <p className="text-xs text-red-600 mt-1">* Alasan harus diisi</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button
+              onClick={() => {
+                setShowVoidModal(false)
+                setSelectedSaleForVoid(null)
+                setVoidReason('')
+              }}
+              disabled={voiding}
+              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleVoidSale}
+              disabled={voiding || !voidReason.trim()}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 font-semibold disabled:opacity-50"
+            >
+              {voiding ? '⏳ Membatalkan...' : '🚫 Batalkan Transaksi'}
             </Button>
           </div>
         </div>
