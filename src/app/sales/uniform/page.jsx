@@ -34,7 +34,7 @@ export default function UniformSalesPage() {
   const [activeTab, setActiveTab] = useState('penjualan') // 'penjualan', 'history', or 'laporan'
   const [salesHistory, setSalesHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
-  const [historyFilter, setHistoryFilter] = useState('all') // 'all', 'pending', 'paid', 'cancelled', 'voided'
+  const [historyFilter, setHistoryFilter] = useState('all') // 'all', 'pending', 'paid', 'voided'
   const [showKwitansi, setShowKwitansi] = useState(false)
   const [selectedSaleForKwitansi, setSelectedSaleForKwitansi] = useState(null)
   const [kwitansiItems, setKwitansiItems] = useState([])
@@ -342,10 +342,34 @@ export default function UniformSalesPage() {
       }
       setStockMap(sm)
       setStockBySupplier(sbs)
-      // Clear cart
+      
+      // Prepare sale data with enriched info for kwitansi
+      const saleForKwitansi = {
+        ...sale,
+        status: 'paid',
+        user_name: selectedStudent?.user_name || 'Unknown',
+        unit_name: selectedStudent?.user_unit_name || '-'
+      }
+      
+      // Set kwitansi data and open modal
+      setKwitansiItems(saleItems || [])
+      setSelectedSaleForKwitansi(saleForKwitansi)
+      setShowKwitansi(true)
+      
+      // Clear cart and close confirm modal
       setItems([])
       setReceiptFile(null)
-    } catch (e) { setError(e.message) } finally { setSaving(false) }
+      setShowConfirm(false)
+      
+      // Show success message
+      setTimeout(() => {
+        alert('✅ Pembayaran berhasil! Silakan cetak kwitansi.')
+      }, 300)
+    } catch (e) { 
+      setError(e.message) 
+    } finally { 
+      setSaving(false) 
+    }
   }
 
   const fetchSalesHistory = async () => {
@@ -437,6 +461,65 @@ export default function UniformSalesPage() {
     } catch (e) {
       console.error('Error fetching sale items:', e)
       setError('Gagal memuat detail penjualan')
+    }
+  }
+
+  const handleMarkPaidFromHistory = async (sale) => {
+    if (!confirm('Tandai transaksi ini sebagai LUNAS?')) return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      // Load sale items
+      const { data: saleItems, error: itemsErr } = await supabase
+        .from('uniform_sale_item')
+        .select('*')
+        .eq('sale_id', sale.sale_id)
+      
+      if (itemsErr) throw itemsErr
+
+      // Post stock transactions
+      const stockRows = (saleItems || []).map(it => ({
+        uniform_id: it.uniform_id, 
+        size_id: it.size_id, 
+        supplier_id: null, // No supplier info in items, set null
+        qty_delta: -Number(it.qty), 
+        txn_type: 'sale', 
+        ref_table: 'uniform_sale', 
+        ref_id: sale.sale_id, 
+        notes: 'penjualan seragam'
+      }))
+
+      if (stockRows.length) {
+        const { error: stErr } = await supabase
+          .from('uniform_stock_txn')
+          .insert(stockRows)
+        if (stErr) throw stErr
+      }
+
+      // Update sale to paid
+      const { error: updErr } = await supabase
+        .from('uniform_sale')
+        .update({ status: 'paid' })
+        .eq('sale_id', sale.sale_id)
+      
+      if (updErr) throw updErr
+
+      // Refresh history
+      await fetchSalesHistory()
+
+      // Open kwitansi
+      setKwitansiItems(saleItems || [])
+      setSelectedSaleForKwitansi({ ...sale, status: 'paid' })
+      setShowKwitansi(true)
+
+      alert('✅ Transaksi berhasil ditandai lunas!')
+    } catch (e) {
+      console.error('Error marking paid:', e)
+      setError('Gagal menandai lunas: ' + e.message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -1297,16 +1380,6 @@ export default function UniformSalesPage() {
                   Lunas
                 </button>
                 <button
-                  onClick={() => setHistoryFilter('cancelled')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    historyFilter === 'cancelled'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Batal
-                </button>
-                <button
                   onClick={() => setHistoryFilter('voided')}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     historyFilter === 'voided'
@@ -1454,6 +1527,18 @@ export default function UniformSalesPage() {
                               </div>
                             </div>
                             <div className="flex gap-2">
+                              {/* Tombol Tandai Lunas untuk Pending */}
+                              {sale.status === 'pending' && !sale.is_voided && (
+                                <Button
+                                  onClick={() => handleMarkPaidFromHistory(sale)}
+                                  disabled={saving}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 whitespace-nowrap"
+                                >
+                                  💰 Tandai Lunas
+                                </Button>
+                              )}
+                              
+                              {/* Tombol Cetak Kwitansi untuk Paid */}
                               {sale.status === 'paid' && !sale.is_voided && (
                                 <Button
                                   onClick={() => handlePrintKwitansi(sale)}
@@ -1462,6 +1547,8 @@ export default function UniformSalesPage() {
                                   🖨️ Cetak Kwitansi
                                 </Button>
                               )}
+                              
+                              {/* Tombol Kwitansi Void */}
                               {sale.is_voided && (
                                 <Button
                                   onClick={() => handlePrintKwitansi(sale)}
@@ -1470,6 +1557,8 @@ export default function UniformSalesPage() {
                                   🖨️ Kwitansi (VOID)
                                 </Button>
                               )}
+                              
+                              {/* Tombol Batalkan */}
                               {!sale.is_voided && (sale.status === 'pending' || sale.status === 'paid') && (
                                 <Button
                                   onClick={() => {
@@ -1696,6 +1785,15 @@ export default function UniformSalesPage() {
           setShowKwitansi(false)
           setSelectedSaleForKwitansi(null)
           setKwitansiItems([])
+          
+          // Reset form untuk transaksi baru (jika dari flow mark paid di tab penjualan)
+          if (activeTab === 'penjualan' && selectedSaleForKwitansi) {
+            setUserId('')
+            setSelectedStudent(null)
+            setSearchStudent('')
+            setItems([])
+            setReceiptFile(null)
+          }
         }}
         sale={selectedSaleForKwitansi}
         items={kwitansiItems}
