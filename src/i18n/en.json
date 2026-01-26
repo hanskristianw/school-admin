@@ -26,6 +26,7 @@
     "googleSignIn": "Sign in with Google",
     "useGoogleAccount": "Use your @ccs.sch.id Google account",
     "orRegister": "or",
+    "newStudentRegistration": "New Student Registration",
     "registerNewStudent": "Register New Student",
     "checkStatus": "Check Status",
     "registerHint": "Registration for new student applicants"

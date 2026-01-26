@@ -8,14 +8,13 @@ import { customAuth, setAuthToken } from "@/lib/supabase"
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/lib/i18n'
 
-// Animated background orbs component
+// Animated background orbs component - iOS style
 function FloatingOrbs() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute top-1/4 -left-20 w-72 h-72 bg-sky-400/30 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute top-3/4 -right-20 w-96 h-96 bg-cyan-400/20 rounded-full blur-3xl animate-pulse delay-1000" />
-      <div className="absolute -top-20 right-1/4 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse delay-500" />
-      <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-teal-400/25 rounded-full blur-3xl animate-pulse delay-700" />
+      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute top-3/4 -right-20 w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-pulse delay-1000" />
+      <div className="absolute -top-20 right-1/4 w-72 h-72 bg-pink-500/15 rounded-full blur-3xl animate-pulse delay-500" />
     </div>
   )
 }
@@ -78,6 +77,7 @@ function LoginContent() {
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [googleReady, setGoogleReady] = useState(false)
+  const [showAdmission, setShowAdmission] = useState(false)
 
   // Google Client ID from env
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
@@ -301,74 +301,61 @@ function LoginContent() {
         strategy="afterInteractive"
       />
 
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-sky-900/40 to-slate-900 px-4 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-blue-50 to-purple-50 px-4 relative overflow-hidden">
       {/* Background Effects */}
       <FloatingOrbs />
-      <GridPattern />
       
       {/* Main Card */}
       <div className="w-full max-w-md relative z-10">
-        {/* Large Logo Overlay Behind Card */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="relative w-80 h-80 opacity-[0.08]">
-            <Image
-              src="/images/login-logo.png"
-              alt=""
-              fill
-              sizes="320px"
-              className="object-contain rounded-full"
-              priority
-            />
-          </div>
-        </div>
         
-        {/* Glow effect behind card */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-sky-500 via-cyan-400 to-blue-500 rounded-2xl blur-xl opacity-30 animate-pulse" />
-        
-        {/* Glassmorphism Card */}
-        <div className="relative backdrop-blur-xl bg-slate-900/80 border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
-          {/* Top gradient line */}
-          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-sky-400 to-transparent" />
+        {/* iOS-style Frosted Glass Card */}
+        <div className="relative backdrop-blur-2xl bg-white/70 border border-white/40 rounded-[2.5rem] shadow-2xl overflow-hidden">
+          {/* Subtle top shimmer */}
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
           
           {/* Header */}
-          <div className="pt-10 pb-8 px-8 text-center">
+          <div className="pt-8 pb-6 px-8 text-center">
             {/* Logo */}
-            <div className="flex justify-center mb-8">
+            <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-sky-400 to-cyan-400 rounded-2xl blur-lg opacity-30" />
-                <Image
-                  src="/images/login-logo.png"
-                  alt="School Logo"
-                  width={160}
-                  height={80}
-                  style={{ width: 'auto', height: 'auto' }}
-                  className="relative object-contain drop-shadow-lg"
-                  priority
-                />
+                {/* Soft shadow */}
+                <div className="absolute -inset-2 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-xl" />
+                {/* White background for logo - iOS style */}
+                <div className="relative bg-white rounded-3xl p-5 shadow-lg ring-1 ring-black/5">
+                  <Image
+                    src="/images/login-logo.png"
+                    alt="School Logo"
+                    width={140}
+                    height={70}
+                    style={{ width: 'auto', height: 'auto' }}
+                    className="object-contain"
+                    priority
+                  />
+                </div>
               </div>
             </div>
             
-            {/* Title */}
-            <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">
+            {/* Title - iOS style typography */}
+            <h1 className="text-2xl font-semibold text-gray-900 mb-1 tracking-tight">
               {t('login.title')}
             </h1>
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-gray-500 font-normal">
               {t('login.subtitle')}
             </p>
           </div>
 
           {/* Content */}
-          <div className="px-8 pb-10">
-            {/* Error Alert */}
+          <div className="px-8 pb-8">
+            {/* Error Alert - iOS style */}
             {error && (
-              <div className="mb-6 p-4 bg-red-500/20 backdrop-blur-sm border border-red-500/30 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center mt-0.5">
-                    <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-2xl">
+                <div className="flex items-start gap-2">
+                  <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center mt-0.5">
+                    <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   </div>
-                  <p className="text-red-200 text-sm">{error}</p>
+                  <p className="text-red-700 text-xs font-medium">{error}</p>
                 </div>
               </div>
             )}
@@ -376,26 +363,26 @@ function LoginContent() {
             {/* Hidden div for Google button fallback */}
             <div id="google-signin-button" className="hidden" />
 
-            {/* Google Login Button */}
+            {/* Google Login Button - iOS style */}
             <Button 
               type="button"
               onClick={handleGoogleLogin}
               disabled={isSubmitting || !googleReady} 
-              className="w-full h-14 bg-white hover:bg-gray-100 text-gray-800 font-semibold rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border-0"
+              className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-gray-200/50"
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center gap-3">
                   <div className="relative w-5 h-5">
-                    <div className="absolute inset-0 border-2 border-transparent border-t-gray-600 rounded-full animate-spin" />
+                    <div className="absolute inset-0 border-2 border-transparent border-t-blue-500 rounded-full animate-spin" />
                   </div>
-                  <span className="text-gray-600">{t('login.processing')}</span>
+                  <span className="text-gray-700">{t('login.processing')}</span>
                 </div>
               ) : !googleReady ? (
                 <div className="flex items-center justify-center gap-3">
                   <div className="relative w-5 h-5">
-                    <div className="absolute inset-0 border-2 border-transparent border-t-gray-600 rounded-full animate-spin" />
+                    <div className="absolute inset-0 border-2 border-transparent border-t-blue-500 rounded-full animate-spin" />
                   </div>
-                  <span className="text-gray-600">{t('login.loading')}</span>
+                  <span className="text-gray-700">{t('login.loading')}</span>
                 </div>
               ) : (
                 <span className="flex items-center justify-center gap-3">
@@ -406,71 +393,97 @@ function LoginContent() {
             </Button>
 
             {/* Info Text */}
-            <p className="mt-6 text-center text-white/40 text-xs">
+            <p className="mt-3 text-center text-gray-400 text-xs">
               {t('login.useGoogleAccount')}
             </p>
 
-            {/* Divider */}
+            {/* Divider - iOS style */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
+                <div className="w-full border-t border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-slate-900/80 px-3 text-white/40">{t('login.orRegister') || 'atau'}</span>
+                <span className="bg-white/70 backdrop-blur-sm px-3 text-gray-500 font-medium">{t('login.orRegister') || 'atau'}</span>
               </div>
             </div>
 
-            {/* New Student Registration & Check Status Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
+            {/* Collapsible Admission Section */}
+            <div className="space-y-2">
+              {/* Toggle Button */}
+              <button
                 type="button"
-                onClick={() => router.push('/admission')}
-                variant="outline"
-                className="flex-1 h-12 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-400 font-semibold rounded-xl transition-all duration-300"
+                onClick={() => setShowAdmission(!showAdmission)}
+                className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all duration-200 border border-gray-200"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                <span className="text-sm font-medium text-gray-700">
+                  {t('login.newStudentRegistration')}
+                </span>
+                <svg
+                  className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${showAdmission ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-                {t('login.registerNewStudent') || 'Daftar Siswa Baru'}
-              </Button>
+              </button>
 
-              <Button 
-                type="button"
-                onClick={() => router.push('/admission/status')}
-                variant="outline"
-                className="flex-1 h-12 border-sky-500/50 text-sky-400 hover:bg-sky-500/10 hover:border-sky-400 font-semibold rounded-xl transition-all duration-300"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                {t('login.checkStatus') || 'Cek Status'}
-              </Button>
+              {/* Dropdown Content */}
+              {showAdmission && (
+                <div className="space-y-2 pt-1 animate-fadeIn">
+                  <Button 
+                    type="button"
+                    onClick={() => router.push('/admission')}
+                    variant="outline"
+                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-95 text-sm"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    {t('login.registerNewStudent') || 'Daftar Siswa Baru'}
+                  </Button>
+
+                  <Button 
+                    type="button"
+                    onClick={() => router.push('/admission/status')}
+                    variant="outline"
+                    className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-95 text-sm"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    {t('login.checkStatus') || 'Cek Status'}
+                  </Button>
+
+                  {/* Footer text */}
+                  <p className="text-center text-gray-400 text-xs pt-1">
+                    {t('login.registerHint') || 'Pendaftaran untuk calon siswa baru'}
+                  </p>
+                </div>
+              )}
             </div>
-
-            <p className="mt-3 text-center text-white/40 text-xs">
-              {t('login.registerHint') || 'Pendaftaran untuk calon siswa baru'}
-            </p>
           </div>
-          
-          {/* Bottom gradient line */}
-          <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
         </div>
       </div>
 
       {/* CSS for custom animations */}
       <style jsx>{`
         @keyframes pulse {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.05); }
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.25; transform: scale(1.03); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         .animate-pulse {
           animation: pulse 4s ease-in-out infinite;
         }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
         .delay-500 {
           animation-delay: 0.5s;
-        }
-        .delay-700 {
-          animation-delay: 0.7s;
         }
         .delay-1000 {
           animation-delay: 1s;
