@@ -503,8 +503,7 @@ export default function UserManagement() {
       // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active')
-        .order('user_id');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active');
 
       if (usersError) {
         throw new Error(usersError.message);
@@ -548,6 +547,13 @@ export default function UserManagement() {
           unit_name: unit?.unit_name || '',
           is_active: user.is_active
         };
+      });
+
+      // Sort by role_id first, then by nama_depan
+      transformedData.sort((a, b) => {
+        const roleCompare = (a.user_role_id || 0) - (b.user_role_id || 0);
+        if (roleCompare !== 0) return roleCompare;
+        return (a.user_nama_depan || '').localeCompare(b.user_nama_depan || '');
       });
 
       console.log('Fetched users from Supabase:', transformedData);
@@ -609,17 +615,7 @@ export default function UserManagement() {
       errors.user_nama_belakang = 'Nama belakang wajib diisi';
     }
     
-    if (!formData.user_username.trim()) {
-      errors.user_username = 'Username wajib diisi';
-    } else if (formData.user_username.length < 3) {
-      errors.user_username = 'Username minimal 3 karakter';
-    }
-    
-  if (!editingUser && !formData.password.trim()) {
-      errors.user_password = 'Password wajib diisi';
-  } else if (formData.password && formData.password.length < 6) {
-      errors.user_password = 'Password minimal 6 karakter';
-    }
+    // Username and password validation removed - using Google login only
     
     if (formData.user_email && !emailPattern.test(formData.user_email.trim())) {
       errors.user_email = 'Email tidak valid';
@@ -858,21 +854,6 @@ export default function UserManagement() {
               />
               {formErrors.user_nama_belakang && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.user_nama_belakang}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="user_username">Username *</Label>
-              <Input
-                id="user_username"
-                name="user_username"
-                value={formData.user_username}
-                onChange={handleInputChange}
-                className={formErrors.user_username ? 'border-red-500' : ''}
-                disabled={submitting}
-              />
-              {formErrors.user_username && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.user_username}</p>
               )}
             </div>
 

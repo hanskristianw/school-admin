@@ -12,6 +12,7 @@ import NotificationModal from '@/components/ui/notification-modal'
 export default function RoleManagementPage() {
   const [loading, setLoading] = useState(true)
   const [roles, setRoles] = useState([])
+  const [dashboardTypes, setDashboardTypes] = useState([])
   const [search, setSearch] = useState('')
   const [showEdit, setShowEdit] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -19,6 +20,8 @@ export default function RoleManagementPage() {
   const [form, setForm] = useState({
     role_id: null,
     role_name: '',
+    dashboard_type_id: null,
+    role_priority: 50,
     is_admin: false,
     is_teacher: false,
     is_principal: false,
@@ -38,7 +41,21 @@ export default function RoleManagementPage() {
     const load = async () => {
       try {
         setLoading(true)
-        const { data, error } = await supabase.from('role').select('role_id, role_name, is_admin, is_teacher, is_principal, is_student, is_counselor').order('role_name')
+        // Fetch dashboard types
+        const { data: dtData, error: dtError } = await supabase
+          .from('dashboard_type')
+          .select('dashboard_type_id, type_code, type_name')
+          .eq('is_active', true)
+          .order('type_name')
+        if (dtError) throw new Error(dtError.message)
+        setDashboardTypes(dtData || [])
+        
+        // Fetch roles with dashboard_type info
+        const { data, error } = await supabase
+          .from('role')
+          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor')
+          .order('role_priority', { ascending: false })
+          .order('role_name')
         if (error) throw new Error(error.message)
         setRoles(data || [])
       } catch (e) {
@@ -55,13 +72,15 @@ export default function RoleManagementPage() {
   }, [roles, search])
 
   const openNew = () => {
-    setForm({ role_id: null, role_name: '', is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false })
+    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false })
     setShowEdit(true)
   }
   const openEdit = (r) => {
     setForm({
       role_id: r.role_id,
       role_name: r.role_name || '',
+      dashboard_type_id: r.dashboard_type_id || null,
+      role_priority: r.role_priority || 50,
       is_admin: !!r.is_admin,
       is_teacher: !!r.is_teacher,
       is_principal: !!r.is_principal,
@@ -77,10 +96,16 @@ export default function RoleManagementPage() {
       setNotif({ isOpen: true, title: 'Validation', message: 'Role name is required', type: 'warning' });
       return;
     }
+    if (!form.dashboard_type_id) {
+      setNotif({ isOpen: true, title: 'Validation', message: 'Dashboard type is required', type: 'warning' });
+      return;
+    }
     setSaving(true)
     try {
       const payload = {
         role_name: form.role_name.trim(),
+        role_priority: parseInt(form.role_priority) || 50,
+        dashboard_type_id: parseInt(form.dashboard_type_id),
         is_admin: !!form.is_admin,
         is_teacher: !!form.is_teacher,
         is_principal: !!form.is_principal,
@@ -94,7 +119,7 @@ export default function RoleManagementPage() {
         const { error } = await supabase.from('role').insert([payload])
         if (error) throw new Error(error.message)
       }
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, is_admin, is_teacher, is_principal, is_student, is_counselor').order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor').order('role_priority', { ascending: false }).order('role_name')
       if (rErr) throw new Error(rErr.message)
       setRoles(data || [])
       setShowEdit(false)
@@ -110,7 +135,7 @@ export default function RoleManagementPage() {
     try {
       const { error } = await supabase.from('role').delete().eq('role_id', r.role_id)
       if (error) throw error
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, is_admin, is_teacher, is_principal, is_student, is_counselor').order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor').order('role_priority', { ascending: false }).order('role_name')
       if (rErr) throw rErr
       setRoles(data || [])
       setNotif({ isOpen: true, title: 'Deleted', message: 'Role removed', type: 'success' })
@@ -156,6 +181,8 @@ export default function RoleManagementPage() {
                 <thead>
                   <tr className="text-left text-gray-600 border-b">
                     <th className="py-2 pr-2">Name</th>
+                    <th className="py-2 pr-2">Priority</th>
+                    <th className="py-2 pr-2">Dashboard Type</th>
                     <th className="py-2 pr-2">Flags</th>
                     <th className="py-2 pr-2">Actions</th>
                   </tr>
@@ -164,6 +191,20 @@ export default function RoleManagementPage() {
                   {filtered.map((r) => (
                     <tr key={r.role_id} className="hover:bg-gray-50">
                       <td className="py-2 pr-2 font-medium">{r.role_name}</td>
+                      <td className="py-2 pr-2 text-sm">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          {r.role_priority || 50}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-2 text-sm">
+                        {r.dashboard_type_id ? (
+                          <span className="text-gray-700">
+                            {dashboardTypes.find(dt => dt.dashboard_type_id === r.dashboard_type_id)?.type_name || 'Unknown'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic">Not set</span>
+                        )}
+                      </td>
                       <td className="py-2 pr-2 text-xs">
                         <div className="flex flex-wrap gap-1">
                           {r.is_admin && <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800">Admin</span>}
@@ -185,7 +226,7 @@ export default function RoleManagementPage() {
                     </tr>
                   ))}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={3} className="text-center text-gray-500 py-4">No roles found</td></tr>
+                    <tr><td colSpan={5} className="text-center text-gray-500 py-4">No roles found</td></tr>
                   )}
                 </tbody>
               </table>
@@ -199,6 +240,36 @@ export default function RoleManagementPage() {
           <div>
             <Label>Name</Label>
             <Input value={form.role_name} onChange={e => setForm(prev => ({ ...prev, role_name: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Dashboard Type <span className="text-red-500">*</span></Label>
+            <select
+              value={form.dashboard_type_id || ''}
+              onChange={e => setForm(prev => ({ ...prev, dashboard_type_id: e.target.value ? parseInt(e.target.value) : null }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">-- Pilih Dashboard Type --</option>
+              {dashboardTypes.map(dt => (
+                <option key={dt.dashboard_type_id} value={dt.dashboard_type_id}>
+                  {dt.type_name} ({dt.type_code})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Dashboard type wajib dipilih (menentukan halaman dashboard yang akan ditampilkan)</p>
+          </div>
+          <div>
+            <Label>Priority <span className="text-gray-400">(untuk multi-role user)</span></Label>
+            <Input 
+              type="number" 
+              min="1" 
+              max="100" 
+              value={form.role_priority} 
+              onChange={e => setForm(prev => ({ ...prev, role_priority: parseInt(e.target.value) || 50 }))} 
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Priority tinggi diprioritaskan untuk dashboard. 
+              <span className="font-medium"> Student: 10, Teacher: 50, Counselor: 60, Principal: 80, Admin: 100</span>
+            </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_admin} onChange={e=>setForm(p=>({...p,is_admin:e.target.checked}))} />Admin</label>

@@ -70,6 +70,7 @@ const iconMap = {
   , 'fas fa-sack-dollar': faSackDollar
   , 'fas fa-flag': faFlag
   , 'fas fa-lightbulb': faLightbulb
+  , 'fas fa-gauge-high': faGaugeHigh
   , 'fas fa-ruler': require('@fortawesome/free-solid-svg-icons').faRuler
   , 'fas fa-shirt': require('@fortawesome/free-solid-svg-icons').faShirt
   , 'fas fa-cart-shopping': require('@fortawesome/free-solid-svg-icons').faCartShopping
@@ -105,6 +106,7 @@ const iconMap = {
   'faSackDollar': faSackDollar,
   'faFlag': faFlag,
   'faLightbulb': faLightbulb,
+  'faGaugeHigh': faGaugeHigh,
   'faUserGraduate': faUserGraduate,
   'fas fa-user-graduate': faUserGraduate
   , 'faRuler': require('@fortawesome/free-solid-svg-icons').faRuler
