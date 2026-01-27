@@ -257,6 +257,22 @@ export default function KwitansiModal({ isOpen, onClose, sale, items, uniforms, 
                 <div className="colon" style={{ width: '20px' }}>:</div>
                 <div className="value" style={{ flex: 1 }}>Transfer Bank</div>
               </div>
+              {sale.pickup_date && (
+                <div className="row" style={{ display: 'flex', margin: '5px 0' }}>
+                  <div className="label" style={{ width: '200px' }}>Tanggal Pengambilan</div>
+                  <div className="colon" style={{ width: '20px' }}>:</div>
+                  <div className="value" style={{ flex: 1 }}>
+                    <strong style={{ color: '#059669' }}>
+                      {new Date(sale.pickup_date).toLocaleDateString('id-ID', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </strong>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Signature */}

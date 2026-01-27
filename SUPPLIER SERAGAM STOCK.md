@@ -121,6 +121,7 @@ create table public.uniform_sale (
   notes text null,
   total_amount numeric(12, 2) not null default 0,
   total_cost numeric(12, 2) not null default 0,
+  pickup_date date null,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   is_voided boolean not null default false,

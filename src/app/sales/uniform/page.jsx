@@ -45,6 +45,12 @@ export default function UniformSalesPage() {
   const [voidReason, setVoidReason] = useState('')
   const [voiding, setVoiding] = useState(false)
 
+  // Pickup date states
+  const [showPickupModal, setShowPickupModal] = useState(false)
+  const [selectedSaleForPickup, setSelectedSaleForPickup] = useState(null)
+  const [pickupDate, setPickupDate] = useState(new Date().toISOString().slice(0, 10))
+  const [markingPickup, setMarkingPickup] = useState(false)
+
   // Laporan states
   const [reportPeriod, setReportPeriod] = useState('month') // 'month' or 'custom'
   const [reportMonth, setReportMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
@@ -326,8 +332,15 @@ export default function UniformSalesPage() {
         const { error: stErr } = await supabase.from('uniform_stock_txn').insert(stockRows)
         if (stErr) throw stErr
       }
-      // Update sale to paid
-      const { error: updErr } = await supabase.from('uniform_sale').update({ status: 'paid' }).eq('sale_id', sale.sale_id)
+      // Update sale to paid with pickup_date
+      const { error: updErr } = await supabase
+        .from('uniform_sale')
+        .update({ 
+          status: 'paid',
+          pickup_date: pickupDate || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('sale_id', sale.sale_id)
       if (updErr) throw updErr
       setShowConfirm(false)
       // Refresh stock
@@ -359,12 +372,8 @@ export default function UniformSalesPage() {
       // Clear cart and close confirm modal
       setItems([])
       setReceiptFile(null)
+      setPickupDate(new Date().toISOString().slice(0, 10))
       setShowConfirm(false)
-      
-      // Show success message
-      setTimeout(() => {
-        alert('✅ Pembayaran berhasil! Silakan cetak kwitansi.')
-      }, 300)
     } catch (e) { 
       setError(e.message) 
     } finally { 
@@ -375,10 +384,10 @@ export default function UniformSalesPage() {
   const fetchSalesHistory = async () => {
     setLoadingHistory(true)
     try {
-      // Fetch sales with user info (including void columns)
+      // Fetch sales with user info (including void columns and pickup_date)
       const { data: sales, error: salesErr } = await supabase
         .from('uniform_sale')
-        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason')
+        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason, pickup_date')
         .order('sale_id', { ascending: false })
         .limit(100)
 
@@ -523,6 +532,36 @@ export default function UniformSalesPage() {
     }
   }
 
+  const handleMarkAsPickedUp = async () => {
+    if (!selectedSaleForPickup || !pickupDate) return
+
+    setMarkingPickup(true)
+    setError('')
+
+    try {
+      const { error: updateErr } = await supabase
+        .from('uniform_sale')
+        .update({ 
+          pickup_date: pickupDate,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('sale_id', selectedSaleForPickup.sale_id)
+
+      if (updateErr) throw updateErr
+
+      setShowPickupModal(false)
+      setSelectedSaleForPickup(null)
+      setPickupDate(new Date().toISOString().slice(0, 10))
+      await fetchSalesHistory()
+      alert('✅ Seragam berhasil ditandai sudah diambil!')
+    } catch (e) {
+      console.error('Error marking pickup:', e)
+      setError('Gagal menandai pengambilan: ' + e.message)
+    } finally {
+      setMarkingPickup(false)
+    }
+  }
+
   const handleVoidSale = async () => {
     if (!selectedSaleForVoid || !voidReason.trim()) {
       setError('Alasan pembatalan harus diisi')
@@ -640,7 +679,7 @@ export default function UniformSalesPage() {
       // Fetch sales in date range (exclude voided)
       const { data: sales, error: salesErr } = await supabase
         .from('uniform_sale')
-        .select('sale_id, user_id, unit_id, sale_date, status, total_amount, total_cost, is_voided')
+        .select('sale_id, user_id, unit_id, sale_date, status, total_amount, total_cost, is_voided, pickup_date')
         .gte('sale_date', startDate)
         .lte('sale_date', endDate)
         .eq('is_voided', false)
@@ -799,7 +838,8 @@ export default function UniformSalesPage() {
           'HPP': sale.total_cost,
           'Profit': sale.total_amount - sale.total_cost,
           'Margin %': sale.total_amount > 0 ? (((sale.total_amount - sale.total_cost) / sale.total_amount) * 100).toFixed(2) : 0,
-          'Status': sale.status === 'paid' ? 'Lunas' : 'Pending'
+          'Status': sale.status === 'paid' ? 'Lunas' : 'Pending',
+          'Tgl Diambil': sale.pickup_date ? new Date(sale.pickup_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'
         }
       })
 
@@ -817,7 +857,8 @@ export default function UniformSalesPage() {
         { wch: 15 }, // HPP
         { wch: 15 }, // Profit
         { wch: 10 }, // Margin %
-        { wch: 10 }  // Status
+        { wch: 10 }, // Status
+        { wch: 12 }  // Tgl Diambil
       ]
 
       XLSX.utils.book_append_sheet(wb, wsDetail, 'Detail Penjualan')
@@ -1255,15 +1296,90 @@ export default function UniformSalesPage() {
               <div className="mt-6 pt-4 border-t space-y-4">
                 <div>
                   <Label>Bukti Transfer (Opsional)</Label>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={e=> setReceiptFile(e.target.files?.[0] || null)} 
-                    className="mt-1 w-full text-sm"
-                  />
-                  {receiptFile && (
-                    <div className="text-xs text-green-600 mt-1">✓ File terpilih: {receiptFile.name}</div>
-                  )}
+                  <div className="mt-2">
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 hover:border-blue-500 transition-colors">
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span className="text-sm font-medium text-gray-700">
+                        {receiptFile ? 'Ganti File' : 'Pilih File'}
+                      </span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={e=> setReceiptFile(e.target.files?.[0] || null)} 
+                        className="hidden"
+                      />
+                    </label>
+                    {receiptFile && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex-1 text-sm text-gray-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                          ✓ {receiptFile.name}
+                        </div>
+                        <button
+                          onClick={() => setReceiptFile(null)}
+                          className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Tanggal Pengambilan</Label>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPickupDate(new Date().toISOString().slice(0, 10))}
+                        className="px-3 py-1.5 text-xs font-medium bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                      >
+                        📅 Hari Ini
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const date = new Date()
+                          date.setDate(date.getDate() + 3)
+                          setPickupDate(date.toISOString().slice(0, 10))
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                      >
+                        +3 Hari
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const date = new Date()
+                          date.setDate(date.getDate() + 7)
+                          setPickupDate(date.toISOString().slice(0, 10))
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors"
+                      >
+                        +7 Hari
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const date = new Date()
+                          date.setDate(date.getDate() + 14)
+                          setPickupDate(date.toISOString().slice(0, 10))
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-colors"
+                      >
+                        +14 Hari
+                      </button>
+                    </div>
+                    <Input
+                      type="date"
+                      value={pickupDate}
+                      onChange={(e) => setPickupDate(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Tanggal seragam akan diambil (default: hari ini)</p>
                 </div>
                 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -1503,20 +1619,32 @@ export default function UniformSalesPage() {
                         </div>
 
                         <div className="mt-3 flex items-center justify-between">
-                          <div className="text-sm text-gray-600">
-                            <span className="font-medium">{sale.item_count} item</span>
-                            {sale.receipt_url && (
-                              <>
-                                <span className="mx-2">•</span>
-                                <a
-                                  href={sale.receipt_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  📄 Bukti Transfer
-                                </a>
-                              </>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div>
+                              <span className="font-medium">{sale.item_count} item</span>
+                              {sale.receipt_url && (
+                                <>
+                                  <span className="mx-2">•</span>
+                                  <a
+                                    href={sale.receipt_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    📄 Bukti Transfer
+                                  </a>
+                                </>
+                              )}
+                            </div>
+                            {sale.pickup_date && (
+                              <div className="flex items-center gap-2 text-green-700 bg-green-50 px-2 py-1 rounded inline-block">
+                                <span>✅</span>
+                                <span>Diambil: {new Date(sale.pickup_date).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}</span>
+                              </div>
                             )}
                           </div>
                           <div className="flex items-center gap-3">
@@ -1545,6 +1673,20 @@ export default function UniformSalesPage() {
                                   className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2 whitespace-nowrap"
                                 >
                                   🖨️ Cetak Kwitansi
+                                </Button>
+                              )}
+                              
+                              {/* Tombol Tandai Diambil untuk Paid tanpa pickup_date */}
+                              {sale.status === 'paid' && !sale.is_voided && !sale.pickup_date && (
+                                <Button
+                                  onClick={() => {
+                                    setSelectedSaleForPickup(sale)
+                                    setPickupDate(new Date().toISOString().slice(0, 10))
+                                    setShowPickupModal(true)
+                                  }}
+                                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-2 whitespace-nowrap"
+                                >
+                                  📦 Tandai Diambil
                                 </Button>
                               )}
                               
@@ -1717,6 +1859,7 @@ export default function UniformSalesPage() {
                       <th className="py-3 px-3 text-right font-semibold">HPP</th>
                       <th className="py-3 px-3 text-right font-semibold">Profit</th>
                       <th className="py-3 px-3 text-center font-semibold">Status</th>
+                      <th className="py-3 px-3 text-center font-semibold">Diambil</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1753,6 +1896,18 @@ export default function UniformSalesPage() {
                             {sale.status === 'paid' ? 'Lunas' : 'Pending'}
                           </span>
                         </td>
+                        <td className="py-3 px-3 text-center">
+                          {sale.pickup_date ? (
+                            <span className="text-xs text-green-700 font-medium">
+                              ✓ {new Date(sale.pickup_date).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short'
+                              })}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1768,7 +1923,7 @@ export default function UniformSalesPage() {
                       <td className="py-3 px-3 text-right text-green-700">
                         {formatCurrency(reportSummary.total_profit)}
                       </td>
-                      <td></td>
+                      <td colSpan="2"></td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1793,6 +1948,7 @@ export default function UniformSalesPage() {
             setSearchStudent('')
             setItems([])
             setReceiptFile(null)
+            setPickupDate(new Date().toISOString().slice(0, 10))
           }
         }}
         sale={selectedSaleForKwitansi}
@@ -1881,6 +2037,125 @@ export default function UniformSalesPage() {
               className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 font-semibold disabled:opacity-50"
             >
               {voiding ? '⏳ Membatalkan...' : '🚫 Batalkan Transaksi'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Pickup Date Modal */}
+      <Modal
+        isOpen={showPickupModal}
+        onClose={() => {
+          if (!markingPickup) {
+            setShowPickupModal(false)
+            setSelectedSaleForPickup(null)
+            setPickupDate(new Date().toISOString().slice(0, 10))
+          }
+        }}
+        title="📦 Tandai Seragam Diambil"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-purple-50 border border-purple-200 rounded p-4">
+            <p className="text-sm text-purple-800">
+              Catat tanggal seragam diambil oleh siswa/orang tua
+            </p>
+          </div>
+
+          {selectedSaleForPickup && (
+            <div className="bg-gray-50 border rounded p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">ID Transaksi:</span>
+                <span className="font-semibold">#{selectedSaleForPickup.sale_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Siswa:</span>
+                <span className="font-semibold">{selectedSaleForPickup.user_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Item:</span>
+                <span className="font-semibold">{selectedSaleForPickup.item_count} item</span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <Label className="font-medium">
+              Tanggal Pengambilan <span className="text-red-500">*</span>
+            </Label>
+            <div className="mt-2 space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setPickupDate(new Date().toISOString().slice(0, 10))}
+                  className="px-3 py-1.5 text-xs font-medium bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                >
+                  📅 Hari Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const date = new Date()
+                    date.setDate(date.getDate() + 3)
+                    setPickupDate(date.toISOString().slice(0, 10))
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                >
+                  +3 Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const date = new Date()
+                    date.setDate(date.getDate() + 7)
+                    setPickupDate(date.toISOString().slice(0, 10))
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors"
+                >
+                  +7 Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const date = new Date()
+                    date.setDate(date.getDate() + 14)
+                    setPickupDate(date.toISOString().slice(0, 10))
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-colors"
+                >
+                  +14 Hari
+                </button>
+              </div>
+              <Input
+                type="date"
+                value={pickupDate}
+                onChange={(e) => setPickupDate(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+                className="w-full"
+                disabled={markingPickup}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Pilih tanggal seragam diambil</p>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button
+              onClick={() => {
+                setShowPickupModal(false)
+                setSelectedSaleForPickup(null)
+                setPickupDate(new Date().toISOString().slice(0, 10))
+              }}
+              disabled={markingPickup}
+              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleMarkAsPickedUp}
+              disabled={markingPickup || !pickupDate}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 font-semibold disabled:opacity-50"
+            >
+              {markingPickup ? '⏳ Menyimpan...' : '✅ Tandai Sudah Diambil'}
             </Button>
           </div>
         </div>
