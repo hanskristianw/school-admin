@@ -19,7 +19,10 @@ export default function InitialStockPage() {
   const [historyData, setHistoryData] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [filterSupplier, setFilterSupplier] = useState('all')
-  const [showHistory, setShowHistory] = useState(false)
+  const [filterUniform, setFilterUniform] = useState('all')
+  const [filterSize, setFilterSize] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(20)
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -118,6 +121,9 @@ export default function InitialStockPage() {
           qty_delta,
           notes,
           created_at,
+          uniform_id,
+          size_id,
+          supplier_id,
           uniform:uniform_id(uniform_id, uniform_name, is_universal),
           size:size_id(size_id, size_name),
           supplier:supplier_id(supplier_id, supplier_name, supplier_code)
@@ -818,53 +824,131 @@ export default function InitialStockPage() {
 
       {/* History Table */}
       <Card className="p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold">History Stock Awal yang Sudah Diinput</h2>
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="text-gray-600 hover:text-gray-900 transition-transform duration-200"
-              style={{ transform: showHistory ? 'rotate(180deg)' : 'rotate(0deg)' }}
-            >
-              ▼
-            </button>
-          </div>
-          
-          {showHistory && (
-            <div className="flex items-center gap-2">
-              <Label htmlFor="filterSupplier" className="text-sm whitespace-nowrap">Filter Supplier:</Label>
-              <select
-                id="filterSupplier"
-                value={filterSupplier}
-                onChange={(e) => setFilterSupplier(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">Semua Supplier</option>
-                <option value="null">Stock Awal (Tanpa Supplier)</option>
-                {suppliers.map(s => (
-                  <option key={s.supplier_id} value={s.supplier_id}>
-                    {s.supplier_code} - {s.supplier_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
+        <h2 className="font-semibold mb-4">Riwayat Transaksi Stock Seragam</h2>
         
-        {showHistory && (loadingHistory ? (
+        {loadingHistory ? (
           <div className="text-center py-8 text-gray-500">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
             <p>Memuat data...</p>
           </div>
         ) : (() => {
-          // Filter history based on selected supplier
-          const filteredHistory = historyData.filter(row => {
-            if (filterSupplier === 'all') return true
-            if (filterSupplier === 'null') return row.supplier_id === null || row.supplier === null
-            return row.supplier_id === Number(filterSupplier)
-          })
+          // Get unique values from historyData for filters
+          const uniqueSuppliers = Array.from(
+            new Map(
+              historyData
+                .filter(row => row.supplier)
+                .map(row => [row.supplier.supplier_id, row.supplier])
+            ).values()
+          ).sort((a, b) => a.supplier_code.localeCompare(b.supplier_code))
           
-          return filteredHistory.length === 0 ? (
+          const hasNoSupplier = historyData.some(row => !row.supplier)
+          
+          const uniqueUniforms = Array.from(
+            new Map(
+              historyData
+                .filter(row => row.uniform)
+                .map(row => [row.uniform.uniform_id, row.uniform])
+            ).values()
+          ).sort((a, b) => a.uniform_name.localeCompare(b.uniform_name))
+          
+          const uniqueSizes = Array.from(
+            new Map(
+              historyData
+                .filter(row => row.size)
+                .map(row => [row.size.size_id, row.size])
+            ).values()
+          ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+          
+          return (
+            <>
+              {/* Filters */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filterSupplier" className="text-sm">Supplier:</Label>
+                  <select
+                    id="filterSupplier"
+                    value={filterSupplier}
+                    onChange={(e) => { setFilterSupplier(e.target.value); setCurrentPage(1) }}
+                    className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">Semua Supplier</option>
+                    {hasNoSupplier && <option value="null">Stock Awal (Tanpa Supplier)</option>}
+                    {uniqueSuppliers.map(s => (
+                      <option key={s.supplier_id} value={s.supplier_id}>
+                        {s.supplier_code} - {s.supplier_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filterUniform" className="text-sm">Seragam:</Label>
+                  <select
+                    id="filterUniform"
+                    value={filterUniform}
+                    onChange={(e) => { setFilterUniform(e.target.value); setCurrentPage(1) }}
+                    className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">Semua Seragam</option>
+                    {uniqueUniforms.map(u => (
+                      <option key={u.uniform_id} value={u.uniform_id}>
+                        {u.uniform_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="filterSize" className="text-sm">Ukuran:</Label>
+                  <select
+                    id="filterSize"
+                    value={filterSize}
+                    onChange={(e) => { setFilterSize(e.target.value); setCurrentPage(1) }}
+                    className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">Semua Ukuran</option>
+                    {uniqueSizes.map(s => (
+                      <option key={s.size_id} value={s.size_id}>
+                        {s.size_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {/* Table and Pagination */}
+              {(() => {
+                // Filter history based on selected filters
+                const filteredHistory = historyData.filter(row => {
+                  // Supplier filter
+                  if (filterSupplier !== 'all') {
+                    if (filterSupplier === 'null') {
+                      if (row.supplier_id !== null && row.supplier !== null) return false
+                    } else {
+                      if (row.supplier_id !== Number(filterSupplier)) return false
+                    }
+                  }
+                  
+                  // Uniform filter
+                  if (filterUniform !== 'all' && row.uniform_id !== Number(filterUniform)) {
+                    return false
+                  }
+                  
+                  // Size filter
+                  if (filterSize !== 'all' && row.size_id !== Number(filterSize)) {
+                    return false
+                  }
+                  
+                  return true
+                })
+                
+                // Pagination
+                const totalPages = Math.ceil(filteredHistory.length / itemsPerPage)
+                const startIndex = (currentPage - 1) * itemsPerPage
+                const endIndex = startIndex + itemsPerPage
+                const paginatedHistory = filteredHistory.slice(startIndex, endIndex)
+                
+                return filteredHistory.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <div className="text-4xl mb-2">📋</div>
               <p>Belum ada data history</p>
@@ -884,7 +968,7 @@ export default function InitialStockPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredHistory.map((row, idx) => (
+                  {paginatedHistory.map((row, idx) => (
                     <tr key={idx} className="border-b hover:bg-gray-50">
                       <td className="py-2 px-3 whitespace-nowrap">
                         {new Date(row.created_at).toLocaleDateString('id-ID', {
@@ -924,20 +1008,61 @@ export default function InitialStockPage() {
                   ))}
                 </tbody>
               </table>
-              <div className="mt-4 text-sm text-gray-600">
-                {filterSupplier !== 'all' ? (
-                  <>
-                    Menampilkan: <span className="font-semibold">{filteredHistory.length} transaksi</span>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Halaman {currentPage} dari {totalPages}
                     <span className="mx-2">•</span>
-                    Dari total: <span className="font-semibold">{historyData.length} transaksi</span>
-                  </>
-                ) : (
-                  <>Total: <span className="font-semibold">{historyData.length} transaksi</span></>
-                )}
-              </div>
+                    Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredHistory.length)} dari {filteredHistory.length} transaksi
+                    {(filterSupplier !== 'all' || filterUniform !== 'all' || filterSize !== 'all') && (
+                      <>
+                        <span className="mx-2">•</span>
+                        Total: {historyData.length} transaksi
+                      </>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      ← Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next →
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {totalPages <= 1 && (
+                <div className="mt-4 text-sm text-gray-600">
+                  {(filterSupplier !== 'all' || filterUniform !== 'all' || filterSize !== 'all') ? (
+                    <>
+                      Menampilkan: <span className="font-semibold">{filteredHistory.length} transaksi</span>
+                      <span className="mx-2">•</span>
+                      Dari total: <span className="font-semibold">{historyData.length} transaksi</span>
+                    </>
+                  ) : (
+                    <>Total: <span className="font-semibold">{historyData.length} transaksi</span></>
+                  )}
+                </div>
+              )}
             </div>
           )
-        })())}
+        })()}
+            </>
+          )
+        })()}
       </Card>
 
       {/* List of Items */}
