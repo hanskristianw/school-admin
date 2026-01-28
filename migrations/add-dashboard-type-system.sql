@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS dashboard_type (
 -- Step 2: Insert default dashboard types
 INSERT INTO dashboard_type (type_code, type_name, type_description, default_route) VALUES
 ('student', 'Student Dashboard', 'Dashboard for students with QR attendance, schedule, and chatbot', '/dashboard/student'),
-('teacher', 'Teacher/Staff Dashboard', 'Dashboard for teachers and staff with stats, calendar, and assessments', '/dashboard/teacher')
+('teacher', 'Teacher/Staff Dashboard', 'Dashboard for teachers and staff with stats, calendar, and assessments', '/dashboard/teacher'),
+('purchasing', 'Purchasing Dashboard', 'Dashboard for purchasing team with stock monitoring, purchase orders, and supplier management', '/dashboard/purchasing')
 ON CONFLICT (type_code) DO NOTHING;
 
 -- Step 3: Add dashboard_type_id and role_priority columns to role table (nullable first)
