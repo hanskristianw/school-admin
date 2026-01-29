@@ -135,7 +135,7 @@ export async function POST(req) {
 
     // Fetch role & unit info
     const [{ data: role }, { data: unit }] = await Promise.all([
-      admin.from('role').select('role_id, role_name, is_admin, is_counselor, is_teacher, is_student').eq('role_id', dbUser.user_role_id).single(),
+      admin.from('role').select('role_id, role_name, is_admin, is_counselor, is_teacher, is_student, is_principal, can_void_transactions').eq('role_id', dbUser.user_role_id).single(),
       dbUser.user_unit_id ? admin.from('unit').select('unit_id, unit_name').eq('unit_id', dbUser.user_unit_id).single() : Promise.resolve({ data: null })
     ])
 
@@ -176,6 +176,8 @@ export async function POST(req) {
         isCounselor: role?.is_counselor || false,
         isTeacher: role?.is_teacher || false,
         isStudent: role?.is_student || false,
+        isPrincipal: role?.is_principal || false,
+        canVoidTransactions: role?.can_void_transactions || false,
         unitID: dbUser.user_unit_id,
         unitName: unit?.unit_name || '',
         email: email,

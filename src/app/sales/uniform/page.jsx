@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
 import KwitansiModal from '@/components/KwitansiModal'
 import { formatCurrency, toNumber } from '@/lib/utils'
+import { canVoidTransactions, getUserData } from '@/lib/permissions'
 import * as XLSX from 'xlsx'
 
 export default function UniformSalesPage() {
@@ -35,6 +36,7 @@ export default function UniformSalesPage() {
   const [salesHistory, setSalesHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [historyFilter, setHistoryFilter] = useState('all') // 'all', 'pending', 'paid', 'voided'
+  const [historySearch, setHistorySearch] = useState('') // Search query for history
   const [showKwitansi, setShowKwitansi] = useState(false)
   const [selectedSaleForKwitansi, setSelectedSaleForKwitansi] = useState(null)
   const [kwitansiItems, setKwitansiItems] = useState([])
@@ -50,6 +52,23 @@ export default function UniformSalesPage() {
   const [selectedSaleForPickup, setSelectedSaleForPickup] = useState(null)
   const [pickupDate, setPickupDate] = useState(new Date().toISOString().slice(0, 10))
   const [markingPickup, setMarkingPickup] = useState(false)
+  
+  // Edit pickup date states
+  const [showEditPickupModal, setShowEditPickupModal] = useState(false)
+  const [selectedSaleForEditPickup, setSelectedSaleForEditPickup] = useState(null)
+  const [editPickupDate, setEditPickupDate] = useState('')
+  const [updatingPickup, setUpdatingPickup] = useState(false)
+  
+  // Edit receipt states
+  const [showEditReceiptModal, setShowEditReceiptModal] = useState(false)
+  const [selectedSaleForEditReceipt, setSelectedSaleForEditReceipt] = useState(null)
+  const [newReceiptFile, setNewReceiptFile] = useState(null)
+  const [updatingReceipt, setUpdatingReceipt] = useState(false)
+  
+  // Check void permission
+  const userData = useMemo(() => getUserData(), [])
+  const hasVoidPermission = useMemo(() => canVoidTransactions(userData), [userData])
+
 
   // Laporan states
   const [reportPeriod, setReportPeriod] = useState('month') // 'month' or 'custom'
@@ -270,6 +289,9 @@ export default function UniformSalesPage() {
     setSaving(true)
     setError('')
     try {
+      // Get user ID for processed_by tracking
+      const processedBy = parseInt(localStorage.getItem('kr_id'), 10) || null
+      
       // 1) Insert sale pending with user_id and their unit_id
       const { data: sale, error: saleErr } = await supabase.from('uniform_sale').insert([{ 
         user_id: Number(userId), 
@@ -277,7 +299,8 @@ export default function UniformSalesPage() {
         status: 'pending', 
         payment_method: 'transfer', 
         total_amount: totals.amount, 
-        total_cost: totals.cost 
+        total_cost: totals.cost,
+        processed_by: processedBy
       }]).select('sale_id').single()
       if (saleErr) throw saleErr
       const saleId = sale.sale_id
@@ -342,6 +365,15 @@ export default function UniformSalesPage() {
         })
         .eq('sale_id', sale.sale_id)
       if (updErr) throw updErr
+      
+      // Fetch updated sale with pickup_date
+      const { data: updatedSale, error: fetchErr } = await supabase
+        .from('uniform_sale')
+        .select('*')
+        .eq('sale_id', sale.sale_id)
+        .single()
+      if (fetchErr) throw fetchErr
+      
       setShowConfirm(false)
       // Refresh stock
       const { data: st } = await supabase.from('uniform_stock_txn').select('uniform_id, size_id, supplier_id, qty_delta')
@@ -358,7 +390,7 @@ export default function UniformSalesPage() {
       
       // Prepare sale data with enriched info for kwitansi
       const saleForKwitansi = {
-        ...sale,
+        ...updatedSale,
         status: 'paid',
         user_name: selectedStudent?.user_name || 'Unknown',
         unit_name: selectedStudent?.user_unit_name || '-'
@@ -384,22 +416,24 @@ export default function UniformSalesPage() {
   const fetchSalesHistory = async () => {
     setLoadingHistory(true)
     try {
-      // Fetch sales with user info (including void columns and pickup_date)
+      // Fetch sales with user info (including void columns, pickup_date, and processed_by)
       const { data: sales, error: salesErr } = await supabase
         .from('uniform_sale')
-        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason, pickup_date')
+        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason, pickup_date, processed_by')
         .order('sale_id', { ascending: false })
         .limit(100)
 
       if (salesErr) throw salesErr
 
-      // Get unique user IDs and unit IDs
+      // Get unique user IDs (buyers), unit IDs, and processed_by IDs (staff)
       const userIds = [...new Set(sales.map(s => s.user_id))]
+      const processedByIds = [...new Set(sales.map(s => s.processed_by).filter(Boolean))]
+      const allUserIds = [...new Set([...userIds, ...processedByIds])]
       const unitIds = [...new Set(sales.map(s => s.unit_id))]
 
       // Fetch users and units info
       const [usersRes, unitsRes] = await Promise.all([
-        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_manual_picture').in('user_id', userIds),
+        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_manual_picture').in('user_id', allUserIds),
         supabase.from('unit').select('unit_id, unit_name').in('unit_id', unitIds)
       ])
 
@@ -434,6 +468,7 @@ export default function UniformSalesPage() {
         user_name: userMap.get(s.user_id)?.name || 'Unknown',
         user_photo: userMap.get(s.user_id)?.photo || null,
         unit_name: unitMap.get(s.unit_id) || '-',
+        processed_by_name: s.processed_by ? (userMap.get(s.processed_by)?.name || 'Unknown') : null,
         items: itemsBySale.get(s.sale_id) || [],
         item_count: (itemsBySale.get(s.sale_id) || []).reduce((sum, i) => sum + i.qty, 0)
       }))
@@ -561,6 +596,84 @@ export default function UniformSalesPage() {
       setMarkingPickup(false)
     }
   }
+  
+  const handleUpdatePickupDate = async () => {
+    if (!selectedSaleForEditPickup || !editPickupDate) return
+
+    setUpdatingPickup(true)
+    setError('')
+
+    try {
+      const { error: updateErr } = await supabase
+        .from('uniform_sale')
+        .update({ 
+          pickup_date: editPickupDate,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('sale_id', selectedSaleForEditPickup.sale_id)
+
+      if (updateErr) throw updateErr
+
+      setShowEditPickupModal(false)
+      setSelectedSaleForEditPickup(null)
+      setEditPickupDate('')
+      await fetchSalesHistory()
+      alert('✅ Tanggal pengambilan berhasil diupdate!')
+    } catch (e) {
+      console.error('Error updating pickup date:', e)
+      setError('Gagal update tanggal pengambilan: ' + e.message)
+    } finally {
+      setUpdatingPickup(false)
+    }
+  }
+  
+  const handleUpdateReceipt = async () => {
+    if (!selectedSaleForEditReceipt || !newReceiptFile) return
+
+    setUpdatingReceipt(true)
+    setError('')
+
+    try {
+      // Upload new receipt
+      const file = newReceiptFile
+      const ext = file.name.split('.').pop()
+      const path = `${selectedSaleForEditReceipt.sale_id}/${Date.now()}.${ext}`
+      
+      const { error: uploadErr } = await supabase.storage
+        .from('uniform-receipts')
+        .upload(path, file, { cacheControl: '3600', upsert: false })
+      
+      if (uploadErr) throw uploadErr
+
+      const { data: pub } = await supabase.storage
+        .from('uniform-receipts')
+        .getPublicUrl(path)
+      
+      const receiptUrl = pub?.publicUrl || null
+
+      // Update sale with new receipt URL
+      const { error: updateErr } = await supabase
+        .from('uniform_sale')
+        .update({ 
+          receipt_url: receiptUrl,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('sale_id', selectedSaleForEditReceipt.sale_id)
+
+      if (updateErr) throw updateErr
+
+      setShowEditReceiptModal(false)
+      setSelectedSaleForEditReceipt(null)
+      setNewReceiptFile(null)
+      await fetchSalesHistory()
+      alert('✅ Bukti transfer berhasil diupdate!')
+    } catch (e) {
+      console.error('Error updating receipt:', e)
+      setError('Gagal update bukti transfer: ' + e.message)
+    } finally {
+      setUpdatingReceipt(false)
+    }
+  }
 
   const handleVoidSale = async () => {
     if (!selectedSaleForVoid || !voidReason.trim()) {
@@ -679,7 +792,7 @@ export default function UniformSalesPage() {
       // Fetch sales in date range (exclude voided)
       const { data: sales, error: salesErr } = await supabase
         .from('uniform_sale')
-        .select('sale_id, user_id, unit_id, sale_date, status, total_amount, total_cost, is_voided, pickup_date')
+        .select('sale_id, user_id, unit_id, sale_date, status, total_amount, total_cost, is_voided, pickup_date, processed_by')
         .gte('sale_date', startDate)
         .lte('sale_date', endDate)
         .eq('is_voided', false)
@@ -687,13 +800,15 @@ export default function UniformSalesPage() {
 
       if (salesErr) throw salesErr
 
-      // Get unique user IDs and unit IDs
+      // Get unique user IDs (buyers), unit IDs, and processed_by IDs (staff)
       const userIds = [...new Set(sales.map(s => s.user_id))]
+      const processedByIds = [...new Set(sales.map(s => s.processed_by).filter(Boolean))]
+      const allUserIds = [...new Set([...userIds, ...processedByIds])]
       const unitIds = [...new Set(sales.map(s => s.unit_id))]
 
       // Fetch users and units info
       const [usersRes, unitsRes] = await Promise.all([
-        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').in('user_id', userIds),
+        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').in('user_id', allUserIds),
         supabase.from('unit').select('unit_id, unit_name').in('unit_id', unitIds)
       ])
 
@@ -750,6 +865,7 @@ export default function UniformSalesPage() {
         ...s,
         user_name: userMap.get(s.user_id) || 'Unknown',
         unit_name: unitMap.get(s.unit_id) || '-',
+        processed_by_name: s.processed_by ? (userMap.get(s.processed_by) || 'Unknown') : null,
         item_count: itemsBySale.get(s.sale_id) || 0,
         item_details: itemDetailsBySale.get(s.sale_id) || []
       }))
@@ -832,6 +948,7 @@ export default function UniformSalesPage() {
           'Tanggal': new Date(sale.sale_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
           'Siswa': sale.user_name,
           'Unit': sale.unit_name,
+          'Staff': sale.processed_by_name || '-',
           'Detail Seragam': itemsText,
           'Jumlah Item': sale.item_count,
           'Total Harga': sale.total_amount,
@@ -851,6 +968,7 @@ export default function UniformSalesPage() {
         { wch: 12 }, // Tanggal
         { wch: 25 }, // Siswa
         { wch: 15 }, // Unit
+        { wch: 20 }, // Staff
         { wch: 50 }, // Detail Seragam
         { wch: 12 }, // Jumlah Item
         { wch: 15 }, // Total Harga
@@ -1461,8 +1579,39 @@ export default function UniformSalesPage() {
       ) : activeTab === 'history' ? (
         // History Tab
         <div className="space-y-4">
-          {/* Filter */}
+          {/* Search and Filter */}
           <Card className="p-4">
+            {/* Search Box */}
+            <div className="mb-4">
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Cari siswa, ID transaksi, atau unit..."
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  🔍
+                </div>
+                {historySearch && (
+                  <button
+                    onClick={() => setHistorySearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {historySearch && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Hasil pencarian untuk: <span className="font-medium">"{historySearch}"</span>
+                </p>
+              )}
+            </div>
+            
+            {/* Filter Buttons */}
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
                 <button
@@ -1523,9 +1672,21 @@ export default function UniformSalesPage() {
               <p>Memuat history...</p>
             </Card>
           ) : salesHistory.filter(s => {
-            if (historyFilter === 'all') return true
-            if (historyFilter === 'voided') return s.is_voided
-            return s.status === historyFilter && !s.is_voided
+            // Filter by status
+            if (historyFilter === 'voided' && !s.is_voided) return false
+            if (historyFilter !== 'all' && historyFilter !== 'voided' && (s.status !== historyFilter || s.is_voided)) return false
+            
+            // Filter by search query
+            if (historySearch) {
+              const search = historySearch.toLowerCase()
+              const matchName = s.user_name?.toLowerCase().includes(search)
+              const matchId = s.sale_id?.toString().includes(search)
+              const matchUnit = s.unit_name?.toLowerCase().includes(search)
+              const matchStaff = s.processed_by_name?.toLowerCase().includes(search)
+              return matchName || matchId || matchUnit || matchStaff
+            }
+            
+            return true
           }).length === 0 ? (
             <Card className="p-8 text-center text-gray-500">
               <div className="text-4xl mb-2">📋</div>
@@ -1534,6 +1695,23 @@ export default function UniformSalesPage() {
           ) : (
             <div className="space-y-3">
               {salesHistory
+                .filter(s => {
+                  // Filter by status
+                  if (historyFilter === 'voided' && !s.is_voided) return false
+                  if (historyFilter !== 'all' && historyFilter !== 'voided' && (s.status !== historyFilter || s.is_voided)) return false
+                  
+                  // Filter by search query
+                  if (historySearch) {
+                    const search = historySearch.toLowerCase()
+                    const matchName = s.user_name?.toLowerCase().includes(search)
+                    const matchId = s.sale_id?.toString().includes(search)
+                    const matchUnit = s.unit_name?.toLowerCase().includes(search)
+                    const matchStaff = s.processed_by_name?.toLowerCase().includes(search)
+                    if (!matchName && !matchId && !matchUnit && !matchStaff) return false
+                  }
+                  
+                  return true
+                })
                 .filter(s => {
                   if (historyFilter === 'all') return true
                   if (historyFilter === 'voided') return s.is_voided
@@ -1585,6 +1763,11 @@ export default function UniformSalesPage() {
                                 {sale.unit_name}
                               </span>
                             </div>
+                            {sale.processed_by_name && (
+                              <div className="mt-1 text-xs text-gray-500">
+                                Staff: <span className="font-medium text-gray-700">{sale.processed_by_name}</span>
+                              </div>
+                            )}
                           </div>
                           <div className="flex flex-col items-end gap-1">
                             <span
@@ -1633,17 +1816,58 @@ export default function UniformSalesPage() {
                                   >
                                     📄 Bukti Transfer
                                   </a>
+                                  {!sale.is_voided && (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedSaleForEditReceipt(sale)
+                                        setNewReceiptFile(null)
+                                        setShowEditReceiptModal(true)
+                                      }}
+                                      className="ml-2 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                      title="Edit bukti transfer"
+                                    >
+                                      ✏️
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              {!sale.receipt_url && !sale.is_voided && (
+                                <>
+                                  <span className="mx-2">•</span>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedSaleForEditReceipt(sale)
+                                      setNewReceiptFile(null)
+                                      setShowEditReceiptModal(true)
+                                    }}
+                                    className="text-xs text-orange-600 hover:text-orange-800 hover:underline"
+                                  >
+                                    📤 Upload Bukti
+                                  </button>
                                 </>
                               )}
                             </div>
                             {sale.pickup_date && (
-                              <div className="flex items-center gap-2 text-green-700 bg-green-50 px-2 py-1 rounded inline-block">
+                              <div className="flex items-center gap-2 text-green-700 bg-green-50 px-2 py-1 rounded">
                                 <span>✅</span>
                                 <span>Diambil: {new Date(sale.pickup_date).toLocaleDateString('id-ID', {
                                   day: 'numeric',
                                   month: 'short',
                                   year: 'numeric'
                                 })}</span>
+                                {!sale.is_voided && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedSaleForEditPickup(sale)
+                                      setEditPickupDate(sale.pickup_date)
+                                      setShowEditPickupModal(true)
+                                    }}
+                                    className="ml-2 text-xs text-green-600 hover:text-green-800 hover:underline"
+                                    title="Edit tanggal pengambilan"
+                                  >
+                                    ✏️
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1702,15 +1926,21 @@ export default function UniformSalesPage() {
                               
                               {/* Tombol Batalkan */}
                               {!sale.is_voided && (sale.status === 'pending' || sale.status === 'paid') && (
-                                <Button
-                                  onClick={() => {
-                                    setSelectedSaleForVoid(sale)
-                                    setShowVoidModal(true)
-                                  }}
-                                  className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 whitespace-nowrap"
-                                >
-                                  🚫 Batalkan
-                                </Button>
+                                hasVoidPermission ? (
+                                  <Button
+                                    onClick={() => {
+                                      setSelectedSaleForVoid(sale)
+                                      setShowVoidModal(true)
+                                    }}
+                                    className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 whitespace-nowrap"
+                                  >
+                                    🚫 Batalkan
+                                  </Button>
+                                ) : (
+                                  <span className="text-gray-400 text-xs italic px-3 py-2" title="Anda tidak memiliki izin untuk membatalkan penjualan">
+                                    Tidak ada akses
+                                  </span>
+                                )
                               )}
                             </div>
                           </div>
@@ -1854,6 +2084,7 @@ export default function UniformSalesPage() {
                       <th className="py-3 px-3 text-left font-semibold">Tanggal</th>
                       <th className="py-3 px-3 text-left font-semibold">Siswa</th>
                       <th className="py-3 px-3 text-left font-semibold">Unit</th>
+                      <th className="py-3 px-3 text-left font-semibold">Staff</th>
                       <th className="py-3 px-3 text-center font-semibold">Items</th>
                       <th className="py-3 px-3 text-right font-semibold">Total</th>
                       <th className="py-3 px-3 text-right font-semibold">HPP</th>
@@ -1875,6 +2106,9 @@ export default function UniformSalesPage() {
                         </td>
                         <td className="py-3 px-3 text-gray-900">{sale.user_name}</td>
                         <td className="py-3 px-3 text-gray-600">{sale.unit_name}</td>
+                        <td className="py-3 px-3 text-gray-600 text-sm">
+                          {sale.processed_by_name || '-'}
+                        </td>
                         <td className="py-3 px-3 text-center text-gray-700">{sale.item_count}</td>
                         <td className="py-3 px-3 text-right font-semibold text-gray-900">
                           {formatCurrency(sale.total_amount)}
@@ -1913,7 +2147,7 @@ export default function UniformSalesPage() {
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 bg-gray-50 font-bold">
-                      <td colSpan="5" className="py-3 px-3 text-right">TOTAL:</td>
+                      <td colSpan="6" className="py-3 px-3 text-right">TOTAL:</td>
                       <td className="py-3 px-3 text-right text-gray-900">
                         {formatCurrency(reportSummary.total_amount)}
                       </td>
@@ -2156,6 +2390,224 @@ export default function UniformSalesPage() {
               className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 font-semibold disabled:opacity-50"
             >
               {markingPickup ? '⏳ Menyimpan...' : '✅ Tandai Sudah Diambil'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Pickup Date Modal */}
+      <Modal
+        isOpen={showEditPickupModal}
+        onClose={() => {
+          if (!updatingPickup) {
+            setShowEditPickupModal(false)
+            setSelectedSaleForEditPickup(null)
+            setEditPickupDate('')
+          }
+        }}
+        title="✏️ Edit Tanggal Pengambilan"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded p-4">
+            <p className="text-sm text-blue-800">
+              Update tanggal pengambilan seragam
+            </p>
+          </div>
+
+          {selectedSaleForEditPickup && (
+            <div className="bg-gray-50 border rounded p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">ID Transaksi:</span>
+                <span className="font-semibold">#{selectedSaleForEditPickup.sale_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Siswa:</span>
+                <span className="font-semibold">{selectedSaleForEditPickup.user_name}</span>
+              </div>
+              {selectedSaleForEditPickup.pickup_date && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tanggal Saat Ini:</span>
+                  <span className="font-semibold">
+                    {new Date(selectedSaleForEditPickup.pickup_date).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <Label className="font-medium">
+              Tanggal Pengambilan Baru <span className="text-red-500">*</span>
+            </Label>
+            <div className="mt-2 space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setEditPickupDate(new Date().toISOString().slice(0, 10))}
+                  className="px-3 py-1.5 text-xs font-medium bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                >
+                  📅 Hari Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const date = new Date()
+                    date.setDate(date.getDate() - 1)
+                    setEditPickupDate(date.toISOString().slice(0, 10))
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                >
+                  ⏮️ Kemarin
+                </button>
+              </div>
+              <Input
+                type="date"
+                value={editPickupDate}
+                onChange={(e) => setEditPickupDate(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+                className="w-full"
+                disabled={updatingPickup}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Pilih tanggal seragam diambil yang baru</p>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button
+              onClick={() => {
+                setShowEditPickupModal(false)
+                setSelectedSaleForEditPickup(null)
+                setEditPickupDate('')
+              }}
+              disabled={updatingPickup}
+              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleUpdatePickupDate}
+              disabled={updatingPickup || !editPickupDate}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold disabled:opacity-50"
+            >
+              {updatingPickup ? '⏳ Menyimpan...' : '💾 Simpan Perubahan'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Receipt Modal */}
+      <Modal
+        isOpen={showEditReceiptModal}
+        onClose={() => {
+          if (!updatingReceipt) {
+            setShowEditReceiptModal(false)
+            setSelectedSaleForEditReceipt(null)
+            setNewReceiptFile(null)
+          }
+        }}
+        title="📤 Upload/Edit Bukti Transfer"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded p-4">
+            <p className="text-sm text-blue-800">
+              Upload bukti transfer pembayaran baru untuk mengganti yang lama
+            </p>
+          </div>
+
+          {selectedSaleForEditReceipt && (
+            <div className="bg-gray-50 border rounded p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">ID Transaksi:</span>
+                <span className="font-semibold">#{selectedSaleForEditReceipt.sale_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Siswa:</span>
+                <span className="font-semibold">{selectedSaleForEditReceipt.user_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total:</span>
+                <span className="font-semibold">{formatCurrency(selectedSaleForEditReceipt.total_amount)}</span>
+              </div>
+              {selectedSaleForEditReceipt.receipt_url && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Bukti Saat Ini:</span>
+                  <a
+                    href={selectedSaleForEditReceipt.receipt_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline text-xs"
+                  >
+                    📄 Lihat File
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <Label className="font-medium">
+              Bukti Transfer Baru <span className="text-red-500">*</span>
+            </Label>
+            <div className="mt-2">
+              <Input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                      alert('File terlalu besar! Maksimal 5MB')
+                      e.target.value = ''
+                      return
+                    }
+                    setNewReceiptFile(file)
+                  }
+                }}
+                disabled={updatingReceipt}
+                className="w-full"
+              />
+              {newReceiptFile && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 text-sm text-gray-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                    ✓ {newReceiptFile.name}
+                  </div>
+                  <button
+                    onClick={() => setNewReceiptFile(null)}
+                    className="text-red-600 hover:text-red-700 text-sm font-medium"
+                    disabled={updatingReceipt}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Format: JPG, PNG, PDF (Max 5MB)</p>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button
+              onClick={() => {
+                setShowEditReceiptModal(false)
+                setSelectedSaleForEditReceipt(null)
+                setNewReceiptFile(null)
+              }}
+              disabled={updatingReceipt}
+              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleUpdateReceipt}
+              disabled={updatingReceipt || !newReceiptFile}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold disabled:opacity-50"
+            >
+              {updatingReceipt ? '⏳ Mengupload...' : '📤 Upload Bukti'}
             </Button>
           </div>
         </div>

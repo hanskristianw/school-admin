@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
 import { formatCurrency, toNumber } from '@/lib/utils'
+import { canVoidTransactions, getUserData } from '@/lib/permissions'
 
 export default function AddUniformStockPage() {
   const [activeTab, setActiveTab] = useState('order') // 'order', 'receive', 'history'
@@ -50,6 +51,10 @@ export default function AddUniformStockPage() {
   const [showVoidModal, setShowVoidModal] = useState(false)
   const [voidingPurchase, setVoidingPurchase] = useState(null)
   const [voidReason, setVoidReason] = useState('')
+  
+  // Check void permission
+  const userData = useMemo(() => getUserData(), [])
+  const hasVoidPermission = useMemo(() => canVoidTransactions(userData), [userData])
 
   useEffect(() => {
     const fetchUnits = async () => {
@@ -91,6 +96,11 @@ export default function AddUniformStockPage() {
     }
     load();
   }, [newItem.unit_id, uniformsByUnit])
+
+  // Load pending count immediately on mount for badge
+  useEffect(() => {
+    loadPending()
+  }, [])
 
   // Auto-load data when switching tabs
   useEffect(() => {
@@ -308,8 +318,19 @@ export default function AddUniformStockPage() {
       // Get first unit_id from items for header (for backward compatibility)
       const firstUnitId = items[0]?.unit_id || unitId
       
+      // Get user ID for created_by tracking
+      const userId = parseInt(localStorage.getItem('kr_id'), 10) || null
+      
       // 1) create purchase header as pending
-      const { data: header, error: herr } = await supabase.from('uniform_purchase').insert([{ unit_id: Number(firstUnitId), supplier_id: Number(supplierId), purchase_date: purchaseDate, invoice_no: invoiceNo || null, notes: notes || null, status: 'draft' }]).select('purchase_id').single()
+      const { data: header, error: herr } = await supabase.from('uniform_purchase').insert([{ 
+        unit_id: Number(firstUnitId), 
+        supplier_id: Number(supplierId), 
+        purchase_date: purchaseDate, 
+        invoice_no: invoiceNo || null, 
+        notes: notes || null, 
+        status: 'draft',
+        created_by: userId
+      }]).select('purchase_id').single()
       if (herr) throw herr
       const pid = header.purchase_id; setPurchaseId(pid)
       // 2) insert items (ordered) with unit_id per item
@@ -436,8 +457,15 @@ export default function AddUniformStockPage() {
       if (phErr) throw phErr
       const supplierId = purchaseHeader?.supplier_id || null
       
+      // Get user ID for received_by tracking
+      const userId = parseInt(localStorage.getItem('kr_id'), 10) || null
+      
       // 1) create receipt header
-      const { data: rec, error: rerr } = await supabase.from('uniform_purchase_receipt').insert([{ purchase_id: purchaseId, receipt_date: new Date().toISOString().slice(0,10) }]).select('receipt_id').single()
+      const { data: rec, error: rerr } = await supabase.from('uniform_purchase_receipt').insert([{ 
+        purchase_id: purchaseId, 
+        receipt_date: new Date().toISOString().slice(0,10),
+        received_by: userId
+      }]).select('receipt_id').single()
       if (rerr) throw rerr
       const rid = rec.receipt_id
       // 2) filter positive rows and insert receipt items
@@ -1560,13 +1588,19 @@ export default function AddUniformStockPage() {
                         <Button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 text-xs" onClick={()=>openReceive(p.purchase_id)}>Terima Barang</Button>
                       </td>
                       <td className="py-2 pr-4">
-                        <button
-                          className="text-red-600 hover:text-red-800 text-xs underline"
-                          onClick={() => deleteDraftPurchase(p.purchase_id)}
-                          title="Hapus pesanan draft"
-                        >
-                          🗑️ Hapus
-                        </button>
+                        {hasVoidPermission ? (
+                          <button
+                            className="text-red-600 hover:text-red-800 text-xs underline"
+                            onClick={() => deleteDraftPurchase(p.purchase_id)}
+                            title="Hapus pesanan draft"
+                          >
+                            🗑️ Hapus
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-xs italic" title="Anda tidak memiliki izin untuk menghapus pesanan">
+                            Tidak ada akses
+                          </span>
+                        )}
                       </td>
                     </tr>
                   )
@@ -1632,16 +1666,22 @@ export default function AddUniformStockPage() {
                         <Button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 text-xs" onClick={()=>openHistory(p.purchase_id)}>Lihat Detail</Button>
                       </td>
                       <td className="py-2 pr-4">
-                        <button
-                          className="text-orange-600 hover:text-orange-800 text-xs underline"
-                          onClick={() => {
-                            setVoidingPurchase(p)
-                            setShowVoidModal(true)
-                          }}
-                          title="Batalkan pesanan (stock akan dikembalikan)"
-                        >
-                          ⚠️ Batalkan
-                        </button>
+                        {hasVoidPermission ? (
+                          <button
+                            className="text-orange-600 hover:text-orange-800 text-xs underline"
+                            onClick={() => {
+                              setVoidingPurchase(p)
+                              setShowVoidModal(true)
+                            }}
+                            title="Batalkan pesanan (stock akan dikembalikan)"
+                          >
+                            ⚠️ Batalkan
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-xs italic" title="Anda tidak memiliki izin untuk membatalkan pesanan">
+                            Tidak ada akses
+                          </span>
+                        )}
                       </td>
                     </tr>
                   )

@@ -26,7 +26,8 @@ export default function RoleManagementPage() {
     is_teacher: false,
     is_principal: false,
     is_student: false,
-    is_counselor: false
+    is_counselor: false,
+    can_void_transactions: false
   })
 
   const isAdmin = useMemo(() => {
@@ -53,7 +54,7 @@ export default function RoleManagementPage() {
         // Fetch roles with dashboard_type info
         const { data, error } = await supabase
           .from('role')
-          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor')
+          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, can_void_transactions')
           .order('role_priority', { ascending: false })
           .order('role_name')
         if (error) throw new Error(error.message)
@@ -72,7 +73,7 @@ export default function RoleManagementPage() {
   }, [roles, search])
 
   const openNew = () => {
-    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false })
+    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, can_void_transactions: false })
     setShowEdit(true)
   }
   const openEdit = (r) => {
@@ -85,7 +86,8 @@ export default function RoleManagementPage() {
       is_teacher: !!r.is_teacher,
       is_principal: !!r.is_principal,
       is_student: !!r.is_student,
-      is_counselor: !!r.is_counselor
+      is_counselor: !!r.is_counselor,
+      can_void_transactions: !!r.can_void_transactions
     })
     setShowEdit(true)
   }
@@ -110,7 +112,8 @@ export default function RoleManagementPage() {
         is_teacher: !!form.is_teacher,
         is_principal: !!form.is_principal,
         is_student: !!form.is_student,
-        is_counselor: !!form.is_counselor
+        is_counselor: !!form.is_counselor,
+        can_void_transactions: !!form.can_void_transactions
       }
       if (form.role_id) {
         const { error } = await supabase.from('role').update(payload).eq('role_id', form.role_id)
@@ -119,7 +122,7 @@ export default function RoleManagementPage() {
         const { error } = await supabase.from('role').insert([payload])
         if (error) throw new Error(error.message)
       }
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor').order('role_priority', { ascending: false }).order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, can_void_transactions').order('role_priority', { ascending: false }).order('role_name')
       if (rErr) throw new Error(rErr.message)
       setRoles(data || [])
       setShowEdit(false)
@@ -277,6 +280,14 @@ export default function RoleManagementPage() {
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_principal} onChange={e=>setForm(p=>({...p,is_principal:e.target.checked}))} />Principal</label>
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_student} onChange={e=>setForm(p=>({...p,is_student:e.target.checked}))} />Student</label>
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_counselor} onChange={e=>setForm(p=>({...p,is_counselor:e.target.checked}))} />Counselor</label>
+          </div>
+          <div className="border-t pt-3">
+            <Label className="text-sm font-medium mb-2 block">Permissions</Label>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.can_void_transactions} onChange={e=>setForm(p=>({...p,can_void_transactions:e.target.checked}))} />
+              <span>Can Void Transactions</span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1">Allow this role to void/cancel purchase orders, sales, and other transactions</p>
           </div>
           <div className="text-xs text-gray-500">Note: Admin bypasses all guards. Flags affect access to specific sections (teacher, student, counselor overrides).</div>
           <div className="flex justify-end gap-2 pt-2">

@@ -1351,7 +1351,6 @@ export default function UserManagement() {
                 <tr className="bg-gray-50">
                   <th className="border border-gray-300 px-4 py-2 text-left">ID</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Nama Lengkap</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Username</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Email</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Role</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Unit</th>
@@ -1362,7 +1361,7 @@ export default function UserManagement() {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
+                    <td colSpan="7" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
                       {(filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
                     </td>
                   </tr>
@@ -1373,7 +1372,6 @@ export default function UserManagement() {
                       <td className="border border-gray-300 px-4 py-2">
                         {user.user_nama_depan} {user.user_nama_belakang}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">{user.user_username}</td>
                       <td className="border border-gray-300 px-4 py-2">{user.user_email || '-'}</td>
                       <td className="border border-gray-300 px-4 py-2">
                         <span className={`px-2 py-1 rounded text-xs ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>

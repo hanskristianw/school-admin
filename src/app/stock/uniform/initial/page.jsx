@@ -305,6 +305,9 @@ export default function InitialStockPage() {
     setSaving(true)
     setError('')
     try {
+      // Get user ID for created_by tracking
+      const userId = parseInt(localStorage.getItem('kr_id'), 10) || null
+      
       // Create stock transactions for initial stock
       const transactions = initialStockItems.map(item => ({
         uniform_id: Number(item.uniform_id),
@@ -314,7 +317,8 @@ export default function InitialStockPage() {
         txn_type: 'init',
         ref_table: 'manual',
         ref_id: null,
-        notes: item.notes || 'Stock awal sistem'
+        notes: item.notes || 'Stock awal sistem',
+        created_by: userId
       }))
 
       const { error } = await supabase
