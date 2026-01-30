@@ -15,7 +15,7 @@ export default function UniformSupplierPage() {
   const [showModal, setShowModal] = useState(false)
   const [edit, setEdit] = useState(null)
 
-  const emptyForm = { supplier_code: '', supplier_name: '', contact_person: '', phone: '', email: '', address: '', notes: '', is_active: true }
+  const emptyForm = { supplier_code: '', supplier_name: '', contact_person: '', phone: '', email: '', address: '', city: '', postal_code: '', province: '', notes: '', is_active: true }
   const [form, setForm] = useState(emptyForm)
 
   const load = async () => {
@@ -31,7 +31,23 @@ export default function UniformSupplierPage() {
   useEffect(() => { load() }, [])
 
   const openCreate = () => { setEdit(null); setForm(emptyForm); setShowModal(true) }
-  const openEdit = (row) => { setEdit(row); setForm({ ...row }); setShowModal(true) }
+  const openEdit = (row) => { 
+    setEdit(row); 
+    setForm({ 
+      supplier_code: row.supplier_code || '',
+      supplier_name: row.supplier_name || '',
+      contact_person: row.contact_person || '',
+      phone: row.phone || '',
+      email: row.email || '',
+      address: row.address || '',
+      city: row.city || '',
+      postal_code: row.postal_code || '',
+      province: row.province || '',
+      notes: row.notes || '',
+      is_active: !!row.is_active
+    }); 
+    setShowModal(true) 
+  }
 
   const save = async () => {
     try {
@@ -77,7 +93,8 @@ export default function UniformSupplierPage() {
                 <th className="py-2 pr-4">Nama</th>
                 <th className="py-2 pr-4">Kontak</th>
                 <th className="py-2 pr-4">Telepon</th>
-                <th className="py-2 pr-4">Email</th>
+                <th className="py-2 pr-4">Alamat</th>
+                <th className="py-2 pr-4">Kota</th>
                 <th className="py-2 pr-4">Aktif</th>
                 <th className="py-2 pr-4">Aksi</th>
               </tr>
@@ -89,7 +106,8 @@ export default function UniformSupplierPage() {
                   <td className="py-2 pr-4">{r.supplier_name}</td>
                   <td className="py-2 pr-4">{r.contact_person || '-'}</td>
                   <td className="py-2 pr-4">{r.phone || '-'}</td>
-                  <td className="py-2 pr-4">{r.email || '-'}</td>
+                  <td className="py-2 pr-4 text-xs max-w-xs truncate" title={r.address || '-'}>{r.address || '-'}</td>
+                  <td className="py-2 pr-4">{r.city || '-'}</td>
                   <td className="py-2 pr-4">
                     <input type="checkbox" checked={!!r.is_active} onChange={async e=>{
                       await supabase.from('uniform_supplier').update({ is_active: e.target.checked }).eq('supplier_id', r.supplier_id)
@@ -103,7 +121,7 @@ export default function UniformSupplierPage() {
                 </tr>
               ))}
               {!rows.length && !loading && (
-                <tr><td colSpan={7} className="py-4 text-center text-gray-500">Belum ada data</td></tr>
+                <tr><td colSpan={8} className="py-4 text-center text-gray-500">Belum ada data</td></tr>
               )}
             </tbody>
           </table>
@@ -133,8 +151,20 @@ export default function UniformSupplierPage() {
             <Input value={form.email} onChange={e=>setForm(f=>({...f, email: e.target.value}))} />
           </div>
           <div className="md:col-span-2">
-            <Label>Alamat</Label>
-            <Input value={form.address} onChange={e=>setForm(f=>({...f, address: e.target.value}))} />
+            <Label>Alamat Jalan</Label>
+            <Input value={form.address} onChange={e=>setForm(f=>({...f, address: e.target.value}))} placeholder="Jl. Contoh No. 123" />
+          </div>
+          <div>
+            <Label>Kota</Label>
+            <Input value={form.city} onChange={e=>setForm(f=>({...f, city: e.target.value}))} placeholder="Jakarta" />
+          </div>
+          <div>
+            <Label>Kode Pos</Label>
+            <Input value={form.postal_code} onChange={e=>setForm(f=>({...f, postal_code: e.target.value}))} placeholder="12345" />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Provinsi</Label>
+            <Input value={form.province} onChange={e=>setForm(f=>({...f, province: e.target.value}))} placeholder="DKI Jakarta" />
           </div>
           <div className="md:col-span-2">
             <Label>Catatan</Label>

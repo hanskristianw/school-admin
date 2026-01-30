@@ -29,6 +29,7 @@ export default function UniformSalesPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [receiptFile, setReceiptFile] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState('transfer')
   const [showConfirm, setShowConfirm] = useState(false)
   
   // Tab and history states
@@ -297,7 +298,7 @@ export default function UniformSalesPage() {
         user_id: Number(userId), 
         unit_id: Number(selectedStudent.user_unit_id), 
         status: 'pending', 
-        payment_method: 'transfer', 
+        payment_method: paymentMethod, 
         total_amount: totals.amount, 
         total_cost: totals.cost,
         processed_by: processedBy
@@ -1413,7 +1414,22 @@ export default function UniformSalesPage() {
               {/* Summary and Actions */}
               <div className="mt-6 pt-4 border-t space-y-4">
                 <div>
-                  <Label>Bukti Transfer (Opsional)</Label>
+                  <Label>Metode Pembayaran <span className="text-red-500">*</span></Label>
+                  <select 
+                    value={paymentMethod}
+                    onChange={e => setPaymentMethod(e.target.value)}
+                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="transfer">Transfer Bank</option>
+                    <option value="cash">Cash/Tunai</option>
+                    <option value="credit_card">Kartu Kredit</option>
+                    <option value="debit_card">Kartu Debit</option>
+                  </select>
+                </div>
+
+                {paymentMethod === 'transfer' && (
+                  <div>
+                    <Label>Bukti Transfer (Opsional)</Label>
                   <div className="mt-2">
                     <label className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 hover:border-blue-500 transition-colors">
                       <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1444,6 +1460,7 @@ export default function UniformSalesPage() {
                     )}
                   </div>
                 </div>
+                )}
 
                 <div>
                   <Label>Tanggal Pengambilan</Label>
@@ -1805,7 +1822,14 @@ export default function UniformSalesPage() {
                           <div className="text-sm text-gray-600 space-y-1">
                             <div>
                               <span className="font-medium">{sale.item_count} item</span>
-                              {sale.receipt_url && (
+                              <span className="mx-2">•</span>
+                              <span className="inline-flex items-center gap-1">
+                                {sale.payment_method === 'transfer' && '💳 Transfer Bank'}
+                                {sale.payment_method === 'cash' && '💵 Cash'}
+                                {sale.payment_method === 'credit_card' && '💳 Kartu Kredit'}
+                                {sale.payment_method === 'debit_card' && '💳 Kartu Debit'}
+                              </span>
+                              {sale.payment_method === 'transfer' && sale.receipt_url && (
                                 <>
                                   <span className="mx-2">•</span>
                                   <a
@@ -1831,7 +1855,7 @@ export default function UniformSalesPage() {
                                   )}
                                 </>
                               )}
-                              {!sale.receipt_url && !sale.is_voided && (
+                              {sale.payment_method === 'transfer' && !sale.receipt_url && !sale.is_voided && (
                                 <>
                                   <span className="mx-2">•</span>
                                   <button

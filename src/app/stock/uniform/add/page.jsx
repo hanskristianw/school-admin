@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
+import POModal from '@/components/POModal'
 import { formatCurrency, toNumber } from '@/lib/utils'
 import { canVoidTransactions, getUserData } from '@/lib/permissions'
 
@@ -51,6 +52,11 @@ export default function AddUniformStockPage() {
   const [showVoidModal, setShowVoidModal] = useState(false)
   const [voidingPurchase, setVoidingPurchase] = useState(null)
   const [voidReason, setVoidReason] = useState('')
+  
+  // PO Print states
+  const [showPOModal, setShowPOModal] = useState(false)
+  const [selectedPOForPrint, setSelectedPOForPrint] = useState(null)
+  const [poItems, setPOItems] = useState([])
   
   // Check void permission
   const userData = useMemo(() => getUserData(), [])
@@ -311,6 +317,37 @@ export default function AddUniformStockPage() {
     return ''
   }
 
+  const generatePONumber = async (poDate) => {
+    try {
+      // Get current settings
+      const { data: settings, error: settingsErr } = await supabase
+        .from('uniform_po_settings')
+        .select('last_sequence, prefix')
+        .eq('id', 1)
+        .single()
+      
+      if (settingsErr) throw settingsErr
+      
+      // Increment sequence
+      const newSequence = (settings?.last_sequence || 0) + 1
+      
+      // Format PO number: PO/CCS/VI/26/0001
+      const monthRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+      const date = new Date(poDate)
+      const month = monthRoman[date.getMonth()]
+      const year = String(date.getFullYear()).slice(-2)
+      const seq = String(newSequence).padStart(4, '0')
+      const prefix = settings?.prefix || 'PO/CCS'
+      
+      const poNumber = `${prefix}/${month}/${year}/${seq}`
+      
+      return { poNumber, sequence: newSequence }
+    } catch (e) {
+      console.error('Error generating PO number:', e)
+      throw new Error('Gagal generate nomor PO: ' + e.message)
+    }
+  }
+
   const save = async () => {
     const msg = validate(); if (msg) { setError(msg); return }
     setSaving(true); setError('')
@@ -321,7 +358,10 @@ export default function AddUniformStockPage() {
       // Get user ID for created_by tracking
       const userId = parseInt(localStorage.getItem('kr_id'), 10) || null
       
-      // 1) create purchase header as pending
+      // Generate PO number
+      const { poNumber, sequence } = await generatePONumber(purchaseDate)
+      
+      // 1) create purchase header as pending with po_number
       const { data: header, error: herr } = await supabase.from('uniform_purchase').insert([{ 
         unit_id: Number(firstUnitId), 
         supplier_id: Number(supplierId), 
@@ -329,10 +369,25 @@ export default function AddUniformStockPage() {
         invoice_no: invoiceNo || null, 
         notes: notes || null, 
         status: 'draft',
-        created_by: userId
+        created_by: userId,
+        po_number: poNumber
       }]).select('purchase_id').single()
       if (herr) throw herr
       const pid = header.purchase_id; setPurchaseId(pid)
+      
+      // Update PO settings sequence
+      const { error: seqErr } = await supabase
+        .from('uniform_po_settings')
+        .update({ 
+          last_sequence: sequence,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 1)
+      
+      if (seqErr) {
+        console.error('Warning: Failed to update PO sequence:', seqErr)
+        // Don't throw - purchase already created, just log warning
+      }
       // 2) insert items (ordered) with unit_id per item
       const payload = items.map(it => ({ 
         purchase_id: pid, 
@@ -440,6 +495,40 @@ export default function AddUniformStockPage() {
       .order('receipt_id', { ascending: false })
     setHistoryReceipts(rec || [])
     setShowHistory(true)
+  }
+
+  const handlePrintPO = async (purchase) => {
+    try {
+      // Fetch purchase details with supplier info
+      const { data: purchaseData, error: purchaseErr } = await supabase
+        .from('uniform_purchase')
+        .select(`
+          *,
+          supplier:uniform_supplier(supplier_id, supplier_name, supplier_code, address, city, postal_code, province, phone, contact_person)
+        `)
+        .eq('purchase_id', purchase.purchase_id)
+        .single()
+
+      if (purchaseErr) throw purchaseErr
+
+      // Fetch purchase items with unit info
+      const { data: itemsData, error: itemsErr } = await supabase
+        .from('uniform_purchase_item')
+        .select(`
+          *,
+          unit:unit(unit_id, unit_name)
+        `)
+        .eq('purchase_id', purchase.purchase_id)
+
+      if (itemsErr) throw itemsErr
+
+      setSelectedPOForPrint(purchaseData)
+      setPOItems(itemsData || [])
+      setShowPOModal(true)
+    } catch (e) {
+      console.error('Error loading PO data:', e)
+      alert('Gagal memuat data PO: ' + e.message)
+    }
   }
 
   const postReceipt = async () => {
@@ -1633,11 +1722,13 @@ export default function AddUniformStockPage() {
               <thead>
                 <tr className="text-left border-b">
                   <th className="py-2 pr-4">#</th>
+                  <th className="py-2 pr-4">No. PO</th>
                   <th className="py-2 pr-4">Tanggal</th>
                   <th className="py-2 pr-4">Supplier</th>
                   <th className="py-2 pr-4">Unit</th>
                   <th className="py-2 pr-4">Invoice</th>
                   <th className="py-2 pr-4">Aksi</th>
+                  <th className="py-2 pr-4">Cetak</th>
                   <th className="py-2 pr-4">Kelola</th>
                 </tr>
               </thead>
@@ -1648,6 +1739,11 @@ export default function AddUniformStockPage() {
                   return (
                     <tr key={p.purchase_id} className="border-b hover:bg-gray-50">
                       <td className="py-2 pr-4">#{p.purchase_id}</td>
+                      <td className="py-2 pr-4">
+                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                          {p.po_number || '-'}
+                        </span>
+                      </td>
                       <td className="py-2 pr-4">{p.purchase_date}</td>
                       <td className="py-2 pr-4">{p.supplier?.supplier_name || '-'}</td>
                       <td className="py-2 pr-4">
@@ -1664,6 +1760,9 @@ export default function AddUniformStockPage() {
                       <td className="py-2 pr-4">{p.invoice_no || '-'}</td>
                       <td className="py-2 pr-4">
                         <Button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 text-xs" onClick={()=>openHistory(p.purchase_id)}>Lihat Detail</Button>
+                      </td>
+                      <td className="py-2 pr-4">
+                        <Button className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 text-xs" onClick={()=>handlePrintPO(p)}>🖨️ Cetak PO</Button>
                       </td>
                       <td className="py-2 pr-4">
                         {hasVoidPermission ? (
@@ -1688,7 +1787,7 @@ export default function AddUniformStockPage() {
                 })}
                 {!completed.length && (
                   <tr>
-                    <td className="py-8 text-gray-500 text-center" colSpan={7}>
+                    <td className="py-8 text-gray-500 text-center" colSpan={9}>
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-4xl">📭</span>
                         <span>Belum ada transaksi selesai.</span>
@@ -1924,6 +2023,21 @@ export default function AddUniformStockPage() {
           </div>
         </div>
       </Modal>
+
+      {/* PO Modal */}
+      <POModal
+        isOpen={showPOModal}
+        onClose={() => {
+          setShowPOModal(false)
+          setSelectedPOForPrint(null)
+          setPOItems([])
+        }}
+        purchase={selectedPOForPrint}
+        items={poItems}
+        uniforms={uniforms}
+        sizes={sizes}
+        units={units}
+      />
     </div>
   )
 }

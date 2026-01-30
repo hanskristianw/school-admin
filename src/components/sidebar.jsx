@@ -38,7 +38,8 @@ import {
   faSitemap,
   faSackDollar,
   faFlag,
-  faLightbulb
+  faLightbulb,
+  faHashtag
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -71,6 +72,7 @@ const iconMap = {
   , 'fas fa-flag': faFlag
   , 'fas fa-lightbulb': faLightbulb
   , 'fas fa-gauge-high': faGaugeHigh
+  , 'fas fa-hashtag': faHashtag
   , 'fas fa-ruler': require('@fortawesome/free-solid-svg-icons').faRuler
   , 'fas fa-shirt': require('@fortawesome/free-solid-svg-icons').faShirt
   , 'fas fa-cart-shopping': require('@fortawesome/free-solid-svg-icons').faCartShopping
@@ -107,6 +109,7 @@ const iconMap = {
   'faFlag': faFlag,
   'faLightbulb': faLightbulb,
   'faGaugeHigh': faGaugeHigh,
+  'faHashtag': faHashtag,
   'faUserGraduate': faUserGraduate,
   'fas fa-user-graduate': faUserGraduate
   , 'faRuler': require('@fortawesome/free-solid-svg-icons').faRuler

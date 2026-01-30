@@ -35,6 +35,7 @@ create table public.uniform_purchase (
   unit_id integer not null,
   supplier_id bigint not null,
   purchase_date date not null default CURRENT_DATE,
+  po_number text null,
   invoice_no text null,
   notes text null,
   status text not null default 'posted'::text,
@@ -45,6 +46,7 @@ create table public.uniform_purchase (
   voided_by text null,
   void_reason text null,
   constraint uniform_purchase_pkey primary key (purchase_id),
+  constraint uniform_purchase_po_number_unique unique (po_number),
   constraint uniform_purchase_supplier_id_fkey foreign KEY (supplier_id) references uniform_supplier (supplier_id) on delete RESTRICT,
   constraint uniform_purchase_unit_id_fkey foreign KEY (unit_id) references unit (unit_id) on delete RESTRICT,
   constraint uniform_purchase_status_check check (
@@ -61,6 +63,8 @@ create index IF not exists idx_uniform_purchase_unit on public.uniform_purchase 
 create index IF not exists idx_uniform_purchase_supplier on public.uniform_purchase using btree (supplier_id) TABLESPACE pg_default;
 
 create index IF not exists idx_uniform_purchase_is_voided on public.uniform_purchase using btree (is_voided) TABLESPACE pg_default;
+
+create index IF not exists idx_uniform_purchase_po_number on public.uniform_purchase using btree (po_number) TABLESPACE pg_default;
 
 create table public.uniform_purchase_item (
   item_id bigserial not null,
@@ -131,7 +135,13 @@ create table public.uniform_sale (
   constraint uniform_sale_pkey primary key (sale_id),
   constraint uniform_sale_user_id_fkey foreign KEY (user_id) references users (user_id) on delete RESTRICT,
   constraint uniform_sale_unit_id_fkey foreign KEY (unit_id) references unit (unit_id) on delete RESTRICT,
-  constraint uniform_sale_payment_method_check check ((payment_method = 'transfer'::text)),
+  constraint uniform_sale_payment_method_check check (
+    (
+      payment_method = any (
+        array['transfer'::text, 'cash'::text, 'credit_card'::text, 'debit_card'::text]
+      )
+    )
+  ),
   constraint uniform_sale_status_check check (
     (
       status = any (
@@ -221,12 +231,22 @@ create table public.uniform_supplier (
   phone text null,
   email text null,
   address text null,
+  city text null,
+  postal_code text null,
+  province text null,
   notes text null,
   is_active boolean not null default true,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   constraint uniform_supplier_pkey primary key (supplier_id)
 ) TABLESPACE pg_default;
+
+comment on column public.uniform_supplier.address is 'Street address';
+comment on column public.uniform_supplier.city is 'City/Kota';
+comment on column public.uniform_supplier.postal_code is 'Postal/ZIP code';
+comment on column public.uniform_supplier.province is 'Province/Provinsi';
+
+comment on column public.uniform_sale.payment_method is 'Payment method: transfer, cash, credit_card, debit_card';
 
 create index IF not exists idx_uniform_supplier_active on public.uniform_supplier using btree (is_active) TABLESPACE pg_default;
 
@@ -249,3 +269,20 @@ create table public.uniform_variant (
 create index IF not exists idx_uniform_variant_uniform on public.uniform_variant using btree (uniform_id) TABLESPACE pg_default;
 
 create index IF not exists idx_uniform_variant_size on public.uniform_variant using btree (size_id) TABLESPACE pg_default;
+
+create table public.uniform_po_settings (
+  id integer not null default 1,
+  last_sequence integer not null default 0,
+  last_reset_date date null,
+  prefix text not null default 'PO/CCS',
+  notes text null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  constraint uniform_po_settings_pkey primary key (id),
+  constraint only_one_row check (id = 1)
+) TABLESPACE pg_default;
+
+comment on table public.uniform_po_settings is 'Settings for automatic PO number generation. Only one row allowed (id=1).';
+comment on column public.uniform_po_settings.last_sequence is 'Last used sequence number for PO. Auto-incremented when new PO is created.';
+comment on column public.uniform_po_settings.last_reset_date is 'Date when the PO counter was last reset (e.g., start of academic year).';
+comment on column public.uniform_po_settings.prefix is 'Prefix for PO number. Default: PO/CCS';
