@@ -20,31 +20,20 @@ import {
   faUsers,
   faSchool,
   faCalendar,
-  faNoteSticky
+  faNoteSticky,
+  faCamera,
+  faIdCard
 } from '@fortawesome/free-solid-svg-icons'
+import { getCityList, getProvinceByCity } from '@/lib/cityProvinceData'
 
-// Animated background orbs component
+// Animated background orbs component - iOS style
 function FloatingOrbs() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute top-1/4 -left-20 w-72 h-72 bg-emerald-400/30 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute top-3/4 -right-20 w-96 h-96 bg-teal-400/20 rounded-full blur-3xl animate-pulse delay-1000" />
-      <div className="absolute -top-20 right-1/4 w-80 h-80 bg-green-400/20 rounded-full blur-3xl animate-pulse delay-500" />
-      <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-cyan-400/25 rounded-full blur-3xl animate-pulse delay-700" />
+      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-emerald-300/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute top-3/4 -right-20 w-80 h-80 bg-teal-300/15 rounded-full blur-3xl animate-pulse delay-1000" />
+      <div className="absolute -top-20 right-1/4 w-72 h-72 bg-green-300/15 rounded-full blur-3xl animate-pulse delay-500" />
     </div>
-  )
-}
-
-// Grid pattern overlay
-function GridPattern() {
-  return (
-    <div 
-      className="absolute inset-0 opacity-[0.03]"
-      style={{
-        backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-        backgroundSize: '50px 50px'
-      }}
-    />
   )
 }
 
@@ -58,6 +47,10 @@ export default function AdmissionPage() {
   const [submitted, setSubmitted] = useState(false)
   const [applicationNumber, setApplicationNumber] = useState('')
   
+  const [citySearch, setCitySearch] = useState('')
+  const [showCityDropdown, setShowCityDropdown] = useState(false)
+  const allCities = getCityList()
+  
   const [formData, setFormData] = useState({
     // Student data
     student_name: '',
@@ -65,7 +58,13 @@ export default function AdmissionPage() {
     student_gender: '',
     student_birth_date: '',
     student_birth_place: '',
+    student_religion: '',
+    student_nationality: 'WNI',
     student_address: '',
+    student_domicile_address: '',
+    student_city: '',
+    student_province: '',
+    student_postal_code: '',
     student_previous_school: '',
     // Parent data
     parent_name: '',
@@ -81,6 +80,9 @@ export default function AdmissionPage() {
   })
   
   const [formErrors, setFormErrors] = useState({})
+  const [ktpScanning, setKtpScanning] = useState(false)
+  const [ktpScanCount, setKtpScanCount] = useState(0)
+  const KTP_SCAN_LIMIT = 3 // max 3 scans per session
   const [notification, setNotification] = useState({
     isOpen: false,
     title: '',
@@ -136,6 +138,112 @@ export default function AdmissionPage() {
     }
   }
 
+  const handleCitySelect = (city) => {
+    const province = getProvinceByCity(city)
+    setFormData(prev => ({ ...prev, student_city: city, student_province: province }))
+    setCitySearch(city)
+    setShowCityDropdown(false)
+    if (formErrors.student_city) {
+      setFormErrors(prev => ({ ...prev, student_city: '' }))
+    }
+  }
+
+  const filteredCities = citySearch.length >= 1
+    ? allCities.filter(c => c.toLowerCase().includes(citySearch.toLowerCase())).slice(0, 10)
+    : []
+
+  // KTP OCR handler
+  const handleKtpScan = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (ktpScanCount >= KTP_SCAN_LIMIT) {
+      showNotification('Batas Tercapai', 'Maksimal 3x scan KTP per sesi. Silakan isi manual.', 'error')
+      return
+    }
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      showNotification('Error', 'File harus berupa gambar', 'error')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('Error', 'Ukuran file maksimal 5MB', 'error')
+      return
+    }
+
+    setKtpScanning(true)
+    try {
+      // Compress & convert to base64
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const img = new window.Image()
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            const maxW = 1200
+            const scale = Math.min(1, maxW / img.width)
+            canvas.width = img.width * scale
+            canvas.height = img.height * scale
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+            resolve(canvas.toDataURL('image/jpeg', 0.8))
+          }
+          img.src = reader.result
+        }
+        reader.readAsDataURL(file)
+      })
+
+      // Extract base64 data part only
+      const base64Data = base64.split(',')[1]
+
+      const res = await fetch('/api/ocr/ktp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Data })
+      })
+
+      const result = await res.json()
+
+      if (!result.success) {
+        showNotification('Gagal', result.message || 'Gagal membaca KTP', 'error')
+        return
+      }
+
+      setKtpScanCount(prev => prev + 1)
+      const d = result.data
+
+      // Auto-fill parent fields
+      setFormData(prev => ({
+        ...prev,
+        parent_name: d.nama || prev.parent_name,
+        parent_address: d.alamat || prev.parent_address,
+        parent_occupation: d.pekerjaan || prev.parent_occupation,
+      }))
+
+      const filledFields = [
+        d.nama && 'Nama',
+        d.alamat && 'Alamat',
+        d.pekerjaan && 'Pekerjaan'
+      ].filter(Boolean)
+
+      showNotification(
+        'KTP Berhasil Dibaca',
+        filledFields.length > 0
+          ? `Data terisi: ${filledFields.join(', ')}. Silakan periksa dan koreksi jika perlu.`
+          : 'Tidak ada data yang berhasil dibaca. Silakan isi manual.',
+        filledFields.length > 0 ? 'success' : 'error'
+      )
+    } catch (err) {
+      console.error('KTP scan error:', err)
+      showNotification('Error', 'Gagal memproses KTP: ' + err.message, 'error')
+    } finally {
+      setKtpScanning(false)
+      // Reset file input
+      e.target.value = ''
+    }
+  }
+
   const validateStep = (stepNumber) => {
     const errors = {}
 
@@ -145,6 +253,18 @@ export default function AdmissionPage() {
       }
       if (!formData.student_gender) {
         errors.student_gender = 'Jenis kelamin wajib dipilih'
+      }
+      if (!formData.student_birth_date) {
+        errors.student_birth_date = 'Tanggal lahir wajib diisi'
+      }
+      if (!formData.student_religion) {
+        errors.student_religion = 'Agama wajib dipilih'
+      }
+      if (!formData.student_nationality) {
+        errors.student_nationality = 'Kewarganegaraan wajib dipilih'
+      }
+      if (!formData.student_city.trim()) {
+        errors.student_city = 'Kota wajib diisi'
       }
     } else if (stepNumber === 2) {
       if (!formData.parent_name.trim()) {
@@ -190,7 +310,13 @@ export default function AdmissionPage() {
         student_gender: formData.student_gender || null,
         student_birth_date: formData.student_birth_date || null,
         student_birth_place: formData.student_birth_place.trim() || null,
+        student_religion: formData.student_religion || null,
+        student_nationality: formData.student_nationality || 'WNI',
         student_address: formData.student_address.trim() || null,
+        student_domicile_address: formData.student_domicile_address.trim() || null,
+        student_city: formData.student_city.trim() || null,
+        student_province: formData.student_province.trim() || null,
+        student_postal_code: formData.student_postal_code.trim() || null,
         student_previous_school: formData.student_previous_school.trim() || null,
         parent_name: formData.parent_name.trim(),
         parent_phone: formData.parent_phone.trim(),
@@ -215,6 +341,26 @@ export default function AdmissionPage() {
       setApplicationNumber(data.application_number)
       setSubmitted(true)
 
+      // Send WhatsApp notification to parent (non-blocking)
+      const selectedUnit = units.find(u => u.unit_id === parseInt(formData.unit_id))
+      try {
+        await fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'admissionReceived',
+            parentName: formData.parent_name.trim(),
+            studentName: formData.student_name.trim(),
+            applicationNumber: data.application_number,
+            schoolName: selectedUnit?.unit_name || '',
+            phone: formData.parent_phone.trim()
+          })
+        })
+      } catch (waErr) {
+        // Don't block submission if WA fails
+        console.warn('WhatsApp notification failed:', waErr)
+      }
+
     } catch (err) {
       console.error('Error submitting application:', err)
       showNotification('Error', 'Gagal mengirim pendaftaran: ' + err.message, 'error')
@@ -226,47 +372,46 @@ export default function AdmissionPage() {
   // Success screen after submission
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-emerald-900/40 to-slate-900 px-4 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/30 px-4 relative overflow-hidden">
         <FloatingOrbs />
-        <GridPattern />
         
         <div className="w-full max-w-lg relative z-10">
-          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-green-500 rounded-2xl blur-xl opacity-30" />
+          <div className="absolute -inset-2 bg-gradient-to-br from-emerald-100/50 to-teal-100/50 rounded-[2.5rem] blur-xl" />
           
-          <div className="relative backdrop-blur-xl bg-slate-900/80 border border-white/20 rounded-2xl shadow-2xl overflow-hidden p-8 text-center">
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
+          <div className="relative backdrop-blur-2xl bg-white/70 border border-white/40 rounded-[2.5rem] shadow-2xl overflow-hidden p-8 text-center">
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
             
-            <div className="w-20 h-20 mx-auto mb-6 bg-emerald-500/20 rounded-full flex items-center justify-center">
-              <FontAwesomeIcon icon={faCheckCircle} className="text-4xl text-emerald-400" />
+            <div className="w-20 h-20 mx-auto mb-6 bg-emerald-50 rounded-full flex items-center justify-center ring-1 ring-emerald-100">
+              <FontAwesomeIcon icon={faCheckCircle} className="text-4xl text-emerald-500" />
             </div>
             
-            <h1 className="text-2xl font-bold text-white mb-2">Pendaftaran Berhasil!</h1>
-            <p className="text-white/60 mb-6">Terima kasih telah mendaftar. Simpan nomor pendaftaran Anda:</p>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Pendaftaran Berhasil!</h1>
+            <p className="text-gray-500 mb-6">Terima kasih telah mendaftar. Simpan nomor pendaftaran Anda:</p>
             
-            <div className="bg-slate-800/50 border border-emerald-500/30 rounded-xl p-4 mb-6">
-              <p className="text-sm text-white/60 mb-1">Nomor Pendaftaran</p>
-              <p className="text-2xl font-bold text-emerald-400 font-mono">{applicationNumber}</p>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6">
+              <p className="text-sm text-gray-500 mb-1">Nomor Pendaftaran</p>
+              <p className="text-2xl font-bold text-emerald-600 font-mono">{applicationNumber}</p>
             </div>
             
-            <p className="text-white/50 text-sm mb-6">
+            <p className="text-gray-400 text-sm mb-6">
               Gunakan nomor ini untuk mengecek status pendaftaran Anda. 
               Tim kami akan menghubungi Anda melalui nomor telepon yang terdaftar.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-3">
               <Link href="/admission/status" className="flex-1">
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl h-11 shadow-lg">
                   Cek Status Pendaftaran
                 </Button>
               </Link>
               <Link href="/login" className="flex-1">
-                <Button variant="outline" className="w-full border-white/20 text-white hover:bg-white/10">
+                <Button variant="outline" className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl h-11">
                   Kembali ke Login
                 </Button>
               </Link>
             </div>
             
-            <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
+            <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
           </div>
         </div>
       </div>
@@ -274,10 +419,9 @@ export default function AdmissionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900/40 to-slate-900 px-4 py-8 relative overflow-y-auto" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="min-h-screen bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/30 px-4 py-8 relative overflow-y-auto" style={{ minHeight: '100vh', height: 'auto' }}>
       <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
         <FloatingOrbs />
-        <GridPattern />
       </div>
       
       {/* Notification Modal */}
@@ -291,29 +435,31 @@ export default function AdmissionPage() {
       
       <div className="max-w-2xl mx-auto relative z-10">
         {/* Back to Login */}
-        <Link href="/login" className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-colors">
+        <Link href="/login" className="inline-flex items-center gap-2 text-gray-400 hover:text-gray-700 mb-6 transition-colors">
           <FontAwesomeIcon icon={faArrowLeft} />
           <span>Kembali ke Login</span>
         </Link>
         
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-6">
             <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl blur-lg opacity-30" />
-              <Image
-                src="/images/login-logo.png"
-                alt="School Logo"
-                width={120}
-                height={60}
-                style={{ width: 'auto', height: 'auto' }}
-                className="relative object-contain drop-shadow-lg"
-                priority
-              />
+              <div className="absolute -inset-2 bg-gradient-to-br from-emerald-100/50 to-teal-100/50 rounded-3xl blur-xl" />
+              <div className="relative bg-white rounded-3xl p-5 shadow-lg ring-1 ring-black/5">
+                <Image
+                  src="/images/login-logo.png"
+                  alt="School Logo"
+                  width={120}
+                  height={60}
+                  style={{ width: 'auto', height: 'auto' }}
+                  className="object-contain"
+                  priority
+                />
+              </div>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Pendaftaran Siswa Baru</h1>
-          <p className="text-white/60">Lengkapi formulir di bawah ini untuk mendaftar</p>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-1 tracking-tight">Pendaftaran Siswa Baru</h1>
+          <p className="text-sm text-gray-500 font-normal">Lengkapi formulir di bawah ini untuk mendaftar</p>
         </div>
 
         {/* Progress Steps */}
@@ -322,16 +468,16 @@ export default function AdmissionPage() {
             <div key={s} className="flex items-center">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
                 s === step 
-                  ? 'bg-emerald-500 text-white' 
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' 
                   : s < step 
-                    ? 'bg-emerald-600/50 text-white' 
-                    : 'bg-slate-700 text-white/50'
+                    ? 'bg-emerald-100 text-emerald-700' 
+                    : 'bg-gray-100 text-gray-400'
               }`}>
                 {s < step ? '✓' : s}
               </div>
               {s < 3 && (
                 <div className={`w-12 h-1 mx-1 rounded ${
-                  s < step ? 'bg-emerald-500' : 'bg-slate-700'
+                  s < step ? 'bg-emerald-400' : 'bg-gray-200'
                 }`} />
               )}
             </div>
@@ -339,24 +485,24 @@ export default function AdmissionPage() {
         </div>
 
         {/* Step Labels */}
-        <div className="flex justify-between text-xs text-white/60 mb-6 px-4">
-          <span className={step === 1 ? 'text-emerald-400' : ''}>Data Siswa</span>
-          <span className={step === 2 ? 'text-emerald-400' : ''}>Data Orang Tua</span>
-          <span className={step === 3 ? 'text-emerald-400' : ''}>Pilihan Sekolah</span>
+        <div className="flex justify-between text-xs text-gray-400 mb-6 px-4">
+          <span className={step === 1 ? 'text-emerald-600 font-medium' : ''}>Data Siswa</span>
+          <span className={step === 2 ? 'text-emerald-600 font-medium' : ''}>Data Orang Tua</span>
+          <span className={step === 3 ? 'text-emerald-600 font-medium' : ''}>Pilihan Sekolah</span>
         </div>
 
         {/* Form Card */}
         <div className="relative">
-          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-green-500 rounded-2xl blur-xl opacity-20" />
+          <div className="absolute -inset-2 bg-gradient-to-br from-emerald-100/50 to-teal-100/50 rounded-[2.5rem] blur-xl" />
           
-          <Card className="relative backdrop-blur-xl bg-slate-900/80 border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
+          <Card className="relative backdrop-blur-2xl bg-white/70 border border-white/40 rounded-[2.5rem] shadow-2xl overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
             
-            <CardHeader className="border-b border-white/10">
-              <CardTitle className="text-white flex items-center gap-3">
+            <CardHeader className="border-b border-gray-100/50">
+              <CardTitle className="text-gray-900 flex items-center gap-3">
                 <FontAwesomeIcon 
                   icon={step === 1 ? faUser : step === 2 ? faUsers : faSchool} 
-                  className="text-emerald-400"
+                  className="text-emerald-500"
                 />
                 {step === 1 && 'Data Calon Siswa'}
                 {step === 2 && 'Data Orang Tua / Wali'}
@@ -367,263 +513,519 @@ export default function AdmissionPage() {
             <CardContent className="p-6">
               {loading ? (
                 <div className="flex justify-center py-12">
-                  <FontAwesomeIcon icon={faSpinner} className="text-3xl text-emerald-400 animate-spin" />
+                  <FontAwesomeIcon icon={faSpinner} className="text-3xl text-emerald-500 animate-spin" />
                 </div>
               ) : (
                 <form onSubmit={handleSubmit}>
                   {/* Step 1: Student Data */}
                   {step === 1 && (
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="student_name" className="text-white/80">Nama Lengkap *</Label>
-                        <Input
-                          id="student_name"
-                          name="student_name"
-                          value={formData.student_name}
-                          onChange={handleInputChange}
-                          placeholder="Masukkan nama lengkap siswa"
-                          className={`mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40 ${
-                            formErrors.student_name ? 'border-red-500' : ''
-                          }`}
-                        />
-                        {formErrors.student_name && (
-                          <p className="text-red-400 text-sm mt-1">{formErrors.student_name}</p>
-                        )}
-                      </div>
+                    <div className="space-y-6">
+                      {/* Required Fields */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="h-5 w-1 bg-emerald-500 rounded-full" />
+                          <span className="text-sm font-semibold text-emerald-600 uppercase tracking-wide">Wajib Diisi</span>
+                        </div>
 
-                      <div>
-                        <Label htmlFor="student_nickname" className="text-white/80">Nama Panggilan</Label>
-                        <Input
-                          id="student_nickname"
-                          name="student_nickname"
-                          value={formData.student_nickname}
-                          onChange={handleInputChange}
-                          placeholder="Nama panggilan (opsional)"
-                          className="mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="student_gender" className="text-white/80">Jenis Kelamin *</Label>
-                        <select
-                          id="student_gender"
-                          name="student_gender"
-                          value={formData.student_gender}
-                          onChange={handleInputChange}
-                          className={`mt-1 w-full px-3 py-2 bg-slate-800/50 border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                            formErrors.student_gender ? 'border-red-500' : 'border-white/20'
-                          }`}
-                        >
-                          <option value="" className="bg-slate-800">Pilih jenis kelamin</option>
-                          <option value="male" className="bg-slate-800">Laki-laki</option>
-                          <option value="female" className="bg-slate-800">Perempuan</option>
-                        </select>
-                        {formErrors.student_gender && (
-                          <p className="text-red-400 text-sm mt-1">{formErrors.student_gender}</p>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="student_birth_place" className="text-white/80">Tempat Lahir</Label>
+                          <Label htmlFor="student_name" className="text-gray-700">Nama Lengkap <span className="text-red-500">*</span></Label>
                           <Input
-                            id="student_birth_place"
-                            name="student_birth_place"
-                            value={formData.student_birth_place}
+                            id="student_name"
+                            name="student_name"
+                            value={formData.student_name}
                             onChange={handleInputChange}
-                            placeholder="Kota tempat lahir"
-                            className="mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40"
+                            placeholder="Masukkan nama lengkap siswa"
+                            className={`mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400 ${
+                              formErrors.student_name ? 'border-red-500' : ''
+                            }`}
+                          />
+                          {formErrors.student_name && (
+                            <p className="text-red-500 text-sm mt-1">{formErrors.student_name}</p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="student_gender" className="text-gray-700">Jenis Kelamin <span className="text-red-500">*</span></Label>
+                            <select
+                              id="student_gender"
+                              name="student_gender"
+                              value={formData.student_gender}
+                              onChange={handleInputChange}
+                              className={`mt-1 w-full px-3 py-2 bg-white/60 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                                formErrors.student_gender ? 'border-red-500' : 'border-gray-200'
+                              }`}
+                            >
+                              <option value="">Pilih jenis kelamin</option>
+                              <option value="male">Laki-laki</option>
+                              <option value="female">Perempuan</option>
+                            </select>
+                            {formErrors.student_gender && (
+                              <p className="text-red-500 text-sm mt-1">{formErrors.student_gender}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label htmlFor="student_birth_date" className="text-gray-700">Tanggal Lahir <span className="text-red-500">*</span></Label>
+                            <Input
+                              id="student_birth_date"
+                              name="student_birth_date"
+                              type="date"
+                              value={formData.student_birth_date}
+                              onChange={handleInputChange}
+                              className={`mt-1 bg-white/60 border-gray-200 text-gray-900 ${
+                                formErrors.student_birth_date ? 'border-red-500' : ''
+                              }`}
+                            />
+                            {formErrors.student_birth_date && (
+                              <p className="text-red-500 text-sm mt-1">{formErrors.student_birth_date}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="student_religion" className="text-gray-700">Agama <span className="text-red-500">*</span></Label>
+                            <select
+                              id="student_religion"
+                              name="student_religion"
+                              value={formData.student_religion}
+                              onChange={handleInputChange}
+                              className={`mt-1 w-full px-3 py-2 bg-white/60 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                                formErrors.student_religion ? 'border-red-500' : 'border-gray-200'
+                              }`}
+                            >
+                              <option value="">Pilih agama</option>
+                              <option value="Islam">Islam</option>
+                              <option value="Kristen">Kristen</option>
+                              <option value="Katolik">Katolik</option>
+                              <option value="Hindu">Hindu</option>
+                              <option value="Buddha">Buddha</option>
+                              <option value="Konghucu">Konghucu</option>
+                              <option value="Lainnya">Lainnya</option>
+                            </select>
+                            {formErrors.student_religion && (
+                              <p className="text-red-500 text-sm mt-1">{formErrors.student_religion}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label htmlFor="student_nationality" className="text-gray-700">Kewarganegaraan <span className="text-red-500">*</span></Label>
+                            <select
+                              id="student_nationality"
+                              name="student_nationality"
+                              value={formData.student_nationality}
+                              onChange={handleInputChange}
+                              className={`mt-1 w-full px-3 py-2 bg-white/60 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                                formErrors.student_nationality ? 'border-red-500' : 'border-gray-200'
+                              }`}
+                            >
+                              <option value="WNI">WNI (Warga Negara Indonesia)</option>
+                              <option value="WNA">WNA (Warga Negara Asing)</option>
+                            </select>
+                            {formErrors.student_nationality && (
+                              <p className="text-red-500 text-sm mt-1">{formErrors.student_nationality}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* City with auto-fill province */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="relative">
+                            <Label htmlFor="student_city" className="text-gray-700">Kota <span className="text-red-500">*</span></Label>
+                            <Input
+                              id="student_city"
+                              autoComplete="off"
+                              value={citySearch}
+                              onChange={(e) => {
+                                setCitySearch(e.target.value)
+                                setShowCityDropdown(true)
+                                // If manually typed and matches a city, auto-fill
+                                const match = allCities.find(c => c.toLowerCase() === e.target.value.toLowerCase())
+                                if (match) {
+                                  handleCitySelect(match)
+                                } else {
+                                  setFormData(prev => ({ ...prev, student_city: e.target.value, student_province: '' }))
+                                }
+                              }}
+                              onFocus={() => citySearch.length >= 1 && setShowCityDropdown(true)}
+                              onBlur={() => setTimeout(() => setShowCityDropdown(false), 200)}
+                              placeholder="Ketik nama kota..."
+                              className={`mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400 ${
+                                formErrors.student_city ? 'border-red-500' : ''
+                              }`}
+                            />
+                            {showCityDropdown && filteredCities.length > 0 && (
+                              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                                {filteredCities.map(city => (
+                                  <button
+                                    key={city}
+                                    type="button"
+                                    onMouseDown={() => handleCitySelect(city)}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-emerald-50 transition-colors"
+                                  >
+                                    <span>{city}</span>
+                                    <span className="text-gray-400 ml-2 text-xs">({getProvinceByCity(city)})</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {formErrors.student_city && (
+                              <p className="text-red-500 text-sm mt-1">{formErrors.student_city}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label htmlFor="student_province" className="text-gray-700">Provinsi</Label>
+                            <Input
+                              id="student_province"
+                              name="student_province"
+                              value={formData.student_province}
+                              readOnly
+                              placeholder="Otomatis terisi dari kota"
+                              className="mt-1 bg-gray-100 border-gray-200 text-emerald-600 placeholder:text-gray-300 cursor-not-allowed"
+                            />
+                            {formData.student_province && (
+                              <p className="text-emerald-600 text-xs mt-1">✓ Otomatis dari kota</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-300">OPSIONAL</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+
+                      {/* Optional Fields */}
+                      <div className="space-y-4 bg-gray-50/50 rounded-2xl p-5 border border-gray-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="h-5 w-1 bg-gray-300 rounded-full" />
+                          <span className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Informasi Tambahan</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="student_nickname" className="text-gray-700">Nama Panggilan</Label>
+                            <Input
+                              id="student_nickname"
+                              name="student_nickname"
+                              value={formData.student_nickname}
+                              onChange={handleInputChange}
+                              placeholder="Nama panggilan"
+                              className="mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400"
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="student_birth_place" className="text-gray-700">Tempat Lahir</Label>
+                            <Input
+                              id="student_birth_place"
+                              name="student_birth_place"
+                              value={formData.student_birth_place}
+                              onChange={handleInputChange}
+                              placeholder="Kota tempat lahir"
+                              className="mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="student_address" className="text-gray-700">Alamat KTP</Label>
+                          <textarea
+                            id="student_address"
+                            name="student_address"
+                            value={formData.student_address}
+                            onChange={handleInputChange}
+                            placeholder="Alamat sesuai KTP/KK"
+                            rows={2}
+                            className="mt-1 w-full px-3 py-2 bg-white/60 border border-gray-200 rounded-md text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           />
                         </div>
+
                         <div>
-                          <Label htmlFor="student_birth_date" className="text-white/80">Tanggal Lahir</Label>
-                          <Input
-                            id="student_birth_date"
-                            name="student_birth_date"
-                            type="date"
-                            value={formData.student_birth_date}
+                          <Label htmlFor="student_domicile_address" className="text-gray-700">Alamat Domisili</Label>
+                          <textarea
+                            id="student_domicile_address"
+                            name="student_domicile_address"
+                            value={formData.student_domicile_address}
                             onChange={handleInputChange}
-                            className="mt-1 bg-slate-800/50 border-white/20 text-white"
+                            placeholder="Isi jika berbeda dengan alamat KTP"
+                            rows={2}
+                            className="mt-1 w-full px-3 py-2 bg-white/60 border border-gray-200 rounded-md text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           />
                         </div>
-                      </div>
 
-                      <div>
-                        <Label htmlFor="student_address" className="text-white/80">Alamat</Label>
-                        <textarea
-                          id="student_address"
-                          name="student_address"
-                          value={formData.student_address}
-                          onChange={handleInputChange}
-                          placeholder="Alamat lengkap siswa"
-                          rows={3}
-                          className="mt-1 w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded-md text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                      </div>
+                        <div>
+                          <Label htmlFor="student_postal_code" className="text-gray-700">Kode Pos</Label>
+                          <Input
+                            id="student_postal_code"
+                            name="student_postal_code"
+                            value={formData.student_postal_code}
+                            onChange={handleInputChange}
+                            placeholder="Contoh: 60294"
+                            maxLength={5}
+                            className="mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400 w-32"
+                          />
+                        </div>
 
-                      <div>
-                        <Label htmlFor="student_previous_school" className="text-white/80">Asal Sekolah Sebelumnya</Label>
-                        <Input
-                          id="student_previous_school"
-                          name="student_previous_school"
-                          value={formData.student_previous_school}
-                          onChange={handleInputChange}
-                          placeholder="Nama sekolah sebelumnya (jika ada)"
-                          className="mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40"
-                        />
+                        <div>
+                          <Label htmlFor="student_previous_school" className="text-gray-700">Asal Sekolah Sebelumnya</Label>
+                          <Input
+                            id="student_previous_school"
+                            name="student_previous_school"
+                            value={formData.student_previous_school}
+                            onChange={handleInputChange}
+                            placeholder="Nama sekolah sebelumnya (jika ada)"
+                            className="mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Step 2: Parent Data */}
                   {step === 2 && (
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="parent_name" className="text-white/80">Nama Orang Tua / Wali *</Label>
-                        <Input
-                          id="parent_name"
-                          name="parent_name"
-                          value={formData.parent_name}
-                          onChange={handleInputChange}
-                          placeholder="Nama lengkap orang tua/wali"
-                          className={`mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40 ${
-                            formErrors.parent_name ? 'border-red-500' : ''
-                          }`}
-                        />
-                        {formErrors.parent_name && (
-                          <p className="text-red-400 text-sm mt-1">{formErrors.parent_name}</p>
-                        )}
+                    <div className="space-y-6">
+                      {/* KTP Scan Button */}
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-700">
+                              <FontAwesomeIcon icon={faIdCard} className="text-blue-500 mr-2" />
+                              Scan KTP Orang Tua
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Foto/upload KTP untuk mengisi otomatis nama, alamat, dan pekerjaan
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {ktpScanCount > 0 && (
+                              <span className="text-xs text-gray-400">{ktpScanCount}/{KTP_SCAN_LIMIT}</span>
+                            )}
+                            <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200 ${
+                              ktpScanning || ktpScanCount >= KTP_SCAN_LIMIT
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg hover:shadow-xl active:scale-95'
+                            }`}>
+                              {ktpScanning ? (
+                                <>
+                                  <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                  Membaca...
+                                </>
+                              ) : (
+                                <>
+                                  <FontAwesomeIcon icon={faCamera} />
+                                  {ktpScanCount >= KTP_SCAN_LIMIT ? 'Batas Tercapai' : 'Foto / Upload'}
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={handleKtpScan}
+                                disabled={ktpScanning || ktpScanCount >= KTP_SCAN_LIMIT}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        </div>
                       </div>
 
-                      <div>
-                        <Label htmlFor="parent_phone" className="text-white/80">Nomor Telepon / WhatsApp *</Label>
-                        <Input
-                          id="parent_phone"
-                          name="parent_phone"
-                          value={formData.parent_phone}
-                          onChange={handleInputChange}
-                          placeholder="Contoh: 08123456789"
-                          className={`mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40 ${
-                            formErrors.parent_phone ? 'border-red-500' : ''
-                          }`}
-                        />
-                        {formErrors.parent_phone && (
-                          <p className="text-red-400 text-sm mt-1">{formErrors.parent_phone}</p>
-                        )}
+                      {/* Required Fields */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="h-5 w-1 bg-emerald-500 rounded-full" />
+                          <span className="text-sm font-semibold text-emerald-600 uppercase tracking-wide">Wajib Diisi</span>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="parent_name" className="text-gray-700">Nama Orang Tua / Wali <span className="text-red-500">*</span></Label>
+                          <Input
+                            id="parent_name"
+                            name="parent_name"
+                            value={formData.parent_name}
+                            onChange={handleInputChange}
+                            placeholder="Nama lengkap orang tua/wali"
+                            className={`mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400 ${
+                              formErrors.parent_name ? 'border-red-500' : ''
+                            }`}
+                          />
+                          {formErrors.parent_name && (
+                            <p className="text-red-500 text-sm mt-1">{formErrors.parent_name}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="parent_phone" className="text-gray-700">Nomor Telepon / WhatsApp <span className="text-red-500">*</span></Label>
+                          <Input
+                            id="parent_phone"
+                            name="parent_phone"
+                            value={formData.parent_phone}
+                            onChange={handleInputChange}
+                            placeholder="Contoh: 08123456789"
+                            className={`mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400 ${
+                              formErrors.parent_phone ? 'border-red-500' : ''
+                            }`}
+                          />
+                          {formErrors.parent_phone && (
+                            <p className="text-red-500 text-sm mt-1">{formErrors.parent_phone}</p>
+                          )}
+                        </div>
                       </div>
 
-                      <div>
-                        <Label htmlFor="parent_email" className="text-white/80">Email</Label>
-                        <Input
-                          id="parent_email"
-                          name="parent_email"
-                          type="email"
-                          value={formData.parent_email}
-                          onChange={handleInputChange}
-                          placeholder="Email orang tua/wali (opsional)"
-                          className="mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40"
-                        />
+                      {/* Divider */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-300">OPSIONAL</span>
+                        <div className="flex-1 h-px bg-gray-200" />
                       </div>
 
-                      <div>
-                        <Label htmlFor="parent_occupation" className="text-white/80">Pekerjaan</Label>
-                        <Input
-                          id="parent_occupation"
-                          name="parent_occupation"
-                          value={formData.parent_occupation}
-                          onChange={handleInputChange}
-                          placeholder="Pekerjaan orang tua/wali"
-                          className="mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40"
-                        />
-                      </div>
+                      {/* Optional Fields */}
+                      <div className="space-y-4 bg-gray-50/50 rounded-2xl p-5 border border-gray-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="h-5 w-1 bg-gray-300 rounded-full" />
+                          <span className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Informasi Tambahan</span>
+                        </div>
 
-                      <div>
-                        <Label htmlFor="parent_address" className="text-white/80">Alamat Orang Tua</Label>
-                        <textarea
-                          id="parent_address"
-                          name="parent_address"
-                          value={formData.parent_address}
-                          onChange={handleInputChange}
-                          placeholder="Alamat orang tua (jika berbeda dengan alamat siswa)"
-                          rows={3}
-                          className="mt-1 w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded-md text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
+                        <div>
+                          <Label htmlFor="parent_email" className="text-gray-700">Email</Label>
+                          <Input
+                            id="parent_email"
+                            name="parent_email"
+                            type="email"
+                            value={formData.parent_email}
+                            onChange={handleInputChange}
+                            placeholder="Email orang tua/wali (opsional)"
+                            className="mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="parent_occupation" className="text-gray-700">Pekerjaan</Label>
+                          <Input
+                            id="parent_occupation"
+                            name="parent_occupation"
+                            value={formData.parent_occupation}
+                            onChange={handleInputChange}
+                            placeholder="Pekerjaan orang tua/wali"
+                            className="mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="parent_address" className="text-gray-700">Alamat Orang Tua</Label>
+                          <textarea
+                            id="parent_address"
+                            name="parent_address"
+                            value={formData.parent_address}
+                            onChange={handleInputChange}
+                            placeholder="Alamat orang tua (jika berbeda dengan alamat siswa)"
+                            rows={3}
+                            className="mt-1 w-full px-3 py-2 bg-white/60 border border-gray-200 rounded-md text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Step 3: School Selection */}
                   {step === 3 && (
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="unit_id" className="text-white/80">Pilih Sekolah *</Label>
-                        <select
-                          id="unit_id"
-                          name="unit_id"
-                          value={formData.unit_id}
-                          onChange={handleInputChange}
-                          className={`mt-1 w-full px-3 py-2 bg-slate-800/50 border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                            formErrors.unit_id ? 'border-red-500' : 'border-white/20'
-                          }`}
-                        >
-                          <option value="" className="bg-slate-800">Pilih sekolah yang dituju</option>
-                          {units.map(unit => (
-                            <option key={unit.unit_id} value={unit.unit_id} className="bg-slate-800">
-                              {unit.unit_name}
-                            </option>
-                          ))}
-                        </select>
-                        {formErrors.unit_id && (
-                          <p className="text-red-400 text-sm mt-1">{formErrors.unit_id}</p>
-                        )}
+                    <div className="space-y-6">
+                      {/* Required Fields */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="h-5 w-1 bg-emerald-500 rounded-full" />
+                          <span className="text-sm font-semibold text-emerald-600 uppercase tracking-wide">Wajib Diisi</span>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="unit_id" className="text-gray-700">Pilih Sekolah <span className="text-red-500">*</span></Label>
+                          <select
+                            id="unit_id"
+                            name="unit_id"
+                            value={formData.unit_id}
+                            onChange={handleInputChange}
+                            className={`mt-1 w-full px-3 py-2 bg-white/60 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                              formErrors.unit_id ? 'border-red-500' : 'border-gray-200'
+                            }`}
+                          >
+                            <option value="">Pilih sekolah yang dituju</option>
+                            {units.map(unit => (
+                              <option key={unit.unit_id} value={unit.unit_id}>
+                                {unit.unit_name}
+                              </option>
+                            ))}
+                          </select>
+                          {formErrors.unit_id && (
+                            <p className="text-red-500 text-sm mt-1">{formErrors.unit_id}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="year_id" className="text-gray-700">Tahun Ajaran <span className="text-red-500">*</span></Label>
+                          <select
+                            id="year_id"
+                            name="year_id"
+                            value={formData.year_id}
+                            onChange={handleInputChange}
+                            className={`mt-1 w-full px-3 py-2 bg-white/60 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                              formErrors.year_id ? 'border-red-500' : 'border-gray-200'
+                            }`}
+                          >
+                            <option value="">Pilih tahun ajaran</option>
+                            {years.map(year => (
+                              <option key={year.year_id} value={year.year_id}>
+                                {year.year_name}
+                              </option>
+                            ))}
+                          </select>
+                          {formErrors.year_id && (
+                            <p className="text-red-500 text-sm mt-1">{formErrors.year_id}</p>
+                          )}
+                        </div>
                       </div>
 
-                      <div>
-                        <Label htmlFor="year_id" className="text-white/80">Tahun Ajaran *</Label>
-                        <select
-                          id="year_id"
-                          name="year_id"
-                          value={formData.year_id}
-                          onChange={handleInputChange}
-                          className={`mt-1 w-full px-3 py-2 bg-slate-800/50 border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                            formErrors.year_id ? 'border-red-500' : 'border-white/20'
-                          }`}
-                        >
-                          <option value="" className="bg-slate-800">Pilih tahun ajaran</option>
-                          {years.map(year => (
-                            <option key={year.year_id} value={year.year_id} className="bg-slate-800">
-                              {year.year_name}
-                            </option>
-                          ))}
-                        </select>
-                        {formErrors.year_id && (
-                          <p className="text-red-400 text-sm mt-1">{formErrors.year_id}</p>
-                        )}
+                      {/* Divider */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-300">OPSIONAL</span>
+                        <div className="flex-1 h-px bg-gray-200" />
                       </div>
 
-                      <div>
-                        <Label htmlFor="preferred_grade" className="text-white/80">Kelas yang Diminati</Label>
-                        <Input
-                          id="preferred_grade"
-                          name="preferred_grade"
-                          value={formData.preferred_grade}
-                          onChange={handleInputChange}
-                          placeholder="Contoh: Grade 7, Kelas 1, dll (opsional)"
-                          className="mt-1 bg-slate-800/50 border-white/20 text-white placeholder:text-white/40"
-                        />
-                      </div>
+                      {/* Optional Fields */}
+                      <div className="space-y-4 bg-gray-50/50 rounded-2xl p-5 border border-gray-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="h-5 w-1 bg-gray-300 rounded-full" />
+                          <span className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Informasi Tambahan</span>
+                        </div>
 
-                      <div>
-                        <Label htmlFor="additional_notes" className="text-white/80">Catatan Tambahan</Label>
-                        <textarea
-                          id="additional_notes"
-                          name="additional_notes"
-                          value={formData.additional_notes}
-                          onChange={handleInputChange}
-                          placeholder="Informasi tambahan yang perlu diketahui (opsional)"
-                          rows={3}
-                          className="mt-1 w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded-md text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
+                        <div>
+                          <Label htmlFor="preferred_grade" className="text-gray-700">Kelas yang Diminati</Label>
+                          <Input
+                            id="preferred_grade"
+                            name="preferred_grade"
+                            value={formData.preferred_grade}
+                            onChange={handleInputChange}
+                            placeholder="Contoh: Grade 7, Kelas 1, dll (opsional)"
+                            className="mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="additional_notes" className="text-gray-700">Catatan Tambahan</Label>
+                          <textarea
+                            id="additional_notes"
+                            name="additional_notes"
+                            value={formData.additional_notes}
+                            onChange={handleInputChange}
+                            placeholder="Informasi tambahan yang perlu diketahui (opsional)"
+                            rows={3}
+                            className="mt-1 w-full px-3 py-2 bg-white/60 border border-gray-200 rounded-md text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -635,7 +1037,7 @@ export default function AdmissionPage() {
                         type="button"
                         variant="outline"
                         onClick={handleBack}
-                        className="border-white/20 text-white hover:bg-white/10"
+                        className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl"
                       >
                         Kembali
                       </Button>
@@ -647,7 +1049,7 @@ export default function AdmissionPage() {
                       <Button
                         type="button"
                         onClick={handleNext}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg"
                       >
                         Lanjut
                       </Button>
@@ -655,7 +1057,7 @@ export default function AdmissionPage() {
                       <Button
                         type="submit"
                         disabled={submitting}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 rounded-2xl shadow-lg"
                       >
                         {submitting ? (
                           <>
@@ -675,27 +1077,26 @@ export default function AdmissionPage() {
               )}
             </CardContent>
             
-            <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
+            <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
           </Card>
         </div>
 
         {/* Footer */}
-        <p className="text-center text-white/40 text-sm mt-6">
-          Sudah mendaftar? <Link href="/admission/status" className="text-emerald-400 hover:underline">Cek status pendaftaran</Link>
+        <p className="text-center text-gray-400 text-sm mt-6">
+          Sudah mendaftar? <Link href="/admission/status" className="text-emerald-600 hover:underline">Cek status pendaftaran</Link>
         </p>
       </div>
 
       {/* CSS for custom animations */}
       <style jsx>{`
         @keyframes pulse {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.05); }
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.25; transform: scale(1.03); }
         }
         .animate-pulse {
           animation: pulse 4s ease-in-out infinite;
         }
         .delay-500 { animation-delay: 0.5s; }
-        .delay-700 { animation-delay: 0.7s; }
         .delay-1000 { animation-delay: 1s; }
       `}</style>
     </div>

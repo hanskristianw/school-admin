@@ -204,6 +204,31 @@ export default function AdmissionManagement() {
       };
 
       showNotification('Berhasil', `Pendaftaran ${selectedApplication.application_number} berhasil ${actionLabels[actionType]}`, 'success');
+
+      // Send WhatsApp notification to parent based on status change
+      const waTemplateMap = {
+        approved: 'admissionApproved',
+        rejected: 'admissionRejected',
+        under_review: 'admissionUnderReview'
+      };
+      const waType = waTemplateMap[actionType];
+      if (waType && selectedApplication.parent_phone) {
+        try {
+          await fetch('/api/whatsapp/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: waType,
+              parentName: selectedApplication.parent_name,
+              studentName: selectedApplication.student_name,
+              applicationNumber: selectedApplication.application_number,
+              phone: selectedApplication.parent_phone
+            })
+          });
+        } catch (waErr) {
+          console.warn('WhatsApp notification failed:', waErr);
+        }
+      }
       setShowActionModal(false);
       setSelectedApplication(null);
       setActionType('');

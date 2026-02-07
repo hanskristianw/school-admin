@@ -6,7 +6,13 @@ create table public.student_applications (
   student_gender character varying(10) null,
   student_birth_date date null,
   student_birth_place character varying(100) null,
+  student_religion character varying(30) null,
+  student_nationality character varying(10) null default 'WNI'::character varying,
   student_address text null,
+  student_domicile_address text null,
+  student_city character varying(100) null,
+  student_province character varying(100) null,
+  student_postal_code character varying(10) null,
   student_previous_school character varying(255) null,
   parent_name character varying(255) not null,
   parent_phone character varying(20) not null,
@@ -50,6 +56,35 @@ create table public.student_applications (
           array[
             'male'::character varying,
             'female'::character varying
+          ]
+        )::text[]
+      )
+    )
+  ),
+  constraint student_applications_student_religion_check check (
+    (
+      (student_religion)::text = any (
+        (
+          array[
+            'Islam'::character varying,
+            'Kristen'::character varying,
+            'Katolik'::character varying,
+            'Hindu'::character varying,
+            'Buddha'::character varying,
+            'Konghucu'::character varying,
+            'Lainnya'::character varying
+          ]
+        )::text[]
+      )
+    )
+  ),
+  constraint student_applications_student_nationality_check check (
+    (
+      (student_nationality)::text = any (
+        (
+          array[
+            'WNI'::character varying,
+            'WNA'::character varying
           ]
         )::text[]
       )
