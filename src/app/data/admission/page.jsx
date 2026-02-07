@@ -229,6 +229,25 @@ export default function AdmissionManagement() {
           console.warn('WhatsApp notification failed:', waErr);
         }
       }
+
+      // Send email notification if parent has email on file
+      if (waType && selectedApplication.parent_email) {
+        try {
+          await fetch('/api/email/admission', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: waType,
+              parentName: selectedApplication.parent_name,
+              studentName: selectedApplication.student_name,
+              applicationNumber: selectedApplication.application_number,
+              email: selectedApplication.parent_email
+            })
+          });
+        } catch (emailErr) {
+          console.warn('Email notification failed:', emailErr);
+        }
+      }
       setShowActionModal(false);
       setSelectedApplication(null);
       setActionType('');

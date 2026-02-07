@@ -361,6 +361,27 @@ export default function AdmissionPage() {
         console.warn('WhatsApp notification failed:', waErr)
       }
 
+      // Send email notification if parent provided email (non-blocking)
+      const parentEmail = formData.parent_email?.trim()
+      if (parentEmail) {
+        try {
+          await fetch('/api/email/admission', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'admissionReceived',
+              parentName: formData.parent_name.trim(),
+              studentName: formData.student_name.trim(),
+              applicationNumber: data.application_number,
+              schoolName: selectedUnit?.unit_name || '',
+              email: parentEmail
+            })
+          })
+        } catch (emailErr) {
+          console.warn('Email notification failed:', emailErr)
+        }
+      }
+
     } catch (err) {
       console.error('Error submitting application:', err)
       showNotification('Error', 'Gagal mengirim pendaftaran: ' + err.message, 'error')
