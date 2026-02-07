@@ -34,18 +34,18 @@ export async function sendWhatsApp(token, target, message) {
     return { status: false, reason: 'Token not configured' }
   }
 
-  const formData = new FormData()
-  formData.append('target', target)
-  formData.append('message', message)
-  formData.append('countryCode', '62')
-
   try {
     const res = await fetch(FONNTE_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': token
+        'Authorization': token,
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: formData
+      body: new URLSearchParams({
+        target: target,
+        message: message,
+        countryCode: '62'
+      }).toString()
     })
 
     const result = await res.json()
