@@ -301,7 +301,7 @@ function LoginContent() {
         strategy="afterInteractive"
       />
 
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-blue-50 to-purple-50 px-4 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-blue-50 to-purple-50 px-4 py-8 relative overflow-y-auto">
       {/* Background Effects */}
       <FloatingOrbs />
       

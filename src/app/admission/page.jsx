@@ -43,6 +43,7 @@ export default function AdmissionPage() {
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [units, setUnits] = useState([])
+  const [levels, setLevels] = useState([])
   const [years, setYears] = useState([])
   const [submitted, setSubmitted] = useState(false)
   const [applicationNumber, setApplicationNumber] = useState('')
@@ -73,9 +74,8 @@ export default function AdmissionPage() {
     parent_occupation: '',
     parent_address: '',
     // School selection
-    unit_id: '',
+    level_id: '',
     year_id: '',
-    preferred_grade: '',
     additional_notes: ''
   })
   
@@ -104,6 +104,14 @@ export default function AdmissionPage() {
 
         if (unitsError) throw unitsError
         setUnits(unitsData || [])
+
+        // Fetch admission levels
+        const { data: levelsData } = await supabase
+          .from('admission_level')
+          .select('level_id, level_name, level_order, unit_id, unit:unit_id(unit_id, unit_name)')
+          .eq('is_active', true)
+          .order('level_order')
+        setLevels(levelsData || [])
 
         // Fetch academic years
         const { data: yearsData, error: yearsError } = await supabase
@@ -274,8 +282,8 @@ export default function AdmissionPage() {
         errors.parent_phone = 'Nomor telepon wajib diisi'
       }
     } else if (stepNumber === 3) {
-      if (!formData.unit_id) {
-        errors.unit_id = 'Pilih sekolah yang dituju'
+      if (!formData.level_id) {
+        errors.level_id = 'Pilih jenjang yang dituju'
       }
       if (!formData.year_id) {
         errors.year_id = 'Pilih tahun ajaran'
@@ -323,9 +331,9 @@ export default function AdmissionPage() {
         parent_email: formData.parent_email.trim() || null,
         parent_occupation: formData.parent_occupation.trim() || null,
         parent_address: formData.parent_address.trim() || null,
-        unit_id: parseInt(formData.unit_id),
+        unit_id: levels.find(l => l.level_id === parseInt(formData.level_id))?.unit_id || null,
+        level_id: parseInt(formData.level_id),
         year_id: parseInt(formData.year_id),
-        preferred_grade: formData.preferred_grade.trim() || null,
         additional_notes: formData.additional_notes.trim() || null,
         status: 'pending'
       }
@@ -342,7 +350,7 @@ export default function AdmissionPage() {
       setSubmitted(true)
 
       // Send WhatsApp notification to parent (non-blocking)
-      const selectedUnit = units.find(u => u.unit_id === parseInt(formData.unit_id))
+      const selectedLevel = levels.find(l => l.level_id === parseInt(formData.level_id))
       try {
         await fetch('/api/whatsapp/send', {
           method: 'POST',
@@ -352,7 +360,7 @@ export default function AdmissionPage() {
             parentName: formData.parent_name.trim(),
             studentName: formData.student_name.trim(),
             applicationNumber: data.application_number,
-            schoolName: selectedUnit?.unit_name || '',
+            schoolName: selectedLevel?.level_name || '',
             phone: formData.parent_phone.trim()
           })
         })
@@ -373,7 +381,7 @@ export default function AdmissionPage() {
               parentName: formData.parent_name.trim(),
               studentName: formData.student_name.trim(),
               applicationNumber: data.application_number,
-              schoolName: selectedUnit?.unit_name || '',
+              schoolName: selectedLevel?.level_name || '',
               email: parentEmail
             })
           })
@@ -963,25 +971,33 @@ export default function AdmissionPage() {
                         </div>
 
                         <div>
-                          <Label htmlFor="unit_id" className="text-gray-700">Pilih Sekolah <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="level_id" className="text-gray-700">Pilih Jenjang <span className="text-red-500">*</span></Label>
                           <select
-                            id="unit_id"
-                            name="unit_id"
-                            value={formData.unit_id}
+                            id="level_id"
+                            name="level_id"
+                            value={formData.level_id}
                             onChange={handleInputChange}
                             className={`mt-1 w-full px-3 py-2 bg-white/60 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                              formErrors.unit_id ? 'border-red-500' : 'border-gray-200'
+                              formErrors.level_id ? 'border-red-500' : 'border-gray-200'
                             }`}
                           >
-                            <option value="">Pilih sekolah yang dituju</option>
-                            {units.map(unit => (
-                              <option key={unit.unit_id} value={unit.unit_id}>
-                                {unit.unit_name}
-                              </option>
-                            ))}
+                            <option value="">Pilih jenjang yang dituju</option>
+                            {units.map(unit => {
+                              const unitLevels = levels.filter(l => l.unit_id === unit.unit_id)
+                              if (unitLevels.length === 0) return null
+                              return (
+                                <optgroup key={unit.unit_id} label={unit.unit_name}>
+                                  {unitLevels.map(level => (
+                                    <option key={level.level_id} value={level.level_id}>
+                                      {level.level_name}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )
+                            })}
                           </select>
-                          {formErrors.unit_id && (
-                            <p className="text-red-500 text-sm mt-1">{formErrors.unit_id}</p>
+                          {formErrors.level_id && (
+                            <p className="text-red-500 text-sm mt-1">{formErrors.level_id}</p>
                           )}
                         </div>
 
@@ -1021,18 +1037,6 @@ export default function AdmissionPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <div className="h-5 w-1 bg-gray-300 rounded-full" />
                           <span className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Informasi Tambahan</span>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="preferred_grade" className="text-gray-700">Kelas yang Diminati</Label>
-                          <Input
-                            id="preferred_grade"
-                            name="preferred_grade"
-                            value={formData.preferred_grade}
-                            onChange={handleInputChange}
-                            placeholder="Contoh: Grade 7, Kelas 1, dll (opsional)"
-                            className="mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400"
-                          />
                         </div>
 
                         <div>

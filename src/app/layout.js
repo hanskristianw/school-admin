@@ -34,7 +34,7 @@ export default function RootLayout({ children }) {
               </div>
             </div>
             {/* Content area fills the remaining height */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-auto">
               {children}
             </div>
           </div>

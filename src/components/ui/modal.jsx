@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './button';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'md', zIndex = 'z-50' }) => {
   if (!isOpen) return null;
 
   const sizeClasses = {
@@ -12,7 +12,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className={`fixed inset-0 ${zIndex} overflow-y-auto`}>
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"

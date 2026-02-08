@@ -73,6 +73,7 @@ const NotificationModal = ({
       onClose={handleClose}
       title={title}
       size="sm"
+      zIndex="z-[60]"
     >
       <div className={`${bgColor} ${borderColor} border rounded-lg p-4 mb-4`}>
         <div className="flex items-center space-x-3">

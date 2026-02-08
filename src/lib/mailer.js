@@ -7,7 +7,7 @@ function normalizeRecipients(to = []) {
   return to.filter(Boolean)
 }
 
-export async function sendEmail({ to, subject, html, text }) {
+export async function sendEmail({ to, subject, html, text, attachments }) {
   const apiKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.RESEND_FROM_EMAIL
 
@@ -34,7 +34,8 @@ export async function sendEmail({ to, subject, html, text }) {
     to: recipients,
     subject: subject.trim(),
     html: html || undefined,
-    text: text || undefined
+    text: text || undefined,
+    attachments: attachments || undefined
   }
 
   const response = await fetch(RESEND_API_URL, {
