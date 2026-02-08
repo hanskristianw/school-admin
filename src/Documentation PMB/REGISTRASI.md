@@ -280,14 +280,51 @@ create index if not exists idx_school_fee_level_year on public.school_fee_defini
 
 ### fee_discount
 
-Ditambah `level_id` opsional — jika diisi maka diskon spesifik per jenjang, jika null berlaku untuk seluruh unit.
+Master diskon/potongan untuk DPP dan SPP.
+- `unit_id` (wajib): scope tingkat unit
+- `level_id` (opsional): jika diisi, diskon spesifik per jenjang; jika NULL, berlaku semua jenjang dalam unit
+- `applies_to`: `'udp'` (DPP), `'usek'` (SPP), atau `'both'`
+
+Saat menampilkan daftar diskon untuk suatu pendaftar, filter:
+`unit_id = app.unit_id AND year_id = app.year_id AND (level_id IS NULL OR level_id = app.level_id)`
 
 ```sql
--- Kolom baru pada fee_discount:
--- level_id INTEGER NULL REFERENCES admission_level(level_id)
---
--- Jika level_id NULL → diskon berlaku untuk semua jenjang dalam unit tersebut
--- Jika level_id diisi → diskon hanya berlaku untuk jenjang tertentu
+create table public.fee_discount (
+  discount_id bigserial not null,
+  unit_id integer not null,
+  level_id integer null,
+  year_id integer not null,
+  discount_code character varying(50) not null,
+  discount_name character varying(255) not null,
+  discount_description text null,
+  discount_type character varying(20) not null,
+  discount_value numeric(12,2) not null,
+  applies_to character varying(20) not null,
+  valid_from date null,
+  valid_until date null,
+  is_active boolean not null default true,
+  max_usage integer null,
+  current_usage integer not null default 0,
+  conditions jsonb null,
+  created_at timestamp with time zone not null default now(),
+  created_by integer null,
+  updated_at timestamp with time zone not null default now(),
+  updated_by integer null,
+  constraint fee_discount_pkey primary key (discount_id),
+  constraint uq_discount_code unique (unit_id, year_id, discount_code),
+  constraint fee_discount_unit_fkey foreign key (unit_id) references unit (unit_id) on delete cascade,
+  constraint fee_discount_level_fkey foreign key (level_id) references admission_level (level_id),
+  constraint fee_discount_year_fkey foreign key (year_id) references year (year_id) on delete cascade,
+  constraint fee_discount_type_check check (discount_type in ('percentage', 'fixed')),
+  constraint fee_discount_value_check check (discount_value >= 0),
+  constraint fee_discount_applies_check check (applies_to in ('udp', 'usek', 'both')),
+  constraint fee_discount_max_usage_check check (max_usage is null or max_usage > 0),
+  constraint fee_discount_current_usage_check check (current_usage >= 0)
+) tablespace pg_default;
+
+create index if not exists idx_discount_unit_year on public.fee_discount(unit_id, year_id);
+create index if not exists idx_discount_level on public.fee_discount(level_id) where level_id is not null;
+create index if not exists idx_discount_active on public.fee_discount(is_active) where is_active = true;
 ```
 
 ### application_discount

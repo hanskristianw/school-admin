@@ -20,11 +20,8 @@ import {
   faMoneyBill,
   faArrowLeft,
   faSearch,
-  faFilter,
   faToggleOn,
   faToggleOff,
-  faInfoCircle,
-  faTimes,
   faCheck
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -33,9 +30,9 @@ const formatCurrency = (amount) => {
 };
 
 const appliesToLabel = {
-  udp: 'UDP',
-  usek: 'USEK',
-  both: 'UDP & USEK'
+  udp: 'DPP',
+  usek: 'SPP',
+  both: 'DPP & SPP'
 };
 
 const appliesToColor = {
@@ -47,12 +44,13 @@ const appliesToColor = {
 export default function DiscountMasterPage() {
   const router = useRouter();
   const [discounts, setDiscounts] = useState([]);
-  const [units, setUnits] = useState([]);
+  const [levels, setLevels] = useState([]);
   const [years, setYears] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [filterUnit, setFilterUnit] = useState('');
+  const [filterLevel, setFilterLevel] = useState('');
   const [filterYear, setFilterYear] = useState('');
   const [filterAppliesTo, setFilterAppliesTo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,6 +64,7 @@ export default function DiscountMasterPage() {
   // Form
   const [formData, setFormData] = useState({
     unit_id: '',
+    level_id: '',
     year_id: '',
     discount_code: '',
     discount_name: '',
@@ -92,18 +91,22 @@ export default function DiscountMasterPage() {
     try {
       setLoading(true);
 
-      const [discountsRes, unitsRes, yearsRes] = await Promise.all([
+      const [discountsRes, levelsRes, yearsRes] = await Promise.all([
         supabase
           .from('fee_discount')
-          .select('*, unit:unit_id(unit_name), year:year_id(year_name)')
+          .select('*, unit:unit_id(unit_name), level:level_id(level_name, unit_id, unit:unit_id(unit_name)), year:year_id(year_name)')
           .order('created_at', { ascending: false }),
-        supabase.from('unit').select('unit_id, unit_name').eq('is_school', true).order('unit_name'),
+        supabase
+          .from('admission_level')
+          .select('level_id, level_name, level_order, unit_id, unit:unit_id(unit_name)')
+          .eq('is_active', true)
+          .order('level_order'),
         supabase.from('year').select('year_id, year_name').order('year_name', { ascending: false }),
       ]);
 
       if (discountsRes.error) throw discountsRes.error;
       setDiscounts(discountsRes.data || []);
-      setUnits(unitsRes.data || []);
+      setLevels(levelsRes.data || []);
       setYears(yearsRes.data || []);
     } catch (err) {
       console.error('Error:', err);
@@ -113,8 +116,22 @@ export default function DiscountMasterPage() {
     }
   };
 
+  // Get unique units from levels
+  const units = [...new Map(levels.map(l => [l.unit_id, { unit_id: l.unit_id, unit_name: l.unit?.unit_name }])).values()];
+
+  // Levels filtered by selected unit (for form)
+  const formLevels = formData.unit_id
+    ? levels.filter(l => l.unit_id === parseInt(formData.unit_id))
+    : [];
+
+  // Levels filtered by filter unit (for table filter)
+  const filterLevelsForDropdown = filterUnit
+    ? levels.filter(l => l.unit_id === parseInt(filterUnit))
+    : levels;
+
   const filteredDiscounts = discounts.filter(d => {
     if (filterUnit && d.unit_id !== parseInt(filterUnit)) return false;
+    if (filterLevel && d.level_id !== parseInt(filterLevel)) return false;
     if (filterYear && d.year_id !== parseInt(filterYear)) return false;
     if (filterAppliesTo && d.applies_to !== filterAppliesTo) return false;
     if (searchTerm) {
@@ -127,7 +144,7 @@ export default function DiscountMasterPage() {
 
   const resetForm = () => {
     setFormData({
-      unit_id: '', year_id: '', discount_code: '', discount_name: '',
+      unit_id: '', level_id: '', year_id: '', discount_code: '', discount_name: '',
       discount_description: '', discount_type: 'fixed', discount_value: '',
       applies_to: 'udp', valid_from: '', valid_until: '', max_usage: '', is_active: true,
     });
@@ -142,8 +159,10 @@ export default function DiscountMasterPage() {
 
   const handleOpenEdit = (discount) => {
     setEditingDiscount(discount);
+    const unitId = discount.level?.unit_id || discount.unit_id;
     setFormData({
-      unit_id: discount.unit_id?.toString() || '',
+      unit_id: unitId?.toString() || '',
+      level_id: discount.level_id?.toString() || '',
       year_id: discount.year_id?.toString() || '',
       discount_code: discount.discount_code || '',
       discount_name: discount.discount_name || '',
@@ -182,6 +201,7 @@ export default function DiscountMasterPage() {
     try {
       const payload = {
         unit_id: parseInt(formData.unit_id),
+        level_id: formData.level_id ? parseInt(formData.level_id) : null,
         year_id: parseInt(formData.year_id),
         discount_code: formData.discount_code.trim().toUpperCase(),
         discount_name: formData.discount_name.trim(),
@@ -226,16 +246,15 @@ export default function DiscountMasterPage() {
     if (!confirm(`Hapus potongan "${discount.discount_name}"?`)) return;
     setDeleting(discount.discount_id);
     try {
-      // Check if discount is used by any application
       const { count, error: countErr } = await supabase
         .from('application_discount')
         .select('app_discount_id', { count: 'exact', head: true })
         .eq('discount_id', discount.discount_id);
-      
+
       if (!countErr && count > 0) {
         showNotification(
-          'Tidak Dapat Dihapus', 
-          `Potongan "${discount.discount_name}" sudah digunakan oleh ${count} pendaftar. Nonaktifkan saja jika tidak ingin digunakan lagi.`, 
+          'Tidak Dapat Dihapus',
+          `Potongan "${discount.discount_name}" sudah digunakan oleh ${count} pendaftar. Nonaktifkan saja jika tidak ingin digunakan lagi.`,
           'error'
         );
         return;
@@ -277,6 +296,13 @@ export default function DiscountMasterPage() {
     }
   };
 
+  const getDiscountScope = (d) => {
+    if (d.level?.level_name) {
+      return { primary: d.level.level_name, secondary: d.level.unit?.unit_name || d.unit?.unit_name };
+    }
+    return { primary: d.unit?.unit_name || '-', secondary: 'Semua jenjang' };
+  };
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -308,7 +334,7 @@ export default function DiscountMasterPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Master Potongan / Diskon</h1>
-            <p className="text-gray-600">Kelola master potongan untuk UDP dan USEK</p>
+            <p className="text-gray-600">Kelola master potongan untuk DPP dan SPP per jenjang</p>
           </div>
         </div>
         <Button
@@ -323,13 +349,13 @@ export default function DiscountMasterPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label>Cari</Label>
               <div className="relative mt-1">
                 <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
-                  placeholder="Kode atau nama potongan..."
+                  placeholder="Kode atau nama..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -337,15 +363,30 @@ export default function DiscountMasterPage() {
               </div>
             </div>
             <div>
-              <Label>Sekolah</Label>
+              <Label>Unit</Label>
               <select
                 value={filterUnit}
-                onChange={(e) => setFilterUnit(e.target.value)}
+                onChange={(e) => { setFilterUnit(e.target.value); setFilterLevel(''); }}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Semua Sekolah</option>
+                <option value="">Semua Unit</option>
                 {units.map(u => (
                   <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Jenjang</Label>
+              <select
+                value={filterLevel}
+                onChange={(e) => setFilterLevel(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Semua Jenjang</option>
+                {filterLevelsForDropdown.map(l => (
+                  <option key={l.level_id} value={l.level_id}>
+                    {!filterUnit ? `${l.unit?.unit_name} - ` : ''}{l.level_name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -370,9 +411,9 @@ export default function DiscountMasterPage() {
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Semua</option>
-                <option value="udp">UDP</option>
-                <option value="usek">USEK</option>
-                <option value="both">UDP & USEK</option>
+                <option value="udp">DPP</option>
+                <option value="usek">SPP</option>
+                <option value="both">DPP & SPP</option>
               </select>
             </div>
           </div>
@@ -392,7 +433,7 @@ export default function DiscountMasterPage() {
             <div className="text-center py-12 text-gray-500">
               <FontAwesomeIcon icon={faTag} className="text-4xl mb-4 text-gray-300" />
               <p>Belum ada data potongan</p>
-              <p className="text-sm mt-1">Klik "Tambah Potongan" untuk membuat potongan baru</p>
+              <p className="text-sm mt-1">Klik &quot;Tambah Potongan&quot; untuk membuat potongan baru</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -404,80 +445,83 @@ export default function DiscountMasterPage() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipe</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nilai</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Berlaku</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit / Tahun</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenjang / Tahun</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Penggunaan</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredDiscounts.map(d => (
-                    <tr key={d.discount_id} className={`hover:bg-gray-50 ${!d.is_active ? 'opacity-50' : ''}`}>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-sm text-blue-600 font-semibold">{d.discount_code}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{d.discount_name}</p>
-                        {d.discount_description && (
-                          <p className="text-xs text-gray-500 truncate max-w-[200px]">{d.discount_description}</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${d.discount_type === 'percentage' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
-                          <FontAwesomeIcon icon={d.discount_type === 'percentage' ? faPercent : faMoneyBill} className="text-[10px]" />
-                          {d.discount_type === 'percentage' ? 'Persen' : 'Nominal'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">
-                        {d.discount_type === 'percentage' ? `${d.discount_value}%` : formatCurrency(d.discount_value)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${appliesToColor[d.applies_to]}`}>
-                          {appliesToLabel[d.applies_to]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        <p>{d.unit?.unit_name || '-'}</p>
-                        <p className="text-xs text-gray-400">{d.year?.year_name || '-'}</p>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {d.max_usage ? `${d.current_usage || 0} / ${d.max_usage}` : `${d.current_usage || 0} (unlimited)`}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleToggleActive(d)}
-                          className={`flex items-center gap-1 text-sm font-medium ${d.is_active ? 'text-green-600' : 'text-gray-400'}`}
-                        >
-                          <FontAwesomeIcon icon={d.is_active ? faToggleOn : faToggleOff} className="text-lg" />
-                          {d.is_active ? 'Aktif' : 'Nonaktif'}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenEdit(d)}
+                  {filteredDiscounts.map(d => {
+                    const scope = getDiscountScope(d);
+                    return (
+                      <tr key={d.discount_id} className={`hover:bg-gray-50 ${!d.is_active ? 'opacity-50' : ''}`}>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-sm text-blue-600 font-semibold">{d.discount_code}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-gray-900">{d.discount_name}</p>
+                          {d.discount_description && (
+                            <p className="text-xs text-gray-500 truncate max-w-[200px]">{d.discount_description}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${d.discount_type === 'percentage' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                            <FontAwesomeIcon icon={d.discount_type === 'percentage' ? faPercent : faMoneyBill} className="text-[10px]" />
+                            {d.discount_type === 'percentage' ? 'Persen' : 'Nominal'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">
+                          {d.discount_type === 'percentage' ? `${d.discount_value}%` : formatCurrency(d.discount_value)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${appliesToColor[d.applies_to]}`}>
+                            {appliesToLabel[d.applies_to]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <p className="font-medium">{scope.primary}</p>
+                          <p className="text-xs text-gray-400">{scope.secondary} &middot; {d.year?.year_name || '-'}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {d.max_usage ? `${d.current_usage || 0} / ${d.max_usage}` : `${d.current_usage || 0} (unlimited)`}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleToggleActive(d)}
+                            className={`flex items-center gap-1 text-sm font-medium ${d.is_active ? 'text-green-600' : 'text-gray-400'}`}
                           >
-                            <FontAwesomeIcon icon={faEdit} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:bg-red-50 border-red-200"
-                            onClick={() => handleDelete(d)}
-                            disabled={deleting === d.discount_id}
-                          >
-                            {deleting === d.discount_id ? (
-                              <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                            ) : (
-                              <FontAwesomeIcon icon={faTrash} />
-                            )}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            <FontAwesomeIcon icon={d.is_active ? faToggleOn : faToggleOff} className="text-lg" />
+                            {d.is_active ? 'Aktif' : 'Nonaktif'}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenEdit(d)}
+                            >
+                              <FontAwesomeIcon icon={faEdit} />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:bg-red-50 border-red-200"
+                              onClick={() => handleDelete(d)}
+                              disabled={deleting === d.discount_id}
+                            >
+                              {deleting === d.discount_id ? (
+                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                              ) : (
+                                <FontAwesomeIcon icon={faTrash} />
+                              )}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -493,22 +537,38 @@ export default function DiscountMasterPage() {
         size="lg"
       >
         <div className="space-y-4">
-          {/* Unit & Year */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Unit, Level & Year */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="unit_id">Sekolah *</Label>
+              <Label htmlFor="unit_id">Unit *</Label>
               <select
                 id="unit_id"
                 value={formData.unit_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, unit_id: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, unit_id: e.target.value, level_id: '' }))}
                 className={`mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.unit_id ? 'border-red-500' : 'border-gray-300'}`}
               >
-                <option value="">Pilih Sekolah</option>
+                <option value="">Pilih Unit</option>
                 {units.map(u => (
                   <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
                 ))}
               </select>
               {formErrors.unit_id && <p className="text-red-500 text-xs mt-1">{formErrors.unit_id}</p>}
+            </div>
+            <div>
+              <Label htmlFor="level_id">Jenjang</Label>
+              <select
+                id="level_id"
+                value={formData.level_id}
+                onChange={(e) => setFormData(prev => ({ ...prev, level_id: e.target.value }))}
+                disabled={!formData.unit_id}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              >
+                <option value="">Semua jenjang di unit ini</option>
+                {formLevels.map(l => (
+                  <option key={l.level_id} value={l.level_id}>{l.level_name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Kosongkan = berlaku untuk semua jenjang</p>
             </div>
             <div>
               <Label htmlFor="year_id">Tahun Ajaran *</Label>
@@ -612,9 +672,9 @@ export default function DiscountMasterPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, applies_to: e.target.value }))}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="udp">UDP saja</option>
-                <option value="usek">USEK saja</option>
-                <option value="both">UDP & USEK</option>
+                <option value="udp">DPP saja</option>
+                <option value="usek">SPP saja</option>
+                <option value="both">DPP & SPP</option>
               </select>
             </div>
           </div>

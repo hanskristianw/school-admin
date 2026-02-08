@@ -166,7 +166,7 @@ export default function AdmissionManagement() {
       if (adErr) throw adErr;
       setDiscounts(appDiscounts || []);
 
-      // 2. Fetch master discounts for this unit+year
+      // 2. Fetch master discounts matching this application's level (or unit-wide)
       const { data: masters, error: mErr } = await supabase
         .from('fee_discount')
         .select('*')
@@ -174,7 +174,11 @@ export default function AdmissionManagement() {
         .eq('year_id', application.year_id)
         .eq('is_active', true);
       if (mErr) throw mErr;
-      setMasterDiscounts(masters || []);
+      // Filter: show discounts that match this level, or have no level (unit-wide)
+      const filtered = (masters || []).filter(m =>
+        !m.level_id || m.level_id === application.level_id
+      );
+      setMasterDiscounts(filtered);
 
       // 3. Fetch UDP definition (match by level, year, period, category)
       let matchedUdp = null;
