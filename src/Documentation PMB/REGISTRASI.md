@@ -107,6 +107,7 @@ create table public.student_applications (
   student_province character varying(100) null,
   student_postal_code character varying(10) null,
   student_previous_school character varying(255) null,
+  parent_nik character varying(20) null,
   parent_name character varying(255) not null,
   parent_phone character varying(20) not null,
   parent_email character varying(255) null,

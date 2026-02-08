@@ -513,6 +513,7 @@ export default function AdmissionManagement() {
       student_province: app.student_province || '',
       student_postal_code: app.student_postal_code || '',
       student_previous_school: app.student_previous_school || '',
+      parent_nik: app.parent_nik || '',
       parent_name: app.parent_name || '',
       parent_phone: app.parent_phone || '',
       parent_email: app.parent_email || '',
@@ -544,6 +545,7 @@ export default function AdmissionManagement() {
         student_province: editData.student_province.trim() || null,
         student_postal_code: editData.student_postal_code.trim() || null,
         student_previous_school: editData.student_previous_school.trim() || null,
+        parent_nik: editData.parent_nik.trim() || null,
         parent_name: editData.parent_name.trim(),
         parent_phone: editData.parent_phone.trim() || null,
         parent_email: editData.parent_email.trim() || null,
@@ -1286,6 +1288,7 @@ export default function AdmissionManagement() {
         'Kota': app.city || '',
         'Provinsi': app.province || '',
         'Kode Pos': app.postal_code || '',
+        'NIK Orang Tua': app.parent_nik || '',
         'Nama Orang Tua': app.parent_name || '',
         'No. Telepon': app.parent_phone || '',
         'Email': app.parent_email || '',
@@ -1313,10 +1316,11 @@ export default function AdmissionManagement() {
     ws['!cols'] = [
       { wch: 4 }, { wch: 18 }, { wch: 22 }, { wch: 14 }, { wch: 12 },
       { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 30 },
-      { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 22 }, { wch: 16 },
-      { wch: 22 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
-      { wch: 14 }, { wch: 16 }, { wch: 35 }, { wch: 16 }, { wch: 16 },
-      { wch: 16 }, { wch: 35 }, { wch: 18 }, { wch: 16 }, { wch: 20 },
+      { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 20 }, { wch: 22 },
+      { wch: 16 }, { wch: 22 }, { wch: 16 }, { wch: 12 }, { wch: 14 },
+      { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 35 }, { wch: 16 },
+      { wch: 16 }, { wch: 16 }, { wch: 35 }, { wch: 18 }, { wch: 16 },
+      { wch: 20 },
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Pendaftaran');
@@ -1907,6 +1911,10 @@ export default function AdmissionManagement() {
               {isEditing ? (
                 <div className="grid grid-cols-2 gap-4 bg-green-50 p-4 rounded-lg border border-green-200">
                   <div>
+                    <Label>NIK</Label>
+                    <Input className="mt-1" value={editData.parent_nik} maxLength={16} onChange={(e) => { const val = e.target.value.replace(/\D/g, '').slice(0, 16); setEditData(p => ({ ...p, parent_nik: val })); }} placeholder="16 digit NIK" />
+                  </div>
+                  <div>
                     <Label>Nama Orang Tua *</Label>
                     <Input className="mt-1" value={editData.parent_name} onChange={(e) => setEditData(p => ({ ...p, parent_name: e.target.value }))} />
                   </div>
@@ -1929,6 +1937,10 @@ export default function AdmissionManagement() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                  <div>
+                    <p className="text-sm text-gray-500">NIK</p>
+                    <p className="font-medium font-mono">{selectedApplication.parent_nik || '-'}</p>
+                  </div>
                   <div>
                     <p className="text-sm text-gray-500">Nama</p>
                     <p className="font-medium">{selectedApplication.parent_name}</p>

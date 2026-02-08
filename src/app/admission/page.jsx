@@ -68,6 +68,7 @@ export default function AdmissionPage() {
     student_postal_code: '',
     student_previous_school: '',
     // Parent data
+    parent_nik: '',
     parent_name: '',
     parent_phone: '',
     parent_email: '',
@@ -224,12 +225,14 @@ export default function AdmissionPage() {
       // Auto-fill parent fields
       setFormData(prev => ({
         ...prev,
+        parent_nik: d.nik || prev.parent_nik,
         parent_name: d.nama || prev.parent_name,
         parent_address: d.alamat || prev.parent_address,
         parent_occupation: d.pekerjaan || prev.parent_occupation,
       }))
 
       const filledFields = [
+        d.nik && 'NIK',
         d.nama && 'Nama',
         d.alamat && 'Alamat',
         d.pekerjaan && 'Pekerjaan'
@@ -281,6 +284,9 @@ export default function AdmissionPage() {
       if (!formData.parent_phone.trim()) {
         errors.parent_phone = 'Nomor telepon wajib diisi'
       }
+      if (formData.parent_nik.trim() && !/^\d{16}$/.test(formData.parent_nik.trim())) {
+        errors.parent_nik = 'NIK harus 16 digit angka'
+      }
     } else if (stepNumber === 3) {
       if (!formData.level_id) {
         errors.level_id = 'Pilih jenjang yang dituju'
@@ -326,6 +332,7 @@ export default function AdmissionPage() {
         student_province: formData.student_province.trim() || null,
         student_postal_code: formData.student_postal_code.trim() || null,
         student_previous_school: formData.student_previous_school.trim() || null,
+        parent_nik: formData.parent_nik.trim() || null,
         parent_name: formData.parent_name.trim(),
         parent_phone: formData.parent_phone.trim(),
         parent_email: formData.parent_email.trim() || null,
@@ -868,6 +875,28 @@ export default function AdmissionPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <div className="h-5 w-1 bg-emerald-500 rounded-full" />
                           <span className="text-sm font-semibold text-emerald-600 uppercase tracking-wide">Wajib Diisi</span>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="parent_nik" className="text-gray-700">NIK (Nomor Induk Kependudukan)</Label>
+                          <Input
+                            id="parent_nik"
+                            name="parent_nik"
+                            value={formData.parent_nik}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 16)
+                              setFormData(prev => ({ ...prev, parent_nik: val }))
+                            }}
+                            placeholder="16 digit NIK dari KTP"
+                            maxLength={16}
+                            inputMode="numeric"
+                            className={`mt-1 bg-white/60 border-gray-200 text-gray-900 placeholder:text-gray-400 ${
+                              formErrors.parent_nik ? 'border-red-500' : ''
+                            }`}
+                          />
+                          {formErrors.parent_nik && (
+                            <p className="text-red-500 text-sm mt-1">{formErrors.parent_nik}</p>
+                          )}
                         </div>
 
                         <div>
