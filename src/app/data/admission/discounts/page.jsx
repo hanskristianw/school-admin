@@ -129,8 +129,29 @@ export default function DiscountMasterPage() {
     ? levels.filter(l => l.unit_id === parseInt(filterUnit))
     : levels;
 
-  const filteredDiscounts = discounts.filter(d => {
-    if (filterUnit && d.unit_id !== parseInt(filterUnit)) return false;
+  // Check if a discount code exists across all units for a year
+  const isAllUnitsDiscount = (discountCode, yearId) => {
+    if (!discountCode || !yearId) return false;
+    const matching = discounts.filter(d => d.discount_code === discountCode && d.year_id === yearId);
+    return matching.length > 1 && matching.length >= units.length;
+  };
+
+  // Deduplicate all-units discounts: show one row per code+year instead of N rows
+  const deduplicatedDiscounts = (() => {
+    const seen = new Set();
+    return discounts.filter(d => {
+      if (isAllUnitsDiscount(d.discount_code, d.year_id)) {
+        const key = `${d.discount_code}|${d.year_id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+      }
+      return true;
+    });
+  })();
+
+  const filteredDiscounts = deduplicatedDiscounts.filter(d => {
+    const dIsGlobal = isAllUnitsDiscount(d.discount_code, d.year_id);
+    if (filterUnit && d.unit_id !== parseInt(filterUnit) && !dIsGlobal) return false;
     if (filterLevel && d.level_id !== parseInt(filterLevel)) return false;
     if (filterYear && d.year_id !== parseInt(filterYear)) return false;
     if (filterAppliesTo && d.applies_to !== filterAppliesTo) return false;
@@ -158,10 +179,10 @@ export default function DiscountMasterPage() {
   };
 
   const handleOpenEdit = (discount) => {
-    setEditingDiscount(discount);
-    const unitId = discount.level?.unit_id || discount.unit_id;
+    const allUnits = isAllUnitsDiscount(discount.discount_code, discount.year_id);
+    setEditingDiscount({ ...discount, _isAllUnits: allUnits });
     setFormData({
-      unit_id: unitId?.toString() || '',
+      unit_id: allUnits ? 'all' : (discount.level?.unit_id || discount.unit_id)?.toString() || '',
       level_id: discount.level_id?.toString() || '',
       year_id: discount.year_id?.toString() || '',
       discount_code: discount.discount_code || '',
@@ -199,9 +220,8 @@ export default function DiscountMasterPage() {
     if (!validateForm()) return;
     setSaving(true);
     try {
-      const payload = {
-        unit_id: parseInt(formData.unit_id),
-        level_id: formData.level_id ? parseInt(formData.level_id) : null,
+      const basePayload = {
+        level_id: formData.unit_id === 'all' ? null : (formData.level_id ? parseInt(formData.level_id) : null),
         year_id: parseInt(formData.year_id),
         discount_code: formData.discount_code.trim().toUpperCase(),
         discount_name: formData.discount_name.trim(),
@@ -215,13 +235,116 @@ export default function DiscountMasterPage() {
         is_active: formData.is_active,
       };
 
+      const payload = formData.unit_id === 'all'
+        ? basePayload
+        : { ...basePayload, unit_id: parseInt(formData.unit_id) };
+
       if (editingDiscount) {
+        // Helper: check which discount_ids are referenced by application_discount
+        const checkUsage = async (ids) => {
+          const { data } = await supabase
+            .from('application_discount')
+            .select('discount_id')
+            .in('discount_id', ids);
+          return new Set((data || []).map(r => r.discount_id));
+        };
+
+        // Helper: safely remove records — hard-delete if unused, soft-delete if in use
+        const safeRemove = async (ids) => {
+          if (ids.length === 0) return;
+          const usedSet = await checkUsage(ids);
+          const canDelete = ids.filter(id => !usedSet.has(id));
+          const mustSoftDelete = ids.filter(id => usedSet.has(id));
+
+          if (canDelete.length > 0) {
+            const { error } = await supabase.from('fee_discount').delete().in('discount_id', canDelete);
+            if (error) throw error;
+          }
+          if (mustSoftDelete.length > 0) {
+            const { error } = await supabase.from('fee_discount').update({ is_active: false }).in('discount_id', mustSoftDelete);
+            if (error) throw error;
+          }
+          return { deleted: canDelete.length, deactivated: mustSoftDelete.length };
+        };
+
+        if (editingDiscount._isAllUnits) {
+          const siblings = discounts.filter(d => d.discount_code === editingDiscount.discount_code && d.year_id === editingDiscount.year_id);
+          const siblingIds = siblings.map(d => d.discount_id);
+
+          if (formData.unit_id === 'all') {
+            // All → All: update every sibling record
+            const { unit_id: _ignore, ...updatePayload } = payload;
+            for (const id of siblingIds) {
+              const { error } = await supabase
+                .from('fee_discount')
+                .update({ ...updatePayload, level_id: null })
+                .eq('discount_id', id);
+              if (error) throw error;
+            }
+            showNotification('Berhasil', `Potongan berhasil diupdate untuk ${siblingIds.length} unit`);
+          } else {
+            // All → Single: keep record for target unit, safely remove the rest
+            const targetUnitId = parseInt(formData.unit_id);
+            const keepRecord = siblings.find(d => d.unit_id === targetUnitId) || siblings[0];
+            const removeIds = siblingIds.filter(id => id !== keepRecord.discount_id);
+
+            await safeRemove(removeIds);
+
+            const { error } = await supabase
+              .from('fee_discount')
+              .update(payload)
+              .eq('discount_id', keepRecord.discount_id);
+            if (error) throw error;
+            showNotification('Berhasil', 'Potongan diubah menjadi satu unit saja');
+          }
+        } else {
+          if (formData.unit_id === 'all') {
+            // Single → All: keep existing record, update it, add missing units
+            const existingUnitId = editingDiscount.unit_id;
+
+            // Update the existing record
+            const { error: updErr } = await supabase
+              .from('fee_discount')
+              .update({ ...basePayload, unit_id: existingUnitId, level_id: null })
+              .eq('discount_id', editingDiscount.discount_id);
+            if (updErr) throw updErr;
+
+            // Insert records for units that don't have this discount yet
+            const missingUnits = units.filter(u => u.unit_id !== existingUnitId);
+            if (missingUnits.length > 0) {
+              const inserts = missingUnits.map(u => ({
+                ...basePayload,
+                unit_id: u.unit_id,
+                level_id: null,
+                current_usage: 0,
+              }));
+              const { error } = await supabase.from('fee_discount').insert(inserts);
+              if (error) throw error;
+            }
+            showNotification('Berhasil', `Potongan diperluas ke ${units.length} unit sekaligus`);
+          } else {
+            // Single → Single: normal update
+            const { error } = await supabase
+              .from('fee_discount')
+              .update(payload)
+              .eq('discount_id', editingDiscount.discount_id);
+            if (error) throw error;
+            showNotification('Berhasil', 'Potongan berhasil diupdate');
+          }
+        }
+      } else if (formData.unit_id === 'all') {
+        // Insert one record per unit
+        const inserts = units.map(u => ({
+          ...basePayload,
+          unit_id: u.unit_id,
+          level_id: null,
+          current_usage: 0,
+        }));
         const { error } = await supabase
           .from('fee_discount')
-          .update(payload)
-          .eq('discount_id', editingDiscount.discount_id);
+          .insert(inserts);
         if (error) throw error;
-        showNotification('Berhasil', 'Potongan berhasil diupdate');
+        showNotification('Berhasil', `Potongan berhasil ditambahkan untuk ${units.length} unit sekaligus`);
       } else {
         payload.current_usage = 0;
         const { error } = await supabase
@@ -243,29 +366,48 @@ export default function DiscountMasterPage() {
   };
 
   const handleDelete = async (discount) => {
-    if (!confirm(`Hapus potongan "${discount.discount_name}"?`)) return;
+    const allUnits = isAllUnitsDiscount(discount.discount_code, discount.year_id);
+    const confirmMsg = allUnits
+      ? `Hapus potongan "${discount.discount_name}" dari SEMUA unit?`
+      : `Hapus potongan "${discount.discount_name}"?`;
+    if (!confirm(confirmMsg)) return;
     setDeleting(discount.discount_id);
     try {
-      const { count, error: countErr } = await supabase
-        .from('application_discount')
-        .select('app_discount_id', { count: 'exact', head: true })
-        .eq('discount_id', discount.discount_id);
+      // Get all IDs to delete (multiple if all-units discount)
+      const idsToDelete = allUnits
+        ? discounts
+            .filter(d => d.discount_code === discount.discount_code && d.year_id === discount.year_id)
+            .map(d => d.discount_id)
+        : [discount.discount_id];
 
-      if (!countErr && count > 0) {
-        showNotification(
-          'Tidak Dapat Dihapus',
-          `Potongan "${discount.discount_name}" sudah digunakan oleh ${count} pendaftar. Nonaktifkan saja jika tidak ingin digunakan lagi.`,
-          'error'
-        );
-        return;
+      // Check which IDs are in use by application_discount
+      const { data: usedData } = await supabase
+        .from('application_discount')
+        .select('discount_id')
+        .in('discount_id', idsToDelete);
+      const usedSet = new Set((usedData || []).map(r => r.discount_id));
+
+      const canDelete = idsToDelete.filter(id => !usedSet.has(id));
+      const mustSoftDelete = idsToDelete.filter(id => usedSet.has(id));
+
+      if (canDelete.length > 0) {
+        const { error } = await supabase.from('fee_discount').delete().in('discount_id', canDelete);
+        if (error) throw error;
+      }
+      if (mustSoftDelete.length > 0) {
+        const { error } = await supabase.from('fee_discount').update({ is_active: false }).in('discount_id', mustSoftDelete);
+        if (error) throw error;
       }
 
-      const { error } = await supabase
-        .from('fee_discount')
-        .delete()
-        .eq('discount_id', discount.discount_id);
-      if (error) throw error;
-      showNotification('Berhasil', 'Potongan berhasil dihapus');
+      if (mustSoftDelete.length > 0) {
+        showNotification(
+          'Berhasil (Sebagian Dinonaktifkan)',
+          `${canDelete.length} dihapus, ${mustSoftDelete.length} dinonaktifkan karena sudah digunakan pendaftar.`,
+          'success'
+        );
+      } else {
+        showNotification('Berhasil', allUnits ? `Potongan berhasil dihapus dari ${canDelete.length} unit` : 'Potongan berhasil dihapus');
+      }
       fetchData();
     } catch (err) {
       console.error('Error deleting:', err);
@@ -285,11 +427,24 @@ export default function DiscountMasterPage() {
 
   const handleToggleActive = async (discount) => {
     try {
-      const { error } = await supabase
-        .from('fee_discount')
-        .update({ is_active: !discount.is_active })
-        .eq('discount_id', discount.discount_id);
-      if (error) throw error;
+      const allUnits = isAllUnitsDiscount(discount.discount_code, discount.year_id);
+      if (allUnits) {
+        // Toggle all sibling discount records
+        const siblingIds = discounts
+          .filter(d => d.discount_code === discount.discount_code && d.year_id === discount.year_id)
+          .map(d => d.discount_id);
+        const { error } = await supabase
+          .from('fee_discount')
+          .update({ is_active: !discount.is_active })
+          .in('discount_id', siblingIds);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('fee_discount')
+          .update({ is_active: !discount.is_active })
+          .eq('discount_id', discount.discount_id);
+        if (error) throw error;
+      }
       fetchData();
     } catch (err) {
       showNotification('Error', 'Gagal mengubah status: ' + err.message, 'error');
@@ -297,10 +452,14 @@ export default function DiscountMasterPage() {
   };
 
   const getDiscountScope = (d) => {
-    if (d.level?.level_name) {
-      return { primary: d.level.level_name, secondary: d.level.unit?.unit_name || d.unit?.unit_name };
+    const allUnits = isAllUnitsDiscount(d.discount_code, d.year_id);
+    if (allUnits) {
+      return { primary: 'Semua Unit', secondary: d.level?.level_name || 'Semua jenjang', isGlobal: true };
     }
-    return { primary: d.unit?.unit_name || '-', secondary: 'Semua jenjang' };
+    if (d.level?.level_name) {
+      return { primary: d.level.level_name, secondary: d.level.unit?.unit_name || d.unit?.unit_name, isGlobal: false };
+    }
+    return { primary: d.unit?.unit_name || '-', secondary: 'Semua jenjang', isGlobal: false };
   };
 
   if (loading) {
@@ -480,7 +639,12 @@ export default function DiscountMasterPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          <p className="font-medium">{scope.primary}</p>
+                          <div className="flex items-center gap-1.5">
+                            {scope.isGlobal && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">GLOBAL</span>
+                            )}
+                            <p className="font-medium">{scope.primary}</p>
+                          </div>
                           <p className="text-xs text-gray-400">{scope.secondary} &middot; {d.year?.year_name || '-'}</p>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
@@ -548,10 +712,14 @@ export default function DiscountMasterPage() {
                 className={`mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.unit_id ? 'border-red-500' : 'border-gray-300'}`}
               >
                 <option value="">Pilih Unit</option>
+                <option value="all" className="font-semibold">✦ Semua Unit</option>
                 {units.map(u => (
                   <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
                 ))}
               </select>
+              {formData.unit_id === 'all' && (
+                <p className="text-xs text-amber-600 mt-1 font-medium">Potongan akan dibuat untuk semua unit sekaligus</p>
+              )}
               {formErrors.unit_id && <p className="text-red-500 text-xs mt-1">{formErrors.unit_id}</p>}
             </div>
             <div>
@@ -560,15 +728,15 @@ export default function DiscountMasterPage() {
                 id="level_id"
                 value={formData.level_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, level_id: e.target.value }))}
-                disabled={!formData.unit_id}
+                disabled={!formData.unit_id || formData.unit_id === 'all'}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               >
-                <option value="">Semua jenjang di unit ini</option>
+                <option value="">{formData.unit_id === 'all' ? 'Semua jenjang (otomatis)' : 'Semua jenjang di unit ini'}</option>
                 {formLevels.map(l => (
                   <option key={l.level_id} value={l.level_id}>{l.level_name}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">Kosongkan = berlaku untuk semua jenjang</p>
+              <p className="text-xs text-gray-400 mt-1">{formData.unit_id === 'all' ? 'Level tidak bisa dipilih untuk semua unit' : 'Kosongkan = berlaku untuk semua jenjang'}</p>
             </div>
             <div>
               <Label htmlFor="year_id">Tahun Ajaran *</Label>
@@ -680,7 +848,7 @@ export default function DiscountMasterPage() {
           </div>
 
           {/* Preview */}
-          <div className="bg-gray-50 p-3 rounded-lg border">
+          <div className={`p-3 rounded-lg border ${formData.unit_id === 'all' ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
             <p className="text-xs text-gray-500 mb-1">Preview:</p>
             <p className="font-medium text-gray-900">
               {formData.discount_type === 'percentage'
@@ -688,6 +856,9 @@ export default function DiscountMasterPage() {
                 : `Potongan ${formatCurrency(parseFloat(formData.discount_value) || 0)}`
               }
               {' '}— berlaku untuk <span className="font-semibold">{appliesToLabel[formData.applies_to]}</span>
+              {formData.unit_id === 'all' && (
+                <span className="text-amber-700 font-semibold"> — diterapkan ke {units.length} unit</span>
+              )}
             </p>
           </div>
 
