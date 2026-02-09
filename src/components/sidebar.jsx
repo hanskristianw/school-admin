@@ -39,7 +39,8 @@ import {
   faSackDollar,
   faFlag,
   faLightbulb,
-  faHashtag
+  faHashtag,
+  faCalculator
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -82,6 +83,7 @@ const iconMap = {
   , 'fas fa-cart-plus': require('@fortawesome/free-solid-svg-icons').faCartPlus
   , 'fas fa-wand-magic-sparkles': require('@fortawesome/free-solid-svg-icons').faWandMagicSparkles
   , 'fas fa-boxes-stacked': require('@fortawesome/free-solid-svg-icons').faBoxesStacked
+  , 'fas fa-calculator': faCalculator
   ,
   // Alias: dukung format nama icon 'faXxx' supaya lebih toleran
   'faTachometerAlt': faTachometerAlt,
@@ -121,6 +123,7 @@ const iconMap = {
   , 'faCartPlus': require('@fortawesome/free-solid-svg-icons').faCartPlus
   , 'faWandMagicSparkles': require('@fortawesome/free-solid-svg-icons').faWandMagicSparkles
   , 'faBoxesStacked': require('@fortawesome/free-solid-svg-icons').faBoxesStacked
+  , 'faCalculator': faCalculator
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

@@ -9,10 +9,16 @@ import { sendEmail } from '@/lib/mailer'
  */
 export async function POST(request) {
   try {
-    const body = await request.json()
-    const { email, parentName, studentName, applicationNumber, unitName, pdfBase64, fileName } = body
+    const formData = await request.formData()
+    const pdfFile = formData.get('pdf')
+    const email = formData.get('email')
+    const parentName = formData.get('parentName') || ''
+    const studentName = formData.get('studentName') || ''
+    const applicationNumber = formData.get('applicationNumber') || ''
+    const unitName = formData.get('unitName') || '-'
+    const fileName = pdfFile?.name || 'Perjanjian_Cicilan.pdf'
 
-    if (!email || !pdfBase64) {
+    if (!email || !pdfFile) {
       return NextResponse.json(
         { success: false, message: 'Email dan PDF wajib diisi' },
         { status: 400 }
@@ -87,13 +93,17 @@ export async function POST(request) {
 </body>
 </html>`
 
+    // Convert File/Blob to Buffer, then to base64 for Resend API
+    const pdfBuffer = Buffer.from(await pdfFile.arrayBuffer())
+    const pdfBase64 = pdfBuffer.toString('base64')
+
     const result = await sendEmail({
       to: email,
       subject,
       html,
       attachments: [
         {
-          filename: fileName || 'Perjanjian_Cicilan.pdf',
+          filename: fileName,
           content: pdfBase64
         }
       ]

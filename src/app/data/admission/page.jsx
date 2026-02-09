@@ -750,25 +750,23 @@ export default function AdmissionManagement() {
     const lastMonthAmount = remaining - (monthlyAmount * (numInst - 1));
 
     const items = [];
-    // UTJ
-    items.push({
-      seq: 0,
-      label: 'UTJ (Uang Tanda Jadi)',
-      info: `${installmentConfig.utj_percentage}% dari ${formatCurrency(totalEntry)}`,
-      amount: utjAmount
-    });
 
-    // Monthly installments
+    // Monthly installments — UTJ is included in Cicilan 1
     for (let i = 0; i < numInst; i++) {
       const mIdx = (installmentConfig.start_month - 1 + i) % 12;
       const yVal = installmentConfig.start_year + Math.floor((installmentConfig.start_month - 1 + i) / 12);
-      const amt = i === numInst - 1 ? lastMonthAmount : monthlyAmount;
+      const baseAmt = i === numInst - 1 ? lastMonthAmount : monthlyAmount;
+      const isFirst = i === 0;
+      const amt = isFirst ? baseAmt + utjAmount : baseAmt;
       items.push({
         seq: i + 1,
         label: `Cicilan ${i + 1} (${monthNames[mIdx]} ${yVal})`,
+        info: isFirst ? `Termasuk UTJ ${formatCurrency(utjAmount)} (${installmentConfig.utj_percentage}% dari ${formatCurrency(totalEntry)})` : null,
         month: mIdx + 1,
         year: yVal,
-        amount: amt
+        amount: amt,
+        utjIncluded: isFirst ? utjAmount : 0,
+        baseInstallment: baseAmt
       });
     }
 
@@ -945,8 +943,7 @@ export default function AdmissionManagement() {
     doc.setFontSize(9);
     const party1 = [
       ['Nama', ': Chung Chung Christian School'],
-      ['Alamat', ': Jl. Raya Gn. Anyar Sawah No.18, Surabaya'],
-      ['Selanjutnya disebut', ': "Pihak Sekolah"']
+      ['Alamat', ': Jl. Raya Gn. Anyar Sawah No.18, Surabaya']
     ];
     party1.forEach(([label, val]) => {
       doc.text(label, marginL + 4, y);
@@ -967,8 +964,7 @@ export default function AdmissionManagement() {
       ['No. Telepon', `: ${app.parent_phone || '-'}`],
       ['Nama Siswa', `: ${app.student_name || '-'}`],
       ['Jenjang', `: ${app.level?.level_name || app.unit?.unit_name || '-'}`],
-      ['Tahun Ajaran', `: ${app.year?.year_name || '-'}`],
-      ['Selanjutnya disebut', ': "Pihak Orang Tua/Wali"']
+      ['Tahun Ajaran', `: ${app.year?.year_name || '-'}`]
     ];
     party2.forEach(([label, val]) => {
       doc.text(label, marginL + 4, y);
@@ -983,10 +979,10 @@ export default function AdmissionManagement() {
     doc.text('Kedua belah pihak sepakat atas hal-hal sebagai berikut:', marginL, y);
     y += 8;
 
-    // Pasal 1 - Rincian Biaya
+    // 1. Rincian Biaya
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text('Pasal 1 – Rincian Biaya Masuk', marginL, y);
+    doc.text('1. Rincian Biaya Masuk', marginL, y);
     y += 6;
 
     autoTable(doc, {
@@ -1008,10 +1004,10 @@ export default function AdmissionManagement() {
     });
     y = doc.lastAutoTable.finalY + 8;
 
-    // Pasal 2 - Skema Pembayaran
+    // 2. Skema Cicilan Inhouse
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text('Pasal 2 – Skema Pembayaran', marginL, y);
+    doc.text('2. Skema Cicilan Inhouse', marginL, y);
     y += 6;
 
     doc.setFont('helvetica', 'normal');
@@ -1023,8 +1019,8 @@ export default function AdmissionManagement() {
 
     // Payment schedule table
     const tableRows = calc.items.map(item => [
-      item.seq === 0 ? 'UTJ' : String(item.seq),
-      item.label,
+      String(item.seq),
+      item.seq === 1 ? `${item.label}\n(Termasuk UTJ ${fmtIDR(calc.utjAmount)})` : item.label,
       fmtIDR(item.amount)
     ]);
     tableRows.push([{ content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } }, { content: fmtIDR(calc.items.reduce((s, i) => s + i.amount, 0)), styles: { fontStyle: 'bold' } }]);
@@ -1051,19 +1047,19 @@ export default function AdmissionManagement() {
       y = 20;
     }
 
-    // Pasal 3 - Ketentuan
+    // 3. Ketentuan Cicilan Inhouse
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text('Pasal 3 – Ketentuan', marginL, y);
+    doc.text('3. Ketentuan Cicilan Inhouse', marginL, y);
     y += 6;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     const clauses = [
-      'Uang Tanda Jadi (UTJ) harus dibayarkan paling lambat 7 (tujuh) hari setelah surat perjanjian ini ditandatangani.',
-      'Cicilan bulanan wajib dibayarkan paling lambat tanggal 10 setiap bulannya.',
+      `Cicilan pertama sebesar ${fmtIDR(calc.items[0]?.amount || 0)} sudah termasuk UTJ (Uang Tanda Jadi) sebesar ${fmtIDR(calc.utjAmount)} dan wajib dibayarkan paling lambat 7 (tujuh) hari setelah surat perjanjian ini diterbitkan.`,
+      'Cicilan selanjutnya wajib dibayarkan paling lambat tanggal 10 setiap bulannya.',
       'Keterlambatan pembayaran cicilan akan dikenakan denda administrasi sesuai ketentuan sekolah.',
       'UTJ yang telah dibayarkan tidak dapat dikembalikan jika Pihak Kedua membatalkan pendaftaran.',
-      'Perjanjian ini berlaku sejak ditandatangani oleh kedua belah pihak.'
+      'Perjanjian ini berlaku sejak diterbitkan oleh pihak sekolah.'
     ];
     clauses.forEach((clause, idx) => {
       const lines = doc.splitTextToSize(`${idx + 1}. ${clause}`, contentW - 4);
@@ -1071,44 +1067,6 @@ export default function AdmissionManagement() {
       y += lines.length * 4 + 2;
     });
     y += 6;
-
-    // Check if we need a new page for signatures
-    if (y > 240) {
-      doc.addPage();
-      y = 20;
-    }
-
-    // ===== SIGNATURES =====
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text(`Surabaya, ${today}`, pageW - marginR, y, { align: 'right' });
-    y += 10;
-
-    const sigColW = (contentW - 20) / 2;
-    const sigLeft = marginL;
-    const sigRight = marginL + sigColW + 20;
-
-    // Left: Pihak Sekolah
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('Pihak Pertama,', sigLeft, y);
-    doc.text('Pihak Kedua,', sigRight, y);
-    y += 3;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text('Chung Chung Christian School', sigLeft, y);
-    doc.text('Orang Tua / Wali Murid', sigRight, y);
-    y += 25;
-
-    // Signature lines
-    doc.setLineWidth(0.4);
-    doc.line(sigLeft, y, sigLeft + sigColW, y);
-    doc.line(sigRight, y, sigRight + sigColW, y);
-    y += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text('Kepala Sekolah / Wakil', sigLeft, y);
-    doc.text(app.parent_name || '________________________', sigRight, y);
 
     // Footer
     const pageH = doc.internal.pageSize.getHeight();
@@ -1146,22 +1104,21 @@ export default function AdmissionManagement() {
       const doc = await generateInstallmentPDF();
       if (!doc) { setEmailSending(false); return; }
 
-      // Get base64 PDF without the data:... prefix
-      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      // Send as FormData with binary blob (avoids base64 overhead hitting Vercel 4.5MB limit)
+      const pdfBlob = doc.output('blob');
       const fileName = `Perjanjian_Cicilan_${app.application_number}_${app.student_name?.replace(/\s+/g, '_')}.pdf`;
+
+      const formData = new FormData();
+      formData.append('pdf', pdfBlob, fileName);
+      formData.append('email', app.parent_email);
+      formData.append('parentName', app.parent_name || '');
+      formData.append('studentName', app.student_name || '');
+      formData.append('applicationNumber', app.application_number || '');
+      formData.append('unitName', app.level?.level_name || app.unit?.unit_name || '-');
 
       const res = await fetch('/api/email/installment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: app.parent_email,
-          parentName: app.parent_name,
-          studentName: app.student_name,
-          applicationNumber: app.application_number,
-          unitName: app.level?.level_name || app.unit?.unit_name || '-',
-          pdfBase64,
-          fileName
-        })
+        body: formData
       });
       const data = await res.json();
       if (data.success) {
@@ -2723,14 +2680,14 @@ export default function AdmissionManagement() {
                     </div>
                   </div>
 
-                  {/* UTJ Summary */}
+                  {/* UTJ Info */}
                   <div className="border border-amber-200 rounded-lg overflow-hidden">
                     <div className="bg-amber-50 px-4 py-3 flex items-center justify-between">
                       <span className="font-semibold text-amber-800">UTJ (Uang Tanda Jadi)</span>
                       <span className="font-bold text-amber-700 text-lg">{formatCurrency(calc.utjAmount)}</span>
                     </div>
                     <div className="px-4 py-2 text-xs text-gray-500">
-                      {installmentConfig.utj_percentage}% dari total {formatCurrency(calc.totalEntry)} — dibayar saat pendaftaran diterima
+                      {installmentConfig.utj_percentage}% dari total {formatCurrency(calc.totalEntry)} — sudah termasuk dalam Cicilan 1
                     </div>
                   </div>
 
@@ -2764,10 +2721,10 @@ export default function AdmissionManagement() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {calc.items.map((item) => (
-                            <tr key={item.seq} className={item.seq === 0 ? 'bg-amber-50' : 'hover:bg-gray-50'}>
-                              <td className="px-4 py-2 text-gray-500">{item.seq === 0 ? '-' : item.seq}</td>
+                            <tr key={item.seq} className={item.seq === 1 ? 'bg-amber-50' : 'hover:bg-gray-50'}>
+                              <td className="px-4 py-2 text-gray-500">{item.seq}</td>
                               <td className="px-4 py-2">
-                                <span className={`font-medium ${item.seq === 0 ? 'text-amber-800' : 'text-gray-900'}`}>{item.label}</span>
+                                <span className={`font-medium ${item.seq === 1 ? 'text-amber-800' : 'text-gray-900'}`}>{item.label}</span>
                                 {item.info && <p className="text-xs text-gray-400">{item.info}</p>}
                               </td>
                               <td className="px-4 py-2 text-right font-semibold">{formatCurrency(item.amount)}</td>
