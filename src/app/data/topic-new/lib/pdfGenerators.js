@@ -1,0 +1,1757 @@
+/**
+ * PDF / Document generation utilities for Topic New page.
+ * 
+ * Extracted from page.jsx to reduce file size.
+ * All functions are pure — they receive dependencies (supabase, jsPDF, etc.) as parameters.
+ */
+
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { supabase } from '@/lib/supabase'
+
+// ─── Pure Helpers ────────────────────────────────────────────────────────────
+
+export const openAssessmentHtml = async (payload) => {
+  const res = await fetch('/api/assessment-html', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload) });
+  if (!res.ok) {
+    let message = '';
+    try {
+      const err = await res.json();
+      message = err?.message || err?.error || '';
+    } catch {
+      message = await res.text().catch(() => '');
+    }
+    throw new Error(message || `HTTP ${res.status}`);
+  }
+  const html = await res.text();
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = window.URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+};
+
+export const downloadAssessmentDocx = async (payload, fileName) => {
+  const res = await fetch('/api/assessment-docx', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload) });
+  if (!res.ok) {
+    let message = '';
+    try {
+      const err = await res.json();
+      message = err?.message || err?.error || '';
+    } catch {
+      message = await res.text().catch(() => '');
+    }
+    throw new Error(message || `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const buildAssessmentCriteriaForPdf = ({
+  selectedCriteriaIds,
+  criteriaList,
+  strandsData,
+  rubricsData,
+  tscMap }) => {
+  const romanOrder = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+  const getRomanIndex = (label) => {
+    const idx = romanOrder.indexOf((label || '').toLowerCase());
+    return idx >= 0 ? idx : 999;
+  };
+
+  const criteriaById = new Map((criteriaList || []).map(c => [c.criterion_id, c]));
+  const result = [];
+
+  for (const criterionId of selectedCriteriaIds || []) {
+    const criterion = criteriaById.get(criterionId);
+    const criterionCode = criterion?.code || '';
+
+    const criterionStrands = (strandsData || []).filter(s => s.criterion_id === criterionId);
+    if (criterionStrands.length === 0) continue;
+
+    const strandById = new Map(criterionStrands.map(s => [s.strand_id, s]));
+    const criterionRubrics = (rubricsData || []).filter(r => strandById.has(r.strand_id));
+    if (criterionRubrics.length === 0) continue;
+
+    const bandGroups = {};
+    for (const rubric of criterionRubrics) {
+      const bandKey = `${rubric.max_score}-${rubric.min_score}`;
+      if (!bandGroups[bandKey]) {
+        bandGroups[bandKey] = {
+          bandLabel: rubric.band_label || bandKey,
+          maxScore: rubric.max_score,
+          minScore: rubric.min_score,
+          subjectItems: [] };
+      }
+      const strand = strandById.get(rubric.strand_id);
+      if (!strand) continue;
+      bandGroups[bandKey].subjectItems.push({
+        label: strand.label || '',
+        text: rubric.description || '' });
+    }
+
+    const bands = Object.values(bandGroups)
+      .sort((a, b) => (b.maxScore || 0) - (a.maxScore || 0))
+      .map(band => {
+        const subjectItems = (band.subjectItems || []).slice().sort((a, b) => {
+          return getRomanIndex(a.label) - getRomanIndex(b.label);
+        });
+        const tscItems = subjectItems
+          .map(item => {
+            const tscKey = `${criterionId}_${band.bandLabel}_${item.label}`;
+            const tsc = (tscMap || {})?.[tscKey] || '';
+            return tsc ? { label: item.label, text: tsc } : null;
+          })
+          .filter(Boolean);
+
+        return {
+          bandLabel: band.bandLabel,
+          subjectItems,
+          tscItems };
+      });
+
+    if (bands.length > 0) {
+      result.push({
+        code: criterionCode,
+        bands });
+    }
+  }
+
+  return result;
+};
+
+// ─── Unit Planner PDF ────────────────────────────────────────────────────────
+
+/**
+ * Generate MYP Unit Planner PDF.
+ * @param {Object} topic - The topic object
+ * @param {Object} deps - { currentUserId, onSuccess, onError }
+ */
+export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, onError }) => {
+  try {
+    // Load complete topic data
+    const { data: topicData, error: topicErr } = await supabase
+      .from("topic")
+      .select("*")
+      .eq("topic_id", topic.topic_id)
+      .single();
+    
+    if (topicErr) throw new Error(topicErr.message);
+
+    // Load subject data
+    let subject = null;
+    let teacher = null;
+    if (topicData.topic_subject_id) {
+      const { data: subjectData, error: subjectErr } = await supabase
+        .from("subject")
+        .select("subject_name, subject_user_id")
+        .eq("subject_id", topicData.topic_subject_id)
+        .single();
+      
+      if (!subjectErr && subjectData) {
+        subject = subjectData;
+
+        if (subjectData?.subject_user_id) {
+          const { data: teacherData, error: teacherErr } = await supabase
+            .from("users")
+            .select("user_nama_depan, user_nama_belakang")
+            .eq("user_id", subjectData.subject_user_id)
+            .single();
+          
+          if (!teacherErr && teacherData) {
+            teacher = {
+              name: `${teacherData.user_nama_depan || ''} ${teacherData.user_nama_belakang || ''}`.trim()
+            };
+          }
+        }
+      }
+    }
+
+    // Fallback: if teacher still null, try to get current user name
+    if (!teacher && currentUserId) {
+      const { data: currentUser, error: userErr } = await supabase
+        .from("users")
+        .select("user_nama_depan, user_nama_belakang")
+        .eq("user_id", currentUserId)
+        .single();
+      
+      if (!userErr && currentUser) {
+        teacher = {
+          name: `${currentUser.user_nama_depan || ''} ${currentUser.user_nama_belakang || ''}`.trim()
+        };
+      }
+    }
+
+    // Load kelas data
+    let kelas = null;
+    if (topicData.topic_kelas_id) {
+      const { data: kelasData, error: kelasErr } = await supabase
+        .from("kelas")
+        .select("kelas_nama")
+        .eq("kelas_id", topicData.topic_kelas_id)
+        .single();
+      
+      if (!kelasErr && kelasData) {
+        kelas = kelasData;
+      }
+    }
+
+    // Load weekly planner data
+    const { data: weeklyPlans, error: weeklyErr } = await supabase
+      .from("topic_weekly_plan")
+      .select("*")
+      .eq("topic_id", topic.topic_id)
+      .order("week_number", { ascending: true });
+
+    // Generate PDF
+    const pdf = new jsPDF('landscape', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 14;
+    let yPos = 10;
+
+    // Calculate total hours
+    const duration = parseFloat(topicData.topic_duration) || 0;
+    const hoursPerWeek = parseFloat(topicData.topic_hours_per_week) || 0;
+    const totalHours = duration * hoursPerWeek;
+
+    const availableWidth = pageWidth - (margin * 2);
+
+    // MYP unit planner title
+    pdf.setFontSize(13.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('MYP unit planner', margin, yPos);
+    yPos += 8;
+
+    // Header Table  
+    autoTable(pdf, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [],
+      body: [
+        [
+          { content: 'Teacher(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: teacher?.name || 'N/A', colSpan: 2 },
+          { content: 'Subject group and discipline', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: subject?.subject_name || 'N/A', colSpan: 2 },
+        ],
+        [
+          { content: 'Unit title', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: topicData.topic_nama || 'N/A' },
+          { content: 'MYP year', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: topicData.topic_year ? `Year ${topicData.topic_year}` : 'N/A' },
+          { content: 'Unit duration (hrs)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: totalHours > 0 ? totalHours.toString() : (topicData.topic_duration || 'N/A') },
+        ],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
+      columnStyles: {
+        0: { cellWidth: availableWidth * 0.15 },
+        1: { cellWidth: availableWidth * 0.18 },
+        2: { cellWidth: availableWidth * 0.17 },
+        3: { cellWidth: availableWidth * 0.17 },
+        4: { cellWidth: availableWidth * 0.15 },
+        5: { cellWidth: availableWidth * 0.18 } } });
+
+    // Inquiry section
+    yPos = pdf.lastAutoTable.finalY + 8;
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Inquiry: Establishing the purpose of the unit', margin, yPos);
+    yPos += 6;
+
+    autoTable(pdf, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [],
+      body: [
+        [
+          { content: 'Key concept', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: topicData.topic_key_concept || 'N/A' },
+          { content: 'Related concept(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: topicData.topic_related_concept || 'N/A' },
+          { content: 'Global context', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: topicData.topic_global_context || 'N/A' },
+        ],
+        [
+          { content: 'Statement of inquiry', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
+        ],
+        [
+          { content: topicData.topic_statement || 'N/A', colSpan: 6, styles: { cellPadding: 3 } },
+        ],
+        [
+          { content: 'Inquiry questions', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
+        ],
+        [
+          { content: topicData.topic_inquiry_question || 'N/A', colSpan: 6, styles: { cellPadding: 3 } },
+        ],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      columnStyles: {
+        0: { cellWidth: availableWidth * 0.15 },
+        1: { cellWidth: availableWidth * 0.18 },
+        2: { cellWidth: availableWidth * 0.17 },
+        3: { cellWidth: availableWidth * 0.17 },
+        4: { cellWidth: availableWidth * 0.15 },
+        5: { cellWidth: availableWidth * 0.18 } } });
+
+    // Add new page for remaining sections
+    pdf.addPage();
+    yPos = 10;
+
+    // Objectives section
+    if (topicData.topic_myp_objectives) {
+      autoTable(pdf, {
+        startY: yPos,
+        head: [],
+        body: [
+          [{ content: 'Objectives', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
+          [{ content: topicData.topic_myp_objectives || 'N/A', styles: { cellPadding: 3 } }],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] } });
+      yPos = pdf.lastAutoTable.finalY + 5;
+    }
+
+    // Summative assessment
+    autoTable(pdf, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [],
+      body: [
+        [
+          { content: 'Objectives', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, rowSpan: 2 },
+          { content: 'Summative assessment', styles: { fontStyle: 'bold', fillColor: [232, 232, 232], halign: 'center' }, colSpan: 2 },
+        ],
+        [
+          { content: 'Outline of summative assessment task(s) including assessment criteria:', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: 'Relationship between summative assessment task(s) and statement of inquiry:', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+        ],
+        [
+          { content: '', styles: { cellPadding: 3 }},
+          { content: topicData.topic_summative_assessment || 'N/A', styles: { cellPadding: 3 }},
+          { content: topicData.topic_relationship_summative_assessment_statement_of_inquiry || 'N/A', styles: { cellPadding: 3 }},
+        ],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      columnStyles: {
+        0: { cellWidth: availableWidth * 0.33 },
+        1: { cellWidth: availableWidth * 0.335 },
+        2: { cellWidth: availableWidth * 0.335 } } });
+    yPos = pdf.lastAutoTable.finalY + 5;
+
+    // ATL section
+    autoTable(pdf, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [],
+      body: [
+        [{ content: 'Approaches to learning (ATL)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
+        [{ content: topicData.topic_atl || 'No ATL skills defined', styles: { cellPadding: 3 }}],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
+    yPos = pdf.lastAutoTable.finalY + 5;
+
+    // Content & Learning process
+    let learningProcessContent = '';
+    if (weeklyPlans && weeklyPlans.length > 0) {
+      learningProcessContent = weeklyPlans.map(week => {
+        let weekText = `Week ${week.week_number}\n`;
+        if (week.week_activities) weekText += week.week_activities;
+        return weekText;
+      }).join('\n\n');
+    }
+
+    autoTable(pdf, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [],
+      body: [
+        [
+          { content: 'Content', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: 'Learning process', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+        ],
+        [
+          { content: '', styles: { cellPadding: 3 }, rowSpan: 2 },
+          { content: learningProcessContent, styles: { cellPadding: 3 }},
+        ],
+        [
+          { content: `Formative assessment:\n\n${topicData.topic_formative_assessment || ''}`, styles: { cellPadding: 3 }},
+        ],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      columnStyles: {
+        0: { cellWidth: availableWidth * 0.33 },
+        1: { cellWidth: availableWidth * 0.67 } } });
+    yPos = pdf.lastAutoTable.finalY + 5;
+
+    // Resources section
+    autoTable(pdf, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [],
+      body: [
+        [{ content: 'Resources', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
+        [{ content: topicData.topic_resources || '', styles: { cellPadding: 3 }}],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
+    yPos = pdf.lastAutoTable.finalY + 5;
+
+    // Reflection section
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Reflection: Considering the planning, process and impact of the inquiry', margin, yPos);
+    yPos += 6;
+
+    autoTable(pdf, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [],
+      body: [
+        [
+          { content: 'Prior to teaching the unit', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: 'During teaching', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: 'After teaching the unit', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+        ],
+        [
+          { content: topicData.topic_reflection_prior || '', styles: { cellPadding: 3 }},
+          { content: topicData.topic_reflection_during || '', styles: { cellPadding: 3 }},
+          { content: topicData.topic_reflection_after || '', styles: { cellPadding: 3 }},
+        ],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      columnStyles: {
+        0: { cellWidth: availableWidth * 0.33 },
+        1: { cellWidth: availableWidth * 0.33 },
+        2: { cellWidth: availableWidth * 0.34 } } });
+    yPos = pdf.lastAutoTable.finalY + 5;
+
+    // Remaining sections
+    const sections = [
+      { label: 'Differentiation', content: topicData.topic_differentiation },
+    ];
+
+    sections.forEach((section) => {
+      if (section.content) {
+        autoTable(pdf, {
+          startY: yPos,
+          head: [],
+          body: [
+            [{ content: section.label, styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 8 }],
+            [{ content: section.content, colSpan: 8, styles: { cellPadding: 3 } }],
+          ],
+          theme: 'grid',
+          styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] }
+        });
+        yPos = pdf.lastAutoTable.finalY + 5;
+      }
+    });
+
+    // Save PDF
+    const fileName = `unit-planner-${topicData.topic_nama?.replace(/[^a-z0-9]/gi, '-') || 'topic'}.pdf`;
+    pdf.save(fileName);
+    
+    if (onSuccess) onSuccess();
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    if (onError) onError(error);
+    else alert(`Failed to generate PDF: ${error.message}`);
+  }
+};
+
+// ─── Assessment PDF (from wizard modal) ──────────────────────────────────────
+
+/**
+ * Render criteria rubrics into a jsPDF document.
+ * Shared by both wizard-based and card-based PDF generators.
+ */
+const renderCriteriaRubricsToPdf = (pdf, { selectedCriteriaIds, criteriaList, strandsData, rubricsData, tscMap, margin, availableWidth, startY }) => {
+  let yPos = startY;
+
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(0, 0, 0);
+  pdf.text('SUBJECT CRITERIA AND TASK-SPECIFIC CLARIFICATION', margin, yPos);
+  yPos += 6;
+
+  const romanOrder = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+  const getRomanIndex = (label) => {
+    const idx = romanOrder.indexOf(label.toLowerCase());
+    return idx >= 0 ? idx : 999;
+  };
+
+  for (const criterionId of selectedCriteriaIds) {
+    const criterion = (criteriaList || []).find(c => c.criterion_id === criterionId);
+    if (!criterion) continue;
+
+    const criterionStrands = strandsData.filter(s => s.criterion_id === criterionId);
+    if (criterionStrands.length === 0) continue;
+
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    if (yPos > pageHeight - 40) {
+      pdf.addPage();
+      yPos = 25;
+    }
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`Criteria ${criterion.code}`, margin, yPos);
+    yPos += 6;
+
+    const criterionRubrics = (rubricsData || []).filter(r => 
+      criterionStrands.some(s => s.strand_id === r.strand_id)
+    );
+
+    const bandGroups = {};
+    criterionRubrics.forEach(rubric => {
+      const bandKey = `${rubric.max_score}-${rubric.min_score}`;
+      if (!bandGroups[bandKey]) {
+        bandGroups[bandKey] = {
+          band_label: rubric.band_label || bandKey,
+          max_score: rubric.max_score,
+          min_score: rubric.min_score,
+          rubricsData: []
+        };
+      }
+      const strand = criterionStrands.find(s => s.strand_id === rubric.strand_id);
+      if (strand) {
+        bandGroups[bandKey].rubricsData.push({
+          label: strand.label || '',
+          description: rubric.description || ''
+        });
+      }
+    });
+
+    const sortedBands = Object.values(bandGroups).sort((a, b) => b.max_score - a.max_score);
+    sortedBands.forEach(band => {
+      band.rubricsData.sort((a, b) => getRomanIndex(a.label) - getRomanIndex(b.label));
+    });
+
+    if (sortedBands.length > 0) {
+      const tableHead = [['', 'SUBJECT CRITERIA', 'TASK-SPECIFIC CLARIFICATION']];
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      const colWidth = (availableWidth - 12) / 2;
+      const innerWidth = colWidth - 4;
+      const spaceWidth = Math.max(0.1, pdf.getTextWidth(' '));
+      const labelColWidth = pdf.getTextWidth('viii. ');
+      
+      const buildHangingContent = (pairs) => {
+        if (!pairs || pairs.length === 0) return '';
+        const lines = ['The student:'];
+        for (const p of pairs) {
+          const cleanText = (p?.text ?? '').toString().trim();
+          if (!cleanText) continue;
+          const cleanLabel = (p?.label ?? '').toString().trim();
+          const labelToken = cleanLabel ? `${cleanLabel}.` : '';
+          const maxDescWidth = Math.max(12, innerWidth - labelColWidth);
+          const wrapped = pdf.splitTextToSize(cleanText, maxDescWidth);
+          if (!wrapped || wrapped.length === 0) continue;
+
+          const labelWidth = labelToken ? pdf.getTextWidth(labelToken) : 0;
+          const padWidth = labelToken ? Math.max(0, labelColWidth - labelWidth) : 0;
+          const padSpacesCount = labelToken ? Math.max(1, Math.ceil(padWidth / spaceWidth)) : 0;
+          const prefix = labelToken ? `${labelToken}${' '.repeat(padSpacesCount)}` : '';
+          const indentSpacesCount = Math.max(0, Math.ceil(labelColWidth / spaceWidth));
+          const indent = indentSpacesCount > 0 ? ' '.repeat(indentSpacesCount) : '';
+
+          lines.push(`${prefix}${wrapped[0]}`.trimEnd());
+          for (let i = 1; i < wrapped.length; i++) {
+            lines.push(`${indent}${wrapped[i]}`.trimEnd());
+          }
+        }
+        return lines.length > 1 ? lines.join('\n') : '';
+      };
+      
+      const tableBody = sortedBands.map(band => {
+        const subjectPairs = (band.rubricsData || []).map(r => ({
+          label: r.label,
+          text: r.description }));
+        const subjectContent = buildHangingContent(subjectPairs);
+        
+        const tscPairs = (band.rubricsData || []).map(r => {
+          const tscKey = `${criterionId}_${band.band_label}_${r.label}`;
+          const tsc = (tscMap || {})?.[tscKey] || '';
+          return tsc ? { label: r.label, text: tsc } : null;
+        }).filter(Boolean);
+        const tscContent = tscPairs.length > 0 ? buildHangingContent(tscPairs) : '';
+        
+        return [band.band_label, subjectContent, tscContent];
+      });
+
+      autoTable(pdf, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: tableHead,
+        body: tableBody,
+        theme: 'grid',
+        styles: { 
+          fontSize: 8, 
+          cellPadding: 2, 
+          valign: 'top', 
+          textColor: [0, 0, 0],
+          lineColor: [0, 0, 0],
+          lineWidth: 0.2 },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          halign: 'center' },
+        columnStyles: {
+          0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
+          1: { cellWidth: (availableWidth - 12) / 2 },
+          2: { cellWidth: (availableWidth - 12) / 2 } } });
+      yPos = pdf.lastAutoTable.finalY + 8;
+    }
+  }
+
+  return yPos;
+};
+
+/**
+ * Render assessment header + task overview into a jsPDF document.
+ * Shared by wizard-based and card-based PDF generators.
+ */
+const renderAssessmentHeaderToPdf = (pdf, { assessmentName, subjectName, kelasName, teacherName, unitNumber, selectedCriteriaNames, proficiencyLevel, topicData, assessmentData, margin, availableWidth }) => {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  let yPos = 15;
+
+  // Header
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(0, 0, 0);
+  pdf.text('ASSESSMENT', margin, yPos);
+  yPos += 8;
+
+  // Info section
+  pdf.setFontSize(9);
+  const leftCol = margin;
+  const midCol = margin + 90;
+  const lineHeight = 6;
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Name', leftCol, yPos);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('', leftCol + 25, yPos);
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Subject', midCol, yPos);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(subjectName, midCol + 25, yPos);
+  yPos += lineHeight;
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Class', leftCol, yPos);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(kelasName, leftCol + 25, yPos);
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Unit', midCol, yPos);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(unitNumber, midCol + 25, yPos);
+  yPos += lineHeight;
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Day/Date', leftCol, yPos);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('', leftCol + 25, yPos);
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Teacher', midCol, yPos);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(teacherName, midCol + 25, yPos);
+  
+  // Logo and RESULT box
+  const resultBoxX = pageWidth - margin - 30;
+  const logoY = yPos - 20;
+  const resultBoxWidth = 30;
+  const resultBoxHeight = 18;
+  const borderRadius = 3;
+  
+  try {
+    const logoImg = new Image();
+    logoImg.src = '/images/login-logo.png';
+    pdf.addImage(logoImg, 'PNG', resultBoxX + 2, logoY, resultBoxWidth - 4, 15);
+  } catch (e) {
+    console.warn('Could not load logo image:', e);
+  }
+  
+  const resultBoxY = logoY + 17;
+  pdf.setDrawColor(0, 0, 0);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(resultBoxX, resultBoxY, resultBoxWidth, resultBoxHeight, borderRadius, borderRadius, 'S');
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(10);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text('RESULT', resultBoxX + resultBoxWidth/2, resultBoxY + resultBoxHeight + 5, { align: 'center' });
+  
+  yPos += 25;
+
+  // Assessment Title
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(assessmentName.toUpperCase(), pageWidth / 2, yPos, { align: 'center' });
+  yPos += 12;
+
+  // TASK OVERVIEW
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(0, 0, 0);
+  pdf.text('TASK OVERVIEW', margin, yPos + 3);
+  yPos += 8;
+
+  const taskOverviewData = [
+    ['Criterion', selectedCriteriaNames || 'N/A'],
+    ['Proficiency Level', proficiencyLevel],
+    ['Key Concept', topicData.topic_key_concept || 'N/A'],
+    ['Related Concepts', topicData.topic_related_concept || 'N/A'],
+    ['Conceptual Understanding', assessmentData.assessment_conceptual_understanding || assessmentData.conceptual_understanding || 'N/A'],
+    ['Global Context Exploration', topicData.topic_global_context || 'N/A'],
+    ['Statement of Inquiry', topicData.topic_statement || 'N/A'],
+    ['Task Specific Description', assessmentData.assessment_task_specific_description || assessmentData.task_specific_description || 'N/A'],
+  ];
+
+  autoTable(pdf, {
+    startY: yPos,
+    margin: { left: margin, right: margin },
+    head: [],
+    body: taskOverviewData.map(row => [
+      { content: row[0], styles: { fontStyle: 'bold', cellWidth: 50 }},
+      { content: `: ${row[1]}`, styles: { cellWidth: availableWidth - 50 }},
+    ]),
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 4, lineColor: [200, 200, 200], lineWidth: 0.1, valign: 'top', textColor: [0, 0, 0] },
+    columnStyles: {
+      0: { cellWidth: 50 },
+      1: { cellWidth: availableWidth - 50 } } });
+  
+  return pdf.lastAutoTable.finalY + 8;
+};
+
+/**
+ * Render instructions page into a jsPDF document.
+ */
+const renderInstructionsToPdf = (pdf, { instructions, margin }) => {
+  let yPos = 25;
+
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(0, 0, 0);
+  pdf.text('INSTRUCTIONS:', margin, yPos);
+  yPos += 8;
+
+  const instructionText = instructions;
+  const instructionItems = [];
+  
+  const regex = /(\d+\.\s*)/g;
+  const parts = instructionText.split(regex).filter(p => p.trim());
+  
+  for (let i = 0; i < parts.length; i++) {
+    if (/^\d+\.\s*$/.test(parts[i]) && parts[i + 1]) {
+      instructionItems.push([parts[i].trim(), parts[i + 1].trim()]);
+      i++;
+    } else if (!/^\d+\.\s*$/.test(parts[i])) {
+      instructionItems.push(['', parts[i].trim()]);
+    }
+  }
+
+  autoTable(pdf, {
+    startY: yPos,
+    margin: { left: margin, right: margin },
+    head: [],
+    body: instructionItems.map(item => [
+      { content: item[0], styles: { fontStyle: 'bold', cellWidth: 8 }},
+      { content: item[1], styles: { cellWidth: 'auto' }},
+    ]),
+    theme: 'plain',
+    styles: { 
+      fontSize: 9, 
+      cellPadding: { top: 2, bottom: 2, left: 1, right: 1 }, 
+      valign: 'top', 
+      textColor: [0, 0, 0],
+      lineWidth: 0 },
+    columnStyles: {
+      0: { cellWidth: 8 },
+      1: { cellWidth: 'auto' } } });
+  
+  return pdf.lastAutoTable.finalY + 8;
+};
+
+/**
+ * Add page numbers to all pages
+ */
+const addPageNumbers = (pdf, margin) => {
+  const totalPages = pdf.internal.getNumberOfPages();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(128, 128, 128);
+    pdf.text(`${i}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+  }
+};
+
+/**
+ * Fetch teacher name from user ID.
+ */
+const fetchTeacherName = async (userId) => {
+  if (!userId) return 'N/A';
+  const { data, error } = await supabase
+    .from("users")
+    .select("user_nama_depan, user_nama_belakang")
+    .eq("user_id", userId)
+    .single();
+  if (error || !data) return 'N/A';
+  return `${data.user_nama_depan || ''} ${data.user_nama_belakang || ''}`.trim() || 'N/A';
+};
+
+/**
+ * Fetch strands+rubrics for selected criteria and year level.
+ */
+const fetchStrandsAndRubrics = async (selectedCriteriaIds, yearLevel) => {
+  const { data: strandsData } = await supabase
+    .from('strands')
+    .select('*')
+    .in('criterion_id', selectedCriteriaIds)
+    .eq('year_level', yearLevel)
+    .order('label');
+
+  const strandIds = (strandsData || []).map(s => s.strand_id);
+  let rubricsData = [];
+  if (strandIds.length > 0) {
+    const { data } = await supabase
+      .from('rubrics')
+      .select('*')
+      .in('strand_id', strandIds)
+      .order('max_score', { ascending: false });
+    rubricsData = data || [];
+  }
+
+  return { strandsData: strandsData || [], rubricsData };
+};
+
+// ─── Assessment PDF from Wizard ──────────────────────────────────────────────
+
+/**
+ * Generate Assessment PDF from the wizard modal.
+ * @param {Object} deps - { selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, onSuccess, onError }
+ */
+export const generateAssessmentPDFFromWizard = async ({ selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, onSuccess, onError }) => {
+  try {
+    const topicData = selectedTopic;
+    if (!topicData || !wizardAssessment.assessment_nama) {
+      alert('Please complete assessment name first');
+      return;
+    }
+
+    const subjectName = subjectMap.get(topicData.topic_subject_id) || 'N/A';
+    const kelasName = kelasNameMap.get(topicData.topic_kelas_id) || 'N/A';
+    const teacherName = await fetchTeacherName(currentUserId);
+
+    const selectedCriteriaNames = wizardCriteria
+      .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
+      .map(c => c.code)
+      .join('/');
+
+    const proficiencyLevel = topicData.topic_year ? `Phase ${topicData.topic_year}` : 'N/A';
+
+    // Try server-side HTML->PDF first
+    try {
+      const selectedCriteriaIds = wizardAssessment.selected_criteria || [];
+      const yearLevel = topicData.topic_year || 1;
+      const { strandsData, rubricsData } = await fetchStrandsAndRubrics(selectedCriteriaIds, yearLevel);
+
+      const criteriaSections = buildAssessmentCriteriaForPdf({
+        selectedCriteriaIds,
+        criteriaList: wizardCriteria || [],
+        strandsData,
+        rubricsData,
+        tscMap: wizardAssessment.assessment_tsc || {} });
+
+      const unitName = topicData.topic_urutan
+        ? `Unit ${topicData.topic_urutan}`
+        : (topicData.topic_nama || 'N/A');
+
+      const payload = {
+        meta: {
+          subjectName,
+          kelasName,
+          unitName,
+          assessmentTitle: wizardAssessment.assessment_nama || '',
+          teacherName,
+          criteriaCodes: selectedCriteriaNames,
+          proficiencyLevel,
+          keyConcept: topicData.topic_key_concept || 'N/A',
+          relatedConcepts: topicData.topic_related_concept || 'N/A',
+          conceptualUnderstanding: wizardAssessment.assessment_conceptual_understanding || 'N/A',
+          globalContext: topicData.topic_global_context || 'N/A',
+          statementOfInquiry: topicData.topic_statement || 'N/A',
+          taskSpecificDescription: wizardAssessment.assessment_task_specific_description || 'N/A',
+          instructions: wizardAssessment.assessment_instructions || '' },
+        criteria: criteriaSections };
+
+      await openAssessmentHtml(payload);
+      if (onSuccess) onSuccess();
+      return;
+    } catch (serverErr) {
+      console.warn('Server-side assessment PDF failed, falling back to jsPDF:', serverErr);
+    }
+
+    // Fallback: jsPDF
+    const pdf = new jsPDF('portrait', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 14;
+    const availableWidth = pageWidth - (margin * 2);
+    const unitNumber = topicData.topic_urutan ? topicData.topic_urutan.toString() : '-';
+
+    let yPos = renderAssessmentHeaderToPdf(pdf, {
+      assessmentName: wizardAssessment.assessment_nama,
+      subjectName, kelasName, teacherName, unitNumber,
+      selectedCriteriaNames, proficiencyLevel,
+      topicData,
+      assessmentData: wizardAssessment,
+      margin, availableWidth
+    });
+
+    // Instructions on page 2
+    if (wizardAssessment.assessment_instructions) {
+      pdf.addPage();
+      yPos = renderInstructionsToPdf(pdf, { instructions: wizardAssessment.assessment_instructions, margin });
+    }
+
+    // Criteria rubrics
+    const selectedCriteriaIds = wizardAssessment.selected_criteria || [];
+    if (selectedCriteriaIds.length > 0) {
+      const { strandsData, rubricsData } = await fetchStrandsAndRubrics(selectedCriteriaIds, topicData.topic_year || 1);
+      if (strandsData.length > 0) {
+        yPos = renderCriteriaRubricsToPdf(pdf, {
+          selectedCriteriaIds,
+          criteriaList: wizardCriteria,
+          strandsData, rubricsData,
+          tscMap: wizardAssessment.assessment_tsc || {},
+          margin, availableWidth, startY: yPos
+        });
+      }
+    }
+
+    addPageNumbers(pdf, margin);
+
+    const fileName = `assessment-${wizardAssessment.assessment_nama?.replace(/[^a-z0-9]/gi, '-') || 'assessment'}.pdf`;
+    pdf.save(fileName);
+    
+    if (onSuccess) onSuccess();
+  } catch (error) {
+    console.error('Error generating Assessment PDF:', error);
+    if (onError) onError(error);
+    else alert(`Failed to generate Assessment PDF: ${error.message}`);
+  }
+};
+
+// ─── Assessment Word from Wizard ─────────────────────────────────────────────
+
+/**
+ * Export Assessment to Word from the wizard modal.
+ * @param {Object} deps - { selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, onSuccess, onError }
+ */
+export const exportAssessmentWordFromWizard = async ({ selectedTopic, wizardAssessment, wizardCriteria, subjectMap, kelasNameMap, currentUserId, onSuccess, onError }) => {
+  try {
+    const topicData = selectedTopic;
+    if (!topicData || !wizardAssessment.assessment_nama) {
+      alert('Please complete assessment name first');
+      return;
+    }
+
+    const subjectName = subjectMap.get(topicData.topic_subject_id) || 'N/A';
+    const kelasName = kelasNameMap.get(topicData.topic_kelas_id) || 'N/A';
+    const teacherName = await fetchTeacherName(currentUserId);
+
+    const selectedCriteriaNames = wizardCriteria
+      .filter(c => wizardAssessment.selected_criteria.includes(c.criterion_id))
+      .map(c => c.code)
+      .join('/');
+
+    const proficiencyLevel = topicData.topic_year ? `Phase ${topicData.topic_year}` : 'N/A';
+
+    const selectedCriteriaIds = wizardAssessment.selected_criteria || [];
+    const yearLevel = topicData.topic_year || 1;
+    const { strandsData, rubricsData } = await fetchStrandsAndRubrics(selectedCriteriaIds, yearLevel);
+
+    const criteriaSections = buildAssessmentCriteriaForPdf({
+      selectedCriteriaIds,
+      criteriaList: wizardCriteria || [],
+      strandsData,
+      rubricsData,
+      tscMap: wizardAssessment.assessment_tsc || {} });
+
+    const unitName = topicData.topic_urutan
+      ? `Unit ${topicData.topic_urutan}`
+      : (topicData.topic_nama || 'N/A');
+
+    const payload = {
+      meta: {
+        subjectName, kelasName, unitName,
+        assessmentTitle: wizardAssessment.assessment_nama || '',
+        teacherName,
+        criteriaCodes: selectedCriteriaNames,
+        proficiencyLevel,
+        keyConcept: topicData.topic_key_concept || 'N/A',
+        relatedConcepts: topicData.topic_related_concept || 'N/A',
+        conceptualUnderstanding: wizardAssessment.assessment_conceptual_understanding || 'N/A',
+        globalContext: topicData.topic_global_context || 'N/A',
+        statementOfInquiry: topicData.topic_statement || 'N/A',
+        taskSpecificDescription: wizardAssessment.assessment_task_specific_description || 'N/A',
+        instructions: wizardAssessment.assessment_instructions || '' },
+      criteria: criteriaSections };
+
+    const fileName = `assessment-${wizardAssessment.assessment_nama?.replace(/[^a-z0-9]/gi, '-') || 'assessment'}.docx`;
+    await downloadAssessmentDocx(payload, fileName);
+
+    if (onSuccess) onSuccess();
+  } catch (error) {
+    console.error('Error exporting Assessment to Word:', error);
+    if (onError) onError(error);
+    else alert(`Failed to export Assessment to Word: ${error.message}`);
+  }
+};
+
+// ─── Assessment PDF from Card ────────────────────────────────────────────────
+
+/**
+ * Generate Assessment PDF from a topic card (fetches data from database).
+ * @param {Object} topic - The topic object
+ * @param {Object} deps - { subjectMap, kelasNameMap, currentUserId, onSuccess, onError }
+ */
+export const generateAssessmentPDFFromCard = async (topic, { subjectMap, kelasNameMap, currentUserId, onSuccess, onError }) => {
+  try {
+    // Fetch assessment data
+    const { data: assessmentData, error: assessmentErr } = await supabase
+      .from('assessment')
+      .select(`
+        assessment_id,
+        assessment_nama,
+        assessment_keterangan,
+        assessment_semester,
+        assessment_conceptual_understanding,
+        assessment_task_specific_description,
+        assessment_instructions,
+        assessment_tsc,
+        assessment_criteria (criterion_id)
+      `)
+      .eq('assessment_topic_id', topic.topic_id)
+      .single();
+    
+    if (assessmentErr || !assessmentData) {
+      alert('No assessment found for this unit. Please create an assessment first.');
+      return;
+    }
+
+    const subjectName = subjectMap.get(topic.topic_subject_id) || 'N/A';
+    const kelasName = kelasNameMap.get(topic.topic_kelas_id) || 'N/A';
+    const teacherName = await fetchTeacherName(currentUserId);
+
+    // Get criteria
+    const { data: criteriaData } = await supabase
+      .from('criteria')
+      .select('criterion_id, code, name')
+      .eq('subject_id', topic.topic_subject_id)
+      .order('code');
+    
+    const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || [];
+    const selectedCriteriaNames = (criteriaData || [])
+      .filter(c => criteriaIds.includes(c.criterion_id))
+      .map(c => c.code)
+      .join('/');
+
+    const proficiencyLevel = topic.topic_year ? `Phase ${topic.topic_year}` : 'N/A';
+
+    // Try server-side HTML->PDF first
+    try {
+      const { strandsData, rubricsData } = await fetchStrandsAndRubrics(criteriaIds, topic.topic_year || 1);
+
+      const criteriaSections = buildAssessmentCriteriaForPdf({
+        selectedCriteriaIds: criteriaIds,
+        criteriaList: criteriaData || [],
+        strandsData,
+        rubricsData,
+        tscMap: assessmentData.assessment_tsc || {} });
+
+      const unitName = topic.topic_urutan
+        ? `Unit ${topic.topic_urutan}`
+        : (topic.topic_nama || 'N/A');
+
+      const payload = {
+        meta: {
+          subjectName, kelasName, unitName,
+          assessmentTitle: assessmentData.assessment_nama || '',
+          teacherName,
+          criteriaCodes: selectedCriteriaNames,
+          proficiencyLevel,
+          keyConcept: topic.topic_key_concept || 'N/A',
+          relatedConcepts: topic.topic_related_concept || 'N/A',
+          conceptualUnderstanding: assessmentData.assessment_conceptual_understanding || 'N/A',
+          globalContext: topic.topic_global_context || 'N/A',
+          statementOfInquiry: topic.topic_statement || 'N/A',
+          taskSpecificDescription: assessmentData.assessment_task_specific_description || 'N/A',
+          instructions: assessmentData.assessment_instructions || '' },
+        criteria: criteriaSections };
+
+      await openAssessmentHtml(payload);
+      if (onSuccess) onSuccess();
+      return;
+    } catch (serverErr) {
+      console.warn('Server-side assessment PDF failed, falling back to jsPDF:', serverErr);
+    }
+
+    // Fallback: jsPDF
+    const pdf = new jsPDF('portrait', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 20;
+    const availableWidth = pageWidth - (margin * 2);
+    const unitNumber = topic.topic_urutan ? topic.topic_urutan.toString() : '-';
+
+    let yPos = renderAssessmentHeaderToPdf(pdf, {
+      assessmentName: assessmentData.assessment_nama,
+      subjectName, kelasName, teacherName, unitNumber,
+      selectedCriteriaNames, proficiencyLevel,
+      topicData: topic,
+      assessmentData,
+      margin, availableWidth
+    });
+
+    // Instructions on page 2
+    if (assessmentData.assessment_instructions) {
+      pdf.addPage();
+      yPos = renderInstructionsToPdf(pdf, { instructions: assessmentData.assessment_instructions, margin });
+    }
+
+    // Criteria rubrics
+    if (criteriaIds.length > 0) {
+      const { data: criteriaDetails } = await supabase
+        .from('criteria')
+        .select('criterion_id, code, name')
+        .in('criterion_id', criteriaIds);
+
+      const { strandsData, rubricsData } = await fetchStrandsAndRubrics(criteriaIds, topic.topic_year || 1);
+
+      if (strandsData.length > 0) {
+        yPos = renderCriteriaRubricsToPdf(pdf, {
+          selectedCriteriaIds: criteriaIds,
+          criteriaList: criteriaDetails || [],
+          strandsData, rubricsData,
+          tscMap: assessmentData.assessment_tsc || {},
+          margin, availableWidth, startY: yPos
+        });
+      }
+    }
+
+    addPageNumbers(pdf, margin);
+
+    const fileName = `assessment-${assessmentData.assessment_nama?.replace(/[^a-z0-9]/gi, '-') || 'assessment'}.pdf`;
+    pdf.save(fileName);
+    
+    if (onSuccess) onSuccess();
+  } catch (error) {
+    console.error('Error generating Assessment PDF:', error);
+    if (onError) onError(error);
+    else alert(`Failed to generate Assessment PDF: ${error.message}`);
+  }
+};
+
+// ─── Assessment Word from Card ───────────────────────────────────────────────
+
+/**
+ * Export assessment to Word from a topic card.
+ * @param {Object} topic - The topic object
+ * @param {Object} deps - { subjectMap, kelasNameMap, currentUserId, onSuccess, onError }
+ */
+export const exportAssessmentWordFromCard = async (topic, { subjectMap, kelasNameMap, currentUserId, onSuccess, onError }) => {
+  try {
+    const { data: assessmentData, error: assessmentErr } = await supabase
+      .from('assessment')
+      .select(`
+        assessment_id,
+        assessment_nama,
+        assessment_keterangan,
+        assessment_semester,
+        assessment_conceptual_understanding,
+        assessment_task_specific_description,
+        assessment_instructions,
+        assessment_tsc,
+        assessment_criteria (criterion_id)
+      `)
+      .eq('assessment_topic_id', topic.topic_id)
+      .single();
+    
+    if (assessmentErr || !assessmentData) {
+      alert('No assessment found for this unit. Please create an assessment first.');
+      return;
+    }
+
+    const subjectName = subjectMap.get(topic.topic_subject_id) || 'N/A';
+    const kelasName = kelasNameMap.get(topic.topic_kelas_id) || 'N/A';
+    const teacherName = await fetchTeacherName(currentUserId);
+
+    const { data: criteriaData } = await supabase
+      .from('criteria')
+      .select('criterion_id, code, name')
+      .eq('subject_id', topic.topic_subject_id)
+      .order('code');
+    
+    const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || [];
+    const selectedCriteriaNames = (criteriaData || [])
+      .filter(c => criteriaIds.includes(c.criterion_id))
+      .map(c => c.code)
+      .join('/');
+
+    const proficiencyLevel = topic.topic_year ? `Phase ${topic.topic_year}` : 'N/A';
+
+    const { strandsData, rubricsData } = await fetchStrandsAndRubrics(criteriaIds, topic.topic_year || 1);
+
+    const criteriaStructure = buildAssessmentCriteriaForPdf({
+      selectedCriteriaIds: criteriaIds,
+      criteriaList: criteriaData || [],
+      strandsData,
+      rubricsData,
+      tscMap: assessmentData.assessment_tsc || {}
+    });
+
+    const payload = {
+      meta: {
+        subjectName, kelasName,
+        unitName: topic.topic_urutan ? topic.topic_urutan.toString() : '-',
+        assessmentTitle: assessmentData.assessment_nama || '',
+        teacherName,
+        criteriaCodes: selectedCriteriaNames,
+        proficiencyLevel,
+        keyConcept: topic.topic_key_concept || '',
+        relatedConcepts: topic.topic_related_concept || '',
+        conceptualUnderstanding: assessmentData.assessment_conceptual_understanding || topic.topic_conceptual_understanding || '',
+        globalContext: topic.topic_global_context || '',
+        statementOfInquiry: topic.topic_statement || '',
+        taskSpecificDescription: assessmentData.assessment_task_specific_description || '',
+        instructions: assessmentData.assessment_instructions || '' },
+      criteria: criteriaStructure };
+
+    const fileName = `${assessmentData.assessment_nama.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+    await downloadAssessmentDocx(payload, fileName);
+
+    if (onSuccess) onSuccess();
+  } catch (error) {
+    console.error('Error exporting Word:', error);
+    if (onError) onError(error);
+    else alert('Failed to export Word document. Check console for details.');
+  }
+};
+
+// ─── Student Report PDF ──────────────────────────────────────────────────────
+
+/**
+ * Generate student progress report PDF.
+ * @param {Object} deps - { reportFilters, reportStudents, reportKelasOptions, reportYears, setLoadingReport, onSuccess, onError }
+ */
+export const generateStudentReportPDF = async ({ reportFilters, reportStudents, reportKelasOptions, reportYears, setLoadingReport, onError }) => {
+  if (!reportFilters.kelas || !reportFilters.student) {
+    alert('Silakan pilih kelas dan siswa terlebih dahulu');
+    return;
+  }
+
+  try {
+    setLoadingReport(true);
+    
+    const studentId = parseInt(reportFilters.student);
+    const kelasId = parseInt(reportFilters.kelas);
+    
+    const student = reportStudents.find(s => s.detail_siswa_id === studentId);
+    const studentName = student?.nama || 'Unknown';
+    const kelasName = reportKelasOptions.find(k => k.kelas_id === kelasId)?.kelas_nama || '';
+    const yearName = reportYears.find(y => y.year_id === parseInt(reportFilters.year))?.year_name || '';
+    const semesterName = reportFilters.semester === '1' ? 'Semester 1' : reportFilters.semester === '2' ? 'Semester 2' : '';
+    
+    // Get all detail_kelas for this kelas
+    const { data: detailKelasData, error: dkError } = await supabase
+      .from('detail_kelas')
+      .select(`
+        detail_kelas_id,
+        detail_kelas_subject_id,
+        subject:detail_kelas_subject_id (
+          subject_id,
+          subject_name,
+          subject_user_id
+        )
+      `)
+      .eq('detail_kelas_kelas_id', kelasId);
+    
+    if (dkError) throw dkError;
+    
+    const reportRows = [];
+    
+    for (const dk of detailKelasData || []) {
+      if (!dk.subject) continue;
+      
+      let teacherName = '-';
+      if (dk.subject.subject_user_id) {
+        const { data: teacherData } = await supabase
+          .from('users')
+          .select('user_nama_depan, user_nama_belakang')
+          .eq('user_id', dk.subject.subject_user_id)
+          .single();
+        
+        if (teacherData) {
+          teacherName = `${teacherData.user_nama_depan} ${teacherData.user_nama_belakang}`.trim();
+        }
+      }
+      
+      const { data: assessmentsData, error: aError } = await supabase
+        .from('assessment')
+        .select('assessment_id')
+        .eq('assessment_detail_kelas_id', dk.detail_kelas_id)
+        .eq('assessment_status', 1);
+      
+      if (aError) continue;
+      
+      const assessmentIds = (assessmentsData || []).map(a => a.assessment_id);
+      
+      let grades = { A: null, B: null, C: null, D: null };
+      let comment = '';
+      let semesterOverview = null;
+      
+      if (assessmentIds.length > 0) {
+        const { data: gradesData, error: gError } = await supabase
+          .from('assessment_grades')
+          .select('criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade, final_grade, comments')
+          .eq('detail_siswa_id', studentId)
+          .in('assessment_id', assessmentIds);
+        
+        if (!gError && gradesData && gradesData.length > 0) {
+          const allA = gradesData.map(g => g.criterion_a_grade).filter(g => g !== null);
+          const allB = gradesData.map(g => g.criterion_b_grade).filter(g => g !== null);
+          const allC = gradesData.map(g => g.criterion_c_grade).filter(g => g !== null);
+          const allD = gradesData.map(g => g.criterion_d_grade).filter(g => g !== null);
+          const allFinal = gradesData.map(g => g.final_grade).filter(g => g !== null);
+          const allComments = gradesData.map(g => g.comments).filter(c => c);
+          
+          grades.A = allA.length > 0 ? Math.max(...allA) : null;
+          grades.B = allB.length > 0 ? Math.max(...allB) : null;
+          grades.C = allC.length > 0 ? Math.max(...allC) : null;
+          grades.D = allD.length > 0 ? Math.max(...allD) : null;
+          semesterOverview = allFinal.length > 0 ? Math.round(allFinal.reduce((a, b) => a + b, 0) / allFinal.length) : null;
+          comment = allComments.join(' ');
+        }
+      }
+      
+      reportRows.push({
+        subject_id: dk.subject.subject_id,
+        subject_name: dk.subject.subject_name,
+        teacher_name: teacherName,
+        grades,
+        semester_overview: semesterOverview,
+        comment
+      });
+    }
+    
+    reportRows.sort((a, b) => a.subject_name.localeCompare(b.subject_name));
+    
+    if (reportRows.length === 0) {
+      alert('Tidak ada data report untuk siswa ini');
+      return;
+    }
+    
+    const pdf = new jsPDF('portrait', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 14;
+    let yPos = 15;
+    
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`Summary of ${semesterName} Student Progress`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 10;
+    
+    autoTable(pdf, {
+      startY: yPos,
+      head: [[
+        { content: '', styles: { halign: 'left', cellWidth: 90 } },
+        { content: 'A', styles: { halign: 'center' } },
+        { content: 'B', styles: { halign: 'center' } },
+        { content: 'C', styles: { halign: 'center' } },
+        { content: 'D', styles: { halign: 'center' } },
+        { content: `${semesterName}\nProgress\nOverview`, styles: { halign: 'center', fontSize: 7 } }
+      ]],
+      body: [],
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2, valign: 'middle' },
+      headStyles: { fillColor: [255, 255, 255], textColor: [100, 100, 100], fontStyle: 'normal', fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 90 }, 1: { cellWidth: 18 }, 2: { cellWidth: 18 },
+        3: { cellWidth: 18 }, 4: { cellWidth: 18 }, 5: { cellWidth: 20 }
+      }
+    });
+    
+    yPos = pdf.lastAutoTable.finalY;
+    
+    for (const row of reportRows) {
+      if (yPos > 250) { pdf.addPage(); yPos = 15; }
+      
+      autoTable(pdf, {
+        startY: yPos,
+        body: [[
+          { content: `${row.subject_name}\n${row.teacher_name}`, styles: { fontStyle: 'bold', fontSize: 10, textColor: [30, 64, 175], cellPadding: { top: 3, bottom: 1, left: 3, right: 3 } } },
+          { content: row.grades.A?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
+          { content: row.grades.B?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
+          { content: row.grades.C?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
+          { content: row.grades.D?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
+          { content: row.semester_overview?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 11, textColor: [30, 64, 175] } }
+        ]],
+        theme: 'plain',
+        styles: { fontSize: 10, cellPadding: 3, valign: 'middle', lineColor: [229, 231, 235], lineWidth: 0 },
+        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 18 }, 2: { cellWidth: 18 }, 3: { cellWidth: 18 }, 4: { cellWidth: 18 }, 5: { cellWidth: 20 } }
+      });
+      
+      yPos = pdf.lastAutoTable.finalY;
+      
+      if (row.comment) {
+        autoTable(pdf, {
+          startY: yPos,
+          body: [[ { content: row.comment, colSpan: 6, styles: { fontSize: 9, textColor: [75, 85, 99], cellPadding: { top: 1, bottom: 5, left: 3, right: 3 } } } ]],
+          theme: 'plain',
+          styles: { lineColor: [229, 231, 235], lineWidth: 0 }
+        });
+        yPos = pdf.lastAutoTable.finalY;
+      }
+      
+      pdf.setDrawColor(229, 231, 235);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 3;
+    }
+    
+    yPos += 5;
+    pdf.setFontSize(8);
+    pdf.setTextColor(150);
+    pdf.text(`Generated on ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, yPos);
+    
+    // Detail pages per subject
+    for (const row of reportRows) {
+      const { data: criteriaData, error: criteriaError } = await supabase
+        .from('criteria')
+        .select('criterion_id, code, name')
+        .eq('subject_id', row.subject_id)
+        .order('code');
+      
+      if (criteriaError) continue;
+      
+      pdf.addPage();
+      yPos = margin;
+      
+      pdf.setFontSize(16);
+      pdf.setTextColor(30, 64, 175);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(row.subject_name, margin, yPos);
+      yPos += 8;
+      
+      pdf.setFontSize(11);
+      pdf.setTextColor(100);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Teacher: ${row.teacher_name}`, margin, yPos);
+      yPos += 10;
+      
+      autoTable(pdf, {
+        startY: yPos,
+        head: [[
+          { content: 'Criterion A', styles: { halign: 'center', fillColor: [219, 234, 254] } },
+          { content: 'Criterion B', styles: { halign: 'center', fillColor: [219, 234, 254] } },
+          { content: 'Criterion C', styles: { halign: 'center', fillColor: [219, 234, 254] } },
+          { content: 'Criterion D', styles: { halign: 'center', fillColor: [219, 234, 254] } },
+          { content: 'Semester', styles: { halign: 'center', fillColor: [30, 64, 175], textColor: [255, 255, 255] } }
+        ]],
+        body: [[
+          { content: row.grades.A?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
+          { content: row.grades.B?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
+          { content: row.grades.C?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
+          { content: row.grades.D?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
+          { content: row.semester_overview?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 16, textColor: [30, 64, 175] } }
+        ]],
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 5, valign: 'middle', lineColor: [200, 200, 200], lineWidth: 0.3 },
+        headStyles: { fontSize: 10, fontStyle: 'bold', textColor: [50, 50, 50] }
+      });
+      
+      yPos = pdf.lastAutoTable.finalY + 10;
+      
+      pdf.setFontSize(12);
+      pdf.setTextColor(50);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Criterion Descriptors', margin, yPos);
+      yPos += 8;
+      
+      for (const criterion of criteriaData || []) {
+        if (yPos > 260) { pdf.addPage(); yPos = margin; }
+        
+        pdf.setFillColor(243, 244, 246);
+        pdf.rect(margin, yPos - 4, pageWidth - 2 * margin, 10, 'F');
+        
+        pdf.setFontSize(11);
+        pdf.setTextColor(30, 64, 175);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${criterion.code}: ${criterion.name}`, margin + 3, yPos + 2);
+        
+        const gradeValue = row.grades[criterion.code]?.toString() ?? '-';
+        pdf.setFontSize(11);
+        pdf.setTextColor(50);
+        pdf.text(`Grade: ${gradeValue}`, pageWidth - margin - 25, yPos + 2);
+        
+        yPos += 12;
+      }
+      
+      if (row.comment) {
+        yPos += 5;
+        pdf.setFontSize(11);
+        pdf.setTextColor(50);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Teacher Comment:', margin, yPos);
+        yPos += 6;
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(75, 85, 99);
+        
+        const splitComment = pdf.splitTextToSize(row.comment, pageWidth - 2 * margin);
+        pdf.text(splitComment, margin, yPos);
+        yPos += splitComment.length * 5;
+      }
+      
+      pdf.setFontSize(8);
+      pdf.setTextColor(150);
+      pdf.text(`${studentName} - ${kelasName} - ${semesterName}`, margin, pageHeight - 10);
+      pdf.text(`Page ${pdf.internal.getNumberOfPages()}`, pageWidth - margin - 15, pageHeight - 10);
+    }
+    
+    const fileName = `student-report-${studentName.replace(/[^a-z0-9]/gi, '-')}-${semesterName.replace(/\s/g, '')}.pdf`;
+    pdf.save(fileName);
+    
+  } catch (err) {
+    console.error('Error generating report:', err);
+    if (onError) onError(err);
+    else alert('Gagal menghasilkan report: ' + err.message);
+  } finally {
+    setLoadingReport(false);
+  }
+};
+
+// ─── Class Recap PDF ─────────────────────────────────────────────────────────
+
+/**
+ * Generate class recap PDF.
+ * @param {Object} deps - { kelasId, semester, subjectId, assessmentKelasOptions, subjects, setLoadingClassRecap, onError }
+ */
+export const generateClassRecapPDFReport = async ({ kelasId, semester, subjectId, assessmentKelasOptions, subjects, setLoadingClassRecap, onError }) => {
+  if (!kelasId) {
+    alert('Silakan pilih kelas terlebih dahulu');
+    return;
+  }
+  
+  if (!subjectId) {
+    alert('Silakan pilih mata pelajaran terlebih dahulu');
+    return;
+  }
+  
+  try {
+    setLoadingClassRecap(true);
+    
+    const parsedKelasId = parseInt(kelasId);
+    const parsedSubjectId = parseInt(subjectId);
+    const semesterFilter = semester ? parseInt(semester) : null;
+    
+    const kelasInfo = assessmentKelasOptions.find(k => k.kelas_id === parsedKelasId);
+    const kelasName = kelasInfo?.kelas_nama || 'Unknown Class';
+    const subjectInfo = subjects.find(s => s.subject_id === parsedSubjectId);
+    const subjectName = subjectInfo?.subject_name || 'Unknown Subject';
+    
+    // Get all students in this class
+    const { data: detailSiswaData, error: dsError } = await supabase
+      .from('detail_siswa')
+      .select('detail_siswa_id, detail_siswa_user_id')
+      .eq('detail_siswa_kelas_id', parsedKelasId);
+    
+    if (dsError) throw dsError;
+    
+    const userIds = [...new Set(detailSiswaData.map(ds => ds.detail_siswa_user_id))];
+    
+    let userMap = new Map();
+    if (userIds.length > 0) {
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang')
+        .in('user_id', userIds);
+      
+      if (!usersError && usersData) {
+        usersData.forEach(u => {
+          userMap.set(u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim());
+        });
+      }
+    }
+    
+    const students = detailSiswaData.map(ds => ({
+      detail_siswa_id: ds.detail_siswa_id,
+      user_id: ds.detail_siswa_user_id,
+      nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown'
+    })).sort((a, b) => a.nama.localeCompare(b.nama));
+    
+    // Get detail_kelas
+    const { data: detailKelasData, error: dkError } = await supabase
+      .from('detail_kelas')
+      .select('detail_kelas_id')
+      .eq('detail_kelas_kelas_id', parsedKelasId)
+      .eq('detail_kelas_subject_id', parsedSubjectId);
+    
+    if (dkError) throw dkError;
+    
+    const detailKelasIds = detailKelasData.map(dk => dk.detail_kelas_id);
+    
+    if (detailKelasIds.length === 0) {
+      alert('Tidak ada data mata pelajaran untuk kelas ini.');
+      return;
+    }
+    
+    // Get approved assessments
+    let assessmentQuery = supabase
+      .from('assessment')
+      .select('assessment_id, assessment_nama, assessment_tanggal, assessment_semester')
+      .in('assessment_detail_kelas_id', detailKelasIds)
+      .eq('assessment_status', 1)
+      .order('assessment_tanggal', { ascending: true });
+    
+    if (semesterFilter) {
+      assessmentQuery = assessmentQuery.eq('assessment_semester', semesterFilter);
+    }
+    
+    const { data: assessmentsData, error: aError } = await assessmentQuery;
+    
+    if (aError) throw aError;
+    
+    if (!assessmentsData || assessmentsData.length === 0) {
+      alert(`Tidak ada assessment yang sudah disetujui untuk ${subjectName} di kelas ini${semesterFilter ? ` pada semester ${semesterFilter}` : ''}.`);
+      return;
+    }
+    
+    const assessmentIds = assessmentsData.map(a => a.assessment_id);
+    
+    // Get all grades
+    const { data: gradesData, error: gError } = await supabase
+      .from('assessment_grades')
+      .select('assessment_id, detail_siswa_id, criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade')
+      .in('assessment_id', assessmentIds);
+    
+    if (gError) throw gError;
+    
+    const gradesMap = {};
+    assessmentIds.forEach(aid => { gradesMap[aid] = {}; });
+    
+    if (gradesData) {
+      gradesData.forEach(g => {
+        gradesMap[g.assessment_id][g.detail_siswa_id] = {
+          A: g.criterion_a_grade,
+          B: g.criterion_b_grade,
+          C: g.criterion_c_grade,
+          D: g.criterion_d_grade
+        };
+      });
+    }
+    
+    // Generate PDF
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Rekap Nilai: ${subjectName} - ${kelasName}`, 14, 15);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${semesterFilter ? `Semester ${semesterFilter} • ` : ''}Generated: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 14, 22);
+    
+    let yPosition = 30;
+    
+    assessmentsData.forEach((assessment, idx) => {
+      if (yPosition > 170) { doc.addPage(); yPosition = 15; }
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${idx + 1}. ${assessment.assessment_nama}`, 14, yPosition);
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const dateStr = new Date(assessment.assessment_tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      doc.text(`${dateStr}${assessment.assessment_semester ? ` • Semester ${assessment.assessment_semester}` : ''}`, 14, yPosition + 5);
+      
+      yPosition += 10;
+      
+      const tableData = students.map((student, sIdx) => {
+        const grades = gradesMap[assessment.assessment_id]?.[student.detail_siswa_id] || {};
+        return [
+          sIdx + 1,
+          student.nama,
+          grades.A !== null && grades.A !== undefined ? grades.A : '-',
+          grades.B !== null && grades.B !== undefined ? grades.B : '-',
+          grades.C !== null && grades.C !== undefined ? grades.C : '-',
+          grades.D !== null && grades.D !== undefined ? grades.D : '-',
+          ''
+        ];
+      });
+      
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['No', 'Nama Siswa', 'Crit. A', 'Crit. B', 'Crit. C', 'Crit. D', 'Final']],
+        body: tableData,
+        styles: { fontSize: 9, cellPadding: 2 },
+        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 18, halign: 'center' },
+          3: { cellWidth: 18, halign: 'center' },
+          4: { cellWidth: 18, halign: 'center' },
+          5: { cellWidth: 18, halign: 'center' },
+          6: { cellWidth: 18, halign: 'center' }
+        },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        margin: { left: 14, right: 14 }
+      });
+      
+      yPosition = doc.lastAutoTable.finalY + 10;
+    });
+    
+    const fileName = `rekap-nilai-${subjectName.replace(/\s+/g, '-').toLowerCase()}-${kelasName.replace(/\s+/g, '-').toLowerCase()}${semesterFilter ? `-sem${semesterFilter}` : ''}.pdf`;
+    doc.save(fileName);
+    
+  } catch (err) {
+    console.error('Error generating class recap PDF:', err);
+    if (onError) onError(err);
+    else alert('Gagal membuat PDF rekap: ' + err.message);
+  } finally {
+    setLoadingClassRecap(false);
+  }
+};
