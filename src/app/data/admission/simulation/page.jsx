@@ -39,6 +39,7 @@ export default function FeeSimulationPage() {
   const [selectedLevel, setSelectedLevel] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('eksternal');
+  const [studentName, setStudentName] = useState('');
 
   // Simulation discounts (local state, not saved to DB)
   const [simDiscounts, setSimDiscounts] = useState([]); // [{id, discount_id, fee_target, value_type, value, seq, discount_name, discount_code}]
@@ -201,35 +202,44 @@ export default function FeeSimulationPage() {
   const usekBase = matchedUsek?.monthly_amount || matchedUsek?.default_amount || 0;
   const usekFinal = usekDiscCalc.length > 0 ? usekDiscCalc[usekDiscCalc.length - 1].subtotal_after : usekBase;
 
-  // Installment schedule
+  // Installment schedule: Cicilan 1 = UTJ, Cicilan 2-12 = sisa UDP / 11
   const installmentSchedule = useMemo(() => {
-    const totalEntry = udpFinal + usekFinal;
-    if (totalEntry <= 0) return null;
+    if (udpFinal <= 0) return null;
 
-    const utjAmount = Math.round(totalEntry * installmentConfig.utj_percentage / 100);
-    const remaining = totalEntry - utjAmount;
+    const utjAmount = Math.round(udpFinal * installmentConfig.utj_percentage / 100);
+    const remaining = udpFinal - utjAmount;
     const numInst = installmentConfig.num_installments;
     const monthlyAmount = Math.floor(remaining / numInst);
     const lastMonthAmount = remaining - (monthlyAmount * (numInst - 1));
 
     const items = [];
+    // Cicilan 1 = UTJ
+    const m0 = (installmentConfig.start_month - 1) % 12;
+    const y0 = installmentConfig.start_year + Math.floor((installmentConfig.start_month - 1) / 12);
+    items.push({
+      seq: 1,
+      label: `Cicilan 1 — UTJ (${monthNames[m0]} ${y0})`,
+      info: `${installmentConfig.utj_percentage}% dari UDP ${formatCurrency(udpFinal)}`,
+      month: m0 + 1,
+      year: y0,
+      amount: utjAmount,
+    });
+    // Cicilan 2 .. (numInst+1) = sisa UDP / numInst
     for (let i = 0; i < numInst; i++) {
-      const mIdx = (installmentConfig.start_month - 1 + i) % 12;
-      const yVal = installmentConfig.start_year + Math.floor((installmentConfig.start_month - 1 + i) / 12);
-      const baseAmt = i === numInst - 1 ? lastMonthAmount : monthlyAmount;
-      const isFirst = i === 0;
-      const amt = isFirst ? baseAmt + utjAmount : baseAmt;
+      const mIdx = (installmentConfig.start_month + i) % 12;
+      const yVal = installmentConfig.start_year + Math.floor((installmentConfig.start_month + i) / 12);
+      const amt = i === numInst - 1 ? lastMonthAmount : monthlyAmount;
       items.push({
-        seq: i + 1,
-        label: `Cicilan ${i + 1} (${monthNames[mIdx]} ${yVal})`,
-        info: isFirst ? `Termasuk UTJ ${formatCurrency(utjAmount)} (${installmentConfig.utj_percentage}% dari ${formatCurrency(totalEntry)})` : null,
+        seq: i + 2,
+        label: `Cicilan ${i + 2} (${monthNames[mIdx]} ${yVal})`,
+        info: null,
         month: mIdx + 1,
         year: yVal,
         amount: amt,
       });
     }
-    return { udpFinal, usekFinal: usekFinal, totalEntry, utjAmount, remaining, numInst, monthlyAmount, lastMonthAmount, items };
-  }, [udpFinal, usekFinal, installmentConfig]);
+    return { udpFinal, totalEntry: udpFinal, utjAmount, remaining, numInst, monthlyAmount, lastMonthAmount, items };
+  }, [udpFinal, installmentConfig]);
 
   // === DISCOUNT ACTIONS (local state only) ===
   const handleAddDiscount = (master, feeTarget) => {
@@ -345,6 +355,7 @@ export default function FeeSimulationPage() {
     doc.setFontSize(10);
     const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const infoData = [
+      ...(studentName.trim() ? [['Nama Calon Siswa', `: ${studentName.trim()}`]] : []),
       ['Jenjang', `: ${level?.level_name || '-'} (${level?.unit?.unit_name || '-'})`],
       ['Tahun Ajaran', `: ${year?.year_name || '-'}`],
       ['Kategori Siswa', `: ${categoryLabels[selectedCategory] || selectedCategory}`],
@@ -380,15 +391,6 @@ export default function FeeSimulationPage() {
       });
       feeBody.push([{ content: 'UDP Setelah Potongan', styles: { fontStyle: 'bold' } }, { content: fmtIDR(udpFinal), styles: { fontStyle: 'bold' } }]);
     }
-    feeBody.push(['SPP / Bulan', fmtIDR(usekBase)]);
-    if (usekDiscCalc.length > 0) {
-      usekDiscCalc.forEach(d => {
-        const desc = d.value_type === 'percentage' ? `${d.discount_name} (${d.value}%)` : `${d.discount_name}`;
-        feeBody.push([`  Potongan: ${desc}`, `- ${fmtIDR(d.calculated_amount)}`]);
-      });
-      feeBody.push([{ content: 'SPP Setelah Potongan / Bulan', styles: { fontStyle: 'bold' } }, { content: fmtIDR(usekFinal), styles: { fontStyle: 'bold' } }]);
-    }
-    feeBody.push([{ content: 'TOTAL BIAYA MASUK (UDP + SPP bulan pertama)', styles: { fontStyle: 'bold' } }, { content: fmtIDR(calc.totalEntry), styles: { fontStyle: 'bold' } }]);
 
     autoTable(doc, {
       startY: y,
@@ -410,14 +412,15 @@ export default function FeeSimulationPage() {
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    const skemaText = `Total biaya masuk sebesar ${fmtIDR(calc.totalEntry)} dapat dibayar dengan skema cicilan sebagai berikut:`;
+    const skemaText = `Total UDP sebesar ${fmtIDR(udpFinal)} dapat dibayar dengan skema cicilan sebagai berikut:`;
+
     const splitSkema = doc.splitTextToSize(skemaText, contentW);
     doc.text(splitSkema, marginL, y);
     y += splitSkema.length * 4.5 + 4;
 
     const tableRows = calc.items.map(item => [
       String(item.seq),
-      item.seq === 1 ? `${item.label}\n(Termasuk UTJ ${fmtIDR(calc.utjAmount)})` : item.label,
+      item.label,
       fmtIDR(item.amount)
     ]);
     tableRows.push([{ content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } }, { content: fmtIDR(calc.items.reduce((s, i) => s + i.amount, 0)), styles: { fontStyle: 'bold' } }]);
@@ -522,6 +525,15 @@ export default function FeeSimulationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label>Nama Calon Siswa</Label>
+              <Input
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                placeholder="Masukkan nama calon siswa (opsional)"
+                className="mt-1"
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Jenjang Pendaftaran *</Label>
@@ -707,58 +719,6 @@ export default function FeeSimulationPage() {
               </div>
             )}
 
-            {/* USEK Discounts */}
-            {matchedUsek && (
-              <div className="border border-blue-200 rounded-lg overflow-hidden">
-                <div className="bg-blue-50 px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-blue-800">SPP</span>
-                    <span className="text-sm text-blue-600 ml-2">Base/bulan: {formatCurrency(usekBase)}</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                    onClick={() => { setAddDiscountTarget('usek'); setShowAddDiscount(true); }}
-                  >
-                    <FontAwesomeIcon icon={faPlus} className="mr-1" /> Tambah
-                  </Button>
-                </div>
-                {(() => {
-                  if (usekDiscCalc.length === 0) {
-                    return <div className="px-4 py-4 text-center text-gray-400 text-sm">Belum ada potongan SPP</div>;
-                  }
-                  return (
-                    <div className="divide-y divide-blue-100">
-                      {usekDiscCalc.map((d, idx) => (
-                        <div key={d.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
-                          <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">{d.seq}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm text-gray-900 truncate">{d.discount_name}</p>
-                            <p className="text-xs text-gray-500">
-                              {d.value_type === 'percentage' ? <><FontAwesomeIcon icon={faPercent} className="mr-1" />{d.value}% dari {formatCurrency(d.base_before)}</> : <><FontAwesomeIcon icon={faMoneyBill} className="mr-1" />{formatCurrency(d.value)} (fixed)</>}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-red-600">-{formatCurrency(d.calculated_amount)}</p>
-                            <p className="text-xs text-gray-400">→ {formatCurrency(d.subtotal_after)}</p>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <button onClick={() => handleMoveDiscount(d.id, 'usek', 'up')} disabled={idx === 0} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><FontAwesomeIcon icon={faArrowUp} className="text-xs" /></button>
-                            <button onClick={() => handleMoveDiscount(d.id, 'usek', 'down')} disabled={idx === usekDiscCalc.length - 1} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><FontAwesomeIcon icon={faArrowDown} className="text-xs" /></button>
-                          </div>
-                          <button onClick={() => handleRemoveDiscount(d.id, 'usek')} className="p-1 text-red-400 hover:text-red-600"><FontAwesomeIcon icon={faTrash} className="text-xs" /></button>
-                        </div>
-                      ))}
-                      <div className="px-4 py-3 bg-blue-50 flex items-center justify-between">
-                        <span className="font-semibold text-blue-800 text-sm">SPP Final / bulan</span>
-                        <span className="font-bold text-blue-700">{formatCurrency(usekFinal)}</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
             {/* Discount Picker */}
             {showAddDiscount && (
               <div className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm">
@@ -810,20 +770,16 @@ export default function FeeSimulationPage() {
                   <span className="text-gray-600">UDP (setelah potongan)</span>
                   <span className="font-medium">{formatCurrency(udpFinal)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">SPP bulan pertama (setelah potongan)</span>
-                  <span className="font-medium">{formatCurrency(usekFinal)}</span>
-                </div>
                 <div className="border-t pt-2 flex justify-between font-semibold text-purple-800">
                   <span>Total Biaya Masuk</span>
-                  <span>{formatCurrency(udpFinal + usekFinal)}</span>
+                  <span>{formatCurrency(udpFinal)}</span>
                 </div>
               </div>
             </div>
 
             <Button
               onClick={() => setStep(3)}
-              disabled={udpFinal + usekFinal <= 0}
+              disabled={udpFinal <= 0}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white"
             >
               Lanjut ke Simulasi Cicilan <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
@@ -855,13 +811,9 @@ export default function FeeSimulationPage() {
                   <span className="text-gray-600">UDP (setelah potongan)</span>
                   <span className="font-medium">{formatCurrency(udpFinal)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">SPP bulan pertama (setelah potongan)</span>
-                  <span className="font-medium">{formatCurrency(usekFinal)}</span>
-                </div>
                 <div className="border-t pt-2 flex justify-between font-semibold text-purple-800">
                   <span>Total Biaya Masuk</span>
-                  <span>{formatCurrency(udpFinal + usekFinal)}</span>
+                  <span>{formatCurrency(udpFinal)}</span>
                 </div>
               </div>
             </div>
@@ -927,7 +879,7 @@ export default function FeeSimulationPage() {
                     <span className="font-bold text-amber-700 text-lg">{formatCurrency(installmentSchedule.utjAmount)}</span>
                   </div>
                   <div className="px-4 py-2 text-xs text-gray-500">
-                    {installmentConfig.utj_percentage}% dari total {formatCurrency(installmentSchedule.totalEntry)} — sudah termasuk dalam Cicilan 1
+                    {installmentConfig.utj_percentage}% dari UDP {formatCurrency(udpFinal)}
                   </div>
                 </div>
 
@@ -938,7 +890,7 @@ export default function FeeSimulationPage() {
                     <span className="font-bold text-blue-700">{formatCurrency(installmentSchedule.remaining)}</span>
                   </div>
                   <div className="px-4 py-2 text-xs text-gray-500">
-                    Dibagi {installmentSchedule.numInst} bulan — {formatCurrency(installmentSchedule.monthlyAmount)}/bulan
+                    Sisa UDP setelah UTJ, dibagi {installmentSchedule.numInst} bulan — {formatCurrency(installmentSchedule.monthlyAmount)}/bulan
                     {installmentSchedule.lastMonthAmount !== installmentSchedule.monthlyAmount && (
                       <span className="ml-1">(cicilan terakhir: {formatCurrency(installmentSchedule.lastMonthAmount)})</span>
                     )}
