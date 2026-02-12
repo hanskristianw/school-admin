@@ -74,7 +74,6 @@ const handler = NextAuth({
             .from('users')
             .select(`
               user_id, 
-              user_username, 
               user_nama_depan, 
               user_nama_belakang, 
               user_role_id, 
@@ -95,7 +94,7 @@ const handler = NextAuth({
 
             // Add user data to token
             token.userID = dbUser.user_id
-            token.username = dbUser.user_username
+            token.username = dbUser.user_nama_depan
             token.namaDepan = dbUser.user_nama_depan
             token.namaBelakang = dbUser.user_nama_belakang
             token.roleID = dbUser.user_role_id

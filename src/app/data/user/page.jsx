@@ -21,7 +21,6 @@ export default function UserManagement() {
   const [formData, setFormData] = useState({
     user_nama_depan: '',
     user_nama_belakang: '',
-    user_username: '',
     user_email: '',
     user_manual_picture: '',
     user_role_id: '',
@@ -85,12 +84,6 @@ export default function UserManagement() {
     const message = errorMessage.toLowerCase();
     
     // Handle duplicate username error
-    if (message.includes('duplicate key value violates unique constraint') && 
-        message.includes('users_user_username_key')) {
-      return 'Username sudah digunakan oleh user lain. Silakan gunakan username yang berbeda.';
-    }
-    
-    // Handle other duplicate constraints
     if (message.includes('duplicate key value violates unique constraint')) {
       return 'Data yang dimasukkan sudah ada dalam sistem. Silakan periksa kembali.';
     }
@@ -224,7 +217,6 @@ export default function UserManagement() {
       const validRow = {
         user_nama_depan: '',
         user_nama_belakang: '',
-        user_username: '',
         user_email: '',
         user_role_id: '',
         user_unit_id: '',
@@ -244,11 +236,7 @@ export default function UserManagement() {
         validRow.user_nama_belakang = (row.nama_belakang || row.user_nama_belakang || row.last_name || '').trim();
       }
 
-      if (!row.username && !row.user_username) {
-        rowErrors.push('Username is required');
-      } else {
-        validRow.user_username = (row.username || row.user_username || '').trim();
-      }
+      // Username column dropped - skip any username from CSV
 
       const emailValue = (row.email || row.user_email || '').trim();
       if (emailValue) {
@@ -350,7 +338,6 @@ export default function UserManagement() {
         const cleanedUserData = {
           user_nama_depan: String(userData.user_nama_depan || '').trim(),
           user_nama_belakang: String(userData.user_nama_belakang || '').trim(),
-          user_username: String(userData.user_username || '').trim(),
           user_email: String(userData.user_email || '').trim(),
           user_password: String(userData.user_password || '').trim(),
           user_role_id: Number(userData.user_role_id),
@@ -360,7 +347,6 @@ export default function UserManagement() {
 
         // Additional validation before sending
     if (!cleanedUserData.user_nama_depan || !cleanedUserData.user_nama_belakang || 
-      !cleanedUserData.user_username || 
             !cleanedUserData.user_role_id) {
           throw new Error('Missing required fields after cleaning');
         }
@@ -370,7 +356,6 @@ export default function UserManagement() {
           .insert([{ 
             user_nama_depan: cleanedUserData.user_nama_depan,
             user_nama_belakang: cleanedUserData.user_nama_belakang,
-            user_username: cleanedUserData.user_username,
             user_email: cleanedUserData.user_email || null,
             user_role_id: cleanedUserData.user_role_id,
             user_unit_id: cleanedUserData.user_unit_id,
@@ -393,7 +378,7 @@ export default function UserManagement() {
         errorMsg = processErrorMessage(errorMsg);
         
         results.errors.push({
-          username: userData.user_username || 'Unknown',
+          username: userData.user_nama_depan || 'Unknown',
           email: userData.user_email || '',
           error: errorMsg
         });
@@ -447,7 +432,7 @@ export default function UserManagement() {
     const sampleUnit1 = availableUnits[0] || 'PYP';
     const sampleUnit2 = availableUnits.length > 1 ? availableUnits[1] : availableUnits[0] || 'MYP';
     
-  const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}username${delimiter}email${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}johndoe${delimiter}john@ccs.sch.id${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}janesmith${delimiter}jane@ccs.sch.id${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
+  const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}email${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}john@ccs.sch.id${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}jane@ccs.sch.id${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -503,7 +488,7 @@ export default function UserManagement() {
       // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active');
 
       if (usersError) {
         throw new Error(usersError.message);
@@ -536,7 +521,6 @@ export default function UserManagement() {
           user_id: user.user_id,
           user_nama_depan: user.user_nama_depan,
           user_nama_belakang: user.user_nama_belakang,
-          user_username: user.user_username,
           user_email: user.user_email || null,
           user_profile_picture: user.user_profile_picture || null,
           user_manual_picture: user.user_manual_picture || null,
@@ -715,7 +699,6 @@ export default function UserManagement() {
     setFormData({
       user_nama_depan: user.user_nama_depan,
       user_nama_belakang: user.user_nama_belakang,
-      user_username: user.user_username,
       user_email: user.user_email || '',
       user_manual_picture: user.user_manual_picture || '',
       user_role_id: user.user_role_id,
@@ -733,7 +716,6 @@ export default function UserManagement() {
     setFormData({
       user_nama_depan: '',
       user_nama_belakang: '',
-      user_username: '',
       user_email: '',
       user_manual_picture: '',
       user_role_id: '',
@@ -1100,7 +1082,6 @@ export default function UserManagement() {
                     {importPreview.slice(0, 5).map((user, index) => (
                       <tr key={index} className="border-b border-green-100">
                         <td className="py-1">{user.user_nama_depan} {user.user_nama_belakang}</td>
-                        <td className="py-1">{user.user_username}</td>
                         <td className="py-1">{user.user_email || '-'}</td>
                         <td className="py-1">
                           {roles.find(r => r.role_id === user.user_role_id)?.role_name}
@@ -1310,7 +1291,7 @@ export default function UserManagement() {
                       <h3 className="font-semibold">
                         {user.user_nama_depan} {user.user_nama_belakang}
                       </h3>
-                      <p className="text-sm text-gray-600">@{user.user_username}</p>
+                      <p className="text-sm text-gray-600">{user.user_email || '-'}</p>
                       <p className="text-sm text-gray-500">Email: {user.user_email || '-'}</p>
                     </div>
                     <span className="text-xs text-gray-500">ID: {user.user_id}</span>

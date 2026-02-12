@@ -13,11 +13,11 @@ export async function POST(req) {
     const { username, password } = await req.json()
     if (!username || !password) return NextResponse.json({ error: 'Missing credentials' }, { status: 400 })
 
-    // Fetch user by username (server-side bypasses RLS)
+    // Fetch user by username or email (server-side bypasses RLS)
     const { data: user, error: userErr } = await admin
       .from('users')
-  .select('user_id, user_username, user_nama_depan, user_nama_belakang, user_role_id, user_unit_id, is_active, user_password_hash')
-      .eq('user_username', username)
+  .select('user_id, user_nama_depan, user_nama_belakang, user_role_id, user_unit_id, is_active, user_password_hash')
+      .or(`user_email.ilike.${username}`)
       .single()
     if (userErr || !user) return NextResponse.json({ success: false, message: 'User tidak ditemukan atau tidak aktif' }, { status: 401 })
     if (!user.is_active) return NextResponse.json({ success: false, message: 'User tidak aktif' }, { status: 401 })
@@ -54,7 +54,7 @@ export async function POST(req) {
       success: true,
       user: {
         userID: user.user_id,
-        username: user.user_username,
+        username: user.user_nama_depan,
         namaDepan: user.user_nama_depan,
         namaBelakang: user.user_nama_belakang,
         roleID: user.user_role_id,

@@ -170,7 +170,7 @@ export default function SubjectManagement() {
       // Query 1: Ambil semua users aktif
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_role_id')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_role_id')
         .eq('is_active', true)
         .order('user_nama_depan');
 
@@ -220,7 +220,7 @@ export default function SubjectManagement() {
         console.log('Using fallback: fetching all users...');
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('users')
-          .select('user_id, user_nama_depan, user_nama_belakang, user_username, user_role_id')
+          .select('user_id, user_nama_depan, user_nama_belakang, user_role_id')
           .eq('is_active', true)
           .order('user_nama_depan');
 

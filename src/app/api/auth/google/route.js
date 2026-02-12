@@ -103,7 +103,6 @@ export async function POST(req) {
       .from('users')
       .select(`
         user_id, 
-        user_username, 
         user_nama_depan, 
         user_nama_belakang, 
         user_role_id, 
@@ -167,7 +166,7 @@ export async function POST(req) {
       success: true,
       user: {
         userID: dbUser.user_id,
-        username: dbUser.user_username,
+        username: dbUser.user_nama_depan,
         namaDepan: dbUser.user_nama_depan,
         namaBelakang: dbUser.user_nama_belakang,
         roleID: dbUser.user_role_id,

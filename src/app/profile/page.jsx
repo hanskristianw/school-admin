@@ -279,7 +279,7 @@ export default function ProfilePage() {
               </div>
               
               <h1 className="mt-4 text-3xl font-bold text-white drop-shadow-lg">
-                {fullName || userData.user_username}
+                {fullName || '-'}
               </h1>
               
               <div className="mt-2 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
@@ -317,14 +317,6 @@ export default function ProfilePage() {
                 </h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <FontAwesomeIcon icon={faUser} className="w-5 text-gray-400" />
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.username')}</p>
-                      <p className="font-medium text-gray-800">{userData.user_username}</p>
-                    </div>
-                  </div>
-
                   <div className="flex items-center gap-3 text-gray-600">
                     <FontAwesomeIcon icon={faEnvelope} className="w-5 text-gray-400" />
                     <div className="flex-1 min-w-0">
