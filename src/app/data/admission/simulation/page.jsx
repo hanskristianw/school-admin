@@ -24,6 +24,13 @@ const formatCurrency = (amount) => {
 const monthNames = ['Januari','Februari','Maret','April','Mei','Juni',
                     'Juli','Agustus','September','Oktober','November','Desember'];
 
+const formatDateID = (dateStr) => {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+};
+
 export default function FeeSimulationPage() {
   const router = useRouter();
 
@@ -209,7 +216,7 @@ export default function FeeSimulationPage() {
     const utjAmount = Math.round(udpFinal * installmentConfig.utj_percentage / 100);
     const remaining = udpFinal - utjAmount;
     const numInst = installmentConfig.num_installments;
-    const monthlyAmount = Math.floor(remaining / numInst);
+    const monthlyAmount = Math.round(remaining / numInst);
     const lastMonthAmount = remaining - (monthlyAmount * (numInst - 1));
 
     const items = [];
@@ -288,21 +295,12 @@ export default function FeeSimulationPage() {
     setSimDiscounts([]);
   }, [selectedLevel, selectedYear, selectedCategory]);
 
-  // === PDF Generation ===
-  const handlePrintSimulation = async () => {
-    if (!installmentSchedule) return;
-    const calc = installmentSchedule;
-    const level = levels.find(l => l.level_id === parseInt(selectedLevel));
-    const year = years.find(y => y.year_id === parseInt(selectedYear));
-
-    const doc = new jsPDF('p', 'mm', 'a4');
+  // === Shared PDF helpers ===
+  const buildPdfHeader = async (doc) => {
     const pageW = doc.internal.pageSize.getWidth();
     const marginL = 20;
     const marginR = 20;
-    const contentW = pageW - marginL - marginR;
     let y = 15;
-
-    const fmtIDR = (v) => formatCurrency(v);
 
     // Logo
     try {
@@ -334,7 +332,8 @@ export default function FeeSimulationPage() {
     y += 4;
     doc.text('Surabaya, Jawa Timur 60294', pageW / 2, y, { align: 'center' });
     y += 4;
-    doc.text('Telp: (031) 5017171 | Email: info@ccs.sch.id', pageW / 2, y, { align: 'center' });
+    // WA Admission
+    doc.text('WA Admission: 0812-3000-2885', pageW / 2, y, { align: 'center' });
     y += 4;
     doc.setDrawColor(100);
     doc.setLineWidth(0.8);
@@ -344,16 +343,18 @@ export default function FeeSimulationPage() {
     doc.line(marginL, y, pageW - marginR, y);
     y += 8;
 
-    // Title
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('SIMULASI BIAYA PENDIDIKAN', pageW / 2, y, { align: 'center' });
-    y += 8;
+    return y;
+  };
 
-    // Info
+  const buildPdfInfoBlock = (doc, y) => {
+    const pageW = doc.internal.pageSize.getWidth();
+    const marginL = 20;
+    const level = levels.find(l => l.level_id === parseInt(selectedLevel));
+    const year = years.find(y2 => y2.year_id === parseInt(selectedYear));
+    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const infoData = [
       ...(studentName.trim() ? [['Nama Calon Siswa', `: ${studentName.trim()}`]] : []),
       ['Jenjang', `: ${level?.level_name || '-'} (${level?.unit?.unit_name || '-'})`],
@@ -374,6 +375,112 @@ export default function FeeSimulationPage() {
     doc.text('* Simulasi ini bersifat estimasi. Biaya aktual dapat berbeda saat pendaftaran resmi.', marginL, y);
     doc.setTextColor(0);
     y += 8;
+
+    return y;
+  };
+
+  const buildPdfFooter = (doc) => {
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 20;
+    const marginR = 20;
+    doc.setDrawColor(180);
+    doc.setLineWidth(0.3);
+    doc.line(marginL, pageH - 15, pageW - marginR, pageH - 15);
+    doc.setFontSize(7);
+    doc.setTextColor(150);
+    doc.text('Dokumen ini dicetak secara otomatis oleh sistem Chung Chung Christian School.', pageW / 2, pageH - 10, { align: 'center' });
+    doc.text(`Simulasi | Dicetak: ${new Date().toLocaleString('id-ID')}`, pageW / 2, pageH - 6, { align: 'center' });
+    doc.setTextColor(0);
+  };
+
+  // === Step 1 PDF: Fee info only (no installments) ===
+  const handlePrintStep1 = async () => {
+    if (!matchedUdp && !matchedUsek) return;
+    const level = levels.find(l => l.level_id === parseInt(selectedLevel));
+    const year = years.find(y2 => y2.year_id === parseInt(selectedYear));
+
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageW = doc.internal.pageSize.getWidth();
+    const marginL = 20;
+    const marginR = 20;
+    const fmtIDR = (v) => formatCurrency(v);
+
+    let y = await buildPdfHeader(doc);
+
+    // Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('INFORMASI BIAYA PENDIDIKAN', pageW / 2, y, { align: 'center' });
+    y += 8;
+
+    y = buildPdfInfoBlock(doc, y);
+
+    // Fee table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('Rincian Biaya', marginL, y);
+    y += 6;
+
+    const feeBody = [];
+    if (matchedUdp) {
+      feeBody.push(['Uang Daftar / Pangkal (UDP)', fmtIDR(matchedUdp.total_amount)]);
+    }
+    if (matchedUsek) {
+      feeBody.push(['SPP / Bulan', fmtIDR(matchedUsek.monthly_amount || matchedUsek.default_amount)]);
+    }
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: marginL, right: marginR },
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [80, 80, 80], textColor: 255, fontStyle: 'bold', halign: 'center' },
+      columnStyles: { 0: { halign: 'left', cellWidth: 100 }, 1: { halign: 'right' } },
+      head: [['Komponen', 'Jumlah']],
+      body: feeBody
+    });
+    y = doc.lastAutoTable.finalY + 3;
+
+    if (matchedUdp?.effective_from) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(`Periode berlaku UDP: ${formatDateID(matchedUdp.effective_from)} s/d ${matchedUdp.effective_until ? formatDateID(matchedUdp.effective_until) : 'selesai'}`, marginL, y);
+      doc.setTextColor(0);
+      y += 5;
+    }
+
+    buildPdfFooter(doc);
+
+    const levelName = level?.level_name?.replace(/\s+/g, '_') || 'Info';
+    doc.save(`Info_Biaya_${levelName}_${year?.year_name?.replace(/\//g, '-') || ''}.pdf`);
+  };
+
+  // === Step 3 PDF: Full simulation with installments ===
+  const handlePrintSimulation = async () => {
+    if (!installmentSchedule) return;
+    const calc = installmentSchedule;
+    const level = levels.find(l => l.level_id === parseInt(selectedLevel));
+    const year = years.find(y => y.year_id === parseInt(selectedYear));
+
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageW = doc.internal.pageSize.getWidth();
+    const marginL = 20;
+    const marginR = 20;
+    const contentW = pageW - marginL - marginR;
+
+    const fmtIDR = (v) => formatCurrency(v);
+
+    let y = await buildPdfHeader(doc);
+
+    // Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('SIMULASI BIAYA PENDIDIKAN', pageW / 2, y, { align: 'center' });
+    y += 8;
+
+    y = buildPdfInfoBlock(doc, y);
 
     // 1. Rincian Biaya
     doc.setFont('helvetica', 'bold');
@@ -402,7 +509,17 @@ export default function FeeSimulationPage() {
       head: [['Komponen', 'Jumlah']],
       body: feeBody
     });
-    y = doc.lastAutoTable.finalY + 8;
+    y = doc.lastAutoTable.finalY + 3;
+
+    if (matchedUdp?.effective_from) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(`Periode berlaku UDP: ${formatDateID(matchedUdp.effective_from)} s/d ${matchedUdp.effective_until ? formatDateID(matchedUdp.effective_until) : 'selesai'}`, marginL, y);
+      doc.setTextColor(0);
+      y += 5;
+    }
+    y += 3;
 
     // 2. Skema Cicilan
     doc.setFont('helvetica', 'bold');
@@ -438,15 +555,7 @@ export default function FeeSimulationPage() {
     y = doc.lastAutoTable.finalY + 8;
 
     // Footer
-    const pageH = doc.internal.pageSize.getHeight();
-    doc.setDrawColor(180);
-    doc.setLineWidth(0.3);
-    doc.line(marginL, pageH - 15, pageW - marginR, pageH - 15);
-    doc.setFontSize(7);
-    doc.setTextColor(150);
-    doc.text('Dokumen ini dicetak secara otomatis oleh sistem Chung Chung Christian School.', pageW / 2, pageH - 10, { align: 'center' });
-    doc.text(`Simulasi | Dicetak: ${new Date().toLocaleString('id-ID')}`, pageW / 2, pageH - 6, { align: 'center' });
-    doc.setTextColor(0);
+    buildPdfFooter(doc);
 
     const levelName = level?.level_name?.replace(/\s+/g, '_') || 'Simulasi';
     doc.save(`Simulasi_Biaya_${levelName}_${year?.year_name?.replace(/\//g, '-') || ''}.pdf`);
@@ -601,7 +710,7 @@ export default function FeeSimulationPage() {
                         </div>
                         {matchedUdp.effective_from && (
                           <p className="text-xs text-gray-400">
-                            Berlaku: {matchedUdp.effective_from} s/d {matchedUdp.effective_until || '~'}
+                            Berlaku: {formatDateID(matchedUdp.effective_from)} s/d {matchedUdp.effective_until ? formatDateID(matchedUdp.effective_until) : '~'}
                           </p>
                         )}
                         {udpPeriods.length > 1 && (
@@ -610,7 +719,7 @@ export default function FeeSimulationPage() {
                             <div className="space-y-1">
                               {udpPeriods.map((p, i) => (
                                 <div key={i} className={`flex justify-between text-xs px-2 py-1 rounded ${p.udp_def_id === matchedUdp.udp_def_id ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'text-gray-500'}`}>
-                                  <span>{p.effective_from || '-'} — {p.effective_until || '-'}</span>
+                                  <span>{formatDateID(p.effective_from)} — {formatDateID(p.effective_until)}</span>
                                   <span>{formatCurrency(p.total_amount)}</span>
                                 </div>
                               ))}
@@ -641,13 +750,23 @@ export default function FeeSimulationPage() {
                   </div>
                 </div>
 
-                <Button
-                  onClick={() => setStep(2)}
-                  disabled={!matchedUdp && !matchedUsek}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  Lanjut ke Potongan <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
-                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handlePrintStep1}
+                    disabled={!matchedUdp && !matchedUsek}
+                    variant="outline"
+                    className="flex-1 border-purple-300 text-purple-700 hover:bg-purple-50"
+                  >
+                    <FontAwesomeIcon icon={faPrint} className="mr-2" /> Print Info Biaya
+                  </Button>
+                  <Button
+                    onClick={() => setStep(2)}
+                    disabled={!matchedUdp && !matchedUsek}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    Lanjut ke Potongan <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
