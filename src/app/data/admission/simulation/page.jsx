@@ -176,7 +176,7 @@ export default function FeeSimulationPage() {
 
     return masterDiscounts.filter(d =>
       d.unit_id === level.unit_id &&
-      d.year_id === yearId &&
+      (d.year_id === yearId || d.year_id === null) &&
       (d.level_id === null || d.level_id === levelId)
     );
   }, [selectedLevel, selectedYear, levels, masterDiscounts]);
@@ -216,7 +216,7 @@ export default function FeeSimulationPage() {
     const utjAmount = Math.round(udpFinal * installmentConfig.utj_percentage / 100);
     const remaining = udpFinal - utjAmount;
     const numInst = installmentConfig.num_installments;
-    const monthlyAmount = Math.round(remaining / numInst);
+    const monthlyAmount = Math.round(remaining / numInst / 1000) * 1000;
     const lastMonthAmount = remaining - (monthlyAmount * (numInst - 1));
 
     const items = [];
