@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
+import NotificationModal from '@/components/ui/notification-modal'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 export default function InitialStockPage() {
   const [units, setUnits] = useState([])
@@ -37,6 +39,13 @@ export default function InitialStockPage() {
   const [summarySupplierFilter, setSummarySupplierFilter] = useState('all')
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   
+  // Export report states
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportYears, setExportYears] = useState([])
+  const [selectedYearId, setSelectedYearId] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [exportNotification, setExportNotification] = useState({ isOpen: false, title: '', message: '', type: 'success' })
+
   const [formData, setFormData] = useState({
     unit_id: '',
     uniform_id: '',
@@ -140,96 +149,548 @@ export default function InitialStockPage() {
     }
   }
 
-  const handleExportToExcel = () => {
-    if (summaryData.length === 0) {
-      alert('Tidak ada data stock untuk di-export')
+  // Fetch years for export modal
+  const fetchExportYears = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('year')
+        .select('year_id, year_name, start_date, end_date')
+        .not('start_date', 'is', null)
+        .not('end_date', 'is', null)
+        .order('year_name', { ascending: false })
+      if (!error) setExportYears(data || [])
+    } catch (e) {
+      console.error('Error fetching years:', e)
+    }
+  }
+
+  const openExportModal = () => {
+    fetchExportYears()
+    setSelectedYearId('')
+    setShowExportModal(true)
+  }
+
+  const handleExportToExcel = async () => {
+    if (!selectedYearId) {
+      setExportNotification({ isOpen: true, title: 'Error', message: 'Pilih tahun ajaran terlebih dahulu', type: 'error' })
       return
     }
 
+    const selectedYear = exportYears.find(y => y.year_id === Number(selectedYearId))
+    if (!selectedYear) return
+
+    setExporting(true)
     try {
-      const wb = XLSX.utils.book_new()
+      const { start_date, end_date, year_name } = selectedYear
 
-      // Group data by supplier
+      // 1. Fetch all suppliers
+      const { data: allSuppliers } = await supabase
+        .from('uniform_supplier')
+        .select('supplier_id, supplier_name, supplier_code')
+        .eq('is_active', true)
+        .order('supplier_code')
+
+      // 2. Fetch all uniforms
+      const { data: allUniforms } = await supabase
+        .from('uniform')
+        .select('uniform_id, uniform_name, is_universal')
+        .eq('is_active', true)
+        .order('uniform_name')
+
+      // 3. Fetch all uniform variants (for HPP and price)
+      const { data: allVariants } = await supabase
+        .from('uniform_variant')
+        .select('uniform_id, size_id, hpp, price')
+
+      // 4. Fetch ALL stock transactions (for current stock + HPP calculation)
+      const { data: allStockTxns } = await supabase
+        .from('uniform_stock_txn')
+        .select('uniform_id, size_id, supplier_id, qty_delta, txn_type')
+
+      // 5. Fetch purchase orders within the year period
+      const { data: purchases } = await supabase
+        .from('uniform_purchase')
+        .select('purchase_id, supplier_id, po_number, purchase_date, status, is_voided')
+        .gte('purchase_date', start_date)
+        .lte('purchase_date', end_date)
+        .eq('is_voided', false)
+        .order('purchase_date')
+
+      const purchaseIds = (purchases || []).map(p => p.purchase_id)
+
+      // 6. Fetch purchase items for those POs
+      let purchaseItems = []
+      if (purchaseIds.length > 0) {
+        const { data } = await supabase
+          .from('uniform_purchase_item')
+          .select('item_id, purchase_id, uniform_id, size_id, qty, unit_cost')
+          .in('purchase_id', purchaseIds)
+        purchaseItems = data || []
+      }
+
+      // 7. Fetch receipt items for those POs (realized purchases)
+      let receiptData = []
+      if (purchaseIds.length > 0) {
+        const { data: receipts } = await supabase
+          .from('uniform_purchase_receipt')
+          .select('receipt_id, purchase_id, receipt_date')
+          .in('purchase_id', purchaseIds)
+          .order('receipt_date')
+
+        const receiptIds = (receipts || []).map(r => r.receipt_id)
+        if (receiptIds.length > 0) {
+          const { data: rItems } = await supabase
+            .from('uniform_purchase_receipt_item')
+            .select('receipt_item_id, receipt_id, purchase_item_id, qty_received, unit_cost')
+            .in('receipt_id', receiptIds)
+          
+          receiptData = (rItems || []).map(ri => {
+            const receipt = receipts.find(r => r.receipt_id === ri.receipt_id)
+            const pItem = purchaseItems.find(pi => pi.item_id === ri.purchase_item_id)
+            return {
+              ...ri,
+              purchase_id: receipt?.purchase_id,
+              receipt_date: receipt?.receipt_date,
+              uniform_id: pItem?.uniform_id,
+              size_id: pItem?.size_id
+            }
+          })
+        }
+      }
+
+      // 8. Fetch sales within the year period (not voided, paid)
+      const { data: sales } = await supabase
+        .from('uniform_sale')
+        .select('sale_id, total_amount, total_cost, is_voided, status')
+        .gte('sale_date', start_date + 'T00:00:00')
+        .lte('sale_date', end_date + 'T23:59:59')
+        .eq('is_voided', false)
+        .eq('status', 'paid')
+
+      const saleIds = (sales || []).map(s => s.sale_id)
+      let saleItems = []
+      if (saleIds.length > 0) {
+        const { data } = await supabase
+          .from('uniform_sale_item')
+          .select('sale_id, uniform_id, size_id, qty, unit_price, unit_hpp, subtotal')
+          .in('sale_id', saleIds)
+        saleItems = data || []
+      }
+
+      // 9. Fetch sale stock transactions within the year period (for per-supplier stock akhir)
+      const { data: saleTxnsInPeriod } = await supabase
+        .from('uniform_stock_txn')
+        .select('uniform_id, size_id, supplier_id, qty_delta')
+        .eq('txn_type', 'sale')
+        .gte('created_at', start_date + 'T00:00:00')
+        .lte('created_at', end_date + 'T23:59:59')
+
+      // ============ BUILD REPORT DATA ============
+      const supplierList = allSuppliers || []
+      const uniformList = allUniforms || []
+
+      // Number the POs: PO 1, PO 2, ...
+      const poList = (purchases || []).map((po, idx) => ({
+        ...po,
+        poLabel: `PO ${idx + 1}`
+      }))
+
+      const reportRows = uniformList.map(uniform => {
+        const uId = uniform.uniform_id
+        const variants = (allVariants || []).filter(v => v.uniform_id === uId)
+
+        // -- CURRENT STOCK = sum of ALL transactions for this uniform --
+        const currentStockBySupplier = {}
+        supplierList.forEach(s => {
+          currentStockBySupplier[s.supplier_id] = (allStockTxns || [])
+            .filter(t => t.uniform_id === uId && t.supplier_id === s.supplier_id)
+            .reduce((sum, t) => sum + t.qty_delta, 0)
+        })
+        const currentStockInv = (allStockTxns || [])
+          .filter(t => t.uniform_id === uId && !t.supplier_id)
+          .reduce((sum, t) => sum + t.qty_delta, 0)
+        // Catch txns with supplier_id not in active supplierList
+        const currentStockUnmatched = (allStockTxns || [])
+          .filter(t => t.uniform_id === uId && t.supplier_id && !supplierList.some(s => s.supplier_id === t.supplier_id))
+          .reduce((sum, t) => sum + t.qty_delta, 0)
+        const totalCurrentStock = currentStockInv + currentStockUnmatched + Object.values(currentStockBySupplier).reduce((a, b) => a + b, 0)
+
+        // -- HPP (weighted average from init txns + variant HPP) --
+        let totalHppQty = 0
+        let totalHppValue = 0
+        ;(allStockTxns || []).filter(t => t.uniform_id === uId && t.txn_type === 'init' && t.qty_delta > 0).forEach(t => {
+          const variant = variants.find(v => v.size_id === t.size_id)
+          if (variant && variant.hpp) {
+            totalHppQty += t.qty_delta
+            totalHppValue += t.qty_delta * Number(variant.hpp)
+          }
+        })
+        const weightedAvgHpp = totalHppQty > 0 ? Math.round(totalHppValue / totalHppQty) : (variants.length > 0 ? Number(variants[0]?.hpp || 0) : 0)
+
+        // -- REALISASI PEMBELIAN per PO --
+        const purchaseByPo = {}
+        poList.forEach(po => {
+          const qtyForPo = receiptData
+            .filter(ri => ri.purchase_id === po.purchase_id && ri.uniform_id === uId)
+            .reduce((sum, ri) => sum + ri.qty_received, 0)
+          const costForPo = receiptData
+            .filter(ri => ri.purchase_id === po.purchase_id && ri.uniform_id === uId)
+            .reduce((sum, ri) => sum + (ri.qty_received * Number(ri.unit_cost || 0)), 0)
+          purchaseByPo[po.purchase_id] = { qty: qtyForPo, cost: costForPo }
+        })
+        const totalPurchaseQty = Object.values(purchaseByPo).reduce((a, b) => a + b.qty, 0)
+        const totalPurchaseCost = Object.values(purchaseByPo).reduce((a, b) => a + b.cost, 0)
+        const avgPurchasePrice = totalPurchaseQty > 0 ? Math.round(totalPurchaseCost / totalPurchaseQty) : 0
+
+        // -- HASIL PENJUALAN --
+        const salesForUniform = saleItems.filter(si => si.uniform_id === uId)
+        const totalSoldQty = salesForUniform.reduce((sum, si) => sum + si.qty, 0)
+        const totalSaleRevenue = salesForUniform.reduce((sum, si) => sum + Number(si.subtotal || 0), 0)
+        const avgSellPrice = totalSoldQty > 0 ? Math.round(totalSaleRevenue / totalSoldQty) : (variants.length > 0 ? Number(variants[0]?.price || 0) : 0)
+        const totalSaleCost = salesForUniform.reduce((sum, si) => sum + (si.qty * Number(si.unit_hpp || 0)), 0)
+        const profit = totalSaleRevenue - totalSaleCost
+
+        // -- STOCK AWAL = Current Stock - Purchases in Period + Sales in Period --
+        // (back-calculated so it always balances: Awal + Beli - Jual = Akhir)
+        const purchaseQtyBySupplier = {}
+        supplierList.forEach(s => {
+          const posForSupplier = poList.filter(p => p.supplier_id === s.supplier_id)
+          const pIdsForSupplier = posForSupplier.map(p => p.purchase_id)
+          purchaseQtyBySupplier[s.supplier_id] = receiptData
+            .filter(ri => pIdsForSupplier.includes(ri.purchase_id) && ri.uniform_id === uId)
+            .reduce((sum, ri) => sum + ri.qty_received, 0)
+        })
+        const saleQtyBySupplier = {}
+        supplierList.forEach(s => {
+          saleQtyBySupplier[s.supplier_id] = (saleTxnsInPeriod || [])
+            .filter(t => t.uniform_id === uId && t.supplier_id === s.supplier_id)
+            .reduce((sum, t) => sum + Math.abs(t.qty_delta), 0)
+        })
+        const saleQtyInv = (saleTxnsInPeriod || [])
+          .filter(t => t.uniform_id === uId && !t.supplier_id)
+          .reduce((sum, t) => sum + Math.abs(t.qty_delta), 0)
+
+        const stockAwalBySupplier = {}
+        supplierList.forEach(s => {
+          stockAwalBySupplier[s.supplier_id] = 
+            (currentStockBySupplier[s.supplier_id] || 0) - 
+            (purchaseQtyBySupplier[s.supplier_id] || 0) + 
+            (saleQtyBySupplier[s.supplier_id] || 0)
+        })
+        const stockAwalInv = (currentStockInv + currentStockUnmatched) + saleQtyInv
+        const totalStockAwal = totalCurrentStock - totalPurchaseQty + totalSoldQty
+
+        // -- STOCK AKHIR = Current Stock (equals Awal + Beli - Jual) --
+        const stockAkhirBySupplier = {}
+        supplierList.forEach(s => {
+          stockAkhirBySupplier[s.supplier_id] = currentStockBySupplier[s.supplier_id] || 0
+        })
+        const stockAkhirInv = currentStockInv + currentStockUnmatched
+        const totalStockAkhir = totalCurrentStock
+
+        return {
+          uniform_name: uniform.uniform_name,
+          stockAwalInv, stockAwalBySupplier, totalStockAwal, weightedAvgHpp,
+          purchaseByPo, totalPurchaseQty, avgPurchasePrice, totalPurchaseCost,
+          totalSoldQty, avgSellPrice, totalSaleRevenue, profit,
+          stockAkhirInv, stockAkhirBySupplier, totalStockAkhir
+        }
+      }).filter(row => {
+        return row.totalStockAwal > 0 || row.totalPurchaseQty > 0 || row.totalSoldQty > 0 || row.totalStockAkhir !== 0
+      })
+
+      // ============ BUILD EXCEL with ExcelJS ============
+      const wb = new ExcelJS.Workbook()
+      wb.creator = 'School Admin'
+      wb.created = new Date()
+
+      // --- Helper: thin border style ---
+      const thinBorder = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      }
+
+      const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E8D2' } } // light green
+      const groupFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } } // blue
+      const totalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } } // light yellow
+
+      // ---- Sheet 1: Comprehensive Report ----
+      const ws = wb.addWorksheet('Laporan Stok')
+
+      const supplierCount = supplierList.length
+      const poCount = Math.max(poList.length, 1)
+
+      // Column positions (1-based for ExcelJS)
+      const C = {
+        jenisSeragam: 1,
+        inv: 2,
+        suppAwalStart: 3,
+        hpp: 3 + supplierCount,
+        nilai: 4 + supplierCount,
+        totalStokAwal: 5 + supplierCount,
+        poStart: 6 + supplierCount,
+        hargaBeli: 6 + supplierCount + poCount,
+        totalPembelian: 7 + supplierCount + poCount,
+        jmlTerjual: 8 + supplierCount + poCount,
+        hargaJual: 9 + supplierCount + poCount,
+        totalPenjualan: 10 + supplierCount + poCount,
+        keuntungan: 11 + supplierCount + poCount,
+        akhirJenis: 12 + supplierCount + poCount,
+        akhirInv: 13 + supplierCount + poCount,
+        suppAkhirStart: 14 + supplierCount + poCount,
+      }
+      const totalCols = C.suppAkhirStart + supplierCount - 1
+
+      // Set column widths
+      for (let i = 1; i <= totalCols; i++) ws.getColumn(i).width = 14
+      ws.getColumn(C.jenisSeragam).width = 26
+      ws.getColumn(C.akhirJenis).width = 26
+      ws.getColumn(C.totalPembelian).width = 22
+      ws.getColumn(C.jmlTerjual).width = 22
+      ws.getColumn(C.keuntungan).width = 26
+
+      // Row 1: Title
+      const startFormatted = new Date(start_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      const endFormatted = new Date(end_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+
+      const titleRow = ws.addRow([`LAPORAN STOK SERAGAM - ${year_name}`])
+      titleRow.getCell(1).font = { bold: true, size: 14 }
+      ws.mergeCells(1, 1, 1, totalCols)
+
+      // Row 2: Period
+      const periodRow = ws.addRow([`Periode: ${startFormatted} - ${endFormatted}`])
+      periodRow.getCell(1).font = { italic: true, size: 11 }
+      ws.mergeCells(2, 1, 2, totalCols)
+
+      // Row 3: Empty
+      ws.addRow([])
+
+      // Row 4: Group headers
+      const groupHeaderRow = ws.addRow([])
+      const groupHeaders = [
+        { col: C.jenisSeragam, end: C.totalStokAwal, label: 'STOCK AWAL' },
+        { col: C.poStart, end: C.totalPembelian, label: 'REALISASI PEMBELIAN SERAGAM' },
+        { col: C.jmlTerjual, end: C.keuntungan, label: 'HASIL PENJUALAN SERAGAM' },
+        { col: C.akhirJenis, end: totalCols, label: 'STOCK AKHIR' },
+      ]
+      groupHeaders.forEach(g => {
+        const cell = groupHeaderRow.getCell(g.col)
+        cell.value = g.label
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+        cell.fill = groupFill
+        cell.alignment = { horizontal: 'center' }
+        cell.border = thinBorder
+        ws.mergeCells(4, g.col, 4, g.end)
+        // Fill all merged cells with border
+        for (let c = g.col + 1; c <= g.end; c++) {
+          groupHeaderRow.getCell(c).border = thinBorder
+          groupHeaderRow.getCell(c).fill = groupFill
+        }
+      })
+
+      // Row 5: Sub-headers
+      const subHeaders = new Array(totalCols).fill('')
+      subHeaders[C.jenisSeragam - 1] = 'Jenis Seragam'
+      subHeaders[C.inv - 1] = 'Inv'
+      supplierList.forEach((s, i) => { subHeaders[C.suppAwalStart + i - 1] = s.supplier_name })
+      subHeaders[C.hpp - 1] = 'HPP'
+      subHeaders[C.nilai - 1] = 'Nilai'
+      subHeaders[C.totalStokAwal - 1] = 'Total Stok'
+      if (poList.length > 0) {
+        poList.forEach((po, i) => { subHeaders[C.poStart + i - 1] = po.poLabel })
+      } else {
+        subHeaders[C.poStart - 1] = 'PO 1'
+      }
+      subHeaders[C.hargaBeli - 1] = 'Harga'
+      subHeaders[C.totalPembelian - 1] = 'Total Pembelian Seragam'
+      subHeaders[C.jmlTerjual - 1] = 'Jumlah Seragam Terjual'
+      subHeaders[C.hargaJual - 1] = 'Harga Jual Seragam'
+      subHeaders[C.totalPenjualan - 1] = 'Total Penjualan'
+      subHeaders[C.keuntungan - 1] = 'Keuntungan Penjualan Seragam'
+      subHeaders[C.akhirJenis - 1] = 'Jenis Seragam'
+      subHeaders[C.akhirInv - 1] = 'Inv'
+      supplierList.forEach((s, i) => { subHeaders[C.suppAkhirStart + i - 1] = s.supplier_name })
+
+      const subHeaderRow = ws.addRow(subHeaders)
+      subHeaderRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        if (colNum <= totalCols) {
+          cell.font = { bold: true, size: 10 }
+          cell.fill = headerFill
+          cell.border = thinBorder
+          cell.alignment = { horizontal: 'center', wrapText: true }
+        }
+      })
+
+      // Data rows
+      const totals = {
+        inv: 0, suppAwal: {}, hppNilai: 0, totalStokAwal: 0,
+        poQty: {}, totalPembelian: 0,
+        jmlTerjual: 0, totalPenjualan: 0, keuntungan: 0,
+        akhirInv: 0, suppAkhir: {}, totalStokAkhir: 0
+      }
+      supplierList.forEach(s => { totals.suppAwal[s.supplier_id] = 0; totals.suppAkhir[s.supplier_id] = 0 })
+      poList.forEach(po => { totals.poQty[po.purchase_id] = 0 })
+
+      const fmtNum = (v) => (v === 0 || v === null || v === undefined) ? '' : v
+
+      reportRows.forEach(row => {
+        const vals = new Array(totalCols).fill('')
+        vals[C.jenisSeragam - 1] = row.uniform_name
+        vals[C.inv - 1] = fmtNum(row.stockAwalInv)
+        supplierList.forEach((s, i) => {
+          const v = row.stockAwalBySupplier[s.supplier_id] || 0
+          vals[C.suppAwalStart + i - 1] = fmtNum(v)
+          totals.suppAwal[s.supplier_id] += v
+        })
+        vals[C.hpp - 1] = fmtNum(row.weightedAvgHpp)
+        const nilai = row.totalStockAwal * row.weightedAvgHpp
+        vals[C.nilai - 1] = fmtNum(nilai)
+        vals[C.totalStokAwal - 1] = fmtNum(row.totalStockAwal)
+
+        if (poList.length > 0) {
+          poList.forEach((po, i) => {
+            const pd = row.purchaseByPo[po.purchase_id]
+            vals[C.poStart + i - 1] = fmtNum(pd?.qty)
+            totals.poQty[po.purchase_id] = (totals.poQty[po.purchase_id] || 0) + (pd?.qty || 0)
+          })
+        }
+        vals[C.hargaBeli - 1] = fmtNum(row.avgPurchasePrice)
+        vals[C.totalPembelian - 1] = fmtNum(row.totalPurchaseCost)
+        vals[C.jmlTerjual - 1] = fmtNum(row.totalSoldQty)
+        vals[C.hargaJual - 1] = fmtNum(row.avgSellPrice)
+        vals[C.totalPenjualan - 1] = fmtNum(row.totalSaleRevenue)
+        vals[C.keuntungan - 1] = fmtNum(row.profit)
+        vals[C.akhirJenis - 1] = row.uniform_name
+        vals[C.akhirInv - 1] = fmtNum(row.stockAkhirInv)
+        supplierList.forEach((s, i) => {
+          const v = row.stockAkhirBySupplier[s.supplier_id] || 0
+          vals[C.suppAkhirStart + i - 1] = fmtNum(v)
+          totals.suppAkhir[s.supplier_id] += v
+        })
+
+        totals.inv += row.stockAwalInv || 0
+        totals.hppNilai += nilai || 0
+        totals.totalStokAwal += row.totalStockAwal || 0
+        totals.totalPembelian += row.totalPurchaseCost || 0
+        totals.jmlTerjual += row.totalSoldQty || 0
+        totals.totalPenjualan += row.totalSaleRevenue || 0
+        totals.keuntungan += row.profit || 0
+        totals.akhirInv += row.stockAkhirInv || 0
+        totals.totalStokAkhir += row.totalStockAkhir || 0
+
+        const dataRow = ws.addRow(vals)
+        dataRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+          if (colNum <= totalCols) {
+            cell.border = thinBorder
+            cell.alignment = { vertical: 'middle' }
+            // Number formatting for currency columns
+            if (typeof cell.value === 'number' && [C.hpp, C.nilai, C.hargaBeli, C.totalPembelian, C.hargaJual, C.totalPenjualan, C.keuntungan].includes(colNum)) {
+              cell.numFmt = '#,##0'
+            }
+          }
+        })
+      })
+
+      // TOTAL row
+      const totalVals = new Array(totalCols).fill('')
+      totalVals[C.jenisSeragam - 1] = 'TOTAL'
+      totalVals[C.inv - 1] = fmtNum(totals.inv)
+      supplierList.forEach((s, i) => { totalVals[C.suppAwalStart + i - 1] = fmtNum(totals.suppAwal[s.supplier_id]) })
+      totalVals[C.nilai - 1] = fmtNum(totals.hppNilai)
+      totalVals[C.totalStokAwal - 1] = fmtNum(totals.totalStokAwal)
+      if (poList.length > 0) {
+        poList.forEach((po, i) => { totalVals[C.poStart + i - 1] = fmtNum(totals.poQty[po.purchase_id]) })
+      }
+      totalVals[C.totalPembelian - 1] = fmtNum(totals.totalPembelian)
+      totalVals[C.jmlTerjual - 1] = fmtNum(totals.jmlTerjual)
+      totalVals[C.totalPenjualan - 1] = fmtNum(totals.totalPenjualan)
+      totalVals[C.keuntungan - 1] = fmtNum(totals.keuntungan)
+      totalVals[C.akhirJenis - 1] = 'TOTAL'
+      totalVals[C.akhirInv - 1] = fmtNum(totals.akhirInv)
+      supplierList.forEach((s, i) => { totalVals[C.suppAkhirStart + i - 1] = fmtNum(totals.suppAkhir[s.supplier_id]) })
+
+      const totalRow = ws.addRow(totalVals)
+      totalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        if (colNum <= totalCols) {
+          cell.font = { bold: true }
+          cell.fill = totalFill
+          cell.border = thinBorder
+          if (typeof cell.value === 'number') cell.numFmt = '#,##0'
+        }
+      })
+
+      // ---- Sheet 2+: Per-supplier summary (current stock) ----
       const dataBySupplier = new Map()
-      
-      // Add "Tanpa Supplier" group
       dataBySupplier.set('Tanpa Supplier', [])
-      
-      // Group by supplier
       summaryData.forEach(item => {
-        if (item.total_qty <= 0) return // Skip zero stock
-        
-        const supplierKey = item.supplier 
-          ? `${item.supplier.supplier_code} - ${item.supplier.supplier_name}`
-          : 'Tanpa Supplier'
-        
-        if (!dataBySupplier.has(supplierKey)) {
-          dataBySupplier.set(supplierKey, [])
-        }
-        
-        dataBySupplier.get(supplierKey).push({
-          'Seragam': item.uniform.uniform_name,
-          'Ukuran': item.size.size_name,
-          'Jumlah': item.total_qty,
-          'Universal': item.uniform.is_universal ? 'Ya' : 'Tidak'
+        if (item.total_qty <= 0) return
+        const key = item.supplier ? `${item.supplier.supplier_code} - ${item.supplier.supplier_name}` : 'Tanpa Supplier'
+        if (!dataBySupplier.has(key)) dataBySupplier.set(key, [])
+        dataBySupplier.get(key).push({
+          seragam: item.uniform?.uniform_name || '',
+          ukuran: item.size?.size_name || '',
+          jumlah: item.total_qty,
+          universal: item.uniform?.is_universal ? 'Ya' : 'Tidak'
         })
       })
 
-      // Create sheet for each supplier
-      let sheetIndex = 0
       dataBySupplier.forEach((items, supplierName) => {
-        if (items.length === 0) return // Skip empty suppliers
+        if (items.length === 0) return
+        items.sort((a, b) => a.seragam.localeCompare(b.seragam) || a.ukuran.localeCompare(b.ukuran))
 
-        // Sort by uniform name, then size
-        items.sort((a, b) => {
-          const uniformCompare = a.Seragam.localeCompare(b.Seragam)
-          if (uniformCompare !== 0) return uniformCompare
-          return a.Ukuran.localeCompare(b.Ukuran)
+        let sheetName = supplierName.replace(/[\\/*\[\]:?]/g, '').substring(0, 31)
+        const ssWs = wb.addWorksheet(sheetName)
+
+        const totalPcs = items.reduce((sum, i) => sum + i.jumlah, 0)
+        // Title rows
+        const r1 = ssWs.addRow([supplierName])
+        r1.getCell(1).font = { bold: true, size: 13 }
+        ssWs.mergeCells(1, 1, 1, 4)
+        const r2 = ssWs.addRow([`Total Stock: ${totalPcs} pcs`])
+        r2.getCell(1).font = { italic: true }
+        ssWs.addRow([`Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`])
+        ssWs.addRow([])
+
+        // Header
+        const hdr = ssWs.addRow(['Seragam', 'Ukuran', 'Jumlah', 'Universal'])
+        hdr.eachCell((cell) => {
+          cell.font = { bold: true }
+          cell.fill = headerFill
+          cell.border = thinBorder
+          cell.alignment = { horizontal: 'center' }
         })
 
-        // Add summary at the top
-        const totalItems = items.reduce((sum, item) => sum + item.Jumlah, 0)
-        const sheetData = [
-          [supplierName],
-          ['Total Stock: ' + totalItems + ' pcs'],
-          ['Tanggal: ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })],
-          [''],
-          // Headers will be added by json_to_sheet
-        ]
+        items.forEach(item => {
+          const row = ssWs.addRow([item.seragam, item.ukuran, item.jumlah, item.universal])
+          row.eachCell((cell) => { cell.border = thinBorder })
+        })
 
-        const ws = XLSX.utils.aoa_to_sheet(sheetData)
-        XLSX.utils.sheet_add_json(ws, items, { origin: 'A5' })
-
-        // Set column widths
-        ws['!cols'] = [
-          { wch: 30 }, // Seragam
-          { wch: 12 }, // Ukuran
-          { wch: 10 }, // Jumlah
-          { wch: 10 }  // Universal
-        ]
-
-        // Sanitize sheet name (max 31 chars, no special chars)
-        let sheetName = supplierName
-          .replace(/[\\/*\[\]:?]/g, '')
-          .substring(0, 31)
-        
-        // Ensure unique sheet name
-        if (sheetIndex > 0 && sheetName.length > 28) {
-          sheetName = sheetName.substring(0, 28) + '_' + sheetIndex
-        }
-
-        XLSX.utils.book_append_sheet(wb, ws, sheetName)
-        sheetIndex++
+        ssWs.getColumn(1).width = 30
+        ssWs.getColumn(2).width = 12
+        ssWs.getColumn(3).width = 10
+        ssWs.getColumn(4).width = 10
       })
 
-      // Generate filename
-      const filename = `Stock_Seragam_${new Date().toISOString().slice(0, 10)}.xlsx`
+      // Download
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Laporan_Stok_Seragam_${year_name.replace(/[\/\\]/g, '-')}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
 
-      // Export
-      XLSX.writeFile(wb, filename)
+      setShowExportModal(false)
+      setExportNotification({ isOpen: true, title: 'Berhasil', message: `Laporan berhasil di-export`, type: 'success' })
+
     } catch (e) {
-      console.error('Error exporting to Excel:', e)
-      alert('Gagal export ke Excel: ' + e.message)
+      console.error('Error exporting report:', e)
+      setExportNotification({ isOpen: true, title: 'Error', message: 'Gagal export laporan: ' + e.message, type: 'error' })
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -380,10 +841,10 @@ export default function InitialStockPage() {
             {/* Export Button */}
             {summaryData.length > 0 && (
               <Button
-                onClick={handleExportToExcel}
+                onClick={openExportModal}
                 className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2"
               >
-                📥 Export Excel
+                📥 Export Laporan
               </Button>
             )}
             
@@ -1276,6 +1737,78 @@ export default function InitialStockPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Export Report Modal */}
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title="📥 Export Laporan Stok Seragam"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Pilih tahun ajaran untuk menghasilkan laporan komprehensif yang mencakup: Stock Awal, Realisasi Pembelian (per PO), Hasil Penjualan, dan Stock Akhir.
+          </p>
+
+          <div>
+            <Label>Tahun Ajaran *</Label>
+            <select
+              className="w-full border rounded px-3 py-2 mt-1"
+              value={selectedYearId}
+              onChange={(e) => setSelectedYearId(e.target.value)}
+            >
+              <option value="">-- Pilih Tahun Ajaran --</option>
+              {exportYears.map(y => (
+                <option key={y.year_id} value={y.year_id}>
+                  {y.year_name} ({new Date(y.start_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} - {new Date(y.end_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {exportYears.length === 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded text-sm">
+              ⚠️ Tidak ada tahun ajaran dengan tanggal mulai dan berakhir. Silakan atur di menu <strong>Data → Tahun</strong>.
+            </div>
+          )}
+
+          {selectedYearId && (() => {
+            const y = exportYears.find(yr => yr.year_id === Number(selectedYearId))
+            if (!y) return null
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-700">
+                <strong>Periode:</strong> {new Date(y.start_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} — {new Date(y.end_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </div>
+            )
+          })()}
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button
+              onClick={() => setShowExportModal(false)}
+              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+              disabled={exporting}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleExportToExcel}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 font-semibold"
+              disabled={!selectedYearId || exporting}
+            >
+              {exporting ? '⏳ Mengekspor...' : '📥 Export Laporan'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Export Notification */}
+      <NotificationModal
+        isOpen={exportNotification.isOpen}
+        onClose={() => setExportNotification(prev => ({ ...prev, isOpen: false }))}
+        title={exportNotification.title}
+        message={exportNotification.message}
+        type={exportNotification.type}
+      />
     </div>
   )
 }

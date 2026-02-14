@@ -746,7 +746,7 @@ export default function AdmissionManagement() {
     const utjAmount = Math.round(totalEntry * installmentConfig.utj_percentage / 100);
     const remaining = totalEntry - utjAmount;
     const numInst = installmentConfig.num_installments;
-    const monthlyAmount = Math.floor(remaining / numInst);
+    const monthlyAmount = Math.round(remaining / numInst / 1000) * 1000;
     const lastMonthAmount = remaining - (monthlyAmount * (numInst - 1));
 
     const items = [];

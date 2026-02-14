@@ -27,7 +27,9 @@ export default function YearManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingYear, setEditingYear] = useState(null);
   const [formData, setFormData] = useState({
-    year_name: ''
+    year_name: '',
+    start_date: '',
+    end_date: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -67,7 +69,7 @@ export default function YearManagement() {
       
       const { data: yearsData, error: yearsError } = await supabase
         .from('year')
-        .select('year_id, year_name')
+        .select('year_id, year_name, start_date, end_date')
         .order('year_name');
 
       if (yearsError) {
@@ -83,6 +85,15 @@ export default function YearManagement() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Extract year numbers from year_name like "2026-2027" or "2026/2027"
+  const extractYearRange = (yearName) => {
+    const match = yearName.match(/(\d{4})[\-\/](\d{4})/);
+    if (match) {
+      return { startYear: parseInt(match[1]), endYear: parseInt(match[2]) };
+    }
+    return null;
   };
 
   const validateForm = () => {
@@ -103,6 +114,51 @@ export default function YearManagement() {
     if (duplicateYear) {
       errors.year_name = 'Nama tahun sudah ada';
     }
+
+    // Validate start_date
+    if (!formData.start_date) {
+      errors.start_date = 'Tanggal mulai wajib diisi';
+    }
+
+    // Validate end_date
+    if (!formData.end_date) {
+      errors.end_date = 'Tanggal berakhir wajib diisi';
+    }
+
+    // Validate start < end
+    if (formData.start_date && formData.end_date) {
+      if (formData.start_date >= formData.end_date) {
+        errors.end_date = 'Tanggal berakhir harus setelah tanggal mulai';
+      }
+    }
+
+    // Validate year numbers match the year_name (e.g. "2026-2027" => start in 2026, end in 2027)
+    if (formData.year_name.trim() && formData.start_date && formData.end_date && !errors.start_date && !errors.end_date) {
+      const yearRange = extractYearRange(formData.year_name.trim());
+      if (yearRange) {
+        const startDateYear = new Date(formData.start_date).getFullYear();
+        const endDateYear = new Date(formData.end_date).getFullYear();
+        if (startDateYear !== yearRange.startYear) {
+          errors.start_date = `Tahun pada tanggal mulai harus ${yearRange.startYear} sesuai nama tahun ajaran`;
+        }
+        if (endDateYear !== yearRange.endYear) {
+          errors.end_date = `Tahun pada tanggal berakhir harus ${yearRange.endYear} sesuai nama tahun ajaran`;
+        }
+      }
+    }
+
+    // Check for overlapping date ranges with other years
+    if (formData.start_date && formData.end_date && !errors.start_date && !errors.end_date) {
+      const overlapping = years.find(year => {
+        if (year.year_id === editingYear?.year_id) return false;
+        if (!year.start_date || !year.end_date) return false;
+        // Overlap: newStart < existingEnd AND newEnd > existingStart
+        return formData.start_date < year.end_date && formData.end_date > year.start_date;
+      });
+      if (overlapping) {
+        errors.start_date = `Tanggal tumpang tindih dengan tahun ajaran "${overlapping.year_name}" (${overlapping.start_date} s.d. ${overlapping.end_date})`;
+      }
+    }
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -119,7 +175,9 @@ export default function YearManagement() {
       setSubmitting(true);
       
       const yearData = {
-        year_name: formData.year_name.trim()
+        year_name: formData.year_name.trim(),
+        start_date: formData.start_date || null,
+        end_date: formData.end_date || null
       };
 
       if (editingYear) {
@@ -146,7 +204,7 @@ export default function YearManagement() {
         const { data, error } = await supabase
           .from('year')
           .insert([yearData])
-          .select();
+          .select('year_id, year_name, start_date, end_date');
 
         if (error) {
           throw new Error(error.message);
@@ -161,7 +219,7 @@ export default function YearManagement() {
       }
 
       // Reset form
-      setFormData({ year_name: '' });
+      setFormData({ year_name: '', start_date: '', end_date: '' });
       setFormErrors({});
       setShowForm(false);
       setEditingYear(null);
@@ -177,7 +235,9 @@ export default function YearManagement() {
   const handleEdit = (year) => {
     setEditingYear(year);
     setFormData({
-      year_name: year.year_name
+      year_name: year.year_name,
+      start_date: year.start_date || '',
+      end_date: year.end_date || ''
     });
     setFormErrors({});
     setShowForm(true);
@@ -256,7 +316,7 @@ export default function YearManagement() {
         <Button
           onClick={() => {
             setEditingYear(null);
-            setFormData({ year_name: '' });
+            setFormData({ year_name: '', start_date: '', end_date: '' });
             setFormErrors({});
             setShowForm(true);
           }}
@@ -330,6 +390,12 @@ export default function YearManagement() {
                       Nama Tahun
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tanggal Mulai
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tanggal Berakhir
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
@@ -344,6 +410,12 @@ export default function YearManagement() {
                         <div className="text-sm font-medium text-gray-900">
                           {year.year_name}
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {year.start_date ? new Date(year.start_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {year.end_date ? new Date(year.end_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
@@ -378,7 +450,7 @@ export default function YearManagement() {
         onClose={() => {
           setShowForm(false);
           setEditingYear(null);
-          setFormData({ year_name: '' });
+          setFormData({ year_name: '', start_date: '', end_date: '' });
           setFormErrors({});
         }}
         title={editingYear ? 'Edit Tahun' : 'Tambah Tahun Baru'}
@@ -392,7 +464,7 @@ export default function YearManagement() {
               type="text"
               value={formData.year_name}
               onChange={handleInputChange}
-              placeholder="Contoh: 2025 atau 2024/2025"
+              placeholder="Contoh: 2025-2026"
               className={formErrors.year_name ? 'border-red-500' : ''}
             />
             {formErrors.year_name && (
@@ -400,9 +472,61 @@ export default function YearManagement() {
             )}
             <p className="text-xs text-gray-500 mt-1">
               <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
-              Contoh format: "2025", "2024/2025", "Tahun Ajaran 2024-2025"
+              Format: "2025-2026" atau "2024-2025". Tahun awal harus cocok dengan tanggal mulai.
             </p>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="start_date">Tanggal Mulai *</Label>
+              <Input
+                id="start_date"
+                name="start_date"
+                type="date"
+                value={formData.start_date}
+                onChange={handleInputChange}
+                className={formErrors.start_date ? 'border-red-500' : ''}
+              />
+              {formErrors.start_date && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.start_date}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="end_date">Tanggal Berakhir *</Label>
+              <Input
+                id="end_date"
+                name="end_date"
+                type="date"
+                value={formData.end_date}
+                onChange={handleInputChange}
+                className={formErrors.end_date ? 'border-red-500' : ''}
+              />
+              {formErrors.end_date && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.end_date}</p>
+              )}
+            </div>
+          </div>
+
+          {formData.year_name.trim() && formData.start_date && formData.end_date && (() => {
+            const yearRange = extractYearRange(formData.year_name.trim());
+            if (yearRange) {
+              const startOk = new Date(formData.start_date).getFullYear() === yearRange.startYear;
+              const endOk = new Date(formData.end_date).getFullYear() === yearRange.endYear;
+              if (startOk && endOk) {
+                return (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <div className="flex items-center">
+                      <FontAwesomeIcon icon={faInfoCircle} className="text-green-500 mr-2" />
+                      <span className="text-sm text-green-700">
+                        Tahun pada tanggal sesuai dengan nama tahun ajaran {yearRange.startYear}-{yearRange.endYear}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+            }
+            return null;
+          })()}
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button
@@ -410,7 +534,7 @@ export default function YearManagement() {
               onClick={() => {
                 setShowForm(false);
                 setEditingYear(null);
-                setFormData({ year_name: '' });
+                setFormData({ year_name: '', start_date: '', end_date: '' });
                 setFormErrors({});
               }}
               disabled={submitting}

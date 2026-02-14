@@ -369,13 +369,6 @@ export default function FeeSimulationPage() {
     });
     y += 4;
 
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text('* Simulasi ini bersifat estimasi. Biaya aktual dapat berbeda saat pendaftaran resmi.', marginL, y);
-    doc.setTextColor(0);
-    y += 8;
-
     return y;
   };
 
@@ -442,13 +435,65 @@ export default function FeeSimulationPage() {
     });
     y = doc.lastAutoTable.finalY + 3;
 
-    if (matchedUdp?.effective_from) {
-      doc.setFont('helvetica', 'italic');
+    // Catatan section — numbered list
+    if (matchedUdp?.effective_from || matchedUdp?.notes) {
+      const boxW = pageW - marginL - marginR;
+      const boxPadX = 4;
+      const boxPadY = 3;
+      const hasNotes = !!matchedUdp?.notes;
+      const hasPeriode = !!matchedUdp?.effective_from;
+      const periodeText = hasPeriode ? `Periode berlaku UDP: ${formatDateID(matchedUdp.effective_from)} s/d ${matchedUdp.effective_until ? formatDateID(matchedUdp.effective_until) : 'selesai'}` : '';
       doc.setFontSize(8);
-      doc.setTextColor(100);
-      doc.text(`Periode berlaku UDP: ${formatDateID(matchedUdp.effective_from)} s/d ${matchedUdp.effective_until ? formatDateID(matchedUdp.effective_until) : 'selesai'}`, marginL, y);
+      const wrappedAll = [];
+      if (hasNotes && hasPeriode) {
+        // Numbered list
+        wrappedAll.push('Catatan:');
+        doc.setFont('helvetica', 'normal');
+        doc.splitTextToSize(`1. ${periodeText}`, boxW - boxPadX * 2).forEach(l => wrappedAll.push(l));
+        doc.splitTextToSize(`2. ${matchedUdp.notes}`, boxW - boxPadX * 2).forEach(l => wrappedAll.push(l));
+      } else {
+        // Single line: "Catatan: ..."
+        const singleText = hasPeriode ? periodeText : matchedUdp.notes;
+        doc.setFont('helvetica', 'normal');
+        doc.splitTextToSize(`Catatan: ${singleText}`, boxW - boxPadX * 2).forEach(l => wrappedAll.push(l));
+      }
+      const lineH = 3.8;
+      const boxH = boxPadY * 2 + wrappedAll.length * lineH;
+      // Draw box
+      doc.setFillColor(255, 249, 230);
+      doc.setDrawColor(200, 180, 100);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(marginL, y, boxW, boxH, 1.5, 1.5, 'FD');
+      // Draw text
+      doc.setTextColor(80, 65, 20);
+      let textY = y + boxPadY + 3;
+      if (hasNotes && hasPeriode) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Catatan:', marginL + boxPadX, textY);
+        textY += lineH;
+        doc.setFont('helvetica', 'normal');
+        const line1 = doc.splitTextToSize(`1. ${periodeText}`, boxW - boxPadX * 2);
+        line1.forEach(l => { doc.text(l, marginL + boxPadX, textY); textY += lineH; });
+        const line2 = doc.splitTextToSize(`2. ${matchedUdp.notes}`, boxW - boxPadX * 2);
+        line2.forEach(l => { doc.text(l, marginL + boxPadX, textY); textY += lineH; });
+      } else {
+        const singleText = hasPeriode ? periodeText : matchedUdp.notes;
+        const lines = doc.splitTextToSize(`Catatan: ${singleText}`, boxW - boxPadX * 2);
+        // Bold "Catatan:" part on first line
+        doc.setFont('helvetica', 'bold');
+        const prefixW = doc.getTextWidth('Catatan: ');
+        doc.text('Catatan:', marginL + boxPadX, textY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(singleText.substring(0, lines[0].length - 'Catatan: '.length), marginL + boxPadX + prefixW, textY);
+        textY += lineH;
+        // Remaining wrapped lines
+        for (let i = 1; i < lines.length; i++) {
+          doc.text(lines[i], marginL + boxPadX, textY);
+          textY += lineH;
+        }
+      }
       doc.setTextColor(0);
-      y += 5;
+      y += boxH + 4;
     }
 
     buildPdfFooter(doc);
@@ -511,13 +556,59 @@ export default function FeeSimulationPage() {
     });
     y = doc.lastAutoTable.finalY + 3;
 
-    if (matchedUdp?.effective_from) {
-      doc.setFont('helvetica', 'italic');
+    // Catatan section — numbered list
+    if (matchedUdp?.effective_from || matchedUdp?.notes) {
+      const boxW = contentW;
+      const boxPadX = 4;
+      const boxPadY = 3;
+      const hasNotes = !!matchedUdp?.notes;
+      const hasPeriode = !!matchedUdp?.effective_from;
+      const periodeText = hasPeriode ? `Periode berlaku UDP: ${formatDateID(matchedUdp.effective_from)} s/d ${matchedUdp.effective_until ? formatDateID(matchedUdp.effective_until) : 'selesai'}` : '';
       doc.setFontSize(8);
-      doc.setTextColor(100);
-      doc.text(`Periode berlaku UDP: ${formatDateID(matchedUdp.effective_from)} s/d ${matchedUdp.effective_until ? formatDateID(matchedUdp.effective_until) : 'selesai'}`, marginL, y);
+      const wrappedAll = [];
+      if (hasNotes && hasPeriode) {
+        wrappedAll.push('Catatan:');
+        doc.setFont('helvetica', 'normal');
+        doc.splitTextToSize(`1. ${periodeText}`, boxW - boxPadX * 2).forEach(l => wrappedAll.push(l));
+        doc.splitTextToSize(`2. ${matchedUdp.notes}`, boxW - boxPadX * 2).forEach(l => wrappedAll.push(l));
+      } else {
+        const singleText = hasPeriode ? periodeText : matchedUdp.notes;
+        doc.setFont('helvetica', 'normal');
+        doc.splitTextToSize(`Catatan: ${singleText}`, boxW - boxPadX * 2).forEach(l => wrappedAll.push(l));
+      }
+      const lineH = 3.8;
+      const boxH = boxPadY * 2 + wrappedAll.length * lineH;
+      doc.setFillColor(255, 249, 230);
+      doc.setDrawColor(200, 180, 100);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(marginL, y, boxW, boxH, 1.5, 1.5, 'FD');
+      doc.setTextColor(80, 65, 20);
+      let textY = y + boxPadY + 3;
+      if (hasNotes && hasPeriode) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Catatan:', marginL + boxPadX, textY);
+        textY += lineH;
+        doc.setFont('helvetica', 'normal');
+        const line1 = doc.splitTextToSize(`1. ${periodeText}`, boxW - boxPadX * 2);
+        line1.forEach(l => { doc.text(l, marginL + boxPadX, textY); textY += lineH; });
+        const line2 = doc.splitTextToSize(`2. ${matchedUdp.notes}`, boxW - boxPadX * 2);
+        line2.forEach(l => { doc.text(l, marginL + boxPadX, textY); textY += lineH; });
+      } else {
+        const singleText = hasPeriode ? periodeText : matchedUdp.notes;
+        const lines = doc.splitTextToSize(`Catatan: ${singleText}`, boxW - boxPadX * 2);
+        doc.setFont('helvetica', 'bold');
+        const prefixW = doc.getTextWidth('Catatan: ');
+        doc.text('Catatan:', marginL + boxPadX, textY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(singleText.substring(0, lines[0].length - 'Catatan: '.length), marginL + boxPadX + prefixW, textY);
+        textY += lineH;
+        for (let i = 1; i < lines.length; i++) {
+          doc.text(lines[i], marginL + boxPadX, textY);
+          textY += lineH;
+        }
+      }
       doc.setTextColor(0);
-      y += 5;
+      y += boxH + 4;
     }
     y += 3;
 
