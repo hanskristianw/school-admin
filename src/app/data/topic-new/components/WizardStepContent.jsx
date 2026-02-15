@@ -20,7 +20,7 @@ export default function WizardStepContent({
   loadingStrands,
   // lists
   subjects, allKelas, kelasLoading,
-  keyConcepts, globalContexts, learnerProfiles,
+  keyConcepts, globalContexts, globalContextExplorations, learnerProfiles,
   // flags
   isAddMode, topicAssessment,
   // AI
@@ -28,7 +28,7 @@ export default function WizardStepContent({
   openAiInputModal, requestAiHelp, requestAiHelpAtl, requestAiHelpTSC,
   setAiHelpType, setAiError, setAiResultModalOpen,
   setSelectedKeyConcepts, setSelectedRelatedConcepts, setSelectedGlobalContexts,
-  setSelectedStatements, setSelectedLearnerProfiles, setSelectedServiceLearning,
+  setSelectedStatements, setSelectedConceptualUnderstanding, setSelectedLearnerProfiles, setSelectedServiceLearning,
   setSelectedResources, setSelectedAtlSkills,
   // parent helpers
   isStepCompleted, fetchKelasForSubject, setAllKelas, fetchStrandsForCriteria,
@@ -261,27 +261,25 @@ export default function WizardStepContent({
             {!isStepCompleted(0) && (
               <p className="text-xs text-amber-600 mb-2">⚠️ Complete all fields in Step 1 (Basic Information) first to use AI Help</p>
             )}
-            <p className="text-xs text-gray-600 mb-3">Select 1-3 Key Concepts from the 16 IB MYP concepts</p>
+            <p className="text-xs text-gray-600 mb-3">Select 1 Key Concept from the 16 IB MYP concepts</p>
             <div className="flex flex-wrap gap-2">
               {keyConcepts.map((concept) => (
                 <button
                   key={concept}
                   type="button"
                   onClick={() => {
-                    const current = selectedTopic.topic_key_concept || ''
-                    const currentArray = current ? current.split(', ').filter(c => c) : []
-                    const newArray = currentArray.includes(concept)
-                      ? currentArray.filter(c => c !== concept)
-                      : [...currentArray, concept]
-                    setSelectedTopic(prev => ({ ...prev, topic_key_concept: newArray.join(', ') }))
+                    const current = (selectedTopic.topic_key_concept || '').trim()
+                    // Single select: toggle off if same, otherwise replace
+                    const newValue = current === concept ? '' : concept
+                    setSelectedTopic(prev => ({ ...prev, topic_key_concept: newValue }))
                   }}
                   className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
-                    (selectedTopic.topic_key_concept || '').split(', ').includes(concept)
+                    (selectedTopic.topic_key_concept || '').trim() === concept
                       ? 'bg-purple-500 text-white shadow-md scale-105'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {(selectedTopic.topic_key_concept || '').split(', ').includes(concept) && (
+                  {(selectedTopic.topic_key_concept || '').trim() === concept && (
                     <svg className="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
@@ -292,7 +290,7 @@ export default function WizardStepContent({
             </div>
             {selectedTopic.topic_key_concept && (
               <p className="text-xs text-purple-600 mt-2">
-                ✓ Selected: {selectedTopic.topic_key_concept.split(', ').filter(c => c).length} concept(s)
+                ✓ Selected: {selectedTopic.topic_key_concept.trim()}
               </p>
             )}
           </div>
@@ -381,7 +379,7 @@ export default function WizardStepContent({
                     const newArray = currentArray.includes(context)
                       ? currentArray.filter(c => c !== context)
                       : [...currentArray, context]
-                    setSelectedTopic(prev => ({ ...prev, topic_global_context: newArray.join(', ') }))
+                    setSelectedTopic(prev => ({ ...prev, topic_global_context: newArray.join(', '), topic_gc_exploration: '' }))
                   }}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     (selectedTopic.topic_global_context || '').split(', ').includes(context)
@@ -398,56 +396,170 @@ export default function WizardStepContent({
                 </button>
               ))}
             </div>
+
+            {/* Possible Explorations - shown when a Global Context is selected */}
+            {selectedTopic.topic_global_context && (() => {
+              const selectedGCs = (selectedTopic.topic_global_context || '').split(', ').filter(Boolean)
+              const allExplorations = selectedGCs.flatMap(gc => {
+                const explorations = globalContextExplorations[gc] || []
+                return explorations.map(exp => ({ gc, exp }))
+              })
+              if (allExplorations.length === 0) return null
+
+              const currentExplorations = (selectedTopic.topic_gc_exploration || '').split(', ').filter(Boolean)
+
+              return (
+                <div className="mt-4 p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Possible Exploration
+                    <span className="text-xs font-normal text-gray-500 ml-2">(Select 1 exploration for your unit)</span>
+                  </label>
+                  {selectedGCs.map(gc => {
+                    const explorations = globalContextExplorations[gc] || []
+                    if (explorations.length === 0) return null
+                    return (
+                      <div key={gc} className="mb-3">
+                        {selectedGCs.length > 1 && (
+                          <p className="text-xs font-semibold text-cyan-700 mb-1.5">{gc}</p>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          {explorations.map((exp) => {
+                            const isSelected = currentExplorations.includes(exp)
+                            return (
+                              <button
+                                key={exp}
+                                type="button"
+                                onClick={() => {
+                                  // Single-select: toggle or replace
+                                  const updated = isSelected ? '' : exp
+                                  setSelectedTopic(prev => ({ ...prev, topic_gc_exploration: updated }))
+                                }}
+                                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                                  isSelected
+                                    ? 'bg-cyan-600 text-white shadow-sm'
+                                    : 'bg-white text-gray-600 border border-gray-300 hover:border-cyan-400 hover:text-cyan-700'
+                                }`}
+                              >
+                                {isSelected && (
+                                  <svg className="w-3 h-3 inline mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                                {exp}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {currentExplorations.length > 0 && (
+                    <p className="text-xs text-cyan-700 mt-2 font-medium">Selected: {currentExplorations[0]}</p>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </>
       )}
       
-      {/* ─── Step 3: Statement of Inquiry ─── */}
+      {/* ─── Step 3: Conceptual Understanding & Statement of Inquiry ─── */}
       {currentStep === 3 && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-semibold text-gray-700">
-              Statement of Inquiry <span className="text-red-500">*</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                const hasRequiredFields = selectedTopic.topic_key_concept && 
-                                         selectedTopic.topic_related_concept && 
-                                         selectedTopic.topic_global_context &&
-                                         selectedTopic.topic_nama
-                if (hasRequiredFields) {
-                  setAiHelpType('statement')
-                  setAiError('')
-                  setSelectedStatements([])
-                  setAiResultModalOpen(false)
-                  requestAiHelp('statement')
-                }
-              }}
-              disabled={!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context || !selectedTopic.topic_nama}
-              title={(!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context || !selectedTopic.topic_nama) ? 'Complete Unit Title, Key Concept, Related Concept, and Global Context first' : 'Get AI suggestions for Statement of Inquiry'}
-              className={`text-xs px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border ${
-                (selectedTopic.topic_key_concept && selectedTopic.topic_related_concept && selectedTopic.topic_global_context && selectedTopic.topic_nama)
-                  ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 cursor-pointer'
-                  : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
-              </svg>
-              AI Help
-            </button>
+          {/* Conceptual Understanding (must be filled first) */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Conceptual Understanding <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const hasRequiredFields = selectedTopic.topic_key_concept && 
+                                           selectedTopic.topic_related_concept
+                  if (hasRequiredFields) {
+                    setAiHelpType('conceptualUnderstanding')
+                    setAiError('')
+                    setSelectedConceptualUnderstanding([])
+                    setAiResultModalOpen(false)
+                    requestAiHelp('conceptualUnderstanding')
+                  }
+                }}
+                disabled={!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept}
+                title={(!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept) ? 'Complete Key Concept and Related Concept first' : 'Get AI suggestions for Conceptual Understanding'}
+                className={`text-xs px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border ${
+                  (selectedTopic.topic_key_concept && selectedTopic.topic_related_concept)
+                    ? 'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200 cursor-pointer'
+                    : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                </svg>
+                AI Help
+              </button>
+            </div>
+            {(!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept) && (
+              <p className="text-xs text-amber-600 mb-2">⚠️ Complete Key Concept and Related Concept in Step 2 first to use AI Help</p>
+            )}
+            <p className="text-xs text-gray-500 mb-2">Merge Key Concept + Related Concepts using a vivid verb (e.g., alter, cause, create, establish, influence, shape). Template: "Concept and concept <b>verb</b> concept."</p>
+            <textarea
+              value={selectedTopic.topic_conceptual_understanding || ''}
+              onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_conceptual_understanding: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              rows={4}
+              placeholder="e.g., Patterns and change produce consequences."
+            />
           </div>
-          {(!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context || !selectedTopic.topic_nama) && (
-            <p className="text-xs text-amber-600 mb-2">⚠️ Complete Unit Title, Key Concept, Related Concept, and Global Context first to use AI Help</p>
-          )}
-          <textarea
-            value={selectedTopic.topic_statement || ''}
-            onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_statement: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            rows={4}
-            placeholder="e.g., Understanding energy transformations helps us make informed decisions about sustainability..."
-          />
+
+          {/* Statement of Inquiry (disabled until Conceptual Understanding is filled) */}
+          <div className={!selectedTopic.topic_conceptual_understanding?.trim() ? 'opacity-50 pointer-events-none' : ''}>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Statement of Inquiry <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const hasRequiredFields = selectedTopic.topic_key_concept && 
+                                           selectedTopic.topic_related_concept && 
+                                           selectedTopic.topic_global_context &&
+                                           selectedTopic.topic_nama &&
+                                           selectedTopic.topic_conceptual_understanding?.trim()
+                  if (hasRequiredFields) {
+                    setAiHelpType('statement')
+                    setAiError('')
+                    setSelectedStatements([])
+                    setAiResultModalOpen(false)
+                    requestAiHelp('statement')
+                  }
+                }}
+                disabled={!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context || !selectedTopic.topic_nama || !selectedTopic.topic_conceptual_understanding?.trim()}
+                title={(!selectedTopic.topic_key_concept || !selectedTopic.topic_related_concept || !selectedTopic.topic_global_context || !selectedTopic.topic_nama || !selectedTopic.topic_conceptual_understanding?.trim()) ? 'Complete Unit Title, Key Concept, Related Concept, Global Context, and Conceptual Understanding first' : 'Get AI suggestions for Statement of Inquiry'}
+                className={`text-xs px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 font-medium border ${
+                  (selectedTopic.topic_key_concept && selectedTopic.topic_related_concept && selectedTopic.topic_global_context && selectedTopic.topic_nama && selectedTopic.topic_conceptual_understanding?.trim())
+                    ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 cursor-pointer'
+                    : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                </svg>
+                AI Help
+              </button>
+            </div>
+            {!selectedTopic.topic_conceptual_understanding?.trim() && (
+              <p className="text-xs text-amber-600 mb-2">⚠️ Fill in Conceptual Understanding above first before writing the Statement of Inquiry</p>
+            )}
+            <textarea
+              value={selectedTopic.topic_statement || ''}
+              onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_statement: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              rows={4}
+              placeholder="e.g., Understanding energy transformations helps us make informed decisions about sustainability..."
+              disabled={!selectedTopic.topic_conceptual_understanding?.trim()}
+            />
+          </div>
         </div>
       )}
       

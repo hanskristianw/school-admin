@@ -33,8 +33,8 @@ export async function POST(req) {
     
     if (!resp.ok) {
       const err = await resp.text()
-      console.error('Gemini API error:', err)
-      return NextResponse.json({ error: 'Gemini error', detail: err }, { status: 502 })
+      console.error('Gemini API error (status ' + resp.status + '):', err)
+      return NextResponse.json({ error: 'Gemini error (status ' + resp.status + ')', detail: err }, { status: 502 })
     }
     
     const data = await resp.json()

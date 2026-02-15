@@ -15,7 +15,7 @@ import {
   exportAssessmentWordFromWizard,
   generateAssessmentPDFFromCard,
   exportAssessmentWordFromCard,
-  generateStudentReportPDF,
+  generateStudentReportHTML,
   generateClassRecapPDFReport,
 } from './lib/pdfGenerators'
 import useAiHelp from './lib/useAiHelp'
@@ -92,7 +92,88 @@ export default function TopicNewPage() {
     'Globalization and sustainability',
     'Fairness and development'
   ]
-  
+
+  // IB MYP Global Context Possible Explorations (from IB MYP guide)
+  const globalContextExplorations = {
+    'Identities and relationships': [
+      'Competition and cooperation',
+      'Teams, affiliation and leadership',
+      'Identity formation',
+      'Self-esteem',
+      'Status',
+      'Roles and role models',
+      'Personal efficacy and agency',
+      'Attitudes',
+      'Motivations',
+      'Independence',
+      'Happiness and the good life',
+      'Physical, psychological and social development',
+      'Transitions',
+      'Health and well-being',
+      'Lifestyle choices',
+      'Human nature and human dignity',
+      'Moral reasoning and ethical judgement',
+      'Consciousness and mind'
+    ],
+    'Orientation in space and time': [
+      'Civilizations and social histories',
+      'Heritage',
+      'Pilgrimage',
+      'Displacement and exchange',
+      'Epochs, eras, turning points and "big history"',
+      'Scale, duration, frequency and variability',
+      'Peoples, boundaries, exchange and interaction',
+      'Natural and human landscapes and resources',
+      'Evolution, constraints and adaptation',
+      'Indigenous understanding'
+    ],
+    'Personal and cultural expression': [
+      'Artistry, craft, creation, beauty',
+      'Products, systems and institutions',
+      'Social constructions of reality',
+      'Philosophies and ways of life',
+      'Belief systems, ritual and play',
+      'Critical literacy',
+      'Languages and linguistic systems',
+      'Histories of ideas, fields and disciplines',
+      'Analysis and argument',
+      'Metacognition and abstract thinking',
+      'Entrepreneurship, practice and competency'
+    ],
+    'Scientific and technical innovation': [
+      'Systems, models, methods',
+      'Products, processes and solutions',
+      'Adaptation, ingenuity and progress',
+      'Opportunity, risk, consequences and responsibility',
+      'Modernization, industrialization and engineering',
+      'Digital life, virtual environments and the Information Age',
+      'The biological revolution',
+      'Mathematical puzzles, principles and discoveries'
+    ],
+    'Globalization and sustainability': [
+      'Markets, commodities and commercialization',
+      'Human impact on the environment',
+      'Commonality, diversity and interconnection',
+      'Consumption, conservation, scarcity, natural resources and public goods',
+      'Population and demography',
+      'Urban planning',
+      'Strategy and infrastructure',
+      'Data-driven decision-making'
+    ],
+    'Fairness and development': [
+      'Democracy, politics, government and civil society',
+      'Inequality, difference and inclusion',
+      'Human capability and development',
+      'Social entrepreneurs',
+      'Rights, law, civic responsibility and the public sphere',
+      'Justice, peace and conflict',
+      'Ecology and disparate impact',
+      'Power and privilege',
+      'Authority, security and freedom',
+      'Imagining a hopeful future'
+    ]
+  }
+
   // IB MYP Key Concepts (16 concepts)
   const keyConcepts = [
     'Aesthetics',
@@ -166,6 +247,16 @@ export default function TopicNewPage() {
   const [recapSemesterFilter, setRecapSemesterFilter] = useState('')
   const [loadingClassRecap, setLoadingClassRecap] = useState(false)
   
+  // Comment tab state
+  const [commentSubject, setCommentSubject] = useState('')
+  const [commentKelas, setCommentKelas] = useState('')
+  const [commentKelasOptions, setCommentKelasOptions] = useState([])
+  const [commentSemester, setCommentSemester] = useState('')
+  const [commentStudents, setCommentStudents] = useState([])
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [loadingCommentKelas, setLoadingCommentKelas] = useState(false)
+  const [savingCommentId, setSavingCommentId] = useState(null)
+  
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
   
@@ -206,15 +297,15 @@ export default function TopicNewPage() {
       id: 'concepts',
       title: 'Key & Related Concepts',
       description: 'Identify the conceptual understanding for this unit',
-      fields: ['topic_key_concept', 'topic_related_concept', 'topic_global_context'],
+      fields: ['topic_key_concept', 'topic_related_concept', 'topic_global_context', 'topic_gc_exploration'],
       guidance: 'Key Concepts are 16 broad, transferable ideas in IB MYP (select 1-3). Related Concepts are subject-specific and vary by discipline (enter as comma-separated). Global Context connects learning to real-world issues that transcend subject boundaries.'
     },
     {
       id: 'statement',
       title: 'Statement of Inquiry',
       description: 'Create the statement that synthesizes concepts and context',
-      fields: ['topic_statement'],
-      guidance: 'The Statement of Inquiry integrates Key Concept + Related Concept + Global Context into a clear statement that guides the entire unit.'
+      fields: ['topic_conceptual_understanding', 'topic_statement'],
+      guidance: 'Conceptual Understanding describes what students will come to understand through this unit — the big ideas and deep conceptual learning. The Statement of Inquiry integrates Key Concept + Related Concept + Global Context into a clear statement that guides the entire unit.'
     },
     {
       id: 'attributes',
@@ -465,9 +556,11 @@ export default function TopicNewPage() {
           topic_planner,
           topic_inquiry_question,
           topic_global_context,
+          topic_gc_exploration,
           topic_key_concept,
           topic_related_concept,
           topic_statement,
+          topic_conceptual_understanding,
           topic_learner_profile,
           topic_service_learning,
           topic_atl,
@@ -1769,9 +1862,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     })
   }
   
-  // Generate and download report as PDF
+  // Generate and open report as printable HTML
   const generateReport = async () => {
-    await generateStudentReportPDF({
+    await generateStudentReportHTML({
       reportFilters,
       reportStudents,
       reportKelasOptions,
@@ -1794,6 +1887,193 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     })
   }
   
+  // ==========================================
+  // COMMENT TAB FUNCTIONS
+  // ==========================================
+  
+  const handleCommentSubjectChange = async (subjectId) => {
+    setCommentSubject(subjectId)
+    setCommentKelas('')
+    setCommentSemester('')
+    setCommentKelasOptions([])
+    setCommentStudents([])
+    
+    if (!subjectId) return
+    
+    try {
+      setLoadingCommentKelas(true)
+      // Get kelas linked to this subject via detail_kelas
+      const { data: detailKelasData, error: dkError } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_kelas_id')
+        .eq('detail_kelas_subject_id', subjectId)
+      
+      if (dkError) throw dkError
+      if (!detailKelasData || detailKelasData.length === 0) return
+      
+      const kelasIds = [...new Set(detailKelasData.map(d => d.detail_kelas_kelas_id))]
+      const { data: kelasData, error: kError } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama')
+        .in('kelas_id', kelasIds)
+        .order('kelas_nama')
+      
+      if (kError) throw kError
+      setCommentKelasOptions(kelasData || [])
+    } catch (err) {
+      console.error('Error fetching comment kelas:', err)
+    } finally {
+      setLoadingCommentKelas(false)
+    }
+  }
+  
+  const handleCommentKelasChange = (kelasId) => {
+    setCommentKelas(kelasId)
+    setCommentSemester('')
+    setCommentStudents([])
+  }
+  
+  const fetchCommentStudents = async (subjectId, kelasId, semester) => {
+    if (!subjectId || !kelasId || !semester) {
+      setCommentStudents([])
+      return
+    }
+    
+    try {
+      setLoadingComments(true)
+      
+      // 1. Get students in this kelas
+      const { data: detailSiswaData, error: dsError } = await supabase
+        .from('detail_siswa')
+        .select('detail_siswa_id, detail_siswa_user_id')
+        .eq('detail_siswa_kelas_id', kelasId)
+      
+      if (dsError) throw dsError
+      if (!detailSiswaData || detailSiswaData.length === 0) {
+        setCommentStudents([])
+        return
+      }
+      
+      const userIds = [...new Set(detailSiswaData.map(ds => ds.detail_siswa_user_id))]
+      
+      // 2. Get user names
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang')
+        .in('user_id', userIds)
+      
+      if (usersError) throw usersError
+      
+      const userMap = new Map()
+      ;(usersData || []).forEach(u => {
+        userMap.set(u.user_id, `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim())
+      })
+      
+      // 3. Get existing comments for this subject+kelas+semester
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('subject_comment')
+        .select('id, student_user_id, comment_text')
+        .eq('subject_id', subjectId)
+        .eq('kelas_id', kelasId)
+        .eq('semester', parseInt(semester))
+      
+      if (commentsError) throw commentsError
+      
+      const commentMap = new Map()
+      ;(commentsData || []).forEach(c => {
+        commentMap.set(c.student_user_id, { id: c.id, text: c.comment_text || '' })
+      })
+      
+      // 4. Build student list with comments
+      const students = detailSiswaData.map(ds => {
+        const existing = commentMap.get(ds.detail_siswa_user_id)
+        return {
+          detail_siswa_id: ds.detail_siswa_id,
+          user_id: ds.detail_siswa_user_id,
+          nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown',
+          comment_text: existing?.text || '',
+          comment_id: existing?.id || null,
+          saved: true
+        }
+      }).sort((a, b) => a.nama.localeCompare(b.nama))
+      
+      setCommentStudents(students)
+    } catch (err) {
+      console.error('Error fetching comment students:', err)
+      alert('Gagal memuat data siswa: ' + err.message)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+  
+  const handleCommentSemesterChange = (semester) => {
+    setCommentSemester(semester)
+    if (semester && commentSubject && commentKelas) {
+      fetchCommentStudents(commentSubject, commentKelas, semester)
+    } else {
+      setCommentStudents([])
+    }
+  }
+  
+  const updateCommentText = (userId, text) => {
+    setCommentStudents(prev => prev.map(s =>
+      s.user_id === userId ? { ...s, comment_text: text, saved: false } : s
+    ))
+  }
+  
+  const saveComment = async (student) => {
+    if (!commentSubject || !commentKelas || !commentSemester) return
+    
+    try {
+      setSavingCommentId(student.user_id)
+      
+      const payload = {
+        subject_id: parseInt(commentSubject),
+        kelas_id: parseInt(commentKelas),
+        student_user_id: student.user_id,
+        semester: parseInt(commentSemester),
+        comment_text: student.comment_text?.trim() || null,
+        updated_at: new Date().toISOString()
+      }
+      
+      if (student.comment_id) {
+        const { error } = await supabase
+          .from('subject_comment')
+          .update({ comment_text: payload.comment_text, updated_at: payload.updated_at })
+          .eq('id', student.comment_id)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('subject_comment')
+          .insert([payload])
+          .select('id')
+        if (error) throw error
+        setCommentStudents(prev => prev.map(s =>
+          s.user_id === student.user_id ? { ...s, comment_id: data?.[0]?.id, saved: true } : s
+        ))
+        return
+      }
+      
+      setCommentStudents(prev => prev.map(s =>
+        s.user_id === student.user_id ? { ...s, saved: true } : s
+      ))
+    } catch (err) {
+      console.error('Error saving comment:', err)
+      alert('Gagal menyimpan komentar: ' + err.message)
+    } finally {
+      setSavingCommentId(null)
+    }
+  }
+  
+  const saveAllComments = async () => {
+    const unsaved = commentStudents.filter(s => !s.saved)
+    if (unsaved.length === 0) return
+    
+    for (const student of unsaved) {
+      await saveComment(student)
+    }
+  }
+
   // Auto-save function
   const handleSave = async (fieldName, value) => {
     if (!selectedTopic) return
@@ -2155,9 +2435,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       topic_hours_per_week: '',
       topic_inquiry_question: '',
       topic_global_context: '',
+      topic_gc_exploration: '',
       topic_key_concept: '',
       topic_related_concept: '',
       topic_statement: '',
+      topic_conceptual_understanding: '',
       topic_learner_profile: '',
       topic_service_learning: '',
       topic_atl: '',
@@ -2203,6 +2485,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     selectedServiceLearning, setSelectedServiceLearning,
     selectedResources, setSelectedResources,
     selectedAtlSkills, setSelectedAtlSkills,
+    selectedConceptualUnderstanding, setSelectedConceptualUnderstanding,
     selectedAssessmentRelationship,
     resetAiState,
     openAiInputModal,
@@ -2214,10 +2497,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     toggleKeyConcept,
     toggleRelatedConcept,
     toggleGlobalContext,
+    toggleConceptualUnderstanding,
     toggleStatement,
     toggleLearnerProfile,
     toggleServiceLearning,
     toggleResources,
+    applySelectedConceptualUnderstanding,
     applySelectedStatements,
     applySelectedGlobalContexts,
     applySelectedKeyConcepts,
@@ -2357,6 +2642,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     
     // Step 3: Statement of Inquiry
     if (!selectedTopic.topic_statement?.trim()) missing.push({ step: 4, field: 'Statement of Inquiry' })
+    if (!selectedTopic.topic_conceptual_understanding?.trim()) missing.push({ step: 4, field: 'Conceptual Understanding' })
     
     // Step 4: Learner Profile & Service
     if (!selectedTopic.topic_learner_profile?.trim()) missing.push({ step: 5, field: 'Learner Profile' })
@@ -3192,7 +3478,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     { id: 'planning', label: 'Planning', icon: '📋' },
     { id: 'assignment', label: 'Assignment', icon: '📝' },
     { id: 'assessment', label: 'Assessment', icon: '✓' },
-    { id: 'portfolio', label: 'Portfolio', icon: '📁' },
+    { id: 'comment', label: 'Comment', icon: '💬' },
     { id: 'report', label: 'Report', icon: '📊' }
   ]
 
@@ -3508,6 +3794,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 <p className="text-sm text-gray-700 line-clamp-2">
                                   {topic.topic_global_context}
                                 </p>
+                                {topic.topic_gc_exploration && (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {topic.topic_gc_exploration.split(', ').map((exp, i) => (
+                                      <span key={i} className="inline-block px-1.5 py-0.5 text-[10px] bg-cyan-50 text-cyan-700 rounded border border-cyan-200">
+                                        {exp}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -4053,10 +4348,147 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           </div>
         )}
 
-        {activeTab === 'portfolio' && (
+        {activeTab === 'comment' && (
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Portfolio</h2>
-            <p className="text-gray-600">Portfolio management content will be displayed here.</p>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">💬 Student Comments</h2>
+            <p className="text-sm text-gray-500 mb-6">Write semester comments for each student per subject.</p>
+            
+            {/* Filter row: Subject → Kelas → Semester */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Subject */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1. Subject</label>
+                <select
+                  value={commentSubject}
+                  onChange={(e) => handleCommentSubjectChange(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">-- Select Subject --</option>
+                  {subjects.map(s => (
+                    <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Kelas */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">2. Class</label>
+                <select
+                  value={commentKelas}
+                  onChange={(e) => handleCommentKelasChange(e.target.value)}
+                  disabled={!commentSubject || loadingCommentKelas}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                >
+                  <option value="">{loadingCommentKelas ? 'Loading...' : '-- Select Class --'}</option>
+                  {commentKelasOptions.map(k => (
+                    <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Semester */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">3. Semester</label>
+                <div className="flex gap-2">
+                  {[1, 2].map(sem => (
+                    <button
+                      key={sem}
+                      type="button"
+                      disabled={!commentKelas}
+                      onClick={() => handleCommentSemesterChange(String(sem))}
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        commentSemester === String(sem)
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Semester {sem}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Save All bar */}
+            {commentStudents.length > 0 && (
+              <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
+                <span className="text-sm text-gray-600">
+                  {commentStudents.length} student{commentStudents.length !== 1 ? 's' : ''}
+                  {commentStudents.filter(s => !s.saved).length > 0 && (
+                    <span className="text-amber-600 ml-2 font-medium">
+                      — {commentStudents.filter(s => !s.saved).length} unsaved
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={saveAllComments}
+                  disabled={commentStudents.every(s => s.saved) || savingCommentId !== null}
+                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  💾 Save All
+                </button>
+              </div>
+            )}
+            
+            {/* Loading */}
+            {loadingComments && (
+              <div className="text-center py-12">
+                <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-gray-500 mt-2">Loading students...</p>
+              </div>
+            )}
+            
+            {/* Empty / prompt states */}
+            {!loadingComments && !commentSemester && (
+              <div className="text-center py-12 text-gray-400">
+                <p className="text-4xl mb-2">📝</p>
+                <p>Select subject, class, and semester to start writing comments</p>
+              </div>
+            )}
+            
+            {commentSemester && !loadingComments && commentStudents.length === 0 && (
+              <div className="text-center py-12 text-gray-400">
+                <p>No students found in this class</p>
+              </div>
+            )}
+            
+            {/* Student list */}
+            {!loadingComments && commentStudents.length > 0 && (
+              <div className="space-y-4">
+                {commentStudents.map((student, idx) => (
+                  <div key={student.user_id} className={`border rounded-lg p-4 ${!student.saved ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200 bg-white'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 font-mono w-6">{idx + 1}.</span>
+                        <h3 className="font-medium text-gray-800">{student.nama}</h3>
+                        {!student.saved && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">unsaved</span>
+                        )}
+                        {student.saved && student.comment_id && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">saved ✓</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => saveComment(student)}
+                        disabled={student.saved || savingCommentId === student.user_id}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {savingCommentId === student.user_id ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                    <textarea
+                      value={student.comment_text}
+                      onChange={(e) => updateCommentText(student.user_id, e.target.value)}
+                      rows={3}
+                      placeholder="Write your comment for this student..."
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -4064,7 +4496,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           <div className="p-6">
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-gray-800">Student Progress Report</h2>
-              <p className="text-gray-600 text-sm">Generate and download student progress reports as PDF</p>
+              <p className="text-gray-600 text-sm">Generate and preview student progress reports</p>
             </div>
             
             {/* Filters */}
@@ -4151,7 +4583,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   ) : (
                     <>
                       <FontAwesomeIcon icon={faPrint} />
-                      Download PDF Report
+                      Preview Report
                     </>
                   )}
                 </button>
@@ -4164,7 +4596,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5" />
                 <div>
                   <p className="text-sm text-blue-800">
-                    Pilih tahun ajaran, semester, kelas, dan siswa kemudian klik tombol "Download PDF Report" untuk mengunduh laporan progress siswa dalam format PDF.
+                    Pilih tahun ajaran, semester, kelas, dan siswa kemudian klik tombol "Preview Report" untuk melihat dan mencetak laporan progress siswa.
                   </p>
                 </div>
               </div>
@@ -4372,6 +4804,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         kelasLoading={kelasLoading}
                         keyConcepts={keyConcepts}
                         globalContexts={globalContexts}
+                        globalContextExplorations={globalContextExplorations}
                         learnerProfiles={learnerProfiles}
                         isAddMode={isAddMode}
                         topicAssessment={topicAssessment}
@@ -4387,6 +4820,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         setSelectedRelatedConcepts={setSelectedRelatedConcepts}
                         setSelectedGlobalContexts={setSelectedGlobalContexts}
                         setSelectedStatements={setSelectedStatements}
+                        setSelectedConceptualUnderstanding={setSelectedConceptualUnderstanding}
                         setSelectedLearnerProfiles={setSelectedLearnerProfiles}
                         setSelectedServiceLearning={setSelectedServiceLearning}
                         setSelectedResources={setSelectedResources}
@@ -4565,7 +4999,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     isOpen={true}
                     inline={true}
                     onClose={() => setAiResultModalOpen(false)}
-                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'atl' ? 'AI Suggestions: ATL Skills' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
+                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'conceptualUnderstanding' ? 'AI Suggestions: Conceptual Understanding' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'atl' ? 'AI Suggestions: ATL Skills' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
                     size="md"
                   >
                     <div className="flex flex-col h-full">
@@ -4610,7 +5044,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                     (selectedKeyConcepts.includes(item.index) && aiHelpType === 'keyConcept') ||
                                     (selectedRelatedConcepts.includes(item.index) && aiHelpType === 'relatedConcept') ||
                                     (selectedGlobalContexts.includes(item.index) && aiHelpType === 'globalContext') ||
-                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning') || (selectedAtlSkills.includes(item.id) && aiHelpType === 'atl') || (selectedResources.includes(item.index) && aiHelpType === 'resources')
+                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedConceptualUnderstanding.includes(item.index) && aiHelpType === 'conceptualUnderstanding') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning') || (selectedAtlSkills.includes(item.id) && aiHelpType === 'atl') || (selectedResources.includes(item.index) && aiHelpType === 'resources')
                                       ? 'border-purple-500 bg-purple-50'
                                       : 'border-gray-200 bg-white hover:border-purple-300'
                                   }`}
@@ -4623,7 +5057,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 >
                                   <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-2">
-                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'atl' || aiHelpType === 'resources') && (
+                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'conceptualUnderstanding' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'atl' || aiHelpType === 'resources') && (
                                         <input
                                           type="checkbox"
                                           id={`ai-item-${aiHelpType === 'atl' ? item.id : item.index}`}
@@ -4635,6 +5069,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                             ? selectedRelatedConcepts.includes(item.index)
                                             : aiHelpType === 'globalContext'
                                             ? selectedGlobalContexts.includes(item.index)
+                                            : aiHelpType === 'conceptualUnderstanding'
+                                            ? selectedConceptualUnderstanding.includes(item.index)
                                             : aiHelpType === 'statement'
                                             ? selectedStatements.includes(item.index)
                                             : aiHelpType === 'learnerProfile'
@@ -4655,6 +5091,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                               toggleRelatedConcept(item.index)
                                             } else if (aiHelpType === 'globalContext') {
                                               toggleGlobalContext(item.index)
+                                            } else if (aiHelpType === 'conceptualUnderstanding') {
+                                              toggleConceptualUnderstanding(item.index)
                                             } else if (aiHelpType === 'statement') {
                                               toggleStatement(item.index)
                                             } else if (aiHelpType === 'learnerProfile') {
@@ -4701,7 +5139,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                         </span>
                                       )}
                                     </div>
-                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && aiHelpType !== 'atl' && aiHelpType !== 'resources' && (
+                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'conceptualUnderstanding' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && aiHelpType !== 'atl' && aiHelpType !== 'resources' && (
                                       <button
                                         onClick={() => aiHelpType === 'assessmentName' ? insertAiSuggestion(item) : insertAiSuggestion(titleToUse)}
                                         className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2 flex-shrink-0"
@@ -4751,6 +5189,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                           : aiHelpType === 'keyConcept' ? 'Key Concept:'
                                           : aiHelpType === 'relatedConcept' ? 'Related Concept:'
                                           : aiHelpType === 'globalContext' ? 'Global Context:'
+                                          : aiHelpType === 'conceptualUnderstanding' ? 'Conceptual Understanding:'
                                           : aiHelpType === 'statement' ? 'Statement of Inquiry:' 
                                           : aiHelpType === 'learnerProfile' ? 'Learner Profile Attribute:' 
                                           : aiHelpType === 'serviceLearning' ? 'Service Learning Opportunity:'
@@ -4842,6 +5281,25 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                       <p className="text-blue-800 text-sm leading-relaxed">{cleanReason}</p>
                                     </div>
                                   )}
+
+                                  {/* Suggested Explorations for Global Context */}
+                                  {aiHelpType === 'globalContext' && Array.isArray(item.explorations) && item.explorations.length > 0 && (
+                                    <div className="mt-3 bg-cyan-50 border border-cyan-200 rounded-md p-3">
+                                      <h4 className="text-sm font-semibold text-cyan-800 mb-2 flex items-center gap-1">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                        Suggested Explorations:
+                                      </h4>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {item.explorations.map((exp, expIdx) => (
+                                          <span key={expIdx} className="px-2 py-1 text-xs font-medium bg-cyan-600 text-white rounded-md">
+                                            {exp}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )
                             })}
@@ -4855,7 +5313,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         )}
                       </div>
 
-                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'atl' || aiHelpType === 'resources') && aiItems.length > 0 && !aiLoading && (
+                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'conceptualUnderstanding' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'atl' || aiHelpType === 'resources') && aiItems.length > 0 && !aiLoading && (
                         <div className="border-t border-gray-200 bg-gray-50 p-4 flex-shrink-0">
                           {aiError && (
                             <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
@@ -4943,6 +5401,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   Select at least 1 global context
                                 </p>
                               </>
+                            ) : aiHelpType === 'conceptualUnderstanding' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedConceptualUnderstanding.length > 0 ? 'bg-teal-50 border-teal-300 text-teal-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedConceptualUnderstanding.length} understanding
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select 1 conceptual understanding
+                                </p>
+                              </>
                             ) : aiHelpType === 'statement' ? (
                               <>
                                 <div className="flex items-center gap-2">
@@ -5023,13 +5495,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               Cancel
                             </button>
                             <button
-                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : aiHelpType === 'serviceLearning' ? applySelectedServiceLearning : aiHelpType === 'atl' ? applySelectedAtlSkills : applySelectedResources}
+                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'conceptualUnderstanding' ? applySelectedConceptualUnderstanding : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : aiHelpType === 'serviceLearning' ? applySelectedServiceLearning : aiHelpType === 'atl' ? applySelectedAtlSkills : applySelectedResources}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors inline-flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : aiHelpType === 'serviceLearning' ? 'Apply Selected Option' : aiHelpType === 'atl' ? 'Apply Selected Skills' : aiHelpType === 'resources' ? 'Apply Selected Resources' : 'Apply Selected Option'}
+                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'conceptualUnderstanding' ? 'Apply Selected Understanding' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : aiHelpType === 'serviceLearning' ? 'Apply Selected Option' : aiHelpType === 'atl' ? 'Apply Selected Skills' : aiHelpType === 'resources' ? 'Apply Selected Resources' : 'Apply Selected Option'}
                             </button>
                           </div>
                         </div>

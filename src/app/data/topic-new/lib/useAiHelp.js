@@ -57,6 +57,7 @@ export default function useAiHelp({
   const [selectedServiceLearning, setSelectedServiceLearning] = useState([])
   const [selectedResources, setSelectedResources] = useState([])
   const [selectedAtlSkills, setSelectedAtlSkills] = useState([])
+  const [selectedConceptualUnderstanding, setSelectedConceptualUnderstanding] = useState([])
   const [selectedAssessmentRelationship, setSelectedAssessmentRelationship] = useState([])
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -112,6 +113,7 @@ export default function useAiHelp({
   const toggleGlobalContext = makeToggle(setSelectedGlobalContexts)
   const toggleLearnerProfile = makeToggle(setSelectedLearnerProfiles)
   const toggleResources = makeToggle(setSelectedResources)
+  const toggleConceptualUnderstanding = makeSingleToggle(setSelectedConceptualUnderstanding)
   const toggleStatement = makeSingleToggle(setSelectedStatements)
   const toggleServiceLearning = makeSingleToggle(setSelectedServiceLearning)
 
@@ -137,7 +139,7 @@ export default function useAiHelp({
   // ── Main AI request ────────────────────────────────────────────────────────
   const requestAiHelp = async (helpType_ = aiHelpType) => {
     const helpType = helpType_
-    const noInputRequired = ['keyConcept', 'relatedConcept', 'inquiryQuestion', 'globalContext', 'statement', 'learnerProfile', 'serviceLearning', 'resources', 'assessmentName', 'assessmentRelationship']
+    const noInputRequired = ['keyConcept', 'relatedConcept', 'inquiryQuestion', 'globalContext', 'conceptualUnderstanding', 'statement', 'learnerProfile', 'serviceLearning', 'resources', 'assessmentName', 'assessmentRelationship']
 
     if (!noInputRequired.includes(helpType) && !aiUserInput.trim()) {
       setAiError('Mohon masukkan topik atau konteks yang ingin dibahas')
@@ -214,93 +216,245 @@ JSON FORMAT:
 }
 
 Please respond in English and ensure valid JSON format.`
-      } else if (helpType === 'statement') {
+      } else if (helpType === 'conceptualUnderstanding') {
         const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
         const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
         const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
         const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
 
-        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+        promptWithLang = `You are an IB MYP curriculum expert helping teachers craft Conceptual Understandings for unit planning.
+
+LEARNING CONTEXT:
 - Unit Title: ${unitTitle}
-- Key Concepts: ${keyConcept}
+- Key Concept: ${keyConcept}
 - Related Concepts: ${relatedConcept}
 - Global Context: ${globalContext}
 - Subject: ${subjName}
 
+RULES FOR CREATING CONCEPTUAL UNDERSTANDING:
+A Conceptual Understanding is created by merging the Key Concept (1 concept) with the Related Concepts (1-2 concepts) using vivid verbs.
+
+Possible vivid verbs to use: alter, achieve, cause, create, construct, effect, establish, impact, influence, generate, lead to, make, produce, shape
+
+Template patterns (Concept = Key Concept or Related Concept, verb = vivid verb):
+• Concept and concept verb concept.
+• Concept verb concept and concept.
+• Concept concept verb concept.
+
+The key concept does NOT have to go first. No content — keep it simple and conceptual.
+
+EXAMPLE:
+If Key Concept = "Change" and Related Concepts = "Patterns, Consequences"
+→ "Patterns and change produce consequences."
+→ "Change influences patterns and consequences."
+→ "Consequences of change shape patterns."
+
 INSTRUCTIONS:
-Based on the information above, generate 3 Statement of Inquiry suggestions that integrate the Key Concepts, Related Concepts, and Global Context.
+Using the key concept "${keyConcept}" and related concepts "${relatedConcept}", generate 4 Conceptual Understanding options.
+Each option must follow the template patterns above using vivid verbs.
+Keep each statement simple and conceptual — no specific content references.
 
-A Statement of Inquiry should:
-- Be a clear, concise statement (1-2 sentences)
-- Integrate Key Concept + Related Concept + Global Context
-- Guide the entire unit's learning
-- Be transferable and conceptual
-
-For each suggested Statement of Inquiry, provide:
-- The complete statement (option)
-- How it integrates the concepts and context (text)
-- Why this statement is effective for the unit (reason)
+For each suggestion, provide:
+- The complete conceptual understanding statement (option)
+- Which template pattern was used (text)
+- How the vivid verb connects the concepts meaningfully (reason)
 
 JSON FORMAT:
 {
   "jawaban": [
     {
-      "option": "Complete Statement of Inquiry text",
-      "text": "Explanation of how it integrates Key Concept '${keyConcept}' + Related Concept '${relatedConcept}' + Global Context '${globalContext}'",
-      "reason": "Why this statement effectively guides learning for the unit '${unitTitle}'"
-    },
-    {
-      "option": "Complete Statement of Inquiry text",
-      "text": "Explanation of how it integrates the concepts and context",
-      "reason": "Why this statement is effective"
-    },
-    {
-      "option": "Complete Statement of Inquiry text",
-      "text": "Explanation of how it integrates the concepts and context",
-      "reason": "Why this statement is effective"
+      "option": "Complete conceptual understanding statement",
+      "text": "Template used: [pattern]. Vivid verb: [verb]",
+      "reason": "Explanation of how this connects ${keyConcept} with ${relatedConcept}"
     }
   ]
 }
 
 Please respond in English and ensure valid JSON format.`
-      } else if (helpType === 'globalContext') {
+
+        console.log('🤖 AI Prompt for Conceptual Understanding')
+        console.log(promptWithLang)
+      } else if (helpType === 'statement') {
         const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
         const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
-        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        const conceptualUnderstanding = selectedTopic?.topic_conceptual_understanding || 'Not yet defined'
+
+        promptWithLang = `${context ? context + "\n\n" : ''}You are an IB MYP curriculum expert helping teachers craft Statements of Inquiry for unit planning.
+
+LEARNING CONTEXT:
 - Unit Title: ${unitTitle}
-- Key Concepts: ${keyConcept}
+- Key Concept: ${keyConcept}
+- Related Concepts: ${relatedConcept}
+- Global Context: ${globalContext}
+- Conceptual Understanding: ${conceptualUnderstanding}
 - Subject: ${subjName}
 
+RULES FOR CREATING A STATEMENT OF INQUIRY:
+A Statement of Inquiry connects the Conceptual Understanding with the Global Context.
+
+CRITICAL REQUIREMENTS:
+1. The statement MUST be UNIT-FREE — it should NOT reference the specific unit title, subject content, or any topic-specific details.
+2. The statement MUST be TRANSFERABLE — it should be applicable across different subjects and contexts, not limited to one discipline.
+3. It should be a broad, conceptual statement that integrates the Key Concept, Related Concepts, and Global Context.
+4. Keep it to 1-2 sentences maximum.
+5. Use clear, simple language — no jargon or subject-specific terminology.
+
+GOOD EXAMPLES (unit-free & transferable):
+- "Relationships between systems and communities shape identity within cultural contexts."
+- "Change and perspective influence how fairness develops across societies."
+- "Communication and creativity establish connections in personal and cultural expression."
+
+BAD EXAMPLES (too specific, not transferable):
+- "Students will learn how photosynthesis works in plants." (too specific to science)
+- "The French Revolution changed European politics." (too specific to history)
+
 INSTRUCTIONS:
-Based on the unit title "${unitTitle}" and key concepts "${keyConcept}" for the subject "${subjName}", suggest 2-3 most relevant IB MYP Global Contexts from the following 6 contexts:
+Using the key concept "${keyConcept}", related concepts "${relatedConcept}", and global context "${globalContext}", generate 4 Statement of Inquiry options.
+Each must be unit-free and transferable across subjects.
 
-1. Identities and relationships
-2. Orientation in space and time
-3. Personal and cultural expression
-4. Scientific and technical innovation
-5. Globalization and sustainability
-6. Fairness and development
-
-For each suggested Global Context, provide:
-- The context name (option)
-- A brief description connecting it to the unit (text)
-- Why this context is relevant to the unit (reason)
+For each suggestion, provide:
+- The complete Statement of Inquiry (option)
+- How it integrates the concepts with the global context (text)
+- Why this statement is unit-free, transferable, and effective (reason)
 
 JSON FORMAT:
 {
   "jawaban": [
     {
-      "option": "Global Context name",
-      "text": "Brief description connecting to the unit",
-      "reason": "Why this context is relevant to '${unitTitle}' with key concepts '${keyConcept}'"
-    },
-    {
-      "option": "Global Context name",
-      "text": "Brief description connecting to the unit",
-      "reason": "Why this context is relevant to '${unitTitle}' with key concepts '${keyConcept}'"
+      "option": "Complete Statement of Inquiry",
+      "text": "How Key Concept, Related Concepts, and Global Context are integrated",
+      "reason": "Why this is unit-free, transferable, and guides learning effectively"
     }
   ]
 }
+
+Please respond in English and ensure valid JSON format.`
+
+        console.log('🤖 AI Prompt for Statement of Inquiry')
+        console.log(promptWithLang)
+      } else if (helpType === 'globalContext') {
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        console.log('🌐 Building Global Context prompt with:', { unitTitle, keyConcept, relatedConcept, subjName })
+        promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
+- Unit Title: ${unitTitle}
+- Key Concept: ${keyConcept}
+- Related Concepts: ${relatedConcept}
+- Subject: ${subjName}
+
+INSTRUCTIONS:
+Based on the unit title "${unitTitle}", key concept "${keyConcept}", and related concepts "${relatedConcept}" for the subject "${subjName}", suggest the 1 most relevant IB MYP Global Context.
+
+Here are the 6 Global Contexts. Each has a numbered list of Possible Explorations:
+
+=== 1. Identities and relationships ===
+Possible Explorations:
+  a) Competition and cooperation
+  b) Teams, affiliation and leadership
+  c) Identity formation
+  d) Self-esteem
+  e) Status
+  f) Roles and role models
+  g) Personal efficacy and agency
+  h) Attitudes
+  i) Motivations
+  j) Independence
+  k) Happiness and the good life
+  l) Physical, psychological and social development
+  m) Transitions
+  n) Health and well-being
+  o) Lifestyle choices
+  p) Human nature and human dignity
+  q) Moral reasoning and ethical judgement
+  r) Consciousness and mind
+
+=== 2. Orientation in space and time ===
+Possible Explorations:
+  a) Civilizations and social histories
+  b) Heritage
+  c) Pilgrimage
+  d) Displacement and exchange
+  e) Epochs, eras, turning points and "big history"
+  f) Scale, duration, frequency and variability
+  g) Peoples, boundaries, exchange and interaction
+  h) Natural and human landscapes and resources
+  i) Evolution, constraints and adaptation
+  j) Indigenous understanding
+
+=== 3. Personal and cultural expression ===
+Possible Explorations:
+  a) Artistry, craft, creation, beauty
+  b) Products, systems and institutions
+  c) Social constructions of reality
+  d) Philosophies and ways of life
+  e) Belief systems, ritual and play
+  f) Critical literacy
+  g) Languages and linguistic systems
+  h) Histories of ideas, fields and disciplines
+  i) Analysis and argument
+  j) Metacognition and abstract thinking
+  k) Entrepreneurship, practice and competency
+
+=== 4. Scientific and technical innovation ===
+Possible Explorations:
+  a) Systems, models, methods
+  b) Products, processes and solutions
+  c) Adaptation, ingenuity and progress
+  d) Opportunity, risk, consequences and responsibility
+  e) Modernization, industrialization and engineering
+  f) Digital life, virtual environments and the Information Age
+  g) The biological revolution
+  h) Mathematical puzzles, principles and discoveries
+
+=== 5. Globalization and sustainability ===
+Possible Explorations:
+  a) Markets, commodities and commercialization
+  b) Human impact on the environment
+  c) Commonality, diversity and interconnection
+  d) Consumption, conservation, scarcity, natural resources and public goods
+  e) Population and demography
+  f) Urban planning
+  g) Strategy and infrastructure
+  h) Data-driven decision-making
+
+=== 6. Fairness and development ===
+Possible Explorations:
+  a) Democracy, politics, government and civil society
+  b) Inequality, difference and inclusion
+  c) Human capability and development
+  d) Social entrepreneurs
+  e) Rights, law, civic responsibility and the public sphere
+  f) Justice, peace and conflict
+  g) Ecology and disparate impact
+  h) Power and privilege
+  i) Authority, security and freedom
+  j) Imagining a hopeful future
+
+For the suggested Global Context, provide:
+- The exact context name (option) — must match one of the 6 names above exactly
+- A brief description connecting it to the unit (text)
+- Why this context is relevant to the unit (reason)
+- EXACTLY 1 Possible Exploration from that context's lettered list above. Copy the EXACT text of ONE lettered item (e.g. "Competition and cooperation"). Put it in the explorations array as a single string.
+
+JSON FORMAT:
+{
+  "jawaban": [
+    {
+      "option": "Global Context name (exact match)",
+      "text": "Brief description connecting to the unit",
+      "reason": "Why this context is relevant",
+      "explorations": ["Copy exactly one lettered exploration here"]
+    }
+  ]
+}
+
+RULES:
+- The explorations array MUST have exactly 1 string, never 2 or more.
+- The string must match one of the lettered items (a, b, c...) from the chosen Global Context above.
+- Do NOT combine or merge multiple explorations into one string.
 
 Please respond in English and ensure valid JSON format.`
       } else if (helpType === 'keyConcept') {
@@ -707,18 +861,35 @@ JSON FORMAT:
 Please respond in ${selected} language and ensure valid JSON format.`
       }
 
-      // DEBUG
-      console.log('🤖 AI Prompt yang dikirim:')
-      console.log('📚 Subject:', subjName, '🎓 Kelas:', kelasName, '🌐 Bahasa:', selected)
+      // For conceptualUnderstanding, don't send ai_rule context (no specific column exists)
+      // The context from ai_rule_unit may contain non-English text that overrides the prompt language
+      const finalContext = helpType === 'conceptualUnderstanding' ? '' : context
 
-      const body = { prompt: promptWithLang, context }
+      // DEBUG - Full prompt logging
+      console.log('═══════════════════════════════════════════')
+      console.log('🤖 AI HELP REQUEST')
+      console.log('═══════════════════════════════════════════')
+      console.log('📌 Type:', helpType)
+      console.log('📚 Subject:', subjName, '🎓 Kelas:', kelasName, '🌐 Bahasa:', selected)
+      console.log('📋 Context sent:', finalContext ? 'Yes (from ai_rule)' : 'No (empty)')
+      if (finalContext) {
+        console.log('📋 Context content:', finalContext.substring(0, 200) + (finalContext.length > 200 ? '...' : ''))
+      }
+      console.log('📝 FULL PROMPT:')
+      console.log(promptWithLang)
+      console.log('═══════════════════════════════════════════')
+
+      const body = { prompt: promptWithLang, context: finalContext }
       const resp = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       })
       const json = await resp.json()
-      if (!resp.ok) throw new Error(json?.error || 'Gagal memanggil AI')
+      if (!resp.ok) {
+        console.error('❌ AI API Error:', json?.error, json?.detail)
+        throw new Error(json?.error || 'Gagal memanggil AI')
+      }
 
       const text = json?.text || ''
       console.log('🤖 AI Response:', text)
@@ -768,11 +939,18 @@ Please respond in ${selected} language and ensure valid JSON format.`
             link: (a?.link ?? '').toString().trim(),
             text: (a?.text ?? '').toString().trim(),
             reason: (a?.reason ?? '').toString().trim(),
+            explorations: Array.isArray(a?.explorations) ? a.explorations : [],
             conceptual_understanding: (a?.conceptual_understanding ?? '').toString().trim(),
             task_description: (a?.task_description ?? '').toString().trim(),
             instructions: (a?.instructions ?? '').toString().trim().replace(/\\n/g, '\n')
           }))
           console.log('✅ Parsed JSON items:', items)
+          // Extra debug for Global Context explorations
+          if (helpType === 'globalContext') {
+            items.forEach((item, i) => {
+              console.log(`🌐 GC Item ${i}:`, item.option, '| Explorations:', JSON.stringify(item.explorations), '| Count:', item.explorations.length)
+            })
+          }
         }
       } catch (e) {
         console.warn('⚠️ Failed to parse as JSON, falling back to numbered list', e)
@@ -1124,6 +1302,33 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
   }
 
   // ── Apply functions ────────────────────────────────────────────────────────
+  const applySelectedConceptualUnderstanding = () => {
+    console.log('🔵 applySelectedConceptualUnderstanding called')
+    console.log('🔵 selectedConceptualUnderstanding:', selectedConceptualUnderstanding)
+    console.log('🔵 aiItems:', aiItems)
+    setAiError('')
+    if (selectedConceptualUnderstanding.length === 0) {
+      setAiError('⚠️ Please select one conceptual understanding.')
+      return
+    }
+    const selectedItems = aiItems.filter(item => selectedConceptualUnderstanding.includes(item.index))
+    console.log('🔵 selectedItems:', selectedItems)
+    if (selectedItems.length === 0) {
+      setAiError('⚠️ No matching item found. Please try again.')
+      return
+    }
+    const cuText = selectedItems[0].option.replace(/\*\*/g, '')
+    console.log('🔵 Applying CU text:', cuText)
+    setSelectedTopic(prev => {
+      const updated = { ...prev, topic_conceptual_understanding: cuText }
+      console.log('🔵 Updated selectedTopic.topic_conceptual_understanding:', updated.topic_conceptual_understanding)
+      return updated
+    })
+    setAiResultModalOpen(false)
+    setSelectedConceptualUnderstanding([])
+    setAiError('')
+  }
+
   const applySelectedStatements = () => {
     setAiError('')
     if (selectedStatements.length === 0) {
@@ -1146,7 +1351,15 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     }
     const selectedItems = aiItems.filter(item => selectedGlobalContexts.includes(item.index))
     const contextNames = selectedItems.map(item => item.option).join(', ')
-    setSelectedTopic(prev => ({ ...prev, topic_global_context: contextNames }))
+    // Collect explorations from AI suggestions — only take the first one
+    const allExplorations = selectedItems
+      .flatMap(item => Array.isArray(item.explorations) ? item.explorations : [])
+    const exploration = allExplorations.length > 0 ? allExplorations[0] : ''
+    setSelectedTopic(prev => ({
+      ...prev,
+      topic_global_context: contextNames,
+      topic_gc_exploration: exploration
+    }))
     setAiResultModalOpen(false)
     setSelectedGlobalContexts([])
     setAiError('')
@@ -1316,6 +1529,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     selectedServiceLearning, setSelectedServiceLearning,
     selectedResources, setSelectedResources,
     selectedAtlSkills, setSelectedAtlSkills,
+    selectedConceptualUnderstanding, setSelectedConceptualUnderstanding,
     selectedAssessmentRelationship,
     // functions
     resetAiState,
@@ -1328,10 +1542,12 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     toggleKeyConcept,
     toggleRelatedConcept,
     toggleGlobalContext,
+    toggleConceptualUnderstanding,
     toggleStatement,
     toggleLearnerProfile,
     toggleServiceLearning,
     toggleResources,
+    applySelectedConceptualUnderstanding,
     applySelectedStatements,
     applySelectedGlobalContexts,
     applySelectedKeyConcepts,

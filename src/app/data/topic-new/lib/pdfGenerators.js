@@ -283,7 +283,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
           { content: 'Related concept(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
           { content: topicData.topic_related_concept || 'N/A' },
           { content: 'Global context', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: topicData.topic_global_context || 'N/A' },
+          { content: (topicData.topic_global_context || 'N/A') + (topicData.topic_gc_exploration ? '\nExplorations: ' + topicData.topic_gc_exploration : '') },
         ],
         [
           { content: 'Statement of inquiry', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
@@ -727,7 +727,7 @@ const renderAssessmentHeaderToPdf = (pdf, { assessmentName, subjectName, kelasNa
     ['Key Concept', topicData.topic_key_concept || 'N/A'],
     ['Related Concepts', topicData.topic_related_concept || 'N/A'],
     ['Conceptual Understanding', assessmentData.assessment_conceptual_understanding || assessmentData.conceptual_understanding || 'N/A'],
-    ['Global Context Exploration', topicData.topic_global_context || 'N/A'],
+    ['Global Context Exploration', (topicData.topic_global_context || 'N/A') + (topicData.topic_gc_exploration ? ' — Explorations: ' + topicData.topic_gc_exploration : '')],
     ['Statement of Inquiry', topicData.topic_statement || 'N/A'],
     ['Task Specific Description', assessmentData.assessment_task_specific_description || assessmentData.task_specific_description || 'N/A'],
   ];
@@ -908,6 +908,7 @@ export const generateAssessmentPDFFromWizard = async ({ selectedTopic, wizardAss
           relatedConcepts: topicData.topic_related_concept || 'N/A',
           conceptualUnderstanding: wizardAssessment.assessment_conceptual_understanding || 'N/A',
           globalContext: topicData.topic_global_context || 'N/A',
+          gcExploration: topicData.topic_gc_exploration || '',
           statementOfInquiry: topicData.topic_statement || 'N/A',
           taskSpecificDescription: wizardAssessment.assessment_task_specific_description || 'N/A',
           instructions: wizardAssessment.assessment_instructions || '' },
@@ -1021,6 +1022,7 @@ export const exportAssessmentWordFromWizard = async ({ selectedTopic, wizardAsse
         relatedConcepts: topicData.topic_related_concept || 'N/A',
         conceptualUnderstanding: wizardAssessment.assessment_conceptual_understanding || 'N/A',
         globalContext: topicData.topic_global_context || 'N/A',
+        gcExploration: topicData.topic_gc_exploration || '',
         statementOfInquiry: topicData.topic_statement || 'N/A',
         taskSpecificDescription: wizardAssessment.assessment_task_specific_description || 'N/A',
         instructions: wizardAssessment.assessment_instructions || '' },
@@ -1113,6 +1115,7 @@ export const generateAssessmentPDFFromCard = async (topic, { subjectMap, kelasNa
           relatedConcepts: topic.topic_related_concept || 'N/A',
           conceptualUnderstanding: assessmentData.assessment_conceptual_understanding || 'N/A',
           globalContext: topic.topic_global_context || 'N/A',
+          gcExploration: topic.topic_gc_exploration || '',
           statementOfInquiry: topic.topic_statement || 'N/A',
           taskSpecificDescription: assessmentData.assessment_task_specific_description || 'N/A',
           instructions: assessmentData.assessment_instructions || '' },
@@ -1250,6 +1253,7 @@ export const exportAssessmentWordFromCard = async (topic, { subjectMap, kelasNam
         relatedConcepts: topic.topic_related_concept || '',
         conceptualUnderstanding: assessmentData.assessment_conceptual_understanding || topic.topic_conceptual_understanding || '',
         globalContext: topic.topic_global_context || '',
+        gcExploration: topic.topic_gc_exploration || '',
         statementOfInquiry: topic.topic_statement || '',
         taskSpecificDescription: assessmentData.assessment_task_specific_description || '',
         instructions: assessmentData.assessment_instructions || '' },
@@ -1266,13 +1270,13 @@ export const exportAssessmentWordFromCard = async (topic, { subjectMap, kelasNam
   }
 };
 
-// ─── Student Report PDF ──────────────────────────────────────────────────────
+// ─── Student Report HTML ─────────────────────────────────────────────────────
 
 /**
- * Generate student progress report PDF.
- * @param {Object} deps - { reportFilters, reportStudents, reportKelasOptions, reportYears, setLoadingReport, onSuccess, onError }
+ * Generate student progress report as a printable HTML window.
+ * @param {Object} deps - { reportFilters, reportStudents, reportKelasOptions, reportYears, setLoadingReport, onError }
  */
-export const generateStudentReportPDF = async ({ reportFilters, reportStudents, reportKelasOptions, reportYears, setLoadingReport, onError }) => {
+export const generateStudentReportHTML = async ({ reportFilters, reportStudents, reportKelasOptions, reportYears, setLoadingReport, onError }) => {
   if (!reportFilters.kelas || !reportFilters.student) {
     alert('Silakan pilih kelas dan siswa terlebih dahulu');
     return;
@@ -1288,9 +1292,29 @@ export const generateStudentReportPDF = async ({ reportFilters, reportStudents, 
     const studentName = student?.nama || 'Unknown';
     const kelasName = reportKelasOptions.find(k => k.kelas_id === kelasId)?.kelas_nama || '';
     const yearName = reportYears.find(y => y.year_id === parseInt(reportFilters.year))?.year_name || '';
-    const semesterName = reportFilters.semester === '1' ? 'Semester 1' : reportFilters.semester === '2' ? 'Semester 2' : '';
-    
-    // Get all detail_kelas for this kelas
+    const semester = reportFilters.semester || '1';
+    const semesterLabel = semester === '1' ? 'Semester 1' : 'Semester 2';
+
+    // Fetch kelas info for homeroom teacher
+    const { data: kelasData } = await supabase
+      .from('kelas')
+      .select('kelas_user_id')
+      .eq('kelas_id', kelasId)
+      .single();
+
+    let homeroomTeacherName = '-';
+    if (kelasData?.kelas_user_id) {
+      const { data: htData } = await supabase
+        .from('users')
+        .select('user_nama_depan, user_nama_belakang')
+        .eq('user_id', kelasData.kelas_user_id)
+        .single();
+      if (htData) {
+        homeroomTeacherName = `${htData.user_nama_depan} ${htData.user_nama_belakang}`.trim();
+      }
+    }
+
+    // Fetch detail_kelas with subject info + icon
     const { data: detailKelasData, error: dkError } = await supabase
       .from('detail_kelas')
       .select(`
@@ -1299,18 +1323,55 @@ export const generateStudentReportPDF = async ({ reportFilters, reportStudents, 
         subject:detail_kelas_subject_id (
           subject_id,
           subject_name,
-          subject_user_id
+          subject_user_id,
+          subject_icon
         )
       `)
       .eq('detail_kelas_kelas_id', kelasId);
     
     if (dkError) throw dkError;
     
+    // Get student's user_id for subject_comment lookup
+    const { data: detailSiswaData } = await supabase
+      .from('detail_siswa')
+      .select('detail_siswa_user_id')
+      .eq('detail_siswa_id', studentId)
+      .single();
+    const studentUserId = detailSiswaData?.detail_siswa_user_id;
+
+    // Fetch student DOB
+    let studentDOB = '-';
+    if (studentUserId) {
+      const { data: studentUserData } = await supabase
+        .from('users')
+        .select('user_birth_date')
+        .eq('user_id', studentUserId)
+        .single();
+      if (studentUserData?.user_birth_date) {
+        studentDOB = new Date(studentUserData.user_birth_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+    }
+
+    // Load logo as base64
+    let logoBase64 = '';
+    try {
+      const logoResponse = await fetch('/images/login-logo.png');
+      const logoBlob = await logoResponse.blob();
+      logoBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(logoBlob);
+      });
+    } catch (e) {
+      console.warn('Could not load logo:', e);
+    }
+    
     const reportRows = [];
     
     for (const dk of detailKelasData || []) {
       if (!dk.subject) continue;
       
+      // Fetch teacher name
       let teacherName = '-';
       if (dk.subject.subject_user_id) {
         const { data: teacherData } = await supabase
@@ -1318,30 +1379,30 @@ export const generateStudentReportPDF = async ({ reportFilters, reportStudents, 
           .select('user_nama_depan, user_nama_belakang')
           .eq('user_id', dk.subject.subject_user_id)
           .single();
-        
         if (teacherData) {
           teacherName = `${teacherData.user_nama_depan} ${teacherData.user_nama_belakang}`.trim();
         }
       }
       
+      // Fetch approved assessments for this subject + semester
       const { data: assessmentsData, error: aError } = await supabase
         .from('assessment')
         .select('assessment_id')
         .eq('assessment_detail_kelas_id', dk.detail_kelas_id)
-        .eq('assessment_status', 1);
+        .eq('assessment_status', 1)
+        .eq('assessment_semester', parseInt(semester));
       
       if (aError) continue;
       
       const assessmentIds = (assessmentsData || []).map(a => a.assessment_id);
       
       let grades = { A: null, B: null, C: null, D: null };
-      let comment = '';
       let semesterOverview = null;
       
       if (assessmentIds.length > 0) {
         const { data: gradesData, error: gError } = await supabase
           .from('assessment_grades')
-          .select('criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade, final_grade, comments')
+          .select('criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade, final_grade')
           .eq('detail_siswa_id', studentId)
           .in('assessment_id', assessmentIds);
         
@@ -1351,20 +1412,32 @@ export const generateStudentReportPDF = async ({ reportFilters, reportStudents, 
           const allC = gradesData.map(g => g.criterion_c_grade).filter(g => g !== null);
           const allD = gradesData.map(g => g.criterion_d_grade).filter(g => g !== null);
           const allFinal = gradesData.map(g => g.final_grade).filter(g => g !== null);
-          const allComments = gradesData.map(g => g.comments).filter(c => c);
           
           grades.A = allA.length > 0 ? Math.max(...allA) : null;
           grades.B = allB.length > 0 ? Math.max(...allB) : null;
           grades.C = allC.length > 0 ? Math.max(...allC) : null;
           grades.D = allD.length > 0 ? Math.max(...allD) : null;
           semesterOverview = allFinal.length > 0 ? Math.round(allFinal.reduce((a, b) => a + b, 0) / allFinal.length) : null;
-          comment = allComments.join(' ');
         }
       }
       
+      // Fetch subject_comment from dedicated table
+      let comment = '';
+      if (studentUserId) {
+        const { data: commentData } = await supabase
+          .from('subject_comment')
+          .select('comment_text')
+          .eq('subject_id', dk.subject.subject_id)
+          .eq('kelas_id', kelasId)
+          .eq('student_user_id', studentUserId)
+          .eq('semester', parseInt(semester))
+          .single();
+        comment = commentData?.comment_text || '';
+      }
+      
       reportRows.push({
-        subject_id: dk.subject.subject_id,
         subject_name: dk.subject.subject_name,
+        subject_icon: dk.subject.subject_icon || null,
         teacher_name: teacherName,
         grades,
         semester_overview: semesterOverview,
@@ -1378,179 +1451,264 @@ export const generateStudentReportPDF = async ({ reportFilters, reportStudents, 
       alert('Tidak ada data report untuk siswa ini');
       return;
     }
-    
-    const pdf = new jsPDF('portrait', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 14;
-    let yPos = 15;
-    
-    pdf.setFontSize(16);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`Summary of ${semesterName} Student Progress`, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 10;
-    
-    autoTable(pdf, {
-      startY: yPos,
-      head: [[
-        { content: '', styles: { halign: 'left', cellWidth: 90 } },
-        { content: 'A', styles: { halign: 'center' } },
-        { content: 'B', styles: { halign: 'center' } },
-        { content: 'C', styles: { halign: 'center' } },
-        { content: 'D', styles: { halign: 'center' } },
-        { content: `${semesterName}\nProgress\nOverview`, styles: { halign: 'center', fontSize: 7 } }
-      ]],
-      body: [],
+
+    // Preload subject icons as base64
+    const loadImgBase64 = async (url) => {
+      try {
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        return await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch { return null; }
+    };
+
+    const iconCache = {};
+    for (let i = 0; i < reportRows.length; i++) {
+      if (reportRows[i].subject_icon) {
+        iconCache[i] = await loadImgBase64(reportRows[i].subject_icon);
+      }
+    }
+
+    // ─── Build PDF with jsPDF ─────────────────────────────────────────────
+    const doc = new jsPDF('portrait', 'mm', 'a4');
+    const pw = doc.internal.pageSize.getWidth();   // 210
+    const ph = doc.internal.pageSize.getHeight();   // 297
+    const ml = 18, mr = 18, mt = 16, mb = 24;
+    const cw = pw - ml - mr; // content width
+
+    const preparedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // ── Helper: draw footer on current page ──
+    const drawFooter = () => {
+      const fy = ph - 12;
+      doc.setDrawColor(209, 213, 219);
+      doc.setLineWidth(0.3);
+      doc.line(ml, fy - 3, pw - mr, fy - 3);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(31, 41, 55);
+      doc.text(studentName, pw / 2, fy, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(156, 163, 175);
+      doc.text('Chung Chung Christian School - Middle School Report', pw / 2, fy + 4, { align: 'center' });
+    };
+
+    // ── Helper: draw letter avatar circle ──
+    const drawLetterAvatar = (x, y, letter) => {
+      doc.setFillColor(219, 234, 254);
+      doc.circle(x + 4, y + 4, 4, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(30, 64, 175);
+      doc.text(letter, x + 4, y + 5.5, { align: 'center' });
+    };
+
+    // ══════════════════════════════════════════════
+    // PAGE 1: COVER
+    // ══════════════════════════════════════════════
+    let y = mt;
+
+    // Logo + title side by side (resize by height only, preserve aspect ratio)
+    let logoW = 0;
+    if (logoBase64) {
+      try {
+        const logoH = 26;
+        const imgProps = doc.getImageProperties(logoBase64);
+        logoW = (imgProps.width / imgProps.height) * logoH;
+        doc.addImage(logoBase64, 'PNG', ml, y, logoW, logoH);
+      } catch (e) { logoW = 0; }
+    }
+    const txStart = ml + (logoW > 0 ? logoW + 6 : 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(30, 58, 95);
+    doc.text('Middle School Report', txStart, y + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(55, 65, 81);
+    doc.text('Chung Chung Christian School', txStart, y + 17);
+    doc.setFontSize(9);
+    doc.setTextColor(156, 163, 175);
+    doc.text(`Prepared on ${preparedDate}`, txStart, y + 23);
+
+    // Divider
+    y += 30;
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.4);
+    doc.line(ml, y, pw - mr, y);
+
+    // Student name
+    y += 12;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(17, 24, 39);
+    doc.text(studentName, ml, y);
+
+    // Info row: Grade | Date of Birth | Homeroom Teacher
+    y += 12;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(130, 150, 171);
+    doc.text('Grade', ml, y);
+    doc.text('Date of Birth', ml + 48, y);
+    doc.text('Homeroom Teacher', ml + 110, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(31, 41, 55);
+    doc.text(kelasName, ml, y);
+    doc.text(studentDOB, ml + 48, y);
+    doc.text(homeroomTeacherName, ml + 110, y);
+
+    // Dear Parents letter
+    y += 16;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(55, 65, 81);
+    doc.text('Dear Parents,', ml, y);
+    y += 8;
+
+    const paragraphs = [
+      `This report is designed to share meaningful feedback about your child's learning journey during ${semesterLabel}. It reflects their engagement, growth, and progress across all subject areas, guided by the principles of the IB Middle Years Programme.`,
+      'We encourage you to review the report together with your child and discuss areas of strength and opportunities for growth. Please do not hesitate to contact us should you have any questions or wish to arrange a conference.',
+      "Thank you for your continued partnership in your child's education."
+    ];
+    for (const p of paragraphs) {
+      const lines = doc.splitTextToSize(p, cw);
+      doc.text(lines, ml, y);
+      y += lines.length * 4.5 + 4;
+    }
+
+    // Kind regards + signature
+    y += 4;
+    doc.text('Kind regards,', ml, y);
+    y += 22;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(17, 24, 39);
+    doc.text('Edwin Arlianto', ml, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(107, 114, 128);
+    doc.text('HS Principal', ml, y);
+
+    // No footer on cover page
+
+    // ══════════════════════════════════════════════
+    // PAGE 2+: GRADES TABLE
+    // ══════════════════════════════════════════════
+    doc.addPage();
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(17, 24, 39);
+    doc.text(`Summary of ${semesterLabel} Student Progress`, ml, mt + 6);
+
+    // Build table body — one row per subject
+    const tableBody = [];
+    reportRows.forEach((row, i) => {
+      let cellText = row.subject_name + '\n' + row.teacher_name;
+      if (row.comment) cellText += '\n' + row.comment;
+      tableBody.push([
+        cellText,
+        row.grades.A !== null ? String(row.grades.A) : '-',
+        row.grades.B !== null ? String(row.grades.B) : '-',
+        row.grades.C !== null ? String(row.grades.C) : '-',
+        row.grades.D !== null ? String(row.grades.D) : '-',
+        row.semester_overview !== null ? String(row.semester_overview) : '-'
+      ]);
+    });
+
+    autoTable(doc, {
+      startY: mt + 12,
+      head: [['', 'A', 'B', 'C', 'D', `${semesterLabel}\nProgress\nOverview`]],
+      body: tableBody,
       theme: 'plain',
-      styles: { fontSize: 9, cellPadding: 2, valign: 'middle' },
-      headStyles: { fillColor: [255, 255, 255], textColor: [100, 100, 100], fontStyle: 'normal', fontSize: 9 },
+      styles: {
+        fontSize: 9,
+        cellPadding: { top: 5, right: 2, bottom: 5, left: 2 },
+        lineColor: [209, 213, 219],
+        lineWidth: 0.3,
+        textColor: [31, 41, 55],
+        overflow: 'linebreak'
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [107, 114, 128],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'center',
+        cellPadding: { top: 3, right: 2, bottom: 3, left: 2 }
+      },
       columnStyles: {
-        0: { cellWidth: 90 }, 1: { cellWidth: 18 }, 2: { cellWidth: 18 },
-        3: { cellWidth: 18 }, 4: { cellWidth: 18 }, 5: { cellWidth: 20 }
+        0: { cellWidth: 'auto', cellPadding: { top: 5, right: 3, bottom: 5, left: 14 }, textColor: [255, 255, 255] },
+        1: { cellWidth: 12, halign: 'center', fontStyle: 'bold', valign: 'top' },
+        2: { cellWidth: 12, halign: 'center', fontStyle: 'bold', valign: 'top' },
+        3: { cellWidth: 12, halign: 'center', fontStyle: 'bold', valign: 'top' },
+        4: { cellWidth: 12, halign: 'center', fontStyle: 'bold', valign: 'top' },
+        5: { cellWidth: 20, halign: 'center', fontStyle: 'bold', textColor: [30, 64, 175], valign: 'top' }
+      },
+      tableLineColor: [209, 213, 219],
+      tableLineWidth: 0.3,
+      margin: { left: ml, right: mr, top: mt, bottom: mb },
+      didDrawCell: (data) => {
+        // Custom render subject column (col 0, body only)
+        if (data.column.index === 0 && data.cell.section === 'body') {
+          const row = reportRows[data.row.index];
+          const cx = data.cell.x;
+          const cy = data.cell.y;
+
+          // Draw icon or letter avatar
+          const iconX = cx + 2;
+          const iconY = cy + 4;
+          const iconB64 = iconCache[data.row.index];
+          if (iconB64) {
+            try { doc.addImage(iconB64, 'PNG', iconX, iconY, 8, 8); } catch (e) {}
+          } else {
+            drawLetterAvatar(iconX, iconY, row.subject_name.charAt(0).toUpperCase());
+          }
+
+          // Subject name (bold)
+          const textX = cx + 14;
+          let textY = cy + 7;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9.5);
+          doc.setTextColor(30, 58, 95);
+          doc.text(row.subject_name, textX, textY);
+
+          // Teacher name (normal, gray)
+          textY += 4.5;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(107, 114, 128);
+          doc.text(row.teacher_name, textX, textY);
+
+          // Comment (normal, dark)
+          if (row.comment) {
+            textY += 5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(55, 65, 81);
+            const maxW = data.cell.width - 16;
+            const commentLines = doc.splitTextToSize(row.comment, maxW);
+            doc.text(commentLines, textX, textY);
+          }
+        }
+      },
+      didDrawPage: () => {
+        drawFooter();
       }
     });
-    
-    yPos = pdf.lastAutoTable.finalY;
-    
-    for (const row of reportRows) {
-      if (yPos > 250) { pdf.addPage(); yPos = 15; }
-      
-      autoTable(pdf, {
-        startY: yPos,
-        body: [[
-          { content: `${row.subject_name}\n${row.teacher_name}`, styles: { fontStyle: 'bold', fontSize: 10, textColor: [30, 64, 175], cellPadding: { top: 3, bottom: 1, left: 3, right: 3 } } },
-          { content: row.grades.A?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
-          { content: row.grades.B?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
-          { content: row.grades.C?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
-          { content: row.grades.D?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 } },
-          { content: row.semester_overview?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 11, textColor: [30, 64, 175] } }
-        ]],
-        theme: 'plain',
-        styles: { fontSize: 10, cellPadding: 3, valign: 'middle', lineColor: [229, 231, 235], lineWidth: 0 },
-        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 18 }, 2: { cellWidth: 18 }, 3: { cellWidth: 18 }, 4: { cellWidth: 18 }, 5: { cellWidth: 20 } }
-      });
-      
-      yPos = pdf.lastAutoTable.finalY;
-      
-      if (row.comment) {
-        autoTable(pdf, {
-          startY: yPos,
-          body: [[ { content: row.comment, colSpan: 6, styles: { fontSize: 9, textColor: [75, 85, 99], cellPadding: { top: 1, bottom: 5, left: 3, right: 3 } } } ]],
-          theme: 'plain',
-          styles: { lineColor: [229, 231, 235], lineWidth: 0 }
-        });
-        yPos = pdf.lastAutoTable.finalY;
-      }
-      
-      pdf.setDrawColor(229, 231, 235);
-      pdf.setLineWidth(0.3);
-      pdf.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 3;
-    }
-    
-    yPos += 5;
-    pdf.setFontSize(8);
-    pdf.setTextColor(150);
-    pdf.text(`Generated on ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, yPos);
-    
-    // Detail pages per subject
-    for (const row of reportRows) {
-      const { data: criteriaData, error: criteriaError } = await supabase
-        .from('criteria')
-        .select('criterion_id, code, name')
-        .eq('subject_id', row.subject_id)
-        .order('code');
-      
-      if (criteriaError) continue;
-      
-      pdf.addPage();
-      yPos = margin;
-      
-      pdf.setFontSize(16);
-      pdf.setTextColor(30, 64, 175);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(row.subject_name, margin, yPos);
-      yPos += 8;
-      
-      pdf.setFontSize(11);
-      pdf.setTextColor(100);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Teacher: ${row.teacher_name}`, margin, yPos);
-      yPos += 10;
-      
-      autoTable(pdf, {
-        startY: yPos,
-        head: [[
-          { content: 'Criterion A', styles: { halign: 'center', fillColor: [219, 234, 254] } },
-          { content: 'Criterion B', styles: { halign: 'center', fillColor: [219, 234, 254] } },
-          { content: 'Criterion C', styles: { halign: 'center', fillColor: [219, 234, 254] } },
-          { content: 'Criterion D', styles: { halign: 'center', fillColor: [219, 234, 254] } },
-          { content: 'Semester', styles: { halign: 'center', fillColor: [30, 64, 175], textColor: [255, 255, 255] } }
-        ]],
-        body: [[
-          { content: row.grades.A?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
-          { content: row.grades.B?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
-          { content: row.grades.C?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
-          { content: row.grades.D?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 14 } },
-          { content: row.semester_overview?.toString() ?? '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 16, textColor: [30, 64, 175] } }
-        ]],
-        theme: 'grid',
-        styles: { fontSize: 10, cellPadding: 5, valign: 'middle', lineColor: [200, 200, 200], lineWidth: 0.3 },
-        headStyles: { fontSize: 10, fontStyle: 'bold', textColor: [50, 50, 50] }
-      });
-      
-      yPos = pdf.lastAutoTable.finalY + 10;
-      
-      pdf.setFontSize(12);
-      pdf.setTextColor(50);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Criterion Descriptors', margin, yPos);
-      yPos += 8;
-      
-      for (const criterion of criteriaData || []) {
-        if (yPos > 260) { pdf.addPage(); yPos = margin; }
-        
-        pdf.setFillColor(243, 244, 246);
-        pdf.rect(margin, yPos - 4, pageWidth - 2 * margin, 10, 'F');
-        
-        pdf.setFontSize(11);
-        pdf.setTextColor(30, 64, 175);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`${criterion.code}: ${criterion.name}`, margin + 3, yPos + 2);
-        
-        const gradeValue = row.grades[criterion.code]?.toString() ?? '-';
-        pdf.setFontSize(11);
-        pdf.setTextColor(50);
-        pdf.text(`Grade: ${gradeValue}`, pageWidth - margin - 25, yPos + 2);
-        
-        yPos += 12;
-      }
-      
-      if (row.comment) {
-        yPos += 5;
-        pdf.setFontSize(11);
-        pdf.setTextColor(50);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Teacher Comment:', margin, yPos);
-        yPos += 6;
-        
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(10);
-        pdf.setTextColor(75, 85, 99);
-        
-        const splitComment = pdf.splitTextToSize(row.comment, pageWidth - 2 * margin);
-        pdf.text(splitComment, margin, yPos);
-        yPos += splitComment.length * 5;
-      }
-      
-      pdf.setFontSize(8);
-      pdf.setTextColor(150);
-      pdf.text(`${studentName} - ${kelasName} - ${semesterName}`, margin, pageHeight - 10);
-      pdf.text(`Page ${pdf.internal.getNumberOfPages()}`, pageWidth - margin - 15, pageHeight - 10);
-    }
-    
-    const fileName = `student-report-${studentName.replace(/[^a-z0-9]/gi, '-')}-${semesterName.replace(/\s/g, '')}.pdf`;
-    pdf.save(fileName);
+
+    // Open PDF in new tab
+    const pdfBlob = doc.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    window.open(pdfUrl, '_blank');
     
   } catch (err) {
     console.error('Error generating report:', err);

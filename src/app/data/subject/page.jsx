@@ -28,6 +28,12 @@ export default function SubjectManagement() {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   
+  // Icon upload states
+  const [iconFile, setIconFile] = useState(null);
+  const [iconPreview, setIconPreview] = useState(null);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [removeIcon, setRemoveIcon] = useState(false);
+  
   // Criteria & Strands Management States
   const [showCriteriaModal, setShowCriteriaModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -100,6 +106,7 @@ export default function SubjectManagement() {
           subject_unit_id,
           subject_code,
           subject_guide,
+          subject_icon,
           grading_method,
           users:subject_user_id (
             user_nama_depan,
@@ -123,6 +130,7 @@ export default function SubjectManagement() {
         subject_unit_id: subject.subject_unit_id,
         subject_code: subject.subject_code || '',
         subject_guide: subject.subject_guide || '',
+        subject_icon: subject.subject_icon || '',
         grading_method: subject.grading_method || 'highest',
         user_nama_depan: subject.users?.user_nama_depan || '',
         user_nama_belakang: subject.users?.user_nama_belakang || '',
@@ -365,6 +373,32 @@ export default function SubjectManagement() {
         grading_method: formData.grading_method || 'highest'
       };
 
+      // Handle icon upload if file selected
+      if (iconFile) {
+        try {
+          setUploadingIcon(true);
+          const ext = iconFile.name.split('.').pop();
+          const path = `subject-icons/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('profile-pictures')
+            .upload(path, iconFile, { cacheControl: '3600', upsert: false });
+          if (uploadErr) throw uploadErr;
+          const { data: pub } = supabase.storage
+            .from('profile-pictures')
+            .getPublicUrl(path);
+          submitData.subject_icon = pub?.publicUrl || null;
+        } catch (uploadErr) {
+          console.error('Error uploading icon:', uploadErr);
+          showNotification('Error', 'Gagal upload icon: ' + uploadErr.message, 'error');
+          setSubmitting(false);
+          return;
+        } finally {
+          setUploadingIcon(false);
+        }
+      } else if (removeIcon) {
+        submitData.subject_icon = null;
+      }
+
       let result;
       
       if (editingSubject) {
@@ -391,10 +425,13 @@ export default function SubjectManagement() {
       setFormData({
         subject_name: '',
         subject_user_id: '',
-  subject_unit_id: '',
-  subject_code: '',
+        subject_unit_id: '',
+        subject_code: '',
         subject_guide: ''
       });
+      setIconFile(null);
+      setIconPreview(null);
+      setRemoveIcon(false);
       setError('');
       showNotification(
         'Berhasil!',
@@ -419,6 +456,9 @@ export default function SubjectManagement() {
       subject_guide: subject.subject_guide || '',
       grading_method: subject.grading_method || 'highest'
     });
+    setIconFile(null);
+    setIconPreview(subject.subject_icon || null);
+    setRemoveIcon(false);
     setShowForm(true);
     setFormErrors({});
     setError('');
@@ -461,10 +501,13 @@ export default function SubjectManagement() {
     setFormData({
       subject_name: '',
       subject_user_id: '',
-  subject_unit_id: '',
-  subject_code: '',
+      subject_unit_id: '',
+      subject_code: '',
       subject_guide: ''
     });
+    setIconFile(null);
+    setIconPreview(null);
+    setRemoveIcon(false);
     setShowForm(true);
     setFormErrors({});
     setError('');
@@ -891,6 +934,9 @@ export default function SubjectManagement() {
                       ID
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Icon
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Subject Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -915,6 +961,15 @@ export default function SubjectManagement() {
                     <tr key={subject.subject_id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {subject.subject_id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {subject.subject_icon ? (
+                          <img src={subject.subject_icon} alt={subject.subject_name} className="w-8 h-8 rounded object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold">
+                            {subject.subject_name?.charAt(0)?.toUpperCase()}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {subject.subject_name}
@@ -985,6 +1040,53 @@ export default function SubjectManagement() {
           )}
 
           <div className="grid grid-cols-1 gap-4">
+            {/* Icon Upload */}
+            <div>
+              <Label>Subject Icon</Label>
+              <div className="flex items-center gap-4 mt-1">
+                {/* Preview */}
+                {(iconPreview && !removeIcon) ? (
+                  <div className="relative">
+                    <img src={iconPreview} alt="Icon preview" className="w-16 h-16 rounded-lg object-cover border border-gray-300" />
+                    <button
+                      type="button"
+                      onClick={() => { setIconFile(null); setIconPreview(null); setRemoveIcon(true); }}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    id="subject_icon"
+                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 2 * 1024 * 1024) {
+                          showNotification('Error', 'Ukuran file maksimal 2MB', 'error');
+                          return;
+                        }
+                        setIconFile(file);
+                        setIconPreview(URL.createObjectURL(file));
+                        setRemoveIcon(false);
+                      }
+                    }}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF, WebP, atau SVG. Maks 2MB.</p>
+                </div>
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="subject_name">Subject Name *</Label>
               <Input
