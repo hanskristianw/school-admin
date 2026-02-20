@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * WizardStepContent – renders the form fields for each wizard step (0-8).
+ * WizardStepContent – renders the form fields for each wizard step (0-9).
  *
  * Extracted from page.jsx to reduce file size.
  * Receives all necessary state / callbacks as props.
@@ -406,7 +406,7 @@ export default function WizardStepContent({
               })
               if (allExplorations.length === 0) return null
 
-              const currentExplorations = (selectedTopic.topic_gc_exploration || '').split(', ').filter(Boolean)
+              const currentExploration = selectedTopic.topic_gc_exploration || ''
 
               return (
                 <div className="mt-4 p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
@@ -424,7 +424,7 @@ export default function WizardStepContent({
                         )}
                         <div className="flex flex-wrap gap-1.5">
                           {explorations.map((exp) => {
-                            const isSelected = currentExplorations.includes(exp)
+                            const isSelected = currentExploration === exp
                             return (
                               <button
                                 key={exp}
@@ -453,8 +453,8 @@ export default function WizardStepContent({
                       </div>
                     )
                   })}
-                  {currentExplorations.length > 0 && (
-                    <p className="text-xs text-cyan-700 mt-2 font-medium">Selected: {currentExplorations[0]}</p>
+                  {currentExploration && (
+                    <p className="text-xs text-cyan-700 mt-2 font-medium">Selected: {currentExploration}</p>
                   )}
                 </div>
               )
@@ -791,8 +791,69 @@ export default function WizardStepContent({
         </>
       )}
       
-      {/* ─── Step 5: Assessment ─── */}
+      {/* ─── Step 5: Formative Assessment ─── */}
       {currentStep === 5 && (
+        <>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-blue-700">
+              <strong>📝 Formative Assessment</strong> — Formative assessments are ongoing, low-stakes assessments used to monitor student learning progress and provide feedback. They help teachers adjust instruction and help students identify areas for improvement.
+            </p>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Formative Assessment Plan
+              </label>
+              {(() => {
+                const canUseAiHelp = !isAddMode || (isStepCompleted(2) && isStepCompleted(3))
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canUseAiHelp) return
+                      setAiHelpType('formativeAssessment')
+                      setAiError('')
+                      setAiResultModalOpen(false)
+                      requestAiHelp('formativeAssessment')
+                    }}
+                    disabled={!canUseAiHelp || aiLoading}
+                    className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                      canUseAiHelp && !aiLoading
+                        ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer'
+                        : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title={!canUseAiHelp ? 'Complete Key Concepts and Statement of Inquiry first' : 'Get AI suggestions for Formative Assessment'}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+                    </svg>
+                    {aiLoading ? 'Loading...' : 'AI Help'}
+                  </button>
+                )
+              })()}
+            </div>
+            <p className="text-xs text-gray-600 mb-3">
+              Describe the formative assessment strategies you will use throughout this unit. Examples:
+              <br/>• Exit tickets / Quick checks
+              <br/>• Peer &amp; self-assessment
+              <br/>• Journal reflections or learning logs
+              <br/>• Class discussions or think-pair-share
+              <br/>• Draft submissions with feedback
+              <br/>• Quizzes or practice tasks
+            </p>
+            <textarea
+              value={selectedTopic.topic_formative_assessment || ''}
+              onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_formative_assessment: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={6}
+              placeholder="Describe the formative assessments planned for this unit...&#10;&#10;e.g., Weekly journal reflections on inquiry progress, peer review of draft work, exit tickets after each key lesson, class discussion rubric for participation..."
+            />
+          </div>
+        </>
+      )}
+      
+      {/* ─── Step 6: Assessment (Summative) ─── */}
+      {currentStep === 6 && (
         <>
           {(() => {
             const isAssessmentApproved = !isAddMode && topicAssessment && topicAssessment.assessment_status === 1
@@ -955,21 +1016,6 @@ export default function WizardStepContent({
           
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Conceptual Understanding <span className="text-red-500">*</span>
-            </label>
-            <p className="text-xs text-gray-500 mb-2">Describe what conceptual understanding students should demonstrate through this assessment</p>
-            <textarea
-              value={wizardAssessment.assessment_conceptual_understanding}
-              onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_conceptual_understanding: e.target.value }))}
-              disabled={isAssessmentReadOnly}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              rows={3}
-              placeholder="e.g., Students will demonstrate understanding of how energy transformation affects ecosystems..."
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
               Task Specific Description <span className="text-red-500">*</span>
             </label>
             <p className="text-xs text-gray-500 mb-2">Provide specific details about what students need to do in this assessment</p>
@@ -1003,8 +1049,8 @@ export default function WizardStepContent({
         </>
       )}
 
-      {/* ─── Step 6: Relationship ─── */}
-      {currentStep === 6 && (
+      {/* ─── Step 7: Relationship ─── */}
+      {currentStep === 7 && (
         <>
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -1025,7 +1071,7 @@ export default function WizardStepContent({
                   const allFilled = requiredFields.every(field => field && field.toString().trim() !== '');
                   
                   if (!allFilled) {
-                    alert('Please complete all previous steps (1-6) before using AI assistance.');
+                    alert('Please complete all previous steps (1-7) before using AI assistance.');
                     return;
                   }
                   
@@ -1053,7 +1099,13 @@ export default function WizardStepContent({
                     : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
                 }`}
               >
-                <FontAwesomeIcon icon={faSpinner} spin={aiLoading} className="text-xs" />
+                {aiLoading ? (
+                  <FontAwesomeIcon icon={faSpinner} className="text-xs animate-spin" />
+                ) : (
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
                 AI Help
               </button>
             </div>
@@ -1074,8 +1126,8 @@ export default function WizardStepContent({
         </>
       )}
 
-      {/* ─── Step 7: Task Specific Clarification (TSC) ─── */}
-      {currentStep === 7 && (
+      {/* ─── Step 8: Task Specific Clarification (TSC) ─── */}
+      {currentStep === 8 && (
         <>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
             <div className="flex items-start justify-between">
@@ -1090,7 +1142,7 @@ export default function WizardStepContent({
                 >
                   {aiLoading ? (
                     <>
-                      <FontAwesomeIcon icon={faSpinner} spin className="w-4 h-4" />
+                      <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
                       <span>Generating TSC...</span>
                     </>
                   ) : (
@@ -1111,7 +1163,7 @@ export default function WizardStepContent({
 
           {loadingStrands ? (
             <div className="flex items-center justify-center py-8">
-              <FontAwesomeIcon icon={faSpinner} spin className="text-2xl text-cyan-500 mr-3" />
+              <FontAwesomeIcon icon={faSpinner} className="text-2xl text-cyan-500 mr-3 animate-spin" />
               <span className="text-gray-600">Loading rubric structure...</span>
             </div>
           ) : wizardStrands.length === 0 ? (
@@ -1246,8 +1298,8 @@ export default function WizardStepContent({
         </>
       )}
       
-      {/* ─── Step 8: Unit Reflection (Prior & After) ─── */}
-      {currentStep === 8 && (
+      {/* ─── Step 9: Unit Reflection (Prior & After) ─── */}
+      {currentStep === 9 && (
         <>
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-purple-700">

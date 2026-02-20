@@ -260,7 +260,7 @@ export default function TopicNewPage() {
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
   
-  // Assessment data for wizard step 6
+  // Assessment data for wizard step 7 (after formative assessment)
   const [wizardAssessment, setWizardAssessment] = useState({
     assessment_nama: '',
     assessment_keterangan: '',
@@ -313,6 +313,13 @@ export default function TopicNewPage() {
       description: 'Define IB learner attributes and service learning opportunities',
       fields: ['topic_learner_profile', 'topic_service_learning'],
       guidance: 'Select IB Learner Profile attributes (e.g., Inquirers, Thinkers, Communicators) students will develop. Identify opportunities for service learning and action.'
+    },
+    {
+      id: 'formativeAssessment',
+      title: 'Formative Assessment',
+      description: 'Plan formative assessments to monitor student learning progress',
+      fields: ['topic_formative_assessment'],
+      guidance: 'Formative assessments are ongoing assessments used to monitor student learning and provide feedback. They help teachers adjust instruction and help students identify areas for improvement. Examples include exit tickets, quizzes, peer assessments, journal reflections, and class discussions.'
     },
     {
       id: 'assessment',
@@ -431,7 +438,7 @@ export default function TopicNewPage() {
       console.log('📚 Kelas loaded:', kelasList)
       setAllKelas(kelasList)
       
-      // Also fetch criteria for this subject (for wizard step 6)
+      // Also fetch criteria for this subject (for wizard step 7)
       fetchCriteriaForSubject(subjectId)
     } catch (err) {
       console.error('❌ Error fetching kelas:', err)
@@ -441,7 +448,7 @@ export default function TopicNewPage() {
     }
   }
   
-  // Fetch criteria for a subject (used in wizard step 6)
+  // Fetch criteria for a subject (used in wizard step 7)
   const fetchCriteriaForSubject = async (subjectId) => {
     if (!subjectId) {
       setWizardCriteria([])
@@ -2487,6 +2494,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     selectedAtlSkills, setSelectedAtlSkills,
     selectedConceptualUnderstanding, setSelectedConceptualUnderstanding,
     selectedAssessmentRelationship,
+    selectedFormativeAssessment, setSelectedFormativeAssessment,
     resetAiState,
     openAiInputModal,
     requestAiHelp,
@@ -2501,6 +2509,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     toggleStatement,
     toggleLearnerProfile,
     toggleServiceLearning,
+    toggleFormativeAssessment,
     toggleResources,
     applySelectedConceptualUnderstanding,
     applySelectedStatements,
@@ -2509,6 +2518,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     applySelectedRelatedConcepts,
     applySelectedLearnerProfiles,
     applySelectedServiceLearning,
+    applySelectedFormativeAssessment,
     applySelectedAtlSkills,
     applySelectedResources,
     applySelectedAssessmentRelationship,
@@ -2549,7 +2559,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   const isStepCompleted = (stepIndex) => {
     const step = plannerSteps[stepIndex]
     
-    // Step 5 (Assessment) has different validation - uses wizardAssessment state
+    // Step 5 (Formative Assessment) - optional text field
+    if (step.id === 'formativeAssessment') {
+      return selectedTopic.topic_formative_assessment?.trim() !== ''
+    }
+    
+    // Step 6 (Assessment) has different validation - uses wizardAssessment state
     if (step.id === 'assessment') {
       // Check required fields (date will be submitted later)
       if (!wizardAssessment.assessment_nama?.trim() ||
@@ -2561,12 +2576,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       return true
     }
     
-    // Step 6 (Relationship) - uses wizardAssessment.assessment_relationship
+    // Step 7 (Relationship) - uses wizardAssessment.assessment_relationship
     if (step.id === 'relationship') {
       return wizardAssessment.assessment_relationship?.trim() !== ''
     }
     
-    // Step 7 (TSC) - check if all expected TSC fields are filled
+    // Step 8 (TSC) - check if all expected TSC fields are filled
     if (step.id === 'tsc') {
       // If no criteria selected or no strands, cannot be complete
       if (!wizardAssessment.selected_criteria?.length || wizardStrands.length === 0) {
@@ -2603,7 +2618,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       return allFilled
     }
     
-    // Step 8 (Reflection) - at least prior reflection should be filled
+    // Step 9 (Reflection) - at least prior reflection should be filled
     if (step.id === 'reflection') {
       return selectedTopic.topic_reflection_prior?.trim() !== ''
     }
@@ -2649,16 +2664,16 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!selectedTopic.topic_service_learning?.trim()) missing.push({ step: 5, field: 'Service Learning' })
     if (!selectedTopic.topic_atl?.trim()) missing.push({ step: 5, field: 'ATL Skills' })
     
-    // Step 5: Assessment
-    if (!wizardAssessment.selected_criteria?.length) missing.push({ step: 6, field: 'Criteria to Assess' })
-    if (!wizardAssessment.assessment_nama?.trim()) missing.push({ step: 6, field: 'Assessment Name' })
-    if (!wizardAssessment.assessment_semester?.trim()) missing.push({ step: 6, field: 'Semester' })
-    if (!wizardAssessment.assessment_conceptual_understanding?.trim()) missing.push({ step: 6, field: 'Conceptual Understanding' })
-    if (!wizardAssessment.assessment_task_specific_description?.trim()) missing.push({ step: 6, field: 'Task Specific Description' })
-    if (!wizardAssessment.assessment_instructions?.trim()) missing.push({ step: 6, field: 'Assessment Instructions' })
+    // Step 6: Assessment (summative)
+    if (!wizardAssessment.selected_criteria?.length) missing.push({ step: 7, field: 'Criteria to Assess' })
+    if (!wizardAssessment.assessment_nama?.trim()) missing.push({ step: 7, field: 'Assessment Name' })
+    if (!wizardAssessment.assessment_semester?.trim()) missing.push({ step: 7, field: 'Semester' })
+    if (!wizardAssessment.assessment_conceptual_understanding?.trim()) missing.push({ step: 7, field: 'Conceptual Understanding' })
+    if (!wizardAssessment.assessment_task_specific_description?.trim()) missing.push({ step: 7, field: 'Task Specific Description' })
+    if (!wizardAssessment.assessment_instructions?.trim()) missing.push({ step: 7, field: 'Assessment Instructions' })
     
-    // Step 6: Relationship
-    if (!wizardAssessment.assessment_relationship?.trim()) missing.push({ step: 7, field: 'Relationship: Assessment & Statement of Inquiry' })
+    // Step 7: Relationship
+    if (!wizardAssessment.assessment_relationship?.trim()) missing.push({ step: 8, field: 'Relationship: Assessment & Statement of Inquiry' })
     
     return missing
   }
@@ -3126,7 +3141,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         })
         setTopicAssessmentCriteria(assessmentData.assessment_criteria?.map(c => c.criterion_id) || [])
         
-        // Also sync to wizardAssessment for Step 7 TSC editing
+        // Also sync to wizardAssessment for Step 8 TSC editing
         setWizardAssessment(prev => ({
           ...prev,
           assessment_nama: assessmentData.assessment_nama || '',
@@ -3796,11 +3811,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 </p>
                                 {topic.topic_gc_exploration && (
                                   <div className="mt-1 flex flex-wrap gap-1">
-                                    {topic.topic_gc_exploration.split(', ').map((exp, i) => (
-                                      <span key={i} className="inline-block px-1.5 py-0.5 text-[10px] bg-cyan-50 text-cyan-700 rounded border border-cyan-200">
-                                        {exp}
-                                      </span>
-                                    ))}
+                                    <span className="inline-block px-1.5 py-0.5 text-[10px] bg-cyan-50 text-cyan-700 rounded border border-cyan-200">
+                                      {topic.topic_gc_exploration}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -4999,7 +5012,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     isOpen={true}
                     inline={true}
                     onClose={() => setAiResultModalOpen(false)}
-                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'conceptualUnderstanding' ? 'AI Suggestions: Conceptual Understanding' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'atl' ? 'AI Suggestions: ATL Skills' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
+                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'conceptualUnderstanding' ? 'AI Suggestions: Conceptual Understanding' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'formativeAssessment' ? 'AI Suggestions: Formative Assessment' : aiHelpType === 'atl' ? 'AI Suggestions: ATL Skills' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
                     size="md"
                   >
                     <div className="flex flex-col h-full">
@@ -5014,7 +5027,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       >
                         {aiLoading && (
                           <div className="flex flex-col items-center justify-center py-12 px-6">
-                            <FontAwesomeIcon icon={faSpinner} spin className="text-purple-600 text-4xl mb-4" />
+                            <FontAwesomeIcon icon={faSpinner} className="text-purple-600 text-4xl mb-4 animate-spin" />
                             <p className="text-gray-800 font-semibold text-lg mb-2">{t('topicNew.aiHelp.loading')}</p>
                             <p className="text-gray-500 text-sm text-center max-w-md">
                               {t('topicNew.aiHelp.loadingMessage')}
@@ -5044,7 +5057,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                     (selectedKeyConcepts.includes(item.index) && aiHelpType === 'keyConcept') ||
                                     (selectedRelatedConcepts.includes(item.index) && aiHelpType === 'relatedConcept') ||
                                     (selectedGlobalContexts.includes(item.index) && aiHelpType === 'globalContext') ||
-                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedConceptualUnderstanding.includes(item.index) && aiHelpType === 'conceptualUnderstanding') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning') || (selectedAtlSkills.includes(item.id) && aiHelpType === 'atl') || (selectedResources.includes(item.index) && aiHelpType === 'resources')
+                                    (selectedStatements.includes(item.index) && aiHelpType === 'statement') || (selectedConceptualUnderstanding.includes(item.index) && aiHelpType === 'conceptualUnderstanding') || (selectedLearnerProfiles.includes(item.index) && aiHelpType === 'learnerProfile') || (selectedServiceLearning.includes(item.index) && aiHelpType === 'serviceLearning') || (selectedFormativeAssessment.includes(item.index) && aiHelpType === 'formativeAssessment') || (selectedAtlSkills.includes(item.id) && aiHelpType === 'atl') || (selectedResources.includes(item.index) && aiHelpType === 'resources')
                                       ? 'border-purple-500 bg-purple-50'
                                       : 'border-gray-200 bg-white hover:border-purple-300'
                                   }`}
@@ -5057,7 +5070,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 >
                                   <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-2">
-                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'conceptualUnderstanding' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'atl' || aiHelpType === 'resources') && (
+                                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'conceptualUnderstanding' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'formativeAssessment' || aiHelpType === 'atl' || aiHelpType === 'resources') && (
                                         <input
                                           type="checkbox"
                                           id={`ai-item-${aiHelpType === 'atl' ? item.id : item.index}`}
@@ -5077,6 +5090,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                             ? selectedLearnerProfiles.includes(item.index)
                                             : aiHelpType === 'serviceLearning'
                                             ? selectedServiceLearning.includes(item.index)
+                                            : aiHelpType === 'formativeAssessment'
+                                            ? selectedFormativeAssessment.includes(item.index)
                                             : aiHelpType === 'atl'
                                             ? selectedAtlSkills.includes(Number(item.id))
                                             : selectedResources.includes(item.index)}
@@ -5099,6 +5114,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                               toggleLearnerProfile(item.index)
                                             } else if (aiHelpType === 'serviceLearning') {
                                               toggleServiceLearning(item.index)
+                                            } else if (aiHelpType === 'formativeAssessment') {
+                                              toggleFormativeAssessment(item.index)
                                             } else if (aiHelpType === 'atl') {
                                               console.log('☑️ ATL Checkbox clicked - item:', item)
                                               console.log('☑️ Current selectedAtlSkills:', selectedAtlSkills)
@@ -5139,7 +5156,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                         </span>
                                       )}
                                     </div>
-                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'conceptualUnderstanding' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && aiHelpType !== 'atl' && aiHelpType !== 'resources' && (
+                                    {aiHelpType !== 'inquiryQuestion' && aiHelpType !== 'keyConcept' && aiHelpType !== 'relatedConcept' && aiHelpType !== 'globalContext' && aiHelpType !== 'conceptualUnderstanding' && aiHelpType !== 'statement' && aiHelpType !== 'learnerProfile' && aiHelpType !== 'serviceLearning' && aiHelpType !== 'formativeAssessment' && aiHelpType !== 'atl' && aiHelpType !== 'resources' && (
                                       <button
                                         onClick={() => aiHelpType === 'assessmentName' ? insertAiSuggestion(item) : insertAiSuggestion(titleToUse)}
                                         className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-2 flex-shrink-0"
@@ -5193,6 +5210,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                           : aiHelpType === 'statement' ? 'Statement of Inquiry:' 
                                           : aiHelpType === 'learnerProfile' ? 'Learner Profile Attribute:' 
                                           : aiHelpType === 'serviceLearning' ? 'Service Learning Opportunity:'
+                                          : aiHelpType === 'formativeAssessment' ? 'Formative Assessment Strategy:'
                                           : aiHelpType === 'resources' ? 'Resource:' 
                                           : aiHelpType === 'assessmentName' ? 'Assessment Name:'
                                           : aiHelpType === 'assessmentRelationship' ? 'Relationship Explanation:'
@@ -5313,7 +5331,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         )}
                       </div>
 
-                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'conceptualUnderstanding' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'atl' || aiHelpType === 'resources') && aiItems.length > 0 && !aiLoading && (
+                      {(aiHelpType === 'inquiryQuestion' || aiHelpType === 'keyConcept' || aiHelpType === 'relatedConcept' || aiHelpType === 'globalContext' || aiHelpType === 'conceptualUnderstanding' || aiHelpType === 'statement' || aiHelpType === 'learnerProfile' || aiHelpType === 'serviceLearning' || aiHelpType === 'formativeAssessment' || aiHelpType === 'atl' || aiHelpType === 'resources') && aiItems.length > 0 && !aiLoading && (
                         <div className="border-t border-gray-200 bg-gray-50 p-4 flex-shrink-0">
                           {aiError && (
                             <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
@@ -5471,6 +5489,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   Select one or more resources
                                 </p>
                               </>
+                            ) : aiHelpType === 'formativeAssessment' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1.5 rounded-lg border ${selectedFormativeAssessment.length > 0 ? 'bg-orange-50 border-orange-300 text-orange-700 font-medium' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
+                                    ✓ Selected: {selectedFormativeAssessment.length} strategy
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Select 1 formative assessment strategy
+                                </p>
+                              </>
                             ) : (
                               <>
                                 <div className="flex items-center gap-2">
@@ -5495,13 +5527,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               Cancel
                             </button>
                             <button
-                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'conceptualUnderstanding' ? applySelectedConceptualUnderstanding : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : aiHelpType === 'serviceLearning' ? applySelectedServiceLearning : aiHelpType === 'atl' ? applySelectedAtlSkills : applySelectedResources}
+                              onClick={aiHelpType === 'inquiryQuestion' ? applySelectedInquiryQuestions : aiHelpType === 'keyConcept' ? applySelectedKeyConcepts : aiHelpType === 'relatedConcept' ? applySelectedRelatedConcepts : aiHelpType === 'globalContext' ? applySelectedGlobalContexts : aiHelpType === 'conceptualUnderstanding' ? applySelectedConceptualUnderstanding : aiHelpType === 'statement' ? applySelectedStatements : aiHelpType === 'learnerProfile' ? applySelectedLearnerProfiles : aiHelpType === 'serviceLearning' ? applySelectedServiceLearning : aiHelpType === 'formativeAssessment' ? applySelectedFormativeAssessment : aiHelpType === 'atl' ? applySelectedAtlSkills : applySelectedResources}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors inline-flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
-                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'conceptualUnderstanding' ? 'Apply Selected Understanding' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : aiHelpType === 'serviceLearning' ? 'Apply Selected Option' : aiHelpType === 'atl' ? 'Apply Selected Skills' : aiHelpType === 'resources' ? 'Apply Selected Resources' : 'Apply Selected Option'}
+                              {aiHelpType === 'inquiryQuestion' ? 'Apply Selected Questions' : aiHelpType === 'keyConcept' ? 'Apply Selected Concepts' : aiHelpType === 'relatedConcept' ? 'Apply Selected Concepts' : aiHelpType === 'globalContext' ? 'Apply Selected Contexts' : aiHelpType === 'conceptualUnderstanding' ? 'Apply Selected Understanding' : aiHelpType === 'statement' ? 'Apply Selected Statement' : aiHelpType === 'learnerProfile' ? 'Apply Selected Attributes' : aiHelpType === 'serviceLearning' ? 'Apply Selected Option' : aiHelpType === 'formativeAssessment' ? 'Apply Selected Strategy' : aiHelpType === 'atl' ? 'Apply Selected Skills' : aiHelpType === 'resources' ? 'Apply Selected Resources' : 'Apply Selected Option'}
                             </button>
                           </div>
                         </div>

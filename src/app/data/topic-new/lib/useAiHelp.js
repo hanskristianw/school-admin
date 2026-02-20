@@ -59,6 +59,7 @@ export default function useAiHelp({
   const [selectedAtlSkills, setSelectedAtlSkills] = useState([])
   const [selectedConceptualUnderstanding, setSelectedConceptualUnderstanding] = useState([])
   const [selectedAssessmentRelationship, setSelectedAssessmentRelationship] = useState([])
+  const [selectedFormativeAssessment, setSelectedFormativeAssessment] = useState([])
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -116,6 +117,7 @@ export default function useAiHelp({
   const toggleConceptualUnderstanding = makeSingleToggle(setSelectedConceptualUnderstanding)
   const toggleStatement = makeSingleToggle(setSelectedStatements)
   const toggleServiceLearning = makeSingleToggle(setSelectedServiceLearning)
+  const toggleFormativeAssessment = makeSingleToggle(setSelectedFormativeAssessment)
 
   // ── Reset all AI modal state ──────────────────────────────────────────────
   const resetAiState = () => {
@@ -139,7 +141,7 @@ export default function useAiHelp({
   // ── Main AI request ────────────────────────────────────────────────────────
   const requestAiHelp = async (helpType_ = aiHelpType) => {
     const helpType = helpType_
-    const noInputRequired = ['keyConcept', 'relatedConcept', 'inquiryQuestion', 'globalContext', 'conceptualUnderstanding', 'statement', 'learnerProfile', 'serviceLearning', 'resources', 'assessmentName', 'assessmentRelationship']
+    const noInputRequired = ['keyConcept', 'relatedConcept', 'inquiryQuestion', 'globalContext', 'conceptualUnderstanding', 'statement', 'learnerProfile', 'serviceLearning', 'resources', 'assessmentName', 'assessmentRelationship', 'formativeAssessment']
 
     if (!noInputRequired.includes(helpType) && !aiUserInput.trim()) {
       setAiError('Mohon masukkan topik atau konteks yang ingin dibahas')
@@ -279,6 +281,7 @@ Please respond in English and ensure valid JSON format.`
         const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
         const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
         const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        const gcExploration = selectedTopic?.topic_gc_exploration || 'Not yet defined'
         const conceptualUnderstanding = selectedTopic?.topic_conceptual_understanding || 'Not yet defined'
 
         promptWithLang = `${context ? context + "\n\n" : ''}You are an IB MYP curriculum expert helping teachers craft Statements of Inquiry for unit planning.
@@ -288,16 +291,17 @@ LEARNING CONTEXT:
 - Key Concept: ${keyConcept}
 - Related Concepts: ${relatedConcept}
 - Global Context: ${globalContext}
+- Possible Exploration: ${gcExploration}
 - Conceptual Understanding: ${conceptualUnderstanding}
 - Subject: ${subjName}
 
 RULES FOR CREATING A STATEMENT OF INQUIRY:
-A Statement of Inquiry connects the Conceptual Understanding with the Global Context.
+A Statement of Inquiry connects the Conceptual Understanding with the possible exploration.
 
 CRITICAL REQUIREMENTS:
 1. The statement MUST be UNIT-FREE — it should NOT reference the specific unit title, subject content, or any topic-specific details.
 2. The statement MUST be TRANSFERABLE — it should be applicable across different subjects and contexts, not limited to one discipline.
-3. It should be a broad, conceptual statement that integrates the Key Concept, Related Concepts, and Global Context.
+3. It should be a broad, conceptual statement that integrates the Key Concept, Related Concepts, and the Possible Exploration.
 4. Keep it to 1-2 sentences maximum.
 5. Use clear, simple language — no jargon or subject-specific terminology.
 
@@ -311,12 +315,12 @@ BAD EXAMPLES (too specific, not transferable):
 - "The French Revolution changed European politics." (too specific to history)
 
 INSTRUCTIONS:
-Using the key concept "${keyConcept}", related concepts "${relatedConcept}", and global context "${globalContext}", generate 4 Statement of Inquiry options.
+Using the key concept "${keyConcept}", related concepts "${relatedConcept}", and possible exploration "${gcExploration}", generate 4 Statement of Inquiry options.
 Each must be unit-free and transferable across subjects.
 
 For each suggestion, provide:
 - The complete Statement of Inquiry (option)
-- How it integrates the concepts with the global context (text)
+- How it integrates the concepts with the possible exploration (text)
 - Why this statement is unit-free, transferable, and effective (reason)
 
 JSON FORMAT:
@@ -324,7 +328,7 @@ JSON FORMAT:
   "jawaban": [
     {
       "option": "Complete Statement of Inquiry",
-      "text": "How Key Concept, Related Concepts, and Global Context are integrated",
+      "text": "How Key Concept, Related Concepts, and Possible Exploration are integrated",
       "reason": "Why this is unit-free, transferable, and guides learning effectively"
     }
   ]
@@ -827,6 +831,57 @@ JSON FORMAT:
 Please respond in English and ensure valid JSON format.`
 
         console.log('🤖 AI Prompt for Assessment Relationship')
+      } else if (helpType === 'formativeAssessment') {
+        const unitTitle = selectedTopic?.topic_nama || 'Not yet defined'
+        const keyConcept = selectedTopic?.topic_key_concept || 'Not yet defined'
+        const relatedConcept = selectedTopic?.topic_related_concept || 'Not yet defined'
+        const globalContext = selectedTopic?.topic_global_context || 'Not yet defined'
+        const statement = selectedTopic?.topic_statement || 'Not yet defined'
+        const inquiryQuestion = selectedTopic?.topic_inquiry_question || 'Not yet defined'
+        const learnerProfile_ = selectedTopic?.topic_learner_profile || 'Not yet defined'
+
+        promptWithLang = `You are an IB MYP curriculum expert helping teachers design formative assessment strategies.
+
+EFFECTIVE FORMATIVE ASSESSMENT STRATEGIES:
+Formative assessment is a dynamic and crucial component of effective teaching and learning, providing ongoing feedback to guide both educators and students. Here are five effective strategies for implementing formative assessment in the classroom:
+
+1. Peer Assessment: This strategy involves students evaluating each other's work. It fosters a collaborative learning environment where students learn from their peers, take ownership of their learning, and gain exposure to diverse approaches to solving problems. By reviewing and providing feedback on their classmates' work, students develop critical thinking and analytical skills.
+
+2. Self-Assessment: In self-assessment, students take the initiative to evaluate their own work. This practice is instrumental in building self-monitoring and self-regulatory skills. For instance, a teacher might provide students with a rubric or performance prompts and ask them to grade their own performance against these criteria. This encourages introspection and helps students understand their strengths and areas for improvement.
+
+3. Exit Tickets: An exit ticket is a quick, informal prompt given to students at the very end of a class. It typically asks students about their understanding of the lesson, what they learned, or what questions they still have. This simple yet powerful tool provides teachers with immediate insights into student comprehension, allowing them to adjust their planning for subsequent lessons to address any lingering misconceptions or areas of difficulty.
+
+4. Observational Assessments: This strategy involves teachers actively observing students during their in-class activities. By carefully watching how students engage with the material, participate in discussions, or work on tasks, teachers can gauge their level of understanding. Observation offers a direct and unfiltered view of student learning in action, providing valuable qualitative data that might not be captured through written assessments.
+
+5. Question and Answer Sessions: Regular, informal question and answer (Q&A) sessions are an excellent way for teachers to check for understanding across the class. These sessions can reveal how well students grasp the material and whether they are ready to move on to new topics. Engaging students in dialogue through targeted questions encourages active participation and helps consolidate learning.
+
+UNIT CONTEXT:
+- Unit Title: ${unitTitle}
+- Inquiry Question: ${inquiryQuestion}
+- Key Concept: ${keyConcept}
+- Related Concept: ${relatedConcept}
+- Global Context: ${globalContext}
+- Statement of Inquiry: ${statement}
+- Learner Profile Attributes: ${learnerProfile_}
+- Subject: ${subjName}
+- Grade/Class: ${kelasName}
+
+INSTRUCTIONS:
+Buat 3 kemungkinan formative assessment berdasarkan data diatas dengan format json seperti ini {   "jawaban": [     {       "option": "...",       "text": "...",       "reason": "..."     },     {       "option": "...",       "text": "...",       "reason": "..."     },     {       "option": "...",       "text": "..."       "reason": "..."     }   ] }, dan harus revelan dengan global context, key concept, related concept dan unit title berikut ini:
+- Unit Title: ${unitTitle}
+- Key Concept: ${keyConcept}
+- Related Concept: ${relatedConcept}
+- Global Context: ${globalContext}
+
+For each suggestion:
+- option: Name of the strategy (e.g. "Exit Ticket: ...", "Peer Assessment: ...", etc.)
+- text: A specific description of how to implement this formative assessment in this unit (2-3 sentences, concrete and actionable)
+- reason: Why this strategy is relevant to the unit's concepts and global context (1-2 sentences)
+
+Please respond in English and ensure valid JSON format.`
+
+        console.log('🤖 AI Prompt for Formative Assessment')
+        console.log(promptWithLang)
       } else {
         // Default: Unit Title prompt
         promptWithLang = `${context ? context + "\n\n" : ''}LEARNING CONTEXT:
@@ -1426,6 +1481,25 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     setAiError('')
   }
 
+  const applySelectedFormativeAssessment = () => {
+    setAiError('')
+    if (selectedFormativeAssessment.length === 0) {
+      setAiError('⚠️ Please select one formative assessment strategy.')
+      return
+    }
+    const selectedItems = aiItems.filter(item => selectedFormativeAssessment.includes(item.index))
+    // Build a rich text combining the option name and implementation details
+    const formativeText = selectedItems.map(item => {
+      const parts = [item.option]
+      if (item.text) parts.push(item.text)
+      return parts.join('\n')
+    }).join('\n\n')
+    setSelectedTopic(prev => ({ ...prev, topic_formative_assessment: formativeText }))
+    setAiResultModalOpen(false)
+    setSelectedFormativeAssessment([])
+    setAiError('')
+  }
+
   const applySelectedAtlSkills = () => {
     if (selectedAtlSkills.length === 0) {
       alert('Please select at least one ATL skill')
@@ -1531,6 +1605,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     selectedAtlSkills, setSelectedAtlSkills,
     selectedConceptualUnderstanding, setSelectedConceptualUnderstanding,
     selectedAssessmentRelationship,
+    selectedFormativeAssessment, setSelectedFormativeAssessment,
     // functions
     resetAiState,
     openAiInputModal,
@@ -1546,6 +1621,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     toggleStatement,
     toggleLearnerProfile,
     toggleServiceLearning,
+    toggleFormativeAssessment,
     toggleResources,
     applySelectedConceptualUnderstanding,
     applySelectedStatements,
@@ -1554,6 +1630,7 @@ Generate TSC for all ${tscStructure.length} items. Keep original strand wording,
     applySelectedRelatedConcepts,
     applySelectedLearnerProfiles,
     applySelectedServiceLearning,
+    applySelectedFormativeAssessment,
     applySelectedAtlSkills,
     applySelectedResources,
     applySelectedAssessmentRelationship,
