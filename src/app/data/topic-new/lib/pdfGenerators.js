@@ -1324,7 +1324,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           subject_id,
           subject_name,
           subject_user_id,
-          subject_icon
+          subject_icon,
+          core_subject,
+          print_order,
+          include_in_print
         )
       `)
       .eq('detail_kelas_kelas_id', kelasId);
@@ -1370,6 +1373,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     
     for (const dk of detailKelasData || []) {
       if (!dk.subject) continue;
+      if (dk.subject.include_in_print === false) continue; // skip subjects marked as not for print
       
       // Fetch teacher name
       let teacherName = '-';
@@ -1434,10 +1438,16 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           .single();
         comment = commentData?.comment_text || '';
       }
+
+      // Skip subjects with no grades at all
+      const hasGrades = grades.A !== null || grades.B !== null || grades.C !== null || grades.D !== null || semesterOverview !== null;
+      if (!hasGrades) continue;
       
       reportRows.push({
         subject_name: dk.subject.subject_name,
         subject_icon: dk.subject.subject_icon || null,
+        core_subject: dk.subject.core_subject || false,
+        print_order: dk.subject.print_order ?? 0,
         teacher_name: teacherName,
         grades,
         semester_overview: semesterOverview,
@@ -1445,7 +1455,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       });
     }
     
-    reportRows.sort((a, b) => a.subject_name.localeCompare(b.subject_name));
+    reportRows.sort((a, b) => {
+      if (a.core_subject !== b.core_subject) return a.core_subject ? -1 : 1;
+      return (a.print_order ?? 0) - (b.print_order ?? 0);
+    });
     
     if (reportRows.length === 0) {
       alert('Tidak ada data report untuk siswa ini');
@@ -1609,25 +1622,49 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     doc.setTextColor(17, 24, 39);
     doc.text(`Summary of ${semesterLabel} Student Progress`, ml, mt + 6);
 
-    // Build table body — one row per subject
-    const tableBody = [];
-    reportRows.forEach((row, i) => {
-      let cellText = row.subject_name + '\n' + row.teacher_name;
-      if (row.comment) cellText += '\n' + row.comment;
-      tableBody.push([
-        cellText,
-        row.grades.A !== null ? String(row.grades.A) : '-',
-        row.grades.B !== null ? String(row.grades.B) : '-',
-        row.grades.C !== null ? String(row.grades.C) : '-',
-        row.grades.D !== null ? String(row.grades.D) : '-',
-        row.semester_overview !== null ? String(row.semester_overview) : '-'
-      ]);
-    });
+    // Build table body helper — one row per subject, optional comment row (colSpan 6)
+    const buildTableData = (rows, indexOffset) => {
+      const body = [];
+      const meta = [];
+      rows.forEach((row, i) => {
+        const si = indexOffset + i;
+        const cellText = row.subject_name + '\n' + row.teacher_name;
+        body.push([
+          cellText,
+          row.grades.A !== null ? String(row.grades.A) : '-',
+          row.grades.B !== null ? String(row.grades.B) : '-',
+          row.grades.C !== null ? String(row.grades.C) : '-',
+          row.grades.D !== null ? String(row.grades.D) : '-',
+          row.semester_overview !== null ? String(row.semester_overview) : '-'
+        ]);
+        meta.push({ isComment: false, subjectIndex: si });
+        if (row.comment) {
+          body.push([{
+            content: row.comment,
+            colSpan: 6,
+            styles: {
+              fontSize: 8,
+              fontStyle: 'normal',
+              cellPadding: { top: 2, right: 4, bottom: 6, left: 4 },
+              textColor: [255, 255, 255]
+            }
+          }]);
+          meta.push({ isComment: true, subjectIndex: si });
+        }
+      });
+      return { body, meta };
+    };
 
-    autoTable(doc, {
-      startY: mt + 12,
+    const coreRows = reportRows.filter(r => r.core_subject);
+    const nonCoreRows = reportRows.filter(r => !r.core_subject);
+    const { body: coreBody, meta: coreMeta } = buildTableData(coreRows, 0);
+    const { body: nonCoreBody, meta: nonCoreMeta } = buildTableData(nonCoreRows, coreRows.length);
+
+    // Shared autoTable options factory
+    const tableOptions = (body, rowMeta, startY) => ({
+      startY,
       head: [['', 'A', 'B', 'C', 'D', `${semesterLabel}\nProgress\nOverview`]],
-      body: tableBody,
+      body,
       theme: 'plain',
       styles: {
         fontSize: 9,
@@ -1657,53 +1694,80 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       tableLineWidth: 0.3,
       margin: { left: ml, right: mr, top: mt, bottom: mb },
       didDrawCell: (data) => {
-        // Custom render subject column (col 0, body only)
-        if (data.column.index === 0 && data.cell.section === 'body') {
-          const row = reportRows[data.row.index];
+        if (data.cell.section !== 'body') return;
+        const meta = rowMeta[data.row.index];
+        if (!meta) return;
+
+        if (!meta.isComment) {
+          if (data.column.index !== 0) return;
+          const row = reportRows[meta.subjectIndex];
           const cx = data.cell.x;
           const cy = data.cell.y;
-
-          // Draw icon or letter avatar
           const iconX = cx + 2;
           const iconY = cy + 4;
-          const iconB64 = iconCache[data.row.index];
+          const iconB64 = iconCache[meta.subjectIndex];
           if (iconB64) {
             try { doc.addImage(iconB64, 'PNG', iconX, iconY, 8, 8); } catch (e) {}
           } else {
             drawLetterAvatar(iconX, iconY, row.subject_name.charAt(0).toUpperCase());
           }
-
-          // Subject name (bold)
           const textX = cx + 14;
           let textY = cy + 7;
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(9.5);
           doc.setTextColor(30, 58, 95);
           doc.text(row.subject_name, textX, textY);
-
-          // Teacher name (normal, gray)
           textY += 4.5;
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(8);
           doc.setTextColor(107, 114, 128);
           doc.text(row.teacher_name, textX, textY);
-
-          // Comment (normal, dark)
-          if (row.comment) {
-            textY += 5;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.setTextColor(55, 65, 81);
-            const maxW = data.cell.width - 16;
-            const commentLines = doc.splitTextToSize(row.comment, maxW);
-            doc.text(commentLines, textX, textY);
-          }
+        } else {
+          if (data.column.index !== 0) return;
+          const row = reportRows[meta.subjectIndex];
+          const cx = data.cell.x;
+          const cy = data.cell.y;
+          const padL = 4;
+          const padR = 4;
+          const padT = 1;
+          const maxW = data.cell.width - padL - padR;
+          const textX = cx + padL;
+          let textY = cy + padT + 3;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(55, 65, 81);
+          const lines = doc.splitTextToSize(row.comment, maxW);
+          lines.forEach((line, idx) => {
+            const isLast = idx === lines.length - 1;
+            const words = line.trimEnd().split(' ');
+            if (isLast || words.length <= 1) {
+              doc.text(line, textX, textY);
+            } else {
+              const textOnlyW = doc.getTextWidth(words.join(''));
+              const spaceW = (maxW - textOnlyW) / (words.length - 1);
+              let xPos = textX;
+              words.forEach((word) => {
+                doc.text(word, xPos, textY);
+                xPos += doc.getTextWidth(word) + spaceW;
+              });
+            }
+            textY += 4;
+          });
         }
       },
-      didDrawPage: () => {
-        drawFooter();
-      }
+      didDrawPage: () => { drawFooter(); }
     });
+
+    // Render core subjects table
+    if (coreBody.length > 0) {
+      autoTable(doc, tableOptions(coreBody, coreMeta, mt + 12));
+    }
+
+    // Render non-core subjects table (below core, with a small gap)
+    if (nonCoreBody.length > 0) {
+      const afterCore = coreBody.length > 0 ? doc.lastAutoTable.finalY + 8 : mt + 12;
+      autoTable(doc, tableOptions(nonCoreBody, nonCoreMeta, afterCore));
+    }
 
     // Open PDF in new tab
     const pdfBlob = doc.output('blob');

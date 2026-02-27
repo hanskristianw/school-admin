@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
 import NotificationModal from '@/components/ui/notification-modal'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import * as XLSX from 'xlsx'
 import ExcelJS from 'exceljs'
 
 export default function InitialStockPage() {

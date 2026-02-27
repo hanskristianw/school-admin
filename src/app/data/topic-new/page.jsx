@@ -27,6 +27,15 @@ export default function TopicNewPage() {
   const aiScrollRef = useRef(null)
   const [activeTab, setActiveTab] = useState('planning')
   const [activeSubMenu, setActiveSubMenu] = useState('overview')
+  const [planningView, setPlanningView] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('planning_view') || 'card'
+    return 'card'
+  })
+  const [assessmentView, setAssessmentView] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('assessment_view') || 'card'
+    return 'card'
+  })
+  const [userRole, setUserRole] = useState(null)
   
   // Data state
   const [topics, setTopics] = useState([])
@@ -355,11 +364,15 @@ export default function TopicNewPage() {
   useEffect(() => {
     const userData = localStorage.getItem('user_data')
     const kr_id = localStorage.getItem('kr_id')
+    const role = localStorage.getItem('user_role')
     console.log('🔍 User data from localStorage:', userData)
     
-    // Set current user ID for assessment form
+    // Set current user ID and role
     if (kr_id) {
       setCurrentUserId(parseInt(kr_id))
+    }
+    if (role) {
+      setUserRole(role)
     }
     
     if (userData) {
@@ -370,8 +383,8 @@ export default function TopicNewPage() {
         const userId = parsed.userID || parsed.user_id || parsed.userId || parsed.id
         console.log('👤 User ID:', userId)
         if (userId) {
-          fetchSubjects(userId)
-          fetchDetailKelasForAssessment(userId)
+          fetchSubjects(userId, role)
+          fetchDetailKelasForAssessment(userId, role)
           fetchAllKelas() // Fetch all kelas for filter dropdown
         } else {
           console.warn('⚠️ No user ID found')
@@ -515,14 +528,17 @@ export default function TopicNewPage() {
   }
 
   // Fetch subjects for current user
-  const fetchSubjects = async (userId) => {
+  const fetchSubjects = async (userId, role) => {
     try {
-      console.log('🔍 Fetching subjects for user:', userId)
-      const { data, error } = await supabase
+      console.log('🔍 Fetching subjects for user:', userId, 'role:', role)
+      const isAdmin = role === 'admin' || role === 'Admin'
+      let query = supabase
         .from('subject')
         .select('subject_id, subject_name, subject_guide')
-        .eq('subject_user_id', userId)
-        .order('subject_name')
+      if (!isAdmin) {
+        query = query.eq('subject_user_id', userId)
+      }
+      const { data, error } = await query.order('subject_name')
       
       console.log('📚 Subjects response:', { data, error })
       if (error) throw error
@@ -832,14 +848,17 @@ export default function TopicNewPage() {
   }
   
   // Fetch detail_kelas for assessment form
-  const fetchDetailKelasForAssessment = async (userId) => {
+  const fetchDetailKelasForAssessment = async (userId, role) => {
     try {
-      // Get subjects for user
-      const { data: subjectsData, error: subjectsError } = await supabase
+      const isAdmin = role === 'admin' || role === 'Admin'
+      // Get subjects for user (or all subjects for admin)
+      let subjectQuery = supabase
         .from('subject')
         .select('subject_id, subject_name')
-        .eq('subject_user_id', userId)
-        .order('subject_name')
+      if (!isAdmin) {
+        subjectQuery = subjectQuery.eq('subject_user_id', userId)
+      }
+      const { data: subjectsData, error: subjectsError } = await subjectQuery.order('subject_name')
       
       if (subjectsError) throw subjectsError
       if (!subjectsData || subjectsData.length === 0) {
@@ -3489,6 +3508,69 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }
 
+  const handleTopicOpen = async (topic) => {
+    resetAiState()
+    setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
+    setModalOpen(true)
+    setIsAddMode(false)
+    setCurrentStep(0)
+    setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
+    await fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
+    const { data: assessmentData, error: assessmentLoadError } = await supabase
+      .from('assessment')
+      .select(`
+        assessment_id,
+        assessment_nama,
+        assessment_keterangan,
+        assessment_semester,
+        assessment_conceptual_understanding,
+        assessment_task_specific_description,
+        assessment_instructions,
+        assessment_tsc,
+        assessment_criteria (criterion_id)
+      `)
+      .eq('assessment_topic_id', topic.topic_id)
+      .single()
+    if (assessmentLoadError) {
+      console.error('❌ [FETCH ERROR] Error loading assessment:', assessmentLoadError)
+    }
+    if (assessmentData) {
+      const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || []
+      setWizardAssessment({
+        assessment_nama: assessmentData.assessment_nama || '',
+        assessment_keterangan: assessmentData.assessment_keterangan || '',
+        assessment_semester: assessmentData.assessment_semester?.toString() || '',
+        assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
+        assessment_conceptual_understanding: assessmentData.assessment_conceptual_understanding || '',
+        assessment_task_specific_description: assessmentData.assessment_task_specific_description || '',
+        assessment_instructions: assessmentData.assessment_instructions || '',
+        selected_criteria: criteriaIds,
+        assessment_tsc: assessmentData.assessment_tsc || {}
+      })
+    } else {
+      setWizardAssessment({
+        assessment_nama: '',
+        assessment_keterangan: '',
+        assessment_semester: '',
+        assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
+        assessment_conceptual_understanding: '',
+        assessment_task_specific_description: '',
+        assessment_instructions: '',
+        selected_criteria: [],
+        assessment_tsc: {}
+      })
+    }
+    if (topic.topic_subject_id) {
+      await fetchKelasForSubject(topic.topic_subject_id)
+      const { data: criteriaData } = await supabase
+        .from('criteria')
+        .select('criterion_id, code, name')
+        .eq('subject_id', topic.topic_subject_id)
+        .order('code')
+      setWizardCriteria(criteriaData || [])
+    }
+  }
+
   const tabs = [
     { id: 'planning', label: 'Planning', icon: '📋' },
     { id: 'assignment', label: 'Assignment', icon: '📝' },
@@ -3563,7 +3645,35 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             <div className="flex-1 p-6">
               {activeSubMenu === 'overview' && (
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-800 mb-6">Planning Overview</h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-gray-800">Planning Overview</h2>
+                    <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                      <button
+                        onClick={() => { setPlanningView('card'); localStorage.setItem('planning_view', 'card') }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          planningView === 'card' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                        title="Card View"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        Card
+                      </button>
+                      <button
+                        onClick={() => { setPlanningView('list'); localStorage.setItem('planning_view', 'list') }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          planningView === 'list' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                        title="List View"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        List
+                      </button>
+                    </div>
+                  </div>
                   
                   {/* Filters */}
                   <div className="mb-6 flex gap-4 items-end">
@@ -3620,7 +3730,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     <div className="flex justify-center items-center py-12">
                       <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-red-500" />
                     </div>
-                  ) : (
+                  ) : planningView === 'card' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredTopics.length === 0 && (
                         <div className="col-span-full text-center py-12 text-gray-500">
@@ -3638,92 +3748,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           <div 
                             key={topic.topic_id}
                             className="relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all cursor-pointer hover:border-red-300 overflow-hidden"
-                            onClick={async () => {
-                              // Reset AI modal states when opening a new unit
-                              resetAiState()
-                              
-                              console.log('🔍 [MODAL OPEN] Opening edit modal for topic:', topic)
-                              
-                              setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
-                              setModalOpen(true)
-                              setIsAddMode(false)
-                              setCurrentStep(0)
-                              
-                              // Pre-fill wizard with existing data
-                              // topic_atl default to empty string if not in DB yet
-                              setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
-                              
-                              // Fetch assessment for this topic and load into wizard
-                              console.log('🔍 [FETCH ASSESSMENT] Fetching assessment for topic_id:', topic.topic_id)
-                              await fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
-                              
-                              // Load assessment data into wizard state
-                              const { data: assessmentData, error: assessmentLoadError } = await supabase
-                                .from('assessment')
-                                .select(`
-                                  assessment_id,
-                                  assessment_nama,
-                                  assessment_keterangan,
-                                  assessment_semester,
-                                  assessment_conceptual_understanding,
-                                  assessment_task_specific_description,
-                                  assessment_instructions,
-                                  assessment_tsc,
-                                  assessment_criteria (criterion_id)
-                                `)
-                                .eq('assessment_topic_id', topic.topic_id)
-                                .single()
-                              
-                              if (assessmentLoadError) {
-                                console.error('❌ [FETCH ERROR] Error loading assessment:', assessmentLoadError)
-                              }
-                              
-                              if (assessmentData) {
-                                console.log('✅ [ASSESSMENT LOADED] Assessment data:', assessmentData)
-                                console.log('🔍 [TOPIC RELATIONSHIP] topic.topic_relationship_summative_assessment_statement_of_inquiry:', topic.topic_relationship_summative_assessment_statement_of_inquiry)
-                                
-                                const criteriaIds = assessmentData.assessment_criteria?.map(ac => ac.criterion_id) || []
-                                const wizardData = {
-                                  assessment_nama: assessmentData.assessment_nama || '',
-                                  assessment_keterangan: assessmentData.assessment_keterangan || '',
-                                  assessment_semester: assessmentData.assessment_semester?.toString() || '',
-                                  assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
-                                  assessment_conceptual_understanding: assessmentData.assessment_conceptual_understanding || '',
-                                  assessment_task_specific_description: assessmentData.assessment_task_specific_description || '',
-                                  assessment_instructions: assessmentData.assessment_instructions || '',
-                                  selected_criteria: criteriaIds,
-                                  assessment_tsc: assessmentData.assessment_tsc || {}
-                                }
-                                
-                                console.log('✅ [WIZARD POPULATED] Setting wizardAssessment to:', wizardData)
-                                setWizardAssessment(wizardData)
-                              } else {
-                                console.warn('⚠️ [NO ASSESSMENT] No assessment data found, clearing wizard')
-                                // No assessment yet, clear wizard assessment
-                                setWizardAssessment({
-                                  assessment_nama: '',
-                                  assessment_keterangan: '',
-                                  assessment_semester: '',
-                                  assessment_relationship: topic.topic_relationship_summative_assessment_statement_of_inquiry || '',
-                                  assessment_conceptual_understanding: '',
-                                  assessment_task_specific_description: '',
-                                  assessment_instructions: '',
-                                  selected_criteria: [],
-                                  assessment_tsc: {}
-                                })
-                              }
-                              
-                              // Load criteria for subject
-                              if (topic.topic_subject_id) {
-                                await fetchKelasForSubject(topic.topic_subject_id)
-                                const { data: criteriaData } = await supabase
-                                  .from('criteria')
-                                  .select('criterion_id, code, name')
-                                  .eq('subject_id', topic.topic_subject_id)
-                                  .order('code')
-                                setWizardCriteria(criteriaData || [])
-                              }
-                            }}
+                            onClick={() => handleTopicOpen(topic)}
                           >
                             {/* Grade Watermark */}
                             {gradeNumber && (
@@ -3831,6 +3856,79 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           </div>
                         )})
                       )}
+                    </div>
+                  ) : filteredTopics.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      {t('topicNew.table.noUnits')}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topic Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inquiry Question</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Global Context</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredTopics.map((topic, idx) => (
+                            <tr
+                              key={topic.topic_id}
+                              className="hover:bg-red-50 cursor-pointer transition-colors"
+                              onClick={() => handleTopicOpen(topic)}
+                            >
+                              <td className="px-4 py-3 text-gray-400 text-center">{idx + 1}</td>
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-gray-900">{topic.topic_nama}</div>
+                                {topic.topic_urutan && <div className="text-xs text-gray-400">Unit #{topic.topic_urutan}</div>}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded font-medium whitespace-nowrap">
+                                  {subjectMap.get(topic.topic_subject_id) || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded font-medium whitespace-nowrap">
+                                  {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-gray-700 text-center">
+                                {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
+                                  ? `${topic.topic_duration}w`
+                                  : '-'}
+                              </td>
+                              <td className="px-4 py-3 text-gray-600 max-w-xs">
+                                <p className="line-clamp-2">{topic.topic_inquiry_question || '-'}</p>
+                              </td>
+                              <td className="px-4 py-3 text-gray-600 max-w-xs">
+                                <p className="line-clamp-1">{topic.topic_global_context || '-'}</p>
+                                {topic.topic_gc_exploration && (
+                                  <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px] bg-cyan-50 text-cyan-700 rounded border border-cyan-200">{topic.topic_gc_exploration}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-end gap-1">
+                                  <button onClick={(e) => handleGeneratePDF(topic, e)} className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors" title="Unit Planner PDF">
+                                    <FontAwesomeIcon icon={faPrint} className="text-xs" />
+                                  </button>
+                                  <button onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)} className="p-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors" title="Assessment PDF">
+                                    <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
+                                  </button>
+                                  <button onClick={(e) => handleExportAssessmentWordFromCard(topic, e)} className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors" title="Assessment Word">
+                                    <FontAwesomeIcon icon={faFileWord} className="text-xs" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
@@ -4049,7 +4147,35 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
         {activeTab === 'assessment' && (
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">Assessment Management</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">Assessment Management</h2>
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => { setAssessmentView('card'); localStorage.setItem('assessment_view', 'card') }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    assessmentView === 'card' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  title="Card View"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                  Card
+                </button>
+                <button
+                  onClick={() => { setAssessmentView('list'); localStorage.setItem('assessment_view', 'list') }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    assessmentView === 'list' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  title="List View"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  List
+                </button>
+              </div>
+            </div>
             
             {/* Filters */}
             <div className="mb-6 flex gap-4 items-end">
@@ -4170,7 +4296,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               <div className="flex justify-center items-center py-12">
                 <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-red-500" />
               </div>
-            ) : (
+            ) : assessmentView === 'card' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredAssessments.length === 0 && (
                   <div className="col-span-full text-center py-12 text-gray-500">
@@ -4357,6 +4483,96 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </div>
                 )})}
               </div>
+            ) : filteredAssessments.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">No assessments found</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Criteria</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredAssessments.map((assessment, idx) => {
+                      const hasCriteria = assessment.criteria && assessment.criteria.length > 0
+                      const isPending = assessment.assessment_status === 0 || assessment.assessment_status === 3
+                      const canEdit = (isPending || !hasCriteria) && assessment.assessment_user_id === currentUserId
+                      return (
+                        <tr
+                          key={assessment.assessment_id}
+                          className={`transition-colors ${canEdit ? 'hover:bg-cyan-50 cursor-pointer' : 'hover:bg-gray-50'}`}
+                          onClick={() => canEdit && handleEditAssessment(assessment)}
+                        >
+                          <td className="px-4 py-3 text-gray-400 text-center">{idx + 1}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900 flex items-center gap-2">
+                              {assessment.topic_urutan && assessment.topic_urutan !== 999 && (
+                                <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap">U{assessment.topic_urutan}</span>
+                              )}
+                              {assessment.assessment_nama}
+                            </div>
+                            {assessment.topic_nama && <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{assessment.topic_nama}</div>}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded font-medium whitespace-nowrap">{assessment.subject_name || 'N/A'}</span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded font-medium whitespace-nowrap">{assessment.kelas_nama || 'N/A'}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {hasCriteria ? (
+                              <div className="flex flex-wrap gap-1">
+                                {assessment.criteria.map(c => (
+                                  <span key={c.code} className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold">{c.code}</span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded font-medium">⚠ None</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">{getAssessmentStatusBadge(assessment.assessment_status)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                            {assessment.assessment_tanggal
+                              ? new Date(assessment.assessment_tanggal).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                              : <span className="text-gray-400 italic text-xs">Draft</span>}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-600">{assessment.teacher_name || '-'}</td>
+                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              {assessment.assessment_status === 1 && hasCriteria && (
+                                <button
+                                  onClick={() => router.push(`/data/assessment_grading/${assessment.assessment_id}`)}
+                                  className="px-2 py-1 text-xs font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded transition-all"
+                                >
+                                  📝 Input Nilai
+                                </button>
+                              )}
+                              {canEdit && isPending && (
+                                <button
+                                  onClick={() => handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                  title="Delete"
+                                >
+                                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
@@ -4494,10 +4710,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     <textarea
                       value={student.comment_text}
                       onChange={(e) => updateCommentText(student.user_id, e.target.value)}
-                      rows={3}
+                      rows={6}
+                      maxLength={600}
                       placeholder="Write your comment for this student..."
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                     />
+                    <p className="text-xs text-gray-400 text-right mt-1">{(student.comment_text || '').length}/600</p>
                   </div>
                 ))}
               </div>

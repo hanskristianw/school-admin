@@ -23,7 +23,10 @@ export default function SubjectManagement() {
     subject_unit_id: '',
     subject_code: '',
     subject_guide: '',
-    grading_method: 'highest'
+    grading_method: 'highest',
+    core_subject: false,
+    print_order: 0,
+    include_in_print: true
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -108,6 +111,9 @@ export default function SubjectManagement() {
           subject_guide,
           subject_icon,
           grading_method,
+          core_subject,
+          print_order,
+          include_in_print,
           users:subject_user_id (
             user_nama_depan,
             user_nama_belakang
@@ -116,7 +122,8 @@ export default function SubjectManagement() {
             unit_name
           )
         `)
-        .order('subject_id');
+        .order('print_order', { ascending: true })
+        .order('subject_id', { ascending: true });
 
       if (error) {
         throw new Error(error.message);
@@ -132,6 +139,9 @@ export default function SubjectManagement() {
         subject_guide: subject.subject_guide || '',
         subject_icon: subject.subject_icon || '',
         grading_method: subject.grading_method || 'highest',
+        core_subject: subject.core_subject || false,
+        print_order: subject.print_order ?? 0,
+        include_in_print: subject.include_in_print !== false,
         user_nama_depan: subject.users?.user_nama_depan || '',
         user_nama_belakang: subject.users?.user_nama_belakang || '',
         unit_name: subject.unit?.unit_name || ''
@@ -370,7 +380,10 @@ export default function SubjectManagement() {
         subject_unit_id: Number(formData.subject_unit_id),
         subject_code: formData.subject_code?.trim() || null,
         subject_guide: formData.subject_guide?.trim() || null,
-        grading_method: formData.grading_method || 'highest'
+        grading_method: formData.grading_method || 'highest',
+        core_subject: formData.core_subject || false,
+        print_order: Number(formData.print_order) || 0,
+        include_in_print: formData.include_in_print !== false
       };
 
       // Handle icon upload if file selected
@@ -427,7 +440,11 @@ export default function SubjectManagement() {
         subject_user_id: '',
         subject_unit_id: '',
         subject_code: '',
-        subject_guide: ''
+        subject_guide: '',
+        grading_method: 'highest',
+        core_subject: false,
+        print_order: 0,
+        include_in_print: true
       });
       setIconFile(null);
       setIconPreview(null);
@@ -454,7 +471,10 @@ export default function SubjectManagement() {
       subject_unit_id: subject.subject_unit_id,
       subject_code: subject.subject_code || '',
       subject_guide: subject.subject_guide || '',
-      grading_method: subject.grading_method || 'highest'
+      grading_method: subject.grading_method || 'highest',
+      core_subject: subject.core_subject || false,
+      print_order: subject.print_order ?? 0,
+      include_in_print: subject.include_in_print !== false
     });
     setIconFile(null);
     setIconPreview(subject.subject_icon || null);
@@ -925,104 +945,109 @@ export default function SubjectManagement() {
                 : "Tidak ada subject yang sesuai dengan filter yang dipilih."
               }
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Icon
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Subject Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Code
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Guide Link
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Teacher
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Unit
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredSubjects.map((subject) => (
-                    <tr key={subject.subject_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {subject.subject_id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {subject.subject_icon ? (
-                          <img src={subject.subject_icon} alt={subject.subject_name} className="w-8 h-8 rounded object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 rounded bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold">
-                            {subject.subject_name?.charAt(0)?.toUpperCase()}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {subject.subject_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {subject.subject_code || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-700">
-                        {subject.subject_guide ? (
-                          <a href={subject.subject_guide} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">
-                            Open
-                          </a>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {subject.user_nama_depan} {subject.user_nama_belakang}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {subject.unit_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(subject)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleManageCriteria(subject)}
-                          className="text-purple-600 hover:text-purple-800"
-                        >
-                          Criteria
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(subject)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          Hapus
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          ) : (() => {
+            const coreSubjects = filteredSubjects.filter(s => s.core_subject)
+            const nonCoreSubjects = filteredSubjects.filter(s => !s.core_subject)
+
+            const renderRow = (subject, idx) => (
+              <tr key={subject.subject_id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center w-12">
+                  {idx + 1}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {subject.subject_icon ? (
+                    <img src={subject.subject_icon} alt={subject.subject_name} className="w-8 h-8 rounded object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold">
+                      {subject.subject_name?.charAt(0)?.toUpperCase()}
+                    </div>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {subject.subject_name}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {subject.subject_code || '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-center">
+                  {subject.include_in_print !== false ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Print</span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Skip</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-700">
+                  {subject.subject_guide ? (
+                    <a href={subject.subject_guide} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">
+                      Open
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {subject.user_nama_depan} {subject.user_nama_belakang}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {subject.unit_name}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(subject)}>Edit</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleManageCriteria(subject)} className="text-purple-600 hover:text-purple-800">Criteria</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDelete(subject)} className="text-red-600 hover:text-red-800">Hapus</Button>
+                </td>
+              </tr>
+            )
+
+            const thead = (
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">#</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Icon</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Print</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guide Link</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+            )
+
+            return (
+              <div className="overflow-x-auto space-y-6">
+                {coreSubjects.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold text-blue-700 uppercase tracking-wider">Core Subjects</span>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{coreSubjects.length}</span>
+                    </div>
+                    <table className="min-w-full table-auto border border-blue-100 rounded-lg overflow-hidden">
+                      {thead}
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {coreSubjects.map((subject, idx) => renderRow(subject, idx))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {nonCoreSubjects.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Other Subjects</span>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{nonCoreSubjects.length}</span>
+                    </div>
+                    <table className="min-w-full table-auto border border-gray-200 rounded-lg overflow-hidden">
+                      {thead}
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {nonCoreSubjects.map((subject, idx) => renderRow(subject, idx))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </CardContent>
       </Card>
 
@@ -1196,6 +1221,57 @@ export default function SubjectManagement() {
               {formErrors.subject_unit_id && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.subject_unit_id}</p>
               )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="print_order">Print Order</Label>
+                <Input
+                  id="print_order"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formData.print_order}
+                  onChange={(e) => setFormData(prev => ({ ...prev, print_order: e.target.value }))}
+                />
+                <p className="text-xs text-gray-500 mt-1">Urutan cetak laporan (0 = paling pertama)</p>
+              </div>
+
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <Label>Core Subject</Label>
+                  <p className="text-xs text-gray-500 mb-2">Tandai sebagai mata pelajaran inti</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, core_subject: !prev.core_subject }))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    formData.core_subject ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    formData.core_subject ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <Label>Include in Print</Label>
+                  <p className="text-xs text-gray-500 mb-2">Tampilkan subject ini saat cetak laporan</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, include_in_print: !prev.include_in_print }))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    formData.include_in_print !== false ? 'bg-green-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    formData.include_in_print !== false ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
             </div>
           </div>
 

@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
-import * as XLSX from 'xlsx';
+
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getCityList, getProvinceByCity } from '@/lib/cityProvinceData';
@@ -1213,7 +1213,7 @@ export default function AdmissionManagement() {
   };
 
   // Excel export
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (filteredApplications.length === 0) {
       showNotification('Info', 'Tidak ada data untuk di-export', 'error');
       return;
@@ -1270,25 +1270,25 @@ export default function AdmissionManagement() {
       };
     });
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
-
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 4 }, { wch: 18 }, { wch: 22 }, { wch: 14 }, { wch: 12 },
-      { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 30 },
-      { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 20 }, { wch: 22 },
-      { wch: 16 }, { wch: 22 }, { wch: 16 }, { wch: 12 }, { wch: 14 },
-      { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 35 }, { wch: 16 },
-      { wch: 16 }, { wch: 16 }, { wch: 35 }, { wch: 18 }, { wch: 16 },
-      { wch: 20 },
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Pendaftaran');
+    const ExcelJS = (await import('exceljs')).default
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Pendaftaran')
+    const colWidths = [4, 18, 22, 14, 12, 14, 12, 10, 14, 30, 14, 14, 8, 20, 22, 16, 22, 16, 12, 14, 14, 14, 16, 35, 16, 16, 16, 35, 18, 16, 20]
+    if (rows.length > 0) {
+      const keys = Object.keys(rows[0])
+      ws.columns = keys.map((key, i) => ({ header: key, key, width: colWidths[i] || 15 }))
+      ws.addRows(rows)
+    }
 
     const filterLabel = filterStatus ? statusConfig[filterStatus]?.label : 'Semua';
     const filename = `Laporan_Pendaftaran_${filterLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    XLSX.writeFile(wb, filename);
+    const buffer = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(link.href)
     showNotification('Berhasil', `Data berhasil di-export (${filteredApplications.length} baris)`, 'success');
   };
 

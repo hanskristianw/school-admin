@@ -10,7 +10,7 @@ import Modal from '@/components/ui/modal'
 import KwitansiModal from '@/components/KwitansiModal'
 import { formatCurrency, toNumber } from '@/lib/utils'
 import { canVoidTransactions, getUserData } from '@/lib/permissions'
-import * as XLSX from 'xlsx'
+
 
 export default function UniformSalesPage() {
   const [allStudents, setAllStudents] = useState([]) // All students loaded once
@@ -892,15 +892,15 @@ export default function UniformSalesPage() {
     }
   }
 
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (reportData.length === 0) {
       alert('Tidak ada data untuk di-export')
       return
     }
 
     try {
-      // Create workbook
-      const wb = XLSX.utils.book_new()
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
 
       // Prepare period info
       let periodText = ''
@@ -914,6 +914,8 @@ export default function UniformSalesPage() {
       }
 
       // Sheet 1: Summary
+      const wsSummary = wb.addWorksheet('Ringkasan')
+      wsSummary.columns = [{ width: 25 }, { width: 20 }]
       const summaryData = [
         ['LAPORAN PENJUALAN SERAGAM'],
         ['Chung Chung Christian School'],
@@ -930,21 +932,30 @@ export default function UniformSalesPage() {
         ['Total Profit', reportSummary.total_profit],
         ['Margin', reportSummary.total_amount > 0 ? ((reportSummary.total_profit / reportSummary.total_amount) * 100).toFixed(2) + '%' : '0%'],
       ]
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData)
-      
-      // Set column widths for summary
-      wsSummary['!cols'] = [{ wch: 25 }, { wch: 20 }]
-      
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Ringkasan')
+      summaryData.forEach(row => wsSummary.addRow(row))
 
       // Sheet 2: Detail Transactions
-      const detailData = reportData.map(sale => {
-        // Format item details: "Kemeja Putih (M) x2, Rok Kotak (L) x1"
+      const wsDetail = wb.addWorksheet('Detail Penjualan')
+      wsDetail.columns = [
+        { header: 'ID', key: 'ID', width: 8 },
+        { header: 'Tanggal', key: 'Tanggal', width: 12 },
+        { header: 'Siswa', key: 'Siswa', width: 25 },
+        { header: 'Unit', key: 'Unit', width: 15 },
+        { header: 'Staff', key: 'Staff', width: 20 },
+        { header: 'Detail Seragam', key: 'Detail Seragam', width: 50 },
+        { header: 'Jumlah Item', key: 'Jumlah Item', width: 12 },
+        { header: 'Total Harga', key: 'Total Harga', width: 15 },
+        { header: 'HPP', key: 'HPP', width: 15 },
+        { header: 'Profit', key: 'Profit', width: 15 },
+        { header: 'Margin %', key: 'Margin %', width: 10 },
+        { header: 'Status', key: 'Status', width: 10 },
+        { header: 'Tgl Diambil', key: 'Tgl Diambil', width: 12 },
+      ]
+      reportData.forEach(sale => {
         const itemsText = sale.item_details
           .map(item => `${item.uniform_name} (${item.size_name}) x${item.qty}`)
           .join(', ')
-
-        return {
+        wsDetail.addRow({
           'ID': sale.sale_id,
           'Tanggal': new Date(sale.sale_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
           'Siswa': sale.user_name,
@@ -958,35 +969,18 @@ export default function UniformSalesPage() {
           'Margin %': sale.total_amount > 0 ? (((sale.total_amount - sale.total_cost) / sale.total_amount) * 100).toFixed(2) : 0,
           'Status': sale.status === 'paid' ? 'Lunas' : 'Pending',
           'Tgl Diambil': sale.pickup_date ? new Date(sale.pickup_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'
-        }
+        })
       })
 
-      const wsDetail = XLSX.utils.json_to_sheet(detailData)
-      
-      // Set column widths for detail
-      wsDetail['!cols'] = [
-        { wch: 8 },  // ID
-        { wch: 12 }, // Tanggal
-        { wch: 25 }, // Siswa
-        { wch: 15 }, // Unit
-        { wch: 20 }, // Staff
-        { wch: 50 }, // Detail Seragam
-        { wch: 12 }, // Jumlah Item
-        { wch: 15 }, // Total Harga
-        { wch: 15 }, // HPP
-        { wch: 15 }, // Profit
-        { wch: 10 }, // Margin %
-        { wch: 10 }, // Status
-        { wch: 12 }  // Tgl Diambil
-      ]
-
-      XLSX.utils.book_append_sheet(wb, wsDetail, 'Detail Penjualan')
-
-      // Generate filename
+      // Generate filename and download
       const filename = `Laporan_Penjualan_${reportPeriod === 'month' ? reportMonth : reportStartDate + '_' + reportEndDate}.xlsx`
-
-      // Export
-      XLSX.writeFile(wb, filename)
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = filename
+      link.click()
+      URL.revokeObjectURL(link.href)
     } catch (e) {
       console.error('Error exporting to Excel:', e)
       alert('Gagal export ke Excel: ' + e.message)
