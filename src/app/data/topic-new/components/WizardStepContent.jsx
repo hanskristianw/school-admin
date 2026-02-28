@@ -1001,6 +1001,32 @@ export default function WizardStepContent({
           </div>
           
           <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Conceptual Understanding <span className="text-red-500">*</span>
+              </label>
+              {selectedTopic.topic_conceptual_understanding?.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setWizardAssessment(prev => ({ ...prev, assessment_conceptual_understanding: selectedTopic.topic_conceptual_understanding }))}
+                  className="text-xs px-3 py-1.5 rounded-full border border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition-colors"
+                >
+                  ↑ Copy from Unit
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mb-2">What conceptual understanding does this assessment task measure?</p>
+            <textarea
+              value={wizardAssessment.assessment_conceptual_understanding}
+              onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_conceptual_understanding: e.target.value }))}
+              disabled={isAssessmentReadOnly}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              rows={2}
+              placeholder="e.g., Students understand that human activities have consequences on ecosystem balance and biodiversity..."
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Description (Optional)
             </label>
