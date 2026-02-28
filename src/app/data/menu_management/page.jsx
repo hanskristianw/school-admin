@@ -17,7 +17,7 @@ export default function MenuManagementPage() {
   const [permByRole, setPermByRole] = useState(new Map()) // role_id -> has permission
   const [search, setSearch] = useState('')
   const [showEdit, setShowEdit] = useState(false)
-  const [form, setForm] = useState({ menu_id: null, menu_name: '', menu_path: '', menu_icon: '', menu_order: 0, menu_parent_id: null })
+  const [form, setForm] = useState({ menu_id: null, menu_name: '', menu_path: '', menu_icon: '', menu_order: 0, menu_parent_id: null, menu_show_dashboard: false })
   const [saving, setSaving] = useState(false)
   const [notif, setNotif] = useState({ isOpen: false, title: '', message: '', type: 'success' })
   // Tree-only view; table/drag ordering removed per request
@@ -80,7 +80,8 @@ export default function MenuManagementPage() {
       menu_path: menu.menu_path || '',
       menu_icon: menu.menu_icon || '',
       menu_order: menu.menu_order || 0,
-      menu_parent_id: menu.menu_parent_id ?? null
+      menu_parent_id: menu.menu_parent_id ?? null,
+      menu_show_dashboard: !!menu.menu_show_dashboard
     })
     setShowEdit(true)
   }
@@ -98,7 +99,8 @@ export default function MenuManagementPage() {
         menu_path: form.menu_path?.trim() || null,
         menu_icon: form.menu_icon?.trim() || null,
         menu_order: Number(form.menu_order) || 0,
-  menu_parent_id: (form.menu_parent_id === '' || form.menu_parent_id === null) ? null : Number(form.menu_parent_id)
+        menu_parent_id: (form.menu_parent_id === '' || form.menu_parent_id === null) ? null : Number(form.menu_parent_id),
+        menu_show_dashboard: !!form.menu_show_dashboard
       }
       if (form.menu_id) {
         const { error } = await supabase.from('menus').update(payload).eq('menu_id', form.menu_id)
@@ -276,6 +278,19 @@ export default function MenuManagementPage() {
             <Label>Order</Label>
             <Input type="number" value={form.menu_order} onChange={e => setForm(prev => ({ ...prev, menu_order: e.target.value }))} />
           </div>
+          <div className="flex items-center gap-3 py-1">
+            <input
+              type="checkbox"
+              id="show_dashboard"
+              checked={!!form.menu_show_dashboard}
+              onChange={e => setForm(prev => ({ ...prev, menu_show_dashboard: e.target.checked }))}
+              className="w-4 h-4 rounded"
+            />
+            <Label htmlFor="show_dashboard" className="cursor-pointer mb-0">
+              Tampilkan di Dashboard
+            </Label>
+            <span className="text-xs text-gray-500">(muncul sebagai card di halaman dashboard)</span>
+          </div>
           <div>
             <Label>Parent Menu (optional)</Label>
             <select
@@ -331,6 +346,9 @@ function MenuTree({ menus, selectedMenu, onSelect, onEdit, onDelete }) {
             {level>0 && <div className="text-gray-400 select-none">└─</div>}
             <div className="font-medium truncate max-w-[50vw] sm:max-w-none">{node.menu_name}</div>
             <div className="text-[11px] sm:text-xs text-gray-500 truncate max-w-[40vw] sm:max-w-none">{node.menu_path || '-'}</div>
+            {node.menu_show_dashboard && (
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">⊞ Dashboard</span>
+            )}
           </div>
           <div className="flex flex-wrap gap-1 sm:gap-2">
             <Button variant="secondary" className="px-2 py-1 text-xs sm:text-sm" onClick={()=>onSelect?.(node)}>Select</Button>

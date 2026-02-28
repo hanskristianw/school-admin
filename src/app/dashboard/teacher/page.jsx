@@ -1,10 +1,64 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from '@/lib/supabase'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUser, faCalendar, faClipboardCheck, faChevronLeft, faChevronRight, faDoorOpen, faChalkboardTeacher } from '@fortawesome/free-solid-svg-icons'
+import {
+  LayoutDashboard, BookOpen, GraduationCap, Users, UserPlus, ClipboardCheck,
+  ClipboardList, FileText, MessageCircle, MessageSquare, CalendarDays, Calendar,
+  QrCode, School, Settings, ShieldCheck, ShoppingCart, ShoppingBag, Package,
+  Truck, Warehouse, Shirt, Ruler, DoorOpen, BarChart2, FileBarChart2, SlidersHorizontal,
+  BadgeCheck, Lightbulb, Hash, Building, Wand2, Calculator, LayoutGrid, ScanLine,
+  BookMarked, NotebookPen, Clock, Star, Trophy, Megaphone, ChevronLeft, ChevronRight,
+  User
+} from 'lucide-react'
+
+// Map menu path prefixes to Lucide icon components
+const PATH_ICONS = [
+  ['/teacher/assessment_submission', ClipboardCheck],
+  ['/teacher',                       NotebookPen],
+  ['/data/assessment_approval',      BadgeCheck],
+  ['/data/topic-new',                BookMarked],
+  ['/data/consultation',             MessageCircle],
+  ['/data/comment',                  MessageSquare],
+  ['/data/class',                    School],
+  ['/data/kelas',                    School],
+  ['/data/subject',                  BookOpen],
+  ['/data/schedule',                 Clock],
+  ['/data/timetable',                CalendarDays],
+  ['/data/report',                   FileBarChart2],
+  ['/data/user',                     Users],
+  ['/data/admission',                UserPlus],
+  ['/data/uniform',                  Shirt],
+  ['/data/attendance',               ScanLine],
+  ['/data/door_greeter',             DoorOpen],
+  ['/data/menu_management',          SlidersHorizontal],
+  ['/data/role',                     ShieldCheck],
+  ['/data/stock',                    Package],
+  ['/data/supplier',                 Truck],
+  ['/data/purchase',                 ShoppingBag],
+  ['/data/atl',                      Star],
+  ['/data/criteria',                 Trophy],
+  ['/data/rubric',                   ClipboardList],
+  ['/data/announcement',             Megaphone],
+  ['/data/goal',                     Lightbulb],
+  ['/data/calendar',                 Calendar],
+  ['/sales',                         ShoppingCart],
+  ['/student',                       GraduationCap],
+  ['/room',                          DoorOpen],
+  ['/settings',                      Settings],
+  ['/reports',                       BarChart2],
+  ['/dashboard',                     LayoutDashboard],
+]
+
+function getPathIcon(path) {
+  if (!path) return LayoutGrid
+  const norm = path.trim().toLowerCase()
+  for (const [prefix, Icon] of PATH_ICONS) {
+    if (norm === prefix || norm.startsWith(prefix + '/') || norm.startsWith(prefix + '?')) return Icon
+  }
+  return LayoutGrid
+}
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Modal from '@/components/ui/modal'
@@ -23,23 +77,22 @@ export default function TeacherDashboard() {
       return fallback
     }
   }
-  const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [userData, setUserData] = useState(null)
-  
-  const [stats, setStats] = useState({
-    pendingAssessments: 0,
-  })
-  
-  const [teacherToday, setTeacherToday] = useState([])
-  const [teacherSelectedDay, setTeacherSelectedDay] = useState(() => new Date().toLocaleDateString('en-US', { weekday: 'long' }))
-  const [doorGreeter, setDoorGreeter] = useState({ today: null, tomorrow: null })
-  
-  const [recentAssessments, setRecentAssessments] = useState([])
-  const [detailKelasMap, setDetailKelasMap] = useState({})
-  const [usersMap, setUsersMap] = useState({})
+  const [menuItems, setMenuItems] = useState([])
+
+  const CARD_COLORS = [
+    { bg: 'bg-pink-50', icon: 'from-pink-400 to-rose-400', text: 'text-pink-700' },
+    { bg: 'bg-amber-50', icon: 'from-amber-400 to-orange-400', text: 'text-amber-700' },
+    { bg: 'bg-emerald-50', icon: 'from-emerald-400 to-teal-400', text: 'text-emerald-700' },
+    { bg: 'bg-sky-50', icon: 'from-sky-400 to-cyan-400', text: 'text-sky-700' },
+    { bg: 'bg-violet-50', icon: 'from-violet-400 to-purple-400', text: 'text-violet-700' },
+    { bg: 'bg-rose-50', icon: 'from-rose-400 to-pink-500', text: 'text-rose-700' },
+    { bg: 'bg-teal-50', icon: 'from-teal-400 to-emerald-500', text: 'text-teal-700' },
+    { bg: 'bg-orange-50', icon: 'from-orange-400 to-amber-500', text: 'text-orange-700' },
+  ]
   
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date()
@@ -67,10 +120,30 @@ export default function TeacherDashboard() {
       setLoading(true)
       setError("")
       const uid = parseInt(id, 10)
+      // Load menus for card grid
+      const loadMenus = async () => {
+        try {
+          const rawData = localStorage.getItem("user_data")
+          let userRole = role
+          let isAdmin = false
+          if (rawData) {
+            try { const u = JSON.parse(rawData); userRole = u.roleName || role; isAdmin = !!u.isAdmin } catch {}
+          }
+          const { customAuth } = await import('@/lib/supabase')
+          const result = await customAuth.getMenusByRole(userRole, isAdmin)
+          if (result.success && Array.isArray(result.menus)) {
+            const items = result.menus
+              .filter(m => m.menu_show_dashboard === true)
+              .map(m => ({ name: m.menu_name, path: m.menu_path || '#', icon: m.menu_icon || '', order: m.menu_order || 0 }))
+              .filter(m => m.path && m.path !== '#')
+              .sort((a, b) => (a.order || 0) - (b.order || 0))
+            setMenuItems(items)
+          }
+        } catch (e) { console.warn('Menu load failed', e) }
+      }
       Promise.all([
         fetchUserInfo(id),
-        fetchDashboardData(uid),
-        fetchTeacherTodaySchedule(uid, teacherSelectedDay)
+        loadMenus(),
       ])
         .catch((e) => {
           console.error(e)
@@ -89,142 +162,6 @@ export default function TeacherDashboard() {
     if (error) throw error
     setUserData(data)
   }
-
-  const fetchDashboardData = async (userId) => {
-    const { count: pendingCount } = await supabase
-      .from('assessment')
-      .select('*', { count: 'exact', head: true })
-      .eq('assessment_user_id', userId)
-      .in('assessment_status', [0, 3])
-      .not('assessment_tanggal', 'is', null)
-
-    setStats((s) => ({ ...s, pendingAssessments: pendingCount ?? 0 }))
-
-    try {
-      const today = new Date()
-      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1)
-      const weekday = (d) => d.toLocaleDateString('en-US', { weekday: 'long' })
-      const todayName = weekday(today)
-      const tomorrowName = weekday(tomorrow)
-      const { data: dgData, error: dgErr } = await supabase
-        .from('daftar_door_greeter')
-        .select('daftar_door_greeter_day')
-        .eq('daftar_door_greeter_user_id', userId)
-        .in('daftar_door_greeter_day', [todayName, tomorrowName])
-      if (dgErr) throw dgErr
-      const hasToday = dgData?.some(r => r.daftar_door_greeter_day === todayName) ? todayName : null
-      const hasTomorrow = dgData?.some(r => r.daftar_door_greeter_day === tomorrowName) ? tomorrowName : null
-      setDoorGreeter({ today: hasToday, tomorrow: hasTomorrow })
-    } catch (e) {
-      console.warn('Door greeter check failed', e)
-    }
-
-    const [{ data: assessments, error: aErr }, { data: detailKelas, error: dkErr }, { data: subjects, error: sErr }, { data: kelas, error: kErr }, { data: users, error: uErr }] = await Promise.all([
-      supabase
-        .from('assessment')
-        .select('assessment_id, assessment_nama, assessment_tanggal, assessment_status, assessment_user_id, assessment_detail_kelas_id')
-        .eq('assessment_user_id', userId)
-        .in('assessment_status', [0, 3])
-        .not('assessment_tanggal', 'is', null)
-        .order('assessment_tanggal', { ascending: false })
-        .limit(5),
-      supabase
-        .from('detail_kelas')
-        .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id'),
-      supabase
-        .from('subject')
-        .select('subject_id, subject_name'),
-      supabase
-        .from('kelas')
-        .select('kelas_id, kelas_nama'),
-      supabase
-        .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang'),
-    ])
-
-    if (aErr) throw aErr
-    if (dkErr) throw dkErr
-    if (sErr) throw sErr
-    if (kErr) throw kErr
-    if (uErr) throw uErr
-
-    const sMap = new Map((subjects || []).map(s => [s.subject_id, s.subject_name]))
-    const kMap = new Map((kelas || []).map(k => [k.kelas_id, k.kelas_nama]))
-    const dkMap = Object.fromEntries((detailKelas || []).map(dk => [
-      dk.detail_kelas_id,
-      `${sMap.get(dk.detail_kelas_subject_id) || 'Subject'} - ${kMap.get(dk.detail_kelas_kelas_id) || 'Kelas'}`
-    ]))
-    const uMap = Object.fromEntries((users || []).map(u => [u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim()]))
-
-    setDetailKelasMap(dkMap)
-    setUsersMap(uMap)
-    setRecentAssessments(assessments || [])
-  }
-
-  const fetchTeacherTodaySchedule = async (userId, day) => {
-    try {
-      const weekday = day || new Date().toLocaleDateString('en-US', { weekday: 'long' })
-      const { data: tt, error: ttErr } = await supabase
-        .from('timetable')
-        .select('timetable_detail_kelas_id, timetable_time, timetable_user_id, timetable_day')
-        .eq('timetable_user_id', userId)
-        .eq('timetable_day', weekday)
-      if (ttErr) throw ttErr
-
-      const detailIds = Array.from(new Set((tt || []).map(r => r.timetable_detail_kelas_id).filter(Boolean)))
-      if (detailIds.length === 0) { setTeacherToday([]); return }
-
-      const [{ data: dkRows, error: dkErr }, { data: kelasRows, error: kErr }, { data: subjRows, error: sErr }] = await Promise.all([
-        supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_kelas_id, detail_kelas_subject_id').in('detail_kelas_id', detailIds),
-        supabase.from('kelas').select('kelas_id, kelas_nama, kelas_color_name'),
-        supabase.from('subject').select('subject_id, subject_code, subject_name'),
-      ])
-      if (dkErr) throw dkErr
-      if (kErr) throw kErr
-      if (sErr) throw sErr
-
-      const kelasMap = new Map((kelasRows || []).map(k => [k.kelas_id, { nama: k.kelas_nama, color: k.kelas_color_name }]))
-      const subjMap = new Map((subjRows || []).map(s => [s.subject_id, { code: s.subject_code, name: s.subject_name }]))
-      const dkMap = new Map((dkRows || []).map(d => [d.detail_kelas_id, { kelas_id: d.detail_kelas_kelas_id, subject_id: d.detail_kelas_subject_id }]))
-
-      const parseRange = (rangeStr) => {
-        if (!rangeStr || typeof rangeStr !== 'string') return { start: '', end: '' }
-        const times = rangeStr.match(/\b(\d{1,2}:\d{2})\b/g)
-        if (times && times.length >= 2) return { start: times[0], end: times[1] }
-        const m = /\[\s*(\d{1,2}:\d{2})\s*,\s*(\d{1,2}:\d{2})\s*\]/.exec(rangeStr)
-        if (m) return { start: m[1], end: m[2] }
-        return { start: '', end: '' }
-      }
-
-      const items = (tt || [])
-        .map(row => {
-          const rel = dkMap.get(row.timetable_detail_kelas_id)
-          const k = rel ? kelasMap.get(rel.kelas_id) : null
-          const s = rel ? subjMap.get(rel.subject_id) : null
-          const { start, end } = parseRange(row.timetable_time)
-          return {
-            start,
-            end,
-            kelas: k?.nama || 'Kelas',
-            subject: s?.code || s?.name || 'Subject',
-            chipColor: k?.color || null,
-          }
-        })
-        .sort((a,b) => a.start.localeCompare(b.start))
-      setTeacherToday(items)
-    } catch (e) {
-      console.error('Teacher today schedule load failed', e)
-      setTeacherToday([])
-    }
-  }
-
-  useEffect(() => {
-    const id = localStorage.getItem('kr_id')
-    if (!id) return
-    const uid = parseInt(id, 10)
-    fetchTeacherTodaySchedule(uid, teacherSelectedDay)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherSelectedDay])
 
   const toKey = (d) => {
     const yyyy = d.getFullYear()
@@ -468,24 +405,7 @@ export default function TeacherDashboard() {
     }
   }
 
-  const formatDate = (dateString) => {
-    try {
-      return new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
-    } catch {
-      return '-'
-    }
-  }
 
-  const StatusBadge = ({ status }) => {
-    const map = useMemo(() => ({
-      0: { text: t('teacherSubmission.statusWaiting') || 'Waiting' , cls: 'bg-yellow-100 text-yellow-800' },
-      3: { text: t('assessmentApproval.statusWaitingPrincipal') || 'Waiting for principal approval', cls: 'bg-blue-100 text-blue-800' },
-      1: { text: t('teacherSubmission.statusApproved') || 'Approved', cls: 'bg-green-100 text-green-800' },
-      2: { text: t('teacherSubmission.statusRejected') || 'Rejected', cls: 'bg-red-100 text-red-800' },
-    }), [t])
-    const cfg = map[status] || { text: 'Tidak diketahui', cls: 'bg-gray-100 text-gray-800' }
-    return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>{cfg.text}</span>
-  }
 
   if (loading) {
     return (
@@ -537,7 +457,7 @@ export default function TeacherDashboard() {
                 </div>
               ) : (
                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center ring-4 ring-white/30 shadow-xl">
-                  <FontAwesomeIcon icon={faUser} className="text-2xl text-white" />
+                  <User size={32} className="text-white" />
                 </div>
               )}
               <div>
@@ -559,156 +479,39 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Door Greeter and Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Door Greeter Card */}
-          {(() => {
-            const isOnDuty = !!(doorGreeter.today || doorGreeter.tomorrow)
-            if (isOnDuty) {
-              const todayLabel = doorGreeter.today ? tr(`doorGreeter.days.${doorGreeter.today}`, doorGreeter.today) : null
-              const tomorrowLabel = doorGreeter.tomorrow ? tr(`doorGreeter.days.${doorGreeter.tomorrow}`, doorGreeter.tomorrow) : null
-              let message
-              if (doorGreeter.today && doorGreeter.tomorrow) {
-                message = tr('dashboard.doorGreeterTodayAndTomorrow', `Anda bertugas hari ini (${todayLabel}) dan besok (${tomorrowLabel}).`, { today: todayLabel, tomorrow: tomorrowLabel })
-              } else if (doorGreeter.today) {
-                message = tr('dashboard.doorGreeterToday', `Anda bertugas hari ini (${todayLabel}).`, { day: todayLabel })
-              } else {
-                message = tr('dashboard.doorGreeterTomorrow', `Anda bertugas sebagai Door Greeter besok (${tomorrowLabel}).`, { day: tomorrowLabel })
-              }
-              const isToday = !!doorGreeter.today
-              const baseCard = isToday 
-                ? 'bg-gradient-to-br from-rose-500 to-red-600 text-white' 
-                : 'bg-gradient-to-br from-amber-400 to-orange-500 text-white'
-              return (
-                <div className={`rounded-2xl shadow-lg p-3 sm:p-5 ${baseCard}`}>
-                  <div className="flex items-start gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
-                      <FontAwesomeIcon icon={faDoorOpen} className="text-lg sm:text-xl" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm sm:text-lg">{tr('dashboard.doorGreeterTitle', 'Tugas Door Greeter')}</h3>
-                      <p className="text-xs sm:text-sm text-white/90 mt-1">{message}</p>
-                    </div>
-                  </div>
-                </div>
-              )
-            }
-            return (
-              <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-5">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
-                    <FontAwesomeIcon icon={faDoorOpen} className="text-gray-400 text-lg sm:text-xl" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-800 text-sm sm:text-base">{tr('dashboard.doorGreeterTitle', 'Tugas Door Greeter')}</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-1">{tr('dashboard.notDoorGreeter', 'Anda tidak bertugas sebagai Door Greeter.')}</p>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
+        {/* Quick Access Menu Grid */}
+        {menuItems.length > 0 && (
+          <div>
 
-          {/* Teaching schedule (selectable day) */}
-          <div className="md:col-span-1 lg:col-span-3 bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
-                <span className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-lg flex items-center justify-center">
-                  <FontAwesomeIcon icon={faChalkboardTeacher} className="text-white text-xs sm:text-sm" />
-                </span>
-                {tr('dashboard.teachingToday', 'Mengajar Hari Ini')}
-              </h3>
-              <select
-                value={teacherSelectedDay}
-                onChange={(e)=> setTeacherSelectedDay(e.target.value)}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 border border-gray-200 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-              >
-                {DAYS.map(d => {
-                  const label = tr(`doorGreeter.days.${d}`, d)
-                  return <option key={d} value={d}>{label}</option>
-                })}
-              </select>
-            </div>
-            <div className="p-3 sm:p-4">
-              {teacherToday.length === 0 ? (
-                <div className="text-center py-6 sm:py-8">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                    <FontAwesomeIcon icon={faChalkboardTeacher} className="text-gray-400 text-xl sm:text-2xl" />
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-500">{tr('dashboard.noTeachingToday', 'Tidak ada jadwal mengajar hari ini.')}</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {teacherToday.map((it, idx) => (
-                    <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-50 rounded-xl hover:bg-sky-50 transition-colors">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-lg flex items-center justify-center text-white font-semibold text-xs sm:text-sm flex-shrink-0">
-                          {it.subject?.charAt(0) || 'S'}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-medium text-gray-800 text-sm truncate">{it.subject}</div>
-                          <div className="text-xs sm:text-sm text-gray-500 truncate">{it.kelas}</div>
-                        </div>
-                      </div>
-                      <div className="text-xs sm:text-sm font-medium text-gray-600 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 self-start sm:self-auto ml-10 sm:ml-0">
-                        {it.start} - {it.end}
-                      </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {menuItems.map((item, idx) => {
+                const color = CARD_COLORS[idx % CARD_COLORS.length]
+                const Icon = getPathIcon(item.path)
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => router.push(item.path)}
+                    className="flex items-stretch bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all text-left group overflow-hidden"
+                  >
+                    {/* Colored background section on left */}
+                    <div className={`${color.bg} w-24 flex-shrink-0 flex items-center justify-center`}>
+                      <Icon size={36} className={color.text} strokeWidth={1.5} />
                     </div>
-                  ))}
-                </div>
-              )}
+                    {/* Name */}
+                    <span className="flex-1 font-medium text-gray-800 text-base leading-snug flex items-center px-5 py-6">{item.name}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Pending Assessments */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
-              <span className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-rose-400 to-pink-500 rounded-lg flex items-center justify-center">
-                <FontAwesomeIcon icon={faClipboardCheck} className="text-white text-xs sm:text-sm" />
-              </span>
-              <span className="hidden sm:inline">{t('dashboard.pendingAssessments')}</span>
-              <span className="sm:hidden">Penilaian</span>
-            </h3>
-            <span className="text-xs sm:text-sm bg-rose-100 text-rose-600 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-medium">
-              {stats.pendingAssessments}
-            </span>
-          </div>
-          <div className="p-3 sm:p-4">
-            {recentAssessments.length === 0 ? (
-              <div className="text-center py-6 sm:py-8">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                  <FontAwesomeIcon icon={faClipboardCheck} className="text-gray-400 text-xl sm:text-2xl" />
-                </div>
-                <p className="text-xs sm:text-sm text-gray-500">{t('dashboard.noneRecent')}</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {recentAssessments.map((a) => (
-                  <div key={a.assessment_id} className="flex flex-col gap-2 p-2.5 sm:p-3 bg-gray-50 rounded-xl hover:bg-sky-50 transition-colors">
-                    <div className="min-w-0">
-                      <div className="font-medium text-gray-800 text-sm truncate">{a.assessment_nama}</div>
-                      <div className="text-[10px] sm:text-xs text-gray-500 truncate">
-                        {detailKelasMap[a.assessment_detail_kelas_id] || 'Mata pelajaran - Kelas'} · {usersMap[a.assessment_user_id] || 'Guru'}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-[10px] sm:text-xs text-gray-600 whitespace-nowrap bg-white px-2 py-0.5 sm:py-1 rounded-lg border border-gray-200">{formatDate(a.assessment_tanggal)}</div>
-                      <StatusBadge status={a.assessment_status} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Combined Calendar (Assessment + Google) */}
+        {/* Calendar */}
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
             <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
               <span className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center">
-                <FontAwesomeIcon icon={faCalendar} className="text-white text-xs sm:text-sm" />
+                <Calendar size={14} className="text-white" />
               </span>
               <span className="hidden sm:inline">Kalender</span>
               <span className="sm:hidden">Kalender</span>
@@ -726,13 +529,13 @@ export default function TeacherDashboard() {
             <div className="w-full md:w-auto overflow-x-auto -mx-1 px-1">
               <div className="inline-flex items-center gap-1 sm:gap-2">
                 <Button variant="outline" size="sm" onClick={prevMonth} className="rounded-lg h-8 w-8 p-0">
-                  <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
+                  <ChevronLeft size={14} />
                 </Button>
                 <div className="text-xs sm:text-sm min-w-[100px] sm:min-w-[140px] text-center font-medium text-gray-700">
                   {calMonth.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
                 </div>
                 <Button variant="outline" size="sm" onClick={nextMonth} className="rounded-lg h-8 w-8 p-0">
-                  <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                  <ChevronRight size={14} />
                 </Button>
                 <Button variant="outline" size="sm" onClick={thisMonth} className="rounded-lg text-xs px-2 hidden sm:inline-flex">Bulan Ini</Button>
                 <select
