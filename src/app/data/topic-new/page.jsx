@@ -1576,19 +1576,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null
           }
         } else {
-          // Pending: full update with status recalculation
-          const selectedDate = new Date(assessmentFormData.assessment_tanggal)
-          selectedDate.setHours(0, 0, 0, 0)
-          const today = new Date()
-          today.setHours(0, 0, 0, 0)
-          const diffDays = getDaysDifference(today, selectedDate)
-          const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
+          // Pending: full update
+          // TEMP: bypass approval — status set to 1 (approved) directly
+          // const selectedDate = new Date(assessmentFormData.assessment_tanggal)
+          // selectedDate.setHours(0, 0, 0, 0)
+          // const today = new Date()
+          // today.setHours(0, 0, 0, 0)
+          // const diffDays = getDaysDifference(today, selectedDate)
+          // const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
           
           assessmentData = {
             assessment_nama: assessmentFormData.assessment_nama.trim(),
             assessment_tanggal: assessmentFormData.assessment_tanggal,
             assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
-            assessment_status: computedStatus,
+            assessment_status: 1, // TEMP: auto-approved, no approval flow needed
             assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
             assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id),
             assessment_semester: assessmentFormData.assessment_semester ? parseInt(assessmentFormData.assessment_semester) : null
@@ -1659,19 +1660,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           return
         }
         
+        // TEMP: bypass approval — status set to 1 (approved) directly
         // Determine status based on date difference: 2-6 days => waiting for principal approval (3)
-        const selectedDate = new Date(assessmentFormData.assessment_tanggal)
-        selectedDate.setHours(0, 0, 0, 0)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const diffDays = getDaysDifference(today, selectedDate)
-        const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
+        // const selectedDate = new Date(assessmentFormData.assessment_tanggal)
+        // selectedDate.setHours(0, 0, 0, 0)
+        // const today = new Date()
+        // today.setHours(0, 0, 0, 0)
+        // const diffDays = getDaysDifference(today, selectedDate)
+        // const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
         
         const assessmentData = {
           assessment_nama: assessmentFormData.assessment_nama.trim(),
           assessment_tanggal: assessmentFormData.assessment_tanggal,
           assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
-          assessment_status: computedStatus,
+          assessment_status: 1, // TEMP: auto-approved, no approval flow needed
           assessment_user_id: currentUserId,
           assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
           assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id),
@@ -1700,10 +1702,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           if (junctionError) throw junctionError
         }
         
-        // Send notification to vice principal
-        if (data && data[0]) {
-          notifyVicePrincipal(data[0].assessment_id)
-        }
+        // TEMP: approval notifications disabled (bypass approval flow)
+        // if (data && data[0]) {
+        //   notifyVicePrincipal(data[0].assessment_id)
+        // }
         
         // Refresh assessments
         await fetchAssessments()
@@ -2805,7 +2807,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           assessment_detail_kelas_id: dkData.detail_kelas_id,
           assessment_topic_id: newTopic.topic_id,
           assessment_semester: parseInt(wizardAssessment.assessment_semester),
-          assessment_status: 0, // Always 0; draft is indicated by null date + status 0
+          // TEMP: bypass approval — set status to 1 (approved) directly
+          // assessment_status: 0, // Always 0; draft is indicated by null date + status 0
+          assessment_status: 1, // TEMP: auto-approved, no approval flow needed
           assessment_user_id: currentUserId
         }
         
@@ -2824,10 +2828,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         
         console.log('✅ Assessment saved successfully:', assessmentResult)
         
-        // Send notification only if date is set (status = 0 with date = approval request)
-        if (assessmentResult && assessmentResult[0] && hasDate) {
-          notifyVicePrincipal(assessmentResult[0].assessment_id)
-        }
+        // TEMP: approval notifications disabled (bypass approval flow)
+        // if (assessmentResult && assessmentResult[0] && hasDate) {
+        //   notifyVicePrincipal(assessmentResult[0].assessment_id)
+        // }
         
         // Insert assessment_criteria junction records
         if (assessmentResult && assessmentResult[0]) {
@@ -3291,32 +3295,21 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         originalDate = originalData?.assessment_tanggal
       }
       
-      // Determine status based on date and current status
+      // TEMP: bypass approval — always set status to 1 (approved) directly
+      // Original status logic commented out below:
+      // const hasDate = topicAssessment.assessment_tanggal && topicAssessment.assessment_tanggal.trim() !== ''
+      // const wasApproved = topicAssessment.assessment_status === 1
+      // const dateChanged = originalDate !== topicAssessment.assessment_tanggal
+      // let newStatus
+      // let shouldNotify = false
+      // if (!hasDate) { newStatus = null }
+      // else if (wasApproved && dateChanged) { newStatus = 0; shouldNotify = true }
+      // else if ((topicAssessment.assessment_status === null || topicAssessment.assessment_status === undefined) && hasDate) { newStatus = 0; shouldNotify = true }
+      // else if (hasDate && !originalDate) { newStatus = 0; shouldNotify = true }
+      // else { newStatus = topicAssessment.assessment_status }
       const hasDate = topicAssessment.assessment_tanggal && topicAssessment.assessment_tanggal.trim() !== ''
-      const wasApproved = topicAssessment.assessment_status === 1
-      const dateChanged = originalDate !== topicAssessment.assessment_tanggal
-      let newStatus
+      let newStatus = 1 // TEMP: auto-approved
       let shouldNotify = false
-      
-      if (!hasDate) {
-        // No date = draft (null status)
-        newStatus = null
-      } else if (wasApproved && dateChanged) {
-        // Had approval but date changed = request approval again
-        newStatus = 0
-        shouldNotify = true
-      } else if ((topicAssessment.assessment_status === null || topicAssessment.assessment_status === undefined) && hasDate) {
-        // Was draft, now has date = request approval
-        newStatus = 0
-        shouldNotify = true
-      } else if (hasDate && !originalDate) {
-        // New assessment with date = request approval
-        newStatus = 0
-        shouldNotify = true
-      } else {
-        // Keep existing status (0, 2, 3)
-        newStatus = topicAssessment.assessment_status
-      }
       
       const assessmentPayload = {
         assessment_nama: topicAssessment.assessment_nama,
@@ -3380,10 +3373,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       setTopicAssessment(prev => ({ ...prev, assessment_id: assessmentId, assessment_status: newStatus }))
       setEditingAssessmentInTopic(false)
       
-      // Send notification only if should notify (date was just set or changed)
-      if (shouldNotify) {
-        notifyVicePrincipal(assessmentId)
-      }
+      // TEMP: approval notifications disabled (bypass approval flow)
+      // if (shouldNotify) {
+      //   notifyVicePrincipal(assessmentId)
+      // }
       
       // Show success
       setSaveNotification(true)
@@ -4446,8 +4439,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                     {/* Action Buttons */}
                     <div className="relative z-10 pt-3 border-t border-gray-100 mt-auto">
-                      {/* Input Nilai button - always visible for approved assessments with criteria */}
-                      {assessment.assessment_status === 1 && hasCriteria && (
+                      {/* Input Nilai button - visible for any assessment with criteria (TEMP: no approval required) */}
+                      {/* Was: assessment.assessment_status === 1 && hasCriteria */}
+                      {hasCriteria && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -4548,7 +4542,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           <td className="px-4 py-3 whitespace-nowrap text-gray-600">{assessment.teacher_name || '-'}</td>
                           <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
-                              {assessment.assessment_status === 1 && hasCriteria && (
+                              {/* Input Nilai - TEMP: no approval required, show for any assessment with criteria */}
+                              {/* Was: assessment.assessment_status === 1 && hasCriteria */}
+                              {hasCriteria && (
                                 <button
                                   onClick={() => router.push(`/data/assessment_grading/${assessment.assessment_id}`)}
                                   className="px-2 py-1 text-xs font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded transition-all"

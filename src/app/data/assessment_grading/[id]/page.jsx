@@ -53,9 +53,10 @@ export default function AssessmentGradingPage() {
         .single()
 
       if (aError) throw new Error('Assessment not found: ' + aError.message)
-      if (assessmentData.assessment_status !== 1) {
-        throw new Error('Assessment is not approved yet. Only approved assessments can be graded.')
-      }
+      // TEMP: bypass approval check — allow grading regardless of status
+      // if (assessmentData.assessment_status !== 1) {
+      //   throw new Error('Assessment is not approved yet. Only approved assessments can be graded.')
+      // }
       
       const topicYear = assessmentData.topic?.topic_year
       setMypYear(topicYear)
