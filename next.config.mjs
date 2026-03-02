@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['puppeteer', 'pdf-lib'],
+  serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium', 'pdf-lib'],
   images: {
     remotePatterns: [
       {
