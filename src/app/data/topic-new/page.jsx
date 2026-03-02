@@ -25,7 +25,10 @@ export default function TopicNewPage() {
   const router = useRouter()
   const { t, lang } = useI18n()
   const aiScrollRef = useRef(null)
-  const [activeTab, setActiveTab] = useState('planning')
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('topic_active_tab') || 'planning'
+    return 'planning'
+  })
   const [activeSubMenu, setActiveSubMenu] = useState('overview')
   const [planningView, setPlanningView] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('planning_view') || 'card'
@@ -36,6 +39,7 @@ export default function TopicNewPage() {
     return 'card'
   })
   const [userRole, setUserRole] = useState(null)
+  const isAdmin = userRole === 'admin' || userRole === 'Admin'
   
   // Data state
   const [topics, setTopics] = useState([])
@@ -51,7 +55,15 @@ export default function TopicNewPage() {
   // Assessment state
   const [assessments, setAssessments] = useState([])
   const [loadingAssessments, setLoadingAssessments] = useState(false)
-  const [assessmentFilters, setAssessmentFilters] = useState({ subject: '', kelas: '', status: '', search: '', noCriteria: false })
+  const [assessmentFilters, setAssessmentFilters] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('assessment_filters')
+        if (saved) return JSON.parse(saved)
+      } catch (e) {}
+    }
+    return { subject: '', kelas: '', status: '', search: '', noCriteria: false }
+  })
   const [assessmentKelasOptions, setAssessmentKelasOptions] = useState([]) // Kelas yang diajar guru untuk assessment filter
   
   // FAB (Floating Action Button) state
@@ -360,6 +372,15 @@ export default function TopicNewPage() {
     }
   ]
   
+  // Persist tab + assessment filters across navigation
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('topic_active_tab', activeTab)
+  }, [activeTab])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('assessment_filters', JSON.stringify(assessmentFilters))
+  }, [assessmentFilters])
+
   // Get current user ID
   useEffect(() => {
     const userData = localStorage.getItem('user_data')
@@ -708,15 +729,15 @@ export default function TopicNewPage() {
           const subjectIds = [...new Set(detailKelasData.map(dk => dk.detail_kelas_subject_id))]
           const kelasIds = [...new Set(detailKelasData.map(dk => dk.detail_kelas_kelas_id))]
           
-          // Fetch subjects
+          // Fetch subjects (include subject_user_id so teacher reflects current subject owner)
           if (subjectIds.length > 0) {
             const { data: subjectsData, error: sError } = await supabase
               .from('subject')
-              .select('subject_id, subject_name')
+              .select('subject_id, subject_name, subject_user_id')
               .in('subject_id', subjectIds)
             
             if (!sError && subjectsData) {
-              subjectsData.forEach(s => subjectMap.set(s.subject_id, s.subject_name))
+              subjectsData.forEach(s => subjectMap.set(s.subject_id, { name: s.subject_name, user_id: s.subject_user_id }))
             }
           }
           
@@ -742,8 +763,10 @@ export default function TopicNewPage() {
         }
       }
       
-      // Get unique user IDs
-      const userIds = [...new Set(assessmentsData?.map(a => a.assessment_user_id).filter(Boolean))]
+      // Get unique user IDs — collect both assessment creators and current subject teachers
+      const assessmentUserIds = assessmentsData?.map(a => a.assessment_user_id).filter(Boolean) || []
+      const subjectUserIds = [...subjectMap.values()].map(v => v?.user_id).filter(Boolean)
+      const userIds = [...new Set([...assessmentUserIds, ...subjectUserIds])]
       let userMap = new Map()
       
       if (userIds.length > 0) {
@@ -828,10 +851,10 @@ export default function TopicNewPage() {
         return {
           ...a,
           subject_id: detailKelas.subject_id,
-          subject_name: subjectMap.get(detailKelas.subject_id) || 'N/A',
+          subject_name: subjectMap.get(detailKelas.subject_id)?.name || 'N/A',
           kelas_id: detailKelas.kelas_id,
           kelas_nama: kelasMap.get(detailKelas.kelas_id) || '',
-          teacher_name: userMap.get(a.assessment_user_id) || 'Unknown',
+          teacher_name: userMap.get(subjectMap.get(detailKelas.subject_id)?.user_id) || userMap.get(a.assessment_user_id) || 'Unknown',
           topic_nama: topicData.nama || null,
           topic_urutan: topicData.urutan || 999,
           criteria: criteria // Array of { code, name }
@@ -1736,12 +1759,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }
   
-  // Fetch assessments when tab changes
+  // Fetch assessments when tab changes OR when subjects finish loading while on assessment tab
   useEffect(() => {
-    if (activeTab === 'assessment' && assessments.length === 0) {
+    if (activeTab === 'assessment' && subjects.length > 0 && assessments.length === 0) {
       fetchAssessments()
     }
-  }, [activeTab])
+  }, [activeTab, subjects])
   
   // Fetch report data when tab changes to report
   useEffect(() => {
@@ -4252,36 +4275,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </span>
                 )}
               </label>
-              
-              {/* Rekap Nilai Kelas Section */}
-              <div className="flex items-center gap-3">
-                <select
-                  value={recapSemesterFilter}
-                  onChange={(e) => setRecapSemesterFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                >
-                  <option value="">Semua Semester</option>
-                  <option value="1">Semester 1</option>
-                  <option value="2">Semester 2</option>
-                </select>
-                <button
-                  onClick={() => generateClassRecapPDF(assessmentFilters.kelas, recapSemesterFilter, assessmentFilters.subject)}
-                  disabled={!assessmentFilters.kelas || !assessmentFilters.subject || loadingClassRecap}
-                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                >
-                  {loadingClassRecap ? (
-                    <>
-                      <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <FontAwesomeIcon icon={faClipboardList} />
-                      Rekap Nilai Kelas
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
 
             {/* Loading State */}
@@ -4454,9 +4447,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         </button>
                       )}
                       
-                      {canEdit && (
+                      {(canEdit || isAdmin) && (
                         <div className="flex gap-2">
-                          {isPending && (
+                          {(isPending || isAdmin) && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -4468,9 +4461,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               Delete
                             </button>
                           )}
-                          <div className="flex items-center text-xs text-gray-400 px-2">
-                            {!hasCriteria ? '👆 Click to add criteria' : 'Click card to edit'}
-                          </div>
+                          {canEdit && (
+                            <div className="flex items-center text-xs text-gray-400 px-2">
+                              {!hasCriteria ? '👆 Click to add criteria' : 'Click card to edit'}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -4552,11 +4547,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   📝 Input Nilai
                                 </button>
                               )}
-                              {canEdit && isPending && (
+                              {(isAdmin || (canEdit && isPending)) && (
                                 <button
                                   onClick={() => handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)}
                                   className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
-                                  title="Delete"
+                                  title={isAdmin ? 'Delete (Admin)' : 'Delete'}
                                 >
                                   <FontAwesomeIcon icon={faTrash} className="text-xs" />
                                 </button>
