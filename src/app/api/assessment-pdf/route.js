@@ -574,12 +574,15 @@ export async function POST(req) {
 
     const html = buildHtml(payload, { logoDataUrl });
 
-    const chromium = (await import('@sparticuz/chromium')).default;
+    const chromium = (await import('@sparticuz/chromium-min')).default;
     const puppeteer = (await import('puppeteer-core')).default;
+    // chromium-min does NOT bundle the binary — downloads from remote URL at runtime
+    // This keeps the function bundle small enough for Vercel deployment
+    const CHROMIUM_REMOTE_URL = `https://github.com/Sparticuz/chromium/releases/download/v143.0.4/chromium-v143.0.4-pack.tar`;
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(CHROMIUM_REMOTE_URL),
       headless: chromium.headless,
     });
 
