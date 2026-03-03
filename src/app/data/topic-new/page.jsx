@@ -843,6 +843,35 @@ export default function TopicNewPage() {
         }
       }
       
+      // Fetch graded student counts per assessment
+      let gradedCountMap = new Map() // assessment_id -> count
+      if (assessmentIds.length > 0) {
+        const { data: gradesCountData } = await supabase
+          .from('assessment_grades')
+          .select('assessment_id')
+          .in('assessment_id', assessmentIds)
+        if (gradesCountData) {
+          gradesCountData.forEach(g => {
+            gradedCountMap.set(g.assessment_id, (gradedCountMap.get(g.assessment_id) || 0) + 1)
+          })
+        }
+      }
+
+      // Fetch total students per kelas
+      const allKelasIds = [...kelasMap.keys()]
+      let studentCountMap = new Map() // kelas_id -> count
+      if (allKelasIds.length > 0) {
+        const { data: studentCountData } = await supabase
+          .from('detail_siswa')
+          .select('detail_siswa_kelas_id')
+          .in('detail_siswa_kelas_id', allKelasIds)
+        if (studentCountData) {
+          studentCountData.forEach(ds => {
+            studentCountMap.set(ds.detail_siswa_kelas_id, (studentCountMap.get(ds.detail_siswa_kelas_id) || 0) + 1)
+          })
+        }
+      }
+
       // Merge all data
       const enrichedAssessments = (assessmentsData || []).map(a => {
         const detailKelas = detailKelasMap.get(a.assessment_detail_kelas_id) || {}
@@ -857,7 +886,9 @@ export default function TopicNewPage() {
           teacher_name: userMap.get(subjectMap.get(detailKelas.subject_id)?.user_id) || userMap.get(a.assessment_user_id) || 'Unknown',
           topic_nama: topicData.nama || null,
           topic_urutan: topicData.urutan || 999,
-          criteria: criteria // Array of { code, name }
+          criteria: criteria, // Array of { code, name }
+          graded_count: gradedCountMap.get(a.assessment_id) || 0,
+          total_students: studentCountMap.get(detailKelas.kelas_id) || 0
         }
       })
       
@@ -4407,6 +4438,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       </span>
                     </div>
 
+                    {/* Graded count */}
+                    <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
+                      <span className="text-gray-500">📊</span>
+                      <span className={`font-medium ${
+                        assessment.total_students > 0 && assessment.graded_count === assessment.total_students
+                          ? 'text-green-600' : 'text-gray-700'
+                      }`}>
+                        {assessment.graded_count}/{assessment.total_students} siswa dinilai
+                      </span>
+                    </div>
+
                     {/* Topic */}
                     {assessment.topic_nama && (
                       <div className="mb-3 relative z-10">
@@ -4487,6 +4529,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -4535,6 +4578,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               : <span className="text-gray-400 italic text-xs">Draft</span>}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-600">{assessment.teacher_name || '-'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              assessment.total_students > 0 && assessment.graded_count === assessment.total_students
+                                ? 'bg-green-100 text-green-700'
+                                : assessment.graded_count > 0
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {assessment.graded_count}/{assessment.total_students}
+                            </span>
+                          </td>
                           <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               {/* Input Nilai - TEMP: no approval required, show for any assessment with criteria */}

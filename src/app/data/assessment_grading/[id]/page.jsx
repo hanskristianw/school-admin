@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faArrowLeft, faSave, faSpinner, faCheckCircle, faFileExcel } from '@fortawesome/free-solid-svg-icons'
+import { faArrowLeft, faSave, faSpinner, faCheckCircle, faFileExcel, faTrash } from '@fortawesome/free-solid-svg-icons'
 
 export default function AssessmentGradingPage() {
   const params = useParams()
@@ -269,6 +269,27 @@ export default function AssessmentGradingPage() {
     }
   }
 
+  // Clear grades for a single student
+  const handleClearStudentGrades = async (student) => {
+    if (!confirm(`Hapus nilai untuk ${student.nama}?`)) return
+    try {
+      const gradeId = grades[student.detail_siswa_id]?.grade_id
+      if (gradeId) {
+        const { error } = await supabase
+          .from('assessment_grades')
+          .delete()
+          .eq('grade_id', gradeId)
+        if (error) throw error
+      }
+      setGrades(prev => ({
+        ...prev,
+        [student.detail_siswa_id]: { grade_id: null, A: null, B: null, C: null, D: null, final_grade: null, comments: '' }
+      }))
+    } catch (err) {
+      alert('Gagal menghapus nilai: ' + err.message)
+    }
+  }
+
   // Export to CSV
   const handleExport = () => {
     const headers = ['Student Name', ...criteria.map(c => `Criterion ${c.code}`), 'Final Grade', 'Comments']
@@ -423,6 +444,7 @@ export default function AssessmentGradingPage() {
                   <th className="px-2 py-2 text-center text-xs font-semibold bg-slate-700 text-white border-b min-w-[50px]">
                     Final
                   </th>
+                  <th className="px-2 py-2 bg-slate-700 border-b w-8"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -453,6 +475,17 @@ export default function AssessmentGradingPage() {
                         <span className={`inline-flex items-center justify-center w-8 h-7 rounded text-sm font-bold ${getFinalGradeColor(studentGrades.final_grade)}`}>
                           {studentGrades.final_grade ?? '-'}
                         </span>
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        {hasGrades && (
+                          <button
+                            onClick={() => handleClearStudentGrades(student)}
+                            className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                            title={`Hapus nilai ${student.nama}`}
+                          >
+                            <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )
