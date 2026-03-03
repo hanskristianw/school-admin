@@ -1295,10 +1295,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     const semester = reportFilters.semester || '1';
     const semesterLabel = semester === '1' ? 'Semester 1' : 'Semester 2';
 
-    // Fetch kelas info for homeroom teacher
+    // Fetch kelas info for homeroom teacher + unit
     const { data: kelasData } = await supabase
       .from('kelas')
-      .select('kelas_user_id')
+      .select('kelas_user_id, kelas_unit_id')
       .eq('kelas_id', kelasId)
       .single();
 
@@ -1311,6 +1311,27 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         .single();
       if (htData) {
         homeroomTeacherName = `${htData.user_nama_depan} ${htData.user_nama_belakang}`.trim();
+      }
+    }
+
+    // Fetch report settings (principal name/title/greeting/date) per unit + year
+    let unitPrincipalName = '';
+    let unitPrincipalTitle = '';
+    let unitGreeting = null;
+    let unitReportDate = null;
+    if (kelasData?.kelas_unit_id && reportFilters.year) {
+      const { data: rsData } = await supabase
+        .from('report_settings')
+        .select('principal_name, principal_title, report_greeting, report_date_s1, report_date_s2')
+        .eq('unit_id', kelasData.kelas_unit_id)
+        .eq('year_id', parseInt(reportFilters.year))
+        .single();
+      if (rsData) {
+        if (rsData.principal_name) unitPrincipalName = rsData.principal_name;
+        if (rsData.principal_title) unitPrincipalTitle = rsData.principal_title;
+        if (rsData.report_greeting) unitGreeting = rsData.report_greeting;
+        const rawDate = semester === '1' ? rsData.report_date_s1 : rsData.report_date_s2;
+        if (rawDate) unitReportDate = rawDate;
       }
     }
 
@@ -1341,6 +1362,28 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       .eq('detail_siswa_id', studentId)
       .single();
     const studentUserId = detailSiswaData?.detail_siswa_user_id;
+
+    // Fetch mentor comment (attendance + comment text)
+    let mentorComment = { absent: 0, present: 0, late: 0, sick: 0, excused: 0, comment_text: '' };
+    if (studentUserId) {
+      const { data: mentorData } = await supabase
+        .from('mentor_comment')
+        .select('absent, present, late, sick, excused, comment_text')
+        .eq('kelas_id', kelasId)
+        .eq('student_user_id', studentUserId)
+        .eq('semester', parseInt(semester))
+        .single();
+      if (mentorData) {
+        mentorComment = {
+          absent: mentorData.absent ?? 0,
+          present: mentorData.present ?? 0,
+          late: mentorData.late ?? 0,
+          sick: mentorData.sick ?? 0,
+          excused: mentorData.excused ?? 0,
+          comment_text: mentorData.comment_text || ''
+        };
+      }
+    }
 
     // Fetch student DOB
     let studentDOB = '-';
@@ -1421,7 +1464,18 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           grades.B = allB.length > 0 ? Math.max(...allB) : null;
           grades.C = allC.length > 0 ? Math.max(...allC) : null;
           grades.D = allD.length > 0 ? Math.max(...allD) : null;
-          semesterOverview = allFinal.length > 0 ? Math.round(allFinal.reduce((a, b) => a + b, 0) / allFinal.length) : null;
+          // IB MYP standard: sum of max criteria → boundary table (not average of per-assessment final_grade)
+          const criteriaValues = [grades.A, grades.B, grades.C, grades.D].filter(g => g !== null);
+          if (criteriaValues.length > 0) {
+            const total = criteriaValues.reduce((a, b) => a + b, 0);
+            if (total <= 5) semesterOverview = 1;
+            else if (total <= 9) semesterOverview = 2;
+            else if (total <= 14) semesterOverview = 3;
+            else if (total <= 18) semesterOverview = 4;
+            else if (total <= 23) semesterOverview = 5;
+            else if (total <= 27) semesterOverview = 6;
+            else semesterOverview = 7;
+          }
         }
       }
       
@@ -1492,7 +1546,9 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     const ml = 18, mr = 18, mt = 16, mb = 24;
     const cw = pw - ml - mr; // content width
 
-    const preparedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const preparedDate = unitReportDate
+      ? new Date(unitReportDate + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+      : new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 
     // ── Helper: draw footer on current page ──
     const drawFooter = () => {
@@ -1503,11 +1559,11 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.setTextColor(31, 41, 55);
-      doc.text(studentName, pw / 2, fy, { align: 'center' });
+      doc.text(studentName, ml, fy);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(156, 163, 175);
-      doc.text('Chung Chung Christian School - Middle School Report', pw / 2, fy + 4, { align: 'center' });
+      doc.text('Chung Chung Christian School - Middle School Report', ml, fy + 4);
     };
 
     // ── Helper: draw letter avatar circle ──
@@ -1548,14 +1604,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     doc.setTextColor(156, 163, 175);
     doc.text(`Prepared on ${preparedDate}`, txStart, y + 23);
 
-    // Divider
-    y += 30;
-    doc.setDrawColor(180, 180, 180);
-    doc.setLineWidth(0.4);
-    doc.line(ml, y, pw - mr, y);
+    // Divider removed — no line after header
 
     // Student name
-    y += 12;
+    y += 40;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
     doc.setTextColor(17, 24, 39);
@@ -1581,34 +1633,67 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     y += 16;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
-    doc.setTextColor(55, 65, 81);
-    doc.text('Dear Parents,', ml, y);
-    y += 8;
+    doc.setTextColor(17, 24, 39);
+    const lineH = 5.2; // line height for greeting text
 
-    const paragraphs = [
+    // Helper: render one paragraph justified (last line or short lines = left-aligned)
+    const drawJustifiedParagraph = (text, addGapAfter = true) => {
+      const lines = doc.splitTextToSize(text, cw);
+      lines.forEach((line, idx) => {
+        const isLast = idx === lines.length - 1;
+        const words = line.trimEnd().split(' ');
+        const lineW = doc.getTextWidth(line.trimEnd());
+        const isShort = lineW < cw * 0.75; // don't justify lines shorter than 75% of width
+        if (isLast || words.length <= 1 || isShort) {
+          doc.text(line, ml, y);
+        } else {
+          const textOnlyW = doc.getTextWidth(words.join(''));
+          const spaceW = (cw - textOnlyW) / (words.length - 1);
+          let xPos = ml;
+          words.forEach((word) => {
+            doc.text(word, xPos, y);
+            xPos += doc.getTextWidth(word) + spaceW;
+          });
+        }
+        y += lineH;
+      });
+      if (addGapAfter) y += 3;
+    };
+
+    const defaultParagraphs = [
+      `Dear Parents,`,
       `This report is designed to share meaningful feedback about your child's learning journey during ${semesterLabel}. It reflects their engagement, growth, and progress across all subject areas, guided by the principles of the IB Middle Years Programme.`,
       'We encourage you to review the report together with your child and discuss areas of strength and opportunities for growth. Please do not hesitate to contact us should you have any questions or wish to arrange a conference.',
       "Thank you for your continued partnership in your child's education."
     ];
-    for (const p of paragraphs) {
-      const lines = doc.splitTextToSize(p, cw);
-      doc.text(lines, ml, y);
-      y += lines.length * 4.5 + 4;
+
+    // Use custom greeting from unit if available, otherwise default paragraphs
+    if (unitGreeting) {
+      const greetingText = unitGreeting.replace(/\{semester\}/g, semesterLabel);
+      drawJustifiedParagraph(greetingText);
+    } else {
+      for (const p of defaultParagraphs) {
+        drawJustifiedParagraph(p);
+      }
     }
 
     // Kind regards + signature
     y += 4;
     doc.text('Kind regards,', ml, y);
     y += 22;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(17, 24, 39);
-    doc.text('Edwin Arlianto', ml, y);
-    y += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(107, 114, 128);
-    doc.text('HS Principal', ml, y);
+    if (unitPrincipalName) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(17, 24, 39);
+      doc.text(unitPrincipalName, ml, y);
+      y += 5;
+    }
+    if (unitPrincipalTitle) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(107, 114, 128);
+      doc.text(unitPrincipalTitle, ml, y);
+    }
 
     // No footer on cover page
 
@@ -1643,10 +1728,11 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
             content: row.comment,
             colSpan: 6,
             styles: {
-              fontSize: 8,
+              fontSize: 9,
               fontStyle: 'normal',
-              cellPadding: { top: 2, right: 4, bottom: 6, left: 4 },
-              textColor: [255, 255, 255]
+              cellPadding: { top: 3, right: 4, bottom: 8, left: 4 },
+              textColor: [255, 255, 255],
+              overflow: 'linebreak'
             }
           }]);
           meta.push({ isComment: true, subjectIndex: si });
@@ -1714,12 +1800,12 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           const textX = cx + 14;
           let textY = cy + 7;
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(9.5);
+          doc.setFontSize(10);
           doc.setTextColor(30, 58, 95);
           doc.text(row.subject_name, textX, textY);
-          textY += 4.5;
+          textY += 5;
           doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(10);
           doc.setTextColor(107, 114, 128);
           doc.text(row.teacher_name, textX, textY);
         } else {
@@ -1734,7 +1820,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           const textX = cx + padL;
           let textY = cy + padT + 3;
           doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(9);
           doc.setTextColor(55, 65, 81);
           const lines = doc.splitTextToSize(row.comment, maxW);
           lines.forEach((line, idx) => {
@@ -1751,7 +1837,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
                 xPos += doc.getTextWidth(word) + spaceW;
               });
             }
-            textY += 4;
+            textY += 5;
           });
         }
       },
@@ -1769,7 +1855,97 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       autoTable(doc, tableOptions(nonCoreBody, nonCoreMeta, afterCore));
     }
 
-    // Open PDF in new tab
+    // ── Attendance + Mentor Comment section ──────────────────────────────────
+    const hasAttendanceOrComment =
+      mentorComment.absent > 0 || mentorComment.present > 0 ||
+      mentorComment.late > 0 || mentorComment.sick > 0 ||
+      mentorComment.excused > 0 || mentorComment.comment_text;
+
+    if (hasAttendanceOrComment) {
+      let sectionY = doc.lastAutoTable
+        ? doc.lastAutoTable.finalY + 12
+        : mt + 12;
+
+      // New page if not enough space
+      if (sectionY > ph - 55) {
+        doc.addPage();
+        drawFooter();
+        sectionY = mt + 8;
+      }
+
+      // Section: Attendance
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(17, 24, 39);
+      doc.text('Attendance', ml, sectionY);
+      sectionY += 7;
+
+      const badges = [
+        { label: 'Absent',  value: mentorComment.absent,  bg: [239, 68, 68],   fg: [255, 255, 255] },
+        { label: 'Present', value: mentorComment.present, bg: [34, 197, 94],   fg: [255, 255, 255] },
+        { label: 'Late',    value: mentorComment.late,    bg: [249, 115, 22],  fg: [255, 255, 255] },
+        { label: 'Sick',    value: mentorComment.sick,    bg: [107, 114, 128], fg: [255, 255, 255] },
+        { label: 'Excused', value: mentorComment.excused, bg: [59, 130, 246],  fg: [255, 255, 255] },
+      ];
+
+      let bx = ml;
+      doc.setFontSize(8);
+      for (const badge of badges) {
+        const txt = `${badge.value} ${badge.label}`;
+        const tw = doc.getTextWidth(txt);
+        const ph2 = 2.5, pv = 0.8;
+        const bw = tw + ph2 * 2;
+        const bh = 5 + pv * 2;
+        const r = 1.2;
+        doc.setFillColor(...badge.bg);
+        doc.roundedRect(bx, sectionY, bw, bh, r, r, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...badge.fg);
+        doc.text(txt, bx + ph2, sectionY + pv + 3.8);
+        bx += bw + 3;
+      }
+      sectionY += 13;
+
+      // Section: Mentor Comment
+      if (mentorComment.comment_text) {
+        // Check space again before comment
+        if (sectionY > ph - 40) {
+          doc.addPage();
+          drawFooter();
+          sectionY = mt + 8;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(17, 24, 39);
+        const nameLabel = `${homeroomTeacherName} `;
+        doc.text(nameLabel, ml, sectionY);
+        const nameLabelW = doc.getTextWidth(nameLabel);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(107, 114, 128);
+        doc.text('\u2014 Grade Mentor Comments', ml + nameLabelW, sectionY);
+        sectionY += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(31, 41, 55);
+        const commentLines = doc.splitTextToSize(mentorComment.comment_text, cw);
+        commentLines.forEach((line, idx) => {
+          const isLast = idx === commentLines.length - 1;
+          const words = line.trimEnd().split(' ');
+          if (isLast || words.length <= 1) {
+            doc.text(line, ml, sectionY);
+          } else {
+            const textOnlyW = words.reduce((s, w) => s + doc.getTextWidth(w), 0);
+            const spaceW = (cw - textOnlyW) / (words.length - 1);
+            let xPos = ml;
+            words.forEach((word) => {
+              doc.text(word, xPos, sectionY);
+              xPos += doc.getTextWidth(word) + spaceW;
+            });
+          }
+          sectionY += 4.5;
+        });
+      }
+    }
     const pdfBlob = doc.output('blob');
     const pdfUrl = URL.createObjectURL(pdfBlob);
     window.open(pdfUrl, '_blank');

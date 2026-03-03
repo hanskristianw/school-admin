@@ -277,6 +277,15 @@ export default function TopicNewPage() {
   const [loadingComments, setLoadingComments] = useState(false)
   const [loadingCommentKelas, setLoadingCommentKelas] = useState(false)
   const [savingCommentId, setSavingCommentId] = useState(null)
+
+  // Mentor Comment tab state
+  const [isWaliKelas, setIsWaliKelas] = useState(false)
+  const [mentorKelasOptions, setMentorKelasOptions] = useState([])
+  const [mentorKelas, setMentorKelas] = useState('')
+  const [mentorSemester, setMentorSemester] = useState('')
+  const [mentorStudents, setMentorStudents] = useState([])
+  const [loadingMentorComments, setLoadingMentorComments] = useState(false)
+  const [savingMentorCommentId, setSavingMentorCommentId] = useState(null)
   
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
@@ -380,6 +389,35 @@ export default function TopicNewPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') localStorage.setItem('assessment_filters', JSON.stringify(assessmentFilters))
   }, [assessmentFilters])
+
+  // Fetch kelas where logged-in user is wali kelas (or all kelas for admin)
+  useEffect(() => {
+    if (!currentUserId) return
+    const fetchWaliKelas = async () => {
+      try {
+        const adminRole = userRole === 'admin' || userRole === 'Admin'
+        let query = supabase
+          .from('kelas')
+          .select('kelas_id, kelas_nama')
+          .order('kelas_nama')
+        if (!adminRole) {
+          query = query.eq('kelas_user_id', currentUserId)
+        }
+        const { data, error } = await query
+        if (error) throw error
+        if (adminRole || (data && data.length > 0)) {
+          setIsWaliKelas(true)
+          setMentorKelasOptions(data || [])
+        } else {
+          setIsWaliKelas(false)
+          setMentorKelasOptions([])
+        }
+      } catch (err) {
+        console.error('Error fetching wali kelas:', err)
+      }
+    }
+    fetchWaliKelas()
+  }, [currentUserId, userRole])
 
   // Get current user ID
   useEffect(() => {
@@ -2156,6 +2194,181 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }
 
+  // MENTOR COMMENT TAB FUNCTIONS
+  // ==========================================
+
+  const fetchMentorStudents = async (kelasId, semester) => {
+    if (!kelasId || !semester) {
+      setMentorStudents([])
+      return
+    }
+    try {
+      setLoadingMentorComments(true)
+
+      // 1. Get students in this kelas
+      const { data: detailSiswaData, error: dsError } = await supabase
+        .from('detail_siswa')
+        .select('detail_siswa_id, detail_siswa_user_id')
+        .eq('detail_siswa_kelas_id', kelasId)
+
+      if (dsError) throw dsError
+      if (!detailSiswaData || detailSiswaData.length === 0) {
+        setMentorStudents([])
+        return
+      }
+
+      const userIds = [...new Set(detailSiswaData.map(ds => ds.detail_siswa_user_id))]
+
+      // 2. Get user names
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('user_id, user_nama_depan, user_nama_belakang')
+        .in('user_id', userIds)
+
+      if (usersError) throw usersError
+
+      const userMap = new Map()
+      ;(usersData || []).forEach(u => {
+        userMap.set(u.user_id, `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim())
+      })
+
+      // 3. Get existing mentor comments for this kelas+semester
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('mentor_comment')
+        .select('id, student_user_id, comment_text, absent, present, late, sick, excused')
+        .eq('kelas_id', kelasId)
+        .eq('semester', parseInt(semester))
+
+      if (commentsError) throw commentsError
+
+      const commentMap = new Map()
+      ;(commentsData || []).forEach(c => {
+        commentMap.set(c.student_user_id, {
+          id: c.id,
+          text: c.comment_text || '',
+          absent: c.absent ?? 0,
+          present: c.present ?? 0,
+          late: c.late ?? 0,
+          sick: c.sick ?? 0,
+          excused: c.excused ?? 0
+        })
+      })
+
+      // 4. Build student list with comments
+      const students = detailSiswaData.map(ds => {
+        const existing = commentMap.get(ds.detail_siswa_user_id)
+        return {
+          detail_siswa_id: ds.detail_siswa_id,
+          user_id: ds.detail_siswa_user_id,
+          nama: userMap.get(ds.detail_siswa_user_id) || 'Unknown',
+          comment_text: existing?.text || '',
+          absent: existing?.absent ?? 0,
+          present: existing?.present ?? 0,
+          late: existing?.late ?? 0,
+          sick: existing?.sick ?? 0,
+          excused: existing?.excused ?? 0,
+          comment_id: existing?.id || null,
+          saved: true
+        }
+      }).sort((a, b) => a.nama.localeCompare(b.nama))
+
+      setMentorStudents(students)
+    } catch (err) {
+      console.error('Error fetching mentor students:', err)
+      alert('Gagal memuat data siswa: ' + err.message)
+    } finally {
+      setLoadingMentorComments(false)
+    }
+  }
+
+  const handleMentorKelasChange = (kelasId) => {
+    setMentorKelas(kelasId)
+    setMentorSemester('')
+    setMentorStudents([])
+  }
+
+  const handleMentorSemesterChange = (semester) => {
+    setMentorSemester(semester)
+    if (semester && mentorKelas) {
+      fetchMentorStudents(mentorKelas, semester)
+    } else {
+      setMentorStudents([])
+    }
+  }
+
+  const updateMentorCommentText = (userId, text) => {
+    setMentorStudents(prev => prev.map(s =>
+      s.user_id === userId ? { ...s, comment_text: text, saved: false } : s
+    ))
+  }
+
+  const updateMentorAttendance = (userId, field, value) => {
+    const num = value === '' ? 0 : Math.max(0, parseInt(value) || 0)
+    setMentorStudents(prev => prev.map(s =>
+      s.user_id === userId ? { ...s, [field]: num, saved: false } : s
+    ))
+  }
+
+  const saveMentorComment = async (student) => {
+    if (!mentorKelas || !mentorSemester) return
+    try {
+      setSavingMentorCommentId(student.user_id)
+      const payload = {
+        kelas_id: parseInt(mentorKelas),
+        student_user_id: student.user_id,
+        semester: parseInt(mentorSemester),
+        comment_text: student.comment_text?.trim() || null,
+        absent: student.absent ?? 0,
+        present: student.present ?? 0,
+        late: student.late ?? 0,
+        sick: student.sick ?? 0,
+        excused: student.excused ?? 0,
+        updated_at: new Date().toISOString()
+      }
+      if (student.comment_id) {
+        const { error } = await supabase
+          .from('mentor_comment')
+          .update({
+            comment_text: payload.comment_text,
+            absent: payload.absent,
+            present: payload.present,
+            late: payload.late,
+            sick: payload.sick,
+            excused: payload.excused,
+            updated_at: payload.updated_at
+          })
+          .eq('id', student.comment_id)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('mentor_comment')
+          .insert([payload])
+          .select('id')
+        if (error) throw error
+        setMentorStudents(prev => prev.map(s =>
+          s.user_id === student.user_id ? { ...s, comment_id: data?.[0]?.id, saved: true } : s
+        ))
+        return
+      }
+      setMentorStudents(prev => prev.map(s =>
+        s.user_id === student.user_id ? { ...s, saved: true } : s
+      ))
+    } catch (err) {
+      console.error('Error saving mentor comment:', err)
+      alert('Gagal menyimpan komentar: ' + err.message)
+    } finally {
+      setSavingMentorCommentId(null)
+    }
+  }
+
+  const saveAllMentorComments = async () => {
+    const unsaved = mentorStudents.filter(s => !s.saved)
+    if (unsaved.length === 0) return
+    for (const student of unsaved) {
+      await saveMentorComment(student)
+    }
+  }
+
   // Auto-save function
   const handleSave = async (fieldName, value) => {
     if (!selectedTopic) return
@@ -3623,6 +3836,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     { id: 'assignment', label: 'Assignment', icon: '📝' },
     { id: 'assessment', label: 'Assessment', icon: '✓' },
     { id: 'comment', label: 'Comment', icon: '💬' },
+    ...(isWaliKelas ? [{ id: 'mentor', label: 'Mentor Comment', icon: '🏠' }] : []),
     { id: 'report', label: 'Report', icon: '📊' }
   ]
 
@@ -4758,6 +4972,158 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       rows={6}
                       maxLength={600}
                       placeholder="Write your comment for this student..."
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                    />
+                    <p className="text-xs text-gray-400 text-right mt-1">{(student.comment_text || '').length}/600</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'mentor' && isWaliKelas && (
+          <div className="p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">🏠 Mentor Comment</h2>
+            <p className="text-sm text-gray-500 mb-6">Write semester homeroom comments for each student in your class.</p>
+
+            {/* Filter row: Kelas → Semester */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {/* Kelas */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1. Class</label>
+                <select
+                  value={mentorKelas}
+                  onChange={(e) => handleMentorKelasChange(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">-- Select Class --</option>
+                  {mentorKelasOptions.map(k => (
+                    <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Semester */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">2. Semester</label>
+                <div className="flex gap-2">
+                  {[1, 2].map(sem => (
+                    <button
+                      key={sem}
+                      type="button"
+                      disabled={!mentorKelas}
+                      onClick={() => handleMentorSemesterChange(String(sem))}
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        mentorSemester === String(sem)
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Semester {sem}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Save All bar */}
+            {mentorStudents.length > 0 && (
+              <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
+                <span className="text-sm text-gray-600">
+                  {mentorStudents.length} student{mentorStudents.length !== 1 ? 's' : ''}
+                  {mentorStudents.filter(s => !s.saved).length > 0 && (
+                    <span className="text-amber-600 ml-2 font-medium">
+                      — {mentorStudents.filter(s => !s.saved).length} unsaved
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={saveAllMentorComments}
+                  disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null}
+                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  💾 Save All
+                </button>
+              </div>
+            )}
+
+            {/* Loading */}
+            {loadingMentorComments && (
+              <div className="text-center py-12">
+                <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-gray-500 mt-2">Loading students...</p>
+              </div>
+            )}
+
+            {/* Empty / prompt states */}
+            {!loadingMentorComments && !mentorSemester && (
+              <div className="text-center py-12 text-gray-400">
+                <p className="text-4xl mb-2">🏠</p>
+                <p>Select class and semester to start writing mentor comments</p>
+              </div>
+            )}
+
+            {mentorSemester && !loadingMentorComments && mentorStudents.length === 0 && (
+              <div className="text-center py-12 text-gray-400">
+                <p>No students found in this class</p>
+              </div>
+            )}
+
+            {/* Student list */}
+            {!loadingMentorComments && mentorStudents.length > 0 && (
+              <div className="space-y-4">
+                {mentorStudents.map((student, idx) => (
+                  <div key={student.user_id} className={`border rounded-lg p-4 ${!student.saved ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200 bg-white'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 font-mono w-6">{idx + 1}.</span>
+                        <h3 className="font-medium text-gray-800">{student.nama}</h3>
+                        {!student.saved && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">unsaved</span>
+                        )}
+                        {student.saved && student.comment_id && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">saved ✓</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => saveMentorComment(student)}
+                        disabled={student.saved || savingMentorCommentId === student.user_id}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {savingMentorCommentId === student.user_id ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                    {/* Attendance row */}
+                    <div className="grid grid-cols-5 gap-3 mb-3">
+                      {[
+                        { field: 'present', label: 'Present', color: 'green' },
+                        { field: 'absent', label: 'Absent', color: 'red' },
+                        { field: 'late', label: 'Late', color: 'yellow' },
+                        { field: 'sick', label: 'Sick', color: 'orange' },
+                        { field: 'excused', label: 'Excused', color: 'blue' }
+                      ].map(({ field, label, color }) => (
+                        <div key={field}>
+                          <label className={`block text-xs font-medium mb-1 text-${color}-700`}>{label}</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={student[field]}
+                            onChange={(e) => updateMentorAttendance(student.user_id, field, e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            className={`w-full border border-${color}-200 bg-${color}-50 rounded-md px-2 py-1.5 text-sm text-center font-medium focus:ring-2 focus:ring-${color}-400 focus:border-transparent`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <textarea
+                      value={student.comment_text}
+                      onChange={(e) => updateMentorCommentText(student.user_id, e.target.value)}
+                      rows={6}
+                      maxLength={600}
+                      placeholder="Write your mentor comment for this student..."
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                     />
                     <p className="text-xs text-gray-400 text-right mt-1">{(student.comment_text || '').length}/600</p>

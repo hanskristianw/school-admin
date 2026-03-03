@@ -21,6 +21,15 @@ export default function UnitManagement() {
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Report Settings state
+  const [years, setYears] = useState([]);
+  const [rsUnitId, setRsUnitId] = useState('');
+  const [rsYearId, setRsYearId] = useState('');
+  const [rsLoading, setRsLoading] = useState(false);
+  const [rsSaving, setRsSaving] = useState(false);
+  const [rsData, setRsData] = useState({ principal_name: '', principal_title: '', report_greeting: '', report_date_s1: '', report_date_s2: '' });
+  const [rsExistingId, setRsExistingId] = useState(null);
   
   // Notification modal states
   const [notification, setNotification] = useState({
@@ -32,6 +41,7 @@ export default function UnitManagement() {
 
   useEffect(() => {
     fetchUnits();
+    fetchYears();
   }, []);
 
   // Show notification helper
@@ -46,6 +56,77 @@ export default function UnitManagement() {
 
   const closeNotification = () => {
     setNotification(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const fetchYears = async () => {
+    const { data } = await supabase
+      .from('year')
+      .select('year_id, year_name')
+      .order('year_name', { ascending: false });
+    setYears(data || []);
+  };
+
+  const fetchReportSettings = async (unitId, yearId) => {
+    if (!unitId || !yearId) return;
+    setRsLoading(true);
+    const { data } = await supabase
+      .from('report_settings')
+      .select('id, principal_name, principal_title, report_greeting, report_date_s1, report_date_s2')
+      .eq('unit_id', unitId)
+      .eq('year_id', yearId)
+      .single();
+    if (data) {
+      setRsData({ principal_name: data.principal_name || '', principal_title: data.principal_title || '', report_greeting: data.report_greeting || '', report_date_s1: data.report_date_s1 || '', report_date_s2: data.report_date_s2 || '' });
+      setRsExistingId(data.id);
+    } else {
+      setRsData({ principal_name: '', principal_title: '', report_greeting: '', report_date_s1: '', report_date_s2: '' });
+      setRsExistingId(null);
+    }
+    setRsLoading(false);
+  };
+
+  const handleRsUnitChange = (e) => {
+    setRsUnitId(e.target.value);
+    setRsData({ principal_name: '', principal_title: '', report_greeting: '' });
+    setRsExistingId(null);
+    if (e.target.value && rsYearId) fetchReportSettings(e.target.value, rsYearId);
+  };
+
+  const handleRsYearChange = (e) => {
+    setRsYearId(e.target.value);
+    setRsData({ principal_name: '', principal_title: '', report_greeting: '' });
+    setRsExistingId(null);
+    if (rsUnitId && e.target.value) fetchReportSettings(rsUnitId, e.target.value);
+  };
+
+  const handleSaveReportSettings = async () => {
+    if (!rsUnitId || !rsYearId) return;
+    setRsSaving(true);
+    try {
+      const payload = {
+        unit_id: parseInt(rsUnitId),
+        year_id: parseInt(rsYearId),
+        principal_name: rsData.principal_name.trim() || null,
+        principal_title: rsData.principal_title.trim() || null,
+        report_greeting: rsData.report_greeting.trim() || null,
+        report_date_s1: rsData.report_date_s1 || null,
+        report_date_s2: rsData.report_date_s2 || null
+      };
+      let err;
+      if (rsExistingId) {
+        ({ error: err } = await supabase.from('report_settings').update(payload).eq('id', rsExistingId));
+      } else {
+        const { data: inserted, error: insertErr } = await supabase.from('report_settings').insert([payload]).select('id').single();
+        err = insertErr;
+        if (inserted) setRsExistingId(inserted.id);
+      }
+      if (err) throw err;
+      showNotification('Berhasil!', 'Report settings berhasil disimpan!', 'success');
+    } catch (e) {
+      showNotification('Error!', e.message, 'error');
+    } finally {
+      setRsSaving(false);
+    }
   };
 
   // Process error message to be more user-friendly
@@ -431,6 +512,118 @@ export default function UnitManagement() {
               </tbody>
             </table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Report Settings */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Report Settings</CardTitle>
+          <p className="text-sm text-gray-500">Kata sambutan dan kepala sekolah per unit per tahun ajaran</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <Label>Unit</Label>
+              <select
+                value={rsUnitId}
+                onChange={handleRsUnitChange}
+                className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Pilih Unit --</option>
+                {units.filter(u => u.is_school).map(u => (
+                  <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <Label>Tahun Ajaran</Label>
+              <select
+                value={rsYearId}
+                onChange={handleRsYearChange}
+                className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Pilih Tahun --</option>
+                {years.map(y => (
+                  <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {rsUnitId && rsYearId && (
+            rsLoading ? (
+              <div className="text-sm text-gray-400 py-4 text-center">Memuat data...</div>
+            ) : (
+              <div className="space-y-3 border-t pt-4">
+                {!rsExistingId && (
+                  <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                    Belum ada data untuk kombinasi ini. Isi form dan simpan untuk membuat baru.
+                  </p>
+                )}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <Label>Nama Kepala Sekolah</Label>
+                    <Input
+                      value={rsData.principal_name}
+                      onChange={e => setRsData(p => ({ ...p, principal_name: e.target.value }))}
+                      placeholder="Contoh: Edwin Arlianto"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label>Jabatan</Label>
+                    <Input
+                      value={rsData.principal_title}
+                      onChange={e => setRsData(p => ({ ...p, principal_title: e.target.value }))}
+                      placeholder="Contoh: HS Principal"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Tanggal Laporan Semester 1 ("Prepared on")</Label>
+                  <Input
+                    type="date"
+                    value={rsData.report_date_s1}
+                    onChange={e => setRsData(p => ({ ...p, report_date_s1: e.target.value }))}
+                    className="mt-1 w-full sm:w-48"
+                  />
+                </div>
+                <div>
+                  <Label>Tanggal Laporan Semester 2 ("Prepared on")</Label>
+                  <Input
+                    type="date"
+                    value={rsData.report_date_s2}
+                    onChange={e => setRsData(p => ({ ...p, report_date_s2: e.target.value }))}
+                    className="mt-1 w-full sm:w-48"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Kosongkan untuk menggunakan tanggal cetak otomatis.</p>
+                </div>
+                <div>
+                  <Label>Kata Sambutan Laporan</Label>
+                  <p className="text-xs text-gray-400 mb-1">Gunakan <code className="bg-gray-100 px-1 rounded">{'{semester}'}</code> untuk menyisipkan nama semester secara otomatis.</p>
+                  <textarea
+                    value={rsData.report_greeting}
+                    onChange={e => setRsData(p => ({ ...p, report_greeting: e.target.value }))}
+                    rows={7}
+                    placeholder="Tulis kata sambutan kepala sekolah untuk laporan siswa..."
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{rsData.report_greeting.length} karakter</p>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSaveReportSettings}
+                    disabled={rsSaving}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {rsSaving ? 'Menyimpan...' : (rsExistingId ? 'Update' : 'Simpan')}
+                  </Button>
+                </div>
+              </div>
+            )
+          )}
         </CardContent>
       </Card>
 
