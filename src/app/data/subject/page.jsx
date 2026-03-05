@@ -13,6 +13,7 @@ export default function SubjectManagement() {
   const [subjects, setSubjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [units, setUnits] = useState([]);
+  const [subjectGroups, setSubjectGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -26,7 +27,8 @@ export default function SubjectManagement() {
     grading_method: 'highest',
     core_subject: false,
     print_order: 0,
-    include_in_print: true
+    include_in_print: true,
+    subject_group_id: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -82,6 +84,7 @@ export default function SubjectManagement() {
     fetchSubjects();
     fetchUsers();
     fetchUnits();
+    fetchSubjectGroups();
   }, []);
 
   // Show notification helper
@@ -114,12 +117,16 @@ export default function SubjectManagement() {
           core_subject,
           print_order,
           include_in_print,
+          subject_group_id,
           users:subject_user_id (
             user_nama_depan,
             user_nama_belakang
           ),
           unit:subject_unit_id (
             unit_name
+          ),
+          subject_group:subject_group_id (
+            name
           )
         `)
         .order('print_order', { ascending: true })
@@ -144,7 +151,9 @@ export default function SubjectManagement() {
         include_in_print: subject.include_in_print !== false,
         user_nama_depan: subject.users?.user_nama_depan || '',
         user_nama_belakang: subject.users?.user_nama_belakang || '',
-        unit_name: subject.unit?.unit_name || ''
+        unit_name: subject.unit?.unit_name || '',
+        subject_group_id: subject.subject_group_id || null,
+        subject_group_name: subject.subject_group?.name || ''
       }));
 
       console.log('Fetched subjects from Supabase:', transformedData);
@@ -275,6 +284,19 @@ export default function SubjectManagement() {
     }
   };
 
+  const fetchSubjectGroups = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subject_group')
+        .select('id, name')
+        .order('name');
+      if (error) throw new Error(error.message);
+      setSubjectGroups(data || []);
+    } catch (err) {
+      console.error('Error fetching subject groups:', err);
+    }
+  };
+
   const processErrorMessage = (errorMessage) => {
     const message = errorMessage?.toLowerCase() || '';
     
@@ -383,7 +405,8 @@ export default function SubjectManagement() {
         grading_method: formData.grading_method || 'highest',
         core_subject: formData.core_subject || false,
         print_order: Number(formData.print_order) || 0,
-        include_in_print: formData.include_in_print !== false
+        include_in_print: formData.include_in_print !== false,
+        subject_group_id: formData.subject_group_id ? Number(formData.subject_group_id) : null
       };
 
       // Handle icon upload if file selected
@@ -474,7 +497,8 @@ export default function SubjectManagement() {
       grading_method: subject.grading_method || 'highest',
       core_subject: subject.core_subject || false,
       print_order: subject.print_order ?? 0,
-      include_in_print: subject.include_in_print !== false
+      include_in_print: subject.include_in_print !== false,
+      subject_group_id: subject.subject_group_id || ''
     });
     setIconFile(null);
     setIconPreview(subject.subject_icon || null);
@@ -523,7 +547,12 @@ export default function SubjectManagement() {
       subject_user_id: '',
       subject_unit_id: '',
       subject_code: '',
-      subject_guide: ''
+      subject_guide: '',
+      grading_method: 'highest',
+      core_subject: false,
+      print_order: 0,
+      include_in_print: true,
+      subject_group_id: ''
     });
     setIconFile(null);
     setIconPreview(null);
@@ -1221,6 +1250,22 @@ export default function SubjectManagement() {
               {formErrors.subject_unit_id && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.subject_unit_id}</p>
               )}
+            </div>
+
+            <div>
+              <Label htmlFor="subject_group_id">Subject Group</Label>
+              <select
+                id="subject_group_id"
+                value={formData.subject_group_id}
+                onChange={(e) => setFormData(prev => ({ ...prev, subject_group_id: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">— Tidak ada group —</option>
+                {subjectGroups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Digunakan untuk Achievement Level Descriptors</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
