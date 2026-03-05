@@ -1290,6 +1290,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     
     const student = reportStudents.find(s => s.detail_siswa_id === studentId);
     const studentName = student?.nama || 'Unknown';
+    const studentFirstName = studentName.split(' ')[0] || studentName;
     const kelasName = reportKelasOptions.find(k => k.kelas_id === kelasId)?.kelas_nama || '';
     const yearName = reportYears.find(y => y.year_id === parseInt(reportFilters.year))?.year_name || '';
     const semester = reportFilters.semester || '1';
@@ -1341,6 +1342,8 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       .select(`
         detail_kelas_id,
         detail_kelas_subject_id,
+        myp_year_s1,
+        myp_year_s2,
         subject:detail_kelas_subject_id (
           subject_id,
           subject_name,
@@ -1348,7 +1351,8 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           subject_icon,
           core_subject,
           print_order,
-          include_in_print
+          include_in_print,
+          subject_group_id
         )
       `)
       .eq('detail_kelas_kelas_id', kelasId);
@@ -1498,6 +1502,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       if (!hasGrades) continue;
       
       reportRows.push({
+        subject_id: dk.subject.subject_id,
         subject_name: dk.subject.subject_name,
         subject_icon: dk.subject.subject_icon || null,
         core_subject: dk.subject.core_subject || false,
@@ -1505,7 +1510,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         teacher_name: teacherName,
         grades,
         semester_overview: semesterOverview,
-        comment
+        comment,
+        subject_group_id: dk.subject.subject_group_id || null,
+        myp_year_s1: dk.myp_year_s1 || 1,
+        myp_year_s2: dk.myp_year_s2 || 1
       });
     }
     
@@ -1533,9 +1541,44 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     };
 
     const iconCache = {};
+    const iconBySubjectId = {};
     for (let i = 0; i < reportRows.length; i++) {
       if (reportRows[i].subject_icon) {
-        iconCache[i] = await loadImgBase64(reportRows[i].subject_icon);
+        const b64 = await loadImgBase64(reportRows[i].subject_icon);
+        iconCache[i] = b64;
+        iconBySubjectId[reportRows[i].subject_id] = b64;
+      }
+    }
+
+    // Prefetch criterion names + descriptors for core subject detail pages
+    const criteriaNameCache = {}; // { [subject_id]: { A: 'Analysing', ... } }
+    const descriptorCache    = {}; // { [groupId_year]: { A: { 1: desc, 3: desc, ... }, ... } }
+    for (const row of reportRows.filter(r => r.core_subject)) {
+      if (!criteriaNameCache[row.subject_id]) {
+        const { data: crData } = await supabase
+          .from('criteria')
+          .select('code, name')
+          .eq('subject_id', row.subject_id)
+          .order('code');
+        criteriaNameCache[row.subject_id] = {};
+        (crData || []).forEach(c => { criteriaNameCache[row.subject_id][c.code] = c.name; });
+      }
+      if (row.subject_group_id) {
+        const mypYr = semester === '1' ? (row.myp_year_s1 || 1) : (row.myp_year_s2 || 1);
+        const dKey = `${row.subject_group_id}_${mypYr}`;
+        if (!descriptorCache[dKey]) {
+          const { data: dData } = await supabase
+            .from('criterion_descriptors')
+            .select('criterion, band_min, descriptor')
+            .eq('subject_group_id', row.subject_group_id)
+            .eq('myp_year', mypYr);
+          const byBand = {};
+          (dData || []).forEach(d => {
+            if (!byBand[d.criterion]) byBand[d.criterion] = {};
+            byBand[d.criterion][d.band_min] = d.descriptor;
+          });
+          descriptorCache[dKey] = byBand;
+        }
       }
     }
 
@@ -1743,8 +1786,13 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
 
     const coreRows = reportRows.filter(r => r.core_subject);
     const nonCoreRows = reportRows.filter(r => !r.core_subject);
-    const { body: coreBody, meta: coreMeta } = buildTableData(coreRows, 0);
-    const { body: nonCoreBody, meta: nonCoreMeta } = buildTableData(nonCoreRows, coreRows.length);
+    // Flatten: core first, then non-core (already sorted) — then chunk by page
+    const allRows = [...coreRows, ...nonCoreRows];
+    const SUBJECTS_PER_PAGE = 5;
+    const rowChunks = [];
+    for (let i = 0; i < allRows.length; i += SUBJECTS_PER_PAGE) {
+      rowChunks.push(allRows.slice(i, i + SUBJECTS_PER_PAGE));
+    }
 
     // Shared autoTable options factory
     const tableOptions = (body, rowMeta, startY) => ({
@@ -1786,7 +1834,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
 
         if (!meta.isComment) {
           if (data.column.index !== 0) return;
-          const row = reportRows[meta.subjectIndex];
+          const row = allRows[meta.subjectIndex];
           const cx = data.cell.x;
           const cy = data.cell.y;
           const iconX = cx + 2;
@@ -1810,7 +1858,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           doc.text(row.teacher_name, textX, textY);
         } else {
           if (data.column.index !== 0) return;
-          const row = reportRows[meta.subjectIndex];
+          const row = allRows[meta.subjectIndex];
           const cx = data.cell.x;
           const cy = data.cell.y;
           const padL = 4;
@@ -1844,15 +1892,18 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       didDrawPage: () => { drawFooter(); }
     });
 
-    // Render core subjects table
-    if (coreBody.length > 0) {
-      autoTable(doc, tableOptions(coreBody, coreMeta, mt + 12));
-    }
-
-    // Render non-core subjects table (below core, with a small gap)
-    if (nonCoreBody.length > 0) {
-      const afterCore = coreBody.length > 0 ? doc.lastAutoTable.finalY + 8 : mt + 12;
-      autoTable(doc, tableOptions(nonCoreBody, nonCoreMeta, afterCore));
+    // Render subjects: max 5 per page
+    for (let ci = 0; ci < rowChunks.length; ci++) {
+      if (ci > 0) {
+        doc.addPage();
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(17, 24, 39);
+        doc.text(`Summary of ${semesterLabel} Student Progress`, ml, mt + 6);
+      }
+      const indexOffset = ci * SUBJECTS_PER_PAGE;
+      const { body: chunkBody, meta: chunkMeta } = buildTableData(rowChunks[ci], indexOffset);
+      autoTable(doc, tableOptions(chunkBody, chunkMeta, mt + 12));
     }
 
     // ── Attendance + Mentor Comment section ──────────────────────────────────
@@ -1946,6 +1997,192 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         });
       }
     }
+
+    // ── Per-subject detail pages (core subjects only) ─────────────────────
+    const gradeToBandMin = (g) => g <= 2 ? 1 : g <= 4 ? 3 : g <= 6 ? 5 : 7;
+
+    for (const row of coreRows) {
+      doc.addPage();
+      drawFooter();
+      const y = mt + 6;
+
+      const subIconB64 = iconBySubjectId[row.subject_id];
+      const mypYr = semester === '1' ? (row.myp_year_s1 || 1) : (row.myp_year_s2 || 1);
+      const dKey = row.subject_group_id ? `${row.subject_group_id}_${mypYr}` : null;
+      const descriptors = dKey ? (descriptorCache[dKey] || null) : null;
+      const crNames = criteriaNameCache[row.subject_id] || {};
+
+      // Build ONE unified table: subject row + cd header row + criterion rows + comment row
+      // Meta array maps body row index → rendering instructions
+      const body = [];
+      const meta = [];
+
+      // Row 0: subject name / teacher + grades
+      body.push([
+        { content: row.subject_name + '\n' + row.teacher_name, styles: { textColor: [255, 255, 255] } },
+        row.grades.A !== null ? String(row.grades.A) : '-',
+        row.grades.B !== null ? String(row.grades.B) : '-',
+        row.grades.C !== null ? String(row.grades.C) : '-',
+        row.grades.D !== null ? String(row.grades.D) : '-',
+        row.semester_overview !== null ? String(row.semester_overview) : '-'
+      ]);
+      meta.push({ type: 'subject' });
+
+      // Row 1: "Criterion Descriptors" label spanning all 6 cols
+      body.push([{ content: 'Criterion Descriptors', colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 5, right: 2, bottom: 1, left: 2 } } }]);
+      meta.push({ type: 'cd_header' });
+
+      // Rows 2+: one row per criterion
+      const _criterionMaxW = pw - ml - mr - 10;
+      for (const cr of ['A', 'B', 'C', 'D']) {
+        const gradeVal = row.grades[cr];
+        if (gradeVal === null) continue;
+        const crLabel = crNames[cr] ? `${cr}: ${crNames[cr]}` : `Criterion ${cr}`;
+        const bMin = descriptors ? gradeToBandMin(gradeVal) : null;
+        const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bStudent\b/g, studentFirstName) : '';
+        // Pre-compute lines so autoTable sizes the cell to exactly what we'll draw
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        const descLines = descText ? doc.splitTextToSize(descText, _criterionMaxW) : [];
+        const contentStr = crLabel + (descLines.length ? '\n' + descLines.join('\n') : '');
+        body.push([{ content: contentStr, colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 4, right: 2, bottom: 6, left: 2 } } }]);
+        meta.push({ type: 'criterion', label: crLabel, desc: descText });
+      }
+
+      // Last row: teacher comment
+      if (row.comment) {
+        body.push([{ content: row.comment, colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 5, right: 2, bottom: 8, left: 2 } } }]);
+        meta.push({ type: 'comment', text: row.comment });
+      }
+
+      autoTable(doc, {
+        startY: y,
+        head: [['', 'A', 'B', 'C', 'D', `${semesterLabel}\nProgress\nOverview`]],
+        body,
+        theme: 'plain',
+        styles: {
+          fontSize: 9,
+          cellPadding: { top: 5, right: 2, bottom: 5, left: 2 },
+          lineColor: [209, 213, 219],
+          lineWidth: 0.3,
+          overflow: 'linebreak',
+          textColor: [255, 255, 255],
+        },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [107, 114, 128],
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'center',
+        },
+        columnStyles: {
+          0: { cellWidth: 'auto', cellPadding: { top: 5, right: 3, bottom: 5, left: 14 } },
+          1: { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] },
+          2: { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] },
+          3: { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] },
+          4: { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] },
+          5: { cellWidth: 22, halign: 'center', fontStyle: 'bold', textColor: [31, 41, 55], valign: 'top' }
+        },
+        tableLineColor: [209, 213, 219],
+        tableLineWidth: 0.3,
+        margin: { left: ml, right: mr },
+        didDrawCell: (data) => {
+          if (data.cell.section !== 'body') return;
+          const m = meta[data.row.index];
+          if (!m) return;
+
+          if (m.type === 'subject') {
+            // Only col 0 needs custom drawing; grade cols rendered via columnStyles textColor override
+            if (data.column.index !== 0) return;
+            const cx = data.cell.x;
+            const cy = data.cell.y;
+            if (subIconB64) {
+              try { doc.addImage(subIconB64, 'PNG', cx + 2, cy + 4, 8, 8); } catch (_e) {}
+            } else {
+              drawLetterAvatar(cx + 2, cy + 4, row.subject_name.charAt(0).toUpperCase());
+            }
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(30, 58, 95);
+            doc.text(row.subject_name, cx + 14, cy + 8);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(107, 114, 128);
+            doc.text(row.teacher_name, cx + 14, cy + 14);
+
+          } else if (m.type === 'cd_header') {
+            if (data.column.index !== 0) return;
+            const cx = data.cell.x + 2;
+            const cy = data.cell.y + data.cell.height / 2 + 1;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(107, 114, 128);
+            doc.text('Criterion Descriptors', cx, cy);
+
+          } else if (m.type === 'criterion') {
+            if (data.column.index !== 0) return;
+            const cx = data.cell.x + 2;
+            const cy = data.cell.y;
+            const maxW = data.cell.width - 10;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(17, 24, 39);
+            doc.text(m.label, cx, cy + 5);
+            if (m.desc) {
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(9);
+              doc.setTextColor(17, 24, 39);
+              const dLines = doc.splitTextToSize(m.desc, maxW);
+              let ty = cy + 11;
+              dLines.forEach(dl => { doc.text(dl, cx, ty); ty += 5; });
+            }
+
+          } else if (m.type === 'comment') {
+            if (data.column.index !== 0) return;
+            const cx = data.cell.x + 2;
+            const cy = data.cell.y;
+            const maxW = data.cell.width - 16;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(17, 24, 39);
+            const cLines = doc.splitTextToSize(m.text, maxW);
+            let ty = cy + 7;
+            cLines.forEach(cl => { doc.text(cl, cx, ty); ty += 5; });
+          }
+        },
+        didDrawPage: () => { drawFooter(); },
+      });
+
+      // Separate boundaries table below (with proper columns)
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY,
+        head: [['', '1', '2', '3', '4', '5', '6', '7']],
+        body: [['Boundaries', '0–5', '6–9', '10–14', '15–18', '19–23', '24–27', '28–32']],
+        theme: 'plain',
+        styles: {
+          fontSize: 8,
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          lineColor: [209, 213, 219],
+          lineWidth: 0.3,
+          halign: 'center',
+          textColor: [55, 65, 81],
+        },
+        headStyles: {
+          fontStyle: 'normal',
+          textColor: [107, 114, 128],
+          fontSize: 8,
+          halign: 'center',
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold', textColor: [107, 114, 128], halign: 'left' },
+        },
+        tableLineColor: [209, 213, 219],
+        tableLineWidth: 0.3,
+        margin: { left: ml, right: mr },
+        didDrawPage: () => { drawFooter(); },
+      });
+    }
+
     const pdfBlob = doc.output('blob');
     const pdfUrl = URL.createObjectURL(pdfBlob);
     window.open(pdfUrl, '_blank');

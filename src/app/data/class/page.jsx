@@ -35,6 +35,8 @@ export default function ClassManagement() {
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [assignedSubjectIds, setAssignedSubjectIds] = useState([]); // current from DB
   const [selectedSubjectIds, setSelectedSubjectIds] = useState([]); // UI selection
+  const [subjectMypYearMap, setSubjectMypYearMap] = useState({}); // { [subject_id]: { s1: myp_year, s2: myp_year } }
+  const [detailKelasIdMap, setDetailKelasIdMap] = useState({}); // { [subject_id]: detail_kelas_id }
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [subjectsSaving, setSubjectsSaving] = useState(false);
   
@@ -253,15 +255,23 @@ export default function ClassManagement() {
       // Fetch existing assignments from detail_kelas
       const { data: details, error: detailError } = await supabase
         .from('detail_kelas')
-        .select('detail_kelas_subject_id')
+        .select('detail_kelas_id, detail_kelas_subject_id, myp_year_s1, myp_year_s2')
         .eq('detail_kelas_kelas_id', kelas.kelas_id);
 
       if (detailError) throw new Error(detailError.message);
 
       const assignedIds = (details || []).map(d => d.detail_kelas_subject_id);
+      const mypMap = {};
+      const idMap = {};
+      (details || []).forEach(d => {
+        mypMap[d.detail_kelas_subject_id] = { s1: d.myp_year_s1 ?? 1, s2: d.myp_year_s2 ?? 1 };
+        idMap[d.detail_kelas_subject_id] = d.detail_kelas_id;
+      });
       setAvailableSubjects(subjectsData || []);
       setAssignedSubjectIds(assignedIds);
       setSelectedSubjectIds(assignedIds);
+      setSubjectMypYearMap(mypMap);
+      setDetailKelasIdMap(idMap);
 
     } catch (err) {
   console.error('Error opening Manage Subjects:', err);
@@ -445,12 +455,29 @@ export default function ClassManagement() {
       if (toAdd.length > 0) {
         const rows = toAdd.map(subjectId => ({
           detail_kelas_subject_id: subjectId,
-          detail_kelas_kelas_id: selectedClassForSubjects.kelas_id
+          detail_kelas_kelas_id: selectedClassForSubjects.kelas_id,
+          myp_year_s1: subjectMypYearMap[subjectId]?.s1 ?? 1,
+          myp_year_s2: subjectMypYearMap[subjectId]?.s2 ?? 1
         }));
         const { error: insertErr } = await supabase
           .from('detail_kelas')
           .insert(rows);
         if (insertErr) throw new Error(insertErr.message);
+      }
+
+      // Update myp_year_s1/s2 for kept subjects
+      const toKeep = Array.from(selected).filter(id => existing.has(id));
+      for (const subjectId of toKeep) {
+        if (detailKelasIdMap[subjectId]) {
+          const { error: updateErr } = await supabase
+            .from('detail_kelas')
+            .update({
+              myp_year_s1: subjectMypYearMap[subjectId]?.s1 ?? 1,
+              myp_year_s2: subjectMypYearMap[subjectId]?.s2 ?? 1
+            })
+            .eq('detail_kelas_id', detailKelasIdMap[subjectId]);
+          if (updateErr) throw new Error(updateErr.message);
+        }
       }
 
       // Delete removed relations
@@ -1029,16 +1056,60 @@ export default function ClassManagement() {
                 <div className="max-h-72 overflow-auto border rounded-md p-3">
                   <ul className="space-y-2">
                     {availableSubjects.map(subj => (
-                      <li key={subj.subject_id} className="flex items-center gap-3">
+                      <li key={subj.subject_id} className="flex items-center gap-2">
                         <input
                           id={`subj-${subj.subject_id}`}
                           type="checkbox"
                           checked={selectedSubjectIds.includes(subj.subject_id)}
                           onChange={() => toggleSubjectSelection(subj.subject_id)}
                         />
-                        <label htmlFor={`subj-${subj.subject_id}`} className="cursor-pointer">
+                        <label htmlFor={`subj-${subj.subject_id}`} className="cursor-pointer flex-1">
                           {subj.subject_name}
                         </label>
+                        {selectedSubjectIds.includes(subj.subject_id) && (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-400 w-5">S1:</span>
+                              {[1, 3, 5].map(yr => (
+                                <button
+                                  key={yr}
+                                  type="button"
+                                  onClick={() => setSubjectMypYearMap(prev => ({
+                                    ...prev,
+                                    [subj.subject_id]: { ...(prev[subj.subject_id] ?? { s1: 1, s2: 1 }), s1: yr }
+                                  }))}
+                                  className={`px-2 py-0.5 text-xs rounded ${
+                                    (subjectMypYearMap[subj.subject_id]?.s1 ?? 1) === yr
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {yr}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-400 w-5">S2:</span>
+                              {[1, 3, 5].map(yr => (
+                                <button
+                                  key={yr}
+                                  type="button"
+                                  onClick={() => setSubjectMypYearMap(prev => ({
+                                    ...prev,
+                                    [subj.subject_id]: { ...(prev[subj.subject_id] ?? { s1: 1, s2: 1 }), s2: yr }
+                                  }))}
+                                  className={`px-2 py-0.5 text-xs rounded ${
+                                    (subjectMypYearMap[subj.subject_id]?.s2 ?? 1) === yr
+                                      ? 'bg-indigo-600 text-white'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {yr}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
