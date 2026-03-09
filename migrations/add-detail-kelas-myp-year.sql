@@ -4,8 +4,8 @@
 -- Nullable so existing records are not affected.
 
 ALTER TABLE detail_kelas
-  ADD COLUMN IF NOT EXISTS myp_year_s1 SMALLINT CHECK (myp_year_s1 IN (1, 3, 5)),
-  ADD COLUMN IF NOT EXISTS myp_year_s2 SMALLINT CHECK (myp_year_s2 IN (1, 3, 5));
+  ADD COLUMN IF NOT EXISTS myp_year_s1 SMALLINT CHECK (myp_year_s1 IN (1, 2, 3, 4, 5)),
+  ADD COLUMN IF NOT EXISTS myp_year_s2 SMALLINT CHECK (myp_year_s2 IN (1, 2, 3, 4, 5));
 
 COMMENT ON COLUMN detail_kelas.myp_year_s1 IS
   'MYP year reference for Achievement Level Descriptors in Semester 1 (1, 3, or 5).';

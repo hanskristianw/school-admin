@@ -1070,7 +1070,7 @@ export default function ClassManagement() {
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1">
                               <span className="text-xs text-gray-400 w-5">S1:</span>
-                              {[1, 3, 5].map(yr => (
+                              {[1, 2, 3, 4, 5].map(yr => (
                                 <button
                                   key={yr}
                                   type="button"
@@ -1090,7 +1090,7 @@ export default function ClassManagement() {
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="text-xs text-gray-400 w-5">S2:</span>
-                              {[1, 3, 5].map(yr => (
+                              {[1, 2, 3, 4, 5].map(yr => (
                                 <button
                                   key={yr}
                                   type="button"

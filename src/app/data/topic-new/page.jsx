@@ -3790,7 +3790,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         assessment_criteria (criterion_id)
       `)
       .eq('assessment_topic_id', topic.topic_id)
-      .single()
+      .maybeSingle()
     if (assessmentLoadError) {
       console.error('❌ [FETCH ERROR] Error loading assessment:', assessmentLoadError)
     }

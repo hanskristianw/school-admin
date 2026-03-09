@@ -1472,12 +1472,14 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           const criteriaValues = [grades.A, grades.B, grades.C, grades.D].filter(g => g !== null);
           if (criteriaValues.length > 0) {
             const total = criteriaValues.reduce((a, b) => a + b, 0);
-            if (total <= 5) semesterOverview = 1;
-            else if (total <= 9) semesterOverview = 2;
-            else if (total <= 14) semesterOverview = 3;
-            else if (total <= 18) semesterOverview = 4;
-            else if (total <= 23) semesterOverview = 5;
-            else if (total <= 27) semesterOverview = 6;
+            const scale = criteriaValues.length / 4;
+            const b = [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale));
+            if (total <= b[0]) semesterOverview = 1;
+            else if (total <= b[1]) semesterOverview = 2;
+            else if (total <= b[2]) semesterOverview = 3;
+            else if (total <= b[3]) semesterOverview = 4;
+            else if (total <= b[4]) semesterOverview = 5;
+            else if (total <= b[5]) semesterOverview = 6;
             else semesterOverview = 7;
           }
         }
@@ -1550,10 +1552,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       }
     }
 
-    // Prefetch criterion names + descriptors for core subject detail pages
+    // Prefetch criterion names + descriptors for all subject detail pages
     const criteriaNameCache = {}; // { [subject_id]: { A: 'Analysing', ... } }
-    const descriptorCache    = {}; // { [groupId_year]: { A: { 1: desc, 3: desc, ... }, ... } }
-    for (const row of reportRows.filter(r => r.core_subject)) {
+    const descriptorCache    = {}; // { [groupId_year_sem]: { A: { 1: desc, ... }, ... } }
+    for (const row of reportRows) {
       if (!criteriaNameCache[row.subject_id]) {
         const { data: crData } = await supabase
           .from('criteria')
@@ -1565,17 +1567,23 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       }
       if (row.subject_group_id) {
         const mypYr = semester === '1' ? (row.myp_year_s1 || 1) : (row.myp_year_s2 || 1);
-        const dKey = `${row.subject_group_id}_${mypYr}`;
+        const semInt = parseInt(semester);
+        const dKey = `${row.subject_group_id}_${mypYr}_${semInt}`;
         if (!descriptorCache[dKey]) {
+          // Fetch shared (semester=0) AND semester-specific rows in one query
           const { data: dData } = await supabase
             .from('criterion_descriptors')
-            .select('criterion, band_min, descriptor')
+            .select('criterion, band_min, descriptor, semester')
             .eq('subject_group_id', row.subject_group_id)
-            .eq('myp_year', mypYr);
+            .eq('myp_year', mypYr)
+            .in('semester', [0, semInt]);
+          // Build merged map: shared first, then semester-specific overrides
           const byBand = {};
-          (dData || []).forEach(d => {
+          const shared = (dData || []).filter(d => d.semester === 0);
+          const specific = (dData || []).filter(d => d.semester === semInt);
+          [...shared, ...specific].forEach(d => {
             if (!byBand[d.criterion]) byBand[d.criterion] = {};
-            byBand[d.criterion][d.band_min] = d.descriptor;
+            if (d.descriptor) byBand[d.criterion][d.band_min] = d.descriptor;
           });
           descriptorCache[dKey] = byBand;
         }
@@ -1773,7 +1781,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
             styles: {
               fontSize: 9,
               fontStyle: 'normal',
-              cellPadding: { top: 3, right: 4, bottom: 8, left: 4 },
+              cellPadding: { top: 5, right: 4, bottom: 5, left: 4 },
               textColor: [255, 255, 255],
               overflow: 'linebreak'
             }
@@ -1784,14 +1792,118 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       return { body, meta };
     };
 
+    // Build non-core table body — 2 columns only: subject name + final grade + optional comment
+    const buildNonCoreTableData = (rows, indexOffset) => {
+      const body = [];
+      const meta = [];
+      rows.forEach((row, i) => {
+        const si = indexOffset + i;
+        body.push([
+          row.subject_name + '\n' + row.teacher_name,
+          row.semester_overview !== null ? String(row.semester_overview) : '-'
+        ]);
+        meta.push({ isComment: false, subjectIndex: si });
+        if (row.comment) {
+          body.push([{
+            content: row.comment,
+            colSpan: 2,
+            styles: {
+              fontSize: 9,
+              fontStyle: 'normal',
+              cellPadding: { top: 5, right: 4, bottom: 5, left: 4 },
+              textColor: [255, 255, 255],
+              overflow: 'linebreak'
+            }
+          }]);
+          meta.push({ isComment: true, subjectIndex: si });
+        }
+      });
+      return { body, meta };
+    };
+
+    const nonCoreTableOptions = (body, rowMeta, startY) => ({
+      startY,
+      head: [['', `${semesterLabel}\nProgress Overview`]],
+      body,
+      theme: 'plain',
+      styles: {
+        fontSize: 9,
+        cellPadding: { top: 5, right: 2, bottom: 5, left: 2 },
+        lineColor: [209, 213, 219],
+        lineWidth: 0.3,
+        textColor: [31, 41, 55],
+        overflow: 'linebreak'
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [107, 114, 128],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'center',
+        valign: 'middle',
+        cellPadding: { top: 4, right: 2, bottom: 4, left: 2 }
+      },
+      columnStyles: {
+        0: { cellWidth: 'auto', cellPadding: { top: 5, right: 3, bottom: 5, left: 14 }, textColor: [255, 255, 255] },
+        1: { cellWidth: 22, halign: 'center', fontStyle: 'normal', textColor: [17, 24, 39], valign: 'middle' }
+      },
+      tableLineColor: [209, 213, 219],
+      tableLineWidth: 0.3,
+      margin: { left: ml, right: mr, top: mt, bottom: mb },
+      didDrawCell: (data) => {
+        if (data.cell.section !== 'body') return;
+        const meta = rowMeta[data.row.index];
+        if (!meta) return;
+        const row = allRows[meta.subjectIndex];
+        if (meta.isComment) {
+          if (data.column.index !== 0) return;
+          const cx = data.cell.x;
+          const cy = data.cell.y;
+          const padL = 2;
+          const maxW = data.cell.width - padL - 4;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(55, 65, 81);
+          const lines = doc.splitTextToSize(row.comment, maxW);
+          const lineHeight = 5;
+          const blockSpan = (lines.length - 1) * lineHeight;
+          let textY = cy + (data.cell.height - blockSpan) / 2 + 1.5;
+          lines.forEach(line => { doc.text(line, cx + padL, textY); textY += lineHeight; });
+        } else {
+          if (data.column.index !== 0) return;
+          const cx = data.cell.x;
+          const cy = data.cell.y;
+          const iconB64 = iconCache[meta.subjectIndex];
+          if (iconB64) {
+            try { doc.addImage(iconB64, 'PNG', cx + 2, cy + 4, 8, 8); } catch (e) {}
+          } else {
+            drawLetterAvatar(cx + 2, cy + 4, row.subject_name.charAt(0).toUpperCase());
+          }
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(30, 58, 95);
+          doc.text(row.subject_name, cx + 14, cy + 7);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          doc.setTextColor(107, 114, 128);
+          doc.text(row.teacher_name, cx + 14, cy + 12);
+        }
+      },
+      didDrawPage: () => { drawFooter(); }
+    });
+
     const coreRows = reportRows.filter(r => r.core_subject);
     const nonCoreRows = reportRows.filter(r => !r.core_subject);
     // Flatten: core first, then non-core (already sorted) — then chunk by page
     const allRows = [...coreRows, ...nonCoreRows];
     const SUBJECTS_PER_PAGE = 5;
-    const rowChunks = [];
-    for (let i = 0; i < allRows.length; i += SUBJECTS_PER_PAGE) {
-      rowChunks.push(allRows.slice(i, i + SUBJECTS_PER_PAGE));
+    const coreChunks = [];
+    for (let i = 0; i < coreRows.length; i += SUBJECTS_PER_PAGE) {
+      coreChunks.push(coreRows.slice(i, i + SUBJECTS_PER_PAGE));
+    }
+    const nonCoreChunks = [];
+    for (let i = 0; i < nonCoreRows.length; i += SUBJECTS_PER_PAGE) {
+      nonCoreChunks.push(nonCoreRows.slice(i, i + SUBJECTS_PER_PAGE));
     }
 
     // Shared autoTable options factory
@@ -1814,15 +1926,16 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         fontStyle: 'bold',
         fontSize: 8,
         halign: 'center',
-        cellPadding: { top: 3, right: 2, bottom: 3, left: 2 }
+        valign: 'middle',
+        cellPadding: { top: 4, right: 2, bottom: 4, left: 2 }
       },
       columnStyles: {
         0: { cellWidth: 'auto', cellPadding: { top: 5, right: 3, bottom: 5, left: 14 }, textColor: [255, 255, 255] },
-        1: { cellWidth: 12, halign: 'center', fontStyle: 'bold', valign: 'top' },
-        2: { cellWidth: 12, halign: 'center', fontStyle: 'bold', valign: 'top' },
-        3: { cellWidth: 12, halign: 'center', fontStyle: 'bold', valign: 'top' },
-        4: { cellWidth: 12, halign: 'center', fontStyle: 'bold', valign: 'top' },
-        5: { cellWidth: 20, halign: 'center', fontStyle: 'bold', textColor: [30, 64, 175], valign: 'top' }
+        1: { cellWidth: 12, halign: 'center', fontStyle: 'normal', valign: 'middle', textColor: [17, 24, 39] },
+        2: { cellWidth: 12, halign: 'center', fontStyle: 'normal', valign: 'middle', textColor: [17, 24, 39] },
+        3: { cellWidth: 12, halign: 'center', fontStyle: 'normal', valign: 'middle', textColor: [17, 24, 39] },
+        4: { cellWidth: 12, halign: 'center', fontStyle: 'normal', valign: 'middle', textColor: [17, 24, 39] },
+        5: { cellWidth: 20, halign: 'center', fontStyle: 'normal', textColor: [17, 24, 39], valign: 'middle' }
       },
       tableLineColor: [209, 213, 219],
       tableLineWidth: 0.3,
@@ -1861,16 +1974,17 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           const row = allRows[meta.subjectIndex];
           const cx = data.cell.x;
           const cy = data.cell.y;
-          const padL = 4;
+          const padL = 2;
           const padR = 4;
-          const padT = 1;
           const maxW = data.cell.width - padL - padR;
           const textX = cx + padL;
-          let textY = cy + padT + 3;
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
           doc.setTextColor(55, 65, 81);
           const lines = doc.splitTextToSize(row.comment, maxW);
+          const lineHeight = 5;
+          const blockSpan = (lines.length - 1) * lineHeight;
+          let textY = cy + (data.cell.height - blockSpan) / 2 + 1.5;
           lines.forEach((line, idx) => {
             const isLast = idx === lines.length - 1;
             const words = line.trimEnd().split(' ');
@@ -1892,8 +2006,8 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       didDrawPage: () => { drawFooter(); }
     });
 
-    // Render subjects: max 5 per page
-    for (let ci = 0; ci < rowChunks.length; ci++) {
+    // Render core subjects (5 per page)
+    for (let ci = 0; ci < coreChunks.length; ci++) {
       if (ci > 0) {
         doc.addPage();
         doc.setFont('helvetica', 'bold');
@@ -1902,8 +2016,16 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         doc.text(`Summary of ${semesterLabel} Student Progress`, ml, mt + 6);
       }
       const indexOffset = ci * SUBJECTS_PER_PAGE;
-      const { body: chunkBody, meta: chunkMeta } = buildTableData(rowChunks[ci], indexOffset);
+      const { body: chunkBody, meta: chunkMeta } = buildTableData(coreChunks[ci], indexOffset);
       autoTable(doc, tableOptions(chunkBody, chunkMeta, mt + 12));
+    }
+
+    // Render non-core subjects (5 per page, 2-column table, no title)
+    for (let ci = 0; ci < nonCoreChunks.length; ci++) {
+      doc.addPage();
+      const indexOffset = coreRows.length + ci * SUBJECTS_PER_PAGE;
+      const { body: chunkBody, meta: chunkMeta } = buildNonCoreTableData(nonCoreChunks[ci], indexOffset);
+      autoTable(doc, nonCoreTableOptions(chunkBody, chunkMeta, mt + 6));
     }
 
     // ── Attendance + Mentor Comment section ──────────────────────────────────
@@ -1998,17 +2120,16 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       }
     }
 
-    // ── Per-subject detail pages (core subjects only) ─────────────────────
+    // ── Per-subject detail pages (core subjects) ────────────────────────────
     const gradeToBandMin = (g) => g <= 2 ? 1 : g <= 4 ? 3 : g <= 6 ? 5 : 7;
 
     for (const row of coreRows) {
       doc.addPage();
-      drawFooter();
       const y = mt + 6;
 
       const subIconB64 = iconBySubjectId[row.subject_id];
       const mypYr = semester === '1' ? (row.myp_year_s1 || 1) : (row.myp_year_s2 || 1);
-      const dKey = row.subject_group_id ? `${row.subject_group_id}_${mypYr}` : null;
+      const dKey = row.subject_group_id ? `${row.subject_group_id}_${mypYr}_${parseInt(semester)}` : null;
       const descriptors = dKey ? (descriptorCache[dKey] || null) : null;
       const crNames = criteriaNameCache[row.subject_id] || {};
 
@@ -2045,7 +2166,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         doc.setFontSize(9);
         const descLines = descText ? doc.splitTextToSize(descText, _criterionMaxW) : [];
         const contentStr = crLabel + (descLines.length ? '\n' + descLines.join('\n') : '');
-        body.push([{ content: contentStr, colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 4, right: 2, bottom: 6, left: 2 } } }]);
+        // minCellHeight ensures enough vertical space regardless of autoTable's internal line-height calculation
+        // Formula: 5 (label row) + descLines * 5 (desc rows) + 9 (padding + baseline offset)
+        const minCellHeight = 11 + descLines.length * 5;
+        body.push([{ content: contentStr, colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 4, right: 2, bottom: 6, left: 2 }, minCellHeight } }]);
         meta.push({ type: 'criterion', label: crLabel, desc: descText });
       }
 
@@ -2179,8 +2303,158 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         tableLineColor: [209, 213, 219],
         tableLineWidth: 0.3,
         margin: { left: ml, right: mr },
+      });
+    }
+
+    // ── Per-subject detail pages (non-core subjects) ───────────────────────
+    for (const row of nonCoreRows) {
+      doc.addPage();
+      const y = mt + 6;
+
+      const subIconB64 = iconBySubjectId[row.subject_id];
+      const mypYr = semester === '1' ? (row.myp_year_s1 || 1) : (row.myp_year_s2 || 1);
+      const dKey = row.subject_group_id ? `${row.subject_group_id}_${mypYr}_${parseInt(semester)}` : null;
+      const descriptors = dKey ? (descriptorCache[dKey] || null) : null;
+      const crNames = criteriaNameCache[row.subject_id] || {};
+
+      // Only include criteria that have a grade value
+      const activeCriteria = ['A', 'B', 'C', 'D'].filter(cr => row.grades[cr] !== null);
+      const totalCols = 1 + activeCriteria.length + 1; // name col + active criteria + overview
+
+      const body = [];
+      const meta = [];
+
+      // Subject header row
+      body.push([
+        { content: row.subject_name + '\n' + row.teacher_name, styles: { textColor: [255, 255, 255] } },
+        ...activeCriteria.map(cr => String(row.grades[cr])),
+        row.semester_overview !== null ? String(row.semester_overview) : '-'
+      ]);
+      meta.push({ type: 'subject' });
+
+      // Criterion Descriptors header
+      body.push([{ content: 'Criterion Descriptors', colSpan: totalCols, styles: { textColor: [255, 255, 255], cellPadding: { top: 5, right: 2, bottom: 1, left: 2 } } }]);
+      meta.push({ type: 'cd_header' });
+
+      const _ncCriterionMaxW = pw - ml - mr - 10;
+      for (const cr of activeCriteria) {
+        const gradeVal = row.grades[cr];
+        const crLabel = crNames[cr] ? `${cr}: ${crNames[cr]}` : `Criterion ${cr}`;
+        const bMin = descriptors ? gradeToBandMin(gradeVal) : null;
+        const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bStudent\b/g, studentFirstName) : '';
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        const descLines = descText ? doc.splitTextToSize(descText, _ncCriterionMaxW) : [];
+        const contentStr = crLabel + (descLines.length ? '\n' + descLines.join('\n') : '');
+        const minCellHeight = 11 + descLines.length * 5;
+        body.push([{ content: contentStr, colSpan: totalCols, styles: { textColor: [255, 255, 255], cellPadding: { top: 4, right: 2, bottom: 6, left: 2 }, minCellHeight } }]);
+        meta.push({ type: 'criterion', label: crLabel, desc: descText });
+      }
+
+      if (row.comment) {
+        body.push([{ content: row.comment, colSpan: totalCols, styles: { textColor: [255, 255, 255], cellPadding: { top: 5, right: 2, bottom: 8, left: 2 } } }]);
+        meta.push({ type: 'comment', text: row.comment });
+      }
+
+      // Build dynamic column styles based on active criteria count
+      const ncColStyles = {
+        0: { cellWidth: 'auto', cellPadding: { top: 5, right: 3, bottom: 5, left: 14 } },
+      };
+      activeCriteria.forEach((_, i) => {
+        ncColStyles[i + 1] = { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] };
+      });
+      ncColStyles[activeCriteria.length + 1] = { cellWidth: 22, halign: 'center', fontStyle: 'bold', textColor: [31, 41, 55], valign: 'top' };
+
+      autoTable(doc, {
+        startY: y,
+        head: [['', ...activeCriteria, `${semesterLabel}\nProgress\nOverview`]],
+        body,
+        theme: 'plain',
+        styles: {
+          fontSize: 9,
+          cellPadding: { top: 5, right: 2, bottom: 5, left: 2 },
+          lineColor: [209, 213, 219],
+          lineWidth: 0.3,
+          overflow: 'linebreak',
+          textColor: [255, 255, 255],
+        },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [107, 114, 128],
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'center',
+        },
+        columnStyles: ncColStyles,
+        tableLineColor: [209, 213, 219],
+        tableLineWidth: 0.3,
+        margin: { left: ml, right: mr },
+        didDrawCell: (data) => {
+          if (data.cell.section !== 'body') return;
+          const m = meta[data.row.index];
+          if (!m) return;
+
+          if (m.type === 'subject') {
+            if (data.column.index !== 0) return;
+            const cx = data.cell.x;
+            const cy = data.cell.y;
+            if (subIconB64) {
+              try { doc.addImage(subIconB64, 'PNG', cx + 2, cy + 4, 8, 8); } catch (_e) {}
+            } else {
+              drawLetterAvatar(cx + 2, cy + 4, row.subject_name.charAt(0).toUpperCase());
+            }
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(30, 58, 95);
+            doc.text(row.subject_name, cx + 14, cy + 8);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(107, 114, 128);
+            doc.text(row.teacher_name, cx + 14, cy + 14);
+
+          } else if (m.type === 'cd_header') {
+            if (data.column.index !== 0) return;
+            const cx = data.cell.x + 2;
+            const cy = data.cell.y + data.cell.height / 2 + 1;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(107, 114, 128);
+            doc.text('Criterion Descriptors', cx, cy);
+
+          } else if (m.type === 'criterion') {
+            if (data.column.index !== 0) return;
+            const cx = data.cell.x + 2;
+            const cy = data.cell.y;
+            const maxW = data.cell.width - 10;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(17, 24, 39);
+            doc.text(m.label, cx, cy + 5);
+            if (m.desc) {
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(9);
+              doc.setTextColor(17, 24, 39);
+              const dLines = doc.splitTextToSize(m.desc, maxW);
+              let ty = cy + 11;
+              dLines.forEach(dl => { doc.text(dl, cx, ty); ty += 5; });
+            }
+
+          } else if (m.type === 'comment') {
+            if (data.column.index !== 0) return;
+            const cx = data.cell.x + 2;
+            const cy = data.cell.y;
+            const maxW = data.cell.width - 16;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(17, 24, 39);
+            const cLines = doc.splitTextToSize(m.text, maxW);
+            let ty = cy + 7;
+            cLines.forEach(cl => { doc.text(cl, cx, ty); ty += 5; });
+          }
+        },
         didDrawPage: () => { drawFooter(); },
       });
+      // No boundaries table for non-core subjects
     }
 
     const pdfBlob = doc.output('blob');

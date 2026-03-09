@@ -16,7 +16,12 @@ const BANDS = [
   { label: '5-6', min: 5, max: 6 },
   { label: '7-8', min: 7, max: 8 },
 ];
-const MYP_YEARS = [1, 3, 5];
+const MYP_YEARS = [1, 2, 3, 4, 5];
+const SEMESTERS = [
+  { value: 0, label: 'S1 & S2 (Shared)' },
+  { value: 1, label: 'Semester 1 Only' },
+  { value: 2, label: 'Semester 2 Only' },
+];
 
 export default function SubjectGroupPage() {
   // Subject Groups
@@ -30,6 +35,7 @@ export default function SubjectGroupPage() {
   // Descriptor editor
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [selectedYear, setSelectedYear] = useState(1);
+  const [selectedSemester, setSelectedSemester] = useState(0);
   const [descriptors, setDescriptors] = useState({}); // key: "A_1", value: { id, text, dirty }
   const [loadingDesc, setLoadingDesc] = useState(false);
   const [savingDesc, setSavingDesc] = useState(false);
@@ -39,8 +45,8 @@ export default function SubjectGroupPage() {
 
   useEffect(() => { fetchGroups(); }, []);
   useEffect(() => {
-    if (selectedGroupId && selectedYear) fetchDescriptors(selectedGroupId, selectedYear);
-  }, [selectedGroupId, selectedYear]);
+    if (selectedGroupId && selectedYear !== undefined) fetchDescriptors(selectedGroupId, selectedYear, selectedSemester);
+  }, [selectedGroupId, selectedYear, selectedSemester]);
 
   const showNotification = (title, message, type = 'success') => setNotification({ isOpen: true, title, message, type });
   const closeNotification = () => setNotification(p => ({ ...p, isOpen: false }));
@@ -52,13 +58,14 @@ export default function SubjectGroupPage() {
     setLoadingGroups(false);
   };
 
-  const fetchDescriptors = async (groupId, year) => {
+  const fetchDescriptors = async (groupId, year, sem) => {
     setLoadingDesc(true);
     const { data } = await supabase
       .from('criterion_descriptors')
       .select('id, criterion, band_min, band_max, descriptor')
       .eq('subject_group_id', groupId)
-      .eq('myp_year', year);
+      .eq('myp_year', year)
+      .eq('semester', sem);
 
     const map = {};
     (data || []).forEach(d => {
@@ -119,18 +126,29 @@ export default function SubjectGroupPage() {
         const [criterion, bandMinStr] = key.split('_');
         const bandMin = parseInt(bandMinStr);
         const band = BANDS.find(b => b.min === bandMin);
-        const payload = {
-          subject_group_id: parseInt(selectedGroupId),
-          myp_year: selectedYear,
-          criterion,
-          band_min: bandMin,
-          band_max: band.max,
-          descriptor: val.text.trim() || null,
-        };
+        const trimmed = val.text.trim();
         let err;
         if (val.id) {
-          ({ error: err } = await supabase.from('criterion_descriptors').update({ descriptor: payload.descriptor }).eq('id', val.id));
+          if (!trimmed) {
+            // User cleared an existing descriptor — delete the row
+            ({ error: err } = await supabase.from('criterion_descriptors').delete().eq('id', val.id));
+            if (!err) {
+              setDescriptors(p => ({ ...p, [key]: { text: '', dirty: false, id: null } }));
+            }
+          } else {
+            ({ error: err } = await supabase.from('criterion_descriptors').update({ descriptor: trimmed }).eq('id', val.id));
+          }
         } else {
+          if (!trimmed) continue; // nothing to insert for an empty new entry
+          const payload = {
+            subject_group_id: parseInt(selectedGroupId),
+            myp_year: selectedYear,
+            semester: selectedSemester,
+            criterion,
+            band_min: bandMin,
+            band_max: band.max,
+            descriptor: trimmed,
+          };
           const { data: inserted, error: insertErr } = await supabase
             .from('criterion_descriptors').insert([payload]).select('id').single();
           err = insertErr;
@@ -216,9 +234,35 @@ export default function SubjectGroupPage() {
                   ))}
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-gray-500 mr-1">Semester:</Label>
+                <div className="flex gap-1">
+                  {SEMESTERS.map(s => (
+                    <button key={s.value}
+                      onClick={() => setSelectedSemester(s.value)}
+                      className={`px-3 h-8 rounded text-xs font-medium transition-colors ${
+                        selectedSemester === s.value ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-indigo-100'
+                      }`}
+                    >{s.label}</button>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
+            {selectedSemester !== 0 && (
+              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                <strong>ℹ️ Catatan:</strong> Anda sedang mengedit descriptor khusus <strong>{selectedSemester === 1 ? 'Semester 1' : 'Semester 2'}</strong>.
+                Descriptor ini akan menggantikan versi <em>S1 &amp; S2 (Shared)</em> saat report semester ini digenerate.
+                Jika kolom dibiarkan kosong, sistem akan otomatis menggunakan descriptor <em>Shared</em> sebagai fallback.
+              </div>
+            )}
+            {selectedSemester === 0 && (
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+                <strong>ℹ️ Mode Shared:</strong> Descriptor di sini berlaku untuk S1 maupun S2.
+                Jika ada descriptor khusus di tab <em>Semester 1 Only</em> atau <em>Semester 2 Only</em>, descriptor tersebut yang akan digunakan (Shared sebagai fallback).
+              </div>
+            )}
             {loadingDesc ? (
               <p className="text-sm text-gray-400 py-4 text-center">Memuat deskriptor...</p>
             ) : (

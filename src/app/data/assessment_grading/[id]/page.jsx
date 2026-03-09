@@ -174,16 +174,21 @@ export default function AssessmentGradingPage() {
     const { A, B, C, D } = criterionGrades
     const values = [A, B, C, D].filter(g => g !== null && g !== undefined)
     if (values.length === 0) return null
-    
+
     const total = values.reduce((a, b) => a + b, 0)
-    
-    // IB MYP conversion table
-    if (total <= 5) return 1
-    if (total <= 9) return 2
-    if (total <= 14) return 3
-    if (total <= 18) return 4
-    if (total <= 23) return 5
-    if (total <= 27) return 6
+
+    // IB MYP grade boundaries scaled proportionally to the number of criteria.
+    // Standard is 4 criteria × max 8 = 32. For fewer criteria the boundaries
+    // are scaled: boundary = round(standardBoundary * count / 4).
+    const count = values.length
+    const scale = count / 4
+    const b = [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
+    if (total <= b[0]) return 1
+    if (total <= b[1]) return 2
+    if (total <= b[2]) return 3
+    if (total <= b[3]) return 4
+    if (total <= b[4]) return 5
+    if (total <= b[5]) return 6
     return 7
   }
 
