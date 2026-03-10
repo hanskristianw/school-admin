@@ -1352,7 +1352,8 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           core_subject,
           print_order,
           include_in_print,
-          subject_group_id
+          subject_group_id,
+          custom_grade_boundaries
         )
       `)
       .eq('detail_kelas_kelas_id', kelasId);
@@ -1472,8 +1473,11 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           const criteriaValues = [grades.A, grades.B, grades.C, grades.D].filter(g => g !== null);
           if (criteriaValues.length > 0) {
             const total = criteriaValues.reduce((a, b) => a + b, 0);
+            const customBounds = dk.subject.custom_grade_boundaries;
             const scale = criteriaValues.length / 4;
-            const b = [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale));
+            const b = (customBounds && customBounds.length === 6)
+              ? customBounds
+              : [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale));
             if (total <= b[0]) semesterOverview = 1;
             else if (total <= b[1]) semesterOverview = 2;
             else if (total <= b[2]) semesterOverview = 3;
@@ -1515,7 +1519,8 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         comment,
         subject_group_id: dk.subject.subject_group_id || null,
         myp_year_s1: dk.myp_year_s1 || 1,
-        myp_year_s2: dk.myp_year_s2 || 1
+        myp_year_s2: dk.myp_year_s2 || 1,
+        custom_grade_boundaries: dk.subject.custom_grade_boundaries || null
       });
     }
     
@@ -2281,7 +2286,24 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY,
         head: [['', '1', '2', '3', '4', '5', '6', '7']],
-        body: [['Boundaries', '0–5', '6–9', '10–14', '15–18', '19–23', '24–27', '28–32']],
+        body: [[
+          'Boundaries',
+          ...(() => {
+            if (row.custom_grade_boundaries && row.custom_grade_boundaries.length === 6) {
+              const cb = row.custom_grade_boundaries;
+              return [
+                `0–${cb[0]}`,
+                `${cb[0]+1}–${cb[1]}`,
+                `${cb[1]+1}–${cb[2]}`,
+                `${cb[2]+1}–${cb[3]}`,
+                `${cb[3]+1}–${cb[4]}`,
+                `${cb[4]+1}–${cb[5]}`,
+                `${cb[5]+1}+`
+              ];
+            }
+            return ['0–5', '6–9', '10–14', '15–18', '19–23', '24–27', '28–32'];
+          })()
+        ]],
         theme: 'plain',
         styles: {
           fontSize: 8,
@@ -2456,6 +2478,61 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       });
       // No boundaries table for non-core subjects
     }
+
+    // ── Achievement Level Descriptors (last page) ─────────────────────────
+    doc.addPage();
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(17, 24, 39);
+    doc.text('Achievement Level Descriptors', ml, mt + 6);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(55, 65, 81);
+    doc.text('Final Grade', ml, mt + 16);
+
+    const aldRows = [
+      ['7:', 'A+', 'Produces high-quality, frequently innovative work. Communicates comprehensive, nuanced understanding of concepts and contexts. Consistently demonstrates sophisticated critical and creative thinking. Frequently transfers knowledge and skills with independence and expertise in a variety of complex classroom and real-world situations.'],
+      ['6:', 'A',  'Produces high-quality, occasionally innovative work. Communicates extensive understanding of concepts and contexts. Demonstrates critical and creative thinking, frequently with sophistication. Uses knowledge and skills in familiar and unfamiliar classroom and real-world situations, often with independence.'],
+      ['5:', 'B+', 'Produces generally high-quality work. Communicates secure understanding of concepts and contexts. Demonstrates critical and creative thinking, sometimes with sophistication. Uses knowledge and skills in familiar classroom and real-world situations and, with support, some unfamiliar real-world situations.'],
+      ['4:', 'B',  'Produces good-quality work. Communicates basic understanding of most concepts and contexts with few misunderstandings and minor gaps. Often demonstrates basic critical and creative thinking. Uses knowledge and skills with some flexibility in familiar classroom situations, but requires support in unfamiliar situations.'],
+      ['3:', 'C+', 'Produces work of an acceptable quality. Communicates basic understanding of many concepts and contexts, with occasionally significant misunderstandings or gaps. Begins to demonstrate some basic critical and creative thinking. Is often inflexible in the use of knowledge and skills, requiring support even in familiar classroom situations.'],
+      ['2:', 'C',  'Produces work of limited quality. Expresses misunderstandings or significant gaps in understanding for many concepts and contexts. Infrequently demonstrates critical or creative thinking. Generally inflexible in the use of knowledge and skills, infrequently applying knowledge and skills.'],
+      ['1:', 'D',  'Produces work of very limited quality. Conveys many significant misunderstandings or lacks understanding of most concepts and contexts. Very rarely demonstrates critical or creative thinking. Very inflexible, rarely using knowledge or skills.'],
+      ['N/A', 'F', 'Not Yet Assessed.'],
+    ];
+
+    autoTable(doc, {
+      startY: mt + 20,
+      head: [['Final Grade', 'Local Grade', 'Descriptor']],
+      body: aldRows,
+      theme: 'plain',
+      styles: {
+        fontSize: 9,
+        cellPadding: { top: 4, right: 4, bottom: 4, left: 4 },
+        lineColor: [209, 213, 219],
+        lineWidth: 0.3,
+        textColor: [31, 41, 55],
+        overflow: 'linebreak',
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [107, 114, 128],
+        fontStyle: 'bold',
+        fontSize: 8,
+        cellPadding: { top: 3, right: 4, bottom: 3, left: 4 },
+      },
+      columnStyles: {
+        0: { cellWidth: 22, halign: 'center', fontStyle: 'bold', valign: 'middle' },
+        1: { cellWidth: 24, halign: 'center', valign: 'middle' },
+        2: { cellWidth: 'auto', valign: 'middle' },
+      },
+      tableLineColor: [209, 213, 219],
+      tableLineWidth: 0.3,
+      margin: { left: ml, right: mr },
+      didDrawPage: () => { drawFooter(); },
+    });
 
     const pdfBlob = doc.output('blob');
     const pdfUrl = URL.createObjectURL(pdfBlob);

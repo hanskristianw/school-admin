@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -20,6 +20,7 @@ export default function AssessmentGradingPage() {
   const [grades, setGrades] = useState({}) // { [detail_siswa_id]: { grade_id, A, B, C, D, final_grade, comments } }
   const [mypYear, setMypYear] = useState(null)
   const [error, setError] = useState(null)
+  const customBoundariesRef = useRef(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
   // Fetch all data
@@ -62,14 +63,24 @@ export default function AssessmentGradingPage() {
       setMypYear(topicYear)
       setAssessment(assessmentData)
 
-      // 2. Fetch detail_kelas to get kelas_id
+      // 2. Fetch detail_kelas to get kelas_id and subject
       const { data: detailKelas, error: dkError } = await supabase
         .from('detail_kelas')
-        .select('detail_kelas_kelas_id')
+        .select('detail_kelas_kelas_id, detail_kelas_subject_id')
         .eq('detail_kelas_id', assessmentData.assessment_detail_kelas_id)
         .single()
 
       if (dkError) throw new Error('Class not found: ' + dkError.message)
+
+      // 2b. Fetch subject custom_grade_boundaries
+      if (detailKelas.detail_kelas_subject_id) {
+        const { data: subjectData } = await supabase
+          .from('subject')
+          .select('custom_grade_boundaries')
+          .eq('subject_id', detailKelas.detail_kelas_subject_id)
+          .single()
+        customBoundariesRef.current = subjectData?.custom_grade_boundaries || null
+      }
 
       // 3. Fetch students
       const { data: detailSiswa, error: dsError } = await supabase
@@ -177,12 +188,12 @@ export default function AssessmentGradingPage() {
 
     const total = values.reduce((a, b) => a + b, 0)
 
-    // IB MYP grade boundaries scaled proportionally to the number of criteria.
-    // Standard is 4 criteria × max 8 = 32. For fewer criteria the boundaries
-    // are scaled: boundary = round(standardBoundary * count / 4).
+    const customBounds = customBoundariesRef.current
     const count = values.length
     const scale = count / 4
-    const b = [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
+    const b = (customBounds && customBounds.length === 6)
+      ? customBounds
+      : [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
     if (total <= b[0]) return 1
     if (total <= b[1]) return 2
     if (total <= b[2]) return 3

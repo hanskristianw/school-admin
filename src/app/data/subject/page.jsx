@@ -28,7 +28,8 @@ export default function SubjectManagement() {
     core_subject: false,
     print_order: 0,
     include_in_print: true,
-    subject_group_id: ''
+    subject_group_id: '',
+    custom_grade_boundaries: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -118,6 +119,7 @@ export default function SubjectManagement() {
           print_order,
           include_in_print,
           subject_group_id,
+          custom_grade_boundaries,
           users:subject_user_id (
             user_nama_depan,
             user_nama_belakang
@@ -153,7 +155,8 @@ export default function SubjectManagement() {
         user_nama_belakang: subject.users?.user_nama_belakang || '',
         unit_name: subject.unit?.unit_name || '',
         subject_group_id: subject.subject_group_id || null,
-        subject_group_name: subject.subject_group?.name || ''
+        subject_group_name: subject.subject_group?.name || '',
+        custom_grade_boundaries: subject.custom_grade_boundaries || null
       }));
 
       console.log('Fetched subjects from Supabase:', transformedData);
@@ -406,7 +409,14 @@ export default function SubjectManagement() {
         core_subject: formData.core_subject || false,
         print_order: Number(formData.print_order) || 0,
         include_in_print: formData.include_in_print !== false,
-        subject_group_id: formData.subject_group_id ? Number(formData.subject_group_id) : null
+        subject_group_id: formData.subject_group_id ? Number(formData.subject_group_id) : null,
+        custom_grade_boundaries: (() => {
+          const raw = (formData.custom_grade_boundaries || '').trim();
+          if (!raw) return null;
+          const nums = raw.split(',').map(s => parseInt(s.trim(), 10));
+          if (nums.length === 6 && nums.every(n => !isNaN(n))) return nums;
+          return null;
+        })()
       };
 
       // Handle icon upload if file selected
@@ -467,7 +477,8 @@ export default function SubjectManagement() {
         grading_method: 'highest',
         core_subject: false,
         print_order: 0,
-        include_in_print: true
+        include_in_print: true,
+        custom_grade_boundaries: ''
       });
       setIconFile(null);
       setIconPreview(null);
@@ -498,7 +509,8 @@ export default function SubjectManagement() {
       core_subject: subject.core_subject || false,
       print_order: subject.print_order ?? 0,
       include_in_print: subject.include_in_print !== false,
-      subject_group_id: subject.subject_group_id || ''
+      subject_group_id: subject.subject_group_id || '',
+      custom_grade_boundaries: subject.custom_grade_boundaries ? subject.custom_grade_boundaries.join(', ') : ''
     });
     setIconFile(null);
     setIconPreview(subject.subject_icon || null);
@@ -1298,6 +1310,16 @@ export default function SubjectManagement() {
                     formData.core_subject ? 'translate-x-6' : 'translate-x-1'
                   }`} />
                 </button>
+              </div>
+
+              <div className="col-span-2">
+                <Label>Custom Grade Boundaries</Label>
+                <p className="text-xs text-gray-500 mb-1">6 angka dipisah koma — batas atas untuk grade 1–6 (kosongkan untuk pakai rumus IB standar). Contoh Bible: 4, 7, 11, 14, 17, 20</p>
+                <Input
+                  value={formData.custom_grade_boundaries}
+                  onChange={e => setFormData(prev => ({ ...prev, custom_grade_boundaries: e.target.value }))}
+                  placeholder="contoh: 4, 7, 11, 14, 17, 20"
+                />
               </div>
 
               <div className="flex items-center">
