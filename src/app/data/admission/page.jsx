@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
+import { useI18n } from '@/lib/i18n';
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -72,6 +73,14 @@ const statusConfig = {
 
 export default function AdmissionManagement() {
   const router = useRouter();
+  const { t } = useI18n();
+
+  const statusLabels = {
+    pending: t('admission.status.pending'),
+    approved: t('admission.status.approved'),
+    rejected: t('admission.status.rejected'),
+  };
+
   const [applications, setApplications] = useState([]);
   const [units, setUnits] = useState([]);
   const [years, setYears] = useState([]);
@@ -1257,7 +1266,7 @@ export default function AdmissionManagement() {
         'Jenjang': app.level?.level_name || app.unit?.unit_name || '',
         'Tahun Ajaran': app.year?.year_name || '',
         'Tanggal Daftar': formatDate(app.created_at),
-        'Status': statusConfig[app.status]?.label || app.status,
+        'Status': statusLabels[app.status] || app.status,
         'UDP (Base)': fee.udpBase,
         'Detail Potongan UDP': udpDetail || '-',
         'Total Potongan UDP': fee.udpBase - fee.udpFinal,
@@ -1321,15 +1330,15 @@ export default function AdmissionManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manajemen Pendaftaran Siswa</h1>
-          <p className="text-gray-600">Review dan kelola pendaftaran siswa baru</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('admission.title')}</h1>
+          <p className="text-gray-600">{t('admission.subtitle')}</p>
         </div>
         <Button
           onClick={() => router.push('/data/admission/discounts')}
           className="bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           <FontAwesomeIcon icon={faTag} className="mr-2" />
-          Master Potongan
+          {t('admission.masterDiscountBtn')}
         </Button>
       </div>
 
@@ -1345,7 +1354,7 @@ export default function AdmissionManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">{config.label}</p>
+          <p className="text-sm text-gray-500">{statusLabels[status]}</p>
                   <p className={`text-2xl font-bold ${config.color}`}>{statusCounts[status]}</p>
                 </div>
                 <div className={`w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center`}>
@@ -1362,17 +1371,17 @@ export default function AdmissionManagement() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <FontAwesomeIcon icon={faFilter} className="text-gray-500" />
-            Filter
+            {t('admission.filter.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label>Cari</Label>
+              <Label>{t('admission.filter.searchLabel')}</Label>
               <div className="relative mt-1">
                 <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
-                  placeholder="Nama, No. Pendaftaran, Telepon..."
+                  placeholder={t('admission.filter.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -1381,13 +1390,13 @@ export default function AdmissionManagement() {
             </div>
 
             <div>
-              <Label>Jenjang</Label>
+              <Label>{t('admission.filter.levelLabel')}</Label>
               <select
                 value={filterLevel}
                 onChange={(e) => setFilterLevel(e.target.value)}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Semua Jenjang</option>
+                <option value="">{t('admission.filter.allLevels')}</option>
                 {(() => {
                   const groups = {};
                   levels.forEach(l => {
@@ -1406,13 +1415,13 @@ export default function AdmissionManagement() {
               </select>
             </div>
             <div>
-              <Label>Tahun Ajaran</Label>
+              <Label>{t('admission.filter.yearLabel')}</Label>
               <select
                 value={filterYear}
                 onChange={(e) => setFilterYear(e.target.value)}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Semua Tahun</option>
+                <option value="">{t('admission.filter.allYears')}</option>
                 {years.map(year => (
                   <option key={year.year_id} value={year.year_id}>{year.year_name}</option>
                 ))}
@@ -1427,7 +1436,7 @@ export default function AdmissionManagement() {
         <CardHeader className="pb-0">
           <CardTitle className="flex items-center gap-2 mb-4">
             <FontAwesomeIcon icon={faUserGraduate} className="text-blue-600" />
-            Daftar Pendaftaran ({filteredApplications.length})
+            {t('admission.table.title')} ({filteredApplications.length})
             <div className="ml-auto">
               <Button
                 size="sm"
@@ -1435,7 +1444,7 @@ export default function AdmissionManagement() {
                 onClick={handleExportExcel}
               >
                 <FontAwesomeIcon icon={faDownload} className="mr-2" />
-                Export Excel
+                {t('admission.exportExcel')}
               </Button>
             </div>
           </CardTitle>
@@ -1466,7 +1475,7 @@ export default function AdmissionManagement() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                Semua
+                {t('admission.table.tabAll')}
                 <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
                   filterStatus === '' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
                 }`}>{applications.length}</span>
@@ -1485,7 +1494,7 @@ export default function AdmissionManagement() {
                   }`}
                 >
                   <FontAwesomeIcon icon={config.icon} className="text-xs" />
-                  {config.label}
+                  {statusLabels[status]}
                   <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
                     filterStatus === status ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
                   }`}>{statusCounts[status]}</span>
@@ -1498,23 +1507,23 @@ export default function AdmissionManagement() {
           {filteredApplications.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <FontAwesomeIcon icon={faUserGraduate} className="text-4xl mb-4 text-gray-300" />
-              <p>Tidak ada data pendaftaran</p>
+              <p>{t('admission.table.noData')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Pendaftaran</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Siswa</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orang Tua</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenjang</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tahun</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Daftar</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colAppNumber')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colStudentName')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colParent')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colLevel')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colYear')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colRegDate')}</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">UDP</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">USEK/bln</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colStatus')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admission.table.colActions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1528,9 +1537,9 @@ export default function AdmissionManagement() {
                           <div className="flex items-center gap-1.5">
                             <p className="font-medium text-gray-900">{app.student_name}</p>
                             {!allInstallments.some(inst => inst.application_id === app.application_id) && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200" title="Skema cicilan belum diatur">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200" title={t('admission.tooltips.installmentPlan')}>
                                 <FontAwesomeIcon icon={faCalculator} className="mr-0.5 text-[8px]" />
-                                Belum cicilan
+                                {t('admission.table.noInstallmentBadge')}
                               </span>
                             )}
                           </div>
@@ -1586,16 +1595,16 @@ export default function AdmissionManagement() {
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[app.status]?.bgColor} ${statusConfig[app.status]?.color}`}>
                           <FontAwesomeIcon icon={statusConfig[app.status]?.icon} className="text-xs" />
-                          {statusConfig[app.status]?.label}
+                          {statusLabels[app.status]}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                             onClick={() => handleViewDetail(app)}
-                            title="Lihat Detail"
+                            title={t('admission.tooltips.viewDetail')}
                           >
                             <FontAwesomeIcon icon={faEye} />
                           </Button>
@@ -1607,7 +1616,7 @@ export default function AdmissionManagement() {
                               fetchDiscountsForApplication(app);
                               setShowDiscountModal(true);
                             }}
-                            title="Kelola Potongan"
+                            title={t('admission.tooltips.manageDiscount')}
                           >
                             <FontAwesomeIcon icon={faTag} />
                           </Button>
@@ -1615,7 +1624,7 @@ export default function AdmissionManagement() {
                             size="sm"
                             className={`text-white ${allInstallments.some(inst => inst.application_id === app.application_id) ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-500 hover:bg-gray-600'}`}
                             onClick={() => handleOpenInstallment(app)}
-                            title="Skema Cicilan"
+                            title={t('admission.tooltips.installmentPlan')}
                           >
                             <FontAwesomeIcon icon={faCalculator} />
                           </Button>
@@ -1625,7 +1634,7 @@ export default function AdmissionManagement() {
                                 size="sm"
                                 className="bg-green-600 hover:bg-green-700 text-white"
                                 onClick={() => handleActionClick(app, 'approved')}
-                                title="Setujui"
+                                title={t('admission.tooltips.approve')}
                               >
                                 <FontAwesomeIcon icon={faCheck} />
                               </Button>
@@ -1633,7 +1642,7 @@ export default function AdmissionManagement() {
                                 size="sm"
                                 className="bg-red-600 hover:bg-red-700 text-white"
                                 onClick={() => handleActionClick(app, 'rejected')}
-                                title="Tolak"
+                                title={t('admission.tooltips.reject')}
                               >
                                 <FontAwesomeIcon icon={faTimes} />
                               </Button>
@@ -1654,7 +1663,7 @@ export default function AdmissionManagement() {
       <Modal
         isOpen={showDetailModal}
         onClose={() => { setShowDetailModal(false); setIsEditing(false); }}
-        title={`Detail Pendaftaran - ${selectedApplication?.application_number}`}
+        title={`${t('admission.detail.title')} - ${selectedApplication?.application_number}`}
         size="lg"
       >
         {selectedApplication && (
@@ -1668,9 +1677,9 @@ export default function AdmissionManagement() {
                     className={`text-2xl ${statusConfig[selectedApplication.status]?.color}`} 
                   />
                   <div>
-                    <p className="text-sm text-gray-600">Status</p>
+                    <p className="text-sm text-gray-600">{t('admission.detail.statusLabel')}</p>
                     <p className={`font-semibold ${statusConfig[selectedApplication.status]?.color}`}>
-                      {statusConfig[selectedApplication.status]?.label}
+                      {statusLabels[selectedApplication.status]}
                     </p>
                   </div>
                 </div>
@@ -1681,7 +1690,7 @@ export default function AdmissionManagement() {
                   onClick={handleStartEdit}
                 >
                   <FontAwesomeIcon icon={faEdit} className="mr-2" />
-                  Edit Data
+                  {t('admission.detail.editDataBtn')}
                 </Button>
               ) : (
                 <div className="ml-3 flex gap-2">
@@ -1691,10 +1700,10 @@ export default function AdmissionManagement() {
                     disabled={editSaving}
                   >
                     {editSaving ? <FontAwesomeIcon icon={faSpinner} className="mr-2 animate-spin" /> : <FontAwesomeIcon icon={faSave} className="mr-2" />}
-                    Simpan
+                    {editSaving ? t('admission.detail.saving') : t('admission.detail.saveBtn')}
                   </Button>
                   <Button variant="outline" onClick={() => setIsEditing(false)} disabled={editSaving}>
-                    Batal
+                    {t('admission.detail.cancelBtn')}
                   </Button>
                 </div>
               )}
@@ -1704,42 +1713,42 @@ export default function AdmissionManagement() {
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <FontAwesomeIcon icon={faUser} className="text-blue-600" />
-                Data Siswa
+                {t('admission.studentData.title')}
               </h3>
               {isEditing ? (
                 <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <div>
-                    <Label>Nama Lengkap *</Label>
+                    <Label>{t('admission.studentData.fullNameRequired')}</Label>
                     <Input className="mt-1" value={editData.student_name} onChange={(e) => setEditData(p => ({ ...p, student_name: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>Nama Panggilan</Label>
+                    <Label>{t('admission.studentData.nickname')}</Label>
                     <Input className="mt-1" value={editData.student_nickname} onChange={(e) => setEditData(p => ({ ...p, student_nickname: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>Jenis Kelamin</Label>
+                    <Label>{t('admission.studentData.gender')}</Label>
                     <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={editData.student_gender} onChange={(e) => setEditData(p => ({ ...p, student_gender: e.target.value }))}>
-                      <option value="">Pilih</option>
-                      <option value="male">Laki-laki</option>
-                      <option value="female">Perempuan</option>
+                      <option value="">{t('admission.studentData.selectGender')}</option>
+                      <option value="male">{t('admission.studentData.male')}</option>
+                      <option value="female">{t('admission.studentData.female')}</option>
                     </select>
                   </div>
                   <div>
-                    <Label>Tempat Lahir</Label>
+                    <Label>{t('admission.studentData.birthPlace')}</Label>
                     <Input className="mt-1" value={editData.student_birth_place} onChange={(e) => setEditData(p => ({ ...p, student_birth_place: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>Tanggal Lahir</Label>
+                    <Label>{t('admission.studentData.birthDate')}</Label>
                     <Input type="date" className="mt-1" value={editData.student_birth_date} onChange={(e) => setEditData(p => ({ ...p, student_birth_date: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>Agama</Label>
+                    <Label>{t('admission.studentData.religion')}</Label>
                     <select
                       className="mt-1 w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={editData.student_religion}
                       onChange={(e) => setEditData(p => ({ ...p, student_religion: e.target.value }))}
                     >
-                      <option value="">Pilih agama</option>
+                      <option value="">{t('admission.studentData.selectReligion')}</option>
                       <option value="Islam">Islam</option>
                       <option value="Kristen">Kristen</option>
                       <option value="Katolik">Katolik</option>
@@ -1750,11 +1759,11 @@ export default function AdmissionManagement() {
                     </select>
                   </div>
                   <div>
-                    <Label>Kewarganegaraan</Label>
+                    <Label>{t('admission.studentData.nationality')}</Label>
                     <Input className="mt-1" value={editData.student_nationality} onChange={(e) => setEditData(p => ({ ...p, student_nationality: e.target.value }))} />
                   </div>
                   <div className="relative">
-                    <Label>Kota</Label>
+                    <Label>{t('admission.studentData.city')}</Label>
                     <Input 
                       className="mt-1" 
                       value={editCitySearch} 
@@ -1764,7 +1773,7 @@ export default function AdmissionManagement() {
                         setEditData(p => ({ ...p, student_city: e.target.value, student_province: '' }));
                       }}
                       onFocus={() => editCitySearch.length >= 1 && setShowEditCityDropdown(true)}
-                      placeholder="Ketik nama kota..."
+                      placeholder={t('admission.studentData.typeCityPlaceholder')}
                     />
                     {showEditCityDropdown && (() => {
                       const filtered = allCities.filter(c => c.toLowerCase().includes(editCitySearch.toLowerCase())).slice(0, 8);
@@ -1791,72 +1800,72 @@ export default function AdmissionManagement() {
                     })()}
                   </div>
                   <div>
-                    <Label>Provinsi</Label>
-                    <Input className="mt-1 bg-gray-100" value={editData.student_province} readOnly placeholder="Otomatis terisi" />
+                    <Label>{t('admission.studentData.province')}</Label>
+                    <Input className="mt-1 bg-gray-100" value={editData.student_province} readOnly placeholder={t('admission.studentData.autoFilled')} />
                   </div>
                   <div>
-                    <Label>Kode Pos</Label>
+                    <Label>{t('admission.studentData.postalCode')}</Label>
                     <Input className="mt-1" value={editData.student_postal_code} onChange={(e) => setEditData(p => ({ ...p, student_postal_code: e.target.value }))} />
                   </div>
                   <div className="col-span-2">
-                    <Label>Alamat KTP</Label>
+                    <Label>{t('admission.studentData.addressID')}</Label>
                     <textarea className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} value={editData.student_address} onChange={(e) => setEditData(p => ({ ...p, student_address: e.target.value }))} />
                   </div>
                   <div className="col-span-2">
-                    <Label>Alamat Domisili</Label>
+                    <Label>{t('admission.studentData.domicileAddress')}</Label>
                     <textarea className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} value={editData.student_domicile_address} onChange={(e) => setEditData(p => ({ ...p, student_domicile_address: e.target.value }))} />
                   </div>
                   <div className="col-span-2">
-                    <Label>Asal Sekolah</Label>
+                    <Label>{t('admission.studentData.prevSchool')}</Label>
                     <Input className="mt-1" value={editData.student_previous_school} onChange={(e) => setEditData(p => ({ ...p, student_previous_school: e.target.value }))} />
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
                   <div>
-                    <p className="text-sm text-gray-500">Nama Lengkap</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.fullName')}</p>
                     <p className="font-medium">{selectedApplication.student_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Nama Panggilan</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.nickname')}</p>
                     <p className="font-medium">{selectedApplication.student_nickname || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Jenis Kelamin</p>
-                    <p className="font-medium">{selectedApplication.student_gender === 'male' ? 'Laki-laki' : selectedApplication.student_gender === 'female' ? 'Perempuan' : '-'}</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.gender')}</p>
+                    <p className="font-medium">{selectedApplication.student_gender === 'male' ? t('admission.studentData.male') : selectedApplication.student_gender === 'female' ? t('admission.studentData.female') : '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Tempat, Tanggal Lahir</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.birthPlaceDate')}</p>
                     <p className="font-medium">
                       {selectedApplication.student_birth_place || '-'}, {formatDate(selectedApplication.student_birth_date)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Agama</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.religion')}</p>
                     <p className="font-medium">{selectedApplication.student_religion || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Kewarganegaraan</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.nationality')}</p>
                     <p className="font-medium">{selectedApplication.student_nationality || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Kota</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.city')}</p>
                     <p className="font-medium">{selectedApplication.student_city || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Provinsi</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.province')}</p>
                     <p className="font-medium">{selectedApplication.student_province || '-'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-500">Alamat KTP</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.addressID')}</p>
                     <p className="font-medium">{selectedApplication.student_address || '-'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-500">Alamat Domisili</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.domicileAddress')}</p>
                     <p className="font-medium">{selectedApplication.student_domicile_address || '-'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-500">Asal Sekolah</p>
+                    <p className="text-sm text-gray-500">{t('admission.studentData.prevSchool')}</p>
                     <p className="font-medium">{selectedApplication.student_previous_school || '-'}</p>
                   </div>
                 </div>
@@ -1867,24 +1876,24 @@ export default function AdmissionManagement() {
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <FontAwesomeIcon icon={faUser} className="text-green-600" />
-                Data Orang Tua / Wali
+                {t('admission.parentData.title')}
               </h3>
               {isEditing ? (
                 <div className="grid grid-cols-2 gap-4 bg-green-50 p-4 rounded-lg border border-green-200">
                   <div>
-                    <Label>NIK</Label>
-                    <Input className="mt-1" value={editData.parent_nik} maxLength={16} onChange={(e) => { const val = e.target.value.replace(/\D/g, '').slice(0, 16); setEditData(p => ({ ...p, parent_nik: val })); }} placeholder="16 digit NIK" />
+                    <Label>{t('admission.parentData.nik')}</Label>
+                    <Input className="mt-1" value={editData.parent_nik} maxLength={16} onChange={(e) => { const val = e.target.value.replace(/\D/g, '').slice(0, 16); setEditData(p => ({ ...p, parent_nik: val })); }} placeholder={t('admission.parentData.nikPlaceholder')} />
                   </div>
                   <div>
-                    <Label>Nama Orang Tua *</Label>
+                    <Label>{t('admission.parentData.parentNameRequired')}</Label>
                     <Input className="mt-1" value={editData.parent_name} onChange={(e) => setEditData(p => ({ ...p, parent_name: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>Pekerjaan</Label>
+                    <Label>{t('admission.parentData.occupation')}</Label>
                     <Input className="mt-1" value={editData.parent_occupation} onChange={(e) => setEditData(p => ({ ...p, parent_occupation: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>No. Telepon</Label>
+                    <Label>{t('admission.parentData.phone')}</Label>
                     <Input className="mt-1" value={editData.parent_phone} onChange={(e) => setEditData(p => ({ ...p, parent_phone: e.target.value }))} />
                   </div>
                   <div>
@@ -1892,26 +1901,26 @@ export default function AdmissionManagement() {
                     <Input type="email" className="mt-1" value={editData.parent_email} onChange={(e) => setEditData(p => ({ ...p, parent_email: e.target.value }))} />
                   </div>
                   <div className="col-span-2">
-                    <Label>Alamat</Label>
+                    <Label>{t('admission.parentData.address')}</Label>
                     <textarea className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} value={editData.parent_address} onChange={(e) => setEditData(p => ({ ...p, parent_address: e.target.value }))} />
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
                   <div>
-                    <p className="text-sm text-gray-500">NIK</p>
+                    <p className="text-sm text-gray-500">{t('admission.parentData.nik')}</p>
                     <p className="font-medium font-mono">{selectedApplication.parent_nik || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Nama</p>
+                    <p className="text-sm text-gray-500">{t('admission.parentData.parentNameLabel')}</p>
                     <p className="font-medium">{selectedApplication.parent_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Pekerjaan</p>
+                    <p className="text-sm text-gray-500">{t('admission.parentData.occupation')}</p>
                     <p className="font-medium">{selectedApplication.parent_occupation || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Telepon</p>
+                    <p className="text-sm text-gray-500">{t('admission.parentData.phone')}</p>
                     <p className="font-medium flex items-center gap-2">
                       <FontAwesomeIcon icon={faPhone} className="text-gray-400" />
                       {selectedApplication.parent_phone}
@@ -1925,7 +1934,7 @@ export default function AdmissionManagement() {
                     </p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-500">Alamat</p>
+                    <p className="text-sm text-gray-500">{t('admission.parentData.address')}</p>
                     <p className="font-medium">{selectedApplication.parent_address || '-'}</p>
                   </div>
                 </div>
@@ -1936,23 +1945,23 @@ export default function AdmissionManagement() {
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <FontAwesomeIcon icon={faSchool} className="text-purple-600" />
-                Pilihan Sekolah
+                {t('admission.schoolSelection.title')}
               </h3>
               <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
                 <div>
-                  <p className="text-sm text-gray-500">Jenjang</p>
+                  <p className="text-sm text-gray-500">{t('admission.schoolSelection.levelLabel')}</p>
                   <p className="font-medium">{selectedApplication.level?.level_name || selectedApplication.unit?.unit_name || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Tahun Ajaran</p>
+                  <p className="text-sm text-gray-500">{t('admission.schoolSelection.yearLabel')}</p>
                   <p className="font-medium">{selectedApplication.year?.year_name || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Unit Akademik</p>
+                  <p className="text-sm text-gray-500">{t('admission.schoolSelection.academicUnit')}</p>
                   <p className="font-medium">{selectedApplication.unit?.unit_name || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Tanggal Daftar</p>
+                  <p className="text-sm text-gray-500">{t('admission.schoolSelection.registrationDate')}</p>
                   <p className="font-medium">{formatDateTime(selectedApplication.created_at)}</p>
                 </div>
               </div>
@@ -1982,8 +1991,8 @@ export default function AdmissionManagement() {
                   <p className="text-gray-700">{selectedApplication.admin_notes}</p>
                   {selectedApplication.reviewed_at && (
                     <p className="text-sm text-gray-500 mt-2">
-                      Diupdate: {formatDateTime(selectedApplication.reviewed_at)}
-                      {selectedApplication.reviewer && ` oleh ${selectedApplication.reviewer.user_nama_depan} ${selectedApplication.reviewer.user_nama_belakang}`}
+                      {t('admission.notes.updatedAt')} {formatDateTime(selectedApplication.reviewed_at)}
+                      {selectedApplication.reviewer && ` ${t('admission.notes.by')} ${selectedApplication.reviewer.user_nama_depan} ${selectedApplication.reviewer.user_nama_belakang}`}
                     </p>
                   )}
                 </div>
@@ -1994,13 +2003,13 @@ export default function AdmissionManagement() {
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <FontAwesomeIcon icon={faTag} className="text-emerald-600" />
-                Potongan / Diskon
+                {t('admission.discount.title')}
               </h3>
 
               {discountLoading ? (
                 <div className="text-center py-6 text-gray-400">
                   <FontAwesomeIcon icon={faSpinner} className="animate-spin text-2xl mb-2" />
-                  <p className="text-sm">Memuat data potongan...</p>
+                  <p className="text-sm">{t('admission.discount.loadingDiscount')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -2020,7 +2029,7 @@ export default function AdmissionManagement() {
                           onClick={() => { setAddDiscountTarget('udp'); setShowAddDiscount(true); }}
                           disabled={discountSaving}
                         >
-                          <FontAwesomeIcon icon={faPlus} className="mr-1" /> Tambah
+                          <FontAwesomeIcon icon={faPlus} className="mr-1" /> {t('admission.discount.addBtn')}
                         </Button>
                       </div>
                       
@@ -2029,7 +2038,7 @@ export default function AdmissionManagement() {
                         if (udpDiscounts.length === 0) {
                           return (
                             <div className="px-4 py-4 text-center text-gray-400 text-sm">
-                              Belum ada potongan UDP
+                              {t('admission.discount.noUdpDiscount')}
                             </div>
                           );
                         }
@@ -2083,13 +2092,13 @@ export default function AdmissionManagement() {
                             ))}
                             {/* Total */}
                             <div className="px-4 py-3 bg-emerald-50 flex items-center justify-between">
-                              <span className="font-semibold text-emerald-800 text-sm">Total Potongan UDP</span>
+                              <span className="font-semibold text-emerald-800 text-sm">{t('admission.discount.totalUdpDiscount')}</span>
                               <div className="text-right">
                                 <p className="font-bold text-red-600">
                                   -{formatCurrency(udpDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}
                                 </p>
                                 <p className="text-sm font-semibold text-emerald-700">
-                                  Final: {formatCurrency(udpDiscounts[udpDiscounts.length - 1]?.subtotal_after || udpDef.total_amount)}
+                                  {t('admission.discount.final')} {formatCurrency(udpDiscounts[udpDiscounts.length - 1]?.subtotal_after || udpDef.total_amount)}
                                 </p>
                               </div>
                             </div>
@@ -2115,7 +2124,7 @@ export default function AdmissionManagement() {
                           onClick={() => { setAddDiscountTarget('usek'); setShowAddDiscount(true); }}
                           disabled={discountSaving}
                         >
-                          <FontAwesomeIcon icon={faPlus} className="mr-1" /> Tambah
+                          <FontAwesomeIcon icon={faPlus} className="mr-1" /> {t('admission.discount.addBtn')}
                         </Button>
                       </div>
                       
@@ -2124,7 +2133,7 @@ export default function AdmissionManagement() {
                         if (usekDiscounts.length === 0) {
                           return (
                             <div className="px-4 py-4 text-center text-gray-400 text-sm">
-                              Belum ada potongan USEK
+                              {t('admission.discount.noUsekDiscount')}
                             </div>
                           );
                         }
@@ -2178,13 +2187,13 @@ export default function AdmissionManagement() {
                             ))}
                             {/* Total */}
                             <div className="px-4 py-3 bg-blue-50 flex items-center justify-between">
-                              <span className="font-semibold text-blue-800 text-sm">Total Potongan USEK/bulan</span>
+                              <span className="font-semibold text-blue-800 text-sm">{t('admission.discount.totalUsekDiscount')}</span>
                               <div className="text-right">
                                 <p className="font-bold text-red-600">
                                   -{formatCurrency(usekDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}
                                 </p>
                                 <p className="text-sm font-semibold text-blue-700">
-                                  Final/bulan: {formatCurrency(usekDiscounts[usekDiscounts.length - 1]?.subtotal_after || usekDef.default_amount)}
+                                  {t('admission.discount.finalPerMonth')} {formatCurrency(usekDiscounts[usekDiscounts.length - 1]?.subtotal_after || usekDef.default_amount)}
                                 </p>
                               </div>
                             </div>
@@ -2198,8 +2207,8 @@ export default function AdmissionManagement() {
                   {!udpDef && !usekDef && (
                     <div className="text-center py-6 text-gray-400 bg-gray-50 rounded-lg">
                       <FontAwesomeIcon icon={faInfoCircle} className="text-2xl mb-2" />
-                      <p className="text-sm">Belum ada definisi biaya (UDP/USEK) untuk unit & tahun ajaran ini.</p>
-                      <p className="text-xs mt-1">Silakan atur di menu Fee Management terlebih dahulu.</p>
+                      <p className="text-sm">{t('admission.discount.noFeeDef')}</p>
+                      <p className="text-xs mt-1">{t('admission.discount.setFeeFirst')}</p>
                     </div>
                   )}
 
@@ -2208,7 +2217,7 @@ export default function AdmissionManagement() {
                     <div className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-semibold text-sm text-gray-900">
-                          Tambah Potongan {addDiscountTarget.toUpperCase()}
+                          {t('admission.discount.addDiscountTitle')} {addDiscountTarget.toUpperCase()}
                         </h4>
                         <button onClick={() => setShowAddDiscount(false)} className="text-gray-400 hover:text-gray-600">
                           <FontAwesomeIcon icon={faTimes} />
@@ -2253,7 +2262,7 @@ export default function AdmissionManagement() {
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button variant="outline" onClick={() => setShowDetailModal(false)}>
-                Tutup
+                {t('admission.detail.closeBtn')}
               </Button>
               {selectedApplication.status === 'pending' && (
                 <>
@@ -2265,7 +2274,7 @@ export default function AdmissionManagement() {
                     }}
                   >
                     <FontAwesomeIcon icon={faCheck} className="mr-2" />
-                    Setujui
+                    {t('admission.detail.approveBtn')}
                   </Button>
                   <Button
                     className="bg-red-600 hover:bg-red-700 text-white"
@@ -2275,7 +2284,7 @@ export default function AdmissionManagement() {
                     }}
                   >
                     <FontAwesomeIcon icon={faTimes} className="mr-2" />
-                    Tolak
+                    {t('admission.detail.rejectBtn')}
                   </Button>
                 </>
               )}
@@ -2288,13 +2297,13 @@ export default function AdmissionManagement() {
       <Modal
         isOpen={showActionModal}
         onClose={() => setShowActionModal(false)}
-        title={`Konfirmasi ${actionType === 'approved' ? 'Persetujuan' : 'Penolakan'}`}
+        title={actionType === 'approved' ? t('admission.action.approvalTitle') : t('admission.action.rejectionTitle')}
       >
         {selectedApplication && (
           <div className="space-y-4">
             <p className="text-gray-600">
-              {actionType === 'approved' && 'Anda akan menyetujui pendaftaran siswa ini.'}
-              {actionType === 'rejected' && 'Anda akan menolak pendaftaran siswa ini.'}
+              {actionType === 'approved' && t('admission.action.willApprove')}
+              {actionType === 'rejected' && t('admission.action.willReject')}
             </p>
 
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -2303,20 +2312,20 @@ export default function AdmissionManagement() {
             </div>
 
             <div>
-              <Label htmlFor="admin_notes">Catatan (Opsional)</Label>
+              <Label htmlFor="admin_notes">{t('admission.notes.notesOptional')}</Label>
               <textarea
                 id="admin_notes"
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
                 rows={3}
-                placeholder="Tambahkan catatan untuk pendaftaran ini..."
+                placeholder={t('admission.notes.notesPlaceholder')}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowActionModal(false)} disabled={processing}>
-                Batal
+                {t('admission.detail.cancelBtn')}
               </Button>
               <Button
                 onClick={handleUpdateStatus}
@@ -2329,7 +2338,7 @@ export default function AdmissionManagement() {
                 {processing ? (
                   <>
                     <FontAwesomeIcon icon={faSpinner} className="mr-2 animate-spin" />
-                    Memproses...
+                    {t('admission.action.processing')}
                   </>
                 ) : (
                   <>
@@ -2337,7 +2346,7 @@ export default function AdmissionManagement() {
                       icon={actionType === 'approved' ? faCheck : faTimes} 
                       className="mr-2" 
                     />
-                    {actionType === 'approved' ? 'Ya, Setujui' : 'Ya, Tolak'}
+                    {actionType === 'approved' ? t('admission.action.confirmApprove') : t('admission.action.confirmReject')}
                   </>
                 )}
               </Button>
@@ -2355,7 +2364,7 @@ export default function AdmissionManagement() {
           // Refresh discounts for table display
           supabase.from('application_discount').select('*, discount:discount_id(discount_name, discount_code)').order('fee_target').order('seq').then(({ data }) => setAllAppDiscounts(data || []));
         }}
-        title={`Kelola Potongan - ${selectedApplication?.student_name || ''}`}
+        title={`${t('admission.discountModal.title')} - ${selectedApplication?.student_name || ''}`}
         size="lg"
       >
         {selectedApplication && (
@@ -2368,7 +2377,7 @@ export default function AdmissionManagement() {
               </div>
               <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[selectedApplication.status]?.bgColor} ${statusConfig[selectedApplication.status]?.color}`}>
                 <FontAwesomeIcon icon={statusConfig[selectedApplication.status]?.icon} className="text-xs" />
-                {statusConfig[selectedApplication.status]?.label}
+                {statusLabels[selectedApplication.status]}
               </span>
             </div>
 
@@ -2394,13 +2403,13 @@ export default function AdmissionManagement() {
                         onClick={() => { setAddDiscountTarget('udp'); setShowAddDiscount(true); }}
                         disabled={discountSaving}
                       >
-                        <FontAwesomeIcon icon={faPlus} className="mr-1" /> Tambah
+                        <FontAwesomeIcon icon={faPlus} className="mr-1" /> {t('admission.discount.addBtn')}
                       </Button>
                     </div>
                     {(() => {
                       const udpDiscounts = calculateDiscounts(discounts, 'udp');
                       if (udpDiscounts.length === 0) {
-                        return <div className="px-4 py-4 text-center text-gray-400 text-sm">Belum ada potongan UDP</div>;
+                        return <div className="px-4 py-4 text-center text-gray-400 text-sm">{t('admission.discount.noUdpDiscount')}</div>;
                       }
                       return (
                         <div className="divide-y divide-emerald-100">
@@ -2425,10 +2434,10 @@ export default function AdmissionManagement() {
                             </div>
                           ))}
                           <div className="px-4 py-3 bg-emerald-50 flex items-center justify-between">
-                            <span className="font-semibold text-emerald-800 text-sm">Total Potongan UDP</span>
+                            <span className="font-semibold text-emerald-800 text-sm">{t('admission.discount.totalUdpDiscount')}</span>
                             <div className="text-right">
                               <p className="font-bold text-red-600">-{formatCurrency(udpDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}</p>
-                              <p className="text-sm font-semibold text-emerald-700">Final: {formatCurrency(udpDiscounts[udpDiscounts.length - 1]?.subtotal_after || udpDef.total_amount)}</p>
+                              <p className="text-sm font-semibold text-emerald-700">{t('admission.discount.final')}: {formatCurrency(udpDiscounts[udpDiscounts.length - 1]?.subtotal_after || udpDef.total_amount)}</p>
                             </div>
                           </div>
                         </div>
@@ -2453,13 +2462,13 @@ export default function AdmissionManagement() {
                         onClick={() => { setAddDiscountTarget('usek'); setShowAddDiscount(true); }}
                         disabled={discountSaving}
                       >
-                        <FontAwesomeIcon icon={faPlus} className="mr-1" /> Tambah
+                        <FontAwesomeIcon icon={faPlus} className="mr-1" /> {t('admission.discount.addBtn')}
                       </Button>
                     </div>
                     {(() => {
                       const usekDiscounts = calculateDiscounts(discounts, 'usek');
                       if (usekDiscounts.length === 0) {
-                        return <div className="px-4 py-4 text-center text-gray-400 text-sm">Belum ada potongan USEK</div>;
+                        return <div className="px-4 py-4 text-center text-gray-400 text-sm">{t('admission.discount.noUsekDiscount')}</div>;
                       }
                       return (
                         <div className="divide-y divide-blue-100">
@@ -2484,10 +2493,10 @@ export default function AdmissionManagement() {
                             </div>
                           ))}
                           <div className="px-4 py-3 bg-blue-50 flex items-center justify-between">
-                            <span className="font-semibold text-blue-800 text-sm">Total Potongan USEK/bulan</span>
+                            <span className="font-semibold text-blue-800 text-sm">{t('admission.discount.totalUsekDiscount')}</span>
                             <div className="text-right">
                               <p className="font-bold text-red-600">-{formatCurrency(usekDiscounts.reduce((sum, d) => sum + d.calculated_amount, 0))}</p>
-                              <p className="text-sm font-semibold text-blue-700">Final/bulan: {formatCurrency(usekDiscounts[usekDiscounts.length - 1]?.subtotal_after || usekDef.default_amount)}</p>
+                              <p className="text-sm font-semibold text-blue-700">{t('admission.discount.finalPerMonth')}: {formatCurrency(usekDiscounts[usekDiscounts.length - 1]?.subtotal_after || usekDef.default_amount)}</p>
                             </div>
                           </div>
                         </div>
@@ -2500,8 +2509,8 @@ export default function AdmissionManagement() {
                 {!udpDef && !usekDef && (
                   <div className="text-center py-6 text-gray-400 bg-gray-50 rounded-lg">
                     <FontAwesomeIcon icon={faInfoCircle} className="text-2xl mb-2" />
-                    <p className="text-sm">Belum ada definisi biaya (UDP/USEK) untuk unit & tahun ajaran ini.</p>
-                    <p className="text-xs mt-1">Silakan atur di menu Fee Management terlebih dahulu.</p>
+                    <p className="text-sm">{t('admission.discount.noFeeDef')}</p>
+                    <p className="text-xs mt-1">{t('admission.discount.setFeeFirst')}</p>
                   </div>
                 )}
 
@@ -2510,7 +2519,7 @@ export default function AdmissionManagement() {
                   <div className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-sm text-gray-900">
-                        Tambah Potongan {addDiscountTarget.toUpperCase()}
+                        {t('admission.discount.addDiscountTitle')} {addDiscountTarget.toUpperCase()}
                       </h4>
                       <button onClick={() => setShowAddDiscount(false)} className="text-gray-400 hover:text-gray-600">
                         <FontAwesomeIcon icon={faTimes} />
@@ -2542,7 +2551,7 @@ export default function AdmissionManagement() {
                         .filter(m => !discounts.some(d => d.discount_id === m.discount_id && d.fee_target === addDiscountTarget))
                         .length === 0 && (
                         <p className="text-center text-gray-400 text-sm py-3">
-                          Tidak ada potongan tersedia untuk {addDiscountTarget.toUpperCase()}
+                          {t('admission.discount.noDiscountAvailable')} {addDiscountTarget.toUpperCase()}
                         </p>
                       )}
                     </div>
@@ -2558,7 +2567,7 @@ export default function AdmissionManagement() {
       <Modal
         isOpen={showInstallmentModal}
         onClose={() => setShowInstallmentModal(false)}
-        title={`Skema Cicilan - ${selectedApplication?.student_name || ''}`}
+        title={`${t('admission.installment.title')} - ${selectedApplication?.student_name || ''}`}
         size="lg"
       >
         {selectedApplication && (
@@ -2571,7 +2580,7 @@ export default function AdmissionManagement() {
               </div>
               <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[selectedApplication.status]?.bgColor} ${statusConfig[selectedApplication.status]?.color}`}>
                 <FontAwesomeIcon icon={statusConfig[selectedApplication.status]?.icon} className="text-xs" />
-                {statusConfig[selectedApplication.status]?.label}
+                {statusLabels[selectedApplication.status]}
               </span>
             </div>
 
@@ -2586,8 +2595,8 @@ export default function AdmissionManagement() {
                 return (
                   <div className="text-center py-6 text-gray-400 bg-gray-50 rounded-lg">
                     <FontAwesomeIcon icon={faInfoCircle} className="text-2xl mb-2" />
-                    <p className="text-sm">Belum ada definisi biaya (UDP/USEK) untuk unit & tahun ajaran ini.</p>
-                    <p className="text-xs mt-1">Silakan atur biaya dan potongan terlebih dahulu.</p>
+                    <p className="text-sm">{t('admission.installment.noFeeDef')}</p>
+                    <p className="text-xs mt-1">{t('admission.installment.setFeeFirst')}</p>
                   </div>
                 );
               }
@@ -2601,19 +2610,19 @@ export default function AdmissionManagement() {
                   {/* Fee Summary */}
                   <div className="border border-purple-200 rounded-lg overflow-hidden">
                     <div className="bg-purple-50 px-4 py-3">
-                      <span className="font-semibold text-purple-800">Ringkasan Biaya Masuk</span>
+                      <span className="font-semibold text-purple-800">{t('admission.installment.feeSummary')}</span>
                     </div>
                     <div className="p-4 space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">UDP (setelah potongan)</span>
+                        <span className="text-gray-600">{t('admission.installment.udpAfterDiscount')}</span>
                         <span className="font-medium">{formatCurrency(calc.udpFinal)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">SPP bulan pertama (setelah potongan)</span>
+                        <span className="text-gray-600">{t('admission.installment.sppFirstMonth')}</span>
                         <span className="font-medium">{formatCurrency(calc.sppFinal)}</span>
                       </div>
                       <div className="border-t pt-2 flex justify-between font-semibold text-purple-800">
-                        <span>Total Biaya Masuk</span>
+                        <span>{t('admission.installment.totalEntryFee')}</span>
                         <span>{formatCurrency(calc.totalEntry)}</span>
                       </div>
                     </div>
@@ -2621,10 +2630,10 @@ export default function AdmissionManagement() {
 
                   {/* Configuration */}
                   <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-                    <h4 className="font-semibold text-sm text-gray-800">Pengaturan Cicilan</h4>
+                    <h4 className="font-semibold text-sm text-gray-800">{t('admission.installment.settings')}</h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs text-gray-600">Persentase UTJ (%)</Label>
+                        <Label className="text-xs text-gray-600">{t('admission.installment.utjPercentage')}</Label>
                         <Input
                           type="number"
                           min="0"
@@ -2635,7 +2644,7 @@ export default function AdmissionManagement() {
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-600">Jumlah Cicilan (bulan)</Label>
+                        <Label className="text-xs text-gray-600">{t('admission.installment.numInstallments')}</Label>
                         <Input
                           type="number"
                           min="1"
@@ -2646,7 +2655,7 @@ export default function AdmissionManagement() {
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-600">Bulan Mulai</Label>
+                        <Label className="text-xs text-gray-600">{t('admission.installment.startMonth')}</Label>
                         <select
                           className="mt-1 w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                           value={installmentConfig.start_month}
@@ -2658,7 +2667,7 @@ export default function AdmissionManagement() {
                         </select>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-600">Tahun Mulai</Label>
+                        <Label className="text-xs text-gray-600">{t('admission.installment.startYear')}</Label>
                         <Input
                           type="number"
                           min="2020"
@@ -2670,10 +2679,10 @@ export default function AdmissionManagement() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-600">Catatan (opsional)</Label>
+                      <Label className="text-xs text-gray-600">{t('admission.installment.notesLabel')}</Label>
                       <Input
                         className="mt-1"
-                        placeholder="Catatan tambahan..."
+                        placeholder={t('admission.installment.notesPlaceholder')}
                         value={installmentConfig.notes}
                         onChange={(e) => setInstallmentConfig(p => ({ ...p, notes: e.target.value }))}
                       />
@@ -2683,24 +2692,24 @@ export default function AdmissionManagement() {
                   {/* UTJ Info */}
                   <div className="border border-amber-200 rounded-lg overflow-hidden">
                     <div className="bg-amber-50 px-4 py-3 flex items-center justify-between">
-                      <span className="font-semibold text-amber-800">UTJ (Uang Tanda Jadi)</span>
+                      <span className="font-semibold text-amber-800">{t('admission.installment.utjSection')}</span>
                       <span className="font-bold text-amber-700 text-lg">{formatCurrency(calc.utjAmount)}</span>
                     </div>
                     <div className="px-4 py-2 text-xs text-gray-500">
-                      {installmentConfig.utj_percentage}% dari total {formatCurrency(calc.totalEntry)} — sudah termasuk dalam Cicilan 1
+                      {installmentConfig.utj_percentage}% {t('admission.installment.utjInfoOf')} {formatCurrency(calc.totalEntry)} — {t('admission.installment.utjInfoIncluded')}
                     </div>
                   </div>
 
                   {/* Remaining & Monthly */}
                   <div className="border border-blue-200 rounded-lg overflow-hidden">
                     <div className="bg-blue-50 px-4 py-3 flex items-center justify-between">
-                      <span className="font-semibold text-blue-800">Sisa Cicilan</span>
+                      <span className="font-semibold text-blue-800">{t('admission.installment.remainingSection')}</span>
                       <span className="font-bold text-blue-700">{formatCurrency(calc.remaining)}</span>
                     </div>
                     <div className="px-4 py-2 text-xs text-gray-500">
-                      Dibagi {calc.numInst} bulan — {formatCurrency(calc.monthlyAmount)}/bulan
+                      {t('admission.installment.remainingInfoDivided')} {calc.numInst} {t('admission.installment.remainingInfoMonths')} — {formatCurrency(calc.monthlyAmount)}{t('admission.installment.remainingInfoPerMonth')}
                       {calc.lastMonthAmount !== calc.monthlyAmount && (
-                        <span className="ml-1">(cicilan terakhir: {formatCurrency(calc.lastMonthAmount)})</span>
+                        <span className="ml-1">({t('admission.installment.lastInstallment')}: {formatCurrency(calc.lastMonthAmount)})</span>
                       )}
                     </div>
                   </div>
@@ -2708,15 +2717,15 @@ export default function AdmissionManagement() {
                   {/* Schedule Table */}
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <div className="bg-gray-50 px-4 py-3">
-                      <span className="font-semibold text-gray-800">Jadwal Pembayaran</span>
+                      <span className="font-semibold text-gray-800">{t('admission.installment.scheduleTitle')}</span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="bg-gray-50 text-gray-600 text-xs">
                             <th className="px-4 py-2 text-left w-12">No</th>
-                            <th className="px-4 py-2 text-left">Keterangan</th>
-                            <th className="px-4 py-2 text-right">Jumlah</th>
+                            <th className="px-4 py-2 text-left">{t('admission.installment.scheduleColDescription')}</th>
+                            <th className="px-4 py-2 text-right">{t('admission.installment.scheduleColAmount')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -2733,7 +2742,7 @@ export default function AdmissionManagement() {
                         </tbody>
                         <tfoot>
                           <tr className="bg-purple-50 font-bold text-purple-800">
-                            <td className="px-4 py-3" colSpan="2">Total</td>
+                            <td className="px-4 py-3" colSpan="2">{t('admission.installment.total')}</td>
                             <td className="px-4 py-3 text-right">{formatCurrency(calc.items.reduce((sum, i) => sum + i.amount, 0))}</td>
                           </tr>
                         </tfoot>
@@ -2752,7 +2761,7 @@ export default function AdmissionManagement() {
                           onClick={handleDeleteInstallment}
                           disabled={installmentSaving}
                         >
-                          <FontAwesomeIcon icon={faTrash} className="mr-1" /> Hapus Skema
+                          <FontAwesomeIcon icon={faTrash} className="mr-1" /> {t('admission.installment.deleteScheme')}
                         </Button>
                       )}
                       {existingPlan && (
@@ -2762,7 +2771,7 @@ export default function AdmissionManagement() {
                           className="text-blue-600 border-blue-300 hover:bg-blue-50"
                           onClick={handlePrintInstallment}
                         >
-                          <FontAwesomeIcon icon={faPrint} className="mr-1" /> Cetak PDF
+                          <FontAwesomeIcon icon={faPrint} className="mr-1" /> {t('admission.installment.printPdf')}
                         </Button>
                       )}
                       {existingPlan && (
@@ -2772,14 +2781,14 @@ export default function AdmissionManagement() {
                           className="text-purple-600 border-purple-300 hover:bg-purple-50"
                           onClick={handleEmailInstallment}
                           disabled={emailSending || !selectedApplication?.parent_email}
-                          title={!selectedApplication?.parent_email ? 'Email orang tua belum diisi' : 'Kirim PDF ke email orang tua'}
+                          title={!selectedApplication?.parent_email ? t('admission.installment.emailNoParent') : t('admission.installment.emailToParent')}
                         >
                           {emailSending ? (
                             <FontAwesomeIcon icon={faSpinner} className="mr-1 animate-spin" />
                           ) : (
                             <FontAwesomeIcon icon={faEnvelope} className="mr-1" />
                           )}
-                          {emailSending ? 'Mengirim...' : 'Kirim Email'}
+                          {emailSending ? t('admission.installment.sendingEmail') : t('admission.installment.sendEmail')}
                         </Button>
                       )}
                     </div>
@@ -2793,7 +2802,7 @@ export default function AdmissionManagement() {
                       ) : (
                         <FontAwesomeIcon icon={faSave} className="mr-2" />
                       )}
-                      {existingPlan ? 'Perbarui Skema' : 'Simpan Skema'}
+                      {existingPlan ? t('admission.installment.updateScheme') : t('admission.installment.saveScheme')}
                     </Button>
                   </div>
                 </div>

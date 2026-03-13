@@ -134,7 +134,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
   const [error, setError] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [expandedMenus, setExpandedMenus] = useState({})
-  const [isCollapsed, setIsCollapsed] = useState(true) // Start collapsed
+  const [isCollapsed, setIsCollapsed] = useState(false) // Start expanded
   const [activeMenu, setActiveMenu] = useState(null) // For showing popup in collapsed mode
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0, height: 0 }) // Position for popup
   const [showLogoutModal, setShowLogoutModal] = useState(false) // Logout confirmation modal

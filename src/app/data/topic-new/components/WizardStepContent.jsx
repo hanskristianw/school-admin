@@ -82,7 +82,7 @@ export default function WizardStepContent({
                 disabled={!selectedTopic.topic_subject_id || kelasLoading}
               >
                 <option value="">
-                  {kelasLoading ? 'Loading classes...' : 'Select a class...'}
+                  {kelasLoading ? t('topicNew.fields.loadingClasses') : t('topicNew.fields.selectClass')}
                 </option>
                 {allKelas.map(kelas => (
                   <option key={kelas.kelas_id} value={kelas.kelas_id}>
@@ -103,7 +103,7 @@ export default function WizardStepContent({
                 onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_year: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
-                <option value="">Select MYP Year...</option>
+                <option value="">{t('topicNew.fields.selectMypYear')}</option>
                 <option value="1">MYP Year 1</option>
                 <option value="3">MYP Year 3</option>
                 <option value="5">MYP Year 5</option>
@@ -993,9 +993,9 @@ export default function WizardStepContent({
                 disabled={isAssessmentReadOnly}
                 className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isAssessmentReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               >
-                <option value="">Select Semester...</option>
-                <option value="1">Semester 1</option>
-                <option value="2">Semester 2</option>
+                <option value="">{t('topicNew.fields.selectSemester')}</option>
+                <option value="1">{t('topicNew.fields.semester1')}</option>
+                <option value="2">{t('topicNew.fields.semester2')}</option>
               </select>
             </div>
           </div>

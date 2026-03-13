@@ -6,7 +6,7 @@ import id from '@/i18n/id.json'
 import zh from '@/i18n/zh.json'
 
 const dictionaries = { en, id, zh }
-const fallbackLang = 'id'
+const fallbackLang = 'en'
 
 const I18nContext = createContext({
   lang: fallbackLang,

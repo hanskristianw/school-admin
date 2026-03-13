@@ -3832,12 +3832,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   }
 
   const tabs = [
-    { id: 'planning', label: 'Planning', icon: '📋' },
-    { id: 'assignment', label: 'Assignment', icon: '📝' },
-    { id: 'assessment', label: 'Assessment', icon: '✓' },
-    { id: 'comment', label: 'Comment', icon: '💬' },
-    ...(isWaliKelas ? [{ id: 'mentor', label: 'Mentor Comment', icon: '🏠' }] : []),
-    { id: 'report', label: 'Report', icon: '📊' }
+    { id: 'planning', label: t('topicNew.tabs.planning'), icon: '📋' },
+    { id: 'assignment', label: t('topicNew.tabs.assignment'), icon: '📝' },
+    { id: 'assessment', label: t('topicNew.tabs.assessment'), icon: '✓' },
+    { id: 'comment', label: t('topicNew.tabs.comment'), icon: '💬' },
+    ...(isWaliKelas ? [{ id: 'mentor', label: t('topicNew.tabs.mentorComment'), icon: '🏠' }] : []),
+    { id: 'report', label: t('topicNew.tabs.report'), icon: '📊' }
   ]
 
   return (
@@ -3880,8 +3880,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             <div className="w-56 bg-gray-50 border-r border-gray-200 p-4">
               <nav className="space-y-1">
                 {[
-                  { id: 'overview', label: 'Overview', icon: '📋' },
-                  { id: 'weekly-plan', label: 'Weekly Plan', icon: '📅' }
+                  { id: 'overview', label: t('topicNew.subMenu.overview'), icon: '📋' },
+                  { id: 'weekly-plan', label: t('topicNew.subMenu.weeklyPlan'), icon: '📅' }
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -3907,7 +3907,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               {activeSubMenu === 'overview' && (
                 <div>
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-800">Planning Overview</h2>
+                    <h2 className="text-xl font-semibold text-gray-800">{t('topicNew.subMenu.planningOverview')}</h2>
                     <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
                       <button
                         onClick={() => { setPlanningView('card'); localStorage.setItem('planning_view', 'card') }}
@@ -3957,14 +3957,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </div>
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Class/Grade
+                        {t('topicNew.filters.class')}
                       </label>
                       <select
                         value={filters.kelas}
                         onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                       >
-                        <option value="">All Classes</option>
+                        <option value="">{t('topicNew.filters.allClasses')}</option>
                         {allKelas.map(k => (
                           <option key={k.kelas_id} value={k.kelas_id}>
                             {k.kelas_nama}
@@ -4211,7 +4211,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       onChange={(e) => handleTopicSelectionForWeekly(e.target.value)}
                       className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                     >
-                      <option value="">-- Choose a Topic --</option>
+                      <option value="">{t('topicNew.fields.chooseTopic')}</option>
                       {topics
                         .sort((a, b) => {
                           const kelasA = kelasNameMap.get(a.topic_kelas_id) || ''
@@ -4459,14 +4459,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Class
+                  {t('topicNew.filters.class')}
                 </label>
                 <select
                   value={assessmentFilters.kelas}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, kelas: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
-                  <option value="">All Classes</option>
+                  <option value="">{t('topicNew.filters.allClasses')}</option>
                   {assessmentKelasOptions.map(k => (
                     <option key={k.kelas_id} value={k.kelas_id}>
                       {k.kelas_nama}
@@ -4476,18 +4476,18 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
+                  {t('topicNew.filters.status')}
                 </label>
                 <select
                   value={assessmentFilters.status}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, status: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
-                  <option value="">All Status</option>
-                  <option value="0">Waiting</option>
-                  <option value="3">Waiting Principal</option>
-                  <option value="1">Approved</option>
-                  <option value="2">Rejected</option>
+                  <option value="">{t('topicNew.filters.allStatus')}</option>
+                  <option value="0">{t('topicNew.filters.statusWaiting')}</option>
+                  <option value="3">{t('topicNew.filters.statusWaitingPrincipal')}</option>
+                  <option value="1">{t('topicNew.filters.statusApproved')}</option>
+                  <option value="2">{t('topicNew.filters.statusRejected')}</option>
                 </select>
               </div>
               <div className="flex-1">
@@ -4845,13 +4845,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {/* Subject */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">1. Subject</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1. {t('topicNew.fields.subject')}</label>
                 <select
                   value={commentSubject}
                   onChange={(e) => handleCommentSubjectChange(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">-- Select Subject --</option>
+                  <option value="">{t('topicNew.fields.selectSubject')}</option>
                   {subjects.map(s => (
                     <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
                   ))}
@@ -4860,14 +4860,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               
               {/* Kelas */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">2. Class</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">2. {t('topicNew.filters.class')}</label>
                 <select
                   value={commentKelas}
                   onChange={(e) => handleCommentKelasChange(e.target.value)}
                   disabled={!commentSubject || loadingCommentKelas}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                 >
-                  <option value="">{loadingCommentKelas ? 'Loading...' : '-- Select Class --'}</option>
+                  <option value="">{loadingCommentKelas ? t('topicNew.fields.loading') : t('topicNew.fields.selectClass')}</option>
                   {commentKelasOptions.map(k => (
                     <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
                   ))}
@@ -4984,20 +4984,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
         {activeTab === 'mentor' && isWaliKelas && (
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">🏠 Mentor Comment</h2>
-            <p className="text-sm text-gray-500 mb-6">Write semester homeroom comments for each student in your class.</p>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">🏠 {t('topicNew.mentorCommentTab.title')}</h2>
+            <p className="text-sm text-gray-500 mb-6">{t('topicNew.mentorCommentTab.subtitle')}</p>
 
             {/* Filter row: Kelas → Semester */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {/* Kelas */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">1. Class</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.mentorCommentTab.classLabel')}</label>
                 <select
                   value={mentorKelas}
                   onChange={(e) => handleMentorKelasChange(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">-- Select Class --</option>
+                  <option value="">{t('topicNew.mentorCommentTab.selectClass')}</option>
                   {mentorKelasOptions.map(k => (
                     <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
                   ))}
@@ -5006,7 +5006,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
               {/* Semester */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">2. Semester</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.mentorCommentTab.semesterLabel')}</label>
                 <div className="flex gap-2">
                   {[1, 2].map(sem => (
                     <button
@@ -5031,10 +5031,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             {mentorStudents.length > 0 && (
               <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
                 <span className="text-sm text-gray-600">
-                  {mentorStudents.length} student{mentorStudents.length !== 1 ? 's' : ''}
+                  {mentorStudents.length} {mentorStudents.length !== 1 ? t('topicNew.mentorCommentTab.studentsPlural') : t('topicNew.mentorCommentTab.students')}
                   {mentorStudents.filter(s => !s.saved).length > 0 && (
                     <span className="text-amber-600 ml-2 font-medium">
-                      — {mentorStudents.filter(s => !s.saved).length} unsaved
+                      — {mentorStudents.filter(s => !s.saved).length} {t('topicNew.mentorCommentTab.unsaved')}
                     </span>
                   )}
                 </span>
@@ -5044,7 +5044,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null}
                   className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  💾 Save All
+                  💾 {t('topicNew.mentorCommentTab.saveAll')}
                 </button>
               </div>
             )}
@@ -5053,7 +5053,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             {loadingMentorComments && (
               <div className="text-center py-12">
                 <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-gray-500 mt-2">Loading students...</p>
+                <p className="text-gray-500 mt-2">{t('topicNew.mentorCommentTab.loading')}</p>
               </div>
             )}
 
@@ -5061,13 +5061,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             {!loadingMentorComments && !mentorSemester && (
               <div className="text-center py-12 text-gray-400">
                 <p className="text-4xl mb-2">🏠</p>
-                <p>Select class and semester to start writing mentor comments</p>
+                <p>{t('topicNew.mentorCommentTab.selectPrompt')}</p>
               </div>
             )}
 
             {mentorSemester && !loadingMentorComments && mentorStudents.length === 0 && (
               <div className="text-center py-12 text-gray-400">
-                <p>No students found in this class</p>
+                <p>{t('topicNew.mentorCommentTab.noStudents')}</p>
               </div>
             )}
 
@@ -5093,17 +5093,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         disabled={student.saved || savingMentorCommentId === student.user_id}
                         className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {savingMentorCommentId === student.user_id ? 'Saving...' : 'Save'}
+                        {savingMentorCommentId === student.user_id ? t('topicNew.mentorCommentTab.saving') : t('topicNew.mentorCommentTab.save')}
                       </button>
                     </div>
                     {/* Attendance row */}
                     <div className="grid grid-cols-5 gap-3 mb-3">
                       {[
-                        { field: 'present', label: 'Present', color: 'green' },
-                        { field: 'absent', label: 'Absent', color: 'red' },
-                        { field: 'late', label: 'Late', color: 'yellow' },
-                        { field: 'sick', label: 'Sick', color: 'orange' },
-                        { field: 'excused', label: 'Excused', color: 'blue' }
+                        { field: 'present', label: t('topicNew.mentorCommentTab.present'), color: 'green' },
+                        { field: 'absent', label: t('topicNew.mentorCommentTab.absent'), color: 'red' },
+                        { field: 'late', label: t('topicNew.mentorCommentTab.late'), color: 'yellow' },
+                        { field: 'sick', label: t('topicNew.mentorCommentTab.sick'), color: 'orange' },
+                        { field: 'excused', label: t('topicNew.mentorCommentTab.excused'), color: 'blue' }
                       ].map(({ field, label, color }) => (
                         <div key={field}>
                           <label className={`block text-xs font-medium mb-1 text-${color}-700`}>{label}</label>
@@ -5123,7 +5123,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       onChange={(e) => updateMentorCommentText(student.user_id, e.target.value)}
                       rows={6}
                       maxLength={600}
-                      placeholder="Write your mentor comment for this student..."
+                      placeholder={t('topicNew.mentorCommentTab.commentPlaceholder')}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                     />
                     <p className="text-xs text-gray-400 text-right mt-1">{(student.comment_text || '').length}/600</p>
@@ -5137,8 +5137,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         {activeTab === 'report' && (
           <div className="p-6">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">Student Progress Report</h2>
-              <p className="text-gray-600 text-sm">Generate and preview student progress reports</p>
+              <h2 className="text-xl font-semibold text-gray-800">{t('topicNew.report.title')}</h2>
+              <p className="text-gray-600 text-sm">{t('topicNew.report.subtitle')}</p>
             </div>
             
             {/* Filters */}
@@ -5146,13 +5146,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Year Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.yearLabel')}</label>
                   <select
                     value={reportFilters.year}
                     onChange={(e) => handleReportFilterChange('year', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="">Pilih Tahun</option>
+                    <option value="">{t('topicNew.report.selectYear')}</option>
                     {reportYears.map(year => (
                       <option key={year.year_id} value={year.year_id}>{year.year_name}</option>
                     ))}
@@ -5161,7 +5161,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 
                 {/* Kelas Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.classLabel')}</label>
                   <select
                     value={reportFilters.kelas}
                     onChange={(e) => handleReportFilterChange('kelas', e.target.value)}
@@ -5169,7 +5169,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">
-                      {!reportFilters.year ? 'Pilih tahun dulu' : (reportKelasOptions.length === 0 ? 'Tidak ada kelas' : 'Pilih Kelas')}
+                      {!reportFilters.year ? t('topicNew.report.selectYearFirst') : (reportKelasOptions.length === 0 ? t('topicNew.report.noClasses') : t('topicNew.report.selectClass'))}
                     </option>
                     {reportKelasOptions.map(kelas => (
                       <option key={kelas.kelas_id} value={kelas.kelas_id}>{kelas.kelas_nama}</option>
@@ -5179,21 +5179,21 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 
                 {/* Semester Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.semesterLabel')}</label>
                   <select
                     value={reportFilters.semester}
                     onChange={(e) => handleReportFilterChange('semester', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="">Pilih Semester</option>
-                    <option value="1">Semester 1</option>
-                    <option value="2">Semester 2</option>
+                    <option value="">{t('topicNew.report.selectSemester')}</option>
+                    <option value="1">{t('topicNew.fields.semester1')}</option>
+                    <option value="2">{t('topicNew.fields.semester2')}</option>
                   </select>
                 </div>
                 
                 {/* Student Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Siswa</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.studentLabel')}</label>
                   <select
                     value={reportFilters.student}
                     onChange={(e) => handleReportFilterChange('student', e.target.value)}
@@ -5201,7 +5201,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">
-                      {loadingReportStudents ? 'Loading...' : !reportFilters.kelas ? 'Pilih kelas dulu' : 'Pilih Siswa'}
+                      {loadingReportStudents ? t('topicNew.fields.loading') : !reportFilters.kelas ? t('topicNew.report.selectClassFirst') : t('topicNew.report.selectStudent')}
                     </option>
                     {reportStudents.map(student => (
                       <option key={student.detail_siswa_id} value={student.detail_siswa_id}>{student.nama}</option>
@@ -5220,12 +5220,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   {loadingReport ? (
                     <>
                       <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                      Generating...
+                      {t('topicNew.report.generating')}
                     </>
                   ) : (
                     <>
                       <FontAwesomeIcon icon={faPrint} />
-                      Preview Report
+                      {t('topicNew.report.previewButton')}
                     </>
                   )}
                 </button>
@@ -5238,7 +5238,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5" />
                 <div>
                   <p className="text-sm text-blue-800">
-                    Pilih tahun ajaran, semester, kelas, dan siswa kemudian klik tombol "Preview Report" untuk melihat dan mencetak laporan progress siswa.
+                    {t('topicNew.report.infoText')}
                   </p>
                 </div>
               </div>
