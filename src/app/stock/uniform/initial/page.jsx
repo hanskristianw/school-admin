@@ -58,7 +58,7 @@ export default function InitialStockPage() {
     const fetchMasterData = async () => {
       const [uRes, unifRes, sizeRes, suppRes] = await Promise.all([
         supabase.from('unit').select('unit_id, unit_name').eq('is_school', true).order('unit_name'),
-        supabase.from('uniform').select('uniform_id, uniform_name, unit_id, is_universal').eq('is_active', true).order('uniform_name'),
+        supabase.from('uniform').select('uniform_id, uniform_name, is_universal, uniform_unit(unit_id)').eq('is_active', true).order('uniform_name'),
         supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order'),
         supabase.from('uniform_supplier').select('*').eq('is_active', true).order('supplier_code')
       ])
@@ -800,8 +800,8 @@ export default function InitialStockPage() {
     }
   }
 
-  // Filter uniforms: unit-specific OR universal (unit_id = NULL)
-  const uniformsFiltered = uniforms.filter(u => u.unit_id === Number(formData.unit_id) || u.is_universal)
+  // Filter uniforms: universal OR assigned to selected unit via junction table
+  const uniformsFiltered = uniforms.filter(u => u.is_universal || (u.uniform_unit || []).some(uu => String(uu.unit_id) === String(formData.unit_id)))
   const totalItems = initialStockItems.reduce((sum, item) => sum + Number(item.qty), 0)
 
   return (
