@@ -21,6 +21,8 @@ export default function UniformPage() {
   const [filterGender, setFilterGender] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
 
+  const [selectedUnits, setSelectedUnits] = useState([]) // unit_ids for form (non-universal)
+
   const [form, setForm] = useState({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true, is_universal: false })
   const [variants, setVariants] = useState([]) // {size_id, hpp, price}
   const [editing, setEditing] = useState(null)
@@ -45,20 +47,32 @@ export default function UniformPage() {
     loadUnits()
   }, [])
 
+  // Helper: load all uniforms with their unit assignments, filtered for current unit
+  const loadUniforms = async (currentUnitId) => {
+    const { data, error } = await supabase
+      .from('uniform')
+      .select('*, uniform_unit(unit_id)')
+      .order('is_universal', { ascending: false })
+      .order('uniform_name')
+    if (error) throw error
+    return (data || []).filter(row =>
+      row.is_universal ||
+      (row.uniform_unit || []).some(uu => String(uu.unit_id) === String(currentUnitId))
+    )
+  }
+
   // load sizes and uniforms for unit
   useEffect(() => {
     if (!unitId) return
     const load = async () => {
       setLoading(true)
       try {
-        const [{ data: s }, { data: u }] = await Promise.all([
+        const [{ data: s }, filtered] = await Promise.all([
           supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order'),
-          // Get unit-specific items for this unit OR universal items (unit_id = NULL)
-          // Order by is_universal DESC so universal items appear first, then by name
-          supabase.from('uniform').select('*').or(`unit_id.eq.${Number(unitId)},unit_id.is.null`).order('is_universal', { ascending: false }).order('uniform_name')
+          loadUniforms(unitId)
         ])
         setSizes(s || [])
-        setRows(u || [])
+        setRows(filtered)
       } catch (e) { setError(e.message) } finally { setLoading(false) }
     }
     load()
@@ -67,6 +81,7 @@ export default function UniformPage() {
   const startCreate = () => {
     setEditing(null)
     setForm({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true, is_universal: false })
+    setSelectedUnits(unitId ? [Number(unitId)] : [])
     setVariants((sizes || []).map(sz => ({ size_id: sz.size_id, hpp: '', price: '' })))
     setShowUniformModal(true)
   }
@@ -93,6 +108,9 @@ export default function UniformPage() {
       is_active: !!row.is_active,
       is_universal: !!row.is_universal
     })
+    // uniform_unit already embedded from load query
+    const assignedUnits = (row.uniform_unit || []).map(uu => Number(uu.unit_id))
+    setSelectedUnits(assignedUnits.length ? assignedUnits : (unitId ? [Number(unitId)] : []))
     setShowUniformModal(true)
   }
 
@@ -103,6 +121,14 @@ export default function UniformPage() {
       setVariants(v)
       setShowVariantModal(true)
     } catch (e) { setError(e.message) }
+  }
+
+  const upsertUniformUnits = async (uniform_id, unitIds) => {
+    await supabase.from('uniform_unit').delete().eq('uniform_id', uniform_id)
+    if (unitIds.length) {
+      const { error } = await supabase.from('uniform_unit').insert(unitIds.map(uid => ({ uniform_id, unit_id: uid })))
+      if (error) throw error
+    }
   }
 
   const upsertVariants = async (uniform_id) => {
@@ -120,9 +146,9 @@ export default function UniformPage() {
 
   const onSubmitUniform = async () => {
     if (!unitId) return
+    if (!form.is_universal && selectedUnits.length === 0) { setError('Pilih minimal 1 unit'); return }
     const payload = {
-      // Universal items: unit_id = NULL, else use selected unit
-      unit_id: form.is_universal ? null : Number(unitId),
+      unit_id: null, // unit assignments now live in uniform_unit junction table
       uniform_code: (form.uniform_code || '').trim() || null,
       uniform_name: (form.uniform_name || '').trim(),
       gender: form.gender || null,
@@ -134,17 +160,26 @@ export default function UniformPage() {
     if (!payload.uniform_name) { setError('Nama seragam wajib'); return }
     setSaving(true)
     try {
+      let uniformId
       if (editing) {
         const { error } = await supabase.from('uniform').update(payload).eq('uniform_id', editing.uniform_id)
         if (error) throw error
+        uniformId = editing.uniform_id
       } else {
         const { data, error } = await supabase.from('uniform').insert([payload]).select('uniform_id').single()
         if (error) throw error
+        uniformId = data.uniform_id
       }
-      // reload
-      const { data: u2 } = await supabase.from('uniform').select('*').or(`unit_id.eq.${Number(unitId)},unit_id.is.null`).order('is_universal', { ascending: false }).order('uniform_name')
-      setRows(u2 || [])
+      // Sync junction table
+      if (form.is_universal) {
+        await supabase.from('uniform_unit').delete().eq('uniform_id', uniformId)
+      } else {
+        await upsertUniformUnits(uniformId, selectedUnits)
+      }
+      const refreshed = await loadUniforms(unitId)
+      setRows(refreshed)
       setForm({ uniform_code: '', uniform_name: '', gender: 'unisex', image_url: '', notes: '', is_active: true, is_universal: false })
+      setSelectedUnits([])
       setEditing(null)
       setError('')
       setShowUniformModal(false)
@@ -165,7 +200,7 @@ export default function UniformPage() {
     try {
       const { error } = await supabase.from('uniform').delete().eq('uniform_id', row.uniform_id)
       if (error) throw error
-      setRows(rows.filter(r => r.uniform_id !== row.uniform_id))
+      setRows(prev => prev.filter(r => r.uniform_id !== row.uniform_id))
     } catch (e) { setError(e.message) }
   }
 
@@ -275,10 +310,15 @@ export default function UniformPage() {
                           }`}>
                             {r.is_active ? 'Aktif' : 'Tidak Aktif'}
                           </span>
-                          {r.is_universal && (
-                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                              Universal
-                            </span>
+                          {r.is_universal ? (
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Universal</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {(r.uniform_unit || []).map(uu => {
+                                const u = units.find(x => x.unit_id === uu.unit_id)
+                                return u ? <span key={uu.unit_id} className="bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">{u.unit_name}</span> : null
+                              })}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -334,7 +374,13 @@ export default function UniformPage() {
                             {r.is_universal ? (
                               <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Universal</span>
                             ) : (
-                              <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">Unit Saja</span>
+                              <div className="flex flex-wrap gap-1">
+                                {(r.uniform_unit || []).map(uu => {
+                                  const u = units.find(x => x.unit_id === uu.unit_id)
+                                  return u ? <span key={uu.unit_id} className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">{u.unit_name}</span> : null
+                                })}
+                                {(r.uniform_unit || []).length === 0 && <span className="text-xs text-gray-400 italic">-</span>}
+                              </div>
                             )}
                           </td>
                           <td className="py-3 pr-4">{r.is_active ? 'Ya' : 'Tidak'}</td>
@@ -409,6 +455,29 @@ export default function UniformPage() {
               <span className="block text-xs text-gray-500 mt-0.5">Item bisa dibeli oleh siswa dari unit manapun</span>
             </Label>
           </div>
+          {!form.is_universal && (
+            <div className="md:col-span-3">
+              <Label>Unit yang Menggunakan <span className="text-red-500">*</span></Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {units.map(u => (
+                  <label key={u.unit_id} className={`flex items-center gap-2 cursor-pointer px-3 py-2 border rounded-lg transition-colors ${
+                    selectedUnits.includes(u.unit_id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      className="accent-blue-600"
+                      checked={selectedUnits.includes(u.unit_id)}
+                      onChange={e => setSelectedUnits(prev =>
+                        e.target.checked ? [...prev, u.unit_id] : prev.filter(id => id !== u.unit_id)
+                      )}
+                    />
+                    <span className="text-sm font-medium">{u.unit_name}</span>
+                  </label>
+                ))}
+              </div>
+              {selectedUnits.length === 0 && <p className="text-xs text-red-500 mt-1">Pilih minimal 1 unit</p>}
+            </div>
+          )}
         </div>
         {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
         <div className="mt-4 flex gap-2 justify-end">
