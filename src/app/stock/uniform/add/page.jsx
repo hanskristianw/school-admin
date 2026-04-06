@@ -76,7 +76,7 @@ export default function AddUniformStockPage() {
     }
     const fetchAllUniforms = async () => {
       const [uRes, sRes, vRes] = await Promise.all([
-        supabase.from('uniform').select('uniform_id, uniform_name, unit_id, is_universal').eq('is_active', true).order('uniform_name'),
+        supabase.from('uniform').select('uniform_id, uniform_name, is_universal, uniform_unit(unit_id)').eq('is_active', true).order('uniform_name'),
         supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order'),
         supabase.from('uniform_variant').select('uniform_id, size_id, hpp, price')
       ])

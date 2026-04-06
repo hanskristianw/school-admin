@@ -106,7 +106,7 @@ export default function UniformSalesPage() {
           // Load units for mapping
           supabase.from('unit').select('unit_id, unit_name'),
           // Get all active uniforms (universal + unit-specific)
-          supabase.from('uniform').select('uniform_id, uniform_name, unit_id, is_universal').eq('is_active', true).order('uniform_name'),
+          supabase.from('uniform').select('uniform_id, uniform_name, is_universal, uniform_unit(unit_id)').eq('is_active', true).order('uniform_name'),
           supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order'),
           supabase.from('uniform_variant').select('uniform_id, size_id, hpp, price'),
           supabase.from('uniform_stock_txn').select('uniform_id, size_id, supplier_id, qty_delta'),
@@ -174,7 +174,7 @@ export default function UniformSalesPage() {
     if (!selectedStudent) return []
     // Show universal uniforms + uniforms specific to student's unit
     return uniforms.filter(u => 
-      u.is_universal || u.unit_id === selectedStudent.user_unit_id
+      u.is_universal || (u.uniform_unit || []).some(uu => uu.unit_id === selectedStudent.user_unit_id)
     )
   }, [uniforms, selectedStudent])
 
