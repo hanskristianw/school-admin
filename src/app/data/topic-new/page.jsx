@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCheck } from '@fortawesome/free-solid-svg-icons'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
@@ -241,6 +241,14 @@ export default function TopicNewPage() {
   const [weeklyAiInput, setWeeklyAiInput] = useState({ assessmentDuration: '', specialRequests: '' })
   const [weeklyAiLoading, setWeeklyAiLoading] = useState(false)
   const [weeklyAiResults, setWeeklyAiResults] = useState(null)
+
+  // Comment AI Help state
+  const [commentAiModalOpen, setCommentAiModalOpen] = useState(false)
+  const [commentAiTarget, setCommentAiTarget] = useState(null) // { user_id, nama }
+  const [commentAiInput, setCommentAiInput] = useState({ star: '', wish1: '', wish2: '' })
+  const [commentAiLoading, setCommentAiLoading] = useState(false)
+  const [commentAiResult, setCommentAiResult] = useState('')
+  const [commentAiError, setCommentAiError] = useState('')
   
   // Grading Modal state
   const [gradingModalOpen, setGradingModalOpen] = useState(false)
@@ -2957,7 +2965,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!wizardAssessment.assessment_nama?.trim()) missing.push({ step: 7, field: 'Assessment Name' })
     if (!wizardAssessment.assessment_semester?.trim()) missing.push({ step: 7, field: 'Semester' })
     if (!wizardAssessment.assessment_conceptual_understanding?.trim()) missing.push({ step: 7, field: 'Conceptual Understanding' })
-    if (!wizardAssessment.assessment_task_specific_description?.trim()) missing.push({ step: 7, field: 'Task Specific Description' })
     if (!wizardAssessment.assessment_instructions?.trim()) missing.push({ step: 7, field: 'Assessment Instructions' })
     
     // Step 7: Relationship
@@ -2995,9 +3002,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!wizardAssessment.assessment_nama || 
         !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0 ||
         !wizardAssessment.assessment_conceptual_understanding?.trim() ||
-        !wizardAssessment.assessment_task_specific_description?.trim() ||
         !wizardAssessment.assessment_instructions?.trim()) {
-      alert('Please complete all assessment fields including Conceptual Understanding, Task Description, and Instructions')
+      alert('Please complete all assessment fields including Conceptual Understanding and Instructions')
       return
     }
     
@@ -3945,7 +3951,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <select
                         value={filters.subject}
                         onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">{t('topicNew.filters.allSubjects')}</option>
                         {subjects.map(s => (
@@ -3962,7 +3968,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <select
                         value={filters.kelas}
                         onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">{t('topicNew.filters.allClasses')}</option>
                         {allKelas.map(k => (
@@ -4209,7 +4215,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     <select
                       value={selectedTopicForWeekly?.topic_id || ''}
                       onChange={(e) => handleTopicSelectionForWeekly(e.target.value)}
-                      className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">{t('topicNew.fields.chooseTopic')}</option>
                       {topics
@@ -4447,7 +4453,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <select
                   value={assessmentFilters.subject}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, subject: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">{t('topicNew.filters.allSubjects')}</option>
                   {subjects.map(s => (
@@ -4464,7 +4470,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <select
                   value={assessmentFilters.kelas}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, kelas: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">{t('topicNew.filters.allClasses')}</option>
                   {assessmentKelasOptions.map(k => (
@@ -4481,7 +4487,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <select
                   value={assessmentFilters.status}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">{t('topicNew.filters.allStatus')}</option>
                   <option value="0">{t('topicNew.filters.statusWaiting')}</option>
@@ -4957,14 +4963,30 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">saved ✓</span>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => saveComment(student)}
-                        disabled={student.saved || savingCommentId === student.user_id}
-                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {savingCommentId === student.user_id ? 'Saving...' : 'Save'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCommentAiTarget({ user_id: student.user_id, nama: student.nama })
+                            setCommentAiInput({ star: '', wish1: '', wish2: '' })
+                            setCommentAiResult('')
+                            setCommentAiError('')
+                            setCommentAiModalOpen(true)
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                        >
+                          <FontAwesomeIcon icon={faLightbulb} className="text-xs" />
+                          AI Help
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => saveComment(student)}
+                          disabled={student.saved || savingCommentId === student.user_id}
+                          className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {savingCommentId === student.user_id ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={student.comment_text}
@@ -5150,7 +5172,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   <select
                     value={reportFilters.year}
                     onChange={(e) => handleReportFilterChange('year', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">{t('topicNew.report.selectYear')}</option>
                     {reportYears.map(year => (
@@ -5166,7 +5188,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     value={reportFilters.kelas}
                     onChange={(e) => handleReportFilterChange('kelas', e.target.value)}
                     disabled={!reportFilters.year}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">
                       {!reportFilters.year ? t('topicNew.report.selectYearFirst') : (reportKelasOptions.length === 0 ? t('topicNew.report.noClasses') : t('topicNew.report.selectClass'))}
@@ -5183,7 +5205,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   <select
                     value={reportFilters.semester}
                     onChange={(e) => handleReportFilterChange('semester', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">{t('topicNew.report.selectSemester')}</option>
                     <option value="1">{t('topicNew.fields.semester1')}</option>
@@ -5198,7 +5220,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     value={reportFilters.student}
                     onChange={(e) => handleReportFilterChange('student', e.target.value)}
                     disabled={!reportFilters.kelas || loadingReportStudents}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">
                       {loadingReportStudents ? t('topicNew.fields.loading') : !reportFilters.kelas ? t('topicNew.report.selectClassFirst') : t('topicNew.report.selectStudent')}
@@ -6860,6 +6882,173 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         }
       `}</style>
       
+      {/* Comment AI Help Modal */}
+      <Modal
+        isOpen={commentAiModalOpen}
+        onClose={() => { if (!commentAiLoading) { setCommentAiModalOpen(false); setCommentAiResult(''); setCommentAiError('') } }}
+        title={`AI Help — ${commentAiTarget?.nama || 'Student'}`}
+        size="lg"
+      >
+        <div className="space-y-5">
+          {!commentAiResult ? (
+            <>
+              <p className="text-sm text-gray-500">
+                Provide brief notes below and AI will write a professional report card comment.
+              </p>
+
+              {/* Star */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  ⭐ 1 Star — What did this student do well?
+                </label>
+                <textarea
+                  value={commentAiInput.star}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, star: e.target.value }))}
+                  rows={2}
+                  placeholder="e.g., Shows strong analytical thinking, always participates actively..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              {/* Wish 1 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  🌱 Wish 1 — First area to improve
+                </label>
+                <textarea
+                  value={commentAiInput.wish1}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, wish1: e.target.value }))}
+                  rows={2}
+                  placeholder="e.g., Needs to improve time management during assessments..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              {/* Wish 2 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  🌱 Wish 2 — Second area to improve
+                </label>
+                <textarea
+                  value={commentAiInput.wish2}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, wish2: e.target.value }))}
+                  rows={2}
+                  placeholder="e.g., Should review written work before submitting..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setCommentAiModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={commentAiLoading || (!commentAiInput.star.trim() && !commentAiInput.wish1.trim() && !commentAiInput.wish2.trim())}
+                  onClick={async () => {
+                    const subjectName = subjects.find(s => String(s.subject_id) === String(commentSubject))?.subject_name || ''
+                    const prompt = `You are a professional IB MYP teacher writing a report card comment.
+
+Student name: ${commentAiTarget?.nama || 'the student'}
+Subject: ${subjectName || 'the subject'}
+
+Teacher notes:
+- STAR (what the student did well): ${commentAiInput.star || '(not provided)'}
+- WISH 1 (first area to improve): ${commentAiInput.wish1 || '(not provided)'}
+- WISH 2 (second area to improve): ${commentAiInput.wish2 || '(not provided)'}
+
+Write a single cohesive report card comment (3-5 sentences, max 500 characters) in a warm, professional tone. Use the student's first name. Integrate the star and wishes naturally into the comment — do NOT use bullet points or headings. Return only the comment text, nothing else.`
+                    try {
+                      setCommentAiLoading(true)
+                      setCommentAiError('')
+                      const res = await fetch('/api/gemini', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt })
+                      })
+                      const data = await res.json()
+                      if (!res.ok || data.error) {
+                        if (res.status === 503) throw new Error('Gemini API is temporarily unavailable. Please try again in a moment.')
+                        throw new Error(data.error || 'AI request failed')
+                      }
+                      setCommentAiResult(data.text?.trim() || '')
+                    } catch (err) {
+                      setCommentAiError(err.message)
+                    } finally {
+                      setCommentAiLoading(false)
+                    }
+                  }}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed text-sm flex items-center gap-2"
+                >
+                  {commentAiLoading ? (
+                    <><FontAwesomeIcon icon={faSpinner} spin /> Generating...</>
+                  ) : (
+                    <><FontAwesomeIcon icon={faLightbulb} /> Generate Comment</>
+                  )}
+                </button>
+              </div>
+              {commentAiError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start gap-2">
+                  <span className="mt-0.5">⚠️</span>
+                  <div>
+                    <p className="font-medium">Failed to generate comment</p>
+                    <p className="text-xs mt-1">{commentAiError}</p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <FontAwesomeIcon icon={faLightbulb} className="text-purple-600" />
+                  <span className="text-sm font-semibold text-purple-800">AI-Generated Comment</span>
+                  <span className="ml-auto text-xs text-purple-500">{commentAiResult.length} chars</span>
+                </div>
+                <textarea
+                  value={commentAiResult}
+                  onChange={(e) => setCommentAiResult(e.target.value)}
+                  rows={6}
+                  className="w-full px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white resize-y"
+                />
+                <p className="text-xs text-purple-500 mt-2">You can edit the comment above before inserting.</p>
+              </div>
+
+              <div className="flex justify-between gap-3 pt-1">
+                <button
+                  onClick={() => setCommentAiResult('')}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm flex items-center gap-2"
+                >
+                  ← Back
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setCommentAiModalOpen(false); setCommentAiResult('') }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (commentAiTarget) {
+                        updateCommentText(commentAiTarget.user_id, commentAiResult)
+                      }
+                      setCommentAiModalOpen(false)
+                      setCommentAiResult('')
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm flex items-center gap-2"
+                  >
+                    <FontAwesomeIcon icon={faCheck} /> Insert to Comment
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
       {/* Weekly Plan AI Help Modal */}
       <Modal
         isOpen={weeklyAiModalOpen}

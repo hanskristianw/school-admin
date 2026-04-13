@@ -1436,12 +1436,12 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         }
       }
       
-      // Fetch approved assessments for this subject + semester
+      // Fetch assessments for this subject + semester (draft or approved)
       const { data: assessmentsData, error: aError } = await supabase
         .from('assessment')
         .select('assessment_id')
         .eq('assessment_detail_kelas_id', dk.detail_kelas_id)
-        .eq('assessment_status', 1)
+        .in('assessment_status', [0, 1, 3])
         .eq('assessment_semester', parseInt(semester));
       
       if (aError) continue;
