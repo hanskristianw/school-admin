@@ -6949,20 +6949,23 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   disabled={commentAiLoading || (!commentAiInput.star.trim() && !commentAiInput.wish1.trim() && !commentAiInput.wish2.trim())}
                   onClick={async () => {
                     const subjectName = subjects.find(s => String(s.subject_id) === String(commentSubject))?.subject_name || ''
-                    const prompt = `You are a professional IB MYP teacher writing a report card comment.
+                    const prompt = `You are a professional IB MYP teacher writing a report card comment. You MUST write the comment in English only, regardless of the language used in the teacher notes below.
 
 Student name: ${commentAiTarget?.nama || 'the student'}
 Subject: ${subjectName || 'the subject'}
 
-Teacher notes:
+Teacher notes (may be in any language — translate and use the meaning, but write the comment in English):
 - STAR (what the student did well): ${commentAiInput.star || '(not provided)'}
 - WISH 1 (first area to improve): ${commentAiInput.wish1 || '(not provided)'}
 - WISH 2 (second area to improve): ${commentAiInput.wish2 || '(not provided)'}
 
-Write a single cohesive report card comment (3-5 sentences, max 500 characters) in a warm, professional tone. Use the student's first name. Integrate the star and wishes naturally into the comment — do NOT use bullet points or headings. Return only the comment text, nothing else.`
+Write a single cohesive report card comment (3-5 sentences, max 500 characters) in a warm, professional tone. Use the student's first name. Integrate the star and wishes naturally into the comment — do NOT use bullet points or headings. Return only the comment text in English, nothing else.`
+                    console.log('[Comment AI] Prompt sent to Gemini:\n', prompt)
+                    setCommentAiLoading(true)
+                    setCommentAiError('')
+                    // Yield to React so it can re-render and show the spinner before fetch starts
+                    await new Promise(resolve => setTimeout(resolve, 30))
                     try {
-                      setCommentAiLoading(true)
-                      setCommentAiError('')
                       const res = await fetch('/api/gemini', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -6983,7 +6986,7 @@ Write a single cohesive report card comment (3-5 sentences, max 500 characters) 
                   className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed text-sm flex items-center gap-2"
                 >
                   {commentAiLoading ? (
-                    <><FontAwesomeIcon icon={faSpinner} spin /> Generating...</>
+                    <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating...</>
                   ) : (
                     <><FontAwesomeIcon icon={faLightbulb} /> Generate Comment</>
                   )}
