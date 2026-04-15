@@ -96,6 +96,15 @@ export default function AccessGuard({ children }) {
           ...studentExtra.map(normalize)
         ]))
 
+        // Linked paths: pages accessible from within another page share the same permission
+        const linkedPaths = { '/data/topic-new': ['/data/assessment_grading'] }
+        for (const [parent, children] of Object.entries(linkedPaths)) {
+          if (merged.includes(normalize(parent))) {
+            children.forEach(c => merged.push(normalize(c)))
+          }
+        }
+        merged = Array.from(new Set(merged))
+
         // Update cookie for SSR middleware (while SSR currently guards /data|/settings only)
         try {
           const maxAge = 60 * 60 * 8
@@ -126,6 +135,13 @@ export default function AccessGuard({ children }) {
                 ...teacherExtra.map(normalize),
                 ...studentExtra.map(normalize)
               ]))
+              // Apply linked paths
+              for (const [parent, children] of Object.entries(linkedPaths)) {
+                if (merged.includes(normalize(parent))) {
+                  children.forEach(c => merged.push(normalize(c)))
+                }
+              }
+              merged = Array.from(new Set(merged))
               // Refresh cookie after update
               try {
                 const maxAge = 60 * 60 * 8
