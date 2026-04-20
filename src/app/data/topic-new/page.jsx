@@ -245,7 +245,7 @@ export default function TopicNewPage() {
   // Comment AI Help state
   const [commentAiModalOpen, setCommentAiModalOpen] = useState(false)
   const [commentAiTarget, setCommentAiTarget] = useState(null) // { user_id, nama }
-  const [commentAiInput, setCommentAiInput] = useState({ star: '', wish1: '', wish2: '' })
+  const [commentAiInput, setCommentAiInput] = useState({ star1: '', star2: '', wish: '' })
   const [commentAiLoading, setCommentAiLoading] = useState(false)
   const [commentAiResult, setCommentAiResult] = useState('')
   const [commentAiError, setCommentAiError] = useState('')
@@ -4968,7 +4968,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           type="button"
                           onClick={() => {
                             setCommentAiTarget({ user_id: student.user_id, nama: student.nama })
-                            setCommentAiInput({ star: '', wish1: '', wish2: '' })
+                            setCommentAiInput({ star1: '', star2: '', wish: '' })
                             setCommentAiResult('')
                             setCommentAiError('')
                             setCommentAiModalOpen(true)
@@ -6896,44 +6896,44 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 Provide brief notes below and AI will write a professional report card comment.
               </p>
 
-              {/* Star */}
+              {/* Star 1 */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  ⭐ 1 Star — What did this student do well?
+                  ⭐ Star 1 — What did this student do well?
                 </label>
                 <textarea
-                  value={commentAiInput.star}
-                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, star: e.target.value }))}
+                  value={commentAiInput.star1}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, star1: e.target.value }))}
                   rows={2}
                   placeholder="e.g., Shows strong analytical thinking, always participates actively..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                 />
               </div>
 
-              {/* Wish 1 */}
+              {/* Star 2 */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  🌱 Wish 1 — First area to improve
+                  ⭐ Star 2 — Another strength of this student
                 </label>
                 <textarea
-                  value={commentAiInput.wish1}
-                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, wish1: e.target.value }))}
+                  value={commentAiInput.star2}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, star2: e.target.value }))}
                   rows={2}
-                  placeholder="e.g., Needs to improve time management during assessments..."
+                  placeholder="e.g., Demonstrates creativity and takes initiative in group work..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                 />
               </div>
 
-              {/* Wish 2 */}
+              {/* Wish */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  🌱 Wish 2 — Second area to improve
+                  🌱 Wish — Area to improve
                 </label>
                 <textarea
-                  value={commentAiInput.wish2}
-                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, wish2: e.target.value }))}
+                  value={commentAiInput.wish}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, wish: e.target.value }))}
                   rows={2}
-                  placeholder="e.g., Should review written work before submitting..."
+                  placeholder="e.g., Needs to improve time management during assessments..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                 />
               </div>
@@ -6946,7 +6946,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   Cancel
                 </button>
                 <button
-                  disabled={commentAiLoading || (!commentAiInput.star.trim() && !commentAiInput.wish1.trim() && !commentAiInput.wish2.trim())}
+                  disabled={commentAiLoading || (!commentAiInput.star1.trim() && !commentAiInput.star2.trim() && !commentAiInput.wish.trim())}
                   onClick={async () => {
                     const subjectName = subjects.find(s => String(s.subject_id) === String(commentSubject))?.subject_name || ''
                     const prompt = `You are a professional IB MYP teacher writing a report card comment. You MUST write the comment in English only, regardless of the language used in the teacher notes below.
@@ -6955,11 +6955,11 @@ Student name: ${commentAiTarget?.nama || 'the student'}
 Subject: ${subjectName || 'the subject'}
 
 Teacher notes (may be in any language — translate and use the meaning, but write the comment in English):
-- STAR (what the student did well): ${commentAiInput.star || '(not provided)'}
-- WISH 1 (first area to improve): ${commentAiInput.wish1 || '(not provided)'}
-- WISH 2 (second area to improve): ${commentAiInput.wish2 || '(not provided)'}
+- STAR 1 (strength): ${commentAiInput.star1 || '(not provided)'}
+- STAR 2 (another strength): ${commentAiInput.star2 || '(not provided)'}
+- WISH (area to improve): ${commentAiInput.wish || '(not provided)'}
 
-Write a single cohesive report card comment (3-5 sentences, max 500 characters) in a warm, professional tone. Use the student's first name. Integrate the star and wishes naturally into the comment — do NOT use bullet points or headings. Return only the comment text in English, nothing else.`
+Write a single cohesive report card comment (3-5 sentences, max 500 characters) in a warm, professional tone. Use the student's first name. Integrate both stars and the wish naturally into the comment — do NOT use bullet points or headings. Return only the comment text in English, nothing else.`
                     console.log('[Comment AI] Prompt sent to Gemini:\n', prompt)
                     setCommentAiLoading(true)
                     setCommentAiError('')
