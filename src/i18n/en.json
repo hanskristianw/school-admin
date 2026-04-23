@@ -708,7 +708,8 @@
       "nextStep": "Next Step",
       "previousStep": "Previous",
       "useThis": "Use",
-      "requestAiHelp": "Request AI Help"
+      "requestAiHelp": "Request AI Help",
+      "inputGrades": "Enter Grades"
     },
     "table": {
       "subject": "Subject",

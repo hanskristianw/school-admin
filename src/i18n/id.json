@@ -708,7 +708,8 @@
       "nextStep": "Langkah Berikutnya",
       "previousStep": "Sebelumnya",
       "useThis": "Gunakan",
-      "requestAiHelp": "Minta Saran AI"
+      "requestAiHelp": "Minta Saran AI",
+      "inputGrades": "Input Nilai"
     },
     "table": {
       "subject": "Mata Pelajaran",

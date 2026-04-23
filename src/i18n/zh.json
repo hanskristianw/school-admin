@@ -707,7 +707,8 @@
       "nextStep": "下一步",
       "previousStep": "上一步",
       "useThis": "使用",
-      "requestAiHelp": "请求AI帮助"
+      "requestAiHelp": "请求AI帮助",
+      "inputGrades": "输入成绩"
     },
     "table": {
       "subject": "学科",

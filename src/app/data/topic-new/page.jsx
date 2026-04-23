@@ -4802,7 +4802,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-md transition-all shadow-sm hover:shadow-md"
                         >
                           <span>📝</span>
-                          Input Nilai
+                          {t('topicNew.buttons.inputGrades')}
                         </button>
                       )}
                       
@@ -4915,7 +4915,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   onClick={() => router.push(`/data/assessment_grading/${assessment.assessment_id}`)}
                                   className="px-2 py-1 text-xs font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded transition-all"
                                 >
-                                  📝 Input Nilai
+                                  📝 {t('topicNew.buttons.inputGrades')}
                                 </button>
                               )}
                               {(isAdmin || (canEdit && isPending)) && (
