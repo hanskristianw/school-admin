@@ -25,6 +25,7 @@ export default function TopicNewPage() {
   const router = useRouter()
   const { t, lang } = useI18n()
   const aiScrollRef = useRef(null)
+  const commentImportRef = useRef(null)
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('topic_active_tab') || 'planning'
     return 'planning'
@@ -2147,6 +2148,102 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     setCommentStudents(prev => prev.map(s =>
       s.user_id === userId ? { ...s, comment_text: text, saved: false } : s
     ))
+  }
+
+  const downloadCommentTemplate = async () => {
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      workbook.creator = 'School Admin'
+      const sheet = workbook.addWorksheet('Comments')
+
+      sheet.columns = [
+        { header: 'No', key: 'no', width: 6 },
+        { header: 'Student Name', key: 'nama', width: 32 },
+        { header: 'Comment (fill this)', key: 'comment', width: 65 },
+        { header: 'user_id (do not edit)', key: 'user_id', width: 20 },
+      ]
+
+      // Style header row
+      const headerRow = sheet.getRow(1)
+      headerRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FF1D4ED8' } } }
+      })
+      headerRow.height = 20
+
+      // Add student rows
+      commentStudents.forEach((s, i) => {
+        const row = sheet.addRow({
+          no: i + 1,
+          nama: s.nama,
+          comment: s.comment_text || '',
+          user_id: s.user_id,
+        })
+        // Gray out non-editable cells
+        ;['no', 'nama', 'user_id'].forEach(key => {
+          row.getCell(key).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
+          row.getCell(key).font = { color: { argb: 'FF6B7280' } }
+        })
+        row.getCell('comment').alignment = { wrapText: true }
+        row.height = 40
+      })
+
+      // Note at the bottom
+      sheet.addRow([])
+      const noteRow = sheet.addRow(['', '* Only edit the "Comment" column. Do not modify other columns.'])
+      noteRow.getCell(2).font = { italic: true, color: { argb: 'FF9CA3AF' } }
+      sheet.mergeCells(`B${noteRow.number}:D${noteRow.number}`)
+
+      const subjectName = subjects.find(s => String(s.subject_id) === String(commentSubject))?.subject_name || 'subject'
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `comment_template_${subjectName.replace(/\s+/g, '_')}_sem${commentSemester}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Failed to generate template: ' + err.message)
+    }
+  }
+
+  const handleCommentImport = async (file) => {
+    if (!file) return
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      const arrayBuffer = await file.arrayBuffer()
+      await workbook.xlsx.load(arrayBuffer)
+      const sheet = workbook.getWorksheet(1)
+      if (!sheet) throw new Error('No worksheet found in file')
+
+      let updated = 0
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return // skip header
+        const userId = row.getCell(4).value // column D: user_id
+        const rawComment = row.getCell(3).value // column C: comment
+        if (!userId) return
+        const comment = rawComment != null ? String(rawComment) : ''
+        const student = commentStudents.find(s => String(s.user_id) === String(userId))
+        if (student) {
+          updateCommentText(student.user_id, comment)
+          updated++
+        }
+      })
+
+      alert(`Import successful! ${updated} comment(s) loaded. Click "Save All" to save.`)
+    } catch (err) {
+      alert('Failed to import file: ' + err.message)
+    } finally {
+      // Reset file input so same file can be re-imported
+      if (commentImportRef.current) commentImportRef.current.value = ''
+    }
   }
   
   const saveComment = async (student) => {
@@ -4905,7 +5002,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             
             {/* Save All bar */}
             {commentStudents.length > 0 && (
-              <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
                 <span className="text-sm text-gray-600">
                   {commentStudents.length} student{commentStudents.length !== 1 ? 's' : ''}
                   {commentStudents.filter(s => !s.saved).length > 0 && (
@@ -4914,14 +5011,43 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </span>
                   )}
                 </span>
-                <button
-                  type="button"
-                  onClick={saveAllComments}
-                  disabled={commentStudents.every(s => s.saved) || savingCommentId !== null}
-                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  💾 Save All
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Download Template */}
+                  <button
+                    type="button"
+                    onClick={downloadCommentTemplate}
+                    className="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                  >
+                    📥 Download Template
+                  </button>
+                  {/* Import */}
+                  <button
+                    type="button"
+                    onClick={() => commentImportRef.current?.click()}
+                    className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-1.5"
+                  >
+                    📤 Import Excel
+                  </button>
+                  <input
+                    ref={commentImportRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleCommentImport(file)
+                    }}
+                  />
+                  {/* Save All */}
+                  <button
+                    type="button"
+                    onClick={saveAllComments}
+                    disabled={commentStudents.every(s => s.saved) || savingCommentId !== null}
+                    className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    💾 Save All
+                  </button>
+                </div>
               </div>
             )}
             
