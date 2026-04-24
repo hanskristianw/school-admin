@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faArrowLeft, faSave, faSpinner, faCheckCircle, faFileExcel, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faArrowLeft, faSave, faSpinner, faCheckCircle, faFileExcel, faTrash, faDownload, faUpload } from '@fortawesome/free-solid-svg-icons'
 
 export default function AssessmentGradingPage() {
   const params = useParams()
@@ -22,6 +22,7 @@ export default function AssessmentGradingPage() {
   const [error, setError] = useState(null)
   const customBoundariesRef = useRef(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const importRef = useRef(null)
 
   // Fetch all data
   useEffect(() => {
@@ -306,6 +307,126 @@ export default function AssessmentGradingPage() {
     }
   }
 
+  // Download Excel template for grade input
+  const downloadGradeTemplate = async () => {
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      workbook.creator = 'School Admin'
+      const sheet = workbook.addWorksheet('Grades')
+
+      // Build columns dynamically based on active criteria
+      const columns = [
+        { header: 'No', key: 'no', width: 6 },
+        { header: 'Student Name', key: 'nama', width: 30 },
+        ...criteria.map(c => ({ header: `Criterion ${c.code} (0-8)`, key: c.code, width: 18 })),
+        { header: 'detail_siswa_id (do not edit)', key: 'detail_siswa_id', width: 24 },
+      ]
+      sheet.columns = columns
+
+      // Style header row
+      const headerRow = sheet.getRow(1)
+      headerRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FF3730A3' } } }
+      })
+      headerRow.height = 20
+
+      // Add student rows
+      students.forEach((s, i) => {
+        const g = grades[s.detail_siswa_id] || {}
+        const row = sheet.addRow({
+          no: i + 1,
+          nama: s.nama,
+          ...Object.fromEntries(criteria.map(c => [c.code, g[c.code] ?? ''])),
+          detail_siswa_id: s.detail_siswa_id,
+        })
+        // Gray out non-editable cells
+        ;['no', 'nama', 'detail_siswa_id'].forEach(key => {
+          row.getCell(key).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
+          row.getCell(key).font = { color: { argb: 'FF6B7280' } }
+        })
+        // Style criterion grade cells
+        criteria.forEach(c => {
+          row.getCell(c.code).alignment = { horizontal: 'center' }
+        })
+        row.height = 22
+      })
+
+      // Note at the bottom
+      sheet.addRow([])
+      const noteRow = sheet.addRow(['', '* Fill in criterion scores (0-8). Do not modify "No", "Student Name", or "detail_siswa_id" columns.'])
+      noteRow.getCell(2).font = { italic: true, color: { argb: 'FF9CA3AF' } }
+      const lastColLetter = String.fromCharCode(65 + columns.length - 1)
+      sheet.mergeCells(`B${noteRow.number}:${lastColLetter}${noteRow.number}`)
+
+      const assessmentName = assessment?.assessment_nama?.replace(/[^a-z0-9]/gi, '_') || 'assessment'
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `grade_template_${assessmentName}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Failed to generate template: ' + err.message)
+    }
+  }
+
+  // Import grades from Excel template
+  const handleGradeImport = async (file) => {
+    if (!file) return
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      const arrayBuffer = await file.arrayBuffer()
+      await workbook.xlsx.load(arrayBuffer)
+      const sheet = workbook.getWorksheet(1)
+      if (!sheet) throw new Error('No worksheet found in file')
+
+      // Column positions: No(1), Name(2), ...criteria..., detail_siswa_id(last)
+      const criteriaStartCol = 3
+      const idCol = criteriaStartCol + criteria.length
+
+      let updated = 0
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return // skip header
+        const detailSiswaId = row.getCell(idCol).value
+        if (!detailSiswaId) return
+        const student = students.find(s => String(s.detail_siswa_id) === String(detailSiswaId))
+        if (!student) return
+
+        const criterionUpdates = {}
+        criteria.forEach((c, idx) => {
+          const raw = row.getCell(criteriaStartCol + idx).value
+          criterionUpdates[c.code] = raw !== null && raw !== '' ? Math.min(8, Math.max(0, parseInt(raw) || 0)) : null
+        })
+
+        setGrades(prev => {
+          const existing = prev[student.detail_siswa_id] || {}
+          const updated = {
+            ...existing,
+            ...criterionUpdates,
+          }
+          updated.final_grade = calculateFinalGrade(updated)
+          return { ...prev, [student.detail_siswa_id]: updated }
+        })
+        updated++
+      })
+
+      alert(`Import successful! ${updated} student(s) loaded. Click "Save" to save.`)
+    } catch (err) {
+      alert('Failed to import file: ' + err.message)
+    } finally {
+      if (importRef.current) importRef.current.value = ''
+    }
+  }
+
   // Export to CSV
   const handleExport = () => {
     const headers = ['Student Name', ...criteria.map(c => `Criterion ${c.code}`), 'Final Grade', 'Comments']
@@ -420,11 +541,38 @@ export default function AssessmentGradingPage() {
                 <FontAwesomeIcon icon={faCheckCircle} className="text-emerald-500 text-sm" />
               )}
               <button
+                onClick={downloadGradeTemplate}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 border border-indigo-200 hover:bg-indigo-50 rounded transition-colors"
+                title="Download Grade Template (.xlsx)"
+              >
+                <FontAwesomeIcon icon={faDownload} className="text-xs" />
+                <span>Download Template</span>
+              </button>
+              <button
+                onClick={() => importRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-600 border border-purple-200 hover:bg-purple-50 rounded transition-colors"
+                title="Import from Excel"
+              >
+                <FontAwesomeIcon icon={faUpload} className="text-xs" />
+                <span>Import Excel</span>
+              </button>
+              <input
+                ref={importRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleGradeImport(file)
+                }}
+              />
+              <button
                 onClick={handleExport}
-                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 rounded transition-colors"
                 title="Export CSV"
               >
-                <FontAwesomeIcon icon={faFileExcel} className="text-sm" />
+                <FontAwesomeIcon icon={faFileExcel} className="text-xs" />
+                <span>Export CSV</span>
               </button>
               <button
                 onClick={handleSave}

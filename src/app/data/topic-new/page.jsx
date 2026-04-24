@@ -26,6 +26,7 @@ export default function TopicNewPage() {
   const { t, lang } = useI18n()
   const aiScrollRef = useRef(null)
   const commentImportRef = useRef(null)
+  const mentorImportRef = useRef(null)
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('topic_active_tab') || 'planning'
     return 'planning'
@@ -2471,6 +2472,119 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (unsaved.length === 0) return
     for (const student of unsaved) {
       await saveMentorComment(student)
+    }
+  }
+
+  const downloadMentorCommentTemplate = async () => {
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      workbook.creator = 'School Admin'
+      const sheet = workbook.addWorksheet('Mentor Comments')
+
+      sheet.columns = [
+        { header: 'No', key: 'no', width: 6 },
+        { header: 'Student Name', key: 'nama', width: 32 },
+        { header: 'Comment (fill this)', key: 'comment', width: 55 },
+        { header: 'Present', key: 'present', width: 10 },
+        { header: 'Absent', key: 'absent', width: 10 },
+        { header: 'Late', key: 'late', width: 10 },
+        { header: 'Sick', key: 'sick', width: 10 },
+        { header: 'Excused', key: 'excused', width: 10 },
+        { header: 'user_id (do not edit)', key: 'user_id', width: 20 },
+      ]
+
+      // Style header row
+      const headerRow = sheet.getRow(1)
+      headerRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FF1D4ED8' } } }
+      })
+      headerRow.height = 20
+
+      // Add student rows
+      mentorStudents.forEach((s, i) => {
+        const row = sheet.addRow({
+          no: i + 1,
+          nama: s.nama,
+          comment: s.comment_text || '',
+          present: s.present ?? 0,
+          absent: s.absent ?? 0,
+          late: s.late ?? 0,
+          sick: s.sick ?? 0,
+          excused: s.excused ?? 0,
+          user_id: s.user_id,
+        })
+        // Gray out non-editable cells
+        ;['no', 'nama', 'user_id'].forEach(key => {
+          row.getCell(key).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
+          row.getCell(key).font = { color: { argb: 'FF6B7280' } }
+        })
+        row.getCell('comment').alignment = { wrapText: true }
+        row.height = 40
+      })
+
+      // Note at the bottom
+      sheet.addRow([])
+      const noteRow = sheet.addRow(['', '* Only edit Comment and attendance columns. Do not modify "No", "Student Name", or "user_id".'])
+      noteRow.getCell(2).font = { italic: true, color: { argb: 'FF9CA3AF' } }
+      sheet.mergeCells(`B${noteRow.number}:I${noteRow.number}`)
+
+      const kelasName = mentorKelasOptions.find(k => String(k.kelas_id) === String(mentorKelas))?.kelas_nama || 'kelas'
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mentor_comment_${kelasName.replace(/\s+/g, '_')}_sem${mentorSemester}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Failed to generate template: ' + err.message)
+    }
+  }
+
+  const handleMentorCommentImport = async (file) => {
+    if (!file) return
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      const arrayBuffer = await file.arrayBuffer()
+      await workbook.xlsx.load(arrayBuffer)
+      const sheet = workbook.getWorksheet(1)
+      if (!sheet) throw new Error('No worksheet found in file')
+
+      let updated = 0
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return // skip header
+        const userId = row.getCell(9).value // column I: user_id
+        if (!userId) return
+        const comment = row.getCell(3).value != null ? String(row.getCell(3).value) : ''
+        const present = Math.max(0, parseInt(row.getCell(4).value) || 0)
+        const absent = Math.max(0, parseInt(row.getCell(5).value) || 0)
+        const late = Math.max(0, parseInt(row.getCell(6).value) || 0)
+        const sick = Math.max(0, parseInt(row.getCell(7).value) || 0)
+        const excused = Math.max(0, parseInt(row.getCell(8).value) || 0)
+        const student = mentorStudents.find(s => String(s.user_id) === String(userId))
+        if (student) {
+          setMentorStudents(prev => prev.map(s =>
+            String(s.user_id) === String(userId)
+              ? { ...s, comment_text: comment, present, absent, late, sick, excused, saved: false }
+              : s
+          ))
+          updated++
+        }
+      })
+
+      alert(`Import successful! ${updated} record(s) loaded. Click "Save All" to save.`)
+    } catch (err) {
+      alert('Failed to import file: ' + err.message)
+    } finally {
+      if (mentorImportRef.current) mentorImportRef.current.value = ''
     }
   }
 
@@ -5177,7 +5291,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
             {/* Save All bar */}
             {mentorStudents.length > 0 && (
-              <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
                 <span className="text-sm text-gray-600">
                   {mentorStudents.length} {mentorStudents.length !== 1 ? t('topicNew.mentorCommentTab.studentsPlural') : t('topicNew.mentorCommentTab.students')}
                   {mentorStudents.filter(s => !s.saved).length > 0 && (
@@ -5186,14 +5300,43 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </span>
                   )}
                 </span>
-                <button
-                  type="button"
-                  onClick={saveAllMentorComments}
-                  disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null}
-                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  💾 {t('topicNew.mentorCommentTab.saveAll')}
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Download Template */}
+                  <button
+                    type="button"
+                    onClick={downloadMentorCommentTemplate}
+                    className="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                  >
+                    📥 Download Template
+                  </button>
+                  {/* Import */}
+                  <button
+                    type="button"
+                    onClick={() => mentorImportRef.current?.click()}
+                    className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-1.5"
+                  >
+                    📤 Import Excel
+                  </button>
+                  <input
+                    ref={mentorImportRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleMentorCommentImport(file)
+                    }}
+                  />
+                  {/* Save All */}
+                  <button
+                    type="button"
+                    onClick={saveAllMentorComments}
+                    disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null}
+                    className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    💾 {t('topicNew.mentorCommentTab.saveAll')}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -5399,11 +5542,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       {modalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black bg-opacity-50 transition-opacity duration-300"
-          onClick={() => {
-            setModalOpen(false)
-            // Reset AI modal states when closing main modal
-            resetAiState()
-          }}
         >
           <div className="w-full flex justify-center items-start gap-4 max-w-[1400px] mt-8" onClick={(e) => e.stopPropagation()}>
             <div 
