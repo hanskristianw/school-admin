@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import { flushSync } from 'react-dom'
@@ -16,6 +16,7 @@ import {
   generateAssessmentPDFFromCard,
   exportAssessmentWordFromCard,
   generateStudentReportHTML,
+  generateClassReportZIP,
   generateClassRecapPDFReport,
 } from './lib/pdfGenerators'
 import useAiHelp from './lib/useAiHelp'
@@ -273,6 +274,8 @@ export default function TopicNewPage() {
   const [reportStudents, setReportStudents] = useState([])
   const [loadingReport, setLoadingReport] = useState(false)
   const [loadingReportStudents, setLoadingReportStudents] = useState(false)
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, name: '' })
+  const [reportMode, setReportMode] = useState('single') // 'single' or 'class'
   
   // Class Recap state (for assessment tab)
   const [recapSemesterFilter, setRecapSemesterFilter] = useState('')
@@ -2002,6 +2005,22 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       setLoadingReport,
       onError: (err) => alert('Gagal menghasilkan report: ' + err.message)
     })
+  }
+  
+  // Generate all student reports as ZIP
+  const generateAllReports = async () => {
+    setBatchProgress({ current: 0, total: reportStudents.length, name: '' })
+    await generateClassReportZIP({
+      reportFilters,
+      reportStudents,
+      reportKelasOptions,
+      reportYears,
+      subjects,
+      setLoadingReport,
+      onProgress: (current, total, name) => setBatchProgress({ current, total, name }),
+      onError: (err) => alert('Gagal menghasilkan report kelas: ' + err.message)
+    })
+    setBatchProgress({ current: 0, total: 0, name: '' })
   }
   
   // Fetch class recap data
@@ -5434,7 +5453,32 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             
             {/* Filters */}
             <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Mode selector */}
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm font-medium text-gray-700 mr-2">{t('topicNew.report.modeLabel')}</span>
+                <button
+                  onClick={() => setReportMode('single')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    reportMode === 'single'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  🧑 {t('topicNew.report.modeSingle')}
+                </button>
+                <button
+                  onClick={() => setReportMode('class')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    reportMode === 'class'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  📦 {t('topicNew.report.modeClass')}
+                </button>
+              </div>
+
+              <div className={`grid grid-cols-1 gap-4 ${reportMode === 'single' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                 {/* Year Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.yearLabel')}</label>
@@ -5482,44 +5526,92 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </select>
                 </div>
                 
-                {/* Student Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.studentLabel')}</label>
-                  <select
-                    value={reportFilters.student}
-                    onChange={(e) => handleReportFilterChange('student', e.target.value)}
-                    disabled={!reportFilters.kelas || loadingReportStudents}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {loadingReportStudents ? t('topicNew.fields.loading') : !reportFilters.kelas ? t('topicNew.report.selectClassFirst') : t('topicNew.report.selectStudent')}
-                    </option>
-                    {reportStudents.map(student => (
-                      <option key={student.detail_siswa_id} value={student.detail_siswa_id}>{student.nama}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Student Filter — only visible in single mode */}
+                {reportMode === 'single' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.studentLabel')}</label>
+                    <select
+                      value={reportFilters.student}
+                      onChange={(e) => handleReportFilterChange('student', e.target.value)}
+                      disabled={!reportFilters.kelas || loadingReportStudents}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {loadingReportStudents ? t('topicNew.fields.loading') : !reportFilters.kelas ? t('topicNew.report.selectClassFirst') : t('topicNew.report.selectStudent')}
+                      </option>
+                      {reportStudents.map(student => (
+                        <option key={student.detail_siswa_id} value={student.detail_siswa_id}>{student.nama}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
+
+              {/* Class mode info banner */}
+              {reportMode === 'class' && reportStudents.length > 0 && reportFilters.kelas && (
+                <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-700">
+                  📋 {t('topicNew.report.classInfoBanner', { count: reportStudents.length })}
+                </div>
+              )}
               
-              <div className="mt-4 flex justify-end">
-                {/* Download PDF Report Button */}
-                <button
-                  onClick={generateReport}
-                  disabled={!reportFilters.kelas || !reportFilters.student || loadingReport}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingReport ? (
-                    <>
-                      <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                      {t('topicNew.report.generating')}
-                    </>
+              <div className="mt-4 flex flex-col gap-3">
+                {/* Progress bar for batch generation */}
+                {loadingReport && batchProgress.total > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-gray-700 font-medium">
+                        {t('topicNew.report.progressText', { current: batchProgress.current, total: batchProgress.total })}
+                      </span>
+                      <span className="text-gray-500 truncate ml-2 max-w-[200px]">
+                        {batchProgress.name}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-end">
+                  {reportMode === 'class' ? (
+                    <button
+                      onClick={generateAllReports}
+                      disabled={!reportFilters.kelas || !reportFilters.semester || reportStudents.length === 0 || loadingReport}
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingReport && batchProgress.total > 0 ? (
+                        <>
+                          <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                          {t('topicNew.report.generating')}
+                        </>
+                      ) : (
+                        <>
+                          📦 {t('topicNew.report.downloadAllButton')}
+                        </>
+                      )}
+                    </button>
                   ) : (
-                    <>
-                      <FontAwesomeIcon icon={faPrint} />
-                      {t('topicNew.report.previewButton')}
-                    </>
+                    <button
+                      onClick={generateReport}
+                      disabled={!reportFilters.kelas || !reportFilters.student || loadingReport}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingReport ? (
+                        <>
+                          <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                          {t('topicNew.report.generating')}
+                        </>
+                      ) : (
+                        <>
+                          <FontAwesomeIcon icon={faPrint} />
+                          {t('topicNew.report.previewButton')}
+                        </>
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             </div>
             

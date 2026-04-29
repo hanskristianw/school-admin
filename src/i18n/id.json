@@ -812,6 +812,12 @@
       "selectStudent": "Pilih Siswa",
       "previewButton": "Preview Report",
       "generating": "Membuat...",
+      "modeLabel": "Mode:",
+      "modeSingle": "1 Siswa",
+      "modeClass": "1 Kelas (ZIP)",
+      "classInfoBanner": "{count} siswa ditemukan di kelas ini. Semua report akan di-generate menjadi 1 file ZIP.",
+      "progressText": "Membuat report {current}/{total}",
+      "downloadAllButton": "Download Semua Report (ZIP)",
       "infoText": "Pilih tahun ajaran, semester, kelas, dan siswa kemudian klik tombol \"Preview Report\" untuk melihat dan mencetak laporan progress siswa."
     },
     "mentorCommentTab": {

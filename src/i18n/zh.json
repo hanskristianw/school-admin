@@ -811,6 +811,12 @@
       "selectStudent": "选择学生",
       "previewButton": "预览报告",
       "generating": "生成中...",
+      "modeLabel": "模式：",
+      "modeSingle": "单个学生",
+      "modeClass": "整个班级 (ZIP)",
+      "classInfoBanner": "在此班级中找到 {count} 名学生。所有报告将生成为 1 个 ZIP 文件。",
+      "progressText": "正在生成报告 {current}/{total}",
+      "downloadAllButton": "下载所有报告 (ZIP)",
       "infoText": "请选择学年、学期、班级和学生，然后点击\"预览报告\"按钮查看和打印学生进度报告。"
     },
     "mentorCommentTab": {
