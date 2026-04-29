@@ -124,14 +124,20 @@ export default supabase
 
 // Factory to create a client that always sends an Authorization bearer
 export function createSupabaseWithAuth(token) {
+  const headers = bearerHeaders(token)
   const client = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: headers
+    },
     auth: {
       autoRefreshToken: false,
       persistSession: false,
       detectSessionInUrl: false
     }
   })
-  const headers = bearerHeaders(token)
-  client.headers = { ...(client.headers || {}), ...headers }
+  // Force-propagate to the PostgREST sub-client (.from() reads from rest.headers)
+  if (client.rest) {
+    client.rest.headers = { ...client.rest.headers, ...headers }
+  }
   return client
 }
