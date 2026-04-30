@@ -1287,10 +1287,11 @@ export const exportAssessmentWordFromCard = async (topic, { subjectMap, kelasNam
  */
 const buildStudentReportPDF = ({
   studentName, studentFirstName, studentDOB,
-  kelasName, semester, semesterLabel,
+  kelasName, semester, semesterLabel, yearName,
   homeroomTeacherName, unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
   logoBase64, reportRows, iconCache, iconBySubjectId,
-  criteriaNameCache, descriptorCache, mentorComment
+  criteriaNameCache, descriptorCache, mentorComment,
+  semester1Rows
 }) => {
 const doc = new jsPDF('portrait', 'mm', 'a4');
 const pw = doc.internal.pageSize.getWidth();   // 210
@@ -2230,6 +2231,277 @@ autoTable(doc, {
   didDrawPage: () => { drawFooter(); },
 });
 
+// ══════════════════════════════════════════════
+// PROGRESSION REPORT PAGE (Semester 2 only)
+// ══════════════════════════════════════════════
+if (semester === '2') {
+  doc.addPage();
+
+  // ── Watermark: logo behind content ──
+  if (logoBase64) {
+    try {
+      const wmH = 80;
+      const imgProps = doc.getImageProperties(logoBase64);
+      const wmW = (imgProps.width / imgProps.height) * wmH;
+      // Save state, set opacity, draw centered
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({ opacity: 0.07 }));
+      doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH);
+      doc.restoreGraphicsState();
+    } catch (e) { /* skip watermark on error */ }
+  }
+
+  // ── Header: Logo + Title (same style as cover) ──
+  let py = mt;
+  let pLogoW = 0;
+  if (logoBase64) {
+    try {
+      const logoH = 26;
+      const imgProps = doc.getImageProperties(logoBase64);
+      pLogoW = (imgProps.width / imgProps.height) * logoH;
+      doc.addImage(logoBase64, 'PNG', ml, py, pLogoW, logoH);
+    } catch (e) { pLogoW = 0; }
+  }
+  const ptxStart = ml + (pLogoW > 0 ? pLogoW + 6 : 0);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(55, 65, 81);
+  doc.text('Middle School Report', ptxStart, py + 8);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(17, 24, 39);
+  doc.text('Chung Chung Christian School', ptxStart, py + 17);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(156, 163, 175);
+  doc.text(`Prepared on ${preparedDate}`, ptxStart, py + 24);
+
+  // ── Student Info ──
+  py += 34;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(17, 24, 39);
+  doc.text(studentName, ml, py);
+
+  py += 6;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(107, 114, 128);
+  doc.text('Grade', ml, py);
+  doc.text('Year Program', ml + 45, py);
+  py += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(31, 41, 55);
+  doc.text(kelasName, ml, py);
+  doc.text(yearName || '', ml + 45, py);
+
+  // ── Progression Table ──
+  py += 8;
+
+  // ── DIKNAS conversion lookup table (core subjects, 4 criteria, boundary 4–32) ──
+  const CORE_DIKNAS = {
+    4: 60,  5: 61,  6: 63,  7: 64,  8: 66,  9: 67,
+    10: 69, 11: 70, 12: 71, 13: 73, 14: 74,
+    15: 76, 16: 77, 17: 79, 18: 80, 19: 81,
+    20: 83, 21: 84, 22: 86, 23: 87,
+    24: 89, 25: 90, 26: 91, 27: 93,
+    28: 94, 29: 96, 30: 97, 31: 99, 32: 100
+  };
+
+  // Helper: get DIKNAS score.
+  // Normalizes raw criteria sum to 4-criteria equivalent so subjects with
+  // fewer graded criteria (e.g. 2 criteria) still map correctly into the table.
+  const getDiknas = (isCore, criteriaTotal, numCriteria) => {
+    if (!isCore || criteriaTotal === null || criteriaTotal === undefined) return '';
+    const n = (numCriteria && numCriteria > 0) ? numCriteria : 4;
+    // Scale to 4-criteria equivalent, clamp to valid range [4, 32]
+    const normalized = Math.min(32, Math.max(4, Math.round(criteriaTotal * 4 / n)));
+    return CORE_DIKNAS[normalized] !== undefined ? String(CORE_DIKNAS[normalized]) : '';
+  };
+
+  // Build s1 lookup map: subject_id → { semester_overview, criteriaTotal, numCriteria, core_subject }
+  const s1Map = {};
+  if (semester1Rows && semester1Rows.length > 0) {
+    semester1Rows.forEach(r => {
+      s1Map[r.subject_id] = {
+        semester_overview: r.semester_overview,
+        criteriaTotal:     r.criteriaTotal  ?? null,
+        numCriteria:       r.numCriteria    ?? 4,
+        core_subject:      r.core_subject   ?? false,
+      };
+    });
+  }
+
+  const progBody = reportRows.map((row, idx) => {
+    // S1 IB score + DIKNAS (conversion only if all 4 criteria were graded in S1)
+    const s1Entry       = s1Map[row.subject_id];
+    const s1Score       = s1Entry?.semester_overview != null ? String(s1Entry.semester_overview) : '-';
+    const s1AllFour     = row.core_subject && (s1Entry?.numCriteria ?? 0) === 4;
+    const s1Diknas      = s1AllFour ? getDiknas(row.core_subject, s1Entry?.criteriaTotal ?? null, 4) : '';
+
+    // S2 IB score + DIKNAS (conversion only if all 4 criteria are graded in S2)
+    const s2Score       = row.semester_overview != null ? String(row.semester_overview) : '-';
+    const s2Grades      = row.grades || {};
+    const s2Vals        = [s2Grades.A, s2Grades.B, s2Grades.C, s2Grades.D].filter(g => g !== null && g !== undefined);
+    const s2Total       = s2Vals.length > 0 ? s2Vals.reduce((a, b) => a + b, 0) : null;
+    const s2AllFour     = row.core_subject && s2Vals.length === 4;
+    const s2Diknas      = s2AllFour ? getDiknas(row.core_subject, s2Total, 4) : '';
+
+    // Final Grade: only show when ALL 4 criteria graded in S2
+    const finalScore    = s2AllFour ? s2Score  : '';
+    const finalDiknas   = s2AllFour ? getDiknas(row.core_subject, s2Total, 4) : '';
+
+    return [
+      String(idx + 1),
+      row.subject_name,
+      s1Score,    s1Diknas,    // S1 IB | S1 Conversion
+      s2Score,    s2Diknas,    // S2 IB | S2 Conversion
+      finalScore, finalDiknas, // Final IB | Final Conversion
+    ];
+  });
+
+
+
+  // Column widths: must sum to cw (210 - 18 - 18 = 174mm)
+  // No | Subjects | S1IB | S1Conv | S2IB | S2Conv | FinalIB | FinalConv
+  //  8 |    44    |  16  |   24   |  16  |   24   |   18    |   24      = 174
+  autoTable(doc, {
+    startY: py,
+    head: [[
+      { content: 'No',          rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+      { content: 'Subjects',    rowSpan: 2, styles: { valign: 'middle' } },
+      { content: 'Semester 1\nProgression', colSpan: 2, styles: { halign: 'center' } },
+      { content: 'Semester 2\nProgression', colSpan: 2, styles: { halign: 'center' } },
+      { content: 'Final Grade', colSpan: 2, styles: { halign: 'center' } },
+    ], [
+      { content: 'IB\nScores',    styles: { halign: 'center' } },
+      { content: 'Conversion',    styles: { halign: 'center' } },
+      { content: 'IB\nScores',    styles: { halign: 'center' } },
+      { content: 'Conversion',    styles: { halign: 'center' } },
+      { content: 'IB\nScores',    styles: { halign: 'center' } },
+      { content: 'Conversion',    styles: { halign: 'center' } },
+    ]],
+    body: progBody,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: { top: 2.5, right: 2, bottom: 2.5, left: 2 },
+      lineColor: [0, 0, 0],
+      lineWidth: 0.2,
+      textColor: [0, 0, 0],
+      fillColor: [255, 255, 255],   // plain white, no alternating
+      overflow: 'linebreak',
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      fontSize: 7.5,
+      halign: 'center',
+      valign: 'middle',
+      cellPadding: { top: 2, right: 1.5, bottom: 2, left: 1.5 },
+    },
+    columnStyles: {
+      0: { cellWidth: 8,  halign: 'center' },
+      1: { cellWidth: 44 },
+      2: { cellWidth: 16, halign: 'center' },
+      3: { cellWidth: 24, halign: 'center' },
+      4: { cellWidth: 16, halign: 'center' },
+      5: { cellWidth: 24, halign: 'center' },
+      6: { cellWidth: 18, halign: 'center' },
+      7: { cellWidth: 24, halign: 'center' },
+    },
+    margin: { left: ml, right: mr },
+  });
+
+  let afterTableY = doc.lastAutoTable.finalY + 10;
+
+  // ── Academic Status ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(17, 24, 39);
+  doc.text('Academic Status', ml, afterTableY);
+  afterTableY += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(31, 41, 55);
+  const statusText = `After the evaluation of academic performance, attendance, and behavior for the academic year ${yearName || ''}, it is hereby confirmed that:`;
+  const statusLines = doc.splitTextToSize(statusText, cw);
+  statusLines.forEach(line => {
+    doc.text(line, ml, afterTableY);
+    afterTableY += 4;
+  });
+  afterTableY += 3;
+
+  // Helper: draw checkbox + optional manual checkmark tick (V shape with lines)
+  const drawCheckbox = (x, y, checked) => {
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    const sz = 3.5;
+    doc.rect(x, y - sz + 0.5, sz, sz);
+    if (checked) {
+      // Draw a V-shaped tick manually inside the box
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(0, 0, 0);
+      const tx = x + 0.5, ty = y - sz + 0.5;
+      doc.line(tx + 0.4, ty + sz * 0.55, tx + sz * 0.38, ty + sz * 0.85);
+      doc.line(tx + sz * 0.38, ty + sz * 0.85, tx + sz - 0.3, ty + sz * 0.15);
+      doc.setLineWidth(0.3);
+    }
+  };
+
+  // Checkbox 1: Promoted (checked ✓)
+  drawCheckbox(ml, afterTableY, true);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(31, 41, 55);
+  const cb1Text = 'The student has met the required standards and is eligible to be promoted to the next grade level';
+  const cb1Lines = doc.splitTextToSize(cb1Text, cw - 6);
+  cb1Lines.forEach((line, i) => { doc.text(line, ml + 5, afterTableY + (i * 4)); });
+  afterTableY += cb1Lines.length * 4 + 4;
+
+  // Checkbox 2: Conditional promotion (unchecked)
+  drawCheckbox(ml, afterTableY, false);
+  const cb2Text = 'The student is recommended for conditional promotion with required academic support';
+  const cb2Lines = doc.splitTextToSize(cb2Text, cw - 6);
+  cb2Lines.forEach((line, i) => { doc.text(line, ml + 5, afterTableY + (i * 4)); });
+  afterTableY += cb2Lines.length * 4 + 14;
+
+  // ── Signature Section ──
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(17, 24, 39);
+  doc.text(`Surabaya, ${preparedDate}`, pw / 2, afterTableY, { align: 'center' });
+  afterTableY += 20;
+
+  const colW = cw / 3;
+  const col1X = ml + colW / 2;
+  const col2X = ml + colW + colW / 2;
+  const col3X = ml + colW * 2 + colW / 2;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('....................', col1X, afterTableY, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(homeroomTeacherName, col2X, afterTableY, { align: 'center' });
+  doc.text(unitPrincipalName || '', col3X, afterTableY, { align: 'center' });
+
+  afterTableY += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Parent', col1X, afterTableY, { align: 'center' });
+  doc.text('Grade Mentor', col2X, afterTableY, { align: 'center' });
+  doc.text(unitPrincipalTitle || 'Principal', col3X, afterTableY, { align: 'center' });
+
+  drawFooter();
+}
+
+
+
   const pdfBlob = doc.output('blob');
   return pdfBlob;
 };
@@ -2553,13 +2825,78 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       }
     }
 
+    // ─── Fetch Semester 1 grades when generating Semester 2 (for Progression page) ──
+    let semester1Rows = [];
+    if (semester === '2') {
+      for (const dk of detailKelasData || []) {
+        if (!dk.subject) continue;
+        if (dk.subject.include_in_print === false) continue;
+
+        const { data: s1Assessments } = await supabase
+          .from('assessment')
+          .select('assessment_id')
+          .eq('assessment_detail_kelas_id', dk.detail_kelas_id)
+          .in('assessment_status', [0, 1, 3])
+          .eq('assessment_semester', 1);
+
+        let s1Grades = { A: null, B: null, C: null, D: null };
+        let s1Overview = null;
+        const s1Ids = (s1Assessments || []).map(a => a.assessment_id);
+        if (s1Ids.length > 0) {
+          const { data: s1GradesData } = await supabase
+            .from('assessment_grades')
+            .select('criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade')
+            .eq('detail_siswa_id', studentId)
+            .in('assessment_id', s1Ids);
+          if (s1GradesData && s1GradesData.length > 0) {
+            const allA = s1GradesData.map(g => g.criterion_a_grade).filter(g => g !== null);
+            const allB = s1GradesData.map(g => g.criterion_b_grade).filter(g => g !== null);
+            const allC = s1GradesData.map(g => g.criterion_c_grade).filter(g => g !== null);
+            const allD = s1GradesData.map(g => g.criterion_d_grade).filter(g => g !== null);
+            s1Grades.A = allA.length > 0 ? Math.max(...allA) : null;
+            s1Grades.B = allB.length > 0 ? Math.max(...allB) : null;
+            s1Grades.C = allC.length > 0 ? Math.max(...allC) : null;
+            s1Grades.D = allD.length > 0 ? Math.max(...allD) : null;
+            const vals = [s1Grades.A, s1Grades.B, s1Grades.C, s1Grades.D].filter(g => g !== null);
+            if (vals.length > 0) {
+              const total = vals.reduce((a, b) => a + b, 0);
+              const scale = vals.length / 4;
+              const customBounds = dk.subject.custom_grade_boundaries;
+              const b = (customBounds && customBounds.length === 6)
+                ? customBounds
+                : [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale));
+              if (total <= b[0]) s1Overview = 1;
+              else if (total <= b[1]) s1Overview = 2;
+              else if (total <= b[2]) s1Overview = 3;
+              else if (total <= b[3]) s1Overview = 4;
+              else if (total <= b[4]) s1Overview = 5;
+              else if (total <= b[5]) s1Overview = 6;
+              else s1Overview = 7;
+            }
+          }
+        }
+        if (s1Grades.A !== null || s1Grades.B !== null || s1Grades.C !== null || s1Grades.D !== null || s1Overview !== null) {
+          const s1Vals = [s1Grades.A, s1Grades.B, s1Grades.C, s1Grades.D].filter(g => g !== null);
+          semester1Rows.push({
+            subject_id:     dk.subject.subject_id,
+            subject_name:   dk.subject.subject_name,
+            core_subject:   dk.subject.core_subject || false,
+            semester_overview: s1Overview,
+            criteriaTotal:  s1Vals.length > 0 ? s1Vals.reduce((a, b) => a + b, 0) : null,
+            numCriteria:    s1Vals.length,
+          });
+        }
+      }
+    }
+
     // ─── Build PDF ─────────────────────────────────────────────────────────
     const pdfBlob = buildStudentReportPDF({
       studentName, studentFirstName, studentDOB,
-      kelasName, semester, semesterLabel,
+      kelasName, semester, semesterLabel, yearName,
       homeroomTeacherName, unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
       logoBase64, reportRows, iconCache, iconBySubjectId,
-      criteriaNameCache, descriptorCache, mentorComment
+      criteriaNameCache, descriptorCache, mentorComment,
+      semester1Rows
     });
     const pdfUrl = URL.createObjectURL(pdfBlob);
     window.open(pdfUrl, '_blank');
@@ -2597,6 +2934,7 @@ export const generateClassReportZIP = async ({
     const semesterLabel = semester === '1' ? 'Semester 1' : 'Semester 2';
     const semesterInt = parseInt(semester);
     const kelasName = reportKelasOptions.find(k => k.kelas_id === kelasId)?.kelas_nama || '';
+    const yearName = reportYears.find(y => y.year_id === parseInt(reportFilters.year))?.year_name || '';
 
     onProgress?.(0, reportStudents.length, 'Fetching shared data...');
 
@@ -2902,12 +3240,73 @@ export const generateClassReportZIP = async ({
         ? new Date(rawDob).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
         : '-';
 
+      // ─── Fetch Semester 1 grades for Progression page (Semester 2 only) ──
+      let semester1Rows = [];
+      if (semester === '2') {
+        for (const dk of printableSubjects) {
+          const { data: s1Assessments } = await supabase
+            .from('assessment')
+            .select('assessment_id')
+            .eq('assessment_detail_kelas_id', dk.detail_kelas_id)
+            .in('assessment_status', [0, 1, 3])
+            .eq('assessment_semester', 1);
+          let s1Grades = { A: null, B: null, C: null, D: null };
+          let s1Overview = null;
+          const s1Ids = (s1Assessments || []).map(a => a.assessment_id);
+          if (s1Ids.length > 0) {
+            const { data: s1GradesData } = await supabase
+              .from('assessment_grades')
+              .select('criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade')
+              .eq('detail_siswa_id', student.detail_siswa_id)
+              .in('assessment_id', s1Ids);
+            if (s1GradesData && s1GradesData.length > 0) {
+              const allA = s1GradesData.map(g => g.criterion_a_grade).filter(g => g !== null);
+              const allB = s1GradesData.map(g => g.criterion_b_grade).filter(g => g !== null);
+              const allC = s1GradesData.map(g => g.criterion_c_grade).filter(g => g !== null);
+              const allD = s1GradesData.map(g => g.criterion_d_grade).filter(g => g !== null);
+              s1Grades.A = allA.length > 0 ? Math.max(...allA) : null;
+              s1Grades.B = allB.length > 0 ? Math.max(...allB) : null;
+              s1Grades.C = allC.length > 0 ? Math.max(...allC) : null;
+              s1Grades.D = allD.length > 0 ? Math.max(...allD) : null;
+              const vals = [s1Grades.A, s1Grades.B, s1Grades.C, s1Grades.D].filter(g => g !== null);
+              if (vals.length > 0) {
+                const total = vals.reduce((a, b) => a + b, 0);
+                const scale = vals.length / 4;
+                const customBounds = dk.subject.custom_grade_boundaries;
+                const bnd = (customBounds && customBounds.length === 6)
+                  ? customBounds
+                  : [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale));
+                if (total <= bnd[0]) s1Overview = 1;
+                else if (total <= bnd[1]) s1Overview = 2;
+                else if (total <= bnd[2]) s1Overview = 3;
+                else if (total <= bnd[3]) s1Overview = 4;
+                else if (total <= bnd[4]) s1Overview = 5;
+                else if (total <= bnd[5]) s1Overview = 6;
+                else s1Overview = 7;
+              }
+            }
+          }
+          if (s1Grades.A !== null || s1Grades.B !== null || s1Grades.C !== null || s1Grades.D !== null || s1Overview !== null) {
+            const s1Vals = [s1Grades.A, s1Grades.B, s1Grades.C, s1Grades.D].filter(g => g !== null);
+            semester1Rows.push({
+              subject_id:     dk.subject.subject_id,
+              subject_name:   dk.subject.subject_name,
+              core_subject:   dk.subject.core_subject || false,
+              semester_overview: s1Overview,
+              criteriaTotal:  s1Vals.length > 0 ? s1Vals.reduce((a, b) => a + b, 0) : null,
+              numCriteria:    s1Vals.length,
+            });
+          }
+        }
+      }
+
       const pdfBlob = buildStudentReportPDF({
         studentName, studentFirstName, studentDOB,
-        kelasName, semester, semesterLabel,
+        kelasName, semester, semesterLabel, yearName,
         homeroomTeacherName, unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
         logoBase64, reportRows, iconCache, iconBySubjectId,
-        criteriaNameCache, descriptorCache, mentorComment
+        criteriaNameCache, descriptorCache, mentorComment,
+        semester1Rows
       });
 
       const safeName = studentName.replace(/[^a-zA-Z0-9\s\-]/g, '').trim();

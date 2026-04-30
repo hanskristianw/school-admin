@@ -402,19 +402,9 @@ export default function ClassManagement() {
           detail_siswa_user_id: userId,
           detail_siswa_kelas_id: selectedClassForStudents.kelas_id
         }));
-
-        // DEBUG: Check auth state
-        const tok = localStorage.getItem('app_jwt');
-        console.log('🔑 [DEBUG] JWT token exists:', !!tok, '| token length:', tok?.length);
-        console.log('🔑 [DEBUG] db.current === supabase (anon)?', db.current === supabase);
-        console.log('🔑 [DEBUG] db.current.rest.headers:', JSON.stringify(db.current.rest?.headers));
-        console.log('🔑 [DEBUG] Inserting rows:', JSON.stringify(rows));
-
-        const { data: insertData, error: insertErr } = await db.current
+        const { error: insertErr } = await db.current
           .from('detail_siswa')
-          .insert(rows)
-          .select();
-        console.log('🔑 [DEBUG] Insert result - data:', insertData, '| error:', insertErr);
+          .insert(rows);
         if (insertErr) throw new Error(insertErr.message);
       }
 
