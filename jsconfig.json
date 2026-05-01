@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",  // ⬅️ WAJIB ADA
     "paths": {
       "@/*": ["./src/*"]
     }

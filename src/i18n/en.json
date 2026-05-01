@@ -708,7 +708,8 @@
       "nextStep": "Next Step",
       "previousStep": "Previous",
       "useThis": "Use",
-      "requestAiHelp": "Request AI Help"
+      "requestAiHelp": "Request AI Help",
+      "inputGrades": "Enter Grades"
     },
     "table": {
       "subject": "Subject",
@@ -811,6 +812,12 @@
       "selectStudent": "Select Student",
       "previewButton": "Preview Report",
       "generating": "Generating...",
+      "modeLabel": "Mode:",
+      "modeSingle": "1 Student",
+      "modeClass": "Entire Class (ZIP)",
+      "classInfoBanner": "{count} students found in this class. All reports will be generated into 1 ZIP file.",
+      "progressText": "Generating report {current}/{total}",
+      "downloadAllButton": "Download All Reports (ZIP)",
       "infoText": "Select academic year, semester, class, and student then click \"Preview Report\" to view and print the student progress report."
     },
     "mentorCommentTab": {

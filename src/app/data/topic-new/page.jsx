@@ -1,11 +1,11 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCheck } from '@fortawesome/free-solid-svg-icons'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
@@ -16,6 +16,7 @@ import {
   generateAssessmentPDFFromCard,
   exportAssessmentWordFromCard,
   generateStudentReportHTML,
+  generateClassReportZIP,
   generateClassRecapPDFReport,
 } from './lib/pdfGenerators'
 import useAiHelp from './lib/useAiHelp'
@@ -25,6 +26,8 @@ export default function TopicNewPage() {
   const router = useRouter()
   const { t, lang } = useI18n()
   const aiScrollRef = useRef(null)
+  const commentImportRef = useRef(null)
+  const mentorImportRef = useRef(null)
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('topic_active_tab') || 'planning'
     return 'planning'
@@ -241,6 +244,14 @@ export default function TopicNewPage() {
   const [weeklyAiInput, setWeeklyAiInput] = useState({ assessmentDuration: '', specialRequests: '' })
   const [weeklyAiLoading, setWeeklyAiLoading] = useState(false)
   const [weeklyAiResults, setWeeklyAiResults] = useState(null)
+
+  // Comment AI Help state
+  const [commentAiModalOpen, setCommentAiModalOpen] = useState(false)
+  const [commentAiTarget, setCommentAiTarget] = useState(null) // { user_id, nama }
+  const [commentAiInput, setCommentAiInput] = useState({ star1: '', star2: '', wish: '' })
+  const [commentAiLoading, setCommentAiLoading] = useState(false)
+  const [commentAiResult, setCommentAiResult] = useState('')
+  const [commentAiError, setCommentAiError] = useState('')
   
   // Grading Modal state
   const [gradingModalOpen, setGradingModalOpen] = useState(false)
@@ -263,6 +274,8 @@ export default function TopicNewPage() {
   const [reportStudents, setReportStudents] = useState([])
   const [loadingReport, setLoadingReport] = useState(false)
   const [loadingReportStudents, setLoadingReportStudents] = useState(false)
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, name: '' })
+  const [reportMode, setReportMode] = useState('single') // 'single' or 'class'
   
   // Class Recap state (for assessment tab)
   const [recapSemesterFilter, setRecapSemesterFilter] = useState('')
@@ -1994,6 +2007,22 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     })
   }
   
+  // Generate all student reports as ZIP
+  const generateAllReports = async () => {
+    setBatchProgress({ current: 0, total: reportStudents.length, name: '' })
+    await generateClassReportZIP({
+      reportFilters,
+      reportStudents,
+      reportKelasOptions,
+      reportYears,
+      subjects,
+      setLoadingReport,
+      onProgress: (current, total, name) => setBatchProgress({ current, total, name }),
+      onError: (err) => alert('Gagal menghasilkan report kelas: ' + err.message)
+    })
+    setBatchProgress({ current: 0, total: 0, name: '' })
+  }
+  
   // Fetch class recap data
   const generateClassRecapPDF = async (kelasId, semester, subjectId) => {
     await generateClassRecapPDFReport({
@@ -2139,6 +2168,102 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     setCommentStudents(prev => prev.map(s =>
       s.user_id === userId ? { ...s, comment_text: text, saved: false } : s
     ))
+  }
+
+  const downloadCommentTemplate = async () => {
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      workbook.creator = 'School Admin'
+      const sheet = workbook.addWorksheet('Comments')
+
+      sheet.columns = [
+        { header: 'No', key: 'no', width: 6 },
+        { header: 'Student Name', key: 'nama', width: 32 },
+        { header: 'Comment (fill this)', key: 'comment', width: 65 },
+        { header: 'user_id (do not edit)', key: 'user_id', width: 20 },
+      ]
+
+      // Style header row
+      const headerRow = sheet.getRow(1)
+      headerRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FF1D4ED8' } } }
+      })
+      headerRow.height = 20
+
+      // Add student rows
+      commentStudents.forEach((s, i) => {
+        const row = sheet.addRow({
+          no: i + 1,
+          nama: s.nama,
+          comment: s.comment_text || '',
+          user_id: s.user_id,
+        })
+        // Gray out non-editable cells
+        ;['no', 'nama', 'user_id'].forEach(key => {
+          row.getCell(key).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
+          row.getCell(key).font = { color: { argb: 'FF6B7280' } }
+        })
+        row.getCell('comment').alignment = { wrapText: true }
+        row.height = 40
+      })
+
+      // Note at the bottom
+      sheet.addRow([])
+      const noteRow = sheet.addRow(['', '* Only edit the "Comment" column. Do not modify other columns.'])
+      noteRow.getCell(2).font = { italic: true, color: { argb: 'FF9CA3AF' } }
+      sheet.mergeCells(`B${noteRow.number}:D${noteRow.number}`)
+
+      const subjectName = subjects.find(s => String(s.subject_id) === String(commentSubject))?.subject_name || 'subject'
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `comment_template_${subjectName.replace(/\s+/g, '_')}_sem${commentSemester}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Failed to generate template: ' + err.message)
+    }
+  }
+
+  const handleCommentImport = async (file) => {
+    if (!file) return
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      const arrayBuffer = await file.arrayBuffer()
+      await workbook.xlsx.load(arrayBuffer)
+      const sheet = workbook.getWorksheet(1)
+      if (!sheet) throw new Error('No worksheet found in file')
+
+      let updated = 0
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return // skip header
+        const userId = row.getCell(4).value // column D: user_id
+        const rawComment = row.getCell(3).value // column C: comment
+        if (!userId) return
+        const comment = rawComment != null ? String(rawComment) : ''
+        const student = commentStudents.find(s => String(s.user_id) === String(userId))
+        if (student) {
+          updateCommentText(student.user_id, comment)
+          updated++
+        }
+      })
+
+      alert(`Import successful! ${updated} comment(s) loaded. Click "Save All" to save.`)
+    } catch (err) {
+      alert('Failed to import file: ' + err.message)
+    } finally {
+      // Reset file input so same file can be re-imported
+      if (commentImportRef.current) commentImportRef.current.value = ''
+    }
   }
   
   const saveComment = async (student) => {
@@ -2366,6 +2491,119 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (unsaved.length === 0) return
     for (const student of unsaved) {
       await saveMentorComment(student)
+    }
+  }
+
+  const downloadMentorCommentTemplate = async () => {
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      workbook.creator = 'School Admin'
+      const sheet = workbook.addWorksheet('Mentor Comments')
+
+      sheet.columns = [
+        { header: 'No', key: 'no', width: 6 },
+        { header: 'Student Name', key: 'nama', width: 32 },
+        { header: 'Comment (fill this)', key: 'comment', width: 55 },
+        { header: 'Present', key: 'present', width: 10 },
+        { header: 'Absent', key: 'absent', width: 10 },
+        { header: 'Late', key: 'late', width: 10 },
+        { header: 'Sick', key: 'sick', width: 10 },
+        { header: 'Excused', key: 'excused', width: 10 },
+        { header: 'user_id (do not edit)', key: 'user_id', width: 20 },
+      ]
+
+      // Style header row
+      const headerRow = sheet.getRow(1)
+      headerRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FF1D4ED8' } } }
+      })
+      headerRow.height = 20
+
+      // Add student rows
+      mentorStudents.forEach((s, i) => {
+        const row = sheet.addRow({
+          no: i + 1,
+          nama: s.nama,
+          comment: s.comment_text || '',
+          present: s.present ?? 0,
+          absent: s.absent ?? 0,
+          late: s.late ?? 0,
+          sick: s.sick ?? 0,
+          excused: s.excused ?? 0,
+          user_id: s.user_id,
+        })
+        // Gray out non-editable cells
+        ;['no', 'nama', 'user_id'].forEach(key => {
+          row.getCell(key).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
+          row.getCell(key).font = { color: { argb: 'FF6B7280' } }
+        })
+        row.getCell('comment').alignment = { wrapText: true }
+        row.height = 40
+      })
+
+      // Note at the bottom
+      sheet.addRow([])
+      const noteRow = sheet.addRow(['', '* Only edit Comment and attendance columns. Do not modify "No", "Student Name", or "user_id".'])
+      noteRow.getCell(2).font = { italic: true, color: { argb: 'FF9CA3AF' } }
+      sheet.mergeCells(`B${noteRow.number}:I${noteRow.number}`)
+
+      const kelasName = mentorKelasOptions.find(k => String(k.kelas_id) === String(mentorKelas))?.kelas_nama || 'kelas'
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mentor_comment_${kelasName.replace(/\s+/g, '_')}_sem${mentorSemester}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Failed to generate template: ' + err.message)
+    }
+  }
+
+  const handleMentorCommentImport = async (file) => {
+    if (!file) return
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      const arrayBuffer = await file.arrayBuffer()
+      await workbook.xlsx.load(arrayBuffer)
+      const sheet = workbook.getWorksheet(1)
+      if (!sheet) throw new Error('No worksheet found in file')
+
+      let updated = 0
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return // skip header
+        const userId = row.getCell(9).value // column I: user_id
+        if (!userId) return
+        const comment = row.getCell(3).value != null ? String(row.getCell(3).value) : ''
+        const present = Math.max(0, parseInt(row.getCell(4).value) || 0)
+        const absent = Math.max(0, parseInt(row.getCell(5).value) || 0)
+        const late = Math.max(0, parseInt(row.getCell(6).value) || 0)
+        const sick = Math.max(0, parseInt(row.getCell(7).value) || 0)
+        const excused = Math.max(0, parseInt(row.getCell(8).value) || 0)
+        const student = mentorStudents.find(s => String(s.user_id) === String(userId))
+        if (student) {
+          setMentorStudents(prev => prev.map(s =>
+            String(s.user_id) === String(userId)
+              ? { ...s, comment_text: comment, present, absent, late, sick, excused, saved: false }
+              : s
+          ))
+          updated++
+        }
+      })
+
+      alert(`Import successful! ${updated} record(s) loaded. Click "Save All" to save.`)
+    } catch (err) {
+      alert('Failed to import file: ' + err.message)
+    } finally {
+      if (mentorImportRef.current) mentorImportRef.current.value = ''
     }
   }
 
@@ -2957,7 +3195,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!wizardAssessment.assessment_nama?.trim()) missing.push({ step: 7, field: 'Assessment Name' })
     if (!wizardAssessment.assessment_semester?.trim()) missing.push({ step: 7, field: 'Semester' })
     if (!wizardAssessment.assessment_conceptual_understanding?.trim()) missing.push({ step: 7, field: 'Conceptual Understanding' })
-    if (!wizardAssessment.assessment_task_specific_description?.trim()) missing.push({ step: 7, field: 'Task Specific Description' })
     if (!wizardAssessment.assessment_instructions?.trim()) missing.push({ step: 7, field: 'Assessment Instructions' })
     
     // Step 7: Relationship
@@ -2995,9 +3232,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!wizardAssessment.assessment_nama || 
         !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0 ||
         !wizardAssessment.assessment_conceptual_understanding?.trim() ||
-        !wizardAssessment.assessment_task_specific_description?.trim() ||
         !wizardAssessment.assessment_instructions?.trim()) {
-      alert('Please complete all assessment fields including Conceptual Understanding, Task Description, and Instructions')
+      alert('Please complete all assessment fields including Conceptual Understanding and Instructions')
       return
     }
     
@@ -3945,7 +4181,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <select
                         value={filters.subject}
                         onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">{t('topicNew.filters.allSubjects')}</option>
                         {subjects.map(s => (
@@ -3962,7 +4198,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <select
                         value={filters.kelas}
                         onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">{t('topicNew.filters.allClasses')}</option>
                         {allKelas.map(k => (
@@ -4209,7 +4445,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     <select
                       value={selectedTopicForWeekly?.topic_id || ''}
                       onChange={(e) => handleTopicSelectionForWeekly(e.target.value)}
-                      className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">{t('topicNew.fields.chooseTopic')}</option>
                       {topics
@@ -4443,7 +4679,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <select
                   value={assessmentFilters.subject}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, subject: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">{t('topicNew.filters.allSubjects')}</option>
                   {subjects.map(s => (
@@ -4460,7 +4696,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <select
                   value={assessmentFilters.kelas}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, kelas: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">{t('topicNew.filters.allClasses')}</option>
                   {assessmentKelasOptions.map(k => (
@@ -4477,7 +4713,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <select
                   value={assessmentFilters.status}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">{t('topicNew.filters.allStatus')}</option>
                   <option value="0">{t('topicNew.filters.statusWaiting')}</option>
@@ -4695,7 +4931,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-md transition-all shadow-sm hover:shadow-md"
                         >
                           <span>📝</span>
-                          Input Nilai
+                          {t('topicNew.buttons.inputGrades')}
                         </button>
                       )}
                       
@@ -4808,7 +5044,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   onClick={() => router.push(`/data/assessment_grading/${assessment.assessment_id}`)}
                                   className="px-2 py-1 text-xs font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded transition-all"
                                 >
-                                  📝 Input Nilai
+                                  📝 {t('topicNew.buttons.inputGrades')}
                                 </button>
                               )}
                               {(isAdmin || (canEdit && isPending)) && (
@@ -4895,7 +5131,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             
             {/* Save All bar */}
             {commentStudents.length > 0 && (
-              <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
                 <span className="text-sm text-gray-600">
                   {commentStudents.length} student{commentStudents.length !== 1 ? 's' : ''}
                   {commentStudents.filter(s => !s.saved).length > 0 && (
@@ -4904,14 +5140,43 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </span>
                   )}
                 </span>
-                <button
-                  type="button"
-                  onClick={saveAllComments}
-                  disabled={commentStudents.every(s => s.saved) || savingCommentId !== null}
-                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  💾 Save All
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Download Template */}
+                  <button
+                    type="button"
+                    onClick={downloadCommentTemplate}
+                    className="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                  >
+                    📥 Download Template
+                  </button>
+                  {/* Import */}
+                  <button
+                    type="button"
+                    onClick={() => commentImportRef.current?.click()}
+                    className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-1.5"
+                  >
+                    📤 Import Excel
+                  </button>
+                  <input
+                    ref={commentImportRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleCommentImport(file)
+                    }}
+                  />
+                  {/* Save All */}
+                  <button
+                    type="button"
+                    onClick={saveAllComments}
+                    disabled={commentStudents.every(s => s.saved) || savingCommentId !== null}
+                    className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    💾 Save All
+                  </button>
+                </div>
               </div>
             )}
             
@@ -4953,14 +5218,30 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">saved ✓</span>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => saveComment(student)}
-                        disabled={student.saved || savingCommentId === student.user_id}
-                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {savingCommentId === student.user_id ? 'Saving...' : 'Save'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCommentAiTarget({ user_id: student.user_id, nama: student.nama })
+                            setCommentAiInput({ star1: '', star2: '', wish: '' })
+                            setCommentAiResult('')
+                            setCommentAiError('')
+                            setCommentAiModalOpen(true)
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                        >
+                          <FontAwesomeIcon icon={faLightbulb} className="text-xs" />
+                          AI Help
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => saveComment(student)}
+                          disabled={student.saved || savingCommentId === student.user_id}
+                          className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {savingCommentId === student.user_id ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={student.comment_text}
@@ -5025,7 +5306,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
             {/* Save All bar */}
             {mentorStudents.length > 0 && (
-              <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
                 <span className="text-sm text-gray-600">
                   {mentorStudents.length} {mentorStudents.length !== 1 ? t('topicNew.mentorCommentTab.studentsPlural') : t('topicNew.mentorCommentTab.students')}
                   {mentorStudents.filter(s => !s.saved).length > 0 && (
@@ -5034,14 +5315,43 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </span>
                   )}
                 </span>
-                <button
-                  type="button"
-                  onClick={saveAllMentorComments}
-                  disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null}
-                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  💾 {t('topicNew.mentorCommentTab.saveAll')}
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Download Template */}
+                  <button
+                    type="button"
+                    onClick={downloadMentorCommentTemplate}
+                    className="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                  >
+                    📥 Download Template
+                  </button>
+                  {/* Import */}
+                  <button
+                    type="button"
+                    onClick={() => mentorImportRef.current?.click()}
+                    className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-1.5"
+                  >
+                    📤 Import Excel
+                  </button>
+                  <input
+                    ref={mentorImportRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleMentorCommentImport(file)
+                    }}
+                  />
+                  {/* Save All */}
+                  <button
+                    type="button"
+                    onClick={saveAllMentorComments}
+                    disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null}
+                    className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    💾 {t('topicNew.mentorCommentTab.saveAll')}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -5139,14 +5449,39 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             
             {/* Filters */}
             <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Mode selector */}
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm font-medium text-gray-700 mr-2">{t('topicNew.report.modeLabel')}</span>
+                <button
+                  onClick={() => setReportMode('single')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    reportMode === 'single'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  🧑 {t('topicNew.report.modeSingle')}
+                </button>
+                <button
+                  onClick={() => setReportMode('class')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    reportMode === 'class'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  📦 {t('topicNew.report.modeClass')}
+                </button>
+              </div>
+
+              <div className={`grid grid-cols-1 gap-4 ${reportMode === 'single' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                 {/* Year Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.yearLabel')}</label>
                   <select
                     value={reportFilters.year}
                     onChange={(e) => handleReportFilterChange('year', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">{t('topicNew.report.selectYear')}</option>
                     {reportYears.map(year => (
@@ -5162,7 +5497,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     value={reportFilters.kelas}
                     onChange={(e) => handleReportFilterChange('kelas', e.target.value)}
                     disabled={!reportFilters.year}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">
                       {!reportFilters.year ? t('topicNew.report.selectYearFirst') : (reportKelasOptions.length === 0 ? t('topicNew.report.noClasses') : t('topicNew.report.selectClass'))}
@@ -5179,7 +5514,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   <select
                     value={reportFilters.semester}
                     onChange={(e) => handleReportFilterChange('semester', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">{t('topicNew.report.selectSemester')}</option>
                     <option value="1">{t('topicNew.fields.semester1')}</option>
@@ -5187,44 +5522,92 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </select>
                 </div>
                 
-                {/* Student Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.studentLabel')}</label>
-                  <select
-                    value={reportFilters.student}
-                    onChange={(e) => handleReportFilterChange('student', e.target.value)}
-                    disabled={!reportFilters.kelas || loadingReportStudents}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {loadingReportStudents ? t('topicNew.fields.loading') : !reportFilters.kelas ? t('topicNew.report.selectClassFirst') : t('topicNew.report.selectStudent')}
-                    </option>
-                    {reportStudents.map(student => (
-                      <option key={student.detail_siswa_id} value={student.detail_siswa_id}>{student.nama}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Student Filter — only visible in single mode */}
+                {reportMode === 'single' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.studentLabel')}</label>
+                    <select
+                      value={reportFilters.student}
+                      onChange={(e) => handleReportFilterChange('student', e.target.value)}
+                      disabled={!reportFilters.kelas || loadingReportStudents}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {loadingReportStudents ? t('topicNew.fields.loading') : !reportFilters.kelas ? t('topicNew.report.selectClassFirst') : t('topicNew.report.selectStudent')}
+                      </option>
+                      {reportStudents.map(student => (
+                        <option key={student.detail_siswa_id} value={student.detail_siswa_id}>{student.nama}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
+
+              {/* Class mode info banner */}
+              {reportMode === 'class' && reportStudents.length > 0 && reportFilters.kelas && (
+                <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-700">
+                  📋 {t('topicNew.report.classInfoBanner', { count: reportStudents.length })}
+                </div>
+              )}
               
-              <div className="mt-4 flex justify-end">
-                {/* Download PDF Report Button */}
-                <button
-                  onClick={generateReport}
-                  disabled={!reportFilters.kelas || !reportFilters.student || loadingReport}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingReport ? (
-                    <>
-                      <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                      {t('topicNew.report.generating')}
-                    </>
+              <div className="mt-4 flex flex-col gap-3">
+                {/* Progress bar for batch generation */}
+                {loadingReport && batchProgress.total > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-gray-700 font-medium">
+                        {t('topicNew.report.progressText', { current: batchProgress.current, total: batchProgress.total })}
+                      </span>
+                      <span className="text-gray-500 truncate ml-2 max-w-[200px]">
+                        {batchProgress.name}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-end">
+                  {reportMode === 'class' ? (
+                    <button
+                      onClick={generateAllReports}
+                      disabled={!reportFilters.kelas || !reportFilters.semester || reportStudents.length === 0 || loadingReport}
+                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingReport && batchProgress.total > 0 ? (
+                        <>
+                          <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                          {t('topicNew.report.generating')}
+                        </>
+                      ) : (
+                        <>
+                          📦 {t('topicNew.report.downloadAllButton')}
+                        </>
+                      )}
+                    </button>
                   ) : (
-                    <>
-                      <FontAwesomeIcon icon={faPrint} />
-                      {t('topicNew.report.previewButton')}
-                    </>
+                    <button
+                      onClick={generateReport}
+                      disabled={!reportFilters.kelas || !reportFilters.student || loadingReport}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingReport ? (
+                        <>
+                          <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                          {t('topicNew.report.generating')}
+                        </>
+                      ) : (
+                        <>
+                          <FontAwesomeIcon icon={faPrint} />
+                          {t('topicNew.report.previewButton')}
+                        </>
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             </div>
             
@@ -5247,11 +5630,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       {modalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black bg-opacity-50 transition-opacity duration-300"
-          onClick={() => {
-            setModalOpen(false)
-            // Reset AI modal states when closing main modal
-            resetAiState()
-          }}
         >
           <div className="w-full flex justify-center items-start gap-4 max-w-[1400px] mt-8" onClick={(e) => e.stopPropagation()}>
             <div 
@@ -6856,6 +7234,176 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         }
       `}</style>
       
+      {/* Comment AI Help Modal */}
+      <Modal
+        isOpen={commentAiModalOpen}
+        onClose={() => { if (!commentAiLoading) { setCommentAiModalOpen(false); setCommentAiResult(''); setCommentAiError('') } }}
+        title={`AI Help — ${commentAiTarget?.nama || 'Student'}`}
+        size="lg"
+      >
+        <div className="space-y-5">
+          {!commentAiResult ? (
+            <>
+              <p className="text-sm text-gray-500">
+                Provide brief notes below and AI will write a professional report card comment.
+              </p>
+
+              {/* Star 1 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  ⭐ Star 1 — What did this student do well?
+                </label>
+                <textarea
+                  value={commentAiInput.star1}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, star1: e.target.value }))}
+                  rows={2}
+                  placeholder="e.g., Shows strong analytical thinking, always participates actively..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              {/* Star 2 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  ⭐ Star 2 — Another strength of this student
+                </label>
+                <textarea
+                  value={commentAiInput.star2}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, star2: e.target.value }))}
+                  rows={2}
+                  placeholder="e.g., Demonstrates creativity and takes initiative in group work..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              {/* Wish */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  🌱 Wish — Area to improve
+                </label>
+                <textarea
+                  value={commentAiInput.wish}
+                  onChange={(e) => setCommentAiInput(prev => ({ ...prev, wish: e.target.value }))}
+                  rows={2}
+                  placeholder="e.g., Needs to improve time management during assessments..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setCommentAiModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={commentAiLoading || (!commentAiInput.star1.trim() && !commentAiInput.star2.trim() && !commentAiInput.wish.trim())}
+                  onClick={async () => {
+                    const subjectName = subjects.find(s => String(s.subject_id) === String(commentSubject))?.subject_name || ''
+                    const prompt = `You are a professional IB MYP teacher writing a report card comment. You MUST write the comment in English only, regardless of the language used in the teacher notes below.
+
+Student name: ${commentAiTarget?.nama || 'the student'}
+Subject: ${subjectName || 'the subject'}
+
+Teacher notes (may be in any language — translate and use the meaning, but write the comment in English):
+- STAR 1 (strength): ${commentAiInput.star1 || '(not provided)'}
+- STAR 2 (another strength): ${commentAiInput.star2 || '(not provided)'}
+- WISH (area to improve): ${commentAiInput.wish || '(not provided)'}
+
+Write a single cohesive report card comment (3-5 sentences, max 500 characters) in a warm, professional tone. Use the student's first name. Integrate both stars and the wish naturally into the comment — do NOT use bullet points or headings. Return only the comment text in English, nothing else.`
+                    console.log('[Comment AI] Prompt sent to Gemini:\n', prompt)
+                    setCommentAiLoading(true)
+                    setCommentAiError('')
+                    // Yield to React so it can re-render and show the spinner before fetch starts
+                    await new Promise(resolve => setTimeout(resolve, 30))
+                    try {
+                      const res = await fetch('/api/gemini', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt })
+                      })
+                      const data = await res.json()
+                      if (!res.ok || data.error) {
+                        if (res.status === 503) throw new Error('Gemini API is temporarily unavailable. Please try again in a moment.')
+                        throw new Error(data.error || 'AI request failed')
+                      }
+                      setCommentAiResult(data.text?.trim() || '')
+                    } catch (err) {
+                      setCommentAiError(err.message)
+                    } finally {
+                      setCommentAiLoading(false)
+                    }
+                  }}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed text-sm flex items-center gap-2"
+                >
+                  {commentAiLoading ? (
+                    <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating...</>
+                  ) : (
+                    <><FontAwesomeIcon icon={faLightbulb} /> Generate Comment</>
+                  )}
+                </button>
+              </div>
+              {commentAiError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start gap-2">
+                  <span className="mt-0.5">⚠️</span>
+                  <div>
+                    <p className="font-medium">Failed to generate comment</p>
+                    <p className="text-xs mt-1">{commentAiError}</p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <FontAwesomeIcon icon={faLightbulb} className="text-purple-600" />
+                  <span className="text-sm font-semibold text-purple-800">AI-Generated Comment</span>
+                  <span className="ml-auto text-xs text-purple-500">{commentAiResult.length} chars</span>
+                </div>
+                <textarea
+                  value={commentAiResult}
+                  onChange={(e) => setCommentAiResult(e.target.value)}
+                  rows={6}
+                  className="w-full px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white resize-y"
+                />
+                <p className="text-xs text-purple-500 mt-2">You can edit the comment above before inserting.</p>
+              </div>
+
+              <div className="flex justify-between gap-3 pt-1">
+                <button
+                  onClick={() => setCommentAiResult('')}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm flex items-center gap-2"
+                >
+                  ← Back
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setCommentAiModalOpen(false); setCommentAiResult('') }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (commentAiTarget) {
+                        updateCommentText(commentAiTarget.user_id, commentAiResult)
+                      }
+                      setCommentAiModalOpen(false)
+                      setCommentAiResult('')
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm flex items-center gap-2"
+                  >
+                    <FontAwesomeIcon icon={faCheck} /> Insert to Comment
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
       {/* Weekly Plan AI Help Modal */}
       <Modal
         isOpen={weeklyAiModalOpen}
