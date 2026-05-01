@@ -4213,21 +4213,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     >
                       <option value="">{t('topicNew.fields.chooseTopic')}</option>
                       {topics
+                        .slice()
                         .sort((a, b) => {
-                          const kelasA = kelasNameMap.get(a.topic_kelas_id) || ''
-                          const kelasB = kelasNameMap.get(b.topic_kelas_id) || ''
-                          
-                          // Sort by grade first
-                          if (kelasA !== kelasB) {
-                            return kelasA.localeCompare(kelasB)
-                          }
-                          
-                          // Then by topic_urutan
-                          return (a.topic_urutan || 0) - (b.topic_urutan || 0)
+                          const subjectA = subjectMap.get(a.topic_subject_id) || ''
+                          const subjectB = subjectMap.get(b.topic_subject_id) || ''
+                          if (subjectA !== subjectB) return subjectA.localeCompare(subjectB)
+                          if ((a.topic_urutan || 0) !== (b.topic_urutan || 0)) return (a.topic_urutan || 0) - (b.topic_urutan || 0)
+                          return (a.topic_nama || '').localeCompare(b.topic_nama || '')
                         })
                         .map(topic => (
                           <option key={topic.topic_id} value={topic.topic_id}>
-                            {topic.topic_nama} ({kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}) - Unit {topic.topic_urutan}
+                            {subjectMap.get(topic.topic_subject_id) || 'N/A'} - Unit {topic.topic_urutan} - {topic.topic_nama}
                           </option>
                         ))
                       }
