@@ -1285,19 +1285,36 @@ export const exportAssessmentWordFromCard = async (topic, { subjectMap, kelasNam
  * Returns a Blob of the generated PDF.
  * Extracted from generateStudentReportHTML to enable both single and batch generation.
  */
-const buildStudentReportPDF = ({
+const buildStudentReportPDF = async ({
   studentName, studentFirstName, studentDOB,
   kelasName, semester, semesterLabel, yearName,
-  homeroomTeacherName, unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
+  homeroomTeacherName, homeroomSignatureUrl,
+  unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
+  unitSignaturePrincipalUrl, unitStampUrl,
   logoBase64, reportRows, iconCache, iconBySubjectId,
   criteriaNameCache, descriptorCache, mentorComment,
   semester1Rows
 }) => {
+// async: needed for fetching signature images inside progression page
 const doc = new jsPDF('portrait', 'mm', 'a4');
 const pw = doc.internal.pageSize.getWidth();   // 210
 const ph = doc.internal.pageSize.getHeight();   // 297
 const ml = 18, mr = 18, mt = 16, mb = 24;
 const cw = pw - ml - mr; // content width
+
+// Helper: fetch an image URL and return base64 data URI (used for signature/stamp rendering)
+const fetchImgBase64 = async (url) => {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+};
+
 
 const preparedDate = unitReportDate
   ? new Date(unitReportDate + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -1430,10 +1447,27 @@ if (unitGreeting) {
   }
 }
 
-// Kind regards + signature
+// Kind regards + signature image
 y += 4;
 doc.text('Kind regards,', ml, y);
-y += 22;
+y += 4;
+
+// Draw principal signature image if available
+if (unitSignaturePrincipalUrl) {
+  try {
+    const sigBase64P1 = await fetchImgBase64(unitSignaturePrincipalUrl);
+    if (sigBase64P1) {
+      const sigPropsP1 = doc.getImageProperties(sigBase64P1);
+      const sigHP1 = 14;
+      const sigWP1 = (sigPropsP1.width / sigPropsP1.height) * sigHP1;
+      doc.addImage(sigBase64P1, 'PNG', ml, y, sigWP1, sigHP1);
+      y += sigHP1 + 2;
+    } else { y += 14; }
+  } catch { y += 14; }
+} else {
+  y += 14;
+}
+
 if (unitPrincipalName) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
@@ -2475,13 +2509,61 @@ if (semester === '2') {
   doc.setFontSize(9);
   doc.setTextColor(17, 24, 39);
   doc.text(`Surabaya, ${preparedDate}`, pw / 2, afterTableY, { align: 'center' });
-  afterTableY += 20;
+  afterTableY += 6;
 
   const colW = cw / 3;
   const col1X = ml + colW / 2;
   const col2X = ml + colW + colW / 2;
   const col3X = ml + colW * 2 + colW / 2;
 
+  // ── Draw signature first, then stamp ON TOP (overlapping) ──
+  const sigH   = 20;  // mm — height of signature
+  const stampH = 20;  // mm — height of stamp
+
+  const sigY = afterTableY + 6; // push both elements down from the date line
+
+  // 1. Draw principal signature
+  if (unitSignaturePrincipalUrl) {
+    try {
+      const sigBase64 = await fetchImgBase64(unitSignaturePrincipalUrl);
+      if (sigBase64) {
+        const sigProps = doc.getImageProperties(sigBase64);
+        const sigW = (sigProps.width / sigProps.height) * sigH;
+        doc.addImage(sigBase64, 'PNG', col3X - sigW / 2, sigY, sigW, sigH);
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  // 2. Draw stamp ON TOP — same Y as signature, shifted right so they overlap horizontally
+  if (unitStampUrl) {
+    try {
+      const stampBase64 = await fetchImgBase64(unitStampUrl);
+      if (stampBase64) {
+        const stampProps = doc.getImageProperties(stampBase64);
+        const stampW = (stampProps.width / stampProps.height) * stampH;
+        const stampX = col3X - stampW / 2 + 10; // offset right
+        const stampY = sigY;                     // same top as signature → vertically aligned
+        doc.addImage(stampBase64, 'PNG', stampX, stampY, stampW, stampH);
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  // ── Draw homeroom teacher signature at col2 (same Y level as principal) ──
+  if (homeroomSignatureUrl) {
+    try {
+      const htSigBase64 = await fetchImgBase64(homeroomSignatureUrl);
+      if (htSigBase64) {
+        const htSigProps = doc.getImageProperties(htSigBase64);
+        const htSigW = (htSigProps.width / htSigProps.height) * sigH;
+        doc.addImage(htSigBase64, 'PNG', col2X - htSigW / 2, sigY, htSigW, sigH);
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  // Advance Y past both elements (same height, so just sigY + sigH)
+  afterTableY = sigY + sigH + 4;
+
+  // Signature lines
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text('....................', col1X, afterTableY, { align: 'center' });
@@ -2534,14 +2616,16 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       .single();
 
     let homeroomTeacherName = '-';
+    let homeroomSignatureUrl = null;
     if (kelasData?.kelas_user_id) {
       const { data: htData } = await supabase
         .from('users')
-        .select('user_nama_depan, user_nama_belakang')
+        .select('user_nama_depan, user_nama_belakang, signature_url')
         .eq('user_id', kelasData.kelas_user_id)
         .single();
       if (htData) {
         homeroomTeacherName = `${htData.user_nama_depan} ${htData.user_nama_belakang}`.trim();
+        homeroomSignatureUrl = htData.signature_url || null;
       }
     }
 
@@ -2550,17 +2634,22 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     let unitPrincipalTitle = '';
     let unitGreeting = null;
     let unitReportDate = null;
+    let unitSignaturePrincipalUrl = null;
+    let unitStampUrl = null;
     if (kelasData?.kelas_unit_id && reportFilters.year) {
       const { data: rsData } = await supabase
         .from('report_settings')
-        .select('principal_name, principal_title, report_greeting, report_date_s1, report_date_s2')
+        .select('principal_name, principal_title, report_greeting_s1, report_greeting_s2, report_date_s1, report_date_s2, signature_principal_url, stamp_url')
         .eq('unit_id', kelasData.kelas_unit_id)
         .eq('year_id', parseInt(reportFilters.year))
         .single();
       if (rsData) {
         if (rsData.principal_name) unitPrincipalName = rsData.principal_name;
         if (rsData.principal_title) unitPrincipalTitle = rsData.principal_title;
-        if (rsData.report_greeting) unitGreeting = rsData.report_greeting;
+        const greetingKeyS = semester === '2' ? 'report_greeting_s2' : 'report_greeting_s1';
+        unitGreeting = rsData[greetingKeyS] || rsData.report_greeting_s1 || null;
+        unitSignaturePrincipalUrl = rsData.signature_principal_url || null;
+        unitStampUrl = rsData.stamp_url || null;
         const rawDate = semester === '1' ? rsData.report_date_s1 : rsData.report_date_s2;
         if (rawDate) unitReportDate = rawDate;
       }
@@ -2890,21 +2979,18 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     }
 
     // ─── Build PDF ─────────────────────────────────────────────────────────
-    const pdfBlob = buildStudentReportPDF({
+    const pdfBlob = await buildStudentReportPDF({
       studentName, studentFirstName, studentDOB,
       kelasName, semester, semesterLabel, yearName,
-      homeroomTeacherName, unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
+      homeroomTeacherName, homeroomSignatureUrl,
+      unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
+      unitSignaturePrincipalUrl, unitStampUrl,
       logoBase64, reportRows, iconCache, iconBySubjectId,
       criteriaNameCache, descriptorCache, mentorComment,
       semester1Rows
     });
     const pdfUrl = URL.createObjectURL(pdfBlob);
     window.open(pdfUrl, '_blank');
-    
-  } catch (err) {
-    console.error('Error generating report:', err);
-    if (onError) onError(err);
-    else alert('Gagal menghasilkan report: ' + err.message);
   } finally {
     setLoadingReport(false);
   }
@@ -2947,28 +3033,36 @@ export const generateClassReportZIP = async ({
       .single();
 
     let homeroomTeacherName = '-';
+    let homeroomSignatureUrl = null;
     if (kelasData?.kelas_user_id) {
       const { data: htData } = await supabase
         .from('users')
-        .select('user_nama_depan, user_nama_belakang')
+        .select('user_nama_depan, user_nama_belakang, signature_url')
         .eq('user_id', kelasData.kelas_user_id)
         .single();
-      if (htData) homeroomTeacherName = `${htData.user_nama_depan} ${htData.user_nama_belakang}`.trim();
+      if (htData) {
+        homeroomTeacherName = `${htData.user_nama_depan} ${htData.user_nama_belakang}`.trim();
+        homeroomSignatureUrl = htData.signature_url || null;
+      }
     }
 
     let unitPrincipalName = '', unitPrincipalTitle = '', unitGreeting = null, unitReportDate = null;
+    let unitSignaturePrincipalUrl = null, unitStampUrl = null;
     if (kelasData?.kelas_unit_id && reportFilters.year) {
       const { data: rsData } = await supabase
         .from('report_settings')
-        .select('principal_name, principal_title, report_greeting, report_date_s1, report_date_s2')
+        .select('principal_name, principal_title, report_greeting_s1, report_greeting_s2, report_date_s1, report_date_s2, signature_principal_url, stamp_url')
         .eq('unit_id', kelasData.kelas_unit_id)
         .eq('year_id', parseInt(reportFilters.year))
         .single();
       if (rsData) {
         unitPrincipalName = rsData.principal_name || '';
         unitPrincipalTitle = rsData.principal_title || '';
-        unitGreeting = rsData.report_greeting || null;
+        const greetingKey = semester === '2' ? 'report_greeting_s2' : 'report_greeting_s1';
+        unitGreeting = rsData[greetingKey] || rsData.report_greeting_s1 || null;
         unitReportDate = (semester === '1' ? rsData.report_date_s1 : rsData.report_date_s2) || null;
+        unitSignaturePrincipalUrl = rsData.signature_principal_url || null;
+        unitStampUrl = rsData.stamp_url || null;
       }
     }
 
@@ -3300,10 +3394,12 @@ export const generateClassReportZIP = async ({
         }
       }
 
-      const pdfBlob = buildStudentReportPDF({
+      const pdfBlob = await buildStudentReportPDF({
         studentName, studentFirstName, studentDOB,
         kelasName, semester, semesterLabel, yearName,
-        homeroomTeacherName, unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
+        homeroomTeacherName, homeroomSignatureUrl,
+        unitPrincipalName, unitPrincipalTitle, unitGreeting, unitReportDate,
+        unitSignaturePrincipalUrl, unitStampUrl,
         logoBase64, reportRows, iconCache, iconBySubjectId,
         criteriaNameCache, descriptorCache, mentorComment,
         semester1Rows

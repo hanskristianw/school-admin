@@ -8,7 +8,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import ImageCropModal from '@/components/ImageCropModal';
-import { supabase } from '@/lib/supabase';
+import { supabase, createSupabaseWithAuth } from '@/lib/supabase';
+import ImageCropUploader from '@/components/ui/image-crop-uploader';
+
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -33,6 +35,13 @@ export default function UserManagement() {
   const [imageFile, setImageFile] = useState(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const [tempImageSrc, setTempImageSrc] = useState(null);
+
+  // Signature state
+  const [signatureBlob, setSignatureBlob] = useState(null);   // pending blob before save
+  const [signaturePreview, setSignaturePreview] = useState(''); // preview URL
+  const [uploadingSignature, setUploadingSignature] = useState(false);
+  const signatureInputRef = { current: null }; // will be passed to ImageCropUploader
+
   
   // Notification modal states
   const [notification, setNotification] = useState({
@@ -488,7 +497,8 @@ export default function UserManagement() {
       // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url');
+
 
       if (usersError) {
         throw new Error(usersError.message);
@@ -524,6 +534,7 @@ export default function UserManagement() {
           user_email: user.user_email || null,
           user_profile_picture: user.user_profile_picture || null,
           user_manual_picture: user.user_manual_picture || null,
+          signature_url: user.signature_url || null,
           user_role_id: user.user_role_id,
           user_unit_id: user.user_unit_id,
           role_name: role?.role_name || '',
@@ -613,6 +624,29 @@ export default function UserManagement() {
     return Object.keys(errors).length === 0;
   };
 
+  // Upload signature blob via native fetch (bypasses JS client header issues)
+  const uploadSignature = async (userId, blob) => {
+    const path = `user-signatures/${userId}/signature.png`;
+    const tok = typeof window !== 'undefined' ? localStorage.getItem('app_jwt') : null;
+    const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const res = await fetch(`${supabaseUrl}/storage/v1/object/report-assets/${path}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': tok ? `Bearer ${tok}` : `Bearer ${supabaseAnon}`,
+        'apikey': supabaseAnon,
+        'Content-Type': 'image/png',
+        'x-upsert': 'true',
+      },
+      body: blob,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Upload signature failed (${res.status})`);
+    }
+    return `${supabaseUrl}/storage/v1/object/public/report-assets/${path}?t=${Date.now()}`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -645,20 +679,24 @@ export default function UserManagement() {
       const baseData = { ...submitData };
 
       if (editingUser) {
-        // Upload image if new file selected
+        // Upload profile image if new file selected
         if (imageFile) {
           const imageUrl = await uploadImage(editingUser.user_id);
-          if (imageUrl) {
-            baseData.user_manual_picture = imageUrl;
-          }
+          if (imageUrl) baseData.user_manual_picture = imageUrl;
         }
-
+        // Upload signature if new blob selected
+        if (signatureBlob) {
+          setUploadingSignature(true);
+          try {
+            const sigUrl = await uploadSignature(editingUser.user_id, signatureBlob);
+            baseData.signature_url = sigUrl;
+            setSignaturePreview(sigUrl);
+          } finally { setUploadingSignature(false); }
+        }
         // Update existing user
-        result = await supabase
-          .from('users')
-          .update(baseData)
-          .eq('user_id', editingUser.user_id);
+        result = await supabase.from('users').update(baseData).eq('user_id', editingUser.user_id);
         if (result.error) throw new Error(result.error.message);
+
       } else {
         // Create new user first to get user_id
         const insertRes = await supabase
@@ -672,12 +710,17 @@ export default function UserManagement() {
         if (imageFile && insertRes.data) {
           const imageUrl = await uploadImage(insertRes.data.user_id);
           if (imageUrl) {
-            // Update user with image URL
-            await supabase
-              .from('users')
-              .update({ user_manual_picture: imageUrl })
-              .eq('user_id', insertRes.data.user_id);
+            await supabase.from('users').update({ user_manual_picture: imageUrl }).eq('user_id', insertRes.data.user_id);
           }
+        }
+        // Upload signature if blob selected
+        if (signatureBlob && insertRes.data) {
+          setUploadingSignature(true);
+          try {
+            const sigUrl = await uploadSignature(insertRes.data.user_id, signatureBlob);
+            await supabase.from('users').update({ signature_url: sigUrl }).eq('user_id', insertRes.data.user_id);
+            setSignaturePreview(sigUrl);
+          } finally { setUploadingSignature(false); }
         }
       }
 
@@ -706,9 +749,12 @@ export default function UserManagement() {
       is_active: user.is_active
     });
     setImageFile(null);
+    setSignatureBlob(null);
+    setSignaturePreview(user.signature_url || '');
     setShowForm(true);
     setFormErrors({});
   };
+
 
 
 
@@ -725,11 +771,14 @@ export default function UserManagement() {
     setImageFile(null);
     setTempImageSrc(null);
     setShowCropModal(false);
+    setSignatureBlob(null);
+    setSignaturePreview('');
     setEditingUser(null);
     setShowForm(false);
     setFormErrors({});
-    setError(''); // Clear error when closing modal
+    setError('');
   };
+
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -961,7 +1010,36 @@ export default function UserManagement() {
                 <Label htmlFor="is_active">Active</Label>
               </div>
             )}
+
+            {/* Signature Upload */}
+            <div className="md:col-span-2 border-t pt-3">
+              <p className="text-sm font-semibold text-gray-700 mb-1">Tanda Tangan</p>
+              <p className="text-xs text-gray-400 mb-2">
+                Digunakan di laporan rapor sebagai tanda tangan wali kelas. Gunakan gambar PNG transparan untuk hasil terbaik.
+              </p>
+              <ImageCropUploader
+                label="Upload Tanda Tangan"
+                previewUrl={signaturePreview}
+                uploading={uploadingSignature}
+                inputRef={signatureInputRef}
+                onCropped={(blob) => {
+                  setSignatureBlob(blob);
+                  // Show local preview immediately
+                  setSignaturePreview(URL.createObjectURL(blob));
+                }}
+                onRemove={() => {
+                  setSignatureBlob(null);
+                  setSignaturePreview('');
+                }}
+              />
+              {signatureBlob && (
+                <p className="text-xs text-amber-600 mt-1">
+                  ⚠ Tanda tangan baru belum tersimpan. Klik &quot;Update User&quot; / &quot;Create User&quot; untuk menyimpan.
+                </p>
+              )}
+            </div>
           </div>
+
 
           <div className="flex flex-col sm:flex-row gap-2 pt-3">
             <Button 
