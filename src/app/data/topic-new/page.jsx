@@ -42,7 +42,12 @@ export default function TopicNewPage() {
     return 'card'
   })
   const [userRole, setUserRole] = useState(null)
-  const isAdmin = userRole === 'admin' || userRole === 'Admin'
+  const [userIsCurriculum, setUserIsCurriculum] = useState(false)
+  // isAdmin: full curriculum access on this page for admin role OR curriculum flag
+  const isAdmin = (userRole?.toLowerCase() === 'admin') || userIsCurriculum
+  // Helper for functions that receive role as param (before state is set)
+  const isAdminLike = (r) => !!(r && r.toLowerCase() === 'admin') || userIsCurriculum
+
   
   // Data state
   const [topics, setTopics] = useState([])
@@ -287,6 +292,7 @@ export default function TopicNewPage() {
   const [commentKelasOptions, setCommentKelasOptions] = useState([])
   const [commentSemester, setCommentSemester] = useState('')
   const [commentStudents, setCommentStudents] = useState([])
+  const [commentStudentGrades, setCommentStudentGrades] = useState({}) // { [user_id]: [{name, A, B, C, D}] }
   const [loadingComments, setLoadingComments] = useState(false)
   const [loadingCommentKelas, setLoadingCommentKelas] = useState(false)
   const [savingCommentId, setSavingCommentId] = useState(null)
@@ -408,7 +414,8 @@ export default function TopicNewPage() {
     if (!currentUserId) return
     const fetchWaliKelas = async () => {
       try {
-        const adminRole = userRole === 'admin' || userRole === 'Admin'
+        const adminRole = isAdminLike(userRole)
+
         let query = supabase
           .from('kelas')
           .select('kelas_id, kelas_nama')
@@ -438,7 +445,7 @@ export default function TopicNewPage() {
     const kr_id = localStorage.getItem('kr_id')
     const role = localStorage.getItem('user_role')
     console.log('🔍 User data from localStorage:', userData)
-    
+
     // Set current user ID and role
     if (kr_id) {
       setCurrentUserId(parseInt(kr_id))
@@ -446,7 +453,17 @@ export default function TopicNewPage() {
     if (role) {
       setUserRole(role)
     }
-    
+
+    // Read isCurriculum flag synchronously before calling fetch functions
+    let isCurriculum = false
+    if (userData) {
+      try {
+        const parsedCheck = JSON.parse(userData)
+        isCurriculum = !!parsedCheck.isCurriculum
+        setUserIsCurriculum(isCurriculum)
+      } catch (e) {}
+    }
+
     if (userData) {
       try {
         const parsed = JSON.parse(userData)
@@ -455,8 +472,8 @@ export default function TopicNewPage() {
         const userId = parsed.userID || parsed.user_id || parsed.userId || parsed.id
         console.log('👤 User ID:', userId)
         if (userId) {
-          fetchSubjects(userId, role)
-          fetchDetailKelasForAssessment(userId, role)
+          fetchSubjects(userId, role, isCurriculum)
+          fetchDetailKelasForAssessment(userId, role, isCurriculum)
           fetchAllKelas() // Fetch all kelas for filter dropdown
         } else {
           console.warn('⚠️ No user ID found')
@@ -600,10 +617,11 @@ export default function TopicNewPage() {
   }
 
   // Fetch subjects for current user
-  const fetchSubjects = async (userId, role) => {
+  const fetchSubjects = async (userId, role, isCurriculum = false) => {
     try {
-      console.log('🔍 Fetching subjects for user:', userId, 'role:', role)
-      const isAdmin = role === 'admin' || role === 'Admin'
+      console.log('🔍 Fetching subjects for user:', userId, 'role:', role, 'isCurriculum:', isCurriculum)
+      const isAdmin = (role?.toLowerCase() === 'admin') || isCurriculum
+
       let query = supabase
         .from('subject')
         .select('subject_id, subject_name, subject_guide')
@@ -953,9 +971,10 @@ export default function TopicNewPage() {
   }
   
   // Fetch detail_kelas for assessment form
-  const fetchDetailKelasForAssessment = async (userId, role) => {
+  const fetchDetailKelasForAssessment = async (userId, role, isCurriculum = false) => {
     try {
-      const isAdmin = role === 'admin' || role === 'Admin'
+      const isAdmin = (role?.toLowerCase() === 'admin') || isCurriculum
+
       // Get subjects for user (or all subjects for admin)
       let subjectQuery = supabase
         .from('subject')
@@ -2147,6 +2166,67 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       }).sort((a, b) => a.nama.localeCompare(b.nama))
       
       setCommentStudents(students)
+
+      // 5. Fetch assessment grades for this subject+kelas+semester
+      const gradesByStudent = {}
+      try {
+        // Get detail_kelas_id for this subject+kelas combo
+        const { data: dkData } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_id')
+          .eq('detail_kelas_subject_id', subjectId)
+          .eq('detail_kelas_kelas_id', kelasId)
+          .maybeSingle()
+
+        if (dkData?.detail_kelas_id) {
+          // Get all assessments for this detail_kelas + semester
+          const { data: assessmentsData } = await supabase
+            .from('assessment')
+            .select('assessment_id, assessment_nama')
+            .eq('assessment_detail_kelas_id', dkData.detail_kelas_id)
+            .in('assessment_status', [0, 1, 3])
+            .eq('assessment_semester', parseInt(semester))
+            .order('assessment_tanggal')
+
+          const aList = assessmentsData || []
+          const aIds = aList.map(a => a.assessment_id)
+          const aNameMap = new Map(aList.map(a => [a.assessment_id, a.assessment_nama]))
+
+          if (aIds.length > 0) {
+            // Fetch all grades for all students at once
+            const dsIds = detailSiswaData.map(ds => ds.detail_siswa_id)
+            const { data: gradesData } = await supabase
+              .from('assessment_grades')
+              .select('assessment_id, detail_siswa_id, criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade')
+              .in('assessment_id', aIds)
+              .in('detail_siswa_id', dsIds)
+
+            // Build detail_siswa_id → user_id map
+            const dsToUser = new Map(detailSiswaData.map(ds => [ds.detail_siswa_id, ds.detail_siswa_user_id]))
+
+            ;(gradesData || []).forEach(g => {
+              const userId = dsToUser.get(g.detail_siswa_id)
+              if (!userId) return
+              if (!gradesByStudent[userId]) gradesByStudent[userId] = []
+              // Only add if at least one criterion has a value
+              const hasAny = g.criterion_a_grade !== null || g.criterion_b_grade !== null ||
+                             g.criterion_c_grade !== null || g.criterion_d_grade !== null
+              if (hasAny) {
+                gradesByStudent[userId].push({
+                  name: aNameMap.get(g.assessment_id) || '-',
+                  A: g.criterion_a_grade,
+                  B: g.criterion_b_grade,
+                  C: g.criterion_c_grade,
+                  D: g.criterion_d_grade,
+                })
+              }
+            })
+          }
+        }
+      } catch (gradeErr) {
+        console.warn('Could not fetch grades for comment tab:', gradeErr)
+      }
+      setCommentStudentGrades(gradesByStudent)
     } catch (err) {
       console.error('Error fetching comment students:', err)
       alert('Gagal memuat data siswa: ' + err.message)
@@ -5243,6 +5323,90 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         </button>
                       </div>
                     </div>
+
+                    {/* ── Grade Summary ── */}
+                    {commentStudentGrades[student.user_id]?.length > 0 ? (
+                      <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2">
+                        <p className="text-[11px] font-semibold text-blue-700 mb-1.5">📊 Assessment Grades — Semester {commentSemester}</p>
+                        <div className="overflow-x-auto">
+                          <table className="text-[11px] w-full">
+                            <thead>
+                              <tr className="text-gray-500">
+                                <th className="text-left pr-3 pb-1 font-medium">Assessment</th>
+                                <th className="text-center px-2 pb-1 font-medium w-8">A</th>
+                                <th className="text-center px-2 pb-1 font-medium w-8">B</th>
+                                <th className="text-center px-2 pb-1 font-medium w-8">C</th>
+                                <th className="text-center px-2 pb-1 font-medium w-8">D</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {commentStudentGrades[student.user_id].map((g, gi) => (
+                                <tr key={gi} className="border-t border-blue-100">
+                                  <td className="pr-3 py-1 text-gray-700 max-w-[220px] truncate" title={g.name}>{g.name}</td>
+                                  <td className={`text-center px-2 py-1 font-mono font-semibold ${g.A !== null ? 'text-blue-700' : 'text-gray-300'}`}>{g.A ?? '–'}</td>
+                                  <td className={`text-center px-2 py-1 font-mono font-semibold ${g.B !== null ? 'text-blue-700' : 'text-gray-300'}`}>{g.B ?? '–'}</td>
+                                  <td className={`text-center px-2 py-1 font-mono font-semibold ${g.C !== null ? 'text-blue-700' : 'text-gray-300'}`}>{g.C ?? '–'}</td>
+                                  <td className={`text-center px-2 py-1 font-mono font-semibold ${g.D !== null ? 'text-blue-700' : 'text-gray-300'}`}>{g.D ?? '–'}</td>
+                                </tr>
+                              ))}
+                              {/* Max row */}
+                              {(() => {
+                                const gs = commentStudentGrades[student.user_id]
+                                const maxA = Math.max(...gs.map(g => g.A).filter(v => v !== null))
+                                const maxB = Math.max(...gs.map(g => g.B).filter(v => v !== null))
+                                const maxC = Math.max(...gs.map(g => g.C).filter(v => v !== null))
+                                const maxD = Math.max(...gs.map(g => g.D).filter(v => v !== null))
+                                const vals = [maxA, maxB, maxC, maxD].filter(v => isFinite(v))
+                                const total = vals.reduce((a, b) => a + b, 0)
+                                const scale = vals.length / 4
+                                const b = [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
+                                let final = null
+                                if (vals.length > 0) {
+                                  if (total <= b[0]) final = 1
+                                  else if (total <= b[1]) final = 2
+                                  else if (total <= b[2]) final = 3
+                                  else if (total <= b[3]) final = 4
+                                  else if (total <= b[4]) final = 5
+                                  else if (total <= b[5]) final = 6
+                                  else final = 7
+                                }
+                                return (
+                                  <tr className="border-t-2 border-blue-200 bg-blue-100/50">
+                                    <td className="pr-3 py-1 font-semibold text-blue-800">Max</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold text-blue-900">{isFinite(maxA) ? maxA : '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold text-blue-900">{isFinite(maxB) ? maxB : '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold text-blue-900">{isFinite(maxC) ? maxC : '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold text-blue-900">{isFinite(maxD) ? maxD : '–'}</td>
+                                  </tr>
+                                )
+                              })()}
+                            </tbody>
+                          </table>
+                        </div>
+                        {/* Final grade badge */}
+                        {(() => {
+                          const gs = commentStudentGrades[student.user_id]
+                          const vals = [Math.max(...gs.map(g => g.A).filter(v => v !== null)), Math.max(...gs.map(g => g.B).filter(v => v !== null)), Math.max(...gs.map(g => g.C).filter(v => v !== null)), Math.max(...gs.map(g => g.D).filter(v => v !== null))].filter(v => isFinite(v))
+                          if (vals.length < 4) return null
+                          const total = vals.reduce((a, b) => a + b, 0)
+                          const b = [5, 9, 14, 18, 23, 27]
+                          let final = total <= b[0] ? 1 : total <= b[1] ? 2 : total <= b[2] ? 3 : total <= b[3] ? 4 : total <= b[4] ? 5 : total <= b[5] ? 6 : 7
+                          const colours = ['','bg-red-100 text-red-700','bg-orange-100 text-orange-700','bg-yellow-100 text-yellow-700','bg-lime-100 text-lime-700','bg-green-100 text-green-700','bg-emerald-100 text-emerald-700','bg-teal-100 text-teal-700']
+                          return (
+                            <div className="mt-1.5 flex items-center gap-2">
+                              <span className="text-[11px] text-gray-500">IB Grade:</span>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colours[final]}`}>{final}</span>
+                              <span className="text-[10px] text-gray-400">(total {total})</span>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    ) : commentSemester && commentStudentGrades[student.user_id] !== undefined ? (
+                      <div className="mb-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-[11px] text-gray-400">
+                        No assessment grades yet for this semester.
+                      </div>
+                    ) : null}
+
                     <textarea
                       value={student.comment_text}
                       onChange={(e) => updateCommentText(student.user_id, e.target.value)}

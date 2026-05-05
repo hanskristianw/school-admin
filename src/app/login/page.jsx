@@ -198,6 +198,7 @@ function LoginContent() {
         document.cookie = `kr_id=${user.userID}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
         document.cookie = `role_name=${encodeURIComponent(user.roleName || '')}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
         document.cookie = `is_admin=${user.isAdmin ? '1' : '0'}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
+        document.cookie = `is_curriculum=${user.isCurriculum ? '1' : '0'}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
         document.cookie = `allowed_paths=${safeJoin}; Path=/; Max-Age=${maxAge}; SameSite=Lax`
         
         console.log('🚀 Redirecting to dashboard...')
