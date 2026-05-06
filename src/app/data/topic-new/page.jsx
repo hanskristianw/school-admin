@@ -454,12 +454,13 @@ export default function TopicNewPage() {
       setUserRole(role)
     }
 
-    // Read isCurriculum flag synchronously before calling fetch functions
+    // Read isCurriculum / isPrincipal flags synchronously before calling fetch functions
     let isCurriculum = false
     if (userData) {
       try {
         const parsedCheck = JSON.parse(userData)
-        isCurriculum = !!parsedCheck.isCurriculum
+        // Full subject access: admin, curriculum, or principal
+        isCurriculum = !!parsedCheck.isCurriculum || !!parsedCheck.isPrincipal
         setUserIsCurriculum(isCurriculum)
       } catch (e) {}
     }

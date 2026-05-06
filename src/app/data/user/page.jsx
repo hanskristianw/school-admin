@@ -53,6 +53,7 @@ export default function UserManagement() {
 
   // Filter states
   const [filters, setFilters] = useState({
+    search: '',
     role: '',
     status: '',
     unit: ''
@@ -144,13 +145,18 @@ export default function UserManagement() {
   // Filter users based on selected filters
   const getFilteredUsers = () => {
     return users.filter(user => {
+      const q = (filters.search || '').toLowerCase().trim();
+      const fullName = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.toLowerCase();
+      const searchMatch = !q ||
+        fullName.includes(q) ||
+        (user.user_email || '').toLowerCase().includes(q) ||
+        (user.role_name || '').toLowerCase().includes(q);
       const roleMatch = !filters.role || user.role_name === filters.role;
-      const statusMatch = !filters.status || 
+      const statusMatch = !filters.status ||
         (filters.status === 'active' && user.is_active) ||
         (filters.status === 'inactive' && !user.is_active);
       const unitMatch = !filters.unit || user.unit_name === filters.unit;
-      
-      return roleMatch && statusMatch && unitMatch;
+      return searchMatch && roleMatch && statusMatch && unitMatch;
     });
   };
 
@@ -177,6 +183,7 @@ export default function UserManagement() {
   // Clear all filters
   const clearFilters = () => {
     setFilters({
+      search: '',
       role: '',
       status: '',
       unit: ''
@@ -1227,6 +1234,34 @@ export default function UserManagement() {
       {/* Filters */}
       <Card className="mb-4">
         <CardContent className="pt-4">
+          {/* Search bar */}
+          <div className="mb-3">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                id="user-search"
+                type="text"
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                placeholder="Cari nama, email, atau role..."
+                className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {filters.search && (
+                <button
+                  onClick={() => handleFilterChange('search', '')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Clear search"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Role Filter */}
@@ -1288,7 +1323,7 @@ export default function UserManagement() {
             </div>
 
             {/* Clear Filters Button */}
-            {(filters.role || filters.status || filters.unit) && (
+            {(filters.search || filters.role || filters.status || filters.unit) && (
               <Button 
                 onClick={clearFilters}
                 variant="outline"
@@ -1307,34 +1342,19 @@ export default function UserManagement() {
               {filters.role && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                   Role: {filters.role}
-                  <button
-                    onClick={() => handleFilterChange('role', '')}
-                    className="ml-1 text-blue-600 hover:text-blue-800"
-                  >
-                    ×
-                  </button>
+                  <button onClick={() => handleFilterChange('role', '')} className="ml-1 text-blue-600 hover:text-blue-800">×</button>
                 </span>
               )}
               {filters.unit && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
                   Unit: {filters.unit}
-                  <button
-                    onClick={() => handleFilterChange('unit', '')}
-                    className="ml-1 text-purple-600 hover:text-purple-800"
-                  >
-                    ×
-                  </button>
+                  <button onClick={() => handleFilterChange('unit', '')} className="ml-1 text-purple-600 hover:text-purple-800">×</button>
                 </span>
               )}
               {filters.status && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
                   Status: {filters.status === 'active' ? 'Active' : 'Inactive'}
-                  <button
-                    onClick={() => handleFilterChange('status', '')}
-                    className="ml-1 text-green-600 hover:text-green-800"
-                  >
-                    ×
-                  </button>
+                  <button onClick={() => handleFilterChange('status', '')} className="ml-1 text-green-600 hover:text-green-800">×</button>
                 </span>
               )}
             </div>
@@ -1347,10 +1367,8 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle>
             Users List ({filteredUsers.length} of {users.length} users)
-            {(filters.role || filters.status || filters.unit) && (
-              <span className="text-sm font-normal text-gray-500 ml-2">
-                (filtered)
-              </span>
+            {(filters.search || filters.role || filters.status || filters.unit) && (
+              <span className="text-sm font-normal text-gray-500 ml-2">(filtered)</span>
             )}
           </CardTitle>
         </CardHeader>
@@ -1359,7 +1377,7 @@ export default function UserManagement() {
           <div className="block md:hidden space-y-3">
             {filteredUsers.length === 0 ? (
               <div className="text-center text-gray-500 py-6">
-                {(filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
+                {(filters.search || filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
               </div>
             ) : (
               filteredUsers.map(user => (
@@ -1421,7 +1439,7 @@ export default function UserManagement() {
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
-                      {(filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
+                      {(filters.search || filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
                     </td>
                   </tr>
                 ) : (
