@@ -13,8 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "School Admin Dashboard",
-  description: "School Administration System",
+  title: "Chung Chung School",
+  description: "Chung Chung School Administration System",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({ children }) {
