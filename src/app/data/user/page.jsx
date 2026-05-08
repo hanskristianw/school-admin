@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ export default function UserManagement() {
     user_nama_depan: '',
     user_nama_belakang: '',
     user_email: '',
+    user_tanggal_lahir: '',
     user_manual_picture: '',
     user_role_id: '',
     user_unit_id: '',
@@ -58,6 +59,67 @@ export default function UserManagement() {
     status: '',
     unit: ''
   });
+
+  // ── Column visibility ──────────────────────────────────────────────
+  const ALL_COLUMNS = [
+    { key: 'id',            label: 'ID' },
+    { key: 'nama',          label: 'Nama Lengkap' },
+    { key: 'email',         label: 'Email' },
+    { key: 'tanggal_lahir', label: 'Tanggal Lahir' },
+    { key: 'role',          label: 'Role' },
+    { key: 'unit',          label: 'Unit' },
+    { key: 'status',        label: 'Status' },
+  ];
+  const DEFAULT_COLUMNS = new Set(['id', 'nama', 'email', 'role', 'unit', 'status']);
+
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user_table_columns');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch (e) {}
+    return DEFAULT_COLUMNS;
+  });
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const columnSelectorRef = useRef(null);
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try { localStorage.setItem('user_table_columns', JSON.stringify([...next])); } catch (e) {}
+      return next;
+    });
+  };
+
+  // Close column selector when clicking outside
+  useEffect(() => {
+    if (!showColumnSelector) return;
+    const handler = (e) => {
+      if (columnSelectorRef.current && !columnSelectorRef.current.contains(e.target)) {
+        setShowColumnSelector(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showColumnSelector]);
+
+  // ── Date helpers: DD/MM/YYYY ↔ ISO YYYY-MM-DD ─────────────────────
+  const toDisplayDate = (iso) => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  };
+  const toIsoDate = (ddmmyyyy) => {
+    if (!ddmmyyyy) return null;
+    const parts = ddmmyyyy.replace(/\s/g, '').split('/');
+    if (parts.length !== 3) return null;
+    const [d, m, y] = parts;
+    if (!d || !m || !y || y.length !== 4) return null;
+    const iso = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    if (isNaN(Date.parse(iso))) return null;
+    return iso;
+  };
 
   // Import states
   const [showImportModal, setShowImportModal] = useState(false);
@@ -504,7 +566,7 @@ export default function UserManagement() {
       // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir');
 
 
       if (usersError) {
@@ -544,6 +606,7 @@ export default function UserManagement() {
           signature_url: user.signature_url || null,
           user_role_id: user.user_role_id,
           user_unit_id: user.user_unit_id,
+          user_tanggal_lahir: user.user_tanggal_lahir || null,
           role_name: role?.role_name || '',
           is_admin: role?.is_admin || false,
           unit_name: unit?.unit_name || '',
@@ -684,6 +747,12 @@ export default function UserManagement() {
 
       let result;
       const baseData = { ...submitData };
+      // Convert tanggal_lahir DD/MM/YYYY → ISO YYYY-MM-DD before saving
+      if (baseData.user_tanggal_lahir) {
+        baseData.user_tanggal_lahir = toIsoDate(baseData.user_tanggal_lahir) || null;
+      } else {
+        baseData.user_tanggal_lahir = null;
+      }
 
       if (editingUser) {
         // Upload profile image if new file selected
@@ -750,6 +819,7 @@ export default function UserManagement() {
       user_nama_depan: user.user_nama_depan,
       user_nama_belakang: user.user_nama_belakang,
       user_email: user.user_email || '',
+      user_tanggal_lahir: toDisplayDate(user.user_tanggal_lahir || ''),
       user_manual_picture: user.user_manual_picture || '',
       user_role_id: user.user_role_id,
       user_unit_id: user.user_unit_id || '',
@@ -770,6 +840,7 @@ export default function UserManagement() {
       user_nama_depan: '',
       user_nama_belakang: '',
       user_email: '',
+      user_tanggal_lahir: '',
       user_manual_picture: '',
       user_role_id: '',
       user_unit_id: '',
@@ -915,6 +986,27 @@ export default function UserManagement() {
             </div>
 
             <div>
+              <Label htmlFor="user_tanggal_lahir">Tanggal Lahir</Label>
+              <Input
+                id="user_tanggal_lahir"
+                name="user_tanggal_lahir"
+                type="text"
+                value={formData.user_tanggal_lahir || ''}
+                onChange={(e) => {
+                  let v = e.target.value.replace(/[^0-9/]/g, '');
+                  // Auto-insert slashes
+                  if (v.length === 2 && !v.includes('/')) v += '/';
+                  if (v.length === 5 && v.lastIndexOf('/') === 2) v += '/';
+                  handleInputChange({ target: { name: 'user_tanggal_lahir', value: v } });
+                }}
+                disabled={submitting}
+                placeholder="DD/MM/YYYY"
+                maxLength={10}
+              />
+              <p className="text-xs text-gray-400 mt-1">Format: DD/MM/YYYY</p>
+            </div>
+
+            <div>
               <Label htmlFor="user_manual_picture">Profile Picture (Opsional)</Label>
               <Input
                 id="user_manual_picture"
@@ -938,9 +1030,9 @@ export default function UserManagement() {
               {imageFile && (
                 <div className="mt-2 space-y-1">
                   <p className="text-sm font-medium">Preview:</p>
-                  <img 
-                    src={URL.createObjectURL(imageFile)} 
-                    alt="Preview" 
+                  <img
+                    src={URL.createObjectURL(imageFile)}
+                    alt="Preview"
                     className="w-24 h-24 object-cover rounded-full border"
                   />
                   <p className="text-xs text-gray-500">
@@ -951,9 +1043,9 @@ export default function UserManagement() {
               {!imageFile && formData.user_manual_picture && (
                 <div className="mt-2">
                   <p className="text-sm font-medium mb-1">Current:</p>
-                  <img 
-                    src={formData.user_manual_picture} 
-                    alt="Current" 
+                  <img
+                    src={formData.user_manual_picture}
+                    alt="Current"
                     className="w-24 h-24 object-cover rounded-full border"
                   />
                 </div>
@@ -1365,12 +1457,53 @@ export default function UserManagement() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Users List ({filteredUsers.length} of {users.length} users)
-            {(filters.search || filters.role || filters.status || filters.unit) && (
-              <span className="text-sm font-normal text-gray-500 ml-2">(filtered)</span>
-            )}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              Users List ({filteredUsers.length} of {users.length} users)
+              {(filters.search || filters.role || filters.status || filters.unit) && (
+                <span className="text-sm font-normal text-gray-500 ml-2">(filtered)</span>
+              )}
+            </CardTitle>
+            {/* Column selector — desktop only */}
+            <div className="relative hidden md:block" ref={columnSelectorRef}>
+              <button
+                onClick={() => setShowColumnSelector(v => !v)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Columns
+              </button>
+              {showColumnSelector && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 p-3 min-w-[180px]">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tampilkan Kolom</p>
+                  {ALL_COLUMNS.map(col => (
+                    <label key={col.key} className="flex items-center gap-2 py-1 px-1 text-sm cursor-pointer rounded hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns.has(col.key)}
+                        onChange={() => toggleColumn(col.key)}
+                        className="rounded"
+                      />
+                      <span>{col.label}</span>
+                    </label>
+                  ))}
+                  <div className="border-t mt-2 pt-2">
+                    <button
+                      onClick={() => {
+                        setVisibleColumns(DEFAULT_COLUMNS);
+                        try { localStorage.removeItem('user_table_columns'); } catch(e) {}
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 w-full text-left"
+                    >
+                      Reset ke default
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Mobile View */}
@@ -1423,58 +1556,52 @@ export default function UserManagement() {
 
           {/* Desktop View */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300">
+            <table className="w-full border-collapse border border-gray-300 text-sm">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="border border-gray-300 px-4 py-2 text-left">ID</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Nama Lengkap</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Email</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Role</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Unit</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Status</th>
+                  {visibleColumns.has('id') && <th className="border border-gray-300 px-4 py-2 text-left">ID</th>}
+                  {visibleColumns.has('nama') && <th className="border border-gray-300 px-4 py-2 text-left">Nama Lengkap</th>}
+                  {visibleColumns.has('email') && <th className="border border-gray-300 px-4 py-2 text-left">Email</th>}
+                  {visibleColumns.has('tanggal_lahir') && <th className="border border-gray-300 px-4 py-2 text-left">Tanggal Lahir</th>}
+                  {visibleColumns.has('role') && <th className="border border-gray-300 px-4 py-2 text-left">Role</th>}
+                  {visibleColumns.has('unit') && <th className="border border-gray-300 px-4 py-2 text-left">Unit</th>}
+                  {visibleColumns.has('status') && <th className="border border-gray-300 px-4 py-2 text-left">Status</th>}
                   <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="border border-gray-300 px-4 py-6 text-center text-gray-500">
+                    <td colSpan={visibleColumns.size + 1} className="border border-gray-300 px-4 py-6 text-center text-gray-500">
                       {(filters.search || filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map(user => (
                     <tr key={user.user_id} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-2">{user.user_id}</td>
+                      {visibleColumns.has('id') && <td className="border border-gray-300 px-4 py-2">{user.user_id}</td>}
+                      {visibleColumns.has('nama') && <td className="border border-gray-300 px-4 py-2">{user.user_nama_depan} {user.user_nama_belakang}</td>}
+                      {visibleColumns.has('email') && <td className="border border-gray-300 px-4 py-2">{user.user_email || '-'}</td>}
+                      {visibleColumns.has('tanggal_lahir') && <td className="border border-gray-300 px-4 py-2">{user.user_tanggal_lahir ? toDisplayDate(user.user_tanggal_lahir) : '-'}</td>}
+                      {visibleColumns.has('role') && (
+                        <td className="border border-gray-300 px-4 py-2">
+                          <span className={`px-2 py-1 rounded text-xs ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                            {user.role_name}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.has('unit') && <td className="border border-gray-300 px-4 py-2">{user.unit_name || '-'}</td>}
+                      {visibleColumns.has('status') && (
+                        <td className="border border-gray-300 px-4 py-2">
+                          <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                      )}
                       <td className="border border-gray-300 px-4 py-2">
-                        {user.user_nama_depan} {user.user_nama_belakang}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">{user.user_email || '-'}</td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        <span className={`px-2 py-1 rounded text-xs ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                          {user.role_name}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        <span className="text-sm text-gray-600">
-                          {user.unit_name || '-'}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {user.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleEdit(user)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            Edit
-                          </Button>
-                        </div>
+                        <Button size="sm" onClick={() => handleEdit(user)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                          Edit
+                        </Button>
                       </td>
                     </tr>
                   ))

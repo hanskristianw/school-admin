@@ -2714,11 +2714,11 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
     if (studentUserId) {
       const { data: studentUserData } = await supabase
         .from('users')
-        .select('user_birth_date')
+        .select('user_tanggal_lahir')
         .eq('user_id', studentUserId)
         .single();
-      if (studentUserData?.user_birth_date) {
-        studentDOB = new Date(studentUserData.user_birth_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (studentUserData?.user_tanggal_lahir) {
+        studentDOB = new Date(studentUserData.user_tanggal_lahir).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
       }
     }
 
@@ -3146,7 +3146,7 @@ export const generateClassReportZIP = async ({
     if (allStudentUserIds.length > 0) {
       const { data } = await supabase
         .from('users')
-        .select('user_id, user_birth_date')
+        .select('user_id, user_tanggal_lahir')
         .in('user_id', allStudentUserIds);
       allDobData = data || [];
     }
@@ -3155,7 +3155,7 @@ export const generateClassReportZIP = async ({
     const mentorMap = new Map();
     (allMentorData || []).forEach(m => { mentorMap.set(m.student_user_id, m); });
     const dobMap = new Map();
-    (allDobData || []).forEach(d => { dobMap.set(d.user_id, d.user_birth_date); });
+    (allDobData || []).forEach(d => { dobMap.set(d.user_id, d.user_tanggal_lahir); });
     const commentMap = new Map();
     (allCommentsData || []).forEach(c => { commentMap.set(`${c.subject_id}_${c.student_user_id}`, c.comment_text); });
 
