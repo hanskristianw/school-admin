@@ -8,8 +8,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
+import { useTheme } from '@/lib/theme';
 
 export default function SubjectManagement() {
+  const { theme } = useTheme();
   const [subjects, setSubjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [units, setUnits] = useState([]);
@@ -877,33 +879,34 @@ export default function SubjectManagement() {
   const filteredSubjects = getFilteredSubjects();
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <div className="flex justify-center items-center h-64" style={{ color: theme.textSecondary }}>Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Manajemen Subject</h1>
-        <Button onClick={handleAddNew}>
+        <h1 className="text-3xl font-bold" style={{ color: theme.textPrimary }}>Manajemen Subject</h1>
+        <Button onClick={handleAddNew} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
           + Tambah Subject
         </Button>
       </div>
 
       {/* Filter Section */}
       {Array.isArray(subjects) && subjects.length > 0 && (
-        <Card>
+        <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
           <CardHeader>
-            <CardTitle>Filter Subject</CardTitle>
+            <CardTitle style={{ color: theme.textPrimary }}>Filter Subject</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="filter-unit">Filter by Unit</Label>
+                <Label htmlFor="filter-unit" style={{ color: theme.textBody }}>Filter by Unit</Label>
                 <select
                   id="filter-unit"
                   value={filters.unit}
                   onChange={e => setFilters(prev => ({ ...prev, unit: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className="w-full px-3 py-2 rounded-md text-sm"
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                 >
                   <option value="">Semua Unit</option>
                   {getUniqueUnits().map(unit => (
@@ -912,12 +915,13 @@ export default function SubjectManagement() {
                 </select>
               </div>
               <div>
-                <Label htmlFor="filter-teacher">Filter by Teacher</Label>
+                <Label htmlFor="filter-teacher" style={{ color: theme.textBody }}>Filter by Teacher</Label>
                 <Input
                   id="filter-teacher"
                   placeholder="Cari nama teacher..."
                   value={filters.teacher}
                   onChange={(e) => setFilters(prev => ({ ...prev, teacher: e.target.value }))}
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                 />
               </div>
             </div>
@@ -925,24 +929,26 @@ export default function SubjectManagement() {
             {/* Active Filters Display */}
             {(filters.unit || filters.teacher) && (
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className="text-sm text-gray-600">Filter aktif:</span>
+                <span className="text-sm" style={{ color: theme.textSecondary }}>Filter aktif:</span>
                 {filters.unit && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ background: theme.blueBg, color: theme.blueText }}>
                     Unit: {filters.unit}
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, unit: '' }))}
-                      className="ml-2 text-blue-600 hover:text-blue-800"
+                      className="ml-2"
+                      style={{ color: theme.blueText }}
                     >
                       ×
                     </button>
                   </span>
                 )}
                 {filters.teacher && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ background: theme.greenBg, color: theme.greenText }}>
                     Teacher: {filters.teacher}
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, teacher: '' }))}
-                      className="ml-2 text-green-600 hover:text-green-800"
+                      className="ml-2"
+                      style={{ color: theme.greenText }}
                     >
                       ×
                     </button>
@@ -950,7 +956,8 @@ export default function SubjectManagement() {
                 )}
                 <button
                   onClick={() => setFilters({ unit: '', teacher: '' })}
-                  className="text-sm text-gray-500 hover:text-gray-700 underline"
+                  className="text-sm underline"
+                  style={{ color: theme.textSecondary }}
                 >
                   Clear all filters
                 </button>
@@ -961,18 +968,18 @@ export default function SubjectManagement() {
       )}
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        <div className="px-4 py-3 rounded" style={{ background: theme.redBg, border: `1px solid ${theme.border}`, color: theme.redText }}>
           {error}
         </div>
       )}
 
       {/* Subjects Table */}
-      <Card>
+      <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
         <CardHeader>
-          <CardTitle>
+          <CardTitle style={{ color: theme.textPrimary }}>
             Daftar Subject 
             {Array.isArray(subjects) && filteredSubjects.length !== subjects.length && (
-              <span className="text-sm font-normal text-gray-500 ml-2">
+              <span className="text-sm font-normal ml-2" style={{ color: theme.textSecondary }}>
                 ({filteredSubjects.length} of {subjects.length} subjects)
               </span>
             )}
@@ -980,7 +987,7 @@ export default function SubjectManagement() {
         </CardHeader>
         <CardContent>
           {filteredSubjects.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8" style={{ color: theme.textSecondary }}>
               {!Array.isArray(subjects) || subjects.length === 0 
                 ? "Belum ada subject. Tambahkan subject pertama Anda!"
                 : "Tidak ada subject yang sesuai dengan filter yang dipilih."
@@ -991,67 +998,72 @@ export default function SubjectManagement() {
             const nonCoreSubjects = filteredSubjects.filter(s => !s.core_subject)
 
             const renderRow = (subject, idx) => (
-              <tr key={subject.subject_id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center w-12">
+              <tr
+                key={subject.subject_id}
+                style={{ borderBottom: `1px solid ${theme.border}` }}
+                onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-center w-12" style={{ color: theme.textSecondary }}>
                   {idx + 1}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {subject.subject_icon ? (
                     <img src={subject.subject_icon} alt={subject.subject_name} className="w-8 h-8 rounded object-cover" />
                   ) : (
-                    <div className="w-8 h-8 rounded bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold">
+                    <div className="w-8 h-8 rounded flex items-center justify-center text-xs font-bold" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
                       {subject.subject_name?.charAt(0)?.toUpperCase()}
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: theme.textPrimary }}>
                   {subject.subject_name}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: theme.textBody }}>
                   {subject.subject_code || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
                   {subject.include_in_print !== false ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Print</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.greenBg, color: theme.greenText }}>Print</span>
                   ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Skip</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary }}>Skip</span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-700">
+                <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: theme.blueText }}>
                   {subject.subject_guide ? (
-                    <a href={subject.subject_guide} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">
+                    <a href={subject.subject_guide} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: theme.blueText }}>
                       Open
                     </a>
                   ) : (
-                    <span className="text-gray-400">-</span>
+                    <span style={{ color: theme.textSecondary }}>-</span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: theme.textBody }}>
                   {subject.user_nama_depan} {subject.user_nama_belakang}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: theme.textBody }}>
                   {subject.unit_name}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(subject)}>Edit</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleManageCriteria(subject)} className="text-purple-600 hover:text-purple-800">Criteria</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(subject)} className="text-red-600 hover:text-red-800">Hapus</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(subject)} style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}>Edit</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleManageCriteria(subject)} style={{ background: theme.cardBg, color: theme.blueText, borderColor: theme.border }}>Criteria</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDelete(subject)} style={{ background: theme.cardBg, color: theme.redText, borderColor: theme.border }}>Hapus</Button>
                 </td>
               </tr>
             )
 
             const thead = (
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">#</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Icon</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Print</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guide Link</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-12" style={{ color: theme.textSecondary }}>#</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Icon</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Subject Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Code</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Print</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Guide Link</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Teacher</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Unit</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Aksi</th>
                 </tr>
               </thead>
             )
@@ -1061,12 +1073,12 @@ export default function SubjectManagement() {
                 {coreSubjects.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-semibold text-blue-700 uppercase tracking-wider">Core Subjects</span>
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{coreSubjects.length}</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider" style={{ color: theme.blueText }}>Core Subjects</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: theme.blueBg, color: theme.blueText }}>{coreSubjects.length}</span>
                     </div>
-                    <table className="min-w-full table-auto border border-blue-100 rounded-lg overflow-hidden">
+                    <table className="min-w-full table-auto rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
                       {thead}
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody>
                         {coreSubjects.map((subject, idx) => renderRow(subject, idx))}
                       </tbody>
                     </table>
@@ -1075,12 +1087,12 @@ export default function SubjectManagement() {
                 {nonCoreSubjects.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Other Subjects</span>
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{nonCoreSubjects.length}</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary }}>Other Subjects</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: theme.subtleBg, color: theme.textSecondary }}>{nonCoreSubjects.length}</span>
                     </div>
-                    <table className="min-w-full table-auto border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="min-w-full table-auto rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
                       {thead}
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody>
                         {nonCoreSubjects.map((subject, idx) => renderRow(subject, idx))}
                       </tbody>
                     </table>
@@ -1095,12 +1107,12 @@ export default function SubjectManagement() {
       {/* Add/Edit Form Modal */}
       <Modal isOpen={showForm} onClose={() => setShowForm(false)}>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <h2 className="text-xl font-bold mb-4">
+          <h2 className="text-xl font-bold mb-4" style={{ color: theme.textPrimary }}>
             {editingSubject ? 'Edit Subject' : 'Tambah Subject Baru'}
           </h2>
 
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <div className="px-4 py-3 rounded" style={{ background: theme.redBg, border: `1px solid ${theme.border}`, color: theme.redText }}>
               {error}
             </div>
           )}
@@ -1108,12 +1120,12 @@ export default function SubjectManagement() {
           <div className="grid grid-cols-1 gap-4">
             {/* Icon Upload */}
             <div>
-              <Label>Subject Icon</Label>
+              <Label style={{ color: theme.textBody }}>Subject Icon</Label>
               <div className="flex items-center gap-4 mt-1">
                 {/* Preview */}
                 {(iconPreview && !removeIcon) ? (
                   <div className="relative">
-                    <img src={iconPreview} alt="Icon preview" className="w-16 h-16 rounded-lg object-cover border border-gray-300" />
+                    <img src={iconPreview} alt="Icon preview" className="w-16 h-16 rounded-lg object-cover" style={{ border: `1px solid ${theme.border}` }} />
                     <button
                       type="button"
                       onClick={() => { setIconFile(null); setIconPreview(null); setRemoveIcon(true); }}
@@ -1123,7 +1135,7 @@ export default function SubjectManagement() {
                     </button>
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+                  <div className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center" style={{ borderColor: theme.border, color: theme.textSecondary }}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
@@ -1146,15 +1158,16 @@ export default function SubjectManagement() {
                         setRemoveIcon(false);
                       }
                     }}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold"
+                    style={{ color: theme.textSecondary }}
                   />
-                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF, WebP, atau SVG. Maks 2MB.</p>
+                  <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>PNG, JPG, GIF, WebP, atau SVG. Maks 2MB.</p>
                 </div>
               </div>
             </div>
 
             <div>
-              <Label htmlFor="subject_name">Subject Name *</Label>
+              <Label htmlFor="subject_name" style={{ color: theme.textBody }}>Subject Name *</Label>
               <Input
                 id="subject_name"
                 type="text"
@@ -1162,6 +1175,7 @@ export default function SubjectManagement() {
                 value={formData.subject_name}
                 onChange={(e) => setFormData(prev => ({ ...prev, subject_name: e.target.value }))}
                 className={formErrors.subject_name ? 'border-red-500' : ''}
+                style={{ background: theme.inputBg, border: `1px solid ${formErrors.subject_name ? '#ef4444' : theme.border}`, color: theme.textBody }}
               />
               {formErrors.subject_name && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.subject_name}</p>
@@ -1169,7 +1183,7 @@ export default function SubjectManagement() {
             </div>
 
             <div>
-              <Label htmlFor="subject_code">Subject Code</Label>
+              <Label htmlFor="subject_code" style={{ color: theme.textBody }}>Subject Code</Label>
               <Input
                 id="subject_code"
                 type="text"
@@ -1177,6 +1191,7 @@ export default function SubjectManagement() {
                 value={formData.subject_code}
                 onChange={(e) => setFormData(prev => ({ ...prev, subject_code: e.target.value }))}
                 className={formErrors.subject_code ? 'border-red-500' : ''}
+                style={{ background: theme.inputBg, border: `1px solid ${formErrors.subject_code ? '#ef4444' : theme.border}`, color: theme.textBody }}
               />
               {formErrors.subject_code && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.subject_code}</p>
@@ -1184,7 +1199,7 @@ export default function SubjectManagement() {
             </div>
 
             <div>
-              <Label htmlFor="subject_guide">Subject Guide (Google Drive/PDF URL)</Label>
+              <Label htmlFor="subject_guide" style={{ color: theme.textBody }}>Subject Guide (Google Drive/PDF URL)</Label>
               <Input
                 id="subject_guide"
                 type="url"
@@ -1192,6 +1207,7 @@ export default function SubjectManagement() {
                 value={formData.subject_guide}
                 onChange={(e) => setFormData(prev => ({ ...prev, subject_guide: e.target.value }))}
                 className={formErrors.subject_guide ? 'border-red-500' : ''}
+                style={{ background: theme.inputBg, border: `1px solid ${formErrors.subject_guide ? '#ef4444' : theme.border}`, color: theme.textBody }}
               />
               {formErrors.subject_guide && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.subject_guide}</p>
@@ -1199,19 +1215,20 @@ export default function SubjectManagement() {
             </div>
 
             <div>
-              <Label htmlFor="grading_method">Grading Calculation Method *</Label>
+              <Label htmlFor="grading_method" style={{ color: theme.textBody }}>Grading Calculation Method *</Label>
               <select
                 id="grading_method"
                 value={formData.grading_method}
                 onChange={(e) => setFormData(prev => ({ ...prev, grading_method: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 rounded-md text-sm"
+                style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
               >
                 <option value="highest">Highest (Best-fit) - IB MYP Standard</option>
                 <option value="average">Average (Mean of all strands)</option>
                 <option value="median">Median (Middle value)</option>
                 <option value="mode">Mode (Most frequent)</option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
                 {formData.grading_method === 'highest' && '✓ Takes the highest strand grade (IB MYP best-fit approach). Recommended for IB schools.'}
                 {formData.grading_method === 'average' && 'Calculates the mean of all strand grades and rounds to nearest integer.'}
                 {formData.grading_method === 'median' && 'Takes the middle value when strand grades are sorted.'}
@@ -1220,14 +1237,13 @@ export default function SubjectManagement() {
             </div>
 
             <div>
-              <Label htmlFor="subject_user_id">Teacher *</Label>
+              <Label htmlFor="subject_user_id" style={{ color: theme.textBody }}>Teacher *</Label>
               <select
                 id="subject_user_id"
                 value={formData.subject_user_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, subject_user_id: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md text-sm ${
-                  formErrors.subject_user_id ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-md text-sm"
+                style={{ background: theme.inputBg, border: `1px solid ${formErrors.subject_user_id ? '#ef4444' : theme.border}`, color: theme.textBody }}
               >
                 <option value="">Pilih Teacher</option>
                 {users.map((user) => (
@@ -1243,14 +1259,13 @@ export default function SubjectManagement() {
             </div>
 
             <div>
-              <Label htmlFor="subject_unit_id">Unit *</Label>
+              <Label htmlFor="subject_unit_id" style={{ color: theme.textBody }}>Unit *</Label>
               <select
                 id="subject_unit_id"
                 value={formData.subject_unit_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, subject_unit_id: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md text-sm ${
-                  formErrors.subject_unit_id ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 rounded-md text-sm"
+                style={{ background: theme.inputBg, border: `1px solid ${formErrors.subject_unit_id ? '#ef4444' : theme.border}`, color: theme.textBody }}
               >
                 <option value="">Pilih Unit</option>
                 {units.map((unit) => (
@@ -1265,24 +1280,25 @@ export default function SubjectManagement() {
             </div>
 
             <div>
-              <Label htmlFor="subject_group_id">Subject Group</Label>
+              <Label htmlFor="subject_group_id" style={{ color: theme.textBody }}>Subject Group</Label>
               <select
                 id="subject_group_id"
                 value={formData.subject_group_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, subject_group_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 rounded-md text-sm"
+                style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
               >
                 <option value="">— Tidak ada group —</option>
                 {subjectGroups.map((g) => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">Digunakan untuk Achievement Level Descriptors</p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>Digunakan untuk Achievement Level Descriptors</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="print_order">Print Order</Label>
+                <Label htmlFor="print_order" style={{ color: theme.textBody }}>Print Order</Label>
                 <Input
                   id="print_order"
                   type="number"
@@ -1290,14 +1306,15 @@ export default function SubjectManagement() {
                   placeholder="0"
                   value={formData.print_order}
                   onChange={(e) => setFormData(prev => ({ ...prev, print_order: e.target.value }))}
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                 />
-                <p className="text-xs text-gray-500 mt-1">Urutan cetak laporan (0 = paling pertama)</p>
+                <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>Urutan cetak laporan (0 = paling pertama)</p>
               </div>
 
               <div className="flex items-center">
                 <div className="flex-1">
-                  <Label>Core Subject</Label>
-                  <p className="text-xs text-gray-500 mb-2">Tandai sebagai mata pelajaran inti</p>
+                  <Label style={{ color: theme.textBody }}>Core Subject</Label>
+                  <p className="text-xs mb-2" style={{ color: theme.textSecondary }}>Tandai sebagai mata pelajaran inti</p>
                 </div>
                 <button
                   type="button"
@@ -1313,19 +1330,20 @@ export default function SubjectManagement() {
               </div>
 
               <div className="col-span-2">
-                <Label>Custom Grade Boundaries</Label>
-                <p className="text-xs text-gray-500 mb-1">6 angka dipisah koma — batas atas untuk grade 1–6 (kosongkan untuk pakai rumus IB standar). Contoh Bible: 4, 7, 11, 14, 17, 20</p>
+                <Label style={{ color: theme.textBody }}>Custom Grade Boundaries</Label>
+                <p className="text-xs mb-1" style={{ color: theme.textSecondary }}>6 angka dipisah koma — batas atas untuk grade 1–6 (kosongkan untuk pakai rumus IB standar). Contoh Bible: 4, 7, 11, 14, 17, 20</p>
                 <Input
                   value={formData.custom_grade_boundaries}
                   onChange={e => setFormData(prev => ({ ...prev, custom_grade_boundaries: e.target.value }))}
                   placeholder="contoh: 4, 7, 11, 14, 17, 20"
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                 />
               </div>
 
               <div className="flex items-center">
                 <div className="flex-1">
-                  <Label>Include in Print</Label>
-                  <p className="text-xs text-gray-500 mb-2">Tampilkan subject ini saat cetak laporan</p>
+                  <Label style={{ color: theme.textBody }}>Include in Print</Label>
+                  <p className="text-xs mb-2" style={{ color: theme.textSecondary }}>Tampilkan subject ini saat cetak laporan</p>
                 </div>
                 <button
                   type="button"
@@ -1348,12 +1366,14 @@ export default function SubjectManagement() {
               variant="outline"
               onClick={() => setShowForm(false)}
               disabled={submitting}
+              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
               disabled={submitting}
+              style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
             >
               {submitting ? 'Menyimpan...' : (editingSubject ? 'Update Subject' : 'Tambah Subject')}
             </Button>
@@ -1368,20 +1388,20 @@ export default function SubjectManagement() {
         size="xl"
       >
         <div className="space-y-4">
-          <div className="flex justify-between items-center border-b pb-3">
+          <div className="flex justify-between items-center pb-3" style={{ borderBottom: `1px solid ${theme.border}` }}>
             <div>
-              <h2 className="text-2xl font-bold">Manage Criteria & Strands</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Subject: <span className="font-semibold">{selectedSubject?.subject_name}</span>
+              <h2 className="text-2xl font-bold" style={{ color: theme.textPrimary }}>Manage Criteria &amp; Strands</h2>
+              <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>
+                Subject: <span className="font-semibold" style={{ color: theme.textPrimary }}>{selectedSubject?.subject_name}</span>
               </p>
             </div>
-            <Button onClick={handleAddCriteria} size="sm">+ Add Criterion</Button>
+            <Button onClick={handleAddCriteria} size="sm" style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>+ Add Criterion</Button>
           </div>
 
           {loadingCriteria ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-8" style={{ color: theme.textSecondary }}>Loading...</div>
           ) : criteria.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8" style={{ color: theme.textSecondary }}>
               Belum ada criteria. Tambahkan criterion pertama (A, B, C, D)
             </div>
           ) : (
@@ -1389,19 +1409,20 @@ export default function SubjectManagement() {
               {criteria.map((criterion) => {
                 const criterionStrands = getStrandsForCriterion(criterion.criterion_id);
                 return (
-                  <div key={criterion.criterion_id} className="border rounded-lg p-4 bg-gray-50">
+                  <div key={criterion.criterion_id} className="border rounded-lg p-4" style={{ background: theme.subtleBg, borderColor: theme.border }}>
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <h3 className="text-lg font-bold text-blue-900">
+                        <h3 className="text-lg font-bold" style={{ color: theme.blueText }}>
                           Criterion {criterion.code}
                         </h3>
-                        <p className="text-sm text-gray-700 mt-1">{criterion.name}</p>
+                        <p className="text-sm mt-1" style={{ color: theme.textBody }}>{criterion.name}</p>
                       </div>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleAddStrand(criterion.criterion_id)}
+                          style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
                         >
                           + Strand
                         </Button>
@@ -1409,6 +1430,7 @@ export default function SubjectManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditCriteria(criterion)}
+                          style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
                         >
                           Edit
                         </Button>
@@ -1416,7 +1438,7 @@ export default function SubjectManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteCriteria(criterion)}
-                          className="text-red-600"
+                          style={{ background: theme.cardBg, color: theme.redText, borderColor: theme.border }}
                         >
                           Delete
                         </Button>
@@ -1425,19 +1447,19 @@ export default function SubjectManagement() {
 
                     {/* Strands by Year */}
                     {criterionStrands.length === 0 ? (
-                      <p className="text-sm text-gray-500 italic">No strands yet</p>
+                      <p className="text-sm italic" style={{ color: theme.textSecondary }}>No strands yet</p>
                     ) : (
                       <div className="space-y-4">
                         {/* Group strands by year_level */}
                         {[...new Set(criterionStrands.map(s => s.year_level))].sort((a, b) => a - b).map(yearLevel => {
                           const yearStrands = criterionStrands.filter(s => s.year_level === yearLevel);
                           return (
-                            <div key={yearLevel} className="bg-white rounded-lg border border-gray-200 p-3">
-                              <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                            <div key={yearLevel} className="rounded-lg border p-3" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                                <span className="px-2 py-1 rounded text-xs" style={{ background: theme.blueBg, color: theme.blueText }}>
                                   Year {yearLevel}
                                 </span>
-                                <span className="text-gray-500 text-xs font-normal">
+                                <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>
                                   ({yearStrands.length} {yearStrands.length === 1 ? 'strand' : 'strands'})
                                 </span>
                               </h4>
@@ -1447,26 +1469,30 @@ export default function SubjectManagement() {
                                   const isExpanded = expandedStrands.has(strand.strand_id);
                                   
                                   return (
-                                    <div key={strand.strand_id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div key={strand.strand_id} className="border rounded-lg overflow-hidden" style={{ borderColor: theme.border }}>
                                       {/* Strand Header */}
-                                      <div className="flex items-start gap-3 p-3 bg-white hover:bg-gray-50">
+                                      <div className="flex items-start gap-3 p-3" style={{ background: theme.cardBg }}
+                                        onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                        onMouseLeave={e => e.currentTarget.style.background = theme.cardBg}
+                                      >
                                         {strand.label && (
-                                          <span className="font-bold text-blue-700 text-sm min-w-[30px]">
+                                          <span className="font-bold text-sm min-w-[30px]" style={{ color: theme.blueText }}>
                                             {strand.label}.
                                           </span>
                                         )}
                                         <div className="flex-1">
-                                          <p className="text-sm text-gray-800 font-medium">
+                                          <p className="text-sm font-medium" style={{ color: theme.textBody }}>
                                             {strand.content}
                                           </p>
                                           {strandRubrics.length > 0 && (
                                             <div className="mt-2 flex items-center gap-2">
-                                              <span className="text-xs text-gray-500">
+                                              <span className="text-xs" style={{ color: theme.textSecondary }}>
                                                 {strandRubrics.length} rubric{strandRubrics.length !== 1 ? 's' : ''}
                                               </span>
                                               <button
                                                 onClick={() => toggleStrandExpansion(strand.strand_id)}
-                                                className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                                className="text-xs font-medium flex items-center gap-1"
+                                                style={{ color: theme.blueText }}
                                               >
                                                 {isExpanded ? '▼ Hide' : '▶ Show'} Rubrics
                                               </button>
@@ -1476,20 +1502,23 @@ export default function SubjectManagement() {
                                         <div className="flex gap-2 flex-shrink-0">
                                           <button
                                             onClick={() => handleAddRubric(strand)}
-                                            className="text-purple-600 hover:text-purple-800 text-xs font-medium"
+                                            className="text-xs font-medium"
+                                            style={{ color: theme.textSecondary }}
                                             title="Add Rubric"
                                           >
                                             + Rubric
                                           </button>
                                           <button
                                             onClick={() => handleEditStrand(strand)}
-                                            className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                                            className="text-xs font-medium"
+                                            style={{ color: theme.blueText }}
                                           >
                                             Edit
                                           </button>
                                           <button
                                             onClick={() => handleDeleteStrand(strand)}
-                                            className="text-red-600 hover:text-red-800 text-xs font-medium"
+                                            className="text-xs font-medium"
+                                            style={{ color: theme.redText }}
                                           >
                                             Delete
                                           </button>
@@ -1498,7 +1527,7 @@ export default function SubjectManagement() {
 
                                       {/* Rubrics Section (Expandable) */}
                                       {isExpanded && strandRubrics.length > 0 && (
-                                        <div className="bg-gray-50 border-t border-gray-200 p-3">
+                                        <div className="border-t p-3" style={{ background: theme.subtleBg, borderColor: theme.border }}>
                                           <div className="space-y-2">
                                             {strandRubrics.map((rubric) => (
                                               <div 
@@ -1521,13 +1550,15 @@ export default function SubjectManagement() {
                                                 <div className="flex gap-2 flex-shrink-0">
                                                   <button
                                                     onClick={() => handleEditRubric(rubric)}
-                                                    className="text-blue-700 hover:text-blue-900 text-xs font-medium"
+                                                    className="text-xs font-medium"
+                                                    style={{ color: theme.blueText }}
                                                   >
                                                     Edit
                                                   </button>
                                                   <button
                                                     onClick={() => handleDeleteRubric(rubric)}
-                                                    className="text-red-700 hover:text-red-900 text-xs font-medium"
+                                                    className="text-xs font-medium"
+                                                    style={{ color: theme.redText }}
                                                   >
                                                     Delete
                                                   </button>
@@ -1557,36 +1588,38 @@ export default function SubjectManagement() {
       {/* Criteria Form Modal */}
       <Modal isOpen={showCriteriaForm} onClose={() => setShowCriteriaForm(false)}>
         <div className="space-y-4">
-          <h3 className="text-xl font-bold">
+          <h3 className="text-xl font-bold" style={{ color: theme.textPrimary }}>
             {editingCriterion ? 'Edit Criterion' : 'Add New Criterion'}
           </h3>
           
           <div>
-            <Label htmlFor="criteria_code">Code (A, B, C, D) *</Label>
+            <Label htmlFor="criteria_code" style={{ color: theme.textBody }}>Code (A, B, C, D) *</Label>
             <Input
               id="criteria_code"
               maxLength={1}
               placeholder="A"
               value={criteriaFormData.code}
               onChange={(e) => setCriteriaFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+              style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
             />
           </div>
 
           <div>
-            <Label htmlFor="criteria_name">Name *</Label>
+            <Label htmlFor="criteria_name" style={{ color: theme.textBody }}>Name *</Label>
             <Input
               id="criteria_name"
               placeholder="e.g., Knowing and Understanding"
               value={criteriaFormData.name}
               onChange={(e) => setCriteriaFormData(prev => ({ ...prev, name: e.target.value }))}
+              style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setShowCriteriaForm(false)}>
+            <Button variant="outline" onClick={() => setShowCriteriaForm(false)} style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}>
               Cancel
             </Button>
-            <Button onClick={handleSaveCriteria}>
+            <Button onClick={handleSaveCriteria} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
               {editingCriterion ? 'Update' : 'Add'} Criterion
             </Button>
           </div>
@@ -1596,17 +1629,18 @@ export default function SubjectManagement() {
       {/* Strand Form Modal */}
       <Modal isOpen={showStrandForm} onClose={() => setShowStrandForm(false)}>
         <div className="space-y-4">
-          <h3 className="text-xl font-bold">
+          <h3 className="text-xl font-bold" style={{ color: theme.textPrimary }}>
             {editingStrand ? 'Edit Strand' : 'Add New Strand'}
           </h3>
 
           <div>
-            <Label htmlFor="strand_criterion">Criterion *</Label>
+            <Label htmlFor="strand_criterion" style={{ color: theme.textBody }}>Criterion *</Label>
             <select
               id="strand_criterion"
               value={strandFormData.criterion_id}
               onChange={(e) => setStrandFormData(prev => ({ ...prev, criterion_id: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 rounded-md text-sm"
+              style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
             >
               <option value="">Select Criterion</option>
               {criteria.map((c) => (
@@ -1618,7 +1652,7 @@ export default function SubjectManagement() {
           </div>
 
           <div>
-            <Label htmlFor="strand_year">Year Level (1-5 for MYP) *</Label>
+            <Label htmlFor="strand_year" style={{ color: theme.textBody }}>Year Level (1-5 for MYP) *</Label>
             <Input
               id="strand_year"
               type="number"
@@ -1627,36 +1661,39 @@ export default function SubjectManagement() {
               placeholder="1"
               value={strandFormData.year_level}
               onChange={(e) => setStrandFormData(prev => ({ ...prev, year_level: e.target.value }))}
+              style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
             />
           </div>
 
           <div>
-            <Label htmlFor="strand_label">Label (optional)</Label>
+            <Label htmlFor="strand_label" style={{ color: theme.textBody }}>Label (optional)</Label>
             <Input
               id="strand_label"
               placeholder="e.g., i, ii, iii"
               value={strandFormData.label}
               onChange={(e) => setStrandFormData(prev => ({ ...prev, label: e.target.value }))}
+              style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
             />
           </div>
 
           <div>
-            <Label htmlFor="strand_content">Content *</Label>
+            <Label htmlFor="strand_content" style={{ color: theme.textBody }}>Content *</Label>
             <textarea
               id="strand_content"
               rows={4}
               placeholder="Enter strand content/description"
               value={strandFormData.content}
               onChange={(e) => setStrandFormData(prev => ({ ...prev, content: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 rounded-md text-sm"
+              style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setShowStrandForm(false)}>
+            <Button variant="outline" onClick={() => setShowStrandForm(false)} style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}>
               Cancel
             </Button>
-            <Button onClick={handleSaveStrand}>
+            <Button onClick={handleSaveStrand} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
               {editingStrand ? 'Update' : 'Add'} Strand
             </Button>
           </div>
@@ -1666,13 +1703,13 @@ export default function SubjectManagement() {
       {/* Rubric Form Modal */}
       <Modal isOpen={showRubricForm} onClose={() => setShowRubricForm(false)}>
         <div className="space-y-4">
-          <h3 className="text-xl font-bold">
+          <h3 className="text-xl font-bold" style={{ color: theme.textPrimary }}>
             {editingRubric ? 'Edit Rubric' : 'Add New Rubric'}
           </h3>
 
           {selectedStrandForRubric && !editingRubric && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-900">
+            <div className="rounded-lg p-3" style={{ background: theme.blueBg, border: `1px solid ${theme.border}` }}>
+              <p className="text-sm" style={{ color: theme.blueText }}>
                 <span className="font-semibold">Adding rubric for:</span>
                 <br />
                 {selectedStrandForRubric.label && `${selectedStrandForRubric.label}. `}
@@ -1683,7 +1720,7 @@ export default function SubjectManagement() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="rubric_band">Band Label *</Label>
+              <Label htmlFor="rubric_band" style={{ color: theme.textBody }}>Band Label *</Label>
               <select
                 id="rubric_band"
                 value={rubricFormData.band_label}
@@ -1702,7 +1739,8 @@ export default function SubjectManagement() {
                     max_score: max
                   }));
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="w-full px-3 py-2 rounded-md text-sm"
+                style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
               >
                 <option value="">Select Band</option>
                 <option value="0">0 (No Achievement)</option>
@@ -1715,7 +1753,7 @@ export default function SubjectManagement() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label htmlFor="rubric_min">Min Score</Label>
+                <Label htmlFor="rubric_min" style={{ color: theme.textBody }}>Min Score</Label>
                 <Input
                   id="rubric_min"
                   type="number"
@@ -1723,10 +1761,11 @@ export default function SubjectManagement() {
                   max="8"
                   value={rubricFormData.min_score}
                   onChange={(e) => setRubricFormData(prev => ({ ...prev, min_score: e.target.value }))}
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                 />
               </div>
               <div>
-                <Label htmlFor="rubric_max">Max Score</Label>
+                <Label htmlFor="rubric_max" style={{ color: theme.textBody }}>Max Score</Label>
                 <Input
                   id="rubric_max"
                   type="number"
@@ -1734,31 +1773,33 @@ export default function SubjectManagement() {
                   max="8"
                   value={rubricFormData.max_score}
                   onChange={(e) => setRubricFormData(prev => ({ ...prev, max_score: e.target.value }))}
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <Label htmlFor="rubric_description">Description *</Label>
+            <Label htmlFor="rubric_description" style={{ color: theme.textBody }}>Description *</Label>
             <textarea
               id="rubric_description"
               rows={5}
               placeholder="Enter rubric description for this achievement level"
               value={rubricFormData.description}
               onChange={(e) => setRubricFormData(prev => ({ ...prev, description: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 rounded-md text-sm"
+              style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
               Tip: Be specific about what students need to demonstrate at this level
             </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setShowRubricForm(false)}>
+            <Button variant="outline" onClick={() => setShowRubricForm(false)} style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}>
               Cancel
             </Button>
-            <Button onClick={handleSaveRubric}>
+            <Button onClick={handleSaveRubric} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
               {editingRubric ? 'Update' : 'Add'} Rubric
             </Button>
           </div>

@@ -16,7 +16,7 @@ export async function POST(req) {
     // Fetch user by username or email (server-side bypasses RLS)
     const { data: user, error: userErr } = await admin
       .from('users')
-  .select('user_id, user_nama_depan, user_nama_belakang, user_role_id, user_unit_id, is_active, user_password_hash')
+  .select('user_id, user_nama_depan, user_nama_belakang, user_role_id, user_unit_id, is_active, user_password_hash, user_theme')
       .or(`user_email.ilike.${username}`)
       .single()
     if (userErr || !user) return NextResponse.json({ success: false, message: 'User tidak ditemukan atau tidak aktif' }, { status: 401 })
@@ -66,7 +66,8 @@ export async function POST(req) {
         isPrincipal: role?.is_principal || false,
         canVoidTransactions: role?.can_void_transactions || false,
         unitID: user.user_unit_id,
-        unitName: unit?.unit_name || ''
+        unitName: unit?.unit_name || '',
+        userTheme: user.user_theme || 'light'
       }
     }
     return NextResponse.json(payload)

@@ -10,9 +10,14 @@ import NotificationModal from '@/components/ui/notification-modal';
 import ImageCropModal from '@/components/ImageCropModal';
 import { supabase, createSupabaseWithAuth } from '@/lib/supabase';
 import ImageCropUploader from '@/components/ui/image-crop-uploader';
+import { useTheme } from '@/lib/theme';
 
 
 export default function UserManagement() {
+  const { theme } = useTheme()
+  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
+  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
+
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [units, setUnits] = useState([]);
@@ -876,8 +881,8 @@ export default function UserManagement() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-6">
-        <div className="text-center">Loading...</div>
+      <div className="p-4 md:p-6" style={{ background: theme.pageBg }}>
+        <div className="text-center" style={{ color: theme.textSecondary }}>Loading...</div>
       </div>
     );
   }
@@ -885,19 +890,21 @@ export default function UserManagement() {
   const filteredUsers = getFilteredUsers();
 
   return (
-    <div className="p-3">
+    <div className="p-3" style={{ background: theme.pageBg, minHeight: '100%' }}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <h1 className="text-2xl md:text-3xl font-bold">User Management</h1>
+        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: theme.textPrimary }}>User Management</h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button 
             onClick={() => setShowForm(true)}
-            className="bg-blue-600 hover:bg-blue-700"
+            className=""
+            style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
           >
             Add New User
           </Button>
           <Button 
             onClick={() => setShowImportModal(true)}
-            className="bg-green-600 hover:bg-green-700"
+            className=""
+            style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
           >
             Import Users
           </Button>
@@ -905,7 +912,8 @@ export default function UserManagement() {
             <Button 
               onClick={() => downloadTemplate(false)}
               variant="outline"
-              className="border-gray-300 text-xs px-2 py-1 h-auto"
+              className="text-xs px-2 py-1 h-auto"
+              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
               title="Download CSV template with comma separator"
             >
               Template (,)
@@ -913,7 +921,8 @@ export default function UserManagement() {
             <Button 
               onClick={() => downloadTemplate(true)}
               variant="outline"
-              className="border-gray-300 text-xs px-2 py-1 h-auto"
+              className="text-xs px-2 py-1 h-auto"
+              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
               title="Download CSV template with semicolon separator"
             >
               Template (;)
@@ -928,65 +937,68 @@ export default function UserManagement() {
         onClose={resetForm}
         title={editingUser ? 'Edit User' : 'Add New User'}
         size="md"
+        containerStyle={{ background: theme.cardBg }}
+        headerStyle={{ borderColor: theme.border }}
+        titleStyle={{ color: theme.textPrimary }}
       >
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded mb-3">
+          <div className="px-3 py-2 rounded mb-3" style={{ background: theme.redBg, border: `1px solid ${theme.redText}`, color: theme.redText }}>
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="user_nama_depan">Nama Depan *</Label>
+              <Label htmlFor="user_nama_depan" style={{ color: theme.textBody }}>Nama Depan *</Label>
               <Input
                 id="user_nama_depan"
                 name="user_nama_depan"
                 value={formData.user_nama_depan}
                 onChange={handleInputChange}
-                className={formErrors.user_nama_depan ? 'border-red-500' : ''}
+                style={{ ...inputStyle, ...(formErrors.user_nama_depan ? { borderColor: theme.redText } : {}) }}
                 disabled={submitting}
               />
               {formErrors.user_nama_depan && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.user_nama_depan}</p>
+                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_nama_depan}</p>
               )}
             </div>
 
             <div>
-              <Label htmlFor="user_nama_belakang">Nama Belakang *</Label>
+              <Label htmlFor="user_nama_belakang" style={{ color: theme.textBody }}>Nama Belakang *</Label>
               <Input
                 id="user_nama_belakang"
                 name="user_nama_belakang"
                 value={formData.user_nama_belakang}
                 onChange={handleInputChange}
-                className={formErrors.user_nama_belakang ? 'border-red-500' : ''}
+                style={{ ...inputStyle, ...(formErrors.user_nama_belakang ? { borderColor: theme.redText } : {}) }}
                 disabled={submitting}
               />
               {formErrors.user_nama_belakang && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.user_nama_belakang}</p>
+                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_nama_belakang}</p>
               )}
             </div>
 
             <div>
-              <Label htmlFor="user_email">Email</Label>
+              <Label htmlFor="user_email" style={{ color: theme.textBody }}>Email</Label>
               <Input
                 id="user_email"
                 name="user_email"
                 type="email"
                 value={formData.user_email}
                 onChange={handleInputChange}
-                className={formErrors.user_email ? 'border-red-500' : ''}
+                style={{ ...inputStyle, ...(formErrors.user_email ? { borderColor: theme.redText } : {}) }}
                 disabled={submitting}
               />
               {formErrors.user_email && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.user_email}</p>
+                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_email}</p>
               )}
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
                 Login menggunakan Google OAuth (@ccs.sch.id). Password tidak diperlukan.
               </p>
             </div>
 
             <div>
-              <Label htmlFor="user_tanggal_lahir">Tanggal Lahir</Label>
+              <Label htmlFor="user_tanggal_lahir" style={{ color: theme.textBody }}>Tanggal Lahir</Label>
               <Input
                 id="user_tanggal_lahir"
                 name="user_tanggal_lahir"
@@ -1002,12 +1014,13 @@ export default function UserManagement() {
                 disabled={submitting}
                 placeholder="DD/MM/YYYY"
                 maxLength={10}
+                style={inputStyle}
               />
-              <p className="text-xs text-gray-400 mt-1">Format: DD/MM/YYYY</p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>Format: DD/MM/YYYY</p>
             </div>
 
             <div>
-              <Label htmlFor="user_manual_picture">Profile Picture (Opsional)</Label>
+              <Label htmlFor="user_manual_picture" style={{ color: theme.textBody }}>Profile Picture (Opsional)</Label>
               <Input
                 id="user_manual_picture"
                 name="user_manual_picture"
@@ -1026,23 +1039,24 @@ export default function UserManagement() {
                 }}
                 disabled={submitting || uploadingImage}
                 className="cursor-pointer"
+                style={inputStyle}
               />
               {imageFile && (
                 <div className="mt-2 space-y-1">
-                  <p className="text-sm font-medium">Preview:</p>
+                  <p className="text-sm font-medium" style={{ color: theme.textBody }}>Preview:</p>
                   <img
                     src={URL.createObjectURL(imageFile)}
                     alt="Preview"
                     className="w-24 h-24 object-cover rounded-full border"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs" style={{ color: theme.textSecondary }}>
                     Size: {(imageFile.size / 1024).toFixed(1)} KB
                   </p>
                 </div>
               )}
               {!imageFile && formData.user_manual_picture && (
                 <div className="mt-2">
-                  <p className="text-sm font-medium mb-1">Current:</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: theme.textBody }}>Current:</p>
                   <img
                     src={formData.user_manual_picture}
                     alt="Current"
@@ -1053,14 +1067,15 @@ export default function UserManagement() {
             </div>
 
             <div>
-              <Label htmlFor="user_role_id">Role *</Label>
+              <Label htmlFor="user_role_id" style={{ color: theme.textBody }}>Role *</Label>
               <select
                 id="user_role_id"
                 name="user_role_id"
                 value={formData.user_role_id}
                 onChange={handleInputChange}
                 disabled={submitting}
-                className={`w-full px-3 py-2 border rounded-md ${formErrors.user_role_id ? 'border-red-500' : 'border-gray-300'}`}
+                className="w-full px-3 py-2 rounded-md"
+                style={{ ...selectStyle, ...(formErrors.user_role_id ? { borderColor: theme.redText } : {}) }}
               >
                 <option value="">Pilih Role</option>
                 {roles.map(role => (
@@ -1070,19 +1085,20 @@ export default function UserManagement() {
                 ))}
               </select>
               {formErrors.user_role_id && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.user_role_id}</p>
+                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_role_id}</p>
               )}
             </div>
 
             <div>
-              <Label htmlFor="user_unit_id">Unit</Label>
+              <Label htmlFor="user_unit_id" style={{ color: theme.textBody }}>Unit</Label>
               <select
                 id="user_unit_id"
                 name="user_unit_id"
                 value={formData.user_unit_id}
                 onChange={handleInputChange}
                 disabled={submitting}
-                className={`w-full px-3 py-2 border rounded-md ${formErrors.user_unit_id ? 'border-red-500' : 'border-gray-300'}`}
+                className="w-full px-3 py-2 rounded-md"
+                style={{ ...selectStyle, ...(formErrors.user_unit_id ? { borderColor: theme.redText } : {}) }}
               >
                 <option value="">Pilih Unit (Opsional)</option>
                 {units.map(unit => (
@@ -1092,7 +1108,7 @@ export default function UserManagement() {
                 ))}
               </select>
               {formErrors.user_unit_id && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.user_unit_id}</p>
+                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_unit_id}</p>
               )}
             </div>
 
@@ -1106,14 +1122,14 @@ export default function UserManagement() {
                   onChange={handleInputChange}
                   disabled={submitting}
                 />
-                <Label htmlFor="is_active">Active</Label>
+                <Label htmlFor="is_active" style={{ color: theme.textBody }}>Active</Label>
               </div>
             )}
 
             {/* Signature Upload */}
             <div className="md:col-span-2 border-t pt-3">
-              <p className="text-sm font-semibold text-gray-700 mb-1">Tanda Tangan</p>
-              <p className="text-xs text-gray-400 mb-2">
+              <p className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary }}>Tanda Tangan</p>
+              <p className="text-xs mb-2" style={{ color: theme.textSecondary }}>
                 Digunakan di laporan rapor sebagai tanda tangan wali kelas. Gunakan gambar PNG transparan untuk hasil terbaik.
               </p>
               <ImageCropUploader
@@ -1143,7 +1159,8 @@ export default function UserManagement() {
           <div className="flex flex-col sm:flex-row gap-2 pt-3">
             <Button 
               type="submit" 
-              className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none"
+              className="flex-1 sm:flex-none"
+              style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
               disabled={submitting}
             >
               {submitting ? 'Processing...' : (editingUser ? 'Update User' : 'Create User')}
@@ -1153,6 +1170,7 @@ export default function UserManagement() {
               onClick={resetForm} 
               variant="outline"
               className="flex-1 sm:flex-none"
+              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
               disabled={submitting}
             >
               Cancel
@@ -1167,11 +1185,14 @@ export default function UserManagement() {
         onClose={resetImportModal}
         title="Import Users from CSV"
         size="lg"
+        containerStyle={{ background: theme.cardBg }}
+        headerStyle={{ borderColor: theme.border }}
+        titleStyle={{ color: theme.textPrimary }}
       >
         <div className="space-y-4">
           {/* File Upload */}
           <div>
-            <Label htmlFor="csv-file" className="text-sm font-medium">
+            <Label htmlFor="csv-file" className="text-sm font-medium" style={{ color: theme.textBody }}>
               Select CSV File
             </Label>
             <input
@@ -1179,20 +1200,21 @@ export default function UserManagement() {
               type="file"
               accept=".csv,.xlsx,.xls"
               onChange={handleFileUpload}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 rounded-md text-sm"
+              style={inputStyle}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
               Supported formats: CSV (.csv) with comma (,) or semicolon (;) separators. Excel files (.xlsx, .xls) coming soon.
             </p>
           </div>
 
           {/* Template Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <h4 className="font-medium text-blue-800 mb-2">CSV Format Required:</h4>
-            <p className="text-sm text-blue-700 mb-2">
+          <div className="rounded-lg p-3" style={{ background: theme.blueBg, border: `1px solid ${theme.border}` }}>
+            <h4 className="font-medium mb-2" style={{ color: theme.blueText }}>CSV Format Required:</h4>
+            <p className="text-sm mb-2" style={{ color: theme.blueText }}>
               Your CSV should have these columns (case-insensitive). Use comma (,) or semicolon (;) as separator:
             </p>
-            <ul className="text-xs text-blue-600 space-y-1">
+            <ul className="text-xs space-y-1" style={{ color: theme.blueText }}>
               <li>• <strong>nama_depan</strong> or <strong>first_name</strong> (required)</li>
               <li>• <strong>nama_belakang</strong> or <strong>last_name</strong> (required)</li>
               <li>• <strong>username</strong> (required, must be unique)</li>
@@ -1207,29 +1229,31 @@ export default function UserManagement() {
                 variant="outline"
                 size="sm"
                 className="text-xs"
+                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
               >
-                📥 Download Template (Comma)
+                Download Template (Comma)
               </Button>
               <Button 
                 onClick={() => downloadTemplate(true)}
                 variant="outline"
                 size="sm"
                 className="text-xs"
+                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
               >
-                📥 Download Template (Semicolon)
+                Download Template (Semicolon)
               </Button>
             </div>
           </div>
 
           {/* Import Errors */}
           {importErrors.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <h4 className="font-medium text-red-800 mb-2">
+            <div className="rounded-lg p-3" style={{ background: theme.redBg, border: `1px solid ${theme.border}` }}>
+              <h4 className="font-medium mb-2" style={{ color: theme.redText }}>
                 Validation Errors ({importErrors.length} rows):
               </h4>
               <div className="max-h-32 overflow-y-auto space-y-1">
                 {importErrors.map((error, index) => (
-                  <div key={index} className="text-sm text-red-700">
+                  <div key={index} className="text-sm" style={{ color: theme.redText }}>
                     <strong>Row {error.row}:</strong> {error.errors.join(', ')}
                   </div>
                 ))}
@@ -1239,39 +1263,39 @@ export default function UserManagement() {
 
           {/* Import Preview */}
           {importPreview.length > 0 && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <h4 className="font-medium text-green-800 mb-2">
+            <div className="rounded-lg p-3" style={{ background: theme.greenBg, border: `1px solid ${theme.border}` }}>
+              <h4 className="font-medium mb-2" style={{ color: theme.greenText }}>
                 Valid Users Ready to Import ({importPreview.length}):
               </h4>
               <div className="max-h-32 overflow-y-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-green-200">
-                      <th className="text-left py-1">Name</th>
-                      <th className="text-left py-1">Username</th>
-                      <th className="text-left py-1">Email</th>
-                      <th className="text-left py-1">Role</th>
-                      <th className="text-left py-1">Unit</th>
-                      <th className="text-left py-1">Status</th>
+                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                      <th className="text-left py-1" style={{ color: theme.greenText }}>Name</th>
+                      <th className="text-left py-1" style={{ color: theme.greenText }}>Username</th>
+                      <th className="text-left py-1" style={{ color: theme.greenText }}>Email</th>
+                      <th className="text-left py-1" style={{ color: theme.greenText }}>Role</th>
+                      <th className="text-left py-1" style={{ color: theme.greenText }}>Unit</th>
+                      <th className="text-left py-1" style={{ color: theme.greenText }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {importPreview.slice(0, 5).map((user, index) => (
-                      <tr key={index} className="border-b border-green-100">
-                        <td className="py-1">{user.user_nama_depan} {user.user_nama_belakang}</td>
-                        <td className="py-1">{user.user_email || '-'}</td>
-                        <td className="py-1">
+                      <tr key={index} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                        <td className="py-1" style={{ color: theme.textBody }}>{user.user_nama_depan} {user.user_nama_belakang}</td>
+                        <td className="py-1" style={{ color: theme.textBody }}>{user.user_email || '-'}</td>
+                        <td className="py-1" style={{ color: theme.textBody }}>
                           {roles.find(r => r.role_id === user.user_role_id)?.role_name}
                         </td>
-                        <td className="py-1">
+                        <td className="py-1" style={{ color: theme.textBody }}>
                           {user.user_unit_id ? units.find(u => u.unit_id === user.user_unit_id)?.unit_name || '-' : '-'}
                         </td>
-                        <td className="py-1">{user.is_active ? 'Active' : 'Inactive'}</td>
+                        <td className="py-1" style={{ color: theme.textBody }}>{user.is_active ? 'Active' : 'Inactive'}</td>
                       </tr>
                     ))}
                     {importPreview.length > 5 && (
                       <tr>
-                        <td colSpan="6" className="py-1 text-gray-500 text-center">
+                        <td colSpan="6" className="py-1 text-center" style={{ color: theme.textSecondary }}>
                           ... and {importPreview.length - 5} more users
                         </td>
                       </tr>
@@ -1286,7 +1310,8 @@ export default function UserManagement() {
           <div className="flex flex-col sm:flex-row gap-2 pt-3">
             <Button 
               onClick={processBulkImport}
-              className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none"
+              className="flex-1 sm:flex-none"
+              style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
               disabled={importPreview.length === 0 || isImporting}
             >
               {isImporting ? 'Importing...' : `Import ${importPreview.length} Users`}
@@ -1296,6 +1321,7 @@ export default function UserManagement() {
                 onClick={() => downloadTemplate(false)}
                 variant="outline"
                 className="text-xs px-2"
+                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
                 disabled={isImporting}
                 title="Download CSV template with comma separator"
               >
@@ -1305,6 +1331,7 @@ export default function UserManagement() {
                 onClick={() => downloadTemplate(true)}
                 variant="outline"
                 className="text-xs px-2"
+                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
                 disabled={isImporting}
                 title="Download CSV template with semicolon separator"
               >
@@ -1315,6 +1342,7 @@ export default function UserManagement() {
               onClick={resetImportModal}
               variant="outline"
               className="flex-1 sm:flex-none"
+              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
               disabled={isImporting}
             >
               Cancel
@@ -1324,12 +1352,12 @@ export default function UserManagement() {
       </Modal>
 
       {/* Filters */}
-      <Card className="mb-4">
+      <Card className="mb-4" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
         <CardContent className="pt-4">
           {/* Search bar */}
           <div className="mb-3">
             <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: theme.textSecondary }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
               </svg>
               <input
@@ -1338,12 +1366,14 @@ export default function UserManagement() {
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 placeholder="Cari nama, email, atau role..."
-                className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-9 pr-9 py-2 rounded-md text-sm focus:outline-none"
+                style={inputStyle}
               />
               {filters.search && (
                 <button
                   onClick={() => handleFilterChange('search', '')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                  style={{ color: theme.textSecondary }}
                   aria-label="Clear search"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1358,14 +1388,15 @@ export default function UserManagement() {
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Role Filter */}
               <div>
-                <Label htmlFor="role-filter" className="text-sm font-medium">
+                <Label htmlFor="role-filter" className="text-sm font-medium" style={{ color: theme.textBody }}>
                   Filter by Role
                 </Label>
                 <select
                   id="role-filter"
                   value={filters.role}
                   onChange={(e) => handleFilterChange('role', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className="w-full px-3 py-2 rounded-md text-sm"
+                  style={selectStyle}
                 >
                   <option value="">Semua Role</option>
                   {getUniqueRoles().map(role => (
@@ -1378,14 +1409,15 @@ export default function UserManagement() {
 
               {/* Unit Filter */}
               <div>
-                <Label htmlFor="unit-filter" className="text-sm font-medium">
+                <Label htmlFor="unit-filter" className="text-sm font-medium" style={{ color: theme.textBody }}>
                   Filter by Unit
                 </Label>
                 <select
                   id="unit-filter"
                   value={filters.unit}
                   onChange={(e) => handleFilterChange('unit', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className="w-full px-3 py-2 rounded-md text-sm"
+                  style={selectStyle}
                 >
                   <option value="">Semua Unit</option>
                   {getUniqueUnits().map(unit => (
@@ -1398,14 +1430,15 @@ export default function UserManagement() {
 
               {/* Status Filter */}
               <div>
-                <Label htmlFor="status-filter" className="text-sm font-medium">
+                <Label htmlFor="status-filter" className="text-sm font-medium" style={{ color: theme.textBody }}>
                   Filter by Status
                 </Label>
                 <select
                   id="status-filter"
                   value={filters.status}
                   onChange={(e) => handleFilterChange('status', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className="w-full px-3 py-2 rounded-md text-sm"
+                  style={selectStyle}
                 >
                   <option value="">Semua Status</option>
                   <option value="active">Active</option>
@@ -1421,6 +1454,7 @@ export default function UserManagement() {
                 variant="outline"
                 size="sm"
                 className="whitespace-nowrap"
+                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
               >
                 Clear Filters
               </Button>
@@ -1430,23 +1464,23 @@ export default function UserManagement() {
           {/* Filter Summary */}
           {(filters.role || filters.status || filters.unit) && (
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="text-sm text-gray-600">Active filters:</span>
+              <span className="text-sm" style={{ color: theme.textSecondary }}>Active filters:</span>
               {filters.role && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.blueBg, color: theme.blueText }}>
                   Role: {filters.role}
-                  <button onClick={() => handleFilterChange('role', '')} className="ml-1 text-blue-600 hover:text-blue-800">×</button>
+                  <button onClick={() => handleFilterChange('role', '')} className="ml-1" style={{ color: theme.blueText }}>×</button>
                 </span>
               )}
               {filters.unit && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
                   Unit: {filters.unit}
-                  <button onClick={() => handleFilterChange('unit', '')} className="ml-1 text-purple-600 hover:text-purple-800">×</button>
+                  <button onClick={() => handleFilterChange('unit', '')} className="ml-1" style={{ color: theme.textSecondary }}>×</button>
                 </span>
               )}
               {filters.status && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.greenBg, color: theme.greenText }}>
                   Status: {filters.status === 'active' ? 'Active' : 'Inactive'}
-                  <button onClick={() => handleFilterChange('status', '')} className="ml-1 text-green-600 hover:text-green-800">×</button>
+                  <button onClick={() => handleFilterChange('status', '')} className="ml-1" style={{ color: theme.greenText }}>×</button>
                 </span>
               )}
             </div>
@@ -1455,31 +1489,32 @@ export default function UserManagement() {
       </Card>
 
       {/* Users Table */}
-      <Card>
-        <CardHeader>
+      <Card style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+        <CardHeader style={{ borderBottom: `1px solid ${theme.border}` }}>
           <div className="flex items-center justify-between">
-            <CardTitle>
+            <CardTitle style={{ color: theme.textPrimary }}>
               Users List ({filteredUsers.length} of {users.length} users)
               {(filters.search || filters.role || filters.status || filters.unit) && (
-                <span className="text-sm font-normal text-gray-500 ml-2">(filtered)</span>
+                <span className="text-sm font-normal ml-2" style={{ color: theme.textSecondary }}>(filtered)</span>
               )}
             </CardTitle>
             {/* Column selector — desktop only */}
             <div className="relative hidden md:block" ref={columnSelectorRef}>
               <button
                 onClick={() => setShowColumnSelector(v => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors"
+                style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, color: theme.textSecondary }}
               >
-                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4" style={{ color: theme.textSecondary }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
                 Columns
               </button>
               {showColumnSelector && (
-                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 p-3 min-w-[180px]">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tampilkan Kolom</p>
+                <div className="absolute right-0 top-full mt-1 rounded-lg z-30 p-3 min-w-[180px]" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: theme.textSecondary }}>Tampilkan Kolom</p>
                   {ALL_COLUMNS.map(col => (
-                    <label key={col.key} className="flex items-center gap-2 py-1 px-1 text-sm cursor-pointer rounded hover:bg-gray-50">
+                    <label key={col.key} className="flex items-center gap-2 py-1 px-1 text-sm cursor-pointer rounded" style={{ color: theme.textBody }}>
                       <input
                         type="checkbox"
                         checked={visibleColumns.has(col.key)}
@@ -1489,13 +1524,14 @@ export default function UserManagement() {
                       <span>{col.label}</span>
                     </label>
                   ))}
-                  <div className="border-t mt-2 pt-2">
+                  <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${theme.border}` }}>
                     <button
                       onClick={() => {
                         setVisibleColumns(DEFAULT_COLUMNS);
                         try { localStorage.removeItem('user_table_columns'); } catch(e) {}
                       }}
-                      className="text-xs text-blue-600 hover:text-blue-800 w-full text-left"
+                      className="text-xs w-full text-left"
+                      style={{ color: theme.blueText }}
                     >
                       Reset ke default
                     </button>
@@ -1509,33 +1545,33 @@ export default function UserManagement() {
           {/* Mobile View */}
           <div className="block md:hidden space-y-3">
             {filteredUsers.length === 0 ? (
-              <div className="text-center text-gray-500 py-6">
+              <div className="text-center py-6" style={{ color: theme.textSecondary }}>
                 {(filters.search || filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
               </div>
             ) : (
               filteredUsers.map(user => (
-                <div key={user.user_id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+                <div key={user.user_id} className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.cardBgAlt }}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-semibold">
+                      <h3 className="font-semibold" style={{ color: theme.textPrimary }}>
                         {user.user_nama_depan} {user.user_nama_belakang}
                       </h3>
-                      <p className="text-sm text-gray-600">{user.user_email || '-'}</p>
-                      <p className="text-sm text-gray-500">Email: {user.user_email || '-'}</p>
+                      <p className="text-sm" style={{ color: theme.textBody }}>{user.user_email || '-'}</p>
+                      <p className="text-sm" style={{ color: theme.textSecondary }}>Email: {user.user_email || '-'}</p>
                     </div>
-                    <span className="text-xs text-gray-500">ID: {user.user_id}</span>
+                    <span className="text-xs" style={{ color: theme.textSecondary }}>ID: {user.user_id}</span>
                   </div>
                   
                   <div className="flex flex-wrap gap-2">
-                    <span className={`px-2 py-1 rounded text-xs ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                    <span className="px-2 py-1 rounded text-xs" style={user.is_admin ? { background: theme.redBg, color: theme.redText } : { background: theme.blueBg, color: theme.blueText }}>
                       {user.role_name}
                     </span>
                     {user.unit_name && (
-                      <span className="px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">
+                      <span className="px-2 py-1 rounded text-xs" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
                         {user.unit_name}
                       </span>
                     )}
-                    <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    <span className="px-2 py-1 rounded text-xs" style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.subtleBg, color: theme.textSecondary }}>
                       {user.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
@@ -1544,7 +1580,8 @@ export default function UserManagement() {
                     <Button 
                       size="sm" 
                       onClick={() => handleEdit(user)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white flex-1"
+                      className="flex-1"
+                      style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
                     >
                       Edit
                     </Button>
@@ -1556,50 +1593,53 @@ export default function UserManagement() {
 
           {/* Desktop View */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300 text-sm">
+            <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
               <thead>
-                <tr className="bg-gray-50">
-                  {visibleColumns.has('id') && <th className="border border-gray-300 px-4 py-2 text-left">ID</th>}
-                  {visibleColumns.has('nama') && <th className="border border-gray-300 px-4 py-2 text-left">Nama Lengkap</th>}
-                  {visibleColumns.has('email') && <th className="border border-gray-300 px-4 py-2 text-left">Email</th>}
-                  {visibleColumns.has('tanggal_lahir') && <th className="border border-gray-300 px-4 py-2 text-left">Tanggal Lahir</th>}
-                  {visibleColumns.has('role') && <th className="border border-gray-300 px-4 py-2 text-left">Role</th>}
-                  {visibleColumns.has('unit') && <th className="border border-gray-300 px-4 py-2 text-left">Unit</th>}
-                  {visibleColumns.has('status') && <th className="border border-gray-300 px-4 py-2 text-left">Status</th>}
-                  <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
+                <tr style={{ background: theme.subtleBg }}>
+                  {visibleColumns.has('id') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>ID</th>}
+                  {visibleColumns.has('nama') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Nama Lengkap</th>}
+                  {visibleColumns.has('email') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Email</th>}
+                  {visibleColumns.has('tanggal_lahir') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Tanggal Lahir</th>}
+                  {visibleColumns.has('role') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Role</th>}
+                  {visibleColumns.has('unit') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Unit</th>}
+                  {visibleColumns.has('status') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Status</th>}
+                  <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={visibleColumns.size + 1} className="border border-gray-300 px-4 py-6 text-center text-gray-500">
+                    <td colSpan={visibleColumns.size + 1} className="px-4 py-6 text-center" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>
                       {(filters.search || filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map(user => (
-                    <tr key={user.user_id} className="hover:bg-gray-50">
-                      {visibleColumns.has('id') && <td className="border border-gray-300 px-4 py-2">{user.user_id}</td>}
-                      {visibleColumns.has('nama') && <td className="border border-gray-300 px-4 py-2">{user.user_nama_depan} {user.user_nama_belakang}</td>}
-                      {visibleColumns.has('email') && <td className="border border-gray-300 px-4 py-2">{user.user_email || '-'}</td>}
-                      {visibleColumns.has('tanggal_lahir') && <td className="border border-gray-300 px-4 py-2">{user.user_tanggal_lahir ? toDisplayDate(user.user_tanggal_lahir) : '-'}</td>}
+                    <tr key={user.user_id}
+                      onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {visibleColumns.has('id') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_id}</td>}
+                      {visibleColumns.has('nama') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_nama_depan} {user.user_nama_belakang}</td>}
+                      {visibleColumns.has('email') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_email || '-'}</td>}
+                      {visibleColumns.has('tanggal_lahir') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_tanggal_lahir ? toDisplayDate(user.user_tanggal_lahir) : '-'}</td>}
                       {visibleColumns.has('role') && (
-                        <td className="border border-gray-300 px-4 py-2">
-                          <span className={`px-2 py-1 rounded text-xs ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                        <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
+                          <span className="px-2 py-1 rounded text-xs" style={user.is_admin ? { background: theme.redBg, color: theme.redText } : { background: theme.blueBg, color: theme.blueText }}>
                             {user.role_name}
                           </span>
                         </td>
                       )}
-                      {visibleColumns.has('unit') && <td className="border border-gray-300 px-4 py-2">{user.unit_name || '-'}</td>}
+                      {visibleColumns.has('unit') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.unit_name || '-'}</td>}
                       {visibleColumns.has('status') && (
-                        <td className="border border-gray-300 px-4 py-2">
-                          <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
+                          <span className="px-2 py-1 rounded text-xs" style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.subtleBg, color: theme.textSecondary }}>
                             {user.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                       )}
-                      <td className="border border-gray-300 px-4 py-2">
-                        <Button size="sm" onClick={() => handleEdit(user)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
+                        <Button size="sm" onClick={() => handleEdit(user)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
                           Edit
                         </Button>
                       </td>

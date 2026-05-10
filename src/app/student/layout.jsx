@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/sidebar'
 import AccessGuard from '@/components/AccessGuard'
+import { useTheme } from '@/lib/theme'
 
 export default function StudentLayout({ children }) {
   const router = useRouter()
+  const { theme } = useTheme()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -15,7 +17,7 @@ export default function StudentLayout({ children }) {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div style={{ background: theme.pageBg }} className="min-h-screen">
       <div className="flex h-screen">
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
         <main className="flex-1 p-4 transition-all duration-300 overflow-y-auto">

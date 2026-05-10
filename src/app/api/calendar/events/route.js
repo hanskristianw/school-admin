@@ -54,6 +54,7 @@ export async function GET(req) {
         
         if (response.ok) {
           const data = await response.json()
+          const isHolidayCalendar = calendar.id.toLowerCase().includes('holiday')
           return (data.items || []).map(event => ({
             id: event.id,
             title: event.summary || '(No title)',
@@ -66,7 +67,8 @@ export async function GET(req) {
             colorId: event.colorId || calendar.colorId,
             status: event.status,
             calendarName: calendar.summary,
-            calendarColor: calendar.backgroundColor
+            calendarColor: calendar.backgroundColor,
+            isHoliday: isHolidayCalendar
           }))
         }
         return []

@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/sidebar'
 import AccessGuard from '@/components/AccessGuard'
+import { useTheme } from '@/lib/theme'
 
 export default function StockLayout({ children }) {
   const router = useRouter()
+  const { theme } = useTheme()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -17,7 +19,7 @@ export default function StockLayout({ children }) {
   }, [router])
 
   return (
-    <div className="bg-gray-100 h-[calc(100vh-3rem)]">
+    <div style={{ background: theme.pageBg }} className="h-[calc(100vh-3rem)]">
       <div className="flex h-full min-h-0">
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
         <main className="flex-1 min-h-0 overflow-y-auto p-4 transition-all duration-300">

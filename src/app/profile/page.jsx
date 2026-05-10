@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
   faUser, faEdit, faSave, faTimes, faEnvelope, faPhone, 
-  faCalendar, faMapMarkerAlt, faIdBadge, faShieldAlt, faClock, faCheckCircle
+  faCalendar, faMapMarkerAlt, faIdBadge, faShieldAlt, faClock, faCheckCircle,
+  faSun, faMoon, faPalette
 } from '@fortawesome/free-solid-svg-icons'
 import { useI18n } from '@/lib/i18n'
+import { useTheme } from '@/lib/theme'
 
 // Google logo SVG component
 const GoogleIcon = ({ className }) => (
@@ -26,6 +28,7 @@ const GoogleIcon = ({ className }) => (
 export default function ProfilePage() {
   const router = useRouter()
   const { t, lang } = useI18n()
+  const { theme, isDark, setTheme } = useTheme()
   const [loading, setLoading] = useState(true)
   const [userData, setUserData] = useState(null)
   const [editing, setEditing] = useState(false)
@@ -73,6 +76,11 @@ export default function ProfilePage() {
 
       const combinedData = { ...userData, role: roleData }
       setUserData(combinedData)
+      
+      // Sync DB theme preference to UI
+      if (combinedData.user_theme) {
+        setTheme(combinedData.user_theme)
+      }
       
       const initialFormData = {
         user_nama_depan: combinedData.user_nama_depan || '',
@@ -142,6 +150,19 @@ export default function ProfilePage() {
     }
   }
 
+  const handleThemeToggle = async (newMode) => {
+    setTheme(newMode)
+    setUserData(prev => ({ ...prev, user_theme: newMode }))
+    try {
+      await supabase
+        .from('users')
+        .update({ user_theme: newMode })
+        .eq('user_id', userData.user_id)
+    } catch (err) {
+      console.error('Failed to save theme preference:', err)
+    }
+  }
+
   // Handle keyboard shortcuts globally
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -172,10 +193,10 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: theme.pageBg }}>
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('profile.loading')}</p>
+          <p style={{ color: theme.textSecondary }}>{t('profile.loading')}</p>
         </div>
       </div>
     )
@@ -183,12 +204,12 @@ export default function ProfilePage() {
 
   if (!userData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: theme.pageBg }}>
         <div className="text-center">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FontAwesomeIcon icon={faUser} className="text-3xl text-red-500" />
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: theme.redBg }}>
+            <FontAwesomeIcon icon={faUser} className="text-3xl" style={{ color: theme.redText }} />
           </div>
-          <p className="text-red-600 text-lg">{t('profile.loadError')}</p>
+          <p className="text-lg" style={{ color: theme.redText }}>{t('profile.loadError')}</p>
         </div>
       </div>
     )
@@ -197,7 +218,7 @@ export default function ProfilePage() {
   const fullName = `${userData.user_nama_depan || ''} ${userData.user_nama_belakang || ''}`.trim()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-cyan-50 pb-20">
+    <div className="min-h-screen pb-20" style={{ background: theme.pageBg }}>
       {/* Success Toast */}
       {saveSuccess && (
         <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
@@ -298,7 +319,7 @@ export default function ProfilePage() {
         <div className="max-w-5xl mx-auto">
           {/* Error Message */}
           {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 px-6 py-4 rounded-r-lg shadow-sm">
+            <div className="mb-6 border-l-4 border-red-500 px-6 py-4 rounded-r-lg shadow-sm" style={{ background: theme.redBg, color: theme.redText }}>
               {error}
             </div>
           )}
@@ -308,53 +329,55 @@ export default function ProfilePage() {
             {/* Left Column - Quick Info */}
             <div className="space-y-6">
               {/* Contact Card */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center">
-                    <FontAwesomeIcon icon={faIdBadge} className="text-sky-600" />
+              <div className="rounded-2xl shadow-lg p-6" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: theme.subtleBg }}>
+                    <FontAwesomeIcon icon={faIdBadge} className="text-sky-500" />
                   </span>
                   {t('profile.accountInfo')}
                 </h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <FontAwesomeIcon icon={faEnvelope} className="w-5 text-gray-400" />
+                  <div className="flex items-center gap-3">
+                    <FontAwesomeIcon icon={faEnvelope} className="w-5" style={{ color: theme.textSecondary }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.email')}</p>
-                      <p className="font-medium text-gray-800 truncate">{userData.user_email || '-'}</p>
+                      <p className="text-xs uppercase tracking-wide" style={{ color: theme.textSecondary }}>{t('profile.email')}</p>
+                      <p className="font-medium truncate" style={{ color: theme.textPrimary }}>{userData.user_email || '-'}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <FontAwesomeIcon icon={faPhone} className="w-5 text-gray-400" />
+                  <div className="flex items-center gap-3">
+                    <FontAwesomeIcon icon={faPhone} className="w-5" style={{ color: theme.textSecondary }} />
                     <div className="flex-1">
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.phone')}</p>
+                      <p className="text-xs uppercase tracking-wide" style={{ color: theme.textSecondary }}>{t('profile.phone')}</p>
                       {editing ? (
                         <Input
                           type="tel"
                           value={formData.user_phone}
                           onChange={(e) => setFormData(prev => ({ ...prev, user_phone: e.target.value }))}
                           className="mt-1"
+                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                         />
                       ) : (
-                        <p className="font-medium text-gray-800">{userData.user_phone || '-'}</p>
+                        <p className="font-medium" style={{ color: theme.textPrimary }}>{userData.user_phone || '-'}</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <FontAwesomeIcon icon={faCalendar} className="w-5 text-gray-400" />
+                  <div className="flex items-center gap-3">
+                    <FontAwesomeIcon icon={faCalendar} className="w-5" style={{ color: theme.textSecondary }} />
                     <div className="flex-1">
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.birthDate')}</p>
+                      <p className="text-xs uppercase tracking-wide" style={{ color: theme.textSecondary }}>{t('profile.birthDate')}</p>
                       {editing ? (
                         <Input
                           type="date"
                           value={formData.user_birth_date}
                           onChange={(e) => setFormData(prev => ({ ...prev, user_birth_date: e.target.value }))}
                           className="mt-1"
+                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                         />
                       ) : (
-                        <p className="font-medium text-gray-800">{formatDate(userData.user_birth_date)}</p>
+                        <p className="font-medium" style={{ color: theme.textPrimary }}>{formatDate(userData.user_birth_date)}</p>
                       )}
                     </div>
                   </div>
@@ -362,27 +385,27 @@ export default function ProfilePage() {
               </div>
 
               {/* Account Timeline */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
-                    <FontAwesomeIcon icon={faClock} className="text-teal-600" />
+              <div className="rounded-2xl shadow-lg p-6" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: theme.subtleBg }}>
+                    <FontAwesomeIcon icon={faClock} className="text-teal-500" />
                   </span>
                   Timeline
                 </h3>
                 
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mt-1.5 ring-4 ring-green-100"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded-full mt-1.5 ring-4 ring-green-500/20"></div>
                     <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.createdAt')}</p>
-                      <p className="font-medium text-gray-800">{formatDate(userData.user_created_at)}</p>
+                      <p className="text-xs uppercase tracking-wide" style={{ color: theme.textSecondary }}>{t('profile.createdAt')}</p>
+                      <p className="font-medium" style={{ color: theme.textPrimary }}>{formatDate(userData.user_created_at)}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="w-3 h-3 bg-sky-500 rounded-full mt-1.5 ring-4 ring-sky-100"></div>
+                    <div className="w-3 h-3 bg-sky-500 rounded-full mt-1.5 ring-4 ring-sky-500/20"></div>
                     <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">{t('profile.updatedAt')}</p>
-                      <p className="font-medium text-gray-800">{formatDate(userData.user_updated_at)}</p>
+                      <p className="text-xs uppercase tracking-wide" style={{ color: theme.textSecondary }}>{t('profile.updatedAt')}</p>
+                      <p className="font-medium" style={{ color: theme.textPrimary }}>{formatDate(userData.user_updated_at)}</p>
                     </div>
                   </div>
                 </div>
@@ -392,10 +415,10 @@ export default function ProfilePage() {
             {/* Right Column - Details */}
             <div className="lg:col-span-2 space-y-6">
               {/* Personal Information */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
-                    <FontAwesomeIcon icon={faUser} className="text-cyan-600" />
+              <div className="rounded-2xl shadow-lg p-6" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <h3 className="text-lg font-semibold mb-6 flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: theme.subtleBg }}>
+                    <FontAwesomeIcon icon={faUser} className="text-cyan-500" />
                   </span>
                   {t('profile.infoTitle')}
                 </h3>
@@ -403,15 +426,16 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* First Name */}
                   <div>
-                    <Label className="text-gray-500 text-sm">{t('profile.firstName')} *</Label>
+                    <Label className="text-sm" style={{ color: theme.textSecondary }}>{t('profile.firstName')} *</Label>
                     {editing ? (
                       <Input
                         value={formData.user_nama_depan}
                         onChange={(e) => setFormData(prev => ({ ...prev, user_nama_depan: e.target.value }))}
                         className="mt-1"
+                        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                       />
                     ) : (
-                      <p className="mt-1 text-lg font-medium text-gray-800">
+                      <p className="mt-1 text-lg font-medium" style={{ color: theme.textPrimary }}>
                         {userData.user_nama_depan || '-'}
                       </p>
                     )}
@@ -419,15 +443,16 @@ export default function ProfilePage() {
 
                   {/* Last Name */}
                   <div>
-                    <Label className="text-gray-500 text-sm">{t('profile.lastName')} *</Label>
+                    <Label className="text-sm" style={{ color: theme.textSecondary }}>{t('profile.lastName')} *</Label>
                     {editing ? (
                       <Input
                         value={formData.user_nama_belakang}
                         onChange={(e) => setFormData(prev => ({ ...prev, user_nama_belakang: e.target.value }))}
                         className="mt-1"
+                        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                       />
                     ) : (
-                      <p className="mt-1 text-lg font-medium text-gray-800">
+                      <p className="mt-1 text-lg font-medium" style={{ color: theme.textPrimary }}>
                         {userData.user_nama_belakang || '-'}
                       </p>
                     )}
@@ -436,10 +461,10 @@ export default function ProfilePage() {
               </div>
 
               {/* Bio Section */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <FontAwesomeIcon icon={faEdit} className="text-purple-600" />
+              <div className="rounded-2xl shadow-lg p-6" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: theme.subtleBg }}>
+                    <FontAwesomeIcon icon={faEdit} style={{ color: theme.textSecondary }} />
                   </span>
                   {t('profile.bio')}
                 </h3>
@@ -449,23 +474,24 @@ export default function ProfilePage() {
                     rows="4"
                     value={formData.user_bio}
                     onChange={(e) => setFormData(prev => ({ ...prev, user_bio: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 rounded-xl focus:outline-none resize-none"
+                    style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                     placeholder={t('profile.bioPlaceholder')}
                   />
                 ) : (
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="leading-relaxed" style={{ color: theme.textBody }}>
                     {userData.user_bio || (
-                      <span className="text-gray-400 italic">{t('profile.bioPlaceholder')}</span>
+                      <span className="italic" style={{ color: theme.textSecondary }}>{t('profile.bioPlaceholder')}</span>
                     )}
                   </p>
                 )}
               </div>
 
               {/* Address Section */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <FontAwesomeIcon icon={faMapMarkerAlt} className="text-orange-600" />
+              <div className="rounded-2xl shadow-lg p-6" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: theme.subtleBg }}>
+                    <FontAwesomeIcon icon={faMapMarkerAlt} style={{ color: theme.textSecondary }} />
                   </span>
                   {t('profile.address')}
                 </h3>
@@ -475,16 +501,61 @@ export default function ProfilePage() {
                     rows="3"
                     value={formData.user_address}
                     onChange={(e) => setFormData(prev => ({ ...prev, user_address: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 rounded-xl focus:outline-none resize-none"
+                    style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                     placeholder={t('profile.addressPlaceholder')}
                   />
                 ) : (
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="leading-relaxed" style={{ color: theme.textBody }}>
                     {userData.user_address || (
-                      <span className="text-gray-400 italic">{t('profile.addressPlaceholder')}</span>
+                      <span className="italic" style={{ color: theme.textSecondary }}>{t('profile.addressPlaceholder')}</span>
                     )}
                   </p>
                 )}
+              </div>
+
+              {/* Appearance Card */}
+              <div className="rounded-2xl shadow-lg p-6" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: theme.subtleBg }}>
+                    <FontAwesomeIcon icon={faPalette} style={{ color: theme.textSecondary }} />
+                  </span>
+                  Appearance
+                </h3>
+
+                <p className="text-sm mb-4" style={{ color: theme.textSecondary }}>
+                  Choose your preferred display mode. Changes are saved instantly.
+                </p>
+
+                <div className="flex gap-3">
+                  {/* Light Mode Button */}
+                  <button
+                    onClick={() => handleThemeToggle('light')}
+                    className="flex-1 flex flex-col items-center gap-2 py-4 px-3 rounded-xl transition-all"
+                    style={
+                      !isDark
+                        ? { background: theme.blueBg, border: `2px solid ${theme.blueText}`, color: theme.blueText }
+                        : { background: theme.subtleBg, border: `2px solid ${theme.border}`, color: theme.textSecondary }
+                    }
+                  >
+                    <FontAwesomeIcon icon={faSun} className="text-xl" />
+                    <span className="text-sm font-medium">Light</span>
+                  </button>
+
+                  {/* Dark Mode Button */}
+                  <button
+                    onClick={() => handleThemeToggle('dark')}
+                    className="flex-1 flex flex-col items-center gap-2 py-4 px-3 rounded-xl transition-all"
+                    style={
+                      isDark
+                        ? { background: theme.blueBg, border: `2px solid ${theme.blueText}`, color: theme.blueText }
+                        : { background: theme.subtleBg, border: `2px solid ${theme.border}`, color: theme.textSecondary }
+                    }
+                  >
+                    <FontAwesomeIcon icon={faMoon} className="text-xl" />
+                    <span className="text-sm font-medium">Dark</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -493,7 +564,7 @@ export default function ProfilePage() {
 
       {/* Floating Action Bar - Shows when editing */}
       {editing && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-gray-200 shadow-2xl">
+        <div className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg shadow-2xl" style={{ background: theme.cardBg, borderTop: `1px solid ${theme.border}` }}>
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               {/* Left side - status */}
@@ -504,12 +575,12 @@ export default function ProfilePage() {
                     {t('profile.unsavedChanges') || 'Unsaved changes'}
                   </span>
                 ) : (
-                  <span className="text-gray-400 text-sm">
+                  <span className="text-sm" style={{ color: theme.textSecondary }}>
                     {t('profile.noChanges') || 'No changes'}
                   </span>
                 )}
                 {error && (
-                  <span className="text-red-500 text-sm">• {error}</span>
+                  <span className="text-sm" style={{ color: theme.redText }}>• {error}</span>
                 )}
               </div>
 
@@ -520,6 +591,7 @@ export default function ProfilePage() {
                   onClick={handleCancel} 
                   disabled={updating}
                   className="px-6"
+                  style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
                 >
                   <FontAwesomeIcon icon={faTimes} className="mr-2" />
                   {t('profile.cancel')}
@@ -527,10 +599,11 @@ export default function ProfilePage() {
                 <Button 
                   onClick={handleSave} 
                   disabled={updating || !hasChanges}
-                  className={`px-6 ${hasChanges 
-                    ? 'bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white shadow-lg' 
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
+                  className="px-6"
+                  style={hasChanges
+                    ? { background: theme.textPrimary, color: theme.cardBg, border: 'none' }
+                    : { background: theme.subtleBg, color: theme.textSecondary, border: 'none', cursor: 'not-allowed' }
+                  }
                 >
                   {updating ? (
                     <>

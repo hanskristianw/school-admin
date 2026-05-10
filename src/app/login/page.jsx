@@ -141,6 +141,11 @@ function LoginContent() {
         localStorage.setItem("kr_id", user.userID)
         localStorage.setItem("user_role", user.roleName)
         localStorage.setItem("user_data", JSON.stringify(user))
+        // Sync user theme preference
+        const themeMode = user.userTheme || 'light'
+        localStorage.setItem('ui_theme', themeMode)
+        if (themeMode === 'dark') document.documentElement.classList.add('dark-theme')
+        else document.documentElement.classList.remove('dark-theme')
 
         // Mint JWT for RLS
         try {

@@ -5,7 +5,8 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCheck } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders } from '@fortawesome/free-solid-svg-icons'
+import { useTheme } from '@/lib/theme'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
@@ -21,6 +22,7 @@ import {
 } from './lib/pdfGenerators'
 import useAiHelp from './lib/useAiHelp'
 import WizardStepContent from './components/WizardStepContent'
+import 'driver.js/dist/driver.css'
 
 export default function TopicNewPage() {
   const router = useRouter()
@@ -257,6 +259,16 @@ export default function TopicNewPage() {
   const [commentAiLoading, setCommentAiLoading] = useState(false)
   const [commentAiResult, setCommentAiResult] = useState('')
   const [commentAiError, setCommentAiError] = useState('')
+  const [commentAiContradiction, setCommentAiContradiction] = useState(null) // { reason: '...' }
+  const [commentAiRefining, setCommentAiRefining] = useState(false)
+  const [commentRefiningId, setCommentRefiningId] = useState(null) // user_id being refined inline
+  // Refine modal state
+  const [refineModalOpen, setRefineModalOpen] = useState(false)
+  const [refineModalTarget, setRefineModalTarget] = useState(null) // { user_id, nama }
+  const [refineOriginal, setRefineOriginal] = useState('')
+  const [refineLoading, setRefineLoading] = useState(false)
+  const [refineResult, setRefineResult] = useState(null) // null | { no_change: bool, reason: string, refined: string }
+  const [refineError, setRefineError] = useState('')
   
   // Grading Modal state
   const [gradingModalOpen, setGradingModalOpen] = useState(false)
@@ -2400,6 +2412,86 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }
 
+  const startCommentTour = async () => {
+    const { driver } = await import('driver.js')
+    const tour = t('topicNew.mentorCommentTab.tour')
+    const driverObj = driver({
+      showProgress: true,
+      nextBtnText: tour.nextBtn,
+      prevBtnText: tour.prevBtn,
+      doneBtnText: tour.doneBtn,
+      steps: [
+        {
+          element: '#comment-filter-section',
+          popover: {
+            title: tour.step1Title,
+            description: tour.step1Desc,
+            side: 'bottom',
+            align: 'start',
+          },
+        },
+        {
+          element: '#comment-subject-select',
+          popover: {
+            title: tour.step2Title,
+            description: tour.step2Desc,
+            side: 'bottom',
+            align: 'start',
+          },
+        },
+        {
+          element: '#comment-kelas-select',
+          popover: {
+            title: tour.step3Title,
+            description: tour.step3Desc,
+            side: 'bottom',
+            align: 'start',
+          },
+        },
+        {
+          element: '#comment-semester-row',
+          popover: {
+            title: tour.step4Title,
+            description: tour.step4Desc,
+            side: 'bottom',
+            align: 'start',
+          },
+        },
+        {
+          popover: {
+            title: tour.step5Title,
+            description: tour.step5Desc,
+          },
+        },
+        {
+          popover: {
+            title: tour.step6Title,
+            description: tour.step6Desc,
+          },
+        },
+        {
+          popover: {
+            title: tour.step7Title,
+            description: tour.step7Desc,
+          },
+        },
+        {
+          popover: {
+            title: tour.step8Title,
+            description: tour.step8Desc,
+          },
+        },
+        {
+          popover: {
+            title: tour.step9Title,
+            description: tour.step9Desc,
+          },
+        },
+      ],
+    })
+    driverObj.drive()
+  }
+
   // MENTOR COMMENT TAB FUNCTIONS
   // ==========================================
 
@@ -4053,35 +4145,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   const getAssessmentStatusBadge = (status) => {
     switch (status) {
       case 0:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            Waiting
-          </span>
-        )
+        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>Waiting</span>
       case 3:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-            Principal
-          </span>
-        )
+        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>Principal</span>
       case 1:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            Approved
-          </span>
-        )
+        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>Approved</span>
       case 2:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            Rejected
-          </span>
-        )
+        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.redBg, color: theme.redText, borderRadius: '4px' }}>Rejected</span>
       default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-            Unknown
-          </span>
-        )
+        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px' }}>Unknown</span>
     }
   }
 
@@ -4148,41 +4220,42 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }
 
+  const { theme } = useTheme()
+
   const tabs = [
-    { id: 'planning', label: t('topicNew.tabs.planning'), icon: '📋' },
-    { id: 'assignment', label: t('topicNew.tabs.assignment'), icon: '📝' },
-    { id: 'assessment', label: t('topicNew.tabs.assessment'), icon: '✓' },
-    { id: 'comment', label: t('topicNew.tabs.comment'), icon: '💬' },
-    ...(isWaliKelas ? [{ id: 'mentor', label: t('topicNew.tabs.mentorComment'), icon: '🏠' }] : []),
-    { id: 'report', label: t('topicNew.tabs.report'), icon: '📊' }
+    { id: 'planning', label: t('topicNew.tabs.planning'), icon: faMap },
+    { id: 'assignment', label: t('topicNew.tabs.assignment'), icon: faClipboardList },
+    { id: 'assessment', label: t('topicNew.tabs.assessment'), icon: faClipboardCheck },
+    { id: 'comment', label: t('topicNew.tabs.comment'), icon: faComments },
+    ...(isWaliKelas ? [{ id: 'mentor', label: t('topicNew.tabs.mentorComment'), icon: faHouseUser }] : []),
+    { id: 'report', label: t('topicNew.tabs.report'), icon: faChartBar }
   ]
 
   return (
-    <div className="p-6">
+    <div className="p-6" style={{ background: theme.pageBg, minHeight: '100%' }}>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Topic Management</h1>
-        <p className="text-gray-600 mt-1">Manage your IB unit planner topics</p>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif", letterSpacing: '-0.01em' }}>Topic Management</h1>
+        <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>Manage your IB unit planner topics</p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex space-x-8" aria-label="Tabs">
+      <div className="mb-6" style={{ borderBottom: `1px solid ${theme.border}` }}>
+        <nav className="flex gap-0" aria-label="Tabs">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`
-                py-4 px-1 inline-flex items-center gap-2 border-b-2 font-medium text-sm
-                transition-colors duration-200
-                ${
-                  activeTab === tab.id
-                    ? 'border-red-500 text-red-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }
-              `}
+              className="inline-flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors"
+              style={{
+                borderBottom: activeTab === tab.id ? `2px solid ${theme.textPrimary}` : '2px solid transparent',
+                color: activeTab === tab.id ? theme.textPrimary : theme.textSecondary,
+                background: 'transparent',
+                fontFamily: "'Helvetica Neue', sans-serif",
+                marginBottom: '-1px',
+              }}
             >
-              <span className="text-lg">{tab.icon}</span>
+              <FontAwesomeIcon icon={tab.icon} className="w-3 h-3" />
               {tab.label}
             </button>
           ))}
@@ -4190,29 +4263,30 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px', overflow: 'hidden' }}>
         {activeTab === 'planning' && (
           <div className="flex">
             {/* Sidebar for Planning */}
-            <div className="w-56 bg-gray-50 border-r border-gray-200 p-4">
-              <nav className="space-y-1">
+            <div className="w-48 flex-shrink-0" style={{ borderRight: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+              <nav className="p-3 space-y-0.5">
                 {[
-                  { id: 'overview', label: t('topicNew.subMenu.overview'), icon: '📋' },
-                  { id: 'weekly-plan', label: t('topicNew.subMenu.weeklyPlan'), icon: '📅' }
+                  { id: 'overview', label: t('topicNew.subMenu.overview'), icon: faClipboardList },
+                  { id: 'weekly-plan', label: t('topicNew.subMenu.weeklyPlan'), icon: faCalendar }
                 ].map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveSubMenu(item.id)}
-                    className={`
-                      w-full flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition-colors
-                      ${
-                        activeSubMenu === item.id
-                          ? 'bg-red-50 text-red-600'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }
-                    `}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors"
+                    style={{
+                      borderRadius: '6px',
+                      color: activeSubMenu === item.id ? theme.blueText : theme.textSecondary,
+                      background: activeSubMenu === item.id ? theme.blueBg : 'transparent',
+                      fontFamily: "'Helvetica Neue', sans-serif",
+                    }}
+                    onMouseEnter={e => { if (activeSubMenu !== item.id) e.currentTarget.style.background = theme.border }}
+                    onMouseLeave={e => { e.currentTarget.style.background = activeSubMenu === item.id ? theme.blueBg : 'transparent' }}
                   >
-                    <span>{item.icon}</span>
+                    <FontAwesomeIcon icon={item.icon} className="w-3 h-3" style={{ color: 'inherit' }} />
                     {item.label}
                   </button>
                 ))}
@@ -4220,49 +4294,44 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 p-6">
+            <div className="flex-1 p-6 min-w-0">
               {activeSubMenu === 'overview' && (
                 <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-800">{t('topicNew.subMenu.planningOverview')}</h2>
-                    <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                  <div className="flex items-center justify-between mb-5">
+                    <h2 className="text-sm font-semibold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>{t('topicNew.subMenu.planningOverview')}</h2>
+                    <div className="flex items-center gap-1 p-1" style={{ background: theme.subtleBg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
                       <button
                         onClick={() => { setPlanningView('card'); localStorage.setItem('planning_view', 'card') }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                          planningView === 'card' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors"
+                        style={{ borderRadius: '4px', background: planningView === 'card' ? theme.cardBg : 'transparent', color: planningView === 'card' ? theme.textPrimary : theme.textSecondary, boxShadow: planningView === 'card' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}
                         title="Card View"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                        </svg>
+                        <FontAwesomeIcon icon={faTableCells} className="w-3 h-3" />
                         Card
                       </button>
                       <button
                         onClick={() => { setPlanningView('list'); localStorage.setItem('planning_view', 'list') }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                          planningView === 'list' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors"
+                        style={{ borderRadius: '4px', background: planningView === 'list' ? theme.cardBg : 'transparent', color: planningView === 'list' ? theme.textPrimary : theme.textSecondary, boxShadow: planningView === 'list' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}
                         title="List View"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                        </svg>
+                        <FontAwesomeIcon icon={faListUl} className="w-3 h-3" />
                         List
                       </button>
                     </div>
                   </div>
                   
                   {/* Filters */}
-                  <div className="mb-6 flex gap-4 items-end">
+                  <div className="mb-5 flex gap-3 items-end">
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                         {t('topicNew.filters.subject')}
                       </label>
                       <select
                         value={filters.subject}
                         onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-xs focus:outline-none"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
                         <option value="">{t('topicNew.filters.allSubjects')}</option>
                         {subjects.map(s => (
@@ -4273,13 +4342,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                         {t('topicNew.filters.class')}
                       </label>
                       <select
                         value={filters.kelas}
                         onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-xs focus:outline-none"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
                         <option value="">{t('topicNew.filters.allClasses')}</option>
                         {allKelas.map(k => (
@@ -4290,7 +4360,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                         {t('topicNew.filters.search')}
                       </label>
                       <input
@@ -4298,7 +4368,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         value={filters.search}
                         onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                         placeholder={t('topicNew.filters.search')}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full px-3 py-2 text-xs focus:outline-none"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       />
                     </div>
                   </div>
@@ -4306,12 +4377,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   {/* Loading State */}
                   {loading ? (
                     <div className="flex justify-center items-center py-12">
-                      <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-red-500" />
+                      <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
                     </div>
                   ) : planningView === 'card' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredTopics.length === 0 && (
-                        <div className="col-span-full text-center py-12 text-gray-500">
+                        <div className="col-span-full text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
                           {t('topicNew.table.noUnits')}
                         </div>
                       )}
@@ -4325,70 +4396,76 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           return (
                           <div 
                             key={topic.topic_id}
-                            className="relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all cursor-pointer hover:border-red-300 overflow-hidden"
+                            className="relative overflow-hidden cursor-pointer transition-all"
+                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '20px', background: theme.cardBg }}
                             onClick={() => handleTopicOpen(topic)}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = theme.borderHover }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border }}
                           >
                             {/* Grade Watermark */}
                             {gradeNumber && (
-                              <div className="absolute top-0 right-0 text-[120px] font-black text-gray-100 leading-none pointer-events-none select-none" style={{ transform: 'translate(20%, -20%)' }}>
+                              <div className="absolute top-0 right-0 font-black leading-none pointer-events-none select-none" style={{ fontSize: '120px', color: theme.border, transform: 'translate(20%, -20%)' }}>
                                 {gradeNumber}
                               </div>
                             )}
                             
                             {/* Header */}
-                            <div className="mb-4 pb-3 border-b border-gray-100 relative z-10">
+                            <div className="mb-3 pb-3 relative z-10" style={{ borderBottom: `1px solid ${theme.border}` }}>
                               <div className="flex items-start justify-between gap-2 mb-2">
-                                <h3 className="text-lg font-bold text-gray-800 line-clamp-2 flex-1">
+                                <h3 className="text-sm font-semibold line-clamp-2 flex-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
                                   {topic.topic_nama}
                                 </h3>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full font-medium whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
                                     #{topic.topic_urutan || '-'}
                                   </span>
                                   <button
                                     onClick={(e) => handleGeneratePDF(topic, e)}
-                                    className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                                    className="p-1.5 transition-colors"
+                                    style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}
                                     title="Download Unit Planner PDF"
                                   >
-                                    <FontAwesomeIcon icon={faPrint} className="text-sm" />
+                                    <FontAwesomeIcon icon={faPrint} className="text-xs" />
                                   </button>
                                   <button
                                     onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)}
-                                    className="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
+                                    className="p-1.5 transition-colors"
+                                    style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}
                                     title="Download Assessment PDF"
                                   >
-                                    <FontAwesomeIcon icon={faFileAlt} className="text-sm" />
+                                    <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
                                   </button>
                                   <button
                                     onClick={(e) => handleExportAssessmentWordFromCard(topic, e)}
-                                    className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    className="p-1.5 transition-colors"
+                                    style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}
                                     title="Download Assessment Word"
                                   >
-                                    <FontAwesomeIcon icon={faFileWord} className="text-sm" />
+                                    <FontAwesomeIcon icon={faFileWord} className="text-xs" />
                                   </button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
-                                <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-medium">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
                                   {subjectMap.get(topic.topic_subject_id) || 'N/A'}
                                 </span>
                                 {topic.topic_kelas_id && (
-                                  <span className="bg-green-50 text-green-600 px-2 py-1 rounded text-xs font-medium">
+                                  <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>
                                     {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
                                   </span>
                                 )}
                                 {topic.topic_year && (
-                                  <span className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-medium">
-                                    MYP Year {topic.topic_year}
+                                  <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>
+                                    MYP Y{topic.topic_year}
                                   </span>
                                 )}
                               </div>
                             </div>
 
                             {/* Duration */}
-                            <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
-                              <span className="text-gray-500">⏱️</span>
-                              <span className="text-gray-700">
+                            <div className="mb-2 flex items-center gap-1.5 relative z-10">
+                              <FontAwesomeIcon icon={faCalendar} className="w-3 h-3" style={{ color: theme.textSecondary }} />
+                              <span className="text-xs" style={{ color: theme.textBody }}>
                                 {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
                                   ? `${topic.topic_duration} weeks`
                                   : '-'}
@@ -4397,9 +4474,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                             {/* Inquiry Question */}
                             {topic.topic_inquiry_question && (
-                              <div className="mb-3 relative z-10">
-                                <p className="text-xs text-cyan-500 font-medium mb-1">Inquiry Question</p>
-                                <p className="text-sm text-gray-700 line-clamp-2">
+                              <div className="mb-2 relative z-10">
+                                <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Inquiry Question</p>
+                                <p className="text-xs line-clamp-2" style={{ color: theme.textBody }}>
                                   {topic.topic_inquiry_question}
                                 </p>
                               </div>
@@ -4407,14 +4484,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                             {/* Global Context */}
                             {topic.topic_global_context && (
-                              <div className="mb-3 relative z-10">
-                                <p className="text-xs text-cyan-500 font-medium mb-1">Global Context</p>
-                                <p className="text-sm text-gray-700 line-clamp-2">
+                              <div className="mb-2 relative z-10">
+                                <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Global Context</p>
+                                <p className="text-xs line-clamp-2" style={{ color: theme.textBody }}>
                                   {topic.topic_global_context}
                                 </p>
                                 {topic.topic_gc_exploration && (
-                                  <div className="mt-1 flex flex-wrap gap-1">
-                                    <span className="inline-block px-1.5 py-0.5 text-[10px] bg-cyan-50 text-cyan-700 rounded border border-cyan-200">
+                                  <div className="mt-1">
+                                    <span className="inline-block px-1.5 py-0.5 text-[10px]" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
                                       {topic.topic_gc_exploration}
                                     </span>
                                   </div>
@@ -4425,8 +4502,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             {/* Statement of Inquiry */}
                             {topic.topic_statement && (
                               <div className="relative z-10">
-                                <p className="text-xs text-cyan-500 font-medium mb-1">Statement of Inquiry</p>
-                                <p className="text-sm text-gray-700 line-clamp-3">
+                                <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Statement of Inquiry</p>
+                                <p className="text-xs line-clamp-3" style={{ color: theme.textBody }}>
                                   {topic.topic_statement}
                                 </p>
                               </div>
@@ -4436,69 +4513,72 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       )}
                     </div>
                   ) : filteredTopics.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
                       {t('topicNew.table.noUnits')}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topic Name</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inquiry Question</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Global Context</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <table className="min-w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider w-10" style={{ color: theme.textSecondary }}>#</th>
+                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Topic Name</th>
+                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Subject</th>
+                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Class</th>
+                            <th className="px-4 py-2.5 text-center font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Duration</th>
+                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Inquiry Question</th>
+                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Global Context</th>
+                            <th className="px-4 py-2.5 text-right font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody>
                           {filteredTopics.map((topic, idx) => (
                             <tr
                               key={topic.topic_id}
-                              className="hover:bg-red-50 cursor-pointer transition-colors"
+                              className="cursor-pointer transition-colors"
+                              style={{ borderBottom: `1px solid ${theme.border}` }}
                               onClick={() => handleTopicOpen(topic)}
+                              onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                             >
-                              <td className="px-4 py-3 text-gray-400 text-center">{idx + 1}</td>
+                              <td className="px-4 py-3 text-center" style={{ color: theme.textSecondary }}>{idx + 1}</td>
                               <td className="px-4 py-3">
-                                <div className="font-medium text-gray-900">{topic.topic_nama}</div>
-                                {topic.topic_urutan && <div className="text-xs text-gray-400">Unit #{topic.topic_urutan}</div>}
+                                <div className="font-medium" style={{ color: theme.textPrimary }}>{topic.topic_nama}</div>
+                                {topic.topic_urutan && <div className="text-[10px] mt-0.5" style={{ color: theme.textSecondary }}>Unit #{topic.topic_urutan}</div>}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded font-medium whitespace-nowrap">
+                                <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
                                   {subjectMap.get(topic.topic_subject_id) || 'N/A'}
                                 </span>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded font-medium whitespace-nowrap">
+                                <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>
                                   {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-gray-700 text-center">
+                              <td className="px-4 py-3 text-center" style={{ color: theme.textBody }}>
                                 {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
                                   ? `${topic.topic_duration}w`
                                   : '-'}
                               </td>
-                              <td className="px-4 py-3 text-gray-600 max-w-xs">
+                              <td className="px-4 py-3 max-w-xs" style={{ color: theme.textBody }}>
                                 <p className="line-clamp-2">{topic.topic_inquiry_question || '-'}</p>
                               </td>
-                              <td className="px-4 py-3 text-gray-600 max-w-xs">
-                                <p className="line-clamp-1">{topic.topic_global_context || '-'}</p>
+                              <td className="px-4 py-3 max-w-xs">
+                                <p className="line-clamp-1" style={{ color: theme.textBody }}>{topic.topic_global_context || '-'}</p>
                                 {topic.topic_gc_exploration && (
-                                  <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px] bg-cyan-50 text-cyan-700 rounded border border-cyan-200">{topic.topic_gc_exploration}</span>
+                                  <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px]" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>{topic.topic_gc_exploration}</span>
                                 )}
                               </td>
                               <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
-                                  <button onClick={(e) => handleGeneratePDF(topic, e)} className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors" title="Unit Planner PDF">
+                                  <button onClick={(e) => handleGeneratePDF(topic, e)} className="p-1.5 transition-colors" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }} title="Unit Planner PDF">
                                     <FontAwesomeIcon icon={faPrint} className="text-xs" />
                                   </button>
-                                  <button onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)} className="p-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors" title="Assessment PDF">
+                                  <button onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)} className="p-1.5 transition-colors" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }} title="Assessment PDF">
                                     <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
                                   </button>
-                                  <button onClick={(e) => handleExportAssessmentWordFromCard(topic, e)} className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors" title="Assessment Word">
+                                  <button onClick={(e) => handleExportAssessmentWordFromCard(topic, e)} className="p-1.5 transition-colors" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }} title="Assessment Word">
                                     <FontAwesomeIcon icon={faFileWord} className="text-xs" />
                                   </button>
                                 </div>
@@ -4514,19 +4594,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
             {activeSubMenu === 'weekly-plan' && (
               <div>
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-2">Weekly Plan</h2>
-                  <p className="text-sm text-gray-600 mb-4">Break down your unit into weekly objectives, activities, and resources</p>
+                <div className="mb-5">
+                  <h2 className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>Weekly Plan</h2>
+                  <p className="text-xs mb-4" style={{ color: theme.textSecondary }}>Break down your unit into weekly objectives, activities, and resources</p>
                   
                   {/* Topic Selection */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="mb-5">
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                       Select Topic/Unit
                     </label>
                     <select
                       value={selectedTopicForWeekly?.topic_id || ''}
                       onChange={(e) => handleTopicSelectionForWeekly(e.target.value)}
-                      className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full md:w-1/2 px-3 py-2 text-xs focus:outline-none"
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                     >
                       <option value="">{t('topicNew.fields.chooseTopic')}</option>
                       {topics
@@ -4551,23 +4632,24 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 {/* Weekly Plans Display */}
                 {loadingWeeklyPlans ? (
                   <div className="flex justify-center py-12">
-                    <FontAwesomeIcon icon={faSpinner} className="text-3xl text-red-500 animate-spin" />
+                    <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
                   </div>
                 ) : selectedTopicForWeekly && weeklyPlans.length > 0 ? (
                   <div>
                     {/* Topic Info and Actions */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div className="p-4 mb-5" style={{ background: theme.blueBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="font-semibold text-blue-900 mb-1">{selectedTopicForWeekly.topic_nama}</h3>
-                          <div className="text-sm text-blue-700">
+                          <h3 className="font-semibold text-sm mb-1" style={{ color: theme.textPrimary }}>{selectedTopicForWeekly.topic_nama}</h3>
+                          <div className="text-xs" style={{ color: theme.textSecondary }}>
                             <span>Duration: {selectedTopicForWeekly.topic_duration} weeks</span>
-                            <span className="mx-2">•</span>
+                            <span className="mx-2">·</span>
                             <span>Hours per week: {selectedTopicForWeekly.topic_hours_per_week || 'N/A'}</span>
                           </div>
                         </div>
                         <button
-                          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2 text-sm"
+                          className="px-3 py-2 text-xs font-medium flex items-center gap-2"
+                          style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '6px', color: theme.textPrimary }}
                           onClick={() => {
                             setWeeklyAiInput({ assessmentDuration: '', specialRequests: '' })
                             setWeeklyAiModalOpen(true)
@@ -4581,11 +4663,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                     {/* Notification */}
                     {weeklyPlanNotification.show && (
-                      <div className={`mb-4 p-4 rounded-lg ${
-                        weeklyPlanNotification.type === 'success' 
-                          ? 'bg-green-50 border border-green-200 text-green-800'
-                          : 'bg-red-50 border border-red-200 text-red-800'
-                      }`}>
+                      <div className="mb-4 p-3 text-xs" style={{
+                        background: weeklyPlanNotification.type === 'success' ? theme.greenBg : theme.redBg,
+                        border: `1px solid ${theme.border}`,
+                        color: weeklyPlanNotification.type === 'success' ? theme.greenText : theme.redText,
+                        borderRadius: '6px'
+                      }}>
                         {weeklyPlanNotification.message}
                       </div>
                     )}
@@ -4593,9 +4676,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     {/* Weekly Plan Forms */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {weeklyPlans.map((plan) => (
-                        <div key={plan.week_number} className="bg-white border border-gray-200 rounded-lg p-4">
-                          <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                            <span className="flex items-center justify-center w-7 h-7 bg-red-100 text-red-600 rounded-full text-sm font-bold">
+                        <div key={plan.week_number} style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '16px' }}>
+                          <h3 className="text-xs font-semibold mb-3 flex items-center gap-2" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
+                            <span className="flex items-center justify-center w-6 h-6 text-xs font-bold" style={{ background: theme.subtleBg, color: theme.textPrimary, borderRadius: '50%', border: `1px solid ${theme.border}` }}>
                               {plan.week_number}
                             </span>
                             Week {plan.week_number}
@@ -4604,7 +4687,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           <div className="space-y-3">
                             {/* Objectives */}
                             <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                              <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
                                 Learning Objectives
                               </label>
                               <textarea
@@ -4612,14 +4695,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_objectives', e.target.value)}
                                 placeholder="What will students learn this week?"
                                 rows={3}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                                className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
+                                style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                               />
                             </div>
 
                             {/* Activities */}
                             <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Learning Activities (max 300 characters)
+                              <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
+                                Learning Activities (max 300 chars)
                               </label>
                               <textarea
                                 value={plan.week_activities || ''}
@@ -4627,16 +4711,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 placeholder="What activities will students do?"
                                 rows={3}
                                 maxLength={300}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                                className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
+                                style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                               />
-                              <div className="text-xs text-gray-500 mt-1 text-right">
+                              <div className="text-[10px] mt-1 text-right" style={{ color: theme.textSecondary }}>
                                 {(plan.week_activities || '').length}/300
                               </div>
                             </div>
 
                             {/* Resources */}
                             <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                              <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
                                 Resources Needed
                               </label>
                               <textarea
@@ -4644,21 +4729,23 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_resources', e.target.value)}
                                 placeholder="What materials or resources are needed?"
                                 rows={2}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                                className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
+                                style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                               />
                             </div>
 
-                            {/* Reflection (During Teaching) */}
+                            {/* Reflection */}
                             <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Reflection <span className="text-gray-500">(During Teaching)</span>
+                              <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
+                                Reflection <span style={{ color: theme.textSecondary }}>(During Teaching)</span>
                               </label>
                               <textarea
                                 value={plan.week_reflection || ''}
                                 onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_reflection', e.target.value)}
                                 placeholder="How did this week go? What worked well? What needs adjustment?"
                                 rows={2}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs bg-purple-50"
+                                className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
+                                style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.subtleBg, color: theme.textBody }}
                               />
                             </div>
                           </div>
@@ -4667,11 +4754,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="mt-6 flex justify-end gap-3">
+                    <div className="mt-5 flex justify-end gap-2">
                       <button
                         onClick={deleteAllWeeklyPlans}
                         disabled={savingWeeklyPlans || weeklyPlans.length === 0}
-                        className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-4 py-2 text-xs font-medium flex items-center gap-2"
+                        style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}
                       >
                         <FontAwesomeIcon icon={faTrash} />
                         Delete All
@@ -4679,31 +4767,26 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <button
                         onClick={saveWeeklyPlans}
                         disabled={savingWeeklyPlans}
-                        className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-4 py-2 text-xs font-medium flex items-center gap-2"
+                        style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}
                       >
                         {savingWeeklyPlans ? (
-                          <>
-                            <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                            Saving...
-                          </>
+                          <><FontAwesomeIcon icon={faSpinner} spin />Saving...</>
                         ) : (
-                          <>
-                            <FontAwesomeIcon icon={faSave} />
-                            Save Weekly Plans
-                          </>
+                          <><FontAwesomeIcon icon={faSave} />Save Weekly Plans</>
                         )}
                       </button>
                     </div>
                   </div>
                 ) : selectedTopicForWeekly ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
                     <p>No weekly plan data available for this topic.</p>
-                    <p className="text-sm mt-2">The trigger should auto-generate weeks based on topic_duration.</p>
+                    <p className="mt-2">The trigger should auto-generate weeks based on topic_duration.</p>
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-gray-400">
-                    <FontAwesomeIcon icon={faClipboardList} className="text-5xl mb-3 opacity-50" />
-                    <p>Select a topic to view and edit weekly plans</p>
+                  <div className="text-center py-12" style={{ color: theme.textSecondary }}>
+                    <FontAwesomeIcon icon={faClipboardList} className="text-4xl mb-3 opacity-30" />
+                    <p className="text-xs">Select a topic to view and edit weekly plans</p>
                   </div>
                 )}
               </div>
@@ -4715,52 +4798,47 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         {activeTab === 'assignment' && (
           <div className="p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Assignment</h2>
-            <p className="text-gray-600">Assignment management content will be displayed here.</p>
+            <p className="text-xs" style={{ color: theme.textSecondary }}>Assignment management content will be displayed here.</p>
           </div>
         )}
 
         {activeTab === 'assessment' && (
           <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">Assessment Management</h2>
-              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-semibold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>Assessment Management</h2>
+              <div className="flex items-center gap-1 p-1" style={{ background: theme.subtleBg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
                 <button
                   onClick={() => { setAssessmentView('card'); localStorage.setItem('assessment_view', 'card') }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    assessmentView === 'card' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors"
+                  style={{ borderRadius: '4px', background: assessmentView === 'card' ? theme.cardBg : 'transparent', color: assessmentView === 'card' ? theme.textPrimary : theme.textSecondary, boxShadow: assessmentView === 'card' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}
                   title="Card View"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
+                  <FontAwesomeIcon icon={faTableCells} className="w-3 h-3" />
                   Card
                 </button>
                 <button
                   onClick={() => { setAssessmentView('list'); localStorage.setItem('assessment_view', 'list') }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    assessmentView === 'list' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors"
+                  style={{ borderRadius: '4px', background: assessmentView === 'list' ? theme.cardBg : 'transparent', color: assessmentView === 'list' ? theme.textPrimary : theme.textSecondary, boxShadow: assessmentView === 'list' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}
                   title="List View"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
+                  <FontAwesomeIcon icon={faListUl} className="w-3 h-3" />
                   List
                 </button>
               </div>
             </div>
             
             {/* Filters */}
-            <div className="mb-6 flex gap-4 items-end">
+            <div className="mb-5 flex gap-3 items-end">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                   {t('topicNew.filters.subject')}
                 </label>
                 <select
                   value={assessmentFilters.subject}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, subject: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                 >
                   <option value="">{t('topicNew.filters.allSubjects')}</option>
                   {subjects.map(s => (
@@ -4771,13 +4849,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 </select>
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                   {t('topicNew.filters.class')}
                 </label>
                 <select
                   value={assessmentFilters.kelas}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, kelas: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                 >
                   <option value="">{t('topicNew.filters.allClasses')}</option>
                   {assessmentKelasOptions.map(k => (
@@ -4788,13 +4867,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 </select>
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                   {t('topicNew.filters.status')}
                 </label>
                 <select
                   value={assessmentFilters.status}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, status: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                 >
                   <option value="">{t('topicNew.filters.allStatus')}</option>
                   <option value="0">{t('topicNew.filters.statusWaiting')}</option>
@@ -4804,7 +4884,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 </select>
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                   {t('topicNew.filters.search')}
                 </label>
                 <input
@@ -4812,23 +4892,24 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   value={assessmentFilters.search}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, search: e.target.value })}
                   placeholder="Search by name..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                 />
               </div>
             </div>
 
             {/* Additional Filters */}
             <div className="mb-4 flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:text-gray-900">
+              <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: theme.textBody }}>
                 <input
                   type="checkbox"
                   checked={assessmentFilters.noCriteria}
                   onChange={(e) => setAssessmentFilters({ ...assessmentFilters, noCriteria: e.target.checked })}
-                  className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                  className="w-3.5 h-3.5"
                 />
-                <span>⚠ Show only assessments without criteria</span>
+                <span>Show only assessments without criteria</span>
                 {assessmentFilters.noCriteria && (
-                  <span className="text-xs text-orange-600 font-medium">
+                  <span className="text-[10px] font-medium" style={{ color: theme.yellowText }}>
                     ({filteredAssessments.length} found)
                   </span>
                 )}
@@ -4838,12 +4919,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             {/* Loading State */}
             {loadingAssessments ? (
               <div className="flex justify-center items-center py-12">
-                <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-red-500" />
+                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
               </div>
             ) : assessmentView === 'card' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredAssessments.length === 0 && (
-                  <div className="col-span-full text-center py-12 text-gray-500">
+                  <div className="col-span-full text-center py-12 text-sm" style={{ color: theme.textSecondary }}>
                     No assessments found
                   </div>
                 )}
@@ -4861,12 +4942,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   return (
                   <div 
                     key={assessment.assessment_id}
-                    className={`relative border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all overflow-hidden flex flex-col h-full ${canEdit ? 'cursor-pointer hover:border-cyan-300' : ''}`}
+                    className="relative overflow-hidden flex flex-col transition-all"
+                    style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '20px', background: theme.cardBg, cursor: canEdit ? 'pointer' : 'default' }}
                     onClick={() => canEdit && handleEditAssessment(assessment)}
+                    onMouseEnter={e => { if (canEdit) e.currentTarget.style.borderColor = theme.borderHover }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border }}
                   >
                     {/* Grade Watermark */}
                     {gradeNumber && (
-                      <div className="absolute top-0 right-0 text-[120px] font-black text-gray-100 leading-none pointer-events-none select-none" style={{ transform: 'translate(20%, -20%)' }}>
+                      <div className="absolute top-0 right-0 font-black leading-none pointer-events-none select-none" style={{ fontSize: '120px', color: theme.border, transform: 'translate(20%, -20%)' }}>
                         {gradeNumber}
                       </div>
                     )}
@@ -4875,44 +4959,43 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     <div className="flex-grow flex flex-col">
                     
                     {/* Header */}
-                    <div className="mb-4 pb-3 border-b border-gray-100 relative z-10">
+                    <div className="mb-3 pb-3 relative z-10" style={{ borderBottom: `1px solid ${theme.border}` }}>
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-start gap-2 flex-1">
                           {assessment.topic_urutan && assessment.topic_urutan !== 999 && (
-                            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1 flex-shrink-0">
-                              <span>Unit:</span>
-                              <span>{assessment.topic_urutan}</span>
+                            <div className="text-[10px] font-bold px-1.5 py-0.5 flex-shrink-0" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
+                              Unit {assessment.topic_urutan}
                             </div>
                           )}
-                          <h3 className="text-lg font-bold text-gray-800 line-clamp-2 flex-1">
+                          <h3 className="text-sm font-semibold line-clamp-2 flex-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
                             {assessment.assessment_nama}
                           </h3>
                         </div>
                         {getAssessmentStatusBadge(assessment.assessment_status)}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
-                        <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-medium">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
                           {assessment.subject_name || 'N/A'}
                         </span>
                         {assessment.kelas_nama && (
-                          <span className="bg-green-50 text-green-600 px-2 py-1 rounded text-xs font-medium">
+                          <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>
                             {assessment.kelas_nama}
                           </span>
                         )}
                         {assessment.assessment_semester && (
-                          <span className="bg-amber-50 text-amber-600 px-2 py-1 rounded text-xs font-medium">
+                          <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>
                             Sem {assessment.assessment_semester}
                           </span>
                         )}
                         {assessment.criteria && assessment.criteria.length > 0 ? (
                           assessment.criteria.map(c => (
-                            <span key={c.code} className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs font-bold">
-                              Criterion {c.code}
+                            <span key={c.code} className="text-[10px] px-1.5 py-0.5 font-bold" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
+                              {c.code}
                             </span>
                           ))
                         ) : (
-                          <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded text-xs font-bold">
-                            ⚠ No Criteria
+                          <span className="text-[10px] px-1.5 py-0.5 font-bold" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>
+                            No Criteria
                           </span>
                         )}
                       </div>
@@ -4920,31 +5003,28 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                     {/* Criteria Names or Warning */}
                     {assessment.criteria && assessment.criteria.length > 0 ? (
-                      <div className="mb-3 relative z-10">
-                        <p className="text-xs text-purple-500 font-medium mb-1">IB MYP Criteria</p>
-                        <div className="flex flex-wrap gap-2">
+                      <div className="mb-2 relative z-10">
+                        <p className="text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.blueText }}>IB MYP Criteria</p>
+                        <div className="flex flex-wrap gap-1">
                           {assessment.criteria.map(c => (
-                            <div key={c.code} className="text-sm text-gray-700 bg-purple-50 px-2 py-1 rounded font-medium">
+                            <div key={c.code} className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.subtleBg, color: theme.textBody, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
                               {c.code}: {c.name}
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
-                      <div className="mb-3 relative z-10">
-                        <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
-                          <p className="text-sm text-orange-700 font-medium flex items-center gap-2">
-                            <span>⚠</span>
-                            <span>No criteria assigned. Click to add criteria.</span>
-                          </p>
+                      <div className="mb-2 relative z-10">
+                        <div className="p-2" style={{ background: theme.yellowBg, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
+                          <p className="text-xs font-medium" style={{ color: theme.yellowText }}>No criteria assigned. Click to add criteria.</p>
                         </div>
                       </div>
                     )}
 
                     {/* Date */}
-                    <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
-                      <span className="text-gray-500">📅</span>
-                      <span className="text-gray-700">
+                    <div className="mb-2 flex items-center gap-1.5 relative z-10">
+                      <FontAwesomeIcon icon={faCalendar} className="w-3 h-3" style={{ color: theme.textSecondary }} />
+                      <span className="text-xs" style={{ color: theme.textBody }}>
                         {assessment.assessment_tanggal ? (
                           new Date(assessment.assessment_tanggal).toLocaleDateString('en-US', {
                             year: 'numeric',
@@ -4958,29 +5038,26 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </div>
 
                     {/* Teacher */}
-                    <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
-                      <span className="text-gray-500">👤</span>
-                      <span className="text-gray-700">
+                    <div className="mb-2 flex items-center gap-1.5 relative z-10">
+                      <FontAwesomeIcon icon={faBook} className="w-3 h-3" style={{ color: theme.textSecondary }} />
+                      <span className="text-xs" style={{ color: theme.textBody }}>
                         {assessment.teacher_name || 'Unknown Teacher'}
                       </span>
                     </div>
 
                     {/* Graded count */}
-                    <div className="mb-3 flex items-center gap-2 text-sm relative z-10">
-                      <span className="text-gray-500">📊</span>
-                      <span className={`font-medium ${
-                        assessment.total_students > 0 && assessment.graded_count === assessment.total_students
-                          ? 'text-green-600' : 'text-gray-700'
-                      }`}>
+                    <div className="mb-2 flex items-center gap-1.5 relative z-10">
+                      <FontAwesomeIcon icon={faChartBar} className="w-3 h-3" style={{ color: theme.textSecondary }} />
+                      <span className="text-xs font-medium" style={{ color: assessment.total_students > 0 && assessment.graded_count === assessment.total_students ? theme.greenText : theme.textBody }}>
                         {assessment.graded_count}/{assessment.total_students} siswa dinilai
                       </span>
                     </div>
 
                     {/* Topic */}
                     {assessment.topic_nama && (
-                      <div className="mb-3 relative z-10">
-                        <p className="text-xs text-cyan-500 font-medium mb-1">Linked Topic</p>
-                        <p className="text-sm text-gray-700 line-clamp-2">
+                      <div className="mb-2 relative z-10">
+                        <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Linked Topic</p>
+                        <p className="text-xs line-clamp-2" style={{ color: theme.textBody }}>
                           {assessment.topic_nama}
                         </p>
                       </div>
@@ -4988,9 +5065,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                     {/* Description */}
                     {assessment.assessment_keterangan && (
-                      <div className="mb-3 relative z-10">
-                        <p className="text-xs text-cyan-500 font-medium mb-1">Note</p>
-                        <p className="text-sm text-gray-700 line-clamp-3">
+                      <div className="mb-2 relative z-10">
+                        <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Note</p>
+                        <p className="text-xs line-clamp-3" style={{ color: theme.textBody }}>
                           {assessment.assessment_keterangan}
                         </p>
                       </div>
@@ -5000,18 +5077,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     {/* End Content Container */}
 
                     {/* Action Buttons */}
-                    <div className="relative z-10 pt-3 border-t border-gray-100 mt-auto">
-                      {/* Input Nilai button - visible for any assessment with criteria (TEMP: no approval required) */}
-                      {/* Was: assessment.assessment_status === 1 && hasCriteria */}
+                    <div className="relative z-10 pt-3 mt-auto" style={{ borderTop: `1px solid ${theme.border}` }}>
                       {hasCriteria && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             router.push(`/data/assessment_grading/${assessment.assessment_id}`)
                           }}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-md transition-all shadow-sm hover:shadow-md"
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-xs font-medium"
+                          style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '6px', border: `1px solid ${theme.border}` }}
                         >
-                          <span>📝</span>
+                          <FontAwesomeIcon icon={faPaperPlane} />
                           {t('topicNew.buttons.inputGrades')}
                         </button>
                       )}
@@ -5024,15 +5100,16 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 e.stopPropagation()
                                 handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)
                               }}
-                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium"
+                              style={{ background: theme.redBg, color: theme.redText, borderRadius: '6px', border: `1px solid ${theme.border}` }}
                             >
                               <FontAwesomeIcon icon={faTrash} />
                               Delete
                             </button>
                           )}
                           {canEdit && (
-                            <div className="flex items-center text-xs text-gray-400 px-2">
-                              {!hasCriteria ? '👆 Click to add criteria' : 'Click card to edit'}
+                            <div className="flex items-center text-[10px] px-2" style={{ color: theme.textSecondary }}>
+                              {!hasCriteria ? 'Click to add criteria' : 'Click card to edit'}
                             </div>
                           )}
                         </div>
@@ -5042,25 +5119,25 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 )})}
               </div>
             ) : filteredAssessments.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">No assessments found</div>
+              <div className="text-center py-12 text-sm" style={{ color: theme.textSecondary }}>No assessments found</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">#</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Criteria</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <table className="min-w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider w-10" style={{ color: theme.textSecondary }}>#</th>
+                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Assessment Name</th>
+                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Subject</th>
+                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Class</th>
+                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Criteria</th>
+                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Status</th>
+                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Date</th>
+                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Teacher</th>
+                      <th className="px-4 py-2.5 text-center font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Nilai</th>
+                      <th className="px-4 py-2.5 text-right font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody>
                     {filteredAssessments.map((assessment, idx) => {
                       const hasCriteria = assessment.criteria && assessment.criteria.length > 0
                       const isPending = assessment.assessment_status === 0 || assessment.assessment_status === 3
@@ -5068,70 +5145,71 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       return (
                         <tr
                           key={assessment.assessment_id}
-                          className={`transition-colors ${canEdit ? 'hover:bg-cyan-50 cursor-pointer' : 'hover:bg-gray-50'}`}
+                          className="transition-colors"
+                          style={{ borderBottom: `1px solid ${theme.border}`, cursor: canEdit ? 'pointer' : 'default' }}
                           onClick={() => canEdit && handleEditAssessment(assessment)}
+                          onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                          <td className="px-4 py-3 text-gray-400 text-center">{idx + 1}</td>
+                          <td className="px-4 py-3 text-center" style={{ color: theme.textSecondary }}>{idx + 1}</td>
                           <td className="px-4 py-3">
-                            <div className="font-medium text-gray-900 flex items-center gap-2">
+                            <div className="font-medium flex items-center gap-2" style={{ color: theme.textPrimary }}>
                               {assessment.topic_urutan && assessment.topic_urutan !== 999 && (
-                                <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap">U{assessment.topic_urutan}</span>
+                                <span className="text-[10px] px-1.5 py-0.5 font-bold" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>U{assessment.topic_urutan}</span>
                               )}
                               {assessment.assessment_nama}
                             </div>
-                            {assessment.topic_nama && <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{assessment.topic_nama}</div>}
+                            {assessment.topic_nama && <div className="text-[10px] mt-0.5 line-clamp-1" style={{ color: theme.textSecondary }}>{assessment.topic_nama}</div>}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded font-medium whitespace-nowrap">{assessment.subject_name || 'N/A'}</span>
+                            <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>{assessment.subject_name || 'N/A'}</span>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded font-medium whitespace-nowrap">{assessment.kelas_nama || 'N/A'}</span>
+                            <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>{assessment.kelas_nama || 'N/A'}</span>
                           </td>
                           <td className="px-4 py-3">
                             {hasCriteria ? (
                               <div className="flex flex-wrap gap-1">
                                 {assessment.criteria.map(c => (
-                                  <span key={c.code} className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold">{c.code}</span>
+                                  <span key={c.code} className="px-1.5 py-0.5 font-bold" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>{c.code}</span>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded font-medium">⚠ None</span>
+                              <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>None</span>
                             )}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">{getAssessmentStatusBadge(assessment.assessment_status)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                          <td className="px-4 py-3 whitespace-nowrap" style={{ color: theme.textBody }}>
                             {assessment.assessment_tanggal
                               ? new Date(assessment.assessment_tanggal).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-                              : <span className="text-gray-400 italic text-xs">Draft</span>}
+                              : <span className="italic" style={{ color: theme.textSecondary }}>Draft</span>}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-600">{assessment.teacher_name || '-'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap" style={{ color: theme.textBody }}>{assessment.teacher_name || '-'}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                              assessment.total_students > 0 && assessment.graded_count === assessment.total_students
-                                ? 'bg-green-100 text-green-700'
-                                : assessment.graded_count > 0
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-gray-100 text-gray-500'
-                            }`}>
+                            <span className="font-semibold px-1.5 py-0.5" style={{
+                              background: assessment.total_students > 0 && assessment.graded_count === assessment.total_students ? theme.greenBg : assessment.graded_count > 0 ? theme.yellowBg : theme.subtleBg,
+                              color: assessment.total_students > 0 && assessment.graded_count === assessment.total_students ? theme.greenText : assessment.graded_count > 0 ? theme.yellowText : theme.textSecondary,
+                              borderRadius: '4px'
+                            }}>
                               {assessment.graded_count}/{assessment.total_students}
                             </span>
                           </td>
                           <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
-                              {/* Input Nilai - TEMP: no approval required, show for any assessment with criteria */}
-                              {/* Was: assessment.assessment_status === 1 && hasCriteria */}
                               {hasCriteria && (
                                 <button
                                   onClick={() => router.push(`/data/assessment_grading/${assessment.assessment_id}`)}
-                                  className="px-2 py-1 text-xs font-medium text-white bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded transition-all"
+                                  className="px-2 py-1 text-xs font-medium"
+                                  style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px', border: `1px solid ${theme.border}` }}
                                 >
-                                  📝 {t('topicNew.buttons.inputGrades')}
+                                  {t('topicNew.buttons.inputGrades')}
                                 </button>
                               )}
                               {(isAdmin || (canEdit && isPending)) && (
                                 <button
                                   onClick={() => handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                  className="p-1.5 transition-colors"
+                                  style={{ color: theme.redText, borderRadius: '4px' }}
                                   title={isAdmin ? 'Delete (Admin)' : 'Delete'}
                                 >
                                   <FontAwesomeIcon icon={faTrash} className="text-xs" />
@@ -5151,18 +5229,31 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
         {activeTab === 'comment' && (
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">💬 Student Comments</h2>
-            <p className="text-sm text-gray-500 mb-6">Write semester comments for each student per subject.</p>
+            <div className="flex items-start justify-between mb-1">
+              <h2 className="text-base font-semibold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>Student Comments</h2>
+              <button
+                type="button"
+                onClick={startCommentTour}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
+                style={{ border: '1px solid #c7d2fe', borderRadius: '6px', background: '#eef2ff', color: '#4338ca', cursor: 'pointer', flexShrink: 0 }}
+              >
+                <FontAwesomeIcon icon={faLightbulb} className="text-xs" />
+                {t('topicNew.mentorCommentTab.tourBtn')}
+              </button>
+            </div>
+            <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>Write semester comments for each student per subject.</p>
             
             {/* Filter row: Subject → Kelas → Semester */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div id="comment-filter-section" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
               {/* Subject */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">1. {t('topicNew.fields.subject')}</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. {t('topicNew.fields.subject')}</label>
                 <select
+                  id="comment-subject-select"
                   value={commentSubject}
                   onChange={(e) => handleCommentSubjectChange(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                 >
                   <option value="">{t('topicNew.fields.selectSubject')}</option>
                   {subjects.map(s => (
@@ -5173,12 +5264,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               
               {/* Kelas */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">2. {t('topicNew.filters.class')}</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. {t('topicNew.filters.class')}</label>
                 <select
+                  id="comment-kelas-select"
                   value={commentKelas}
                   onChange={(e) => handleCommentKelasChange(e.target.value)}
                   disabled={!commentSubject || loadingCommentKelas}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: (!commentSubject || loadingCommentKelas) ? 0.5 : 1 }}
                 >
                   <option value="">{loadingCommentKelas ? t('topicNew.fields.loading') : t('topicNew.fields.selectClass')}</option>
                   {commentKelasOptions.map(k => (
@@ -5189,19 +5282,22 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               
               {/* Semester */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">3. Semester</label>
-                <div className="flex gap-2">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. Semester</label>
+                <div id="comment-semester-row" className="flex gap-2">
                   {[1, 2].map(sem => (
                     <button
                       key={sem}
                       type="button"
                       disabled={!commentKelas}
                       onClick={() => handleCommentSemesterChange(String(sem))}
-                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                        commentSemester === String(sem)
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                      className="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                      style={{
+                        borderRadius: '6px',
+                        background: commentSemester === String(sem) ? theme.textPrimary : theme.subtleBg,
+                        color: commentSemester === String(sem) ? theme.cardBg : theme.textSecondary,
+                        border: `1px solid ${theme.border}`,
+                        opacity: !commentKelas ? 0.5 : 1,
+                      }}
                     >
                       Semester {sem}
                     </button>
@@ -5212,50 +5308,31 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             
             {/* Save All bar */}
             {commentStudents.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
-                <span className="text-sm text-gray-600">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 mb-4" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
+                <span className="text-sm" style={{ color: theme.textBody }}>
                   {commentStudents.length} student{commentStudents.length !== 1 ? 's' : ''}
                   {commentStudents.filter(s => !s.saved).length > 0 && (
-                    <span className="text-amber-600 ml-2 font-medium">
+                    <span className="ml-2 font-medium" style={{ color: theme.yellowText }}>
                       — {commentStudents.filter(s => !s.saved).length} unsaved
                     </span>
                   )}
                 </span>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Download Template */}
-                  <button
-                    type="button"
-                    onClick={downloadCommentTemplate}
-                    className="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1.5"
-                  >
-                    📥 Download Template
-                  </button>
-                  {/* Import */}
-                  <button
-                    type="button"
-                    onClick={() => commentImportRef.current?.click()}
-                    className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-1.5"
-                  >
-                    📤 Import Excel
-                  </button>
-                  <input
-                    ref={commentImportRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) handleCommentImport(file)
-                    }}
-                  />
-                  {/* Save All */}
-                  <button
-                    type="button"
-                    onClick={saveAllComments}
-                    disabled={commentStudents.every(s => s.saved) || savingCommentId !== null}
-                    className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    💾 Save All
+                  <div className="ai-tooltip-wrap">
+                    <button type="button" onClick={downloadCommentTemplate} className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.cardBg, color: theme.blueText, cursor: 'pointer' }}>
+                      <FontAwesomeIcon icon={faFileAlt} />Download Template
+                    </button>
+                    <div className="ai-tooltip">{t('topicNew.mentorCommentTab.downloadTemplateTooltip')}</div>
+                  </div>
+                  <div className="ai-tooltip-wrap">
+                    <button type="button" onClick={() => commentImportRef.current?.click()} className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.cardBg, color: theme.textBody, cursor: 'pointer' }}>
+                      <FontAwesomeIcon icon={faPaperPlane} />Import Excel
+                    </button>
+                    <div className="ai-tooltip">{t('topicNew.mentorCommentTab.importExcelTooltip')}</div>
+                  </div>
+                  <input ref={commentImportRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCommentImport(file) }} />
+                  <button type="button" onClick={saveAllComments} disabled={commentStudents.every(s => s.saved) || savingCommentId !== null} className="px-4 py-1.5 text-sm font-medium" style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
+                    <FontAwesomeIcon icon={faSave} className="mr-1" />Save All
                   </button>
                 </div>
               </div>
@@ -5264,75 +5341,87 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             {/* Loading */}
             {loadingComments && (
               <div className="text-center py-12">
-                <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-gray-500 mt-2">Loading students...</p>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
+                <p className="text-sm mt-2" style={{ color: theme.textSecondary }}>Loading students...</p>
               </div>
             )}
             
             {/* Empty / prompt states */}
             {!loadingComments && !commentSemester && (
-              <div className="text-center py-12 text-gray-400">
-                <p className="text-4xl mb-2">📝</p>
-                <p>Select subject, class, and semester to start writing comments</p>
+              <div className="text-center py-12" style={{ color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faComments} className="text-4xl mb-2 opacity-30" />
+                <p className="text-sm">Select subject, class, and semester to start writing comments</p>
               </div>
             )}
             
             {commentSemester && !loadingComments && commentStudents.length === 0 && (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-sm" style={{ color: theme.textSecondary }}>
                 <p>No students found in this class</p>
               </div>
             )}
             
             {/* Student list */}
             {!loadingComments && commentStudents.length > 0 && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {commentStudents.map((student, idx) => (
-                  <div key={student.user_id} className={`border rounded-lg p-4 ${!student.saved ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200 bg-white'}`}>
+                  <div key={student.user_id} style={{ border: `1px solid ${!student.saved ? theme.yellowText : theme.border}`, borderRadius: '8px', padding: '16px', background: !student.saved ? theme.yellowBg : theme.cardBg }}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 font-mono w-6">{idx + 1}.</span>
-                        <h3 className="font-medium text-gray-800">{student.nama}</h3>
+                        <span className="text-[10px] font-mono w-5" style={{ color: theme.textSecondary }}>{idx + 1}.</span>
+                        <h3 className="font-medium text-sm" style={{ color: theme.textPrimary }}>{student.nama}</h3>
                         {!student.saved && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">unsaved</span>
+                          <span className="text-[10px] px-1.5 py-0.5" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>unsaved</span>
                         )}
                         {student.saved && student.comment_id && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">saved ✓</span>
+                          <span className="text-[10px] px-1.5 py-0.5" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>saved</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCommentAiTarget({ user_id: student.user_id, nama: student.nama })
-                            setCommentAiInput({ star1: '', star2: '', wish: '' })
-                            setCommentAiResult('')
-                            setCommentAiError('')
-                            setCommentAiModalOpen(true)
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
-                        >
-                          <FontAwesomeIcon icon={faLightbulb} className="text-xs" />
-                          AI Help
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => saveComment(student)}
-                          disabled={student.saved || savingCommentId === student.user_id}
-                          className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
+                        {/* AI Help button with custom tooltip */}
+                        <div className="ai-tooltip-wrap">
+                          <button
+                            type="button"
+                            onClick={() => { setCommentAiTarget({ user_id: student.user_id, nama: student.nama }); setCommentAiInput({ star1: '', star2: '', wish: '' }); setCommentAiResult(''); setCommentAiError(''); setCommentAiContradiction(null); setCommentAiModalOpen(true) }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium"
+                            style={{ border: '1px solid #ddd6fe', borderRadius: '6px', background: '#ede9fe', color: '#6d28d9', cursor: 'pointer' }}
+                          >
+                            <FontAwesomeIcon icon={faWandMagicSparkles} className="text-xs" />AI Help
+                          </button>
+                          <div className="ai-tooltip">{t('topicNew.mentorCommentTab.aiHelpTooltip')}</div>
+                        </div>
+                        {/* Refine button with custom tooltip */}
+                        <div className={`ai-tooltip-wrap ${!student.comment_text?.trim() ? 'opacity-40 pointer-events-none' : ''}`}>
+                          <button
+                            type="button"
+                            disabled={!student.comment_text?.trim()}
+                            onClick={() => {
+                              setRefineModalTarget({ user_id: student.user_id, nama: student.nama })
+                              setRefineOriginal(student.comment_text || '')
+                              setRefineResult(null)
+                              setRefineError('')
+                              setRefineModalOpen(true)
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium"
+                            style={{ border: '1px solid #fed7aa', borderRadius: '6px', background: '#fff7ed', color: '#c2410c', cursor: 'pointer' }}
+                          >
+                            <FontAwesomeIcon icon={faSliders} className="text-xs" />Refine
+                          </button>
+                          <div className="ai-tooltip">{t('topicNew.mentorCommentTab.refineTooltip')}</div>
+                        </div>
+                        <button type="button" onClick={() => saveComment(student)} disabled={student.saved || savingCommentId === student.user_id} className="px-3 py-1.5 text-sm font-medium" style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
                           {savingCommentId === student.user_id ? 'Saving...' : 'Save'}
                         </button>
                       </div>
                     </div>
 
-                    {/* ── Grade Summary ── */}
+                    {/* Grade Summary */}
                     {commentStudentGrades[student.user_id]?.length > 0 ? (
-                      <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2">
-                        <p className="text-[11px] font-semibold text-blue-700 mb-1.5">📊 Assessment Grades — Semester {commentSemester}</p>
+                      <div className="mb-3 px-3 py-2" style={{ borderRadius: '6px', border: `1px solid ${theme.border}`, background: theme.blueBg }}>
+                        <p className="text-[11px] font-semibold mb-1.5" style={{ color: theme.blueText }}>Assessment Grades — Semester {commentSemester}</p>
                         <div className="overflow-x-auto">
                           <table className="text-[11px] w-full">
                             <thead>
-                              <tr className="text-gray-500">
+                              <tr style={{ color: theme.textSecondary }}>
                                 <th className="text-left pr-3 pb-1 font-medium">Assessment</th>
                                 <th className="text-center px-2 pb-1 font-medium w-8">A</th>
                                 <th className="text-center px-2 pb-1 font-medium w-8">B</th>
@@ -5342,12 +5431,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             </thead>
                             <tbody>
                               {commentStudentGrades[student.user_id].map((g, gi) => (
-                                <tr key={gi} className="border-t border-blue-100">
-                                  <td className="pr-3 py-1 text-gray-700 max-w-[220px] truncate" title={g.name}>{g.name}</td>
-                                  <td className={`text-center px-2 py-1 font-mono font-semibold ${g.A !== null ? 'text-blue-700' : 'text-gray-300'}`}>{g.A ?? '–'}</td>
-                                  <td className={`text-center px-2 py-1 font-mono font-semibold ${g.B !== null ? 'text-blue-700' : 'text-gray-300'}`}>{g.B ?? '–'}</td>
-                                  <td className={`text-center px-2 py-1 font-mono font-semibold ${g.C !== null ? 'text-blue-700' : 'text-gray-300'}`}>{g.C ?? '–'}</td>
-                                  <td className={`text-center px-2 py-1 font-mono font-semibold ${g.D !== null ? 'text-blue-700' : 'text-gray-300'}`}>{g.D ?? '–'}</td>
+                                <tr key={gi} style={{ borderTop: `1px solid ${theme.border}` }}>
+                                  <td className="pr-3 py-1 max-w-[220px] truncate" style={{ color: theme.textBody }} title={g.name}>{g.name}</td>
+                                  <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.A !== null ? theme.blueText : theme.textSecondary }}>{g.A ?? '–'}</td>
+                                  <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.B !== null ? theme.blueText : theme.textSecondary }}>{g.B ?? '–'}</td>
+                                  <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.C !== null ? theme.blueText : theme.textSecondary }}>{g.C ?? '–'}</td>
+                                  <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.D !== null ? theme.blueText : theme.textSecondary }}>{g.D ?? '–'}</td>
                                 </tr>
                               ))}
                               {/* Max row */}
@@ -5372,12 +5461,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   else final = 7
                                 }
                                 return (
-                                  <tr className="border-t-2 border-blue-200 bg-blue-100/50">
-                                    <td className="pr-3 py-1 font-semibold text-blue-800">Max</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold text-blue-900">{isFinite(maxA) ? maxA : '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold text-blue-900">{isFinite(maxB) ? maxB : '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold text-blue-900">{isFinite(maxC) ? maxC : '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold text-blue-900">{isFinite(maxD) ? maxD : '–'}</td>
+                                  <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
+                                    <td className="pr-3 py-1 font-semibold" style={{ color: theme.blueText }}>Max</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{isFinite(maxA) ? maxA : '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{isFinite(maxB) ? maxB : '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{isFinite(maxC) ? maxC : '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{isFinite(maxD) ? maxD : '–'}</td>
                                   </tr>
                                 )
                               })()}
@@ -5392,18 +5481,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           const total = vals.reduce((a, b) => a + b, 0)
                           const b = [5, 9, 14, 18, 23, 27]
                           let final = total <= b[0] ? 1 : total <= b[1] ? 2 : total <= b[2] ? 3 : total <= b[3] ? 4 : total <= b[4] ? 5 : total <= b[5] ? 6 : 7
-                          const colours = ['','bg-red-100 text-red-700','bg-orange-100 text-orange-700','bg-yellow-100 text-yellow-700','bg-lime-100 text-lime-700','bg-green-100 text-green-700','bg-emerald-100 text-emerald-700','bg-teal-100 text-teal-700']
                           return (
                             <div className="mt-1.5 flex items-center gap-2">
-                              <span className="text-[11px] text-gray-500">IB Grade:</span>
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colours[final]}`}>{final}</span>
-                              <span className="text-[10px] text-gray-400">(total {total})</span>
+                              <span className="text-[11px]" style={{ color: theme.textSecondary }}>IB Grade:</span>
+                              <span className="text-xs font-bold px-2 py-0.5" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>{final}</span>
+                              <span className="text-[10px]" style={{ color: theme.textSecondary }}>(total {total})</span>
                             </div>
                           )
                         })()}
                       </div>
                     ) : commentSemester && commentStudentGrades[student.user_id] !== undefined ? (
-                      <div className="mb-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-[11px] text-gray-400">
+                      <div className="mb-3 px-3 py-2 text-[11px]" style={{ borderRadius: '6px', border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary }}>
                         No assessment grades yet for this semester.
                       </div>
                     ) : null}
@@ -5414,9 +5502,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       rows={6}
                       maxLength={600}
                       placeholder="Write your comment for this student..."
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                      className="w-full px-3 py-2 text-sm focus:outline-none resize-y"
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                     />
-                    <p className="text-xs text-gray-400 text-right mt-1">{(student.comment_text || '').length}/600</p>
+                    <p className="text-xs text-right mt-1" style={{ color: theme.textSecondary }}>{(student.comment_text || '').length}/600</p>
                   </div>
                 ))}
               </div>
@@ -5426,18 +5515,19 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
         {activeTab === 'mentor' && isWaliKelas && (
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">🏠 {t('topicNew.mentorCommentTab.title')}</h2>
-            <p className="text-sm text-gray-500 mb-6">{t('topicNew.mentorCommentTab.subtitle')}</p>
+            <h2 className="text-base font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>{t('topicNew.mentorCommentTab.title')}</h2>
+            <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.subtitle')}</p>
 
             {/* Filter row: Kelas → Semester */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
               {/* Kelas */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.mentorCommentTab.classLabel')}</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.classLabel')}</label>
                 <select
                   value={mentorKelas}
                   onChange={(e) => handleMentorKelasChange(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                 >
                   <option value="">{t('topicNew.mentorCommentTab.selectClass')}</option>
                   {mentorKelasOptions.map(k => (
@@ -5448,7 +5538,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
               {/* Semester */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.mentorCommentTab.semesterLabel')}</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.semesterLabel')}</label>
                 <div className="flex gap-2">
                   {[1, 2].map(sem => (
                     <button
@@ -5456,11 +5546,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       type="button"
                       disabled={!mentorKelas}
                       onClick={() => handleMentorSemesterChange(String(sem))}
-                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                        mentorSemester === String(sem)
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                      className="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                      style={{
+                        borderRadius: '6px',
+                        background: mentorSemester === String(sem) ? theme.textPrimary : theme.subtleBg,
+                        color: mentorSemester === String(sem) ? theme.cardBg : theme.textSecondary,
+                        border: `1px solid ${theme.border}`,
+                        opacity: !mentorKelas ? 0.5 : 1,
+                      }}
                     >
                       Semester {sem}
                     </button>
@@ -5471,50 +5564,31 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
             {/* Save All bar */}
             {mentorStudents.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
-                <span className="text-sm text-gray-600">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 mb-4" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
+                <span className="text-sm" style={{ color: theme.textBody }}>
                   {mentorStudents.length} {mentorStudents.length !== 1 ? t('topicNew.mentorCommentTab.studentsPlural') : t('topicNew.mentorCommentTab.students')}
                   {mentorStudents.filter(s => !s.saved).length > 0 && (
-                    <span className="text-amber-600 ml-2 font-medium">
+                    <span className="ml-2 font-medium" style={{ color: theme.yellowText }}>
                       — {mentorStudents.filter(s => !s.saved).length} {t('topicNew.mentorCommentTab.unsaved')}
                     </span>
                   )}
                 </span>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Download Template */}
-                  <button
-                    type="button"
-                    onClick={downloadMentorCommentTemplate}
-                    className="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1.5"
-                  >
-                    📥 Download Template
-                  </button>
-                  {/* Import */}
-                  <button
-                    type="button"
-                    onClick={() => mentorImportRef.current?.click()}
-                    className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-1.5"
-                  >
-                    📤 Import Excel
-                  </button>
-                  <input
-                    ref={mentorImportRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) handleMentorCommentImport(file)
-                    }}
-                  />
-                  {/* Save All */}
-                  <button
-                    type="button"
-                    onClick={saveAllMentorComments}
-                    disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null}
-                    className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    💾 {t('topicNew.mentorCommentTab.saveAll')}
+                  <div className="ai-tooltip-wrap">
+                    <button type="button" onClick={downloadMentorCommentTemplate} className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.cardBg, color: theme.blueText, cursor: 'pointer' }}>
+                      <FontAwesomeIcon icon={faFileAlt} />Download Template
+                    </button>
+                    <div className="ai-tooltip">{t('topicNew.mentorCommentTab.downloadTemplateTooltip')}</div>
+                  </div>
+                  <div className="ai-tooltip-wrap">
+                    <button type="button" onClick={() => mentorImportRef.current?.click()} className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.cardBg, color: theme.textBody, cursor: 'pointer' }}>
+                      <FontAwesomeIcon icon={faPaperPlane} />Import Excel
+                    </button>
+                    <div className="ai-tooltip">{t('topicNew.mentorCommentTab.importExcelTooltip')}</div>
+                  </div>
+                  <input ref={mentorImportRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleMentorCommentImport(file) }} />
+                  <button type="button" onClick={saveAllMentorComments} disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null} className="px-4 py-1.5 text-sm font-medium" style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
+                    <FontAwesomeIcon icon={faSave} className="mr-1" />{t('topicNew.mentorCommentTab.saveAll')}
                   </button>
                 </div>
               </div>
@@ -5523,68 +5597,64 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             {/* Loading */}
             {loadingMentorComments && (
               <div className="text-center py-12">
-                <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-gray-500 mt-2">{t('topicNew.mentorCommentTab.loading')}</p>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
+                <p className="text-sm mt-2" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.loading')}</p>
               </div>
             )}
 
             {/* Empty / prompt states */}
             {!loadingMentorComments && !mentorSemester && (
-              <div className="text-center py-12 text-gray-400">
-                <p className="text-4xl mb-2">🏠</p>
-                <p>{t('topicNew.mentorCommentTab.selectPrompt')}</p>
+              <div className="text-center py-12" style={{ color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faHouseUser} className="text-4xl mb-2 opacity-30" />
+                <p className="text-sm">{t('topicNew.mentorCommentTab.selectPrompt')}</p>
               </div>
             )}
 
             {mentorSemester && !loadingMentorComments && mentorStudents.length === 0 && (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-sm" style={{ color: theme.textSecondary }}>
                 <p>{t('topicNew.mentorCommentTab.noStudents')}</p>
               </div>
             )}
 
             {/* Student list */}
             {!loadingMentorComments && mentorStudents.length > 0 && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {mentorStudents.map((student, idx) => (
-                  <div key={student.user_id} className={`border rounded-lg p-4 ${!student.saved ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200 bg-white'}`}>
+                  <div key={student.user_id} style={{ border: `1px solid ${!student.saved ? theme.yellowText : theme.border}`, borderRadius: '8px', padding: '16px', background: !student.saved ? theme.yellowBg : theme.cardBg }}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 font-mono w-6">{idx + 1}.</span>
-                        <h3 className="font-medium text-gray-800">{student.nama}</h3>
+                        <span className="text-[10px] font-mono w-5" style={{ color: theme.textSecondary }}>{idx + 1}.</span>
+                        <h3 className="font-medium text-sm" style={{ color: theme.textPrimary }}>{student.nama}</h3>
                         {!student.saved && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">unsaved</span>
+                          <span className="text-[10px] px-1.5 py-0.5" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>unsaved</span>
                         )}
                         {student.saved && student.comment_id && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">saved ✓</span>
+                          <span className="text-[10px] px-1.5 py-0.5" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>saved</span>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => saveMentorComment(student)}
-                        disabled={student.saved || savingMentorCommentId === student.user_id}
-                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
+                      <button type="button" onClick={() => saveMentorComment(student)} disabled={student.saved || savingMentorCommentId === student.user_id} className="px-3 py-1.5 text-sm font-medium" style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
                         {savingMentorCommentId === student.user_id ? t('topicNew.mentorCommentTab.saving') : t('topicNew.mentorCommentTab.save')}
                       </button>
                     </div>
                     {/* Attendance row */}
                     <div className="grid grid-cols-5 gap-3 mb-3">
                       {[
-                        { field: 'present', label: t('topicNew.mentorCommentTab.present'), color: 'green' },
-                        { field: 'absent', label: t('topicNew.mentorCommentTab.absent'), color: 'red' },
-                        { field: 'late', label: t('topicNew.mentorCommentTab.late'), color: 'yellow' },
-                        { field: 'sick', label: t('topicNew.mentorCommentTab.sick'), color: 'orange' },
-                        { field: 'excused', label: t('topicNew.mentorCommentTab.excused'), color: 'blue' }
-                      ].map(({ field, label, color }) => (
+                        { field: 'present', label: t('topicNew.mentorCommentTab.present') },
+                        { field: 'absent', label: t('topicNew.mentorCommentTab.absent') },
+                        { field: 'late', label: t('topicNew.mentorCommentTab.late') },
+                        { field: 'sick', label: t('topicNew.mentorCommentTab.sick') },
+                        { field: 'excused', label: t('topicNew.mentorCommentTab.excused') }
+                      ].map(({ field, label }) => (
                         <div key={field}>
-                          <label className={`block text-xs font-medium mb-1 text-${color}-700`}>{label}</label>
+                          <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>{label}</label>
                           <input
                             type="number"
                             min="0"
                             value={student[field]}
                             onChange={(e) => updateMentorAttendance(student.user_id, field, e.target.value)}
                             onFocus={(e) => e.target.select()}
-                            className={`w-full border border-${color}-200 bg-${color}-50 rounded-md px-2 py-1.5 text-sm text-center font-medium focus:ring-2 focus:ring-${color}-400 focus:border-transparent`}
+                            className="w-full px-2 py-1.5 text-sm text-center font-medium focus:outline-none"
+                            style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                           />
                         </div>
                       ))}
@@ -5595,9 +5665,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       rows={6}
                       maxLength={600}
                       placeholder={t('topicNew.mentorCommentTab.commentPlaceholder')}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                      className="w-full px-3 py-2 text-sm focus:outline-none resize-y"
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                     />
-                    <p className="text-xs text-gray-400 text-right mt-1">{(student.comment_text || '').length}/600</p>
+                    <p className="text-xs text-right mt-1" style={{ color: theme.textSecondary }}>{(student.comment_text || '').length}/600</p>
                   </div>
                 ))}
               </div>
@@ -5607,46 +5678,41 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
         {activeTab === 'report' && (
           <div className="p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">{t('topicNew.report.title')}</h2>
-              <p className="text-gray-600 text-sm">{t('topicNew.report.subtitle')}</p>
+            <div className="mb-5">
+              <h2 className="text-base font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>{t('topicNew.report.title')}</h2>
+              <p className="text-sm" style={{ color: theme.textSecondary }}>{t('topicNew.report.subtitle')}</p>
             </div>
             
             {/* Filters */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+            <div className="p-4 mb-5" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
               {/* Mode selector */}
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm font-medium text-gray-700 mr-2">{t('topicNew.report.modeLabel')}</span>
+                <span className="text-sm font-medium mr-2" style={{ color: theme.textSecondary }}>{t('topicNew.report.modeLabel')}</span>
                 <button
                   onClick={() => setReportMode('single')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                    reportMode === 'single'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-3 py-1.5 text-sm font-medium"
+                  style={{ borderRadius: '6px', background: reportMode === 'single' ? theme.textPrimary : theme.subtleBg, color: reportMode === 'single' ? theme.cardBg : theme.textSecondary, border: `1px solid ${theme.border}` }}
                 >
-                  🧑 {t('topicNew.report.modeSingle')}
+                  {t('topicNew.report.modeSingle')}
                 </button>
                 <button
                   onClick={() => setReportMode('class')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                    reportMode === 'class'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-3 py-1.5 text-sm font-medium"
+                  style={{ borderRadius: '6px', background: reportMode === 'class' ? theme.textPrimary : theme.subtleBg, color: reportMode === 'class' ? theme.cardBg : theme.textSecondary, border: `1px solid ${theme.border}` }}
                 >
-                  📦 {t('topicNew.report.modeClass')}
+                  {t('topicNew.report.modeClass')}
                 </button>
               </div>
 
               <div className={`grid grid-cols-1 gap-4 ${reportMode === 'single' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                 {/* Year Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.yearLabel')}</label>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.report.yearLabel')}</label>
                   <select
                     value={reportFilters.year}
                     onChange={(e) => handleReportFilterChange('year', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm focus:outline-none"
+                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                   >
                     <option value="">{t('topicNew.report.selectYear')}</option>
                     {reportYears.map(year => (
@@ -5657,12 +5723,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 
                 {/* Kelas Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.classLabel')}</label>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.report.classLabel')}</label>
                   <select
                     value={reportFilters.kelas}
                     onChange={(e) => handleReportFilterChange('kelas', e.target.value)}
                     disabled={!reportFilters.year}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 text-sm focus:outline-none"
+                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: !reportFilters.year ? 0.5 : 1 }}
                   >
                     <option value="">
                       {!reportFilters.year ? t('topicNew.report.selectYearFirst') : (reportKelasOptions.length === 0 ? t('topicNew.report.noClasses') : t('topicNew.report.selectClass'))}
@@ -5675,11 +5742,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 
                 {/* Semester Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.semesterLabel')}</label>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.report.semesterLabel')}</label>
                   <select
                     value={reportFilters.semester}
                     onChange={(e) => handleReportFilterChange('semester', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm focus:outline-none"
+                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                   >
                     <option value="">{t('topicNew.report.selectSemester')}</option>
                     <option value="1">{t('topicNew.fields.semester1')}</option>
@@ -5687,15 +5755,16 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </select>
                 </div>
                 
-                {/* Student Filter — only visible in single mode */}
+                {/* Student Filter */}
                 {reportMode === 'single' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('topicNew.report.studentLabel')}</label>
+                    <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.report.studentLabel')}</label>
                     <select
                       value={reportFilters.student}
                       onChange={(e) => handleReportFilterChange('student', e.target.value)}
                       disabled={!reportFilters.kelas || loadingReportStudents}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="w-full px-3 py-2 text-sm focus:outline-none"
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: (!reportFilters.kelas || loadingReportStudents) ? 0.5 : 1 }}
                     >
                       <option value="">
                         {loadingReportStudents ? t('topicNew.fields.loading') : !reportFilters.kelas ? t('topicNew.report.selectClassFirst') : t('topicNew.report.selectStudent')}
@@ -5710,27 +5779,27 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
               {/* Class mode info banner */}
               {reportMode === 'class' && reportStudents.length > 0 && reportFilters.kelas && (
-                <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-700">
-                  📋 {t('topicNew.report.classInfoBanner', { count: reportStudents.length })}
+                <div className="mt-3 px-3 py-2 text-sm" style={{ background: theme.greenBg, border: `1px solid ${theme.border}`, borderRadius: '6px', color: theme.greenText }}>
+                  {t('topicNew.report.classInfoBanner', { count: reportStudents.length })}
                 </div>
               )}
               
               <div className="mt-4 flex flex-col gap-3">
                 {/* Progress bar for batch generation */}
                 {loadingReport && batchProgress.total > 0 && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div className="p-3" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
                     <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-gray-700 font-medium">
+                      <span className="font-medium" style={{ color: theme.textBody }}>
                         {t('topicNew.report.progressText', { current: batchProgress.current, total: batchProgress.total })}
                       </span>
-                      <span className="text-gray-500 truncate ml-2 max-w-[200px]">
+                      <span className="truncate ml-2 max-w-[200px]" style={{ color: theme.textSecondary }}>
                         {batchProgress.name}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                    <div className="w-full h-1.5" style={{ background: theme.border, borderRadius: '4px' }}>
+                      <div
+                        className="h-1.5 transition-all duration-300"
+                        style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%`, background: theme.textPrimary, borderRadius: '4px' }}
                       />
                     </div>
                   </div>
@@ -5740,35 +5809,26 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     <button
                       onClick={generateAllReports}
                       disabled={!reportFilters.kelas || !reportFilters.semester || reportStudents.length === 0 || loadingReport}
-                      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-2 px-5 py-2 text-sm font-medium"
+                      style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}`, borderRadius: '6px', opacity: (!reportFilters.kelas || !reportFilters.semester || reportStudents.length === 0 || loadingReport) ? 0.5 : 1 }}
                     >
                       {loadingReport && batchProgress.total > 0 ? (
-                        <>
-                          <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                          {t('topicNew.report.generating')}
-                        </>
+                        <><FontAwesomeIcon icon={faSpinner} spin />{t('topicNew.report.generating')}</>
                       ) : (
-                        <>
-                          📦 {t('topicNew.report.downloadAllButton')}
-                        </>
+                        <><FontAwesomeIcon icon={faPrint} />{t('topicNew.report.downloadAllButton')}</>
                       )}
                     </button>
                   ) : (
                     <button
                       onClick={generateReport}
                       disabled={!reportFilters.kelas || !reportFilters.student || loadingReport}
-                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-2 px-5 py-2 text-sm font-medium"
+                      style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}`, borderRadius: '6px', opacity: (!reportFilters.kelas || !reportFilters.student || loadingReport) ? 0.5 : 1 }}
                     >
                       {loadingReport ? (
-                        <>
-                          <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                          {t('topicNew.report.generating')}
-                        </>
+                        <><FontAwesomeIcon icon={faSpinner} spin />{t('topicNew.report.generating')}</>
                       ) : (
-                        <>
-                          <FontAwesomeIcon icon={faPrint} />
-                          {t('topicNew.report.previewButton')}
-                        </>
+                        <><FontAwesomeIcon icon={faPrint} />{t('topicNew.report.previewButton')}</>
                       )}
                     </button>
                   )}
@@ -5777,14 +5837,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             </div>
             
             {/* Info Box */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="p-4" style={{ background: theme.blueBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
               <div className="flex items-start gap-3">
-                <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5" />
-                <div>
-                  <p className="text-sm text-blue-800">
-                    {t('topicNew.report.infoText')}
-                  </p>
-                </div>
+                <FontAwesomeIcon icon={faInfoCircle} style={{ color: theme.blueText, marginTop: '2px' }} />
+                <p className="text-xs" style={{ color: theme.blueText }}>{t('topicNew.report.infoText')}</p>
               </div>
             </div>
           </div>
@@ -6753,13 +6809,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               openAddModal()
               setFabOpen(false)
             }}
-            className="group flex items-center gap-3 transition-all duration-200 hover:scale-105"
+            className="group flex items-center gap-3 transition-all duration-200"
           >
-            <span className="bg-white px-4 py-2 rounded-full shadow-lg text-sm font-medium text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            <span className="px-3 py-1.5 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '20px', color: theme.textBody, boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
               Add Unit
             </span>
-            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-all">
-              <FontAwesomeIcon icon={faBook} className="text-lg" />
+            <div className="w-12 h-12 flex items-center justify-center" style={{ borderRadius: '50%', background: theme.textPrimary, color: theme.cardBg, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+              <FontAwesomeIcon icon={faBook} className="text-base" />
             </div>
           </button>
         </div>
@@ -6767,9 +6823,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         {/* Main FAB Button */}
         <button
           onClick={() => setFabOpen(!fabOpen)}
-          className={`w-16 h-16 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white flex items-center justify-center shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-110 ${fabOpen ? 'rotate-45' : 'rotate-0'}`}
+          className="w-14 h-14 flex items-center justify-center transition-all duration-300"
+          style={{ borderRadius: '50%', background: theme.textPrimary, color: theme.cardBg, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}
         >
-          <FontAwesomeIcon icon={faPlus} className="text-2xl" />
+          <FontAwesomeIcon icon={faPlus} className="text-xl" />
         </button>
       </div>
       
@@ -7309,13 +7366,19 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                         {/* Comments */}
                         <div className="pt-4 border-t border-gray-200">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Comments (Optional)
-                          </label>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              Comments (Optional)
+                            </label>
+                            <span className="text-xs" style={{ color: (studentData?.comments?.length || 0) > 600 ? '#dc2626' : '#9ca3af' }}>
+                              {studentData?.comments?.length || 0}/600
+                            </span>
+                          </div>
                           <textarea
                             value={studentData?.comments || ''}
                             onChange={(e) => updateStudentComment(student.detail_siswa_id, e.target.value)}
                             rows={2}
+                            maxLength={600}
                             placeholder="Add comments about this student's performance..."
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
@@ -7397,12 +7460,50 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         .shadow-3xl {
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
         }
+
+        .ai-tooltip {
+          position: absolute;
+          bottom: calc(100% + 8px);
+          left: 50%;
+          transform: translateX(-50%);
+          width: 200px;
+          background: #1e1b4b;
+          color: #e0e7ff;
+          font-size: 11.5px;
+          line-height: 1.45;
+          text-align: center;
+          border-radius: 8px;
+          padding: 8px 12px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.18s ease, transform 0.18s ease;
+          transform: translateX(-50%) translateY(4px);
+          z-index: 100;
+        }
+        .ai-tooltip::after {
+          content: '';
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          border: 5px solid transparent;
+          border-top-color: #1e1b4b;
+        }
+        .ai-tooltip-wrap:hover .ai-tooltip {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+        .ai-tooltip-wrap {
+          position: relative;
+          display: inline-flex;
+        }
       `}</style>
       
       {/* Comment AI Help Modal */}
       <Modal
         isOpen={commentAiModalOpen}
-        onClose={() => { if (!commentAiLoading) { setCommentAiModalOpen(false); setCommentAiResult(''); setCommentAiError('') } }}
+        onClose={() => { if (!commentAiLoading) { setCommentAiModalOpen(false); setCommentAiResult(''); setCommentAiError(''); setCommentAiContradiction(null) } }}
         title={`AI Help — ${commentAiTarget?.nama || 'Student'}`}
         size="lg"
       >
@@ -7466,20 +7567,43 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   disabled={commentAiLoading || (!commentAiInput.star1.trim() && !commentAiInput.star2.trim() && !commentAiInput.wish.trim())}
                   onClick={async () => {
                     const subjectName = subjects.find(s => String(s.subject_id) === String(commentSubject))?.subject_name || ''
-                    const prompt = `You are a professional IB MYP teacher writing a report card comment. You MUST write the comment in English only, regardless of the language used in the teacher notes below.
+                    const prompt = `You are a professional IB MYP teacher writing report card comments.
 
+INPUTS:
 Student name: ${commentAiTarget?.nama || 'the student'}
 Subject: ${subjectName || 'the subject'}
+STAR 1 (strength): ${commentAiInput.star1 || '(not provided)'}
+STAR 2 (strength): ${commentAiInput.star2 || '(not provided)'}
+WISH (area to improve): ${commentAiInput.wish || '(not provided)'}
 
-Teacher notes (may be in any language — translate and use the meaning, but write the comment in English):
-- STAR 1 (strength): ${commentAiInput.star1 || '(not provided)'}
-- STAR 2 (another strength): ${commentAiInput.star2 || '(not provided)'}
-- WISH (area to improve): ${commentAiInput.wish || '(not provided)'}
+STEP 1 — CONTRADICTION CHECK:
+A contradiction exists when the WISH describes the same skill or quality already listed as a STAR.
+Examples:
+- STAR: "good communication skills" → WISH: "to be a better communicator" → CONTRADICTION (same skill)
+- STAR: "collaborates well in groups" → WISH: "learn to work in a team" → CONTRADICTION (same skill)
+- STAR: "reads widely" → WISH: "to read more" → CONTRADICTION (same activity)
 
-Write a single cohesive report card comment (3-5 sentences, max 500 characters) in a warm, professional tone. Use the student's first name. Integrate both stars and the wish naturally into the comment — do NOT use bullet points or headings. Return only the comment text in English, nothing else.`
+If a contradiction is found, return ONLY this JSON:
+{"contradiction": true, "reason": "One sentence naming exactly which STAR and WISH overlap and why they contradict."}
+
+STEP 2 — WRITE COMMENT (only if no contradiction):
+Rules:
+- 3–4 sentences, max 600 characters (strict)
+- Use the student's first name
+- State what the student actually does — no exaggeration, no inflation
+- Avoid filler phrases like "shines brightly", "exceptional talent", "remarkable journey", "truly outstanding"
+- Keep adjectives plain: use "consistent", "clear", "active" not "incredible", "extraordinary", "phenomenal"
+- State the wish as a concrete, actionable next step
+- Write for parents and students: clear, direct, no jargon
+- Translate any non-English input but write the comment in English only
+- No bullet points or headings
+
+Return ONLY this JSON:
+{"contradiction": false, "comment": "..."}`
                     console.log('[Comment AI] Prompt sent to Gemini:\n', prompt)
                     setCommentAiLoading(true)
                     setCommentAiError('')
+                    setCommentAiContradiction(null)
                     // Yield to React so it can re-render and show the spinner before fetch starts
                     await new Promise(resolve => setTimeout(resolve, 30))
                     try {
@@ -7493,7 +7617,22 @@ Write a single cohesive report card comment (3-5 sentences, max 500 characters) 
                         if (res.status === 503) throw new Error('Gemini API is temporarily unavailable. Please try again in a moment.')
                         throw new Error(data.error || 'AI request failed')
                       }
-                      setCommentAiResult(data.text?.trim() || '')
+                      const raw = data.text?.trim() || ''
+                      console.log('[Comment AI] Raw response:', raw)
+                      // Parse JSON response
+                      let parsed = null
+                      try {
+                        const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/```\s*([\s\S]*?)\s*```/) || raw.match(/\{[\s\S]*\}/)
+                        parsed = JSON.parse(jsonMatch ? (jsonMatch[1] ?? jsonMatch[0]) : raw)
+                      } catch {
+                        // If JSON parse fails, treat entire response as the comment
+                        parsed = { contradiction: false, comment: raw }
+                      }
+                      if (parsed.contradiction === true) {
+                        setCommentAiContradiction({ reason: parsed.reason || 'The STAR and WISH inputs appear to overlap.' })
+                      } else {
+                        setCommentAiResult(parsed.comment || raw)
+                      }
                     } catch (err) {
                       setCommentAiError(err.message)
                     } finally {
@@ -7509,6 +7648,16 @@ Write a single cohesive report card comment (3-5 sentences, max 500 characters) 
                   )}
                 </button>
               </div>
+              {commentAiContradiction && (
+                <div className="mt-3 p-3 rounded-md text-sm flex items-start gap-2" style={{ background: '#fef3c7', border: '1px solid #d97706', color: '#92400e' }}>
+                  <span className="mt-0.5">⚠️</span>
+                  <div>
+                    <p className="font-medium">Contradiction detected between STAR and WISH</p>
+                    <p className="text-xs mt-1">{commentAiContradiction.reason}</p>
+                    <p className="text-xs mt-1" style={{ color: '#b45309' }}>Please revise your inputs so the WISH describes a genuine growth area, not something already listed as a strength.</p>
+                  </div>
+                </div>
+              )}
               {commentAiError && (
                 <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 flex items-start gap-2">
                   <span className="mt-0.5">⚠️</span>
@@ -7525,25 +7674,74 @@ Write a single cohesive report card comment (3-5 sentences, max 500 characters) 
                 <div className="flex items-center gap-2 mb-3">
                   <FontAwesomeIcon icon={faLightbulb} className="text-purple-600" />
                   <span className="text-sm font-semibold text-purple-800">AI-Generated Comment</span>
-                  <span className="ml-auto text-xs text-purple-500">{commentAiResult.length} chars</span>
+                  <span className="ml-auto text-xs" style={{ color: commentAiResult.length > 600 ? '#dc2626' : '#a855f7' }}>
+                    {commentAiResult.length}/600 chars
+                  </span>
                 </div>
                 <textarea
                   value={commentAiResult}
                   onChange={(e) => setCommentAiResult(e.target.value)}
                   rows={6}
+                  maxLength={600}
                   className="w-full px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white resize-y"
                 />
+                {commentAiResult.length > 570 && (
+                  <p className="text-xs mt-1" style={{ color: '#dc2626' }}>Approaching 600 character limit. Trim before inserting.</p>
+                )}
                 <p className="text-xs text-purple-500 mt-2">You can edit the comment above before inserting.</p>
               </div>
 
               <div className="flex justify-between gap-3 pt-1">
                 <button
-                  onClick={() => setCommentAiResult('')}
+                  onClick={() => { setCommentAiResult(''); setCommentAiContradiction(null) }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm flex items-center gap-2"
                 >
                   ← Back
                 </button>
                 <div className="flex gap-2">
+                  <button
+                    disabled={commentAiRefining}
+                    onClick={async () => {
+                      const refinePrompt = `You are editing a report card comment. Rewrite the comment below following these rules:
+- Keep it factual and specific — what the student actually does
+- Remove all strong or inflated adjectives ("exceptional", "outstanding", "brilliant", "phenomenal", "remarkable", "incredible", "amazing")
+- Remove flowery phrases ("shines brightly", "remarkable journey", "truly inspiring")
+- Use plain, direct language that parents and students can easily understand
+- Keep the same structure: two strengths + one growth area
+- Stay under 600 characters
+- Keep the student's first name
+- Return ONLY the rewritten comment text, nothing else
+
+Original comment:
+${commentAiResult}`
+                      console.log('[Comment AI] Refine prompt:', refinePrompt)
+                      setCommentAiRefining(true)
+                      try {
+                        const res = await fetch('/api/gemini', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ prompt: refinePrompt })
+                        })
+                        const data = await res.json()
+                        if (!res.ok || data.error) throw new Error(data.error || 'Refine failed')
+                        const refined = data.text?.trim() || ''
+                        console.log('[Comment AI] Refined result:', refined)
+                        setCommentAiResult(refined.slice(0, 600))
+                      } catch (err) {
+                        setCommentAiError(err.message)
+                      } finally {
+                        setCommentAiRefining(false)
+                      }
+                    }}
+                    className="px-4 py-2 text-sm rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ background: '#f3e8ff', color: '#7e22ce', border: '1px solid #d8b4fe' }}
+                  >
+                    {commentAiRefining ? (
+                      <><span className="inline-block w-4 h-4 border-2 border-purple-700 border-t-transparent rounded-full animate-spin" /> Refining...</>
+                    ) : (
+                      <><FontAwesomeIcon icon={faLightbulb} /> Refine</>  
+                    )}
+                  </button>
                   <button
                     onClick={() => { setCommentAiModalOpen(false); setCommentAiResult('') }}
                     className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
@@ -7551,6 +7749,7 @@ Write a single cohesive report card comment (3-5 sentences, max 500 characters) 
                     Cancel
                   </button>
                   <button
+                    disabled={commentAiResult.length > 600}
                     onClick={() => {
                       if (commentAiTarget) {
                         updateCommentText(commentAiTarget.user_id, commentAiResult)
@@ -7558,13 +7757,187 @@ Write a single cohesive report card comment (3-5 sentences, max 500 characters) 
                       setCommentAiModalOpen(false)
                       setCommentAiResult('')
                     }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm flex items-center gap-2"
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm flex items-center gap-2"
                   >
                     <FontAwesomeIcon icon={faCheck} /> Insert to Comment
                   </button>
                 </div>
               </div>
             </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Comment Refine Modal */}
+      <Modal
+        isOpen={refineModalOpen}
+        onClose={() => { if (!refineLoading) { setRefineModalOpen(false); setRefineResult(null); setRefineError('') } }}
+        title={`Refine Comment — ${refineModalTarget?.nama || 'Student'}`}
+        size="lg"
+        containerStyle={{ background: theme.cardBg }}
+        headerStyle={{ borderColor: theme.border }}
+        titleStyle={{ color: theme.textPrimary }}
+      >
+        <div className="space-y-4">
+          {/* Original comment */}
+          <div>
+            <p className="text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: theme.textSecondary }}>Komentar Asli</p>
+            <div className="px-3 py-2.5 rounded-md text-sm whitespace-pre-wrap" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody }}>
+              {refineOriginal || '—'}
+            </div>
+            <p className="text-xs mt-1 text-right" style={{ color: theme.textSecondary }}>{refineOriginal.length}/600</p>
+          </div>
+
+          {/* Action */}
+          {!refineResult && !refineLoading && (
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                onClick={() => { setRefineModalOpen(false); setRefineResult(null); setRefineError('') }}
+                className="px-4 py-2 text-sm rounded-md"
+                style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={async () => {
+                  setRefineLoading(true)
+                  setRefineError('')
+                  const prompt = `You are reviewing a report card comment written by a teacher. Your job is to improve it while keeping the same language and tone as the original.
+
+IMPORTANT: Detect the language of the comment (Indonesian, English, Chinese, or other) and write ALL output — including the "reason" field — in that same language. Do not switch languages.
+
+Rules for a good comment:
+- Factual and specific — describes what the student actually does
+- No inflated adjectives: "exceptional", "outstanding", "brilliant", "phenomenal", "remarkable", "incredible", "amazing"
+- No flowery phrases: "shines brightly", "remarkable journey", "truly inspiring", "goes above and beyond"
+- Plain, direct language that parents and students can easily understand
+- Max 600 characters
+- Must stay in the same language as the original comment
+
+If the comment already meets all the rules above, return:
+{"no_change": true, "reason": "Brief explanation (in the same language as the comment) of why it is already good enough."}
+
+If the comment needs improvement, rewrite it and return:
+{"no_change": false, "reason": "Brief explanation (in the same language as the comment) of what was changed and why.", "refined": "The improved comment text in the same language as the original, max 600 chars."}
+
+Comment to review:
+${refineOriginal}`
+                  try {
+                    const res = await fetch('/api/gemini', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ prompt })
+                    })
+                    const data = await res.json()
+                    if (!res.ok || data.error) throw new Error(data.error || 'Refine failed')
+                    const raw = data.text?.trim() || ''
+                    let parsed = null
+                    try {
+                      const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/```\s*([\s\S]*?)\s*```/) || raw.match(/\{[\s\S]*\}/)
+                      parsed = JSON.parse(jsonMatch ? (jsonMatch[1] ?? jsonMatch[0]) : raw)
+                    } catch {
+                      parsed = { no_change: false, reason: 'AI returned an unexpected response.', refined: raw.slice(0, 600) }
+                    }
+                    if (parsed.no_change) {
+                      setRefineResult({ no_change: true, reason: parsed.reason || 'Komentar sudah cukup bagus.' })
+                    } else {
+                      setRefineResult({ no_change: false, reason: parsed.reason || '', refined: (parsed.refined || raw).slice(0, 600) })
+                    }
+                  } catch (err) {
+                    setRefineError(err.message)
+                  } finally {
+                    setRefineLoading(false)
+                  }
+                }}
+                className="px-4 py-2 text-sm rounded-md flex items-center gap-2"
+                style={{ background: '#f3e8ff', color: '#7e22ce', border: '1px solid #d8b4fe' }}
+              >
+                <FontAwesomeIcon icon={faLightbulb} /> Analisa & Refine
+              </button>
+            </div>
+          )}
+
+          {/* Loading */}
+          {refineLoading && (
+            <div className="flex items-center justify-center gap-2 py-6" style={{ color: theme.textSecondary }}>
+              <span className="inline-block w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm">AI sedang menganalisa komentar...</span>
+            </div>
+          )}
+
+          {/* Error */}
+          {refineError && (
+            <div className="p-3 rounded-md text-sm flex items-start gap-2" style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b' }}>
+              <span>⚠️</span>
+              <span>{refineError}</span>
+            </div>
+          )}
+
+          {/* Result */}
+          {refineResult && (
+            <div className="space-y-3">
+              {refineResult.no_change ? (
+                /* Already good */
+                <div className="p-4 rounded-md flex items-start gap-3" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+                  <span className="text-xl mt-0.5">✅</span>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: '#15803d' }}>Komentar sudah cukup bagus, tidak ada yang perlu dirubah.</p>
+                    <p className="text-xs mt-1" style={{ color: '#166534' }}>{refineResult.reason}</p>
+                  </div>
+                </div>
+              ) : (
+                /* Has changes */
+                <>
+                  {/* Reason */}
+                  <div className="p-3 rounded-md flex items-start gap-2" style={{ background: '#fefce8', border: '1px solid #fde047', color: '#854d0e' }}>
+                    <span>💡</span>
+                    <div>
+                      <p className="text-xs font-semibold mb-0.5">Alasan perubahan</p>
+                      <p className="text-xs">{refineResult.reason}</p>
+                    </div>
+                  </div>
+                  {/* New comment */}
+                  <div>
+                    <p className="text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: theme.textSecondary }}>Komentar Baru</p>
+                    <div className="px-3 py-2.5 rounded-md text-sm whitespace-pre-wrap" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
+                      {refineResult.refined}
+                    </div>
+                    <p className="text-xs mt-1 text-right" style={{ color: theme.textSecondary }}>{(refineResult.refined || '').length}/600</p>
+                  </div>
+                </>
+              )}
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  onClick={() => { setRefineResult(null); setRefineError('') }}
+                  className="px-4 py-2 text-sm rounded-md"
+                  style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary }}
+                >
+                  ← Coba Lagi
+                </button>
+                <button
+                  onClick={() => { setRefineModalOpen(false); setRefineResult(null) }}
+                  className="px-4 py-2 text-sm rounded-md"
+                  style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary }}
+                >
+                  Tutup
+                </button>
+                {!refineResult.no_change && (
+                  <button
+                    onClick={() => {
+                      if (refineModalTarget) updateCommentText(refineModalTarget.user_id, refineResult.refined)
+                      setRefineModalOpen(false)
+                      setRefineResult(null)
+                    }}
+                    className="px-4 py-2 text-sm rounded-md flex items-center gap-2"
+                    style={{ background: '#16a34a', color: '#ffffff', border: 'none' }}
+                  >
+                    <FontAwesomeIcon icon={faCheck} /> Gunakan Komentar Baru
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </Modal>

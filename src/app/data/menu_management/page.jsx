@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useTheme } from '@/lib/theme'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +11,7 @@ import Modal from '@/components/ui/modal'
 import NotificationModal from '@/components/ui/notification-modal'
 
 export default function MenuManagementPage() {
+  const { theme } = useTheme()
   const [loading, setLoading] = useState(true)
   const [menus, setMenus] = useState([])
   const [roles, setRoles] = useState([])
@@ -191,10 +193,10 @@ export default function MenuManagementPage() {
   if (!isAdmin) {
     return (
       <div className="p-4">
-        <Card>
-          <CardHeader><CardTitle>Menu Management</CardTitle></CardHeader>
+        <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+          <CardHeader><CardTitle style={{ color: theme.textPrimary }}>Menu Management</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-red-700 text-sm">Forbidden: Admin only.</div>
+            <div className="text-sm" style={{ color: theme.redText }}>Forbidden: Admin only.</div>
           </CardContent>
         </Card>
       </div>
@@ -204,45 +206,52 @@ export default function MenuManagementPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">Menu Management</h1>
+        <h1 className="text-2xl font-bold" style={{ color: theme.textPrimary }}>Menu Management</h1>
         <div className="flex w-full sm:w-auto gap-2">
-          <Input placeholder="Search menu name or path..." value={search} onChange={e => setSearch(e.target.value)} className="w-full sm:w-64" />
-          <Button className="whitespace-nowrap" onClick={openNew}>Add Menu</Button>
+          <Input
+            placeholder="Search menu name or path..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full sm:w-64"
+            style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
+          />
+          <Button className="whitespace-nowrap" onClick={openNew} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>Add Menu</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader><CardTitle>Menus</CardTitle></CardHeader>
+        <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+          <CardHeader><CardTitle style={{ color: theme.textPrimary }}>Menus</CardTitle></CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-sm text-gray-500">Loading menus...</div>
+              <div className="text-sm" style={{ color: theme.textSecondary }}>Loading menus...</div>
             ) : (
               <div>
-                <div className="text-xs text-gray-500 mb-2">Tree view grouped by parent/child order. Use search to filter.</div>
+                <div className="text-xs mb-2" style={{ color: theme.textSecondary }}>Tree view grouped by parent/child order. Use search to filter.</div>
                 <MenuTree
                   menus={menusTreeFiltered}
                   selectedMenu={selectedMenu}
                   onSelect={(m)=>setSelectedMenu(m)}
                   onEdit={openEdit}
                   onDelete={deleteMenu}
+                  theme={theme}
                 />
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle>Permissions</CardTitle></CardHeader>
+        <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+          <CardHeader><CardTitle style={{ color: theme.textPrimary }}>Permissions</CardTitle></CardHeader>
           <CardContent>
             {!selectedMenu ? (
-              <div className="text-sm text-gray-600">Select a menu to manage permissions.</div>
+              <div className="text-sm" style={{ color: theme.textSecondary }}>Select a menu to manage permissions.</div>
             ) : (
               <div className="space-y-3">
-                <div className="text-sm">Menu: <span className="font-medium">{selectedMenu.menu_name}</span></div>
+                <div className="text-sm" style={{ color: theme.textBody }}>Menu: <span className="font-medium" style={{ color: theme.textPrimary }}>{selectedMenu.menu_name}</span></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {roles.map(r => (
-                    <label key={r.role_id} className="flex items-center gap-2 text-sm">
+                    <label key={r.role_id} className="flex items-center gap-2 text-sm" style={{ color: theme.textBody }}>
                       <input
                         type="checkbox"
                         checked={!!permByRole.get(r.role_id)}
@@ -252,7 +261,7 @@ export default function MenuManagementPage() {
                     </label>
                   ))}
                 </div>
-                <div className="text-xs text-gray-500">Note: Admins can access all menus regardless of explicit permission.</div>
+                <div className="text-xs" style={{ color: theme.textSecondary }}>Note: Admins can access all menus regardless of explicit permission.</div>
               </div>
             )}
           </CardContent>
@@ -262,21 +271,21 @@ export default function MenuManagementPage() {
       <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title={form.menu_id ? 'Edit Menu' : 'Add Menu'}>
         <div className="space-y-3">
           <div>
-            <Label>Name</Label>
-            <Input value={form.menu_name} onChange={e => setForm(prev => ({ ...prev, menu_name: e.target.value }))} />
+            <Label style={{ color: theme.textBody }}>Name</Label>
+            <Input value={form.menu_name} onChange={e => setForm(prev => ({ ...prev, menu_name: e.target.value }))} style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
           </div>
           <div>
-            <Label>Path</Label>
-            <Input placeholder="e.g. /data/class" value={form.menu_path||''} onChange={e => setForm(prev => ({ ...prev, menu_path: e.target.value }))} />
+            <Label style={{ color: theme.textBody }}>Path</Label>
+            <Input placeholder="e.g. /data/class" value={form.menu_path||''} onChange={e => setForm(prev => ({ ...prev, menu_path: e.target.value }))} style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
           </div>
           <div>
-            <Label>Icon</Label>
-            <Input placeholder="e.g. fas fa-table" value={form.menu_icon||''} onChange={e => setForm(prev => ({ ...prev, menu_icon: e.target.value }))} />
-            <div className="text-xs text-gray-500 mt-1">Use FontAwesome keys as stored in DB (e.g., "fas fa-comments"). See icon guide in docs.</div>
+            <Label style={{ color: theme.textBody }}>Icon</Label>
+            <Input placeholder="e.g. fas fa-table" value={form.menu_icon||''} onChange={e => setForm(prev => ({ ...prev, menu_icon: e.target.value }))} style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+            <div className="text-xs mt-1" style={{ color: theme.textSecondary }}>Use FontAwesome keys as stored in DB (e.g., "fas fa-comments"). See icon guide in docs.</div>
           </div>
           <div>
-            <Label>Order</Label>
-            <Input type="number" value={form.menu_order} onChange={e => setForm(prev => ({ ...prev, menu_order: e.target.value }))} />
+            <Label style={{ color: theme.textBody }}>Order</Label>
+            <Input type="number" value={form.menu_order} onChange={e => setForm(prev => ({ ...prev, menu_order: e.target.value }))} style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
           </div>
           <div className="flex items-center gap-3 py-1">
             <input
@@ -286,15 +295,16 @@ export default function MenuManagementPage() {
               onChange={e => setForm(prev => ({ ...prev, menu_show_dashboard: e.target.checked }))}
               className="w-4 h-4 rounded"
             />
-            <Label htmlFor="show_dashboard" className="cursor-pointer mb-0">
+            <Label htmlFor="show_dashboard" className="cursor-pointer mb-0" style={{ color: theme.textBody }}>
               Tampilkan di Dashboard
             </Label>
-            <span className="text-xs text-gray-500">(muncul sebagai card di halaman dashboard)</span>
+            <span className="text-xs" style={{ color: theme.textSecondary }}>(muncul sebagai card di halaman dashboard)</span>
           </div>
           <div>
-            <Label>Parent Menu (optional)</Label>
+            <Label style={{ color: theme.textBody }}>Parent Menu (optional)</Label>
             <select
-              className="w-full border rounded px-2 py-1 text-sm"
+              className="w-full rounded px-2 py-1 text-sm"
+              style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
               value={form.menu_parent_id ?? ''}
               onChange={(e) => {
                 const v = e.target.value
@@ -308,11 +318,11 @@ export default function MenuManagementPage() {
                   <option key={m.menu_id} value={m.menu_id}>{m.menu_name} (ID {m.menu_id})</option>
                 ))}
             </select>
-            <div className="text-xs text-gray-500 mt-1">Choose a root menu as parent to create a submenu.</div>
+            <div className="text-xs mt-1" style={{ color: theme.textSecondary }}>Choose a root menu as parent to create a submenu.</div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowEdit(false)}>Cancel</Button>
-            <Button onClick={saveMenu} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+            <Button variant="secondary" onClick={() => setShowEdit(false)} style={{ background: theme.subtleBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }}>Cancel</Button>
+            <Button onClick={saveMenu} disabled={saving} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>{saving ? 'Saving...' : 'Save'}</Button>
           </div>
         </div>
       </Modal>
@@ -322,7 +332,7 @@ export default function MenuManagementPage() {
   )
 }
 
-function MenuTree({ menus, selectedMenu, onSelect, onEdit, onDelete }) {
+function MenuTree({ menus, selectedMenu, onSelect, onEdit, onDelete, theme }) {
   const roots = useMemo(() => (menus||[]).filter(m => m.menu_parent_id == null).sort((a,b)=> (a.menu_order??0) - (b.menu_order??0)), [menus])
   const childrenOf = useMemo(() => {
     const map = new Map()
@@ -338,22 +348,28 @@ function MenuTree({ menus, selectedMenu, onSelect, onEdit, onDelete }) {
 
   const Row = ({ node, level }) => {
     const indentWidth = Math.max(0, level) * 12
+    const isSelected = selectedMenu?.menu_id === node.menu_id
     return (
-      <div className={`px-2 py-2 rounded ${selectedMenu?.menu_id===node.menu_id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+      <div
+        className="px-2 py-2 rounded"
+        style={{ background: isSelected ? theme.blueBg : 'transparent' }}
+        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = theme.subtleBg }}
+        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
+      >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="text-gray-300 select-none" style={{ width: indentWidth }}>|</div>
-            {level>0 && <div className="text-gray-400 select-none">└─</div>}
-            <div className="font-medium truncate max-w-[50vw] sm:max-w-none">{node.menu_name}</div>
-            <div className="text-[11px] sm:text-xs text-gray-500 truncate max-w-[40vw] sm:max-w-none">{node.menu_path || '-'}</div>
+            <div className="select-none" style={{ width: indentWidth, color: theme.border }}>|</div>
+            {level>0 && <div className="select-none" style={{ color: theme.textSecondary }}>└─</div>}
+            <div className="font-medium truncate max-w-[50vw] sm:max-w-none" style={{ color: theme.textPrimary }}>{node.menu_name}</div>
+            <div className="text-[11px] sm:text-xs truncate max-w-[40vw] sm:max-w-none" style={{ color: theme.textSecondary }}>{node.menu_path || '-'}</div>
             {node.menu_show_dashboard && (
-              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">⊞ Dashboard</span>
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: theme.blueBg, color: theme.blueText }}>Dashboard</span>
             )}
           </div>
           <div className="flex flex-wrap gap-1 sm:gap-2">
-            <Button variant="secondary" className="px-2 py-1 text-xs sm:text-sm" onClick={()=>onSelect?.(node)}>Select</Button>
-            <Button variant="secondary" className="px-2 py-1 text-xs sm:text-sm" onClick={()=>onEdit?.(node)}>Edit</Button>
-            <Button variant="destructive" className="px-2 py-1 text-xs sm:text-sm" onClick={()=>onDelete?.(node)}>Delete</Button>
+            <Button variant="secondary" className="px-2 py-1 text-xs sm:text-sm" onClick={()=>onSelect?.(node)} style={{ background: theme.subtleBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }}>Select</Button>
+            <Button variant="secondary" className="px-2 py-1 text-xs sm:text-sm" onClick={()=>onEdit?.(node)} style={{ background: theme.subtleBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }}>Edit</Button>
+            <Button variant="destructive" className="px-2 py-1 text-xs sm:text-sm" onClick={()=>onDelete?.(node)} style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}` }}>Delete</Button>
           </div>
         </div>
       </div>
@@ -366,7 +382,7 @@ function MenuTree({ menus, selectedMenu, onSelect, onEdit, onDelete }) {
       <div key={node.menu_id} className="">
         <Row node={node} level={level} />
         {kids.length>0 && (
-          <div className="ml-4 border-l border-gray-200">
+          <div className="ml-4" style={{ borderLeft: `1px solid ${theme.border}` }}>
             {kids.map(k => renderNode(k, level+1))}
           </div>
         )}
@@ -377,7 +393,7 @@ function MenuTree({ menus, selectedMenu, onSelect, onEdit, onDelete }) {
   return (
     <div className="space-y-1">
       {roots.map(r => renderNode(r, 0))}
-      {roots.length===0 && <div className="text-sm text-gray-500">No root menus</div>}
+      {roots.length===0 && <div className="text-sm" style={{ color: theme.textSecondary }}>No root menus</div>}
     </div>
   )
 }

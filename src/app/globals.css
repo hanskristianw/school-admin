@@ -121,17 +121,38 @@
   }
 }
 
+/* ── Scrollbar theming ─────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #D4D4D4 transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #D4D4D4;
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #AEAEAE;
+}
+
+.dark-theme * {
+  scrollbar-color: #3D3C42 transparent;
+}
+.dark-theme *::-webkit-scrollbar-thumb {
+  background: #3D3C42;
+}
+.dark-theme *::-webkit-scrollbar-thumb:hover {
+  background: #4E4D55;
+}
+
 /* Make the app fill the viewport and let inner layouts manage scroll */
 html, body {
   height: 100%;
 }
 
-/* Hide scrollbar for chatbot category tabs */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}

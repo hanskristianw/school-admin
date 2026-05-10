@@ -109,7 +109,8 @@ export async function POST(req) {
         user_unit_id, 
         is_active,
         user_email,
-        user_profile_picture
+        user_profile_picture,
+        user_theme
       `)
       .ilike('user_email', email)
       .single()
@@ -181,7 +182,8 @@ export async function POST(req) {
         unitID: dbUser.user_unit_id,
         unitName: unit?.unit_name || '',
         email: email,
-        profilePicture: finalProfilePicture
+        profilePicture: finalProfilePicture,
+        userTheme: dbUser.user_theme || 'light'
       }
     })
 

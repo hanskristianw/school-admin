@@ -9,9 +9,11 @@ import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase, createSupabaseWithAuth } from '@/lib/supabase';
 import { useI18n } from '@/lib/i18n';
+import { useTheme } from '@/lib/theme';
 
 export default function ClassManagement() {
   const { t } = useI18n();
+  const { theme } = useTheme();
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
   const [units, setUnits] = useState([]);
@@ -700,33 +702,34 @@ export default function ClassManagement() {
   const filteredClasses = getFilteredClasses();
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">{t('common.loading')}</div>;
+    return <div className="flex justify-center items-center h-64" style={{ color: theme.textSecondary }}>{t('common.loading')}</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ color: theme.textPrimary }}>
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">{t('classManagement.title') || 'Class Management'}</h1>
-        <Button onClick={handleAddNew}>
+        <h1 className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{t('classManagement.title') || 'Class Management'}</h1>
+        <Button onClick={handleAddNew} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none', borderRadius: '6px' }}>
           {t('classManagement.addNew') || '+ Add Class'}
         </Button>
       </div>
 
       {/* Filter Section */}
       {classes.length > 0 && (
-        <Card>
+        <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
           <CardHeader>
-            <CardTitle>{t('classManagement.filtersTitle') || 'Filters'}</CardTitle>
+            <CardTitle style={{ color: theme.textPrimary }}>{t('classManagement.filtersTitle') || 'Filters'}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="filter-unit">{t('classManagement.filterByUnit') || 'Filter by Unit'}</Label>
+                <Label htmlFor="filter-unit" style={{ color: theme.textBody }}>{t('classManagement.filterByUnit') || 'Filter by Unit'}</Label>
                 <select
                   id="filter-unit"
                   value={filters.unit}
                   onChange={e => setFilters(prev => ({ ...prev, unit: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '6px' }}
+                  className="w-full px-3 py-2 text-sm"
                 >
                   <option value="">{t('classManagement.allUnits') || 'All Units'}</option>
                   {getUniqueUnits().map(unit => (
@@ -735,12 +738,13 @@ export default function ClassManagement() {
                 </select>
               </div>
               <div>
-                <Label htmlFor="filter-wali-kelas">{t('classManagement.filterByWaliKelas') || 'Filter by Homeroom Teacher'}</Label>
+                <Label htmlFor="filter-wali-kelas" style={{ color: theme.textBody }}>{t('classManagement.filterByWaliKelas') || 'Filter by Homeroom Teacher'}</Label>
                 <Input
                   id="filter-wali-kelas"
                   placeholder={t('classManagement.filterByWaliKelasPlaceholder') || 'Search homeroom teacher...'}
                   value={filters.waliKelas}
                   onChange={(e) => setFilters(prev => ({ ...prev, waliKelas: e.target.value }))}
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                 />
               </div>
             </div>
@@ -748,24 +752,26 @@ export default function ClassManagement() {
             {/* Active Filters Display */}
             {(filters.unit || filters.waliKelas) && (
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className="text-sm text-gray-600">{t('classManagement.activeFilters') || 'Active filters:'}</span>
+                <span className="text-sm" style={{ color: theme.textSecondary }}>{t('classManagement.activeFilters') || 'Active filters:'}</span>
                 {filters.unit && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ background: theme.blueBg, color: theme.blueText }}>
                     {t('classManagement.unit') || 'Unit'}: {filters.unit}
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, unit: '' }))}
-                      className="ml-2 text-blue-600 hover:text-blue-800"
+                      className="ml-2"
+                      style={{ color: theme.blueText }}
                     >
                       ×
                     </button>
                   </span>
                 )}
                 {filters.waliKelas && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ background: theme.greenBg, color: theme.greenText }}>
                     {t('classManagement.waliKelas') || 'Homeroom Teacher'}: {filters.waliKelas}
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, waliKelas: '' }))}
-                      className="ml-2 text-green-600 hover:text-green-800"
+                      className="ml-2"
+                      style={{ color: theme.greenText }}
                     >
                       ×
                     </button>
@@ -773,7 +779,8 @@ export default function ClassManagement() {
                 )}
                 <button
                   onClick={() => setFilters({ unit: undefined, waliKelas: '' })}
-                  className="text-sm text-gray-500 hover:text-gray-700 underline"
+                  className="text-sm underline"
+                  style={{ color: theme.textSecondary }}
                 >
                   {t('classManagement.clearFilters') || 'Clear all filters'}
                 </button>
@@ -784,18 +791,18 @@ export default function ClassManagement() {
       )}
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        <div className="px-4 py-3 rounded" style={{ background: theme.redBg, border: `1px solid ${theme.border}`, color: theme.redText }}>
           {error}
         </div>
       )}
 
       {/* Classes Table */}
-      <Card>
+      <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
         <CardHeader>
-          <CardTitle>
+          <CardTitle style={{ color: theme.textPrimary }}>
             {t('classManagement.listTitle') || 'Class List'}
             {filteredClasses.length !== classes.length && (
-              <span className="text-sm font-normal text-gray-500 ml-2">
+              <span className="text-sm font-normal ml-2" style={{ color: theme.textSecondary }}>
                 {t('classManagement.listCount', { filtered: filteredClasses.length, total: classes.length }) || `(${filteredClasses.length} of ${classes.length} classes)`}
               </span>
             )}
@@ -803,7 +810,7 @@ export default function ClassManagement() {
         </CardHeader>
         <CardContent>
           {filteredClasses.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8" style={{ color: theme.textSecondary }}>
               {classes.length === 0 
                 ? (t('classManagement.emptyNone') || 'No classes yet. Add your first class!')
                 : (t('classManagement.emptyNoMatch') || 'No classes match the selected filters.')
@@ -813,41 +820,48 @@ export default function ClassManagement() {
             <div className="overflow-x-auto">
               <table className="min-w-full table-auto">
                 <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('classManagement.thId') || 'ID'}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('classManagement.thClassName') || 'Class Name'}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('classManagement.thWaliKelas') || 'Homeroom Teacher'}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('classManagement.thUnit') || 'Unit'}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('classManagement.thYear') || 'Academic Year'}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('classManagement.thActions') || 'Actions'}</th>
+                  <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>{t('classManagement.thId') || 'ID'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>{t('classManagement.thClassName') || 'Class Name'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>{t('classManagement.thWaliKelas') || 'Homeroom Teacher'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>{t('classManagement.thUnit') || 'Unit'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>{t('classManagement.thYear') || 'Academic Year'}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>{t('classManagement.thActions') || 'Actions'}</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody>
                   {filteredClasses.map((kelas) => (
-                    <tr key={kelas.kelas_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <tr
+                      key={kelas.kelas_id}
+                      style={{ borderBottom: `1px solid ${theme.border}` }}
+                      onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: theme.textBody }}>
                         {kelas.kelas_id}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: theme.textPrimary }}>
                         {kelas.kelas_nama}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: theme.textBody }}>
                         {kelas.user_nama_depan} {kelas.user_nama_belakang}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: theme.textBody }}>
                         {kelas.unit_name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: theme.textBody }}>
                         {kelas.year_name || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(kelas)}>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(kelas)}
+                          style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}>
                           {t('classManagement.edit') || 'Edit'}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => openManageSubjects(kelas)}
+                          style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
                         >
                           {t('classManagement.manageSubjects') || 'Manage Subjects'}
                         </Button>
@@ -855,6 +869,7 @@ export default function ClassManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => openManageStudents(kelas)}
+                          style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
                         >
                           {t('classManagement.manageStudents') || 'Manage Students'}
                         </Button>
@@ -862,7 +877,7 @@ export default function ClassManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDelete(kelas)}
-                          className="text-red-600 hover:text-red-800"
+                          style={{ background: theme.cardBg, color: theme.redText, borderColor: theme.border }}
                         >
                           {t('classManagement.delete') || 'Delete'}
                         </Button>
@@ -877,21 +892,24 @@ export default function ClassManagement() {
       </Card>
 
       {/* Add/Edit Form Modal */}
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)}>
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)}
+        containerStyle={{ background: theme.cardBg }}
+        headerStyle={{ borderColor: theme.border }}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <h2 className="text-xl font-bold mb-4">
+          <h2 className="text-xl font-bold mb-4" style={{ color: theme.textPrimary }}>
             {editingClass ? (t('classManagement.editTitle') || 'Edit Class') : (t('classManagement.createTitle') || 'Add New Class')}
           </h2>
 
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <div className="px-4 py-3 rounded" style={{ background: theme.redBg, border: `1px solid ${theme.border}`, color: theme.redText }}>
               {error}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <Label htmlFor="kelas_nama">{t('classManagement.classNameLabel') || 'Class Name *'}</Label>
+              <Label htmlFor="kelas_nama" style={{ color: theme.textBody }}>{t('classManagement.classNameLabel') || 'Class Name *'}</Label>
               <Input
                 id="kelas_nama"
                 type="text"
@@ -899,6 +917,7 @@ export default function ClassManagement() {
                 value={formData.kelas_nama}
                 onChange={(e) => setFormData(prev => ({ ...prev, kelas_nama: e.target.value }))}
                 className={formErrors.kelas_nama ? 'border-red-500' : ''}
+                style={{ background: theme.inputBg, border: `1px solid ${formErrors.kelas_nama ? '#ef4444' : theme.border}`, color: theme.textBody }}
               />
               {formErrors.kelas_nama && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.kelas_nama}</p>
@@ -906,14 +925,13 @@ export default function ClassManagement() {
             </div>
 
             <div>
-              <Label htmlFor="kelas_user_id">{t('classManagement.waliKelasLabel') || 'Homeroom Teacher *'}</Label>
+              <Label htmlFor="kelas_user_id" style={{ color: theme.textBody }}>{t('classManagement.waliKelasLabel') || 'Homeroom Teacher *'}</Label>
               <select
                 id="kelas_user_id"
                 value={formData.kelas_user_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, kelas_user_id: e.target.value }))}
-                className={`w-full h-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
-                  formErrors.kelas_user_id ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full h-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm`}
+                style={{ background: theme.inputBg, borderColor: formErrors.kelas_user_id ? '#ef4444' : theme.border, color: theme.textBody }}
               >
                 <option value="">{t('classManagement.selectWaliKelas') || 'Select Homeroom Teacher'}</option>
                 {users.map((user) => (
@@ -928,14 +946,13 @@ export default function ClassManagement() {
             </div>
 
             <div>
-              <Label htmlFor="kelas_unit_id">{t('classManagement.unitLabel') || 'Unit *'}</Label>
+              <Label htmlFor="kelas_unit_id" style={{ color: theme.textBody }}>{t('classManagement.unitLabel') || 'Unit *'}</Label>
               <select
                 id="kelas_unit_id"
                 value={formData.kelas_unit_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, kelas_unit_id: e.target.value }))}
-                className={`w-full h-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
-                  formErrors.kelas_unit_id ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full h-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm`}
+                style={{ background: theme.inputBg, borderColor: formErrors.kelas_unit_id ? '#ef4444' : theme.border, color: theme.textBody }}
               >
                 <option value="">{t('classManagement.selectUnit') || 'Select Unit'}</option>
                 {units.map((unit) => (
@@ -950,14 +967,13 @@ export default function ClassManagement() {
             </div>
 
             <div>
-              <Label htmlFor="kelas_year_id">{t('classManagement.yearLabel') || 'Academic Year *'}</Label>
+              <Label htmlFor="kelas_year_id" style={{ color: theme.textBody }}>{t('classManagement.yearLabel') || 'Academic Year *'}</Label>
               <select
                 id="kelas_year_id"
                 value={formData.kelas_year_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, kelas_year_id: e.target.value }))}
-                className={`w-full h-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
-                  formErrors.kelas_year_id ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full h-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm`}
+                style={{ background: theme.inputBg, borderColor: formErrors.kelas_year_id ? '#ef4444' : theme.border, color: theme.textBody }}
               >
                 <option value="">{t('classManagement.selectYear') || 'Select Academic Year'}</option>
                 {years.map((year) => (
@@ -973,10 +989,12 @@ export default function ClassManagement() {
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setShowForm(false)} disabled={submitting}>
+            <Button type="button" variant="outline" onClick={() => setShowForm(false)} disabled={submitting}
+              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}>
               {t('classManagement.cancel') || 'Cancel'}
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting}
+              style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
               {submitting ? (t('classManagement.saving') || 'Saving...') : (editingClass ? (t('classManagement.updateClass') || 'Update Class') : (t('classManagement.createClass') || 'Add Class'))}
             </Button>
           </div>
@@ -984,29 +1002,33 @@ export default function ClassManagement() {
       </Modal>
 
       {/* Manage Students Modal */}
-      <Modal isOpen={studentModalOpen} onClose={() => setStudentModalOpen(false)}>
+      <Modal isOpen={studentModalOpen} onClose={() => setStudentModalOpen(false)}
+        containerStyle={{ background: theme.cardBg }}
+        headerStyle={{ borderColor: theme.border }}
+      >
         <div className="space-y-4">
-          <h2 className="text-xl font-bold">{t('classManagement.manageStudentsTitle', { class: selectedClassForStudents?.kelas_nama || '' }) || `Manage Students for Class ${selectedClassForStudents?.kelas_nama || ''}`}</h2>
+          <h2 className="text-xl font-bold" style={{ color: theme.textPrimary }}>{t('classManagement.manageStudentsTitle', { class: selectedClassForStudents?.kelas_nama || '' }) || `Manage Students for Class ${selectedClassForStudents?.kelas_nama || ''}`}</h2>
 
           {studentsLoading ? (
-            <div className="text-gray-600">{t('classManagement.loadingStudents') || 'Loading students...'}</div>
+            <div style={{ color: theme.textSecondary }}>{t('classManagement.loadingStudents') || 'Loading students...'}</div>
           ) : (
             <>
               {availableStudents.length === 0 ? (
-                <div className="text-gray-500">{t('classManagement.emptyStudents') || 'No students available.'}</div>
+                <div style={{ color: theme.textSecondary }}>{t('classManagement.emptyStudents') || 'No students available.'}</div>
               ) : (
                 <>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="student-search">{t('classManagement.studentSearchLabel') || 'Search Students'}</Label>
+                    <Label htmlFor="student-search" style={{ color: theme.textBody }}>{t('classManagement.studentSearchLabel') || 'Search Students'}</Label>
                     <Input
                       id="student-search"
                       placeholder={t('classManagement.studentSearchPlaceholder') || 'Type student name...'}
                       value={studentSearch}
                       onChange={(e) => setStudentSearch(e.target.value)}
                       className="max-w-sm"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                     />
                   </div>
-                  <div className="max-h-72 overflow-auto border rounded-md p-3 mt-2">
+                  <div className="max-h-72 overflow-auto rounded-md p-3 mt-2" style={{ border: `1px solid ${theme.border}` }}>
                     <ul className="space-y-2">
                       {availableStudents
                         .filter(s =>
@@ -1024,7 +1046,7 @@ export default function ClassManagement() {
                               onChange={() => toggleStudentSelection(stu.user_id)}
                               disabled={yearConflictByUser.has(stu.user_id)}
                             />
-                            <label htmlFor={`stu-${stu.user_id}`} className="cursor-pointer">
+                            <label htmlFor={`stu-${stu.user_id}`} className="cursor-pointer" style={{ color: theme.textBody }}>
                               {stu.user_nama_depan} {stu.user_nama_belakang} {stu.role_name ? `(${stu.role_name})` : ''}
                               {yearConflictByUser.has(stu.user_id) && (
                                 <span className="ml-2 text-xs text-red-600">{t('classManagement.conflictNote', { class: yearConflictByUser.get(stu.user_id)?.kelas_nama || yearConflictByUser.get(stu.user_id)?.kelas_id }) || `(already in class ${yearConflictByUser.get(stu.user_id)?.kelas_nama || yearConflictByUser.get(stu.user_id)?.kelas_id})`}</span>
@@ -1038,10 +1060,12 @@ export default function ClassManagement() {
               )}
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setStudentModalOpen(false)} disabled={studentsSaving}>
+                <Button type="button" variant="outline" onClick={() => setStudentModalOpen(false)} disabled={studentsSaving}
+                  style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}>
                   {t('classManagement.cancel') || 'Cancel'}
                 </Button>
-                <Button type="button" onClick={saveStudents} disabled={studentsSaving}>
+                <Button type="button" onClick={saveStudents} disabled={studentsSaving}
+                  style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
                   {studentsSaving ? (t('classManagement.saving') || 'Saving...') : (t('classManagement.save') || 'Save')}
                 </Button>
               </div>
@@ -1051,18 +1075,21 @@ export default function ClassManagement() {
       </Modal>
 
       {/* Manage Subjects Modal */}
-      <Modal isOpen={subjectModalOpen} onClose={() => setSubjectModalOpen(false)}>
+      <Modal isOpen={subjectModalOpen} onClose={() => setSubjectModalOpen(false)}
+        containerStyle={{ background: theme.cardBg }}
+        headerStyle={{ borderColor: theme.border }}
+      >
         <div className="space-y-4">
-          <h2 className="text-xl font-bold">{t('classManagement.manageSubjectsTitle', { class: selectedClassForSubjects?.kelas_nama || '' }) || `Manage Subjects for Class ${selectedClassForSubjects?.kelas_nama || ''}`}</h2>
+          <h2 className="text-xl font-bold" style={{ color: theme.textPrimary }}>{t('classManagement.manageSubjectsTitle', { class: selectedClassForSubjects?.kelas_nama || '' }) || `Manage Subjects for Class ${selectedClassForSubjects?.kelas_nama || ''}`}</h2>
 
           {subjectsLoading ? (
-            <div className="text-gray-600">{t('classManagement.loadingSubjects') || 'Loading subjects...'}</div>
+            <div style={{ color: theme.textSecondary }}>{t('classManagement.loadingSubjects') || 'Loading subjects...'}</div>
           ) : (
             <>
               {availableSubjects.length === 0 ? (
-                <div className="text-gray-500">{t('classManagement.emptySubjects') || 'No subjects in this unit.'}</div>
+                <div style={{ color: theme.textSecondary }}>{t('classManagement.emptySubjects') || 'No subjects in this unit.'}</div>
               ) : (
-                <div className="max-h-72 overflow-auto border rounded-md p-3">
+                <div className="max-h-72 overflow-auto rounded-md p-3" style={{ border: `1px solid ${theme.border}` }}>
                   <ul className="space-y-2">
                     {availableSubjects.map(subj => (
                       <li key={subj.subject_id} className="flex items-center gap-2">
@@ -1072,13 +1099,13 @@ export default function ClassManagement() {
                           checked={selectedSubjectIds.includes(subj.subject_id)}
                           onChange={() => toggleSubjectSelection(subj.subject_id)}
                         />
-                        <label htmlFor={`subj-${subj.subject_id}`} className="cursor-pointer flex-1">
+                        <label htmlFor={`subj-${subj.subject_id}`} className="cursor-pointer flex-1" style={{ color: theme.textBody }}>
                           {subj.subject_name}
                         </label>
                         {selectedSubjectIds.includes(subj.subject_id) && (
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-400 w-5">S1:</span>
+                              <span className="text-xs w-5" style={{ color: theme.textSecondary }}>S1:</span>
                               {[1, 2, 3, 4, 5].map(yr => (
                                 <button
                                   key={yr}
@@ -1087,18 +1114,17 @@ export default function ClassManagement() {
                                     ...prev,
                                     [subj.subject_id]: { ...(prev[subj.subject_id] ?? { s1: 1, s2: 1 }), s1: yr }
                                   }))}
-                                  className={`px-2 py-0.5 text-xs rounded ${
-                                    (subjectMypYearMap[subj.subject_id]?.s1 ?? 1) === yr
-                                      ? 'bg-blue-600 text-white'
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                  }`}
+                                  className={`px-2 py-0.5 text-xs rounded`}
+                                  style={(subjectMypYearMap[subj.subject_id]?.s1 ?? 1) === yr
+                                    ? { background: '#2563eb', color: '#fff' }
+                                    : { background: theme.subtleBg, color: theme.textBody }}
                                 >
                                   {yr}
                                 </button>
                               ))}
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-400 w-5">S2:</span>
+                              <span className="text-xs w-5" style={{ color: theme.textSecondary }}>S2:</span>
                               {[1, 2, 3, 4, 5].map(yr => (
                                 <button
                                   key={yr}
@@ -1107,11 +1133,10 @@ export default function ClassManagement() {
                                     ...prev,
                                     [subj.subject_id]: { ...(prev[subj.subject_id] ?? { s1: 1, s2: 1 }), s2: yr }
                                   }))}
-                                  className={`px-2 py-0.5 text-xs rounded ${
-                                    (subjectMypYearMap[subj.subject_id]?.s2 ?? 1) === yr
-                                      ? 'bg-indigo-600 text-white'
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                  }`}
+                                  className={`px-2 py-0.5 text-xs rounded`}
+                                  style={(subjectMypYearMap[subj.subject_id]?.s2 ?? 1) === yr
+                                    ? { background: '#4f46e5', color: '#fff' }
+                                    : { background: theme.subtleBg, color: theme.textBody }}
                                 >
                                   {yr}
                                 </button>
@@ -1126,10 +1151,12 @@ export default function ClassManagement() {
               )}
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setSubjectModalOpen(false)} disabled={subjectsSaving}>
+                <Button type="button" variant="outline" onClick={() => setSubjectModalOpen(false)} disabled={subjectsSaving}
+                  style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}>
                   {t('classManagement.cancel') || 'Cancel'}
                 </Button>
-                <Button type="button" onClick={saveSubjects} disabled={subjectsSaving}>
+                <Button type="button" onClick={saveSubjects} disabled={subjectsSaving}
+                  style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
                   {subjectsSaving ? (t('classManagement.saving') || 'Saving...') : (t('classManagement.save') || 'Save')}
                 </Button>
               </div>

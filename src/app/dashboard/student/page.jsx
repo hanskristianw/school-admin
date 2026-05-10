@@ -7,7 +7,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faCalendar, faQrcode, faClock } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/lib/i18n'
-import AcademicIntegrityChatbot from '@/components/AcademicIntegrityChatbot'
 
 export default function StudentDashboard() {
   const router = useRouter()
@@ -246,8 +245,6 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Academic Integrity Chatbot */}
-      <AcademicIntegrityChatbot />
     </div>
   )
 }

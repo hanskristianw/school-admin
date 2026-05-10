@@ -3,6 +3,7 @@
 import { useEffect, useState, memo } from "react"
 import { createPortal } from "react-dom"
 import { useI18n } from '@/lib/i18n'
+import { useTheme } from '@/lib/theme'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
@@ -141,6 +142,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
   const pathname = usePathname()
   const router = useRouter()
   const { translateMenu, t } = useI18n()
+  const { theme } = useTheme()
 
   // Close popup when clicking outside
   useEffect(() => {
@@ -347,12 +349,9 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
   }
 
   const LoadingSkeleton = () => (
-    <div className="animate-pulse p-4">
-      <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="space-y-3 mb-4">
-          <div className="h-3 bg-gray-200 rounded"></div>
-        </div>
+    <div className="animate-pulse px-4 pt-4 space-y-3">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="h-3 rounded" style={{ background: theme.border, width: `${60 + (i % 3) * 15}%` }} />
       ))}
     </div>
   )
@@ -363,14 +362,15 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
     if (error) {
       return (
         <div className="p-4">
-          <div className="bg-red-50 border border-red-200 rounded-md p-3">
-            <h3 className="text-red-800 font-medium mb-2">Database Connection Error</h3>
-            <p className="text-red-600 text-sm mb-3">{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+          <div className="px-3 py-3" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.redBg }}>
+            <p className="text-xs font-medium mb-1" style={{ color: theme.redText }}>Gagal memuat menu</p>
+            <p className="text-xs mb-3" style={{ color: theme.textSecondary }}>{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs px-3 py-1.5 transition-colors active:scale-[0.98]"
+              style={{ background: theme.textPrimary, color: theme.cardBg, borderRadius: '4px' }}
             >
-              Retry Connection
+              Coba lagi
             </button>
           </div>
         </div>
@@ -380,9 +380,9 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
     if (menus.length === 0) {
       return (
         <div className="p-4">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-            <h3 className="text-yellow-800 font-medium mb-2">No Menus Available</h3>
-            <p className="text-yellow-600 text-sm">No menu items found for your role in the database.</p>
+          <div className="px-3 py-3" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.yellowBg }}>
+            <p className="text-xs font-medium mb-1" style={{ color: theme.yellowText }}>Tidak ada menu</p>
+            <p className="text-xs" style={{ color: theme.textSecondary }}>Tidak ada menu yang tersedia untuk peran Anda.</p>
           </div>
         </div>
       )
@@ -423,42 +423,56 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                       toggleExpanded(menu.id)
                     }
                   }}
-                  className={`sidebar-menu-button w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md ${activeMenu === menu.id ? 'bg-blue-50 ring-2 ring-blue-200' : ''}`}
+                  className={`sidebar-menu-button w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-3 py-2 text-sm transition-colors ${
+                    activeMenu === menu.id ? '' : ''
+                  }`}
+                  style={{
+                    borderRadius: '6px',
+                    color: activeMenu === menu.id ? theme.blueText : theme.textBody,
+                    background: activeMenu === menu.id ? theme.blueBg : 'transparent',
+                    fontFamily: "'Helvetica Neue', sans-serif",
+                  }}
+                  onMouseEnter={e => { if (activeMenu !== menu.id) e.currentTarget.style.background = theme.subtleBg }}
+                  onMouseLeave={e => { e.currentTarget.style.background = activeMenu === menu.id ? theme.blueBg : 'transparent' }}
                   title={isCollapsed ? `${menu.name} (click to expand)` : ''}
                 >
                   <div className={`flex items-center ${isCollapsed ? 'relative' : ''}`}>
                     {menu.icon && (
-                      <span className={`${isCollapsed ? '' : 'mr-3'} inline-flex items-center justify-center w-4 h-4 relative`}>
+                      <span className={`${isCollapsed ? '' : 'mr-2.5'} inline-flex items-center justify-center w-3.5 h-3.5`} style={{ color: 'inherit' }}>
                         {renderIcon(menu.icon)}
-                        {isCollapsed && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></span>
-                        )}
                       </span>
                     )}
                     {!isCollapsed && <span>{menu.name}</span>}
                   </div>
-                  {!isCollapsed && (
-                    <FontAwesomeIcon 
-                      icon={expandedMenus[menu.id] ? faChevronDown : faChevronRight} 
-                      className="w-3 h-3 transition-transform"
+                    {!isCollapsed && (
+                    <FontAwesomeIcon
+                      icon={expandedMenus[menu.id] ? faChevronDown : faChevronRight}
+                      className="w-2.5 h-2.5 transition-transform"
+                      style={{ color: theme.textSecondary }}
                     />
                   )}
                 </button>
                 
                 {/* Child menus - normal expanded mode */}
                 {!isCollapsed && expandedMenus[menu.id] && (
-                  <div className="ml-6 mt-1 space-y-1">
+                  <div className="ml-4 mt-0.5 space-y-0.5">
                     {menu.children.map((child) => (
                       <Link
                         key={child.id}
                         href={child.path}
                         onClick={() => setIsOpen && setIsOpen(false)}
-                        className={`flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md ${
-                          pathname === child.path ? 'bg-blue-50 text-blue-600' : ''
-                        }`}
+                        className="flex items-center px-3 py-1.5 text-xs transition-colors"
+                        style={{
+                          borderRadius: '6px',
+                          color: pathname === child.path ? theme.blueText : theme.textSecondary,
+                          background: pathname === child.path ? theme.blueBg : 'transparent',
+                          fontFamily: "'Helvetica Neue', sans-serif",
+                        }}
+                        onMouseEnter={e => { if (pathname !== child.path) e.currentTarget.style.background = theme.subtleBg; e.currentTarget.style.color = theme.textPrimary }}
+                        onMouseLeave={e => { e.currentTarget.style.background = pathname === child.path ? theme.blueBg : 'transparent'; e.currentTarget.style.color = pathname === child.path ? theme.blueText : theme.textSecondary }}
                       >
                         {child.icon && (
-                          <span className="mr-3 inline-flex items-center justify-center w-4 h-4">
+                          <span className="mr-2.5 inline-flex items-center justify-center w-3.5 h-3.5" style={{ color: 'inherit' }}>
                             {renderIcon(child.icon)}
                           </span>
                         )}
@@ -470,16 +484,29 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
 
                 {/* Child menus - popup in collapsed mode with fixed positioning */}
                 {isCollapsed && activeMenu === menu.id && typeof window !== 'undefined' && (
-                    <div 
-                      className="sidebar-popup fixed bg-white shadow-xl rounded-md py-2 min-w-[200px] max-w-[280px] border border-gray-200 overflow-hidden"
-                      style={{ 
-                        zIndex: 99999, 
-                        top: `${popupPosition.top}px`, 
-                        left: `${popupPosition.left + 8}px`,
-                        maxHeight: 'calc(100vh - 20px)'
+                    <div
+                      className="sidebar-popup fixed min-w-[200px] max-w-[260px] overflow-hidden"
+                      style={{
+                        zIndex: 99999,
+                        top: `${popupPosition.top}px`,
+                        left: `${popupPosition.left + 6}px`,
+                        maxHeight: 'calc(100vh - 20px)',
+                        background: theme.cardBg,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
                       }}
                     >
-                      <div className="px-4 py-2 font-semibold text-gray-700 border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
+                      <div
+                        className="px-4 py-2.5 text-xs font-semibold sticky top-0 z-10"
+                        style={{
+                          color: theme.textPrimary,
+                          background: theme.subtleBg,
+                          borderBottom: `1px solid ${theme.border}`,
+                          letterSpacing: '0.04em',
+                          fontFamily: "'Helvetica Neue', sans-serif",
+                        }}
+                      >
                         {menu.name}
                       </div>
                       <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 70px)' }}>
@@ -487,16 +514,17 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
                           <Link
                             key={child.id}
                             href={child.path}
-                            onClick={() => {
-                              setActiveMenu(null)
-                              setIsOpen && setIsOpen(false)
+                            onClick={() => { setActiveMenu(null); setIsOpen && setIsOpen(false) }}
+                            className="flex items-center px-4 py-2 text-xs transition-colors"
+                            style={{
+                              color: pathname === child.path ? theme.blueText : theme.textBody,
+                              background: pathname === child.path ? theme.blueBg : 'transparent',
                             }}
-                            className={`flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 ${
-                              pathname === child.path ? 'bg-blue-50 text-blue-600' : ''
-                            }`}
+                            onMouseEnter={e => { if (pathname !== child.path) e.currentTarget.style.background = theme.subtleBg }}
+                            onMouseLeave={e => { e.currentTarget.style.background = pathname === child.path ? theme.blueBg : 'transparent' }}
                           >
                             {child.icon && (
-                              <span className="mr-3 inline-flex items-center justify-center w-4 h-4">
+                              <span className="mr-2.5 inline-flex items-center justify-center w-3.5 h-3.5" style={{ color: 'inherit' }}>
                                 {renderIcon(child.icon)}
                               </span>
                             )}
@@ -509,16 +537,22 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
               </>
             ) : (
               // Regular menu item without children
-              <Link 
+              <Link
                 href={menu.path}
-                onClick={() => setIsOpen && setIsOpen(false)} // Close mobile menu when clicking
-                className={`flex items-center ${isCollapsed ? 'justify-center' : ''} px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md ${
-                  pathname === menu.path ? 'bg-blue-50 text-blue-600' : ''
-                }`}
+                onClick={() => setIsOpen && setIsOpen(false)}
+                className={`flex items-center ${isCollapsed ? 'justify-center' : ''} px-3 py-2 text-sm transition-colors`}
+                style={{
+                  borderRadius: '6px',
+                  color: pathname === menu.path ? theme.blueText : theme.textBody,
+                  background: pathname === menu.path ? theme.blueBg : 'transparent',
+                  fontFamily: "'Helvetica Neue', sans-serif",
+                }}
+                onMouseEnter={e => { if (pathname !== menu.path) e.currentTarget.style.background = theme.subtleBg; e.currentTarget.style.color = theme.textPrimary }}
+                onMouseLeave={e => { e.currentTarget.style.background = pathname === menu.path ? theme.blueBg : 'transparent'; e.currentTarget.style.color = pathname === menu.path ? theme.blueText : theme.textBody }}
                 title={isCollapsed ? menu.name : ''}
               >
                 {menu.icon && (
-                  <span className={`${isCollapsed ? '' : 'mr-3'} inline-flex items-center justify-center w-4 h-4`}>
+                  <span className={`${isCollapsed ? '' : 'mr-2.5'} inline-flex items-center justify-center w-3.5 h-3.5`} style={{ color: 'inherit' }}>
                     {renderIcon(menu.icon)}
                   </span>
                 )}
@@ -528,70 +562,82 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
           </div>
         ))}
 
-        {/* Logout button */}
-        <div className="mt-8 pt-4 border-t border-gray-200">
+        {/* Logout */}
+        <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${theme.border}` }}>
           <button
             onClick={() => setShowLogoutModal(true)}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : ''} px-4 py-2 text-red-600 hover:bg-red-50 rounded-md`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : ''} px-3 py-2 text-xs transition-colors`}
+            style={{ borderRadius: '6px', color: theme.redText, fontFamily: "'Helvetica Neue', sans-serif" }}
+            onMouseEnter={e => { e.currentTarget.style.background = theme.redBg }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             title={isCollapsed ? t('common.logout') : ''}
           >
-            <span className={`${isCollapsed ? '' : 'mr-3'} inline-flex items-center justify-center w-4 h-4`}>
+            <span className={`${isCollapsed ? '' : 'mr-2.5'} inline-flex items-center justify-center w-3.5 h-3.5`}>
               <FontAwesomeIcon icon={faSignOutAlt} />
             </span>
             {!isCollapsed && <span>{t('common.logout')}</span>}
           </button>
         </div>
 
-        {/* Logout Confirmation Modal - Using Portal to render at document body */}
+        {/* Logout Confirmation Modal */}
         {showLogoutModal && typeof document !== 'undefined' && createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-            {/* Backdrop */}
-            <div 
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            <div
+              className="absolute inset-0"
+              style={{ background: 'rgba(0,0,0,0.25)' }}
               onClick={() => setShowLogoutModal(false)}
             />
-            {/* Modal */}
-            <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 animate-in fade-in zoom-in duration-200">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                  <FontAwesomeIcon icon={faSignOutAlt} className="text-red-600 text-2xl" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {t('common.logoutConfirmTitle') || 'Konfirmasi Logout'}
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  {t('common.logoutConfirmMessage') || 'Apakah Anda yakin ingin keluar dari sistem?'}
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowLogoutModal(false)}
-                    className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors"
-                  >
-                    {t('common.cancel') || 'Batal'}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      // Clear client storage/cache
-                      try {
-                        const role = localStorage.getItem('user_role')
-                        if (role) sessionStorage.removeItem(`allowed_menu_paths:${role}`)
-                        sessionStorage.removeItem('allowed_menu_paths:admin')
-                      } catch {}
-                      localStorage.clear()
-                      // Clear auth cookies for middleware
-                      const past = 'Thu, 01 Jan 1970 00:00:00 GMT'
-                      document.cookie = `kr_id=; Path=/; Expires=${past}; SameSite=Lax`
-                      document.cookie = `role_name=; Path=/; Expires=${past}; SameSite=Lax`
-                      document.cookie = `is_admin=; Path=/; Expires=${past}; SameSite=Lax`
-                      document.cookie = `allowed_paths=; Path=/; Expires=${past}; SameSite=Lax`
-                      // Redirect to login
-                      router.push('/login')
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-colors"
-                  >
-                    {t('common.logout') || 'Keluar'}
-                  </button>
-                </div>
+            <div
+              className="relative p-6 w-full max-w-xs mx-4"
+              style={{ background: theme.cardBg, borderRadius: '8px', border: `1px solid ${theme.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}
+            >
+              <div
+                className="w-8 h-8 mx-auto mb-4 flex items-center justify-center"
+                style={{ background: theme.redBg, borderRadius: '6px' }}
+              >
+                <FontAwesomeIcon icon={faSignOutAlt} style={{ color: theme.redText, fontSize: '14px' }} />
+              </div>
+              <h3
+                className="text-sm font-semibold text-center mb-1"
+                style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}
+              >
+                {t('common.logoutConfirmTitle') || 'Konfirmasi Logout'}
+              </h3>
+              <p className="text-xs text-center mb-5" style={{ color: theme.textSecondary }}>
+                {t('common.logoutConfirmMessage') || 'Apakah Anda yakin ingin keluar dari sistem?'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="flex-1 px-3 py-2 text-xs font-medium transition-colors active:scale-[0.98]"
+                  style={{ border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '4px', background: theme.cardBg }}
+                  onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
+                  onMouseLeave={e => { e.currentTarget.style.background = theme.cardBg }}
+                >
+                  {t('common.cancel') || 'Batal'}
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const role = localStorage.getItem('user_role')
+                      if (role) sessionStorage.removeItem(`allowed_menu_paths:${role}`)
+                      sessionStorage.removeItem('allowed_menu_paths:admin')
+                    } catch {}
+                    localStorage.clear()
+                    const past = 'Thu, 01 Jan 1970 00:00:00 GMT'
+                    document.cookie = `kr_id=; Path=/; Expires=${past}; SameSite=Lax`
+                    document.cookie = `role_name=; Path=/; Expires=${past}; SameSite=Lax`
+                    document.cookie = `is_admin=; Path=/; Expires=${past}; SameSite=Lax`
+                    document.cookie = `allowed_paths=; Path=/; Expires=${past}; SameSite=Lax`
+                    router.push('/login')
+                  }}
+                  className="flex-1 px-3 py-2 text-xs font-medium transition-colors active:scale-[0.98]"
+                  style={{ background: theme.textPrimary, color: theme.cardBg, borderRadius: '4px', border: 'none' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = theme.textPrimary }}
+                  onMouseLeave={e => { e.currentTarget.style.background = theme.textPrimary }}
+                >
+                  {t('common.logout') || 'Keluar'}
+                </button>
               </div>
             </div>
           </div>,
@@ -606,16 +652,18 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white hover:bg-gray-100 shadow-md"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2"
+        style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '6px' }}
         aria-label="Toggle menu"
       >
-        <FontAwesomeIcon icon={isOpen ? faXmark : faBars} className="w-6 h-6" />
+        <FontAwesomeIcon icon={isOpen ? faXmark : faBars} className="w-4 h-4" style={{ color: theme.textBody }} />
       </button>
 
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          className="lg:hidden fixed inset-0 z-40"
+          style={{ background: 'rgba(0,0,0,0.2)' }}
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -623,27 +671,42 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
       {/* Sidebar */}
     <aside
         className={`
-          fixed top-0 left-0 z-40 h-screen bg-white shadow-lg flex flex-col
+          fixed top-0 left-0 z-40 h-screen flex flex-col
           transform transition-all duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           ${isCollapsed ? 'lg:w-16' : 'lg:w-64'}
           lg:translate-x-0 lg:static lg:h-[calc(100vh-3rem)] lg:self-stretch
         `}
-        style={{ width: isCollapsed ? '4rem' : '16rem' }}
+        style={{ width: isCollapsed ? '4rem' : '16rem', background: theme.cardBg, borderRight: `1px solid ${theme.border}` }}
       >
         {/* Header */}
-        <div className={`p-4 border-b border-gray-200 flex-shrink-0 flex items-center justify-between`}>
-          <h1 className={`text-xl font-bold text-gray-800 transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
-            School System
-          </h1>
+        <div className={`px-4 py-4 flex-shrink-0 flex items-center justify-between`} style={{ borderBottom: `1px solid ${theme.border}` }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <img
+              src="/favicon.png"
+              alt="CCS Logo"
+              className="flex-shrink-0"
+              style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+            />
+            <span
+              className={`text-sm font-semibold tracking-tight transition-opacity duration-300 whitespace-nowrap overflow-hidden ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}
+              style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif", letterSpacing: '-0.01em' }}
+            >
+              Chung Chung School
+            </span>
+          </div>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:block p-1 hover:bg-gray-100 rounded-md transition-colors"
+            className="hidden lg:flex items-center justify-center w-7 h-7 transition-colors"
+            style={{ borderRadius: '6px' }}
+            onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <FontAwesomeIcon 
-              icon={isCollapsed ? faChevronRight : faBars} 
-              className="w-4 h-4 text-gray-600"
+            <FontAwesomeIcon
+              icon={isCollapsed ? faChevronRight : faBars}
+              className="w-3 h-3"
+              style={{ color: theme.textSecondary }}
             />
           </button>
         </div>

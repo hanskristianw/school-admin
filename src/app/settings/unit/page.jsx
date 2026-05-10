@@ -8,12 +8,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase, createSupabaseWithAuth } from '@/lib/supabase';
+import { useTheme } from '@/lib/theme';
 import ImageCropUploader from '@/components/ui/image-crop-uploader';
 
 
 const STORAGE_BUCKET = 'report-assets';
 
 export default function UnitManagement() {
+  const { theme } = useTheme();
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -251,96 +253,103 @@ export default function UnitManagement() {
     if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  if (loading) return <div className="p-4 text-center">Loading...</div>;
+  if (loading) return <div className="p-4 text-center" style={{ color: theme.textSecondary }}>Loading...</div>;
 
-  const selectClass = "w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-  const sectionLabel = "text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-2";
+  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody };
+  const selectClass = "w-full mt-1 rounded-md px-3 py-2 text-sm focus:outline-none";
+  const sectionLabel = "text-sm font-semibold uppercase tracking-wide mb-3 flex items-center gap-2";
 
   return (
     <div className="p-3">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <h1 className="text-2xl md:text-3xl font-bold">Unit Management</h1>
-        <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700">Add New Unit</Button>
+        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: theme.textPrimary }}>Unit Management</h1>
+        <Button onClick={() => setShowForm(true)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>Add New Unit</Button>
       </div>
 
       <Modal isOpen={showForm} onClose={resetForm} title={editingUnit ? 'Edit Unit' : 'Add New Unit'} size="sm">
-        {error && <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded mb-3">{error}</div>}
+        {error && <div className="px-3 py-2 rounded mb-3" style={{ background: theme.redBg, border: `1px solid ${theme.border}`, color: theme.redText }}>{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <Label htmlFor="unit_name">Nama Unit *</Label>
+            <Label htmlFor="unit_name" style={{ color: theme.textBody }}>Nama Unit *</Label>
             <Input id="unit_name" name="unit_name" value={formData.unit_name} onChange={handleInputChange}
-              className={formErrors.unit_name ? 'border-red-500' : ''} disabled={submitting} placeholder="Masukkan nama unit" />
+              className={formErrors.unit_name ? 'border-red-500' : ''}
+              style={{ background: theme.inputBg, border: `1px solid ${formErrors.unit_name ? '#ef4444' : theme.border}`, color: theme.textBody }}
+              disabled={submitting} placeholder="Masukkan nama unit" />
             {formErrors.unit_name && <p className="text-red-500 text-sm mt-1">{formErrors.unit_name}</p>}
           </div>
           <div className="flex items-center gap-2 pt-1">
             <input id="is_school" name="is_school" type="checkbox" checked={!!formData.is_school}
-              onChange={handleInputChange} disabled={submitting} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
-            <Label htmlFor="is_school">Merupakan Sekolah?</Label>
+              onChange={handleInputChange} disabled={submitting} className="h-4 w-4 rounded" />
+            <Label htmlFor="is_school" style={{ color: theme.textBody }}>Merupakan Sekolah?</Label>
           </div>
           <div className="flex gap-2 pt-3">
-            <Button type="submit" className="bg-green-600 hover:bg-green-700 flex-1" disabled={submitting}>
+            <Button type="submit" style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none', flex: 1 }} disabled={submitting}>
               {submitting ? 'Processing...' : (editingUnit ? 'Update Unit' : 'Create Unit')}
             </Button>
-            <Button type="button" onClick={resetForm} variant="outline" className="flex-1" disabled={submitting}>Cancel</Button>
+            <Button type="button" onClick={resetForm} variant="outline" style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border, flex: 1 }} disabled={submitting}>Cancel</Button>
           </div>
         </form>
       </Modal>
 
       {/* Units Table */}
-      <Card>
+      <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
         <CardHeader>
-          <CardTitle>Units List ({units.length} units)</CardTitle>
+          <CardTitle style={{ color: theme.textPrimary }}>Units List ({units.length} units)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="block md:hidden space-y-3">
             {units.length === 0 ? (
-              <div className="text-center text-gray-500 py-6">No units found</div>
+              <div className="text-center py-6" style={{ color: theme.textSecondary }}>No units found</div>
             ) : units.map(unit => (
-              <div key={unit.unit_id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+              <div key={unit.unit_id} className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}` }}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold">{unit.unit_name}</h3>
+                    <h3 className="font-semibold" style={{ color: theme.textPrimary }}>{unit.unit_name}</h3>
                     <div className="mt-1">
                       {unit.is_school
-                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sekolah</span>
-                        : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Manajemen</span>}
+                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.greenBg, color: theme.greenText }}>Sekolah</span>
+                        : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary }}>Manajemen</span>}
                     </div>
                   </div>
-                  <span className="text-xs text-gray-500">ID: {unit.unit_id}</span>
+                  <span className="text-xs" style={{ color: theme.textSecondary }}>ID: {unit.unit_id}</span>
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <Button size="sm" onClick={() => handleEdit(unit)} className="bg-blue-600 hover:bg-blue-700 text-white flex-1">Edit</Button>
-                  <Button size="sm" onClick={() => handleDelete(unit)} className="bg-red-600 hover:bg-red-700 text-white flex-1">Delete</Button>
+                  <Button size="sm" onClick={() => handleEdit(unit)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none', flex: 1 }}>Edit</Button>
+                  <Button size="sm" onClick={() => handleDelete(unit)} style={{ background: theme.redBg, color: theme.redText, border: 'none', flex: 1 }}>Delete</Button>
                 </div>
               </div>
             ))}
           </div>
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300">
+            <table className="w-full border-collapse" style={{ border: `1px solid ${theme.border}` }}>
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="border border-gray-300 px-4 py-2 text-left">ID</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Nama Unit</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Tipe</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
+                <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>ID</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>Nama Unit</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>Tipe</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {units.length === 0 ? (
-                  <tr><td colSpan="4" className="border border-gray-300 px-4 py-6 text-center text-gray-500">No units found</td></tr>
+                  <tr><td colSpan="4" className="px-4 py-6 text-center" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>No units found</td></tr>
                 ) : units.map(unit => (
-                  <tr key={unit.unit_id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-2">{unit.unit_id}</td>
-                    <td className="border border-gray-300 px-4 py-2">{unit.unit_name}</td>
-                    <td className="border border-gray-300 px-4 py-2">
+                  <tr key={unit.unit_id}
+                    style={{ borderBottom: `1px solid ${theme.border}` }}
+                    onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <td className="px-4 py-2" style={{ color: theme.textBody, border: `1px solid ${theme.border}` }}>{unit.unit_id}</td>
+                    <td className="px-4 py-2" style={{ color: theme.textBody, border: `1px solid ${theme.border}` }}>{unit.unit_name}</td>
+                    <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
                       {unit.is_school
-                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sekolah</span>
-                        : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Manajemen</span>}
+                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.greenBg, color: theme.greenText }}>Sekolah</span>
+                        : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary }}>Manajemen</span>}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2">
+                    <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
                       <div className="flex space-x-2">
-                        <Button size="sm" onClick={() => handleEdit(unit)} className="bg-blue-600 hover:bg-blue-700 text-white">Edit</Button>
-                        <Button size="sm" onClick={() => handleDelete(unit)} className="bg-red-600 hover:bg-red-700 text-white">Delete</Button>
+                        <Button size="sm" onClick={() => handleEdit(unit)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>Edit</Button>
+                        <Button size="sm" onClick={() => handleDelete(unit)} style={{ background: theme.redBg, color: theme.redText, border: 'none' }}>Delete</Button>
                       </div>
                     </td>
                   </tr>
@@ -352,17 +361,17 @@ export default function UnitManagement() {
       </Card>
 
       {/* Report Settings */}
-      <Card className="mt-6">
+      <Card className="mt-6" style={{ background: theme.cardBg, borderColor: theme.border }}>
         <CardHeader>
-          <CardTitle>Report Settings</CardTitle>
-          <p className="text-sm text-gray-500">Konfigurasi laporan per unit per tahun ajaran</p>
+          <CardTitle style={{ color: theme.textPrimary }}>Report Settings</CardTitle>
+          <p className="text-sm" style={{ color: theme.textSecondary }}>Konfigurasi laporan per unit per tahun ajaran</p>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Unit & Year selector */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <Label>Unit</Label>
-              <select value={rsUnitId} onChange={handleRsUnitChange} className={selectClass}>
+              <Label style={{ color: theme.textBody }}>Unit</Label>
+              <select value={rsUnitId} onChange={handleRsUnitChange} className={selectClass} style={selectStyle}>
                 <option value="">-- Pilih Unit --</option>
                 {units.filter(u => u.is_school).map(u => (
                   <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
@@ -370,8 +379,8 @@ export default function UnitManagement() {
               </select>
             </div>
             <div className="flex-1">
-              <Label>Tahun Ajaran</Label>
-              <select value={rsYearId} onChange={handleRsYearChange} className={selectClass}>
+              <Label style={{ color: theme.textBody }}>Tahun Ajaran</Label>
+              <select value={rsYearId} onChange={handleRsYearChange} className={selectClass} style={selectStyle}>
                 <option value="">-- Pilih Tahun --</option>
                 {years.map(y => (
                   <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
@@ -382,97 +391,103 @@ export default function UnitManagement() {
 
           {rsUnitId && rsYearId && (
             rsLoading ? (
-              <div className="text-sm text-gray-400 py-4 text-center">Memuat data...</div>
+              <div className="text-sm py-4 text-center" style={{ color: theme.textSecondary }}>Memuat data...</div>
             ) : (
-              <div className="space-y-6 border-t pt-4">
+              <div className="space-y-6 pt-4" style={{ borderTop: `1px solid ${theme.border}` }}>
                 {!rsExistingId && (
-                  <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                  <p className="text-xs rounded px-3 py-2" style={{ color: theme.blueText, background: theme.blueBg, border: `1px solid ${theme.border}` }}>
                     Belum ada data untuk kombinasi ini. Isi form dan simpan untuk membuat baru.
                   </p>
                 )}
 
                 {/* ── General Info ── */}
                 <div className="space-y-3">
-                  <p className={sectionLabel}>
-                    <span className="w-5 h-0.5 bg-gray-400 inline-block" />
+                  <p className={sectionLabel} style={{ color: theme.textSecondary }}>
+                    <span className="w-5 h-0.5 inline-block" style={{ background: theme.border }} />
                     Informasi Kepala Sekolah
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1">
-                      <Label>Nama Kepala Sekolah</Label>
+                      <Label style={{ color: theme.textBody }}>Nama Kepala Sekolah</Label>
                       <Input value={rsData.principal_name}
                         onChange={e => setRsData(p => ({ ...p, principal_name: e.target.value }))}
-                        placeholder="Contoh: Edwin Arlianto" className="mt-1" />
+                        placeholder="Contoh: Edwin Arlianto" className="mt-1"
+                        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
                     </div>
                     <div className="flex-1">
-                      <Label>Jabatan</Label>
+                      <Label style={{ color: theme.textBody }}>Jabatan</Label>
                       <Input value={rsData.principal_title}
                         onChange={e => setRsData(p => ({ ...p, principal_title: e.target.value }))}
-                        placeholder="Contoh: HS Principal" className="mt-1" />
+                        placeholder="Contoh: HS Principal" className="mt-1"
+                        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
                     </div>
                   </div>
                 </div>
 
                 {/* ── Semester 1 ── */}
-                <div className="space-y-3 bg-gray-50 rounded-lg p-4">
-                  <p className={sectionLabel}>
-                    <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded">S1</span>
+                <div className="space-y-3 rounded-lg p-4" style={{ background: theme.subtleBg }}>
+                  <p className={sectionLabel} style={{ color: theme.textSecondary }}>
+                    <span className="text-white text-xs px-2 py-0.5 rounded" style={{ background: '#2563eb' }}>S1</span>
                     Semester 1
                   </p>
                   <div>
-                    <Label>Tanggal Laporan Semester 1 <span className="text-gray-400 font-normal">("Prepared on")</span></Label>
+                    <Label style={{ color: theme.textBody }}>Tanggal Laporan Semester 1 <span className="font-normal" style={{ color: theme.textSecondary }}>("Prepared on")</span></Label>
                     <Input type="date" value={rsData.report_date_s1}
                       onChange={e => setRsData(p => ({ ...p, report_date_s1: e.target.value }))}
-                      className="mt-1 w-full sm:w-48" />
+                      className="mt-1 w-full sm:w-48"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
                   </div>
                   <div>
-                    <Label>Kata Sambutan Semester 1</Label>
-                    <p className="text-xs text-gray-400 mb-1">Gunakan <code className="bg-gray-100 px-1 rounded">{'{semester}'}</code> untuk nama semester otomatis.</p>
+                    <Label style={{ color: theme.textBody }}>Kata Sambutan Semester 1</Label>
+                    <p className="text-xs mb-1" style={{ color: theme.textSecondary }}>Gunakan <code className="px-1 rounded" style={{ background: theme.cardBg, color: theme.textBody }}>{'{semester}'}</code> untuk nama semester otomatis.</p>
                     <textarea
                       value={rsData.report_greeting_s1}
                       onChange={e => setRsData(p => ({ ...p, report_greeting_s1: e.target.value }))}
                       rows={6}
                       placeholder="Tulis kata sambutan untuk Semester 1..."
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                      className="w-full rounded-md px-3 py-2 text-sm focus:outline-none resize-y"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                     />
-                    <p className="text-xs text-gray-400 mt-1">{rsData.report_greeting_s1.length} karakter</p>
+                    <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{rsData.report_greeting_s1.length} karakter</p>
                   </div>
                 </div>
 
                 {/* ── Semester 2 ── */}
-                <div className="space-y-3 bg-orange-50 rounded-lg p-4">
-                  <p className={sectionLabel}>
-                    <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded">S2</span>
+                <div className="space-y-3 rounded-lg p-4" style={{ background: theme.subtleBg }}>
+                  <p className={sectionLabel} style={{ color: theme.textSecondary }}>
+                    <span className="text-white text-xs px-2 py-0.5 rounded" style={{ background: '#f97316' }}>S2</span>
                     Semester 2
                   </p>
                   <div>
-                    <Label>Tanggal Laporan Semester 2 <span className="text-gray-400 font-normal">("Prepared on")</span></Label>
+                    <Label style={{ color: theme.textBody }}>Tanggal Laporan Semester 2 <span className="font-normal" style={{ color: theme.textSecondary }}>("Prepared on")</span></Label>
                     <Input type="date" value={rsData.report_date_s2}
                       onChange={e => setRsData(p => ({ ...p, report_date_s2: e.target.value }))}
-                      className="mt-1 w-full sm:w-48" />
-                    <p className="text-xs text-gray-400 mt-1">Kosongkan untuk menggunakan tanggal cetak otomatis.</p>
+                      className="mt-1 w-full sm:w-48"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+                    <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>Kosongkan untuk menggunakan tanggal cetak otomatis.</p>
                   </div>
                   <div>
-                    <Label>Kata Sambutan Semester 2</Label>
-                    <p className="text-xs text-gray-400 mb-1">Kosongkan untuk menggunakan kata sambutan S1.</p>
+                    <Label style={{ color: theme.textBody }}>Kata Sambutan Semester 2</Label>
+                    <p className="text-xs mb-1" style={{ color: theme.textSecondary }}>Kosongkan untuk menggunakan kata sambutan S1.</p>
                     <textarea
                       value={rsData.report_greeting_s2}
                       onChange={e => setRsData(p => ({ ...p, report_greeting_s2: e.target.value }))}
                       rows={6}
                       placeholder="Tulis kata sambutan untuk Semester 2 (opsional)..."
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-y"
+                      className="w-full rounded-md px-3 py-2 text-sm focus:outline-none resize-y"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
                     />
-                    <p className="text-xs text-gray-400 mt-1">{rsData.report_greeting_s2.length} karakter</p>
+                    <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{rsData.report_greeting_s2.length} karakter</p>
                   </div>
                 </div>
 
                 {/* ── Signatures ── */}
                 <div className="space-y-4">
-                  <p className={sectionLabel}>
-                    <span className="w-5 h-0.5 bg-gray-400 inline-block" />
-                    Tanda Tangan & Cap Sekolah
+                  <p className={sectionLabel} style={{ color: theme.textSecondary }}>
+                    <span className="w-5 h-0.5 inline-block" style={{ background: theme.border }} />
+                    Tanda Tangan &amp; Cap Sekolah
                   </p>
-                  <p className="text-xs text-gray-500">File gambar (PNG/JPG, transparan lebih baik). Ditampilkan di halaman Progression Report Semester 2.</p>
+                  <p className="text-xs" style={{ color: theme.textSecondary }}>File gambar (PNG/JPG, transparan lebih baik). Ditampilkan di halaman Progression Report Semester 2.</p>
 
                   {/* Principal Signature */}
                   <ImageCropUploader
@@ -495,8 +510,8 @@ export default function UnitManagement() {
                   />
                 </div>
 
-                <div className="flex justify-end pt-2 border-t">
-                  <Button onClick={handleSaveReportSettings} disabled={rsSaving} className="bg-green-600 hover:bg-green-700">
+                <div className="flex justify-end pt-2" style={{ borderTop: `1px solid ${theme.border}` }}>
+                  <Button onClick={handleSaveReportSettings} disabled={rsSaving} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
                     {rsSaving ? 'Menyimpan...' : (rsExistingId ? 'Update' : 'Simpan')}
                   </Button>
                 </div>

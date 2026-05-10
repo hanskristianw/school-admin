@@ -5,10 +5,12 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft, faSave, faSpinner, faCheckCircle, faFileExcel, faTrash, faDownload, faUpload } from '@fortawesome/free-solid-svg-icons'
+import { useTheme } from '@/lib/theme'
 
 export default function AssessmentGradingPage() {
   const params = useParams()
   const router = useRouter()
+  const { theme } = useTheme()
   const assessmentId = params.id
 
   // State - simplified: no strands, direct criterion grades
@@ -481,10 +483,10 @@ export default function AssessmentGradingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: theme.pageBg }}>
         <div className="text-center">
-          <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-indigo-500 mb-3" />
-          <p className="text-slate-500 text-sm">Loading...</p>
+          <FontAwesomeIcon icon={faSpinner} spin className="text-2xl mb-3" style={{ color: theme.textSecondary }} />
+          <p className="text-sm" style={{ color: theme.textSecondary }}>Loading...</p>
         </div>
       </div>
     )
@@ -492,16 +494,17 @@ export default function AssessmentGradingPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-50 p-4">
+      <div className="min-h-screen p-4" style={{ background: theme.pageBg }}>
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-700 mb-3 text-sm"
+          className="flex items-center gap-1.5 mb-3 text-sm"
+          style={{ color: theme.textSecondary }}
         >
           <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
           Back
         </button>
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-600 text-sm">{error}</p>
+        <div className="p-4" style={{ background: theme.redBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
+          <p className="text-sm" style={{ color: theme.redText }}>{error}</p>
         </div>
       </div>
     )
@@ -515,34 +518,36 @@ export default function AssessmentGradingPage() {
   }).length
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen" style={{ background: theme.pageBg }}>
       {/* Compact Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <div className="sticky top-0 z-30" style={{ background: theme.cardBg, borderBottom: `1px solid ${theme.border}` }}>
         <div className="px-3 py-2">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => router.back()}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                className="p-1.5 rounded transition-colors"
+                style={{ color: theme.textSecondary }}
               >
                 <FontAwesomeIcon icon={faArrowLeft} className="text-sm" />
               </button>
               <div className="min-w-0">
-                <h1 className="text-sm font-semibold text-slate-800 truncate">{assessment?.assessment_nama}</h1>
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                <h1 className="text-sm font-semibold truncate" style={{ color: theme.textPrimary }}>{assessment?.assessment_nama}</h1>
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: theme.textSecondary }}>
                   <span>{new Date(assessment?.assessment_tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                  {mypYear && <span className="text-indigo-500 font-medium">• MYP {mypYear}</span>}
+                  {mypYear && <span className="font-medium" style={{ color: theme.blueText }}>• MYP {mypYear}</span>}
                   <span>• {gradedStudents}/{totalStudents} graded</span>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {saveSuccess && (
-                <FontAwesomeIcon icon={faCheckCircle} className="text-emerald-500 text-sm" />
+                <FontAwesomeIcon icon={faCheckCircle} className="text-sm" style={{ color: theme.greenText }} />
               )}
               <button
                 onClick={downloadGradeTemplate}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 border border-indigo-200 hover:bg-indigo-50 rounded transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-colors"
+                style={{ color: theme.blueText, border: `1px solid ${theme.border}`, background: theme.cardBg }}
                 title="Download Grade Template (.xlsx)"
               >
                 <FontAwesomeIcon icon={faDownload} className="text-xs" />
@@ -550,7 +555,8 @@ export default function AssessmentGradingPage() {
               </button>
               <button
                 onClick={() => importRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-600 border border-purple-200 hover:bg-purple-50 rounded transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-colors"
+                style={{ color: theme.textBody, border: `1px solid ${theme.border}`, background: theme.cardBg }}
                 title="Import from Excel"
               >
                 <FontAwesomeIcon icon={faUpload} className="text-xs" />
@@ -568,7 +574,8 @@ export default function AssessmentGradingPage() {
               />
               <button
                 onClick={handleExport}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 rounded transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-colors"
+                style={{ color: theme.textBody, border: `1px solid ${theme.border}`, background: theme.cardBg }}
                 title="Export CSV"
               >
                 <FontAwesomeIcon icon={faFileExcel} className="text-xs" />
@@ -577,7 +584,8 @@ export default function AssessmentGradingPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-medium transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                style={{ background: theme.textPrimary, color: theme.cardBg }}
               >
                 <FontAwesomeIcon icon={saving ? faSpinner : faSave} spin={saving} className="text-xs" />
                 <span className="hidden sm:inline">{saving ? 'Saving...' : 'Save'}</span>
@@ -589,44 +597,50 @@ export default function AssessmentGradingPage() {
 
       {/* Compact Grading Table */}
       <div className="p-3">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+        <div className="rounded-lg overflow-hidden" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600 bg-slate-50 sticky left-0 z-10 border-b border-slate-200 min-w-[180px]">
+                  <th className="px-3 py-2 text-left text-xs font-semibold sticky left-0 z-10 min-w-[180px]" style={{ background: theme.subtleBg, color: theme.textSecondary, borderBottom: `1px solid ${theme.border}` }}>
                     Student
                   </th>
                   {criteria.map(c => (
-                    <th key={c.criterion_id} className={`px-3 py-2 text-center border-b min-w-[120px] ${getCriterionColor(c.code)}`}>
+                    <th key={c.criterion_id} className={`px-3 py-2 text-center min-w-[120px] ${getCriterionColor(c.code)}`} style={{ borderBottom: `1px solid ${theme.border}` }}>
                       <div className="text-white font-bold text-sm">{c.code}</div>
-                      <div className="text-white/80 text-[10px] font-normal">
-                        {c.name}
-                      </div>
+                      <div className="text-white/80 text-[10px] font-normal">{c.name}</div>
                     </th>
                   ))}
-                  <th className="px-2 py-2 text-center text-xs font-semibold bg-slate-700 text-white border-b min-w-[50px]">
+                  <th className="px-2 py-2 text-center text-xs font-semibold min-w-[50px]" style={{ background: theme.textPrimary, color: theme.pageBg, borderBottom: `1px solid ${theme.border}` }}>
                     Final
                   </th>
-                  <th className="px-2 py-2 bg-slate-700 border-b w-8"></th>
+                  <th className="px-2 py-2 w-8" style={{ background: theme.textPrimary, borderBottom: `1px solid ${theme.border}` }}></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {students.map((student, index) => {
                   const studentGrades = grades[student.detail_siswa_id] || {}
                   const hasGrades = studentGrades.A !== null || studentGrades.B !== null || studentGrades.C !== null || studentGrades.D !== null
                   return (
-                    <tr key={student.detail_siswa_id} className={`${hasGrades ? 'bg-white' : 'bg-slate-50/50'} hover:bg-indigo-50/30 transition-colors`}>
-                      <td className={`px-3 py-1.5 text-slate-700 sticky left-0 z-10 ${hasGrades ? 'bg-white' : 'bg-slate-50/50'} hover:bg-indigo-50/30`}>
-                        <span className="text-xs text-slate-400 mr-2">{index + 1}.</span>
-                        <span className="font-medium text-sm">{student.nama}</span>
+                    <tr
+                      key={student.detail_siswa_id}
+                      style={{ borderBottom: `1px solid ${theme.border}`, background: hasGrades ? theme.cardBg : theme.subtleBg }}
+                      onMouseEnter={e => e.currentTarget.style.background = theme.blueBg}
+                      onMouseLeave={e => e.currentTarget.style.background = hasGrades ? theme.cardBg : theme.subtleBg}
+                    >
+                      <td
+                        className="px-3 py-1.5 sticky left-0 z-10"
+                        style={{ background: 'inherit', borderRight: `1px solid ${theme.border}` }}
+                      >
+                        <span className="text-xs mr-2" style={{ color: theme.textSecondary }}>{index + 1}.</span>
+                        <span className="font-medium text-sm" style={{ color: theme.textPrimary }}>{student.nama}</span>
                       </td>
                       {criteria.map(c => (
                         <td key={c.criterion_id} className="px-1 py-1 text-center">
                           <select
                             value={studentGrades[c.code] ?? ''}
                             onChange={(e) => handleGradeChange(student.detail_siswa_id, c.code, e.target.value)}
-                            className={`w-11 h-7 text-center text-sm font-semibold rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 cursor-pointer appearance-none ${getGradeColor(studentGrades[c.code])}`}
+                            className={`w-11 h-7 text-center text-sm font-semibold rounded border focus:outline-none cursor-pointer appearance-none ${getGradeColor(studentGrades[c.code])}`}
                           >
                             <option value="">-</option>
                             {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(g => (
@@ -644,7 +658,10 @@ export default function AssessmentGradingPage() {
                         {hasGrades && (
                           <button
                             onClick={() => handleClearStudentGrades(student)}
-                            className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                            className="p-1 rounded transition-colors"
+                            style={{ color: theme.textSecondary }}
+                            onMouseEnter={e => { e.currentTarget.style.color = theme.redText; e.currentTarget.style.background = theme.redBg }}
+                            onMouseLeave={e => { e.currentTarget.style.color = theme.textSecondary; e.currentTarget.style.background = 'transparent' }}
                             title={`Hapus nilai ${student.nama}`}
                           >
                             <FontAwesomeIcon icon={faTrash} className="text-xs" />
@@ -660,8 +677,8 @@ export default function AssessmentGradingPage() {
         </div>
 
         {/* Compact Legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-          <span className="font-medium text-slate-600">Scale:</span>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs" style={{ color: theme.textSecondary }}>
+          <span className="font-medium" style={{ color: theme.textBody }}>Scale:</span>
           <div className="flex items-center gap-1">
             <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-red-100 text-red-600 font-bold">0-2</span>
           </div>
@@ -674,8 +691,8 @@ export default function AssessmentGradingPage() {
           <div className="flex items-center gap-1">
             <span className="w-5 h-5 rounded text-[10px] flex items-center justify-center bg-emerald-100 text-emerald-600 font-bold">7-8</span>
           </div>
-          <span className="text-slate-300">|</span>
-          <span className="text-slate-400">Final: Sum → IB 1-7</span>
+          <span style={{ color: theme.border }}>|</span>
+          <span>Final: Sum → IB 1-7</span>
         </div>
       </div>
     </div>

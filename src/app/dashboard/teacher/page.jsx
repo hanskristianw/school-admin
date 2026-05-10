@@ -63,12 +63,13 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Modal from '@/components/ui/modal'
 import { useI18n } from '@/lib/i18n'
-import AcademicIntegrityChatbot from '@/components/AcademicIntegrityChatbot'
+import { useTheme } from '@/lib/theme'
 
 export default function TeacherDashboard() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useI18n()
+  const { theme } = useTheme()
   const tr = (key, fallback, params) => {
     try {
       const val = params ? t(key, params) : t(key)
@@ -83,16 +84,7 @@ export default function TeacherDashboard() {
   const [userData, setUserData] = useState(null)
   const [menuItems, setMenuItems] = useState([])
 
-  const CARD_COLORS = [
-    { bg: 'bg-pink-50', icon: 'from-pink-400 to-rose-400', text: 'text-pink-700' },
-    { bg: 'bg-amber-50', icon: 'from-amber-400 to-orange-400', text: 'text-amber-700' },
-    { bg: 'bg-emerald-50', icon: 'from-emerald-400 to-teal-400', text: 'text-emerald-700' },
-    { bg: 'bg-sky-50', icon: 'from-sky-400 to-cyan-400', text: 'text-sky-700' },
-    { bg: 'bg-violet-50', icon: 'from-violet-400 to-purple-400', text: 'text-violet-700' },
-    { bg: 'bg-rose-50', icon: 'from-rose-400 to-pink-500', text: 'text-rose-700' },
-    { bg: 'bg-teal-50', icon: 'from-teal-400 to-emerald-500', text: 'text-teal-700' },
-    { bg: 'bg-orange-50', icon: 'from-orange-400 to-amber-500', text: 'text-orange-700' },
-  ]
+  const CARD_ACCENTS = [...theme.CARD_ACCENTS, ...theme.CARD_ACCENTS]
   
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date()
@@ -409,96 +401,133 @@ export default function TeacherDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: theme.pageBg }}>
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('common.loading')}</p>
+          <div
+            className="w-6 h-6 border-[1.5px] border-t-transparent animate-spin mx-auto mb-4"
+            style={{ borderRadius: '3px', borderColor: theme.textPrimary, borderTopColor: 'transparent' }}
+          />
+          <p className="text-sm" style={{ color: theme.textSecondary, fontFamily: "'Helvetica Neue', sans-serif" }}>
+            {t('common.loading')}
+          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-cyan-50 p-4 md:p-6">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 px-6 py-8 md:py-12 rounded-3xl shadow-xl">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/2 -right-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-1/2 -left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src="/images/login-logo.png" 
-              alt="" 
-              className="h-48 w-auto opacity-10"
-              aria-hidden="true"
-            />
+    <div className="min-h-screen" style={{ background: theme.pageBg, fontFamily: "'Helvetica Neue', 'SF Pro Display', sans-serif" }}>
+
+      {/* Header */}
+      <div className="px-6 py-7" style={{ background: theme.cardBg, borderBottom: `1px solid ${theme.border}` }}>
+        {searchParams?.get('forbidden') === '1' && (
+          <div
+            className="mb-5 px-4 py-3 text-sm"
+            style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.redBg, color: theme.redText }}
+          >
+            Anda tidak memiliki akses ke halaman tersebut.
           </div>
-        </div>
-        
-        <div className="relative z-10">
-          {searchParams?.get('forbidden') === '1' && (
-            <div className="mb-4 p-3 rounded-xl bg-red-500/20 backdrop-blur-sm text-white border border-red-300/30 text-sm">
-              Access denied for the requested page.
-            </div>
-          )}
-          
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              {userData?.user_profile_picture ? (
-                <div className="relative">
-                  <img 
-                    src={userData.user_profile_picture} 
-                    alt="Profile" 
-                    className="w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover ring-4 ring-white/30 shadow-xl"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white"></div>
-                </div>
-              ) : (
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center ring-4 ring-white/30 shadow-xl">
-                  <User size={32} className="text-white" />
-                </div>
-              )}
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white">
-                  {t('common.welcome', { name: `${userData?.user_nama_depan || ''} ${userData?.user_nama_belakang || ''}`.trim() })} 👋
-                </h1>
-                <p className="text-sky-100 mt-1">{t('dashboard.subtitle')}</p>
+        )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {userData?.user_profile_picture ? (
+              <img
+                src={userData.user_profile_picture}
+                alt="Foto profil"
+                className="w-11 h-11 object-cover"
+                style={{ borderRadius: '8px', border: `1px solid ${theme.border}` }}
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div
+                className="w-11 h-11 flex items-center justify-center"
+                style={{ borderRadius: '8px', background: theme.subtleBg, border: `1px solid ${theme.border}` }}
+              >
+                <User size={20} style={{ color: theme.textSecondary }} />
               </div>
+            )}
+            <div>
+              <p
+                className="text-[11px] mb-0.5"
+                style={{ color: theme.textSecondary, letterSpacing: '0.07em', textTransform: 'uppercase' }}
+              >
+                {t('dashboard.subtitle') || 'Ruang Kerja Guru'}
+              </p>
+              <h1
+                className="text-lg font-semibold"
+                style={{ color: theme.textPrimary, letterSpacing: '-0.02em' }}
+              >
+                {`${userData?.user_nama_depan || ''} ${userData?.user_nama_belakang || ''}`.trim() || '—'}
+              </h1>
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <p
+              className="hidden sm:block text-[11px]"
+              style={{ color: theme.textSecondary, fontFamily: "'SF Mono', 'JetBrains Mono', monospace" }}
+            >
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="py-6 space-y-6">
-        {error && (
-          <div className="p-4 rounded-xl bg-red-50 text-red-700 border border-red-200 text-sm shadow-sm">
-            {error}
-          </div>
-        )}
+      <div className="p-6 space-y-6">
+          {error && (
+            <div
+              className="px-4 py-3 text-sm"
+              style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.redBg, color: theme.redText }}
+            >
+              {error}
+            </div>
+          )}
 
-        {/* Quick Access Menu Grid */}
+        {/* Menu Cepat */}
         {menuItems.length > 0 && (
           <div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <p
+              className="text-[11px] mb-3"
+              style={{ color: theme.textSecondary, letterSpacing: '0.07em', textTransform: 'uppercase' }}
+            >
+              Menu
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
               {menuItems.map((item, idx) => {
-                const color = CARD_COLORS[idx % CARD_COLORS.length]
+                const accent = CARD_ACCENTS[idx % CARD_ACCENTS.length]
                 const Icon = getPathIcon(item.path)
                 return (
                   <button
                     key={idx}
                     onClick={() => router.push(item.path)}
-                    className="flex items-stretch bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all text-left group overflow-hidden"
+                    className="flex items-center gap-3 p-4 text-left active:scale-[0.98]"
+                    style={{
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '8px',
+                      background: theme.cardBg,
+                      transition: 'box-shadow 200ms ease, border-color 200ms ease',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'
+                      e.currentTarget.style.borderColor = theme.borderHover
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.boxShadow = 'none'
+                      e.currentTarget.style.borderColor = theme.border
+                    }}
                   >
-                    {/* Colored background section on left */}
-                    <div className={`${color.bg} w-24 flex-shrink-0 flex items-center justify-center`}>
-                      <Icon size={36} className={color.text} strokeWidth={1.5} />
+                    <div
+                      className="w-8 h-8 flex-shrink-0 flex items-center justify-center"
+                      style={{ background: accent.bg, borderRadius: '6px' }}
+                    >
+                      <Icon size={16} style={{ color: accent.text }} strokeWidth={2} />
                     </div>
-                    {/* Name */}
-                    <span className="flex-1 font-medium text-gray-800 text-base leading-snug flex items-center px-5 py-6">{item.name}</span>
+                    <span
+                      className="text-sm font-medium leading-snug"
+                      style={{ color: theme.textPrimary }}
+                    >
+                      {item.name}
+                    </span>
                   </button>
                 )
               })}
@@ -506,32 +535,36 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Calendar */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
-              <span className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center">
-                <Calendar size={14} className="text-white" />
+        {/* Kalender */}
+        <div className="overflow-hidden" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '12px' }}>
+          <div className="px-5 py-4 flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between" style={{ borderBottom: `1px solid ${theme.border}` }}>
+            <h3 className="font-semibold flex items-center gap-3 text-sm" style={{ color: theme.textPrimary }}>
+              <span
+                className="w-7 h-7 flex items-center justify-center"
+                style={{ background: theme.subtleBg, borderRadius: '6px', border: `1px solid ${theme.border}` }}
+              >
+                <Calendar size={14} style={{ color: theme.textSecondary }} />
               </span>
-              <span className="hidden sm:inline">Kalender</span>
-              <span className="sm:hidden">Kalender</span>
-              <div className="hidden md:flex items-center gap-3 ml-3 text-xs">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500"></span>
-                  <span className="text-gray-500">Penilaian</span>
+              Kalender Penilaian
+              <span className="hidden md:flex items-center gap-3" style={{ fontSize: '11px', color: theme.textSecondary }}>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2" style={{ background: theme.blueText, borderRadius: '2px' }}></span>
+                  Penilaian
                 </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-red-500 to-orange-500"></span>
-                  <span className="text-gray-500">Google</span>
-                </span>
-              </div>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2" style={{ background: theme.redText, borderRadius: '2px' }}></span>
+                  Google Calendar
+                </span>                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2" style={{ background: theme.redBg, borderRadius: '2px', border: `1px solid ${theme.border}` }}></span>
+                  Libur / Minggu
+                </span>              </span>
             </h3>
             <div className="w-full md:w-auto overflow-x-auto -mx-1 px-1">
               <div className="inline-flex items-center gap-1 sm:gap-2">
                 <Button variant="outline" size="sm" onClick={prevMonth} className="rounded-lg h-8 w-8 p-0">
                   <ChevronLeft size={14} />
                 </Button>
-                <div className="text-xs sm:text-sm min-w-[100px] sm:min-w-[140px] text-center font-medium text-gray-700">
+                <div className="text-xs sm:text-sm min-w-[100px] sm:min-w-[140px] text-center font-medium" style={{ color: theme.textPrimary }}>
                   {calMonth.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
                 </div>
                 <Button variant="outline" size="sm" onClick={nextMonth} className="rounded-lg h-8 w-8 p-0">
@@ -539,7 +572,8 @@ export default function TeacherDashboard() {
                 </Button>
                 <Button variant="outline" size="sm" onClick={thisMonth} className="rounded-lg text-xs px-2 hidden sm:inline-flex">Bulan Ini</Button>
                 <select
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs sm:text-sm shrink-0 bg-white focus:ring-2 focus:ring-sky-500 max-w-[100px] sm:max-w-none"
+                  className="rounded-lg px-2 py-1.5 text-xs sm:text-sm shrink-0 focus:outline-none max-w-[100px] sm:max-w-none"
+                  style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
                   value={kelasFilter}
                   onChange={(e)=> setKelasFilter(e.target.value)}
                 >
@@ -553,11 +587,18 @@ export default function TeacherDashboard() {
           </div>
           <div className="p-2 sm:p-4">
             {calError && (
-              <div className="p-2 sm:p-3 mb-2 sm:mb-3 rounded-lg sm:rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs sm:text-sm">{calError}</div>
+              <div className="p-2 sm:p-3 mb-2 sm:mb-3 rounded-lg sm:rounded-xl text-xs sm:text-sm" style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}` }}>{calError}</div>
             )}
-            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2 text-[9px] sm:text-[11px] md:text-xs font-medium text-gray-500 mb-1 sm:mb-3">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2 text-[9px] sm:text-[11px] md:text-xs font-medium mb-1 sm:mb-3">
               {['S','S','R','K','J','S','M'].map((d, i) => (
-                <div key={i} className="text-center py-1 sm:py-2 bg-gray-50 rounded sm:rounded-lg">{d}</div>
+                <div
+                  key={i}
+                  className="text-center py-1 sm:py-2 rounded sm:rounded-lg"
+                  style={{
+                    background: i === 6 ? theme.redBg : theme.subtleBg,
+                    color: i === 6 ? theme.redText : theme.textSecondary
+                  }}
+                >{d}</div>
               ))}
             </div>
             {(() => {
@@ -573,10 +614,15 @@ export default function TeacherDashboard() {
               return (
                 <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2">
                   {days.map((d, idx) => {
-                    if (!d) return <div key={idx} className="h-12 sm:h-16 md:h-24 rounded-lg md:rounded-xl border border-gray-100 bg-gray-50/50" />
+                    if (!d) return <div key={idx} className="h-12 sm:h-16 md:h-24 rounded-lg md:rounded-xl" style={{ border: `1px solid ${theme.border}`, background: theme.cardBgAlt }} />
                     const key = toKey(d)
+                    const todayKey = toKey(new Date())
+                    const isToday = key === todayKey
+                    const isSunday = d.getDay() === 0
                     const info = calData[key]
                     const gEvents = googleEvents[key] || []
+                    const isHolidayDay = gEvents.some(e => e.isHoliday)
+                    const isRedDay = isSunday || isHolidayDay
                     const total = info?.total || 0
                     const hasGoogleEvents = gEvents.length > 0
                     const top = (info?.perClass || []).slice().sort((a,b)=> b.count - a.count).slice(0,2)
@@ -584,21 +630,64 @@ export default function TeacherDashboard() {
                     return (
                       <button
                         key={idx}
-                        className={`h-12 sm:h-16 md:h-24 rounded-lg md:rounded-xl border p-1 sm:p-1.5 md:p-2 text-left hover:bg-sky-50 hover:border-sky-200 transition-all ${(total>0 || hasGoogleEvents) ? 'bg-white border-gray-200' : 'bg-gray-50/50 border-gray-100'}`}
+                        className={`h-12 sm:h-16 md:h-24 rounded-lg border p-1 sm:p-1.5 md:p-2 text-left transition-all`}
+                        style={{
+                          background: isRedDay && !isToday ? theme.redBg : (isToday || total > 0 || hasGoogleEvents) ? theme.cardBg : theme.cardBgAlt,
+                          borderColor: isToday ? theme.todayBg : isRedDay ? theme.redText + '55' : theme.border,
+                          borderWidth: isToday ? '1.5px' : '1px'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = theme.subtleBg
+                          if (!isToday) e.currentTarget.style.borderColor = isRedDay ? theme.redText + '88' : theme.borderHover
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = isRedDay && !isToday ? theme.redBg : (isToday || total > 0 || hasGoogleEvents) ? theme.cardBg : theme.cardBgAlt
+                          e.currentTarget.style.borderColor = isToday ? theme.todayBg : isRedDay ? theme.redText + '55' : theme.border
+                        }}
                         onClick={() => setDayDetail({ open: true, date: key, rows: (info?.perClass || []).slice().sort((a,b)=> b.count - a.count), googleEvents: gEvents })}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="text-[10px] sm:text-xs font-semibold text-gray-700">{d.getDate()}</div>
+                          {isToday ? (
+                            <span
+                              className="inline-flex items-center justify-center text-[10px] font-semibold"
+                              style={{ background: theme.todayBg, color: theme.todayText, borderRadius: '4px', minWidth: '18px', height: '18px', padding: '0 3px' }}
+                            >
+                              {d.getDate()}
+                            </span>
+                          ) : isRedDay ? (
+                            <span className="text-[10px] sm:text-xs font-semibold" style={{ color: theme.redText }}>{d.getDate()}</span>
+                          ) : (
+                            <span className="text-[10px] sm:text-xs font-semibold" style={{ color: theme.textBody }}>{d.getDate()}</span>
+                          )}
                           <div className="flex gap-0.5">
-                            {hasGoogleEvents && <span className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-medium">{gEvents.length}</span>}
-                            {total>0 && <span className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-medium">{total}</span>}
+                          {hasGoogleEvents && (
+                            <span
+                              className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full font-medium"
+                              style={{ background: theme.redBg, color: theme.redText }}
+                            >
+                              {gEvents.length}
+                            </span>
+                          )}
+                          {total > 0 && (
+                            <span
+                              className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full font-medium"
+                              style={{ background: theme.blueBg, color: theme.blueText }}
+                            >
+                              {total}
+                            </span>
+                          )}
                           </div>
                         </div>
                         <div className="hidden sm:block mt-1 space-y-0.5 md:space-y-1">
                           {gEvents.slice(0, 1).map((ev, i) => (
                             <div key={`g-${i}`} className="text-[8px] md:text-[10px] truncate">
-                              <span className="px-0.5 md:px-1 py-0.5 rounded mr-0.5 md:mr-1 bg-red-100 text-red-700">G</span>
-                              <span className="text-red-700 hidden md:inline">{ev.title}</span>
+                                <span
+                                  className="px-0.5 md:px-1 py-0.5 rounded mr-0.5 md:mr-1"
+                                  style={{ background: theme.redBg, color: theme.redText }}
+                                >
+                                  G
+                                </span>
+                                <span className="hidden md:inline" style={{ color: theme.redText }}>{ev.title}</span>
                             </div>
                           ))}
                           {top.slice(0, gEvents.length > 0 ? 1 : 2).map(c => (
@@ -608,7 +697,7 @@ export default function TeacherDashboard() {
                             </div>
                           ))}
                           {(more>0 || gEvents.length > 1) && (
-                            <div className="text-[8px] md:text-[10px] text-gray-500 hidden md:block">+{more + Math.max(0, gEvents.length - 1)} lainnya</div>
+                            <div className="text-[8px] md:text-[10px] hidden md:block" style={{ color: theme.textSecondary }}>+{more + Math.max(0, gEvents.length - 1)} lainnya</div>
                           )}
                         </div>
                       </button>
@@ -627,52 +716,62 @@ export default function TeacherDashboard() {
         onClose={() => setDayDetail({ open: false, date: '', rows: [], googleEvents: [] })}
         title={`Detail ${dayDetail.date}`}
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
           {dayDetail.googleEvents && dayDetail.googleEvents.length > 0 && (
             <div>
-              <div className="text-xs font-semibold text-red-600 mb-2 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+              <p className="text-[11px] font-medium mb-2" style={{ color: theme.redText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>
                 Google Calendar
-              </div>
-              <div className="space-y-2">
+              </p>
+              <div className="space-y-1.5">
                 {dayDetail.googleEvents.map((ev, i) => (
-                  <div key={`g-${i}`} className="p-2 bg-red-50 rounded-lg border border-red-200">
-                    <div className="font-medium text-sm text-red-800">{ev.title}</div>
-                    <div className="text-xs text-red-600 mt-1">
-                      {ev.isAllDay ? 'Sepanjang hari' : `${ev.start?.split('T')[1]?.slice(0,5) || ''} - ${ev.end?.split('T')[1]?.slice(0,5) || ''}`}
+                  <div key={`g-${i}`} className="px-3 py-2.5 text-sm" style={{ background: theme.redBg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
+                    <div className="font-medium" style={{ color: theme.redText }}>{ev.title}</div>
+                    <div className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+                      {ev.isAllDay ? 'Sepanjang hari' : `${ev.start?.split('T')[1]?.slice(0,5) || ''} \u2013 ${ev.end?.split('T')[1]?.slice(0,5) || ''}`}
                     </div>
-                    {ev.location && <div className="text-xs text-gray-500 mt-1">📍 {ev.location}</div>}
+                    {ev.location && (
+                      <div className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>{ev.location}</div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           )}
-          
+
           {dayDetail.rows && dayDetail.rows.length > 0 && (
             <div>
-              <div className="text-xs font-semibold text-sky-600 mb-2 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+              <p className="text-[11px] font-medium mb-2" style={{ color: theme.blueText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>
                 Penilaian
-              </div>
-              <div className="space-y-2">
+              </p>
+              <div className="space-y-1.5">
                 {dayDetail.rows.map(r => (
-                  <div key={r.detail_kelas_id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-lg">
-                    <div className={`${colorToText(r.color)}`}>{r.kelas_nama}{r.subject_code ? ` (${r.subject_code})` : ''}</div>
-                    <div className={`px-2 py-0.5 rounded text-xs ${colorToChip(r.color)}`}>{r.count}</div>
+                  <div
+                    key={r.detail_kelas_id}
+                    className="flex items-center justify-between text-sm px-3 py-2"
+                    style={{ background: theme.cardBgAlt, borderRadius: '6px', border: `1px solid ${theme.border}` }}
+                  >
+                    <span style={{ color: theme.textPrimary }}>
+                      {r.kelas_nama}{r.subject_code ? ` \u2013 ${r.subject_code}` : ''}
+                    </span>
+                    <span
+                      className="text-xs font-medium px-2 py-0.5"
+                      style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '9999px' }}
+                    >
+                      {r.count}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-          
-          {(!dayDetail.googleEvents || dayDetail.googleEvents.length === 0) && (!dayDetail.rows || dayDetail.rows.length === 0) && (
-            <div className="text-sm text-gray-500">Tidak ada event</div>
+
+          {(!dayDetail.googleEvents || dayDetail.googleEvents.length === 0) &&
+           (!dayDetail.rows || dayDetail.rows.length === 0) && (
+            <p className="text-sm" style={{ color: theme.textSecondary }}>Tidak ada event.</p>
           )}
         </div>
       </Modal>
 
-      {/* Academic Integrity Chatbot */}
-      <AcademicIntegrityChatbot />
     </div>
   )
 }

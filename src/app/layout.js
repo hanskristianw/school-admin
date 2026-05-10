@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/providers";
+import ThemedNavbar from "@/components/ThemedNavbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,22 +25,18 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Blocking script: apply dark-theme class before React hydrates to prevent flash */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem('ui_theme')==='dark')document.documentElement.classList.add('dark-theme')}catch(e){}` }} />
+      </head>
       <body className="antialiased overflow-hidden">
         <Providers>
           <div className="flex h-screen flex-col">
-            {/* Global language switcher bar */}
-            <div className="shrink-0 z-50 bg-white/70 backdrop-blur border-b">
-              <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-end">
-                {/* Render LanguageSwitcher here */}
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">Language:</span>
-                  <div id="global-language-switcher" />
-                </div>
-              </div>
-            </div>
+            {/* Global navbar with theme support */}
+            <ThemedNavbar />
             {/* Content area fills the remaining height */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-hidden">
               {children}
             </div>
           </div>
