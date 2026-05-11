@@ -7704,12 +7704,14 @@ Return ONLY this JSON:
                     onClick={async () => {
                       const refinePrompt = `You are editing a report card comment. Rewrite the comment below following these rules:
 - Keep it factual and specific — what the student actually does
-- Remove all strong or inflated adjectives ("exceptional", "outstanding", "brilliant", "phenomenal", "remarkable", "incredible", "amazing")
+- Remove all inflated adjectives ("exceptional", "outstanding", "brilliant", "phenomenal", "remarkable", "incredible", "amazing")
+- Remove vague, unmeasurable trait words that cannot be observed or verified ("strong", "capable", "talented", "gifted", "natural", "smart", "intelligent") — replace them with the specific behaviour or action that shows that quality instead
 - Remove flowery phrases ("shines brightly", "remarkable journey", "truly inspiring")
 - Use plain, direct language that parents and students can easily understand
 - Keep the same structure: two strengths + one growth area
 - Stay under 600 characters
 - Keep the student's first name
+- Write in English only regardless of the original language
 - Return ONLY the rewritten comment text, nothing else
 
 Original comment:
@@ -7802,26 +7804,26 @@ ${commentAiResult}`
                 onClick={async () => {
                   setRefineLoading(true)
                   setRefineError('')
-                  const prompt = `You are reviewing a report card comment written by a teacher. Your job is to improve it while keeping the same language and tone as the original.
-
-IMPORTANT: Detect the language of the comment (Indonesian, English, Chinese, or other) and write ALL output — including the "reason" field — in that same language. Do not switch languages.
+                  const prompt = `You are reviewing a report card comment written by a teacher. Your job is to improve it.
 
 Rules for a good comment:
 - Factual and specific — describes what the student actually does
 - No inflated adjectives: "exceptional", "outstanding", "brilliant", "phenomenal", "remarkable", "incredible", "amazing"
+- No vague, unmeasurable trait words ("strong", "capable", "talented", "gifted", "natural", "smart", "intelligent") — replace with the specific observable behaviour that demonstrates that quality
 - No flowery phrases: "shines brightly", "remarkable journey", "truly inspiring", "goes above and beyond"
 - Plain, direct language that parents and students can easily understand
 - Max 600 characters
-- Must stay in the same language as the original comment
+- Write in English only regardless of the original language of the comment
 
 If the comment already meets all the rules above, return:
-{"no_change": true, "reason": "Brief explanation (in the same language as the comment) of why it is already good enough."}
+{"no_change": true, "reason": "Brief explanation in English of why it is already good enough."}
 
 If the comment needs improvement, rewrite it and return:
-{"no_change": false, "reason": "Brief explanation (in the same language as the comment) of what was changed and why.", "refined": "The improved comment text in the same language as the original, max 600 chars."}
+{"no_change": false, "reason": "Brief explanation in English of what was changed and why.", "refined": "The improved comment text in English, max 600 chars."}
 
 Comment to review:
 ${refineOriginal}`
+                  console.log('[Refine Modal] Prompt sent to Gemini:\n', prompt)
                   try {
                     const res = await fetch('/api/gemini', {
                       method: 'POST',
@@ -7831,6 +7833,7 @@ ${refineOriginal}`
                     const data = await res.json()
                     if (!res.ok || data.error) throw new Error(data.error || 'Refine failed')
                     const raw = data.text?.trim() || ''
+                    console.log('[Refine Modal] Raw response:', raw)
                     let parsed = null
                     try {
                       const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/```\s*([\s\S]*?)\s*```/) || raw.match(/\{[\s\S]*\}/)
@@ -7839,9 +7842,12 @@ ${refineOriginal}`
                       parsed = { no_change: false, reason: 'AI returned an unexpected response.', refined: raw.slice(0, 600) }
                     }
                     if (parsed.no_change) {
-                      setRefineResult({ no_change: true, reason: parsed.reason || 'Komentar sudah cukup bagus.' })
+                      console.log('[Refine Modal] Result: no_change=true, reason:', parsed.reason)
+                      setRefineResult({ no_change: true, reason: parsed.reason || 'Comment is already good.' })
                     } else {
-                      setRefineResult({ no_change: false, reason: parsed.reason || '', refined: (parsed.refined || raw).slice(0, 600) })
+                      const refinedText = (parsed.refined || raw).slice(0, 600)
+                      console.log('[Refine Modal] Result: no_change=false, refined:', refinedText)
+                      setRefineResult({ no_change: false, reason: parsed.reason || '', refined: refinedText })
                     }
                   } catch (err) {
                     setRefineError(err.message)
