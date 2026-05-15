@@ -1293,7 +1293,7 @@ const buildStudentReportPDF = async ({
   unitSignaturePrincipalUrl, unitStampUrl,
   logoBase64, reportRows, iconCache, iconBySubjectId,
   criteriaNameCache, descriptorCache, mentorComment,
-  semester1Rows
+  semester1Rows, healthData, nurseName, nurseSignatureUrl
 }) => {
 // async: needed for fetching signature images inside progression page
 const doc = new jsPDF('portrait', 'mm', 'a4');
@@ -2584,6 +2584,211 @@ if (semester === '2') {
 
 
 
+
+// ── HEALTH REPORT CARD PAGE ───────────────────────────────────────────────
+if (healthData) {
+  doc.addPage();
+
+  if (logoBase64) {
+    try {
+      const wmH = 80;
+      const wmProps = doc.getImageProperties(logoBase64);
+      const wmW = (wmProps.width / wmProps.height) * wmH;
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({ opacity: 0.07 }));
+      doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH);
+      doc.restoreGraphicsState();
+    } catch (e) {}
+  }
+
+  let hy = mt;
+
+  let hLogoW = 0;
+  if (logoBase64) {
+    try {
+      const logoH = 26;
+      const imgP = doc.getImageProperties(logoBase64);
+      hLogoW = (imgP.width / imgP.height) * logoH;
+      doc.addImage(logoBase64, 'PNG', ml, hy, hLogoW, logoH);
+    } catch (e) {}
+  }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(17, 24, 39);
+  doc.text('HEALTH REPORT CARD', pw / 2, hy + 12, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(107, 114, 128);
+  doc.text('Chung Chung Christian School', pw / 2, hy + 19, { align: 'center' });
+  hy += 30;
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.4);
+  doc.line(ml, hy, pw - mr, hy);
+  hy += 4;
+
+  autoTable(doc, {
+    startY: hy,
+    body: [
+      ['Name:', studentName.toUpperCase()],
+      ['DOB:', studentDOB],
+      ['Class:', kelasName + ' - ' + yearName + ' ' + semesterLabel],
+      ['Allergy:', healthData.allergy || '-'],
+    ],
+    theme: 'plain',
+    styles: { fontSize: 9, cellPadding: { top: 2, right: 3, bottom: 2, left: 3 }, lineColor: [209, 213, 219], lineWidth: 0.3, textColor: [31, 41, 55] },
+    columnStyles: { 0: { cellWidth: 28, fontStyle: 'bold', textColor: [107, 114, 128] }, 1: { cellWidth: 'auto' } },
+    margin: { left: ml, right: mr },
+  });
+  hy = doc.lastAutoTable.finalY + 5;
+
+  const hHalfW = (cw - 4) / 2;
+  const H_BLUE = [37, 99, 235];
+  const H_HEAD_BG = [219, 234, 254];
+  const H_HEAD_TX = [30, 64, 175];
+
+  const drawHdr = (x, y, w, label) => {
+    doc.setFillColor(...H_BLUE);
+    doc.rect(x, y, w, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.text(label, x + w / 2, y + 4.8, { align: 'center' });
+  };
+
+  drawHdr(ml, hy, hHalfW, 'PHYSICAL CHECK');
+  drawHdr(ml + hHalfW + 4, hy, hHalfW, 'GROWTH DEVELOPMENT');
+  hy += 7;
+
+  autoTable(doc, {
+    startY: hy,
+    head: [['MONTH', 'EAR', 'HAIR', 'NAILS']],
+    body: healthData.physicalChecks.length > 0 ? healthData.physicalChecks.map(r => [r.month||'', r.ear||'', r.hair||'', r.nails||'']) : [['','','','']],
+    theme: 'grid',
+    styles: { fontSize: 7.5, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
+    headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 7 },
+    tableWidth: hHalfW,
+    margin: { left: ml, right: pw - ml - hHalfW },
+  });
+  const hPcY = doc.lastAutoTable.finalY;
+
+  autoTable(doc, {
+    startY: hy,
+    head: [['MONTH', 'HEIGHT (cm)', 'WEIGHT (kg)']],
+    body: healthData.growthRecords.length > 0 ? healthData.growthRecords.map(r => [r.month||'', r.height!=null?r.height:'', r.weight!=null?r.weight:'']) : [['','','']],
+    theme: 'grid',
+    styles: { fontSize: 7.5, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
+    headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 7 },
+    tableWidth: hHalfW,
+    margin: { left: ml + hHalfW + 4, right: mr },
+  });
+  hy = Math.max(hPcY, doc.lastAutoTable.finalY) + 5;
+
+  drawHdr(ml, hy, cw, 'IMMUNIZATION');
+  hy += 7;
+  autoTable(doc, {
+    startY: hy,
+    head: [['TYPE', 'DATE']],
+    body: healthData.immunizations.length > 0 ? healthData.immunizations.map(r => [r.type||'', r.date ? new Date(r.date).toLocaleDateString('en-GB') : '']) : [['','']],
+    theme: 'grid',
+    styles: { fontSize: 7.5, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3 },
+    headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 7 },
+    columnStyles: { 0: { cellWidth: cw * 0.65 }, 1: { cellWidth: cw * 0.35 } },
+    margin: { left: ml, right: mr },
+  });
+  hy = doc.lastAutoTable.finalY + 5;
+
+  drawHdr(ml, hy, cw, 'HEALTH RECORD');
+  hy += 7;
+  autoTable(doc, {
+    startY: hy,
+    head: [['MONTH', 'DATE', 'CHRONOLOGY', 'TREATMENT']],
+    body: healthData.healthRecords.length > 0 ? healthData.healthRecords.map(r => [r.month||'', r.date_day!=null?r.date_day:'', r.chronology||'', r.treatment||'']) : [['','','','']],
+    theme: 'grid',
+    styles: { fontSize: 7.5, cellPadding: 2, textColor: [31,41,55], lineColor: [209,213,219], lineWidth: 0.3, overflow: 'linebreak' },
+    headStyles: { fillColor: H_HEAD_BG, textColor: H_HEAD_TX, fontStyle: 'bold', fontSize: 7 },
+    columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 14 }, 2: { cellWidth: 'auto' }, 3: { cellWidth: 44 } },
+    margin: { left: ml, right: mr },
+  });
+  hy = doc.lastAutoTable.finalY + 5;
+
+  // ── Notes (left) + Signature (right) side by side ──────────────────────
+  const hRepDate = unitReportDate
+    ? new Date(unitReportDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const notesColW = cw * 0.57;
+  const sigColW   = cw * 0.38;
+  const sigColX   = ml + cw - sigColW;
+  const hSigCX    = sigColX + sigColW / 2;
+
+  // Estimate section height based on notes content
+  const notesTextW = notesColW - 10;
+  const notesLines = healthData.notes
+    ? doc.splitTextToSize(healthData.notes.toUpperCase(), notesTextW)
+    : [];
+  const sectionH = Math.max(notesLines.length * 5 + 16, 55);
+
+  // LEFT: Notes header + box
+  if (healthData.notes) {
+    drawHdr(ml, hy, notesColW, 'NOTES');
+    const nbY = hy + 7;
+    doc.setFillColor(249, 250, 251);
+    const nbH = sectionH - 7;
+    doc.rect(ml, nbY, notesColW, nbH, 'F');
+    doc.setDrawColor(209, 213, 219);
+    doc.setLineWidth(0.3);
+    doc.rect(ml, nbY, notesColW, nbH);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(31, 41, 55);
+    let ny = nbY + 5;
+    notesLines.forEach(line => { doc.text(line, ml + 5, ny); ny += 5; });
+  }
+
+  // RIGHT: Date + signature + stamp + name
+  const sigStartY = hy;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(17, 24, 39);
+  doc.text('Surabaya, ' + hRepDate, hSigCX, sigStartY + 5, { align: 'center' });
+
+  const sigImgY = sigStartY + 10;
+  if (nurseSignatureUrl) {
+    try {
+      const nSigB64 = await fetchImgBase64(nurseSignatureUrl);
+      if (nSigB64) {
+        const nsH = 18;
+        const nsProp = doc.getImageProperties(nSigB64);
+        const nsW = (nsProp.width / nsProp.height) * nsH;
+        doc.addImage(nSigB64, 'PNG', hSigCX - nsW / 2, sigImgY, nsW, nsH);
+      }
+    } catch (e) {}
+  }
+  if (unitStampUrl) {
+    try {
+      const stB64 = await fetchImgBase64(unitStampUrl);
+      if (stB64) {
+        const stH = 20;
+        const stProp = doc.getImageProperties(stB64);
+        const stW = (stProp.width / stProp.height) * stH;
+        doc.addImage(stB64, 'PNG', hSigCX - stW / 2 + 8, sigImgY, stW, stH);
+      }
+    } catch (e) {}
+  }
+
+  const nameY = sigStartY + sectionH - 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(17, 24, 39);
+  doc.text(nurseName || '....................', hSigCX, nameY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text('(School Nurse)', hSigCX, nameY + 5, { align: 'center' });
+
+  hy += sectionH + 4;
+
+  drawFooter();
+}
   const pdfBlob = doc.output('blob');
   return pdfBlob;
 };
@@ -2719,6 +2924,51 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         .single();
       if (studentUserData?.user_tanggal_lahir) {
         studentDOB = new Date(studentUserData.user_tanggal_lahir).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+    }
+
+    // Fetch health report data
+    let healthData = null;
+    if (studentUserId && reportFilters.year) {
+      const { data: hrCard } = await supabase
+        .from('health_report_card')
+        .select('*')
+        .eq('student_user_id', studentUserId)
+        .eq('year_id', parseInt(reportFilters.year))
+        .eq('semester', parseInt(semester))
+        .maybeSingle();
+      if (hrCard) {
+        const [pc, gd, imm, hr] = await Promise.all([
+          supabase.from('health_physical_check').select('*').eq('health_report_id', hrCard.id).order('id'),
+          supabase.from('health_growth_development').select('*').eq('health_report_id', hrCard.id).order('id'),
+          supabase.from('health_immunization').select('*').eq('health_report_id', hrCard.id).order('id'),
+          supabase.from('health_record').select('*').eq('health_report_id', hrCard.id).order('id'),
+        ]);
+        healthData = {
+          allergy: hrCard.allergy || '',
+          notes: hrCard.notes || '',
+          physicalChecks: pc.data || [],
+          growthRecords: gd.data || [],
+          immunizations: imm.data || [],
+          healthRecords: hr.data || [],
+        };
+      }
+    }
+
+    // Fetch nurse
+    let nurseName = '';
+    let nurseSignatureUrl = null;
+    {
+      const { data: nurseRoles } = await supabase.from('role').select('role_id').eq('is_nurse', true);
+      if (nurseRoles && nurseRoles.length > 0) {
+        const nurseRoleIds = nurseRoles.map(r => r.role_id);
+        const { data: nurseUser } = await supabase
+          .from('users').select('user_nama_depan, user_nama_belakang, signature_url')
+          .in('user_role_id', nurseRoleIds).limit(1).single();
+        if (nurseUser) {
+          nurseName = (nurseUser.user_nama_depan + ' ' + nurseUser.user_nama_belakang).trim();
+          nurseSignatureUrl = nurseUser.signature_url || null;
+        }
       }
     }
 
@@ -2987,7 +3237,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       unitSignaturePrincipalUrl, unitStampUrl,
       logoBase64, reportRows, iconCache, iconBySubjectId,
       criteriaNameCache, descriptorCache, mentorComment,
-      semester1Rows
+      semester1Rows, healthData, nurseName, nurseSignatureUrl
     });
     const pdfUrl = URL.createObjectURL(pdfBlob);
     window.open(pdfUrl, '_blank');
@@ -3234,6 +3484,23 @@ export const generateClassReportZIP = async ({
       }
     }
 
+    // Fetch nurse (once for all students)
+    let batchNurseName = '';
+    let batchNurseSignatureUrl = null;
+    {
+      const { data: nurseRoles } = await supabase.from('role').select('role_id').eq('is_nurse', true);
+      if (nurseRoles && nurseRoles.length > 0) {
+        const nurseRoleIds = nurseRoles.map(r => r.role_id);
+        const { data: nurseUser } = await supabase
+          .from('users').select('user_nama_depan, user_nama_belakang, signature_url')
+          .in('user_role_id', nurseRoleIds).limit(1).single();
+        if (nurseUser) {
+          batchNurseName = (nurseUser.user_nama_depan + ' ' + nurseUser.user_nama_belakang).trim();
+          batchNurseSignatureUrl = nurseUser.signature_url || null;
+        }
+      }
+    }
+
     // ── PHASE 2: Generate PDF per student ───────────────────────────────
 
     const zip = new JSZip();
@@ -3333,6 +3600,24 @@ export const generateClassReportZIP = async ({
       const studentDOB = rawDob
         ? new Date(rawDob).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
         : '-';
+      // Fetch health report card per student
+      let healthData = null;
+      if (studentUserId && reportFilters.year) {
+        const { data: hrCard } = await supabase
+          .from('health_report_card').select('*')
+          .eq('student_user_id', studentUserId)
+          .eq('year_id', parseInt(reportFilters.year))
+          .eq('semester', semesterInt).maybeSingle();
+        if (hrCard) {
+          const [pc, gd, imm, hr] = await Promise.all([
+            supabase.from('health_physical_check').select('*').eq('health_report_id', hrCard.id).order('id'),
+            supabase.from('health_growth_development').select('*').eq('health_report_id', hrCard.id).order('id'),
+            supabase.from('health_immunization').select('*').eq('health_report_id', hrCard.id).order('id'),
+            supabase.from('health_record').select('*').eq('health_report_id', hrCard.id).order('id'),
+          ]);
+          healthData = { allergy: hrCard.allergy||'', notes: hrCard.notes||'', physicalChecks: pc.data||[], growthRecords: gd.data||[], immunizations: imm.data||[], healthRecords: hr.data||[] };
+        }
+      }
 
       // ─── Fetch Semester 1 grades for Progression page (Semester 2 only) ──
       let semester1Rows = [];
@@ -3402,7 +3687,7 @@ export const generateClassReportZIP = async ({
         unitSignaturePrincipalUrl, unitStampUrl,
         logoBase64, reportRows, iconCache, iconBySubjectId,
         criteriaNameCache, descriptorCache, mentorComment,
-        semester1Rows
+        semester1Rows, healthData, nurseName: batchNurseName, nurseSignatureUrl: batchNurseSignatureUrl
       });
 
       const safeName = studentName.replace(/[^a-zA-Z0-9\s\-]/g, '').trim();

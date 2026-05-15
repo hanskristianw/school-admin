@@ -28,6 +28,7 @@ export default function RoleManagementPage() {
     is_student: false,
     is_counselor: false,
     is_curriculum: false,
+    is_nurse: false,
     can_void_transactions: false
   })
 
@@ -55,7 +56,7 @@ export default function RoleManagementPage() {
         // Fetch roles with dashboard_type info
         const { data, error } = await supabase
           .from('role')
-          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, can_void_transactions')
+          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions')
           .order('role_priority', { ascending: false })
           .order('role_name')
         if (error) throw new Error(error.message)
@@ -74,7 +75,7 @@ export default function RoleManagementPage() {
   }, [roles, search])
 
   const openNew = () => {
-    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, is_curriculum: false, can_void_transactions: false })
+    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, is_curriculum: false, is_nurse: false, can_void_transactions: false })
     setShowEdit(true)
   }
   const openEdit = (r) => {
@@ -89,6 +90,7 @@ export default function RoleManagementPage() {
       is_student: !!r.is_student,
       is_counselor: !!r.is_counselor,
       is_curriculum: !!r.is_curriculum,
+      is_nurse: !!r.is_nurse,
       can_void_transactions: !!r.can_void_transactions
     })
     setShowEdit(true)
@@ -116,6 +118,7 @@ export default function RoleManagementPage() {
         is_student: !!form.is_student,
         is_counselor: !!form.is_counselor,
         is_curriculum: !!form.is_curriculum,
+        is_nurse: !!form.is_nurse,
         can_void_transactions: !!form.can_void_transactions
       }
       if (form.role_id) {
@@ -125,7 +128,7 @@ export default function RoleManagementPage() {
         const { error } = await supabase.from('role').insert([payload])
         if (error) throw new Error(error.message)
       }
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, can_void_transactions').order('role_priority', { ascending: false }).order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions').order('role_priority', { ascending: false }).order('role_name')
       if (rErr) throw new Error(rErr.message)
       setRoles(data || [])
       setShowEdit(false)
@@ -219,7 +222,8 @@ export default function RoleManagementPage() {
                           {r.is_principal && <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">Principal</span>}
                           {r.is_student && <span className="px-2 py-0.5 rounded bg-green-100 text-green-800">Student</span>}
                           {r.is_counselor && <span className="px-2 py-0.5 rounded bg-pink-100 text-pink-800">Counselor</span>}
-                          {!r.is_admin && !r.is_curriculum && !r.is_teacher && !r.is_principal && !r.is_student && !r.is_counselor && (
+                          {r.is_nurse && <span className="px-2 py-0.5 rounded bg-red-100 text-red-700">Nurse</span>}
+                          {!r.is_admin && !r.is_curriculum && !r.is_teacher && !r.is_principal && !r.is_student && !r.is_counselor && !r.is_nurse && (
                             <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">Staff</span>
                           )}
                         </div>
@@ -285,6 +289,7 @@ export default function RoleManagementPage() {
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_student} onChange={e=>setForm(p=>({...p,is_student:e.target.checked}))} />Student</label>
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_counselor} onChange={e=>setForm(p=>({...p,is_counselor:e.target.checked}))} />Counselor</label>
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_curriculum} onChange={e=>setForm(p=>({...p,is_curriculum:e.target.checked}))} /><span className="text-teal-700 font-medium">Curriculum</span></label>
+            <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_nurse} onChange={e=>setForm(p=>({...p,is_nurse:e.target.checked}))} /><span className="text-red-700 font-medium">Nurse</span></label>
           </div>
           <div className="border-t pt-3">
             <Label className="text-sm font-medium mb-2 block">Permissions</Label>

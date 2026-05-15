@@ -42,7 +42,11 @@ import {
   faLightbulb,
   faHashtag,
   faCalculator,
-  faLayerGroup
+  faLayerGroup,
+  faNotesMedical,
+  faHeartPulse,
+  faStethoscope,
+  faFileMedical
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -87,6 +91,10 @@ const iconMap = {
   , 'fas fa-boxes-stacked': require('@fortawesome/free-solid-svg-icons').faBoxesStacked
   , 'fas fa-calculator': faCalculator
   , 'fas fa-layer-group': faLayerGroup
+  , 'fas fa-notes-medical': faNotesMedical
+  , 'fas fa-heart-pulse': faHeartPulse
+  , 'fas fa-stethoscope': faStethoscope
+  , 'fas fa-file-medical': faFileMedical
   ,
   // Alias: dukung format nama icon 'faXxx' supaya lebih toleran
   'faTachometerAlt': faTachometerAlt,
@@ -128,6 +136,10 @@ const iconMap = {
   , 'faBoxesStacked': require('@fortawesome/free-solid-svg-icons').faBoxesStacked
   , 'faCalculator': faCalculator
   , 'faLayerGroup': faLayerGroup
+  , 'faNotesMedical': faNotesMedical
+  , 'faHeartPulse': faHeartPulse
+  , 'faStethoscope': faStethoscope
+  , 'faFileMedical': faFileMedical
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

@@ -65,7 +65,7 @@ export default function UserManagement() {
     unit: ''
   });
 
-  // ── Column visibility ──────────────────────────────────────────────
+  // â”€â”€ Column visibility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const ALL_COLUMNS = [
     { key: 'id',            label: 'ID' },
     { key: 'nama',          label: 'Nama Lengkap' },
@@ -109,7 +109,7 @@ export default function UserManagement() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showColumnSelector]);
 
-  // ── Date helpers: DD/MM/YYYY ↔ ISO YYYY-MM-DD ─────────────────────
+  // â”€â”€ Date helpers: DD/MM/YYYY â†” ISO YYYY-MM-DD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const toDisplayDate = (iso) => {
     if (!iso) return '';
     const [y, m, d] = iso.split('-');
@@ -752,7 +752,7 @@ export default function UserManagement() {
 
       let result;
       const baseData = { ...submitData };
-      // Convert tanggal_lahir DD/MM/YYYY → ISO YYYY-MM-DD before saving
+      // Convert tanggal_lahir DD/MM/YYYY â†’ ISO YYYY-MM-DD before saving
       if (baseData.user_tanggal_lahir) {
         baseData.user_tanggal_lahir = toIsoDate(baseData.user_tanggal_lahir) || null;
       } else {
@@ -1019,6 +1019,7 @@ export default function UserManagement() {
               <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>Format: DD/MM/YYYY</p>
             </div>
 
+
             <div>
               <Label htmlFor="user_manual_picture" style={{ color: theme.textBody }}>Profile Picture (Opsional)</Label>
               <Input
@@ -1149,7 +1150,7 @@ export default function UserManagement() {
               />
               {signatureBlob && (
                 <p className="text-xs text-amber-600 mt-1">
-                  ⚠ Tanda tangan baru belum tersimpan. Klik &quot;Update User&quot; / &quot;Create User&quot; untuk menyimpan.
+                  âš  Tanda tangan baru belum tersimpan. Klik &quot;Update User&quot; / &quot;Create User&quot; untuk menyimpan.
                 </p>
               )}
             </div>
@@ -1215,13 +1216,13 @@ export default function UserManagement() {
               Your CSV should have these columns (case-insensitive). Use comma (,) or semicolon (;) as separator:
             </p>
             <ul className="text-xs space-y-1" style={{ color: theme.blueText }}>
-              <li>• <strong>nama_depan</strong> or <strong>first_name</strong> (required)</li>
-              <li>• <strong>nama_belakang</strong> or <strong>last_name</strong> (required)</li>
-              <li>• <strong>username</strong> (required, must be unique)</li>
-              <li>• <strong>email</strong> (required, must be @ccs.sch.id domain for Google OAuth)</li>
-              <li>• <strong>role</strong> (required, available: {roles.map(r => r.role_name).join(', ') || 'Loading...'})</li>
-              <li>• <strong>unit</strong> (optional, available: {units.map(u => u.unit_name).join(', ') || 'Loading...'})</li>
-              <li>• <strong>status</strong> (optional: active/inactive, default: active)</li>
+              <li>â€¢ <strong>nama_depan</strong> or <strong>first_name</strong> (required)</li>
+              <li>â€¢ <strong>nama_belakang</strong> or <strong>last_name</strong> (required)</li>
+              <li>â€¢ <strong>username</strong> (required, must be unique)</li>
+              <li>â€¢ <strong>email</strong> (required, must be @ccs.sch.id domain for Google OAuth)</li>
+              <li>â€¢ <strong>role</strong> (required, available: {roles.map(r => r.role_name).join(', ') || 'Loading...'})</li>
+              <li>â€¢ <strong>unit</strong> (optional, available: {units.map(u => u.unit_name).join(', ') || 'Loading...'})</li>
+              <li>â€¢ <strong>status</strong> (optional: active/inactive, default: active)</li>
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button 
@@ -1468,19 +1469,19 @@ export default function UserManagement() {
               {filters.role && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.blueBg, color: theme.blueText }}>
                   Role: {filters.role}
-                  <button onClick={() => handleFilterChange('role', '')} className="ml-1" style={{ color: theme.blueText }}>×</button>
+                  <button onClick={() => handleFilterChange('role', '')} className="ml-1" style={{ color: theme.blueText }}>Ã—</button>
                 </span>
               )}
               {filters.unit && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
                   Unit: {filters.unit}
-                  <button onClick={() => handleFilterChange('unit', '')} className="ml-1" style={{ color: theme.textSecondary }}>×</button>
+                  <button onClick={() => handleFilterChange('unit', '')} className="ml-1" style={{ color: theme.textSecondary }}>Ã—</button>
                 </span>
               )}
               {filters.status && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.greenBg, color: theme.greenText }}>
                   Status: {filters.status === 'active' ? 'Active' : 'Inactive'}
-                  <button onClick={() => handleFilterChange('status', '')} className="ml-1" style={{ color: theme.greenText }}>×</button>
+                  <button onClick={() => handleFilterChange('status', '')} className="ml-1" style={{ color: theme.greenText }}>Ã—</button>
                 </span>
               )}
             </div>
@@ -1498,7 +1499,7 @@ export default function UserManagement() {
                 <span className="text-sm font-normal ml-2" style={{ color: theme.textSecondary }}>(filtered)</span>
               )}
             </CardTitle>
-            {/* Column selector — desktop only */}
+            {/* Column selector â€” desktop only */}
             <div className="relative hidden md:block" ref={columnSelectorRef}>
               <button
                 onClick={() => setShowColumnSelector(v => !v)}
@@ -1623,6 +1624,7 @@ export default function UserManagement() {
                       {visibleColumns.has('nama') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_nama_depan} {user.user_nama_belakang}</td>}
                       {visibleColumns.has('email') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_email || '-'}</td>}
                       {visibleColumns.has('tanggal_lahir') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_tanggal_lahir ? toDisplayDate(user.user_tanggal_lahir) : '-'}</td>}
+
                       {visibleColumns.has('role') && (
                         <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
                           <span className="px-2 py-1 rounded text-xs" style={user.is_admin ? { background: theme.redBg, color: theme.redText } : { background: theme.blueBg, color: theme.blueText }}>
