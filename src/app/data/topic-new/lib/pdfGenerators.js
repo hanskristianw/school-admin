@@ -2776,7 +2776,8 @@ if (healthData) {
     } catch (e) {}
   }
 
-  const nameY = sigStartY + sectionH - 10;
+  // Place name just below the stamp (sigImgY + stamp height 20 + 4mm gap)
+  const nameY = sigImgY + 20 + 4;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(17, 24, 39);
