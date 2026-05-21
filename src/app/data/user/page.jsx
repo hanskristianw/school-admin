@@ -699,27 +699,17 @@ export default function UserManagement() {
     return Object.keys(errors).length === 0;
   };
 
-  // Upload signature blob via native fetch (bypasses JS client header issues)
+  // Upload signature blob using Supabase storage client (auth handled automatically)
   const uploadSignature = async (userId, blob) => {
     const path = `user-signatures/${userId}/signature.png`;
-    const tok = typeof window !== 'undefined' ? localStorage.getItem('app_jwt') : null;
-    const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const res = await fetch(`${supabaseUrl}/storage/v1/object/report-assets/${path}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': tok ? `Bearer ${tok}` : `Bearer ${supabaseAnon}`,
-        'apikey': supabaseAnon,
-        'Content-Type': 'image/png',
-        'x-upsert': 'true',
-      },
-      body: blob,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `Upload signature failed (${res.status})`);
-    }
-    return `${supabaseUrl}/storage/v1/object/public/report-assets/${path}?t=${Date.now()}`;
+    const { error: uploadError } = await supabase.storage
+      .from('report-assets')
+      .upload(path, blob, { contentType: 'image/png', upsert: true });
+    if (uploadError) throw uploadError;
+    const { data: publicUrlData } = supabase.storage
+      .from('report-assets')
+      .getPublicUrl(path);
+    return `${publicUrlData.publicUrl}?t=${Date.now()}`;
   };
 
   const handleSubmit = async (e) => {
