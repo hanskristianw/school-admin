@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PDF / Document generation utilities for Topic New page.
  * 
  * Extracted from page.jsx to reduce file size.
@@ -2343,13 +2343,43 @@ if (semester === '2') {
     28: 94, 29: 96, 30: 97, 31: 99, 32: 100
   };
 
-  // Helper: get DIKNAS score.
-  // Normalizes raw criteria sum to 4-criteria equivalent so subjects with
-  // fewer graded criteria (e.g. 2 criteria) still map correctly into the table.
+  // ── DIKNAS conversion lookup table (core subjects, 3 criteria, boundary 3–24) ──
+  const CORE_DIKNAS_3 = {
+     3: 60,  4: 62,
+     5: 64,  6: 66,  7: 68,
+     8: 70,  9: 71, 10: 73, 11: 75,
+    12: 77, 13: 79, 14: 81,
+    15: 83, 16: 85, 17: 87,
+    18: 89, 19: 90, 20: 92,
+    21: 94, 22: 96, 23: 98, 24: 100
+  };
+
+  // -- DIKNAS conversion lookup table (core subjects, 2 criteria, boundary 2-16) --
+  const CORE_DIKNAS_2 = {
+     2: 60,
+     3: 63,  4: 66,
+     5: 69,  6: 71,  7: 74,
+     8: 77,  9: 80,
+    10: 83, 11: 86,
+    12: 89, 13: 91,
+    14: 94,
+    15: 97, 16: 100
+  };
+
+  // Helper: get DIKNAS score for core subjects.
+  // Routes to the appropriate lookup table based on numCriteria (2, 3, or 4). Applies to all subjects.
   const getDiknas = (isCore, criteriaTotal, numCriteria) => {
-    if (!isCore || criteriaTotal === null || criteriaTotal === undefined) return '';
+    if (criteriaTotal === null || criteriaTotal === undefined) return '';
+    if (numCriteria === 2) {
+      const clamped = Math.min(16, Math.max(2, Math.round(criteriaTotal)));
+      return CORE_DIKNAS_2[clamped] !== undefined ? String(CORE_DIKNAS_2[clamped]) : '';
+    }
+    if (numCriteria === 3) {
+      const clamped = Math.min(24, Math.max(3, Math.round(criteriaTotal)));
+      return CORE_DIKNAS_3[clamped] !== undefined ? String(CORE_DIKNAS_3[clamped]) : '';
+    }
+    // Default: 4-criteria path — normalize to [4, 32]
     const n = (numCriteria && numCriteria > 0) ? numCriteria : 4;
-    // Scale to 4-criteria equivalent, clamp to valid range [4, 32]
     const normalized = Math.min(32, Math.max(4, Math.round(criteriaTotal * 4 / n)));
     return CORE_DIKNAS[normalized] !== undefined ? String(CORE_DIKNAS[normalized]) : '';
   };
@@ -2368,23 +2398,24 @@ if (semester === '2') {
   }
 
   const progBody = reportRows.map((row, idx) => {
-    // S1 IB score + DIKNAS (conversion only if all 4 criteria were graded in S1)
-    const s1Entry       = s1Map[row.subject_id];
-    const s1Score       = s1Entry?.semester_overview != null ? String(s1Entry.semester_overview) : '-';
-    const s1AllFour     = row.core_subject && (s1Entry?.numCriteria ?? 0) === 4;
-    const s1Diknas      = s1AllFour ? getDiknas(row.core_subject, s1Entry?.criteriaTotal ?? null, 4) : '';
+    // S1 IB score + DIKNAS (conversion for core subjects with 3 or 4 criteria graded)
+    const s1Entry         = s1Map[row.subject_id];
+    const s1Score         = s1Entry?.semester_overview != null ? String(s1Entry.semester_overview) : '-';
+    const s1NumCriteria   = s1Entry?.numCriteria ?? 0;
+    const s1HasConversion = (s1NumCriteria === 4 || s1NumCriteria === 3 || s1NumCriteria === 2);
+    const s1Diknas        = s1HasConversion ? getDiknas(true, s1Entry?.criteriaTotal ?? null, s1NumCriteria) : '';
 
-    // S2 IB score + DIKNAS (conversion only if all 4 criteria are graded in S2)
-    const s2Score       = row.semester_overview != null ? String(row.semester_overview) : '-';
-    const s2Grades      = row.grades || {};
-    const s2Vals        = [s2Grades.A, s2Grades.B, s2Grades.C, s2Grades.D].filter(g => g !== null && g !== undefined);
-    const s2Total       = s2Vals.length > 0 ? s2Vals.reduce((a, b) => a + b, 0) : null;
-    const s2AllFour     = row.core_subject && s2Vals.length === 4;
-    const s2Diknas      = s2AllFour ? getDiknas(row.core_subject, s2Total, 4) : '';
+    // S2 IB score + DIKNAS (conversion for core subjects with 3 or 4 criteria graded)
+    const s2Score         = row.semester_overview != null ? String(row.semester_overview) : '-';
+    const s2Grades        = row.grades || {};
+    const s2Vals          = [s2Grades.A, s2Grades.B, s2Grades.C, s2Grades.D].filter(g => g !== null && g !== undefined);
+    const s2Total         = s2Vals.length > 0 ? s2Vals.reduce((a, b) => a + b, 0) : null;
+    const s2HasConversion = (s2Vals.length === 4 || s2Vals.length === 3 || s2Vals.length === 2);
+    const s2Diknas        = s2HasConversion ? getDiknas(true, s2Total, s2Vals.length) : '';
 
-    // Final Grade: only show when ALL 4 criteria graded in S2
-    const finalScore    = s2AllFour ? s2Score  : '';
-    const finalDiknas   = s2AllFour ? getDiknas(row.core_subject, s2Total, 4) : '';
+    // Final Grade: show when core subject has 3 or 4 criteria graded in S2
+    const finalScore      = s2HasConversion ? s2Score  : '';
+    const finalDiknas     = s2HasConversion ? getDiknas(true, s2Total, s2Vals.length) : '';
 
     return [
       String(idx + 1),
