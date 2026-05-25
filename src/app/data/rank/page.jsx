@@ -125,10 +125,15 @@ export default function RankPage() {
   const [selYear, setSelYear]       = useState('')
   const [selSem, setSelSem]         = useState('')
   const [selKelas, setSelKelas]     = useState('')
-  const [rankData, setRankData]     = useState([])
-  const [subjects, setSubjects]     = useState([])
-  const [loading, setLoading]       = useState(false)
-  const [errorMsg, setErrorMsg]     = useState('')
+  const [rankData, setRankData]         = useState([])
+  const [subjects, setSubjects]         = useState([])
+  const [loading, setLoading]           = useState(false)
+  const [errorMsg, setErrorMsg]         = useState('')
+  const [criteriaData, setCriteriaData]     = useState({})        // per-subject criteria avg for selected class
+  const [classCritDist, setClassCritDist]   = useState(null)      // distribution {A:{1:n,...}, B:...} for selected class
+  const [schoolCriteria, setSchoolCriteria] = useState({})    // school-wide criteria avg
+  const [schoolLoading, setSchoolLoading]   = useState(false)
+  const [schoolLoaded, setSchoolLoaded]     = useState(false)
 
   useEffect(() => {
     supabase.from('year').select('year_id, year_name').order('year_name', { ascending: false })
@@ -141,7 +146,7 @@ export default function RankPage() {
       .then(({ data }) => { setKelasOptions(data || []); setSelKelas('') })
   }, [selYear])
 
-  useEffect(() => { setRankData([]); setSubjects([]); setErrorMsg('') }, [selYear, selSem, selKelas])
+  useEffect(() => { setRankData([]); setSubjects([]); setErrorMsg(''); setCriteriaData({}); setClassCritDist(null); setSchoolCriteria({}); setSchoolLoaded(false) }, [selYear, selSem, selKelas])
 
   const canGenerate = selYear && selSem && selKelas
   const yearName  = years.find(y => String(y.year_id) === String(selYear))?.year_name || ''
@@ -212,11 +217,42 @@ export default function RankPage() {
 
       // 6. Group grades: studentGrades[detail_siswa_id][detail_kelas_id] = [rows]
       const studentGrades = {}
+      const distAcc = { A:{}, B:{}, C:{}, D:{} }
       for (const g of gradeRows) {
         const dkId = assDkMap[g.assessment_id]
         if (!studentGrades[g.detail_siswa_id]) studentGrades[g.detail_siswa_id] = {}
         if (!studentGrades[g.detail_siswa_id][dkId]) studentGrades[g.detail_siswa_id][dkId] = []
         studentGrades[g.detail_siswa_id][dkId].push(g)
+      }
+
+      // 6b. Criteria averages per subject for Stats tab
+      const critMap = {}
+      for (const dk of printable) {
+        const sid = dk.subject.subject_id
+        const dkId = dk.detail_kelas_id
+        const stuMax = {}
+        for (const g of gradeRows) {
+          if (assDkMap[g.assessment_id] !== dkId) continue
+          if (!stuMax[g.detail_siswa_id]) stuMax[g.detail_siswa_id] = { a:[], b:[], c:[], d:[] }
+          if (g.criterion_a_grade !== null) stuMax[g.detail_siswa_id].a.push(g.criterion_a_grade)
+          if (g.criterion_b_grade !== null) stuMax[g.detail_siswa_id].b.push(g.criterion_b_grade)
+          if (g.criterion_c_grade !== null) stuMax[g.detail_siswa_id].c.push(g.criterion_c_grade)
+          if (g.criterion_d_grade !== null) stuMax[g.detail_siswa_id].d.push(g.criterion_d_grade)
+        }
+        const mA=[],mB=[],mC=[],mD=[]
+        for (const v of Object.values(stuMax)) {
+          if (v.a.length) mA.push(Math.max(...v.a))
+          if (v.b.length) mB.push(Math.max(...v.b))
+          if (v.c.length) mC.push(Math.max(...v.c))
+          if (v.d.length) mD.push(Math.max(...v.d))
+        }
+        const avg = arr => arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2) : null
+        critMap[sid] = { name: dk.subject.subject_name, avgA: avg(mA), avgB: avg(mB), avgC: avg(mC), avgD: avg(mD), hasA: mA.length>0, hasB: mB.length>0, hasC: mC.length>0, hasD: mD.length>0 }
+        // Accumulate distribution using max-per-student values
+        for (const v of mA) distAcc.A[v] = (distAcc.A[v]||0)+1
+        for (const v of mB) distAcc.B[v] = (distAcc.B[v]||0)+1
+        for (const v of mC) distAcc.C[v] = (distAcc.C[v]||0)+1
+        for (const v of mD) distAcc.D[v] = (distAcc.D[v]||0)+1
       }
 
       // 7. Calculate IB + average per student
@@ -254,6 +290,9 @@ export default function RankPage() {
 
       setSubjects(subjectList)
       setRankData(ranked)
+      setCriteriaData(critMap)
+      setClassCritDist(distAcc)
+      setSchoolLoaded(false)
     } catch (e) {
       console.error(e)
       setErrorMsg('Gagal memuat data: ' + (e.message || e))
@@ -262,7 +301,65 @@ export default function RankPage() {
     }
   }
 
-  const [viewMode, setViewMode] = useState('overall') // 'overall' | 'subject'
+  const loadSchoolStats = async () => {
+    if (!selYear || !selSem) return
+    setSchoolLoading(true)
+    try {
+      const { data: allKelas } = await supabase.from('kelas').select('kelas_id').eq('kelas_year_id', selYear)
+      const allKelasIds = (allKelas||[]).map(k=>k.kelas_id)
+      if (!allKelasIds.length) { setSchoolLoaded(true); return }
+      const { data: allDk } = await supabase.from('detail_kelas')
+        .select('detail_kelas_id, subject:detail_kelas_subject_id(subject_id, subject_name, include_in_print)')
+        .in('detail_kelas_kelas_id', allKelasIds)
+      const pDk = (allDk||[]).filter(dk=>dk.subject?.include_in_print!==false)
+      const pIds = pDk.map(dk=>dk.detail_kelas_id)
+      const dkSubjMap = Object.fromEntries(pDk.map(dk=>[dk.detail_kelas_id, dk.subject]))
+      const { data: allAss } = await supabase.from('assessment').select('assessment_id, assessment_detail_kelas_id')
+        .in('assessment_detail_kelas_id', pIds).in('assessment_status',[0,1,3]).eq('assessment_semester', parseInt(selSem))
+      const aIds = (allAss||[]).map(a=>a.assessment_id)
+      const aDkMap = Object.fromEntries((allAss||[]).map(a=>[a.assessment_id, a.assessment_detail_kelas_id]))
+      if (!aIds.length) { setSchoolLoaded(true); return }
+      const { data: allG } = await supabase.from('assessment_grades')
+        .select('assessment_id, detail_siswa_id, criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade')
+        .in('assessment_id', aIds)
+      const subjStuMax = {}
+      for (const g of (allG||[])) {
+        const dkId = aDkMap[g.assessment_id]
+        const subj = dkSubjMap[dkId]; if (!subj) continue
+        const sid = subj.subject_id
+        const key = `${g.detail_siswa_id}_${dkId}`
+        if (!subjStuMax[sid]) subjStuMax[sid] = {}
+        if (!subjStuMax[sid][key]) subjStuMax[sid][key] = {a:[],b:[],c:[],d:[]}
+        if (g.criterion_a_grade!==null) subjStuMax[sid][key].a.push(g.criterion_a_grade)
+        if (g.criterion_b_grade!==null) subjStuMax[sid][key].b.push(g.criterion_b_grade)
+        if (g.criterion_c_grade!==null) subjStuMax[sid][key].c.push(g.criterion_c_grade)
+        if (g.criterion_d_grade!==null) subjStuMax[sid][key].d.push(g.criterion_d_grade)
+      }
+      const res = {}
+      for (const dk of pDk) {
+        const sid = dk.subject.subject_id; if (res[sid]) continue
+        const mA=[],mB=[],mC=[],mD=[]
+        for (const v of Object.values(subjStuMax[sid]||{})) {
+          if (v.a.length) mA.push(Math.max(...v.a))
+          if (v.b.length) mB.push(Math.max(...v.b))
+          if (v.c.length) mC.push(Math.max(...v.c))
+          if (v.d.length) mD.push(Math.max(...v.d))
+        }
+        const avg = arr=>arr.length?+(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2):null
+        res[sid]={ name:dk.subject.subject_name, avgA:avg(mA),avgB:avg(mB),avgC:avg(mC),avgD:avg(mD), hasA:mA.length>0,hasB:mB.length>0,hasC:mC.length>0,hasD:mD.length>0 }
+      }
+      setSchoolCriteria(res); setSchoolLoaded(true)
+    } catch(e){console.error(e)} finally{setSchoolLoading(false)}
+  }
+
+  const [viewMode, setViewMode] = useState('overall') // 'overall' | 'subject' | 'stats'
+
+  // Auto-load school stats when switching to stats tab
+  useEffect(() => {
+    if (viewMode === 'stats' && hasData && !schoolLoaded && !schoolLoading) {
+      loadSchoolStats()
+    }
+  }, [viewMode])
 
   const hasData = rankData.length > 0
   const topAvg  = hasData ? (rankData[0]?.avg?.toFixed(2) ?? '—') : '—'
@@ -357,7 +454,7 @@ export default function RankPage() {
         {/* View Mode Tabs */}
         {hasData && !loading && (
           <div style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 10, background: theme.subtleBg, border: `1px solid ${theme.border}`, width: 'fit-content' }}>
-            {[{ key: 'overall', label: '📊 Overall Ranking' }, { key: 'subject', label: '📚 Per Subject' }].map(tab => (
+            {[{ key: 'overall', label: '📊 Overall Ranking' }, { key: 'subject', label: '📚 Per Subject' }, { key: 'stats', label: '🔍 Statistics' }].map(tab => (
               <button key={tab.key} onClick={() => setViewMode(tab.key)}
                 style={{
                   padding: '7px 18px', borderRadius: 7, border: 'none', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
@@ -493,6 +590,185 @@ export default function RankPage() {
             ))}
           </div>
         )}
+
+        {/* ── STATISTICS VIEW ── */}
+        {hasData && !loading && viewMode === 'stats' && (() => {
+          // IB distribution: count student×subject pairs per IB level
+          const ibDist = {1:0,2:0,3:0,4:0,5:0,6:0,7:0}
+          let totalPairs = 0
+          for (const row of rankData) {
+            for (const s of subjects) {
+              const sc = row.scores?.[s.id]
+              if (sc !== null && sc !== undefined) { ibDist[sc] = (ibDist[sc]||0)+1; totalPairs++ }
+            }
+          }
+          const belowAvg3 = rankData.filter(r => r.avg !== null && r.avg < 3)
+          const critEntries = Object.entries(criteriaData)
+          const schoolEntries = Object.entries(schoolCriteria)
+          const CRIT_MAX = 8
+          const barColor = (v) => v === null ? '#e5e7eb' : v < 3 ? '#ef4444' : v < 5 ? '#f59e0b' : '#22c55e'
+          const ibColor = (lv) => lv <= 2 ? '#ef4444' : lv === 3 ? '#f59e0b' : '#22c55e'
+          const maxIBCount = Math.max(...Object.values(ibDist), 1)
+          const CritRow = ({ label, val, show }) => !show ? null : (
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+              <span style={{ width:22, fontSize:11, fontWeight:700, color: barColor(val) }}>{label}</span>
+              <div style={{ flex:1, background:'#f3f4f6', borderRadius:4, overflow:'hidden', height:16 }}>
+                <div style={{ width:`${val===null?0:(val/CRIT_MAX)*100}%`, background: barColor(val), height:'100%', borderRadius:4, transition:'width 0.4s', minWidth: val>0?4:0 }} />
+              </div>
+              <span style={{ width:32, fontSize:11, fontWeight:700, color: barColor(val), textAlign:'right' }}>{val??'—'}</span>
+            </div>
+          )
+          return (
+            <div className="space-y-5">
+              {/* IB Distribution */}
+              <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+                <CardHeader className="pb-2">
+                  <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>Distribusi IB Score — {kelasName}</CardTitle>
+                  <p style={{ fontSize:12, color: theme.textSecondary, marginTop:2 }}>
+                    {belowAvg3.length > 0 ? `⚠ ${belowAvg3.length} siswa dengan rata-rata IB < 3 perlu perhatian` : '✅ Semua siswa memiliki rata-rata IB ≥ 3'}
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div style={{ display:'flex', gap:8, alignItems:'flex-end', height:120 }}>
+                    {[1,2,3,4,5,6,7].map(lv => (
+                      <div key={lv} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                        <span style={{ fontSize:10, fontWeight:700, color: ibColor(lv) }}>{ibDist[lv]||0}</span>
+                        <div style={{ width:'100%', background:'#f3f4f6', borderRadius:'4px 4px 0 0', height:90, display:'flex', alignItems:'flex-end' }}>
+                          <div style={{ width:'100%', background: ibColor(lv), borderRadius:'4px 4px 0 0', height:`${((ibDist[lv]||0)/maxIBCount)*90}px`, transition:'height 0.4s' }} />
+                        </div>
+                        <span style={{ fontSize:11, fontWeight:700, color: lv<=2?'#ef4444':lv===3?'#f59e0b':theme.textSecondary }}>IB {lv}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ fontSize:11, color: theme.textSecondary, marginTop:10 }}>Total {totalPairs} penilaian ({rankData.length} siswa × {subjects.length} mata pelajaran)</p>
+                </CardContent>
+              </Card>
+
+              {/* Students below avg 3 */}
+              {belowAvg3.length > 0 && (
+                <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+                  <CardHeader className="pb-2">
+                    <CardTitle style={{ color:'#dc2626', fontSize:15 }}>⚠ Siswa Perlu Perhatian (Avg IB &lt; 3)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                      <thead>
+                        <tr style={{ background: theme.subtleBg, borderBottom:`1px solid ${theme.border}` }}>
+                          <th style={{ padding:'8px 14px', textAlign:'left', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>Siswa</th>
+                          <th style={{ padding:'8px 14px', textAlign:'center', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>Rata-rata IB</th>
+                          <th style={{ padding:'8px 14px', textAlign:'center', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>Rank</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {belowAvg3.map((row,i) => (
+                          <tr key={row.user_id} style={{ borderBottom:`1px solid ${theme.border}` }}>
+                            <td style={{ padding:'8px 14px' }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                <Avatar name={row.nama} photo={row.photo} size={28} />
+                                <span style={{ fontWeight:600, color: theme.textPrimary }}>{row.nama}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding:'8px 14px', textAlign:'center' }}>
+                              <span style={{ fontWeight:800, color:'#dc2626', fontSize:14 }}>{row.avg?.toFixed(2)}</span>
+                            </td>
+                            <td style={{ padding:'8px 14px', textAlign:'center' }}><RankBadge rank={row.rank} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Criteria Distribution Charts — 4 charts, one per criterion */}
+              {classCritDist && (['A','B','C','D'].some(k => Object.keys(classCritDist[k]).length > 0)) && (() => {
+                const critColor = (score) => score <= 2 ? '#ef4444' : score <= 4 ? '#f59e0b' : '#22c55e'
+                const CritChart = ({ letter, dist }) => {
+                  const scores = [1,2,3,4,5,6,7,8]
+                  const counts = scores.map(s => dist[s] || 0)
+                  const maxCount = Math.max(...counts, 1)
+                  const total = counts.reduce((a,b)=>a+b,0)
+                  if (total === 0) return null
+                  return (
+                    <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+                      <CardHeader className="pb-2">
+                        <CardTitle style={{ color: theme.textPrimary, fontSize:14 }}>Criterion {letter} — Distribusi Score</CardTitle>
+                        <p style={{ fontSize:11, color: theme.textSecondary, marginTop:2 }}>{total} data penilaian · {kelasName}</p>
+                      </CardHeader>
+                      <CardContent>
+                        <div style={{ display:'flex', gap:6, alignItems:'flex-end', height:110 }}>
+                          {scores.map(sc => {
+                            const cnt = dist[sc] || 0
+                            const pct = (cnt / maxCount) * 90
+                            return (
+                              <div key={sc} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+                                <span style={{ fontSize:10, fontWeight:700, color: critColor(sc), minHeight:14 }}>{cnt > 0 ? cnt : ''}</span>
+                                <div style={{ width:'100%', background: theme.subtleBg, borderRadius:'4px 4px 0 0', height:90, display:'flex', alignItems:'flex-end', border:`1px solid ${theme.border}`, borderBottom:'none' }}>
+                                  <div style={{ width:'100%', background: critColor(sc), borderRadius:'4px 4px 0 0', height:`${pct}px`, transition:'height 0.4s', opacity: cnt===0?0:1 }} />
+                                </div>
+                                <span style={{ fontSize:11, fontWeight:600, color: theme.textSecondary }}>{sc}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div style={{ display:'flex', gap:12, marginTop:10, flexWrap:'wrap' }}>
+                          {[{label:'1–2 (Rendah)', color:'#ef4444'},{label:'3–4 (Cukup)', color:'#f59e0b'},{label:'5–8 (Baik)', color:'#22c55e'}].map(l => (
+                            <span key={l.label} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color: theme.textSecondary }}>
+                              <span style={{ width:10, height:10, borderRadius:2, background:l.color, display:'inline-block' }} />{l.label}
+                            </span>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                }
+                return (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))', gap:16 }}>
+                    {['A','B','C','D'].map(k => <CritChart key={k} letter={k} dist={classCritDist[k]} />)}
+                  </div>
+                )
+              })()}
+
+              {/* School-wide criteria */}
+              <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+                <CardHeader className="pb-2">
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+                    <div>
+                      <CardTitle style={{ color: theme.textPrimary, fontSize:15 }}>Analisis Criteria — Seluruh Sekolah ({yearName} Sem {selSem})</CardTitle>
+                      <p style={{ fontSize:12, color: theme.textSecondary, marginTop:2 }}>Semua kelas di tahun ajaran yang sama.</p>
+                    </div>
+                    {schoolLoading && (
+                      <span style={{ fontSize:12, color: theme.textSecondary }}>⏳ Memuat data sekolah…</span>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {schoolLoading && (
+                    <div style={{ display:'flex', gap:8, flexDirection:'column', paddingBottom:8 }}>
+                      {[...Array(3)].map((_,i) => <div key={i} style={{ height:18, borderRadius:6, background: theme.subtleBg, opacity:0.7-i*0.15 }} />)}
+                    </div>
+                  )}
+                  {schoolLoaded && schoolEntries.length === 0 && (
+                    <p style={{ fontSize:13, color: theme.textSecondary }}>Tidak ada data.</p>
+                  )}
+                  {schoolLoaded && schoolEntries.length > 0 && (
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:16 }}>
+                      {schoolEntries.map(([sid, c]) => (
+                        <div key={sid} style={{ padding:14, borderRadius:8, border:`1px solid ${theme.border}`, background: theme.subtleBg }}>
+                          <p style={{ fontWeight:700, fontSize:13, color: theme.textPrimary, marginBottom:10 }}>{c.name}</p>
+                          <CritRow label="A" val={c.avgA} show={c.hasA} />
+                          <CritRow label="B" val={c.avgB} show={c.hasB} />
+                          <CritRow label="C" val={c.avgC} show={c.hasC} />
+                          <CritRow label="D" val={c.avgD} show={c.hasD} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )
+        })()}
 
         {/* Empty state */}
         {!loading && !hasData && (
