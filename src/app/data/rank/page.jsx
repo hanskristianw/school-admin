@@ -271,7 +271,7 @@ export default function RankPage() {
   // Build per-subject rankings from existing rankData
   const subjectRankings = subjects.map(s => {
     const rows = rankData
-      .map(r => ({ user_id: r.user_id, nama: r.nama, score: r.scores?.[s.id] ?? null }))
+      .map(r => ({ user_id: r.user_id, nama: r.nama, photo: r.photo, score: r.scores?.[s.id] ?? null }))
       .filter(r => r.score !== null)
       .sort((a, b) => b.score - a.score)
     let rank = 1
