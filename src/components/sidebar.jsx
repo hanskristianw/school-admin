@@ -46,7 +46,8 @@ import {
   faNotesMedical,
   faHeartPulse,
   faStethoscope,
-  faFileMedical
+  faFileMedical,
+  faTrophy
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -95,6 +96,7 @@ const iconMap = {
   , 'fas fa-heart-pulse': faHeartPulse
   , 'fas fa-stethoscope': faStethoscope
   , 'fas fa-file-medical': faFileMedical
+  , 'fas fa-trophy': faTrophy
   ,
   // Alias: dukung format nama icon 'faXxx' supaya lebih toleran
   'faTachometerAlt': faTachometerAlt,
@@ -140,6 +142,7 @@ const iconMap = {
   , 'faHeartPulse': faHeartPulse
   , 'faStethoscope': faStethoscope
   , 'faFileMedical': faFileMedical
+  , 'faTrophy': faTrophy
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

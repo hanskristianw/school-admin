@@ -271,6 +271,12 @@ export default function TeacherDashboard() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: refreshToken })
         })
+        // Guard: if server returns HTML (crash/404), res.json() would throw
+        const contentType = res.headers.get('content-type') || ''
+        if (!contentType.includes('application/json')) {
+          console.warn('Token refresh: unexpected non-JSON response', res.status)
+          return null
+        }
         const data = await res.json()
         if (res.ok && data.access_token) {
           console.log('✅ Dashboard: Token refreshed')
