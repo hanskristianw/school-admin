@@ -1095,5 +1095,75 @@
       "approve": "批准",
       "reject": "拒绝"
     }
+  },
+  "rank": {
+    "title": "学生排名",
+    "subtitle": "基于所有科目平均IB成绩的学生排名",
+    "filters": {
+      "academicYear": "学年",
+      "semester": "学期",
+      "class": "班级",
+      "selectYear": "— 选择学年 —",
+      "selectSemester": "— 选择学期 —",
+      "selectClass": "— 选择班级 —",
+      "semester1": "学期 1",
+      "semester2": "学期 2"
+    },
+    "generate": "生成排名",
+    "generating": "加载中…",
+    "badge": "{class} · {year} · 学期 {sem}",
+    "stats": {
+      "totalStudents": "总学生数",
+      "topScore": "最高分",
+      "classAverage": "班级平均分",
+      "subjects": "科目"
+    },
+    "tabs": {
+      "overall": "📊 总排名",
+      "subject": "📚 按科目",
+      "statistics": "🔍 统计"
+    },
+    "podium": "前3名",
+    "fullRankings": "完整排名",
+    "table": {
+      "rank": "名次",
+      "student": "学生",
+      "avg": "均分",
+      "score": "成绩"
+    },
+    "noGrades": "此科目暂无成绩。",
+    "top": "Top",
+    "statistics": {
+      "ibDistTitle": "IB成绩分布",
+      "ibDistSubtitle": "条数据（{students}名学生 × {subjects}个科目）",
+      "belowAvg3Warning": "⚠ {count}名学生平均IB < 3，需关注",
+      "allAbove3": "✅ 所有学生平均IB ≥ 3",
+      "needsAttentionTitle": "⚠ 需关注学生（平均IB < 3）",
+      "colStudent": "学生",
+      "colAvgIB": "平均IB",
+      "colRank": "名次",
+      "criteriaClassTitle": "评分标准分析",
+      "criteriaClassSubtitle": "每位学生每个标准的最高分均值。红色 = 均值 < 3。",
+      "criteriaChartTitle": "标准 {letter} — 成绩分布",
+      "criteriaDataCount": "条数据",
+      "legendLow": "1–2（低）",
+      "legendMid": "3–4（一般）",
+      "legendHigh": "5–8（良好）",
+      "schoolTitle": "评分标准分析 — 全校（{year} 学期{sem}）",
+      "schoolSubtitle": "同学年所有班级。",
+      "schoolLoading": "正在加载全校数据…",
+      "schoolNoData": "暂无数据。"
+    },
+    "empty": {
+      "titleReady": "点击\"生成排名\"开始",
+      "titleNotReady": "请完成上方所有筛选",
+      "subtitleReady": "基于所有有效科目的平均IB成绩进行排名",
+      "subtitleNotReady": "请先选择学年、学期和班级"
+    },
+    "errors": {
+      "load": "加载数据失败：",
+      "noStudents": "此班级暂无学生。",
+      "noSubjects": "未找到有效科目。"
+    }
   }
 }

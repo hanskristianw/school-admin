@@ -1096,5 +1096,75 @@
       "approve": "Setujui",
       "reject": "Tolak"
     }
+  },
+  "rank": {
+    "title": "Peringkat Siswa",
+    "subtitle": "Peringkat siswa berdasarkan rata-rata IB Score seluruh mata pelajaran",
+    "filters": {
+      "academicYear": "Tahun Ajaran",
+      "semester": "Semester",
+      "class": "Kelas",
+      "selectYear": "— Pilih Tahun —",
+      "selectSemester": "— Pilih Semester —",
+      "selectClass": "— Pilih Kelas —",
+      "semester1": "Semester 1",
+      "semester2": "Semester 2"
+    },
+    "generate": "Buat Ranking",
+    "generating": "Memuat…",
+    "badge": "{class} · {year} · Semester {sem}",
+    "stats": {
+      "totalStudents": "Total Siswa",
+      "topScore": "Nilai Tertinggi",
+      "classAverage": "Rata-rata Kelas",
+      "subjects": "Mata Pelajaran"
+    },
+    "tabs": {
+      "overall": "📊 Overall Ranking",
+      "subject": "📚 Per Subject",
+      "statistics": "🔍 Statistik"
+    },
+    "podium": "Top 3 Podium",
+    "fullRankings": "Ranking Lengkap",
+    "table": {
+      "rank": "Rank",
+      "student": "Siswa",
+      "avg": "Avg",
+      "score": "Nilai"
+    },
+    "noGrades": "Belum ada nilai untuk mata pelajaran ini.",
+    "top": "Top",
+    "statistics": {
+      "ibDistTitle": "Distribusi IB Score",
+      "ibDistSubtitle": "penilaian ({students} siswa × {subjects} mata pelajaran)",
+      "belowAvg3Warning": "⚠ {count} siswa dengan rata-rata IB < 3 perlu perhatian",
+      "allAbove3": "✅ Semua siswa memiliki rata-rata IB ≥ 3",
+      "needsAttentionTitle": "⚠ Siswa Perlu Perhatian (Rata-rata IB < 3)",
+      "colStudent": "Siswa",
+      "colAvgIB": "Rata-rata IB",
+      "colRank": "Rank",
+      "criteriaClassTitle": "Analisis Kriteria",
+      "criteriaClassSubtitle": "Rata-rata nilai tertinggi per kriteria per siswa. Merah = rata-rata < 3.",
+      "criteriaChartTitle": "Kriteria {letter} — Distribusi Nilai",
+      "criteriaDataCount": "data penilaian",
+      "legendLow": "1–2 (Rendah)",
+      "legendMid": "3–4 (Cukup)",
+      "legendHigh": "5–8 (Baik)",
+      "schoolTitle": "Analisis Kriteria — Seluruh Sekolah ({year} Sem {sem})",
+      "schoolSubtitle": "Semua kelas di tahun ajaran yang sama.",
+      "schoolLoading": "Memuat data sekolah…",
+      "schoolNoData": "Tidak ada data."
+    },
+    "empty": {
+      "titleReady": "Klik \"Buat Ranking\" untuk memulai",
+      "titleNotReady": "Lengkapi semua filter di atas",
+      "subtitleReady": "Ranking berdasarkan rata-rata IB Score semua mata pelajaran yang aktif",
+      "subtitleNotReady": "Pilih Tahun Ajaran, Semester, dan Kelas terlebih dahulu"
+    },
+    "errors": {
+      "load": "Gagal memuat data: ",
+      "noStudents": "Tidak ada siswa di kelas ini.",
+      "noSubjects": "Tidak ada mata pelajaran yang aktif."
+    }
   }
 }

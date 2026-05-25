@@ -1096,5 +1096,75 @@
       "approve": "Approve",
       "reject": "Reject"
     }
+  },
+  "rank": {
+    "title": "Student Rankings",
+    "subtitle": "Student rankings based on average IB Score across all subjects",
+    "filters": {
+      "academicYear": "Academic Year",
+      "semester": "Semester",
+      "class": "Class",
+      "selectYear": "— Select Year —",
+      "selectSemester": "— Select Semester —",
+      "selectClass": "— Select Class —",
+      "semester1": "Semester 1",
+      "semester2": "Semester 2"
+    },
+    "generate": "Generate Ranking",
+    "generating": "Loading…",
+    "badge": "{class} · {year} · Semester {sem}",
+    "stats": {
+      "totalStudents": "Total Students",
+      "topScore": "Top Score",
+      "classAverage": "Class Average",
+      "subjects": "Subjects"
+    },
+    "tabs": {
+      "overall": "📊 Overall Ranking",
+      "subject": "📚 Per Subject",
+      "statistics": "🔍 Statistics"
+    },
+    "podium": "Top 3 Podium",
+    "fullRankings": "Full Rankings",
+    "table": {
+      "rank": "Rank",
+      "student": "Student",
+      "avg": "Avg",
+      "score": "Score"
+    },
+    "noGrades": "No grades available for this subject.",
+    "top": "Top",
+    "statistics": {
+      "ibDistTitle": "IB Score Distribution",
+      "ibDistSubtitle": "assessments ({students} students × {subjects} subjects)",
+      "belowAvg3Warning": "⚠ {count} students with average IB < 3 need attention",
+      "allAbove3": "✅ All students have an average IB ≥ 3",
+      "needsAttentionTitle": "⚠ Students Needing Attention (Avg IB < 3)",
+      "colStudent": "Student",
+      "colAvgIB": "Average IB",
+      "colRank": "Rank",
+      "criteriaClassTitle": "Criteria Analysis",
+      "criteriaClassSubtitle": "Highest criterion score per student. Red = average < 3.",
+      "criteriaChartTitle": "Criterion {letter} — Score Distribution",
+      "criteriaDataCount": "assessments",
+      "legendLow": "1–2 (Low)",
+      "legendMid": "3–4 (Fair)",
+      "legendHigh": "5–8 (Good)",
+      "schoolTitle": "Criteria Analysis — Whole School ({year} Sem {sem})",
+      "schoolSubtitle": "All classes in the same academic year.",
+      "schoolLoading": "Loading school data…",
+      "schoolNoData": "No data available."
+    },
+    "empty": {
+      "titleReady": "Click \"Generate Ranking\" to start",
+      "titleNotReady": "Complete all filters above",
+      "subtitleReady": "Rankings based on average IB Score across all active subjects",
+      "subtitleNotReady": "Select Academic Year, Semester, and Class first"
+    },
+    "errors": {
+      "load": "Failed to load data: ",
+      "noStudents": "No students in this class.",
+      "noSubjects": "No active subjects found."
+    }
   }
 }

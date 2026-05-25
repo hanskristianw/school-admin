@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 
@@ -119,6 +120,7 @@ function PodiumBlock({ rank, entry, theme, height }) {
 // ══════════════════════════════════════════════════════════════════════════════
 export default function RankPage() {
   const { theme } = useTheme()
+  const { t } = useI18n()
 
   const [years, setYears]           = useState([])
   const [kelasOptions, setKelasOptions] = useState([])
@@ -160,7 +162,7 @@ export default function RankPage() {
         .from('detail_siswa').select('detail_siswa_id, detail_siswa_user_id')
         .eq('detail_siswa_kelas_id', selKelas)
       if (e1) throw e1
-      if (!siswaData?.length) { setErrorMsg('Tidak ada siswa di kelas ini.'); return }
+      if (!siswaData?.length) { setErrorMsg(t('rank.errors.noStudents')); return }
 
       const userIds  = siswaData.map(d => d.detail_siswa_user_id).filter(Boolean)
       const siswaIdMap = Object.fromEntries(siswaData.map(d => [d.detail_siswa_user_id, d.detail_siswa_id]))
@@ -191,7 +193,7 @@ export default function RankPage() {
           if (a.subject.core_subject !== b.subject.core_subject) return a.subject.core_subject ? -1 : 1
           return (a.subject.print_order ?? 0) - (b.subject.print_order ?? 0)
         })
-      if (!printable.length) { setErrorMsg('Tidak ada mata pelajaran yang aktif.'); return }
+      if (!printable.length) { setErrorMsg(t('rank.errors.noSubjects')); return }
 
       const dkIds = printable.map(dk => dk.detail_kelas_id)
       const subjectList = printable.map(dk => ({ id: dk.subject.subject_id, name: dk.subject.subject_name }))
@@ -295,7 +297,7 @@ export default function RankPage() {
       setSchoolLoaded(false)
     } catch (e) {
       console.error(e)
-      setErrorMsg('Gagal memuat data: ' + (e.message || e))
+      setErrorMsg(t('rank.errors.load') + (e.message || e))
     } finally {
       setLoading(false)
     }
@@ -388,12 +390,12 @@ export default function RankPage() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>🏆 Student Ranking</h1>
-            <p style={{ fontSize: 13, color: theme.textSecondary, marginTop: 3 }}>Peringkat siswa berdasarkan rata-rata IB Score seluruh mata pelajaran</p>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>🏆 {t('rank.title')}</h1>
+            <p style={{ fontSize: 13, color: theme.textSecondary, marginTop: 3 }}>{t('rank.subtitle')}</p>
           </div>
           {hasData && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 99, background: theme.subtleBg, border: `1px solid ${theme.border}`, fontSize: 12, color: theme.textSecondary }}>
-              {kelasName} · {yearName} · Semester {selSem}
+              {t('rank.badge').replace('{class}', kelasName).replace('{year}', yearName).replace('{sem}', selSem)}
             </div>
           )}
         </div>
@@ -402,17 +404,17 @@ export default function RankPage() {
         <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
           <CardContent className="pt-5 pb-5">
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 16 }}>
-              <FilterSelect label="Academic Year" value={selYear} onChange={setSelYear} theme={theme}>
-                <option value="">— Select Year —</option>
+              <FilterSelect label={t('rank.filters.academicYear')} value={selYear} onChange={setSelYear} theme={theme}>
+                <option value="">{t('rank.filters.selectYear')}</option>
                 {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
               </FilterSelect>
-              <FilterSelect label="Semester" value={selSem} onChange={setSelSem} theme={theme}>
-                <option value="">— Select Semester —</option>
-                <option value="1">Semester 1</option>
-                <option value="2">Semester 2</option>
+              <FilterSelect label={t('rank.filters.semester')} value={selSem} onChange={setSelSem} theme={theme}>
+                <option value="">{t('rank.filters.selectSemester')}</option>
+                <option value="1">{t('rank.filters.semester1')}</option>
+                <option value="2">{t('rank.filters.semester2')}</option>
               </FilterSelect>
-              <FilterSelect label="Class" value={selKelas} onChange={setSelKelas} disabled={!selYear} theme={theme}>
-                <option value="">— Select Class —</option>
+              <FilterSelect label={t('rank.filters.class')} value={selKelas} onChange={setSelKelas} disabled={!selYear} theme={theme}>
+                <option value="">{t('rank.filters.selectClass')}</option>
                 {kelasOptions.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
               </FilterSelect>
               <button
@@ -425,7 +427,7 @@ export default function RankPage() {
                   boxShadow: canGenerate && !loading ? '0 2px 12px rgba(99,102,241,0.35)' : 'none',
                 }}
               >
-                {loading ? '⏳ Loading…' : '📊 Generate Ranking'}
+                {loading ? t('rank.generating') : t('rank.generate')}
               </button>
             </div>
             {errorMsg && <p style={{ marginTop: 10, fontSize: 13, color: '#dc2626', fontWeight: 500 }}>⚠ {errorMsg}</p>}
@@ -444,17 +446,17 @@ export default function RankPage() {
         {/* Stats */}
         {hasData && !loading && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            <StatCard label="Total Students" value={rankData.length} icon="👥" color="#6366f1" theme={theme} />
-            <StatCard label="Top Score"      value={topAvg}          icon="🥇" color="#f59e0b" theme={theme} />
-            <StatCard label="Class Average"  value={avgAll}          icon="📈" color="#10b981" theme={theme} />
-            <StatCard label="Subjects"       value={subjects.length} icon="📚" color="#0ea5e9" theme={theme} />
+            <StatCard label={t('rank.stats.totalStudents')} value={rankData.length} icon="👥" color="#6366f1" theme={theme} />
+            <StatCard label={t('rank.stats.topScore')}      value={topAvg}          icon="🥇" color="#f59e0b" theme={theme} />
+            <StatCard label={t('rank.stats.classAverage')}  value={avgAll}          icon="📈" color="#10b981" theme={theme} />
+            <StatCard label={t('rank.stats.subjects')}      value={subjects.length} icon="📚" color="#0ea5e9" theme={theme} />
           </div>
         )}
 
         {/* View Mode Tabs */}
         {hasData && !loading && (
           <div style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 10, background: theme.subtleBg, border: `1px solid ${theme.border}`, width: 'fit-content' }}>
-            {[{ key: 'overall', label: '📊 Overall Ranking' }, { key: 'subject', label: '📚 Per Subject' }, { key: 'stats', label: '🔍 Statistics' }].map(tab => (
+            {[{ key: 'overall', label: t('rank.tabs.overall') }, { key: 'subject', label: t('rank.tabs.subject') }, { key: 'stats', label: t('rank.tabs.statistics') }].map(tab => (
               <button key={tab.key} onClick={() => setViewMode(tab.key)}
                 style={{
                   padding: '7px 18px', borderRadius: 7, border: 'none', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
@@ -475,7 +477,7 @@ export default function RankPage() {
             {rankData.length >= 3 && (
               <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
                 <CardContent className="pt-5 pb-2">
-                  <p style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>Top 3 Podium</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>{t('rank.podium')}</p>
                   <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 16 }}>
                     <PodiumBlock rank={2} entry={rankData[1]} theme={theme} height={80} />
                     <PodiumBlock rank={1} entry={rankData[0]} theme={theme} height={110} />
@@ -488,21 +490,21 @@ export default function RankPage() {
             {/* Full table */}
             <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
               <CardHeader className="pb-2">
-                <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>Full Rankings — {kelasName}</CardTitle>
+                <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>{t('rank.fullRankings')} — {kelasName}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: theme.subtleBg, borderBottom: `2px solid ${theme.border}` }}>
-                        <th style={{ padding: '10px 12px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 56 }}>Rank</th>
-                        <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11, minWidth: 170 }}>Student</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 56 }}>{t('rank.table.rank')}</th>
+                        <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11, minWidth: 170 }}>{t('rank.table.student')}</th>
                         {subjects.map(s => (
                           <th key={s.id} title={s.name} style={{ padding: '10px 6px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 10, maxWidth: 72 }}>
                             {s.name.length > 9 ? s.name.slice(0, 9) + '…' : s.name}
                           </th>
                         ))}
-                        <th style={{ padding: '10px 14px', textAlign: 'center', color: '#6366f1', fontWeight: 700, fontSize: 11, background: 'rgba(99,102,241,0.07)', minWidth: 60 }}>Avg</th>
+                        <th style={{ padding: '10px 14px', textAlign: 'center', color: '#6366f1', fontWeight: 700, fontSize: 11, background: 'rgba(99,102,241,0.07)', minWidth: 60 }}>{t('rank.table.avg')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -546,21 +548,21 @@ export default function RankPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                     <CardTitle style={{ color: theme.textPrimary, fontSize: 14 }}>📖 {subject.name}</CardTitle>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 99, background: '#fef9c3', color: '#a16207', fontWeight: 700 }}>Top: {topScore ?? '—'}</span>
+                      <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 99, background: '#fef9c3', color: '#a16207', fontWeight: 700 }}>{t('rank.top')}: {topScore ?? '—'}</span>
                       <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 99, background: theme.subtleBg, color: theme.textSecondary, fontWeight: 600 }}>Avg: {avg}</span>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   {rows.length === 0 ? (
-                    <p style={{ padding: '14px 16px', fontSize: 12, color: theme.textSecondary }}>Belum ada nilai untuk mata pelajaran ini.</p>
+                    <p style={{ padding: '14px 16px', fontSize: 12, color: theme.textSecondary }}>{t('rank.noGrades')}</p>
                   ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-                          <th style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 10, width: 44 }}>Rank</th>
-                          <th style={{ padding: '7px 10px', textAlign: 'left',   color: theme.textSecondary, fontWeight: 600, fontSize: 10 }}>Student</th>
-                          <th style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 10, width: 60 }}>Score</th>
+                          <th style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 10, width: 44 }}>{t('rank.table.rank')}</th>
+                          <th style={{ padding: '7px 10px', textAlign: 'left',   color: theme.textSecondary, fontWeight: 600, fontSize: 10 }}>{t('rank.table.student')}</th>
+                          <th style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 10, width: 60 }}>{t('rank.table.score')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -623,9 +625,11 @@ export default function RankPage() {
               {/* IB Distribution */}
               <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
                 <CardHeader className="pb-2">
-                  <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>Distribusi IB Score — {kelasName}</CardTitle>
+                  <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>{t('rank.statistics.ibDistTitle')} — {kelasName}</CardTitle>
                   <p style={{ fontSize:12, color: theme.textSecondary, marginTop:2 }}>
-                    {belowAvg3.length > 0 ? `⚠ ${belowAvg3.length} siswa dengan rata-rata IB < 3 perlu perhatian` : '✅ Semua siswa memiliki rata-rata IB ≥ 3'}
+                    {belowAvg3.length > 0
+                      ? t('rank.statistics.belowAvg3Warning').replace('{count}', belowAvg3.length)
+                      : t('rank.statistics.allAbove3')}
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -640,7 +644,7 @@ export default function RankPage() {
                       </div>
                     ))}
                   </div>
-                  <p style={{ fontSize:11, color: theme.textSecondary, marginTop:10 }}>Total {totalPairs} penilaian ({rankData.length} siswa × {subjects.length} mata pelajaran)</p>
+                  <p style={{ fontSize:11, color: theme.textSecondary, marginTop:10 }}>{rankData.length * subjects.length} {t('rank.statistics.ibDistSubtitle').replace('{students}', rankData.length).replace('{subjects}', subjects.length)}</p>
                 </CardContent>
               </Card>
 
@@ -648,15 +652,15 @@ export default function RankPage() {
               {belowAvg3.length > 0 && (
                 <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
                   <CardHeader className="pb-2">
-                    <CardTitle style={{ color:'#dc2626', fontSize:15 }}>⚠ Siswa Perlu Perhatian (Avg IB &lt; 3)</CardTitle>
+                    <CardTitle style={{ color:'#dc2626', fontSize:15 }}>{t('rank.statistics.needsAttentionTitle')}</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                       <thead>
                         <tr style={{ background: theme.subtleBg, borderBottom:`1px solid ${theme.border}` }}>
-                          <th style={{ padding:'8px 14px', textAlign:'left', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>Siswa</th>
-                          <th style={{ padding:'8px 14px', textAlign:'center', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>Rata-rata IB</th>
-                          <th style={{ padding:'8px 14px', textAlign:'center', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>Rank</th>
+                          <th style={{ padding:'8px 14px', textAlign:'left', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>{t('rank.statistics.colStudent')}</th>
+                          <th style={{ padding:'8px 14px', textAlign:'center', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>{t('rank.statistics.colAvgIB')}</th>
+                          <th style={{ padding:'8px 14px', textAlign:'center', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>{t('rank.statistics.colRank')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -692,8 +696,8 @@ export default function RankPage() {
                   return (
                     <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
                       <CardHeader className="pb-2">
-                        <CardTitle style={{ color: theme.textPrimary, fontSize:14 }}>Criterion {letter} — Distribusi Score</CardTitle>
-                        <p style={{ fontSize:11, color: theme.textSecondary, marginTop:2 }}>{total} data penilaian · {kelasName}</p>
+                        <CardTitle style={{ color: theme.textPrimary, fontSize:14 }}>{t('rank.statistics.criteriaChartTitle').replace('{letter}', letter)}</CardTitle>
+                        <p style={{ fontSize:11, color: theme.textSecondary, marginTop:2 }}>{total} {t('rank.statistics.criteriaDataCount')} · {kelasName}</p>
                       </CardHeader>
                       <CardContent>
                         <div style={{ display:'flex', gap:6, alignItems:'flex-end', height:110 }}>
@@ -712,7 +716,7 @@ export default function RankPage() {
                           })}
                         </div>
                         <div style={{ display:'flex', gap:12, marginTop:10, flexWrap:'wrap' }}>
-                          {[{label:'1–2 (Rendah)', color:'#ef4444'},{label:'3–4 (Cukup)', color:'#f59e0b'},{label:'5–8 (Baik)', color:'#22c55e'}].map(l => (
+                          {[{label:t('rank.statistics.legendLow'), color:'#ef4444'},{label:t('rank.statistics.legendMid'), color:'#f59e0b'},{label:t('rank.statistics.legendHigh'), color:'#22c55e'}].map(l => (
                             <span key={l.label} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color: theme.textSecondary }}>
                               <span style={{ width:10, height:10, borderRadius:2, background:l.color, display:'inline-block' }} />{l.label}
                             </span>
@@ -734,11 +738,11 @@ export default function RankPage() {
                 <CardHeader className="pb-2">
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
                     <div>
-                      <CardTitle style={{ color: theme.textPrimary, fontSize:15 }}>Analisis Criteria — Seluruh Sekolah ({yearName} Sem {selSem})</CardTitle>
-                      <p style={{ fontSize:12, color: theme.textSecondary, marginTop:2 }}>Semua kelas di tahun ajaran yang sama.</p>
+                      <CardTitle style={{ color: theme.textPrimary, fontSize:15 }}>{t('rank.statistics.schoolTitle').replace('{year}', yearName).replace('{sem}', selSem)}</CardTitle>
+                      <p style={{ fontSize:12, color: theme.textSecondary, marginTop:2 }}>{t('rank.statistics.schoolSubtitle')}</p>
                     </div>
                     {schoolLoading && (
-                      <span style={{ fontSize:12, color: theme.textSecondary }}>⏳ Memuat data sekolah…</span>
+                      <span style={{ fontSize:12, color: theme.textSecondary }}>⏳ {t('rank.statistics.schoolLoading')}</span>
                     )}
                   </div>
                 </CardHeader>
@@ -749,7 +753,7 @@ export default function RankPage() {
                     </div>
                   )}
                   {schoolLoaded && schoolEntries.length === 0 && (
-                    <p style={{ fontSize:13, color: theme.textSecondary }}>Tidak ada data.</p>
+                    <p style={{ fontSize:13, color: theme.textSecondary }}>{t('rank.statistics.schoolNoData')}</p>
                   )}
                   {schoolLoaded && schoolEntries.length > 0 && (
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:16 }}>
@@ -775,12 +779,10 @@ export default function RankPage() {
           <div style={{ textAlign: 'center', padding: '64px 20px' }}>
             <div style={{ fontSize: 60, marginBottom: 16 }}>🏆</div>
             <p style={{ fontSize: 16, fontWeight: 700, color: theme.textPrimary, marginBottom: 6 }}>
-              {canGenerate ? 'Klik "Generate Ranking" untuk memulai' : 'Lengkapi semua filter di atas'}
+              {canGenerate ? t('rank.empty.titleReady') : t('rank.empty.titleNotReady')}
             </p>
             <p style={{ fontSize: 13, color: theme.textSecondary }}>
-              {canGenerate
-                ? 'Ranking berdasarkan rata-rata IB Score semua mata pelajaran yang aktif'
-                : 'Pilih Tahun Ajaran, Semester, dan Kelas terlebih dahulu'}
+              {canGenerate ? t('rank.empty.subtitleReady') : t('rank.empty.subtitleNotReady')}
             </p>
           </div>
         )}
