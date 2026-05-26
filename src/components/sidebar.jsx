@@ -47,7 +47,9 @@ import {
   faHeartPulse,
   faStethoscope,
   faFileMedical,
-  faTrophy
+  faTrophy,
+  faFileInvoice,
+  faFileInvoiceDollar
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -143,6 +145,10 @@ const iconMap = {
   , 'faStethoscope': faStethoscope
   , 'faFileMedical': faFileMedical
   , 'faTrophy': faTrophy
+  , 'fas fa-file-invoice': faFileInvoice
+  , 'faFileInvoice': faFileInvoice
+  , 'fas fa-file-invoice-dollar': faFileInvoiceDollar
+  , 'faFileInvoiceDollar': faFileInvoiceDollar
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {
