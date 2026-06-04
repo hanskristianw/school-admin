@@ -3066,10 +3066,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           const allD = gradesData.map(g => g.criterion_d_grade).filter(g => g !== null);
           const allFinal = gradesData.map(g => g.final_grade).filter(g => g !== null);
           
-          grades.A = allA.length > 0 ? Math.max(...allA) : null;
-          grades.B = allB.length > 0 ? Math.max(...allB) : null;
-          grades.C = allC.length > 0 ? Math.max(...allC) : null;
-          grades.D = allD.length > 0 ? Math.max(...allD) : null;
+          grades.A = allA.length > 0 ? Math.round(allA.reduce((a, b) => a + b, 0) / allA.length) : null;
+          grades.B = allB.length > 0 ? Math.round(allB.reduce((a, b) => a + b, 0) / allB.length) : null;
+          grades.C = allC.length > 0 ? Math.round(allC.reduce((a, b) => a + b, 0) / allC.length) : null;
+          grades.D = allD.length > 0 ? Math.round(allD.reduce((a, b) => a + b, 0) / allD.length) : null;
           // IB MYP standard: sum of max criteria → boundary table (not average of per-assessment final_grade)
           const criteriaValues = [grades.A, grades.B, grades.C, grades.D].filter(g => g !== null);
           if (criteriaValues.length > 0) {
@@ -3224,10 +3224,10 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
             const allB = s1GradesData.map(g => g.criterion_b_grade).filter(g => g !== null);
             const allC = s1GradesData.map(g => g.criterion_c_grade).filter(g => g !== null);
             const allD = s1GradesData.map(g => g.criterion_d_grade).filter(g => g !== null);
-            s1Grades.A = allA.length > 0 ? Math.max(...allA) : null;
-            s1Grades.B = allB.length > 0 ? Math.max(...allB) : null;
-            s1Grades.C = allC.length > 0 ? Math.max(...allC) : null;
-            s1Grades.D = allD.length > 0 ? Math.max(...allD) : null;
+            s1Grades.A = allA.length > 0 ? Math.round(allA.reduce((a, b) => a + b, 0) / allA.length) : null;
+            s1Grades.B = allB.length > 0 ? Math.round(allB.reduce((a, b) => a + b, 0) / allB.length) : null;
+            s1Grades.C = allC.length > 0 ? Math.round(allC.reduce((a, b) => a + b, 0) / allC.length) : null;
+            s1Grades.D = allD.length > 0 ? Math.round(allD.reduce((a, b) => a + b, 0) / allD.length) : null;
             const vals = [s1Grades.A, s1Grades.B, s1Grades.C, s1Grades.D].filter(g => g !== null);
             if (vals.length > 0) {
               const total = vals.reduce((a, b) => a + b, 0);
@@ -3562,10 +3562,10 @@ export const generateClassReportZIP = async ({
             const allB = studentGrades.map(g => g.criterion_b_grade).filter(g => g !== null);
             const allC = studentGrades.map(g => g.criterion_c_grade).filter(g => g !== null);
             const allD = studentGrades.map(g => g.criterion_d_grade).filter(g => g !== null);
-            grades.A = allA.length > 0 ? Math.max(...allA) : null;
-            grades.B = allB.length > 0 ? Math.max(...allB) : null;
-            grades.C = allC.length > 0 ? Math.max(...allC) : null;
-            grades.D = allD.length > 0 ? Math.max(...allD) : null;
+            grades.A = allA.length > 0 ? Math.round(allA.reduce((a, b) => a + b, 0) / allA.length) : null;
+            grades.B = allB.length > 0 ? Math.round(allB.reduce((a, b) => a + b, 0) / allB.length) : null;
+            grades.C = allC.length > 0 ? Math.round(allC.reduce((a, b) => a + b, 0) / allC.length) : null;
+            grades.D = allD.length > 0 ? Math.round(allD.reduce((a, b) => a + b, 0) / allD.length) : null;
             const criteriaValues = [grades.A, grades.B, grades.C, grades.D].filter(g => g !== null);
             if (criteriaValues.length > 0) {
               const total = criteriaValues.reduce((a, b) => a + b, 0);
@@ -3675,10 +3675,10 @@ export const generateClassReportZIP = async ({
               const allB = s1GradesData.map(g => g.criterion_b_grade).filter(g => g !== null);
               const allC = s1GradesData.map(g => g.criterion_c_grade).filter(g => g !== null);
               const allD = s1GradesData.map(g => g.criterion_d_grade).filter(g => g !== null);
-              s1Grades.A = allA.length > 0 ? Math.max(...allA) : null;
-              s1Grades.B = allB.length > 0 ? Math.max(...allB) : null;
-              s1Grades.C = allC.length > 0 ? Math.max(...allC) : null;
-              s1Grades.D = allD.length > 0 ? Math.max(...allD) : null;
+              s1Grades.A = allA.length > 0 ? Math.round(allA.reduce((a, b) => a + b, 0) / allA.length) : null;
+              s1Grades.B = allB.length > 0 ? Math.round(allB.reduce((a, b) => a + b, 0) / allB.length) : null;
+              s1Grades.C = allC.length > 0 ? Math.round(allC.reduce((a, b) => a + b, 0) / allC.length) : null;
+              s1Grades.D = allD.length > 0 ? Math.round(allD.reduce((a, b) => a + b, 0) / allD.length) : null;
               const vals = [s1Grades.A, s1Grades.B, s1Grades.C, s1Grades.D].filter(g => g !== null);
               if (vals.length > 0) {
                 const total = vals.reduce((a, b) => a + b, 0);

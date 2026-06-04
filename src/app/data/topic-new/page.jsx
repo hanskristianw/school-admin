@@ -637,7 +637,7 @@ export default function TopicNewPage() {
 
       let query = supabase
         .from('subject')
-        .select('subject_id, subject_name, subject_guide')
+        .select('subject_id, subject_name, subject_guide, custom_grade_boundaries')
       if (!isAdmin) {
         query = query.eq('subject_user_id', userId)
       }
@@ -5439,14 +5439,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.D !== null ? theme.blueText : theme.textSecondary }}>{g.D ?? '–'}</td>
                                 </tr>
                               ))}
-                              {/* Max row */}
+                              {/* Avg row */}
                               {(() => {
                                 const gs = commentStudentGrades[student.user_id]
-                                const maxA = Math.max(...gs.map(g => g.A).filter(v => v !== null))
-                                const maxB = Math.max(...gs.map(g => g.B).filter(v => v !== null))
-                                const maxC = Math.max(...gs.map(g => g.C).filter(v => v !== null))
-                                const maxD = Math.max(...gs.map(g => g.D).filter(v => v !== null))
-                                const vals = [maxA, maxB, maxC, maxD].filter(v => isFinite(v))
+                                const criAvg = (key) => { const v = gs.map(g => g[key]).filter(v => v !== null); return v.length > 0 ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null }
+                                const avgA = criAvg('A')
+                                const avgB = criAvg('B')
+                                const avgC = criAvg('C')
+                                const avgD = criAvg('D')
+                                const vals = [avgA, avgB, avgC, avgD].filter(v => v !== null)
                                 const total = vals.reduce((a, b) => a + b, 0)
                                 const scale = vals.length / 4
                                 const b = [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
@@ -5462,24 +5463,31 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 }
                                 return (
                                   <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
-                                    <td className="pr-3 py-1 font-semibold" style={{ color: theme.blueText }}>Max</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{isFinite(maxA) ? maxA : '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{isFinite(maxB) ? maxB : '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{isFinite(maxC) ? maxC : '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{isFinite(maxD) ? maxD : '–'}</td>
+                                    <td className="pr-3 py-1 font-semibold" style={{ color: theme.blueText }}>Avg</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgA ?? '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgB ?? '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgC ?? '–'}</td>
+                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgD ?? '–'}</td>
                                   </tr>
                                 )
                               })()}
                             </tbody>
                           </table>
                         </div>
-                        {/* Final grade badge */}
+                        {/* Final grade badge — avg per criterion, sum, scaled boundary */}
                         {(() => {
                           const gs = commentStudentGrades[student.user_id]
-                          const vals = [Math.max(...gs.map(g => g.A).filter(v => v !== null)), Math.max(...gs.map(g => g.B).filter(v => v !== null)), Math.max(...gs.map(g => g.C).filter(v => v !== null)), Math.max(...gs.map(g => g.D).filter(v => v !== null))].filter(v => isFinite(v))
-                          if (vals.length < 4) return null
+                          const criAvg = (key) => { const v = gs.map(g => g[key]).filter(v => v !== null); return v.length > 0 ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null }
+                          const vals = ['A','B','C','D'].map(k => criAvg(k)).filter(v => v !== null)
+                          if (vals.length === 0) return null
                           const total = vals.reduce((a, b) => a + b, 0)
-                          const b = [5, 9, 14, 18, 23, 27]
+                          // Match PDF generator: average per criterion, scale boundary by numCriteria/4
+                          const currentSubject = subjects.find(s => s.subject_id === selectedTopic?.topic_subject_id)
+                          const customBounds = currentSubject?.custom_grade_boundaries
+                          const scale = vals.length / 4
+                          const b = (customBounds && customBounds.length === 6)
+                            ? customBounds
+                            : [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
                           let final = total <= b[0] ? 1 : total <= b[1] ? 2 : total <= b[2] ? 3 : total <= b[3] ? 4 : total <= b[4] ? 5 : total <= b[5] ? 6 : 7
                           return (
                             <div className="mt-1.5 flex items-center gap-2">
