@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -422,7 +422,6 @@ export default function UserManagement() {
           user_nama_depan: String(userData.user_nama_depan || '').trim(),
           user_nama_belakang: String(userData.user_nama_belakang || '').trim(),
           user_email: String(userData.user_email || '').trim(),
-          user_password: String(userData.user_password || '').trim(),
           user_role_id: Number(userData.user_role_id),
           user_unit_id: userData.user_unit_id ? Number(userData.user_unit_id) : null,
           is_active: Boolean(userData.is_active)
@@ -1208,8 +1207,7 @@ export default function UserManagement() {
             <ul className="text-xs space-y-1" style={{ color: theme.blueText }}>
               <li>â€¢ <strong>nama_depan</strong> or <strong>first_name</strong> (required)</li>
               <li>â€¢ <strong>nama_belakang</strong> or <strong>last_name</strong> (required)</li>
-              <li>â€¢ <strong>username</strong> (required, must be unique)</li>
-              <li>â€¢ <strong>email</strong> (required, must be @ccs.sch.id domain for Google OAuth)</li>
+              <li>â€¢ <strong>email</strong> (optional, @ccs.sch.id for Google OAuth)</li>
               <li>â€¢ <strong>role</strong> (required, available: {roles.map(r => r.role_name).join(', ') || 'Loading...'})</li>
               <li>â€¢ <strong>unit</strong> (optional, available: {units.map(u => u.unit_name).join(', ') || 'Loading...'})</li>
               <li>â€¢ <strong>status</strong> (optional: active/inactive, default: active)</li>
@@ -1263,7 +1261,6 @@ export default function UserManagement() {
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
                       <th className="text-left py-1" style={{ color: theme.greenText }}>Name</th>
-                      <th className="text-left py-1" style={{ color: theme.greenText }}>Username</th>
                       <th className="text-left py-1" style={{ color: theme.greenText }}>Email</th>
                       <th className="text-left py-1" style={{ color: theme.greenText }}>Role</th>
                       <th className="text-left py-1" style={{ color: theme.greenText }}>Unit</th>
@@ -1276,7 +1273,7 @@ export default function UserManagement() {
                         <td className="py-1" style={{ color: theme.textBody }}>{user.user_nama_depan} {user.user_nama_belakang}</td>
                         <td className="py-1" style={{ color: theme.textBody }}>{user.user_email || '-'}</td>
                         <td className="py-1" style={{ color: theme.textBody }}>
-                          {roles.find(r => r.role_id === user.user_role_id)?.role_name}
+                          {roles.find(r => r.role_id === user.user_role_id)?.role_name || '-'}
                         </td>
                         <td className="py-1" style={{ color: theme.textBody }}>
                           {user.user_unit_id ? units.find(u => u.unit_id === user.user_unit_id)?.unit_name || '-' : '-'}
