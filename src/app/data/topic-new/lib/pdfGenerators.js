@@ -2535,23 +2535,23 @@ if (semester === '2') {
   cb2Lines.forEach((line, i) => { doc.text(line, ml + 5, afterTableY + (i * 4)); });
   afterTableY += cb2Lines.length * 4 + 14;
 
-  // ── Signature Section ──
+  // Signature Section -- bottom-anchored so labels never overlap footer
+  const sigH   = 20;  // mm - height of signature image
+  const stampH = 20;  // mm - height of stamp image
+  const labelY    = ph - mb;              // role labels: 'Grade Mentor', 'HS Principal'
+  const boldNameY = labelY - 6;           // bold name / dots row
+  const sigYAbs   = boldNameY - sigH - 5; // top edge of signature images
+  const dateY     = sigYAbs - 4;          // 'Surabaya, ...' date line (closer to signatures)
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(17, 24, 39);
-  doc.text(`Surabaya, ${preparedDate}`, pw / 2, afterTableY, { align: 'center' });
-  afterTableY += 6;
+  doc.text(`Surabaya, ${preparedDate}`, pw / 2, dateY, { align: 'center' });
 
   const colW = cw / 3;
   const col1X = ml + colW / 2;
   const col2X = ml + colW + colW / 2;
   const col3X = ml + colW * 2 + colW / 2;
-
-  // ── Draw signature first, then stamp ON TOP (overlapping) ──
-  const sigH   = 20;  // mm — height of signature
-  const stampH = 20;  // mm — height of stamp
-
-  const sigY = afterTableY + 6; // push both elements down from the date line
 
   // 1. Draw principal signature
   if (unitSignaturePrincipalUrl) {
@@ -2560,55 +2560,51 @@ if (semester === '2') {
       if (sigBase64) {
         const sigProps = doc.getImageProperties(sigBase64);
         const sigW = (sigProps.width / sigProps.height) * sigH;
-        doc.addImage(sigBase64, 'PNG', col3X - sigW / 2, sigY, sigW, sigH);
+        doc.addImage(sigBase64, 'PNG', col3X - sigW / 2, sigYAbs, sigW, sigH);
       }
     } catch (e) { /* skip */ }
   }
 
-  // 2. Draw stamp ON TOP — same Y as signature, shifted right so they overlap horizontally
+  // 2. Draw stamp ON TOP -- same Y as signature, shifted right
   if (unitStampUrl) {
     try {
       const stampBase64 = await fetchImgBase64(unitStampUrl);
       if (stampBase64) {
         const stampProps = doc.getImageProperties(stampBase64);
         const stampW = (stampProps.width / stampProps.height) * stampH;
-        const stampX = col3X - stampW / 2 + 10; // offset right
-        const stampY = sigY;                     // same top as signature → vertically aligned
-        doc.addImage(stampBase64, 'PNG', stampX, stampY, stampW, stampH);
+        const stampX = col3X - stampW / 2 + 10;
+        doc.addImage(stampBase64, 'PNG', stampX, sigYAbs, stampW, stampH);
       }
     } catch (e) { /* skip */ }
   }
 
-  // ── Draw homeroom teacher signature at col2 (same Y level as principal) ──
+  // Draw homeroom teacher signature at col2
   if (homeroomSignatureUrl) {
     try {
       const htSigBase64 = await fetchImgBase64(homeroomSignatureUrl);
       if (htSigBase64) {
         const htSigProps = doc.getImageProperties(htSigBase64);
         const htSigW = (htSigProps.width / htSigProps.height) * sigH;
-        doc.addImage(htSigBase64, 'PNG', col2X - htSigW / 2, sigY, htSigW, sigH);
+        doc.addImage(htSigBase64, 'PNG', col2X - htSigW / 2, sigYAbs, htSigW, sigH);
       }
     } catch (e) { /* skip */ }
   }
 
-  // Advance Y past both elements (same height, so just sigY + sigH)
-  afterTableY = sigY + sigH + 4;
-
-  // Signature lines
+  // Bold names row
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text('....................', col1X, afterTableY, { align: 'center' });
+  doc.text('....................', col1X, boldNameY, { align: 'center' });
 
   doc.setFont('helvetica', 'bold');
-  doc.text(homeroomTeacherName, col2X, afterTableY, { align: 'center' });
-  doc.text(unitPrincipalName || '', col3X, afterTableY, { align: 'center' });
+  doc.text(homeroomTeacherName, col2X, boldNameY, { align: 'center' });
+  doc.text(unitPrincipalName || '', col3X, boldNameY, { align: 'center' });
 
-  afterTableY += 5;
+  // Role labels row
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Parent', col1X, afterTableY, { align: 'center' });
-  doc.text('Grade Mentor', col2X, afterTableY, { align: 'center' });
-  doc.text(unitPrincipalTitle || 'Principal', col3X, afterTableY, { align: 'center' });
+  doc.text('Parent', col1X, labelY, { align: 'center' });
+  doc.text('Grade Mentor', col2X, labelY, { align: 'center' });
+  doc.text(unitPrincipalTitle || 'Principal', col3X, labelY, { align: 'center' });
 
   drawFooter();
 }
