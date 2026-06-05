@@ -1585,7 +1585,7 @@ const nonCoreTableOptions = (body, rowMeta, startY) => ({
   },
   tableLineColor: [209, 213, 219],
   tableLineWidth: 0.3,
-  margin: { left: ml, right: mr, top: mt, bottom: mb },
+  margin: { left: ml, right: mr, top: mt, bottom: 15 },
   didDrawCell: (data) => {
     if (data.cell.section !== 'body') return;
     const meta = rowMeta[data.row.index];
@@ -1675,7 +1675,7 @@ const tableOptions = (body, rowMeta, startY) => ({
   },
   tableLineColor: [209, 213, 219],
   tableLineWidth: 0.3,
-  margin: { left: ml, right: mr, top: mt, bottom: mb },
+  margin: { left: ml, right: mr, top: mt, bottom: 15 },
   didDrawCell: (data) => {
     if (data.cell.section !== 'body') return;
     const meta = rowMeta[data.row.index];
@@ -2001,13 +2001,16 @@ for (const row of coreRows) {
         if (data.column.index !== 0) return;
         const cx = data.cell.x + 2;
         const cy = data.cell.y;
-        const maxW = data.cell.width - 16;
+        // maxW must match autoTable internal wrap (cellPadding left:2, right:2 -> width-4)
+        const maxW = data.cell.width - 4;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(17, 24, 39);
         const cLines = doc.splitTextToSize(m.text, maxW);
-        let ty = cy + 7;
-        cLines.forEach(cl => { doc.text(cl, cx, ty); ty += 5; });
+        const lineH = 5;
+        const blockH = (cLines.length - 1) * lineH;
+        let ty = cy + Math.max(5, (data.cell.height - blockH) / 2);
+        cLines.forEach(cl => { doc.text(cl, cx, ty); ty += lineH; });
       }
     },
     didDrawPage: () => { drawFooter(); },
@@ -2196,13 +2199,16 @@ for (const row of nonCoreRows) {
         if (data.column.index !== 0) return;
         const cx = data.cell.x + 2;
         const cy = data.cell.y;
-        const maxW = data.cell.width - 16;
+        // maxW must match autoTable internal wrap (cellPadding left:2, right:2 -> width-4)
+        const maxW = data.cell.width - 4;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(17, 24, 39);
         const cLines = doc.splitTextToSize(m.text, maxW);
-        let ty = cy + 7;
-        cLines.forEach(cl => { doc.text(cl, cx, ty); ty += 5; });
+        const lineH = 5;
+        const blockH = (cLines.length - 1) * lineH;
+        let ty = cy + Math.max(5, (data.cell.height - blockH) / 2);
+        cLines.forEach(cl => { doc.text(cl, cx, ty); ty += lineH; });
       }
     },
     didDrawPage: () => { drawFooter(); },
