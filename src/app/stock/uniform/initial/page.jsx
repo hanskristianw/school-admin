@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useTheme } from '@/lib/theme'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,7 +30,15 @@ export default function InitialStockPage() {
   const [success, setSuccess] = useState('')
   const [itemAddedSuccess, setItemAddedSuccess] = useState(false)
   const [saving, setSaving] = useState(false)
-  
+
+  const { theme } = useTheme()
+
+  // Adjust init stock
+  const [adjustModal, setAdjustModal] = useState({ open: false, txn_id: null, uniform_name: '', size_name: '', supplier_name: '', current_qty: 0, notes: '' })
+  const [adjustNewQty, setAdjustNewQty] = useState('')
+  const [adjustSaving, setAdjustSaving] = useState(false)
+  const [adjustError, setAdjustError] = useState('')
+
   // Summary states
   const [viewMode, setViewMode] = useState('pie')
   const [summaryData, setSummaryData] = useState([])
@@ -756,6 +765,31 @@ export default function InitialStockPage() {
     setInitialStockItems(prev => prev.filter((_, i) => i !== idx))
   }
 
+  const saveAdjustInit = async () => {
+    const newQty = parseInt(adjustNewQty, 10)
+    if (isNaN(newQty) || newQty < 0) {
+      setAdjustError('Masukkan jumlah yang valid (angka >= 0)')
+      return
+    }
+    setAdjustSaving(true)
+    setAdjustError('')
+    try {
+      const { error } = await supabase
+        .from('uniform_stock_txn')
+        .update({ qty_delta: newQty })
+        .eq('txn_id', adjustModal.txn_id)
+      if (error) throw error
+      setAdjustModal({ open: false, txn_id: null, uniform_name: '', size_name: '', supplier_name: '', current_qty: 0, notes: '' })
+      setAdjustNewQty('')
+      fetchHistory()
+      fetchSummary()
+    } catch (e) {
+      setAdjustError(e.message)
+    } finally {
+      setAdjustSaving(false)
+    }
+  }
+
   const submitInitialStock = async () => {
     if (initialStockItems.length === 0) {
       setError('Tambahkan minimal satu item')
@@ -805,11 +839,11 @@ export default function InitialStockPage() {
   const totalItems = initialStockItems.reduce((sum, item) => sum + Number(item.qty), 0)
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6" style={{ background: theme.pageBg, minHeight: '100%' }}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold">Stok Seragam</h1>
-          <p className="text-sm text-gray-600 mt-1">Pantau dan kelola stok seragam</p>
+          <h1 className="text-xl md:text-2xl font-semibold" style={{ color: theme.textPrimary }}>Stok Seragam</h1>
+          <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>Pantau dan kelola stok seragam</p>
         </div>
         <Button
           onClick={openAddModal}
@@ -832,9 +866,9 @@ export default function InitialStockPage() {
       )}
 
       {/* Ringkasan Stock */}
-      <Card className="p-4">
+      <Card className="p-4" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <h2 className="font-semibold">📊 Ringkasan Stock Seragam</h2>
+          <h2 className="font-semibold" style={{ color: theme.textPrimary }}>📊 Ringkasan Stock Seragam</h2>
           
           <div className="flex flex-wrap gap-2 items-center">
             {/* Export Button */}
@@ -848,14 +882,15 @@ export default function InitialStockPage() {
             )}
             
             {/* View Mode Toggle - Without Cards */}
-            <div className="inline-flex rounded-lg border border-gray-300">
+            <div className="inline-flex rounded-lg border" style={{ borderColor: theme.border }}>
               <button
                 onClick={() => setViewMode('pie')}
                 className={`px-3 py-1.5 text-sm font-medium rounded-l-lg border-r ${
                   viewMode === 'pie'
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    : 'border-gray-300 hover:opacity-80'
                 }`}
+                style={viewMode !== 'pie' ? { background: theme.inputBg, color: theme.textBody, borderColor: theme.border } : {}}
               >
                 🥧 Pie
               </button>
@@ -864,8 +899,9 @@ export default function InitialStockPage() {
                 className={`px-3 py-1.5 text-sm font-medium border-r ${
                   viewMode === 'chart'
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    : 'hover:opacity-80'
                 }`}
+                style={viewMode !== 'chart' ? { background: theme.inputBg, color: theme.textBody, borderColor: theme.border } : {}}
               >
                 📊 Chart
               </button>
@@ -873,9 +909,10 @@ export default function InitialStockPage() {
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1.5 text-sm font-medium rounded-r-lg ${
                   viewMode === 'table'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    ? 'bg-blue-600 text-white'
+                    : 'hover:opacity-80'
                 }`}
+                style={viewMode !== 'table' ? { background: theme.inputBg, color: theme.textBody } : {}}
               >
                 📋 Table
               </button>
@@ -888,12 +925,12 @@ export default function InitialStockPage() {
         </div>
         
         {loadingSummary ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8" style={{ color: theme.textSecondary }}>
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
             <p>Memuat data...</p>
           </div>
         ) : summaryData.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8" style={{ color: theme.textSecondary }}>
             <div className="text-4xl mb-2">📦</div>
             <p>Belum ada data stok</p>
           </div>
@@ -945,30 +982,30 @@ export default function InitialStockPage() {
                     
                     {/* Legend with details */}
                     <div className="w-full lg:w-1/2">
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h3 className="font-semibold mb-3 text-gray-700">Detail per Jenis Seragam</h3>
+                      <div className="rounded-lg p-4" style={{ background: theme.subtleBg }}>
+                        <h3 className="font-semibold mb-3" style={{ color: theme.textBody }}>Detail per Jenis Seragam</h3>
                         <div className="space-y-2 max-h-80 overflow-y-auto">
                           {pieData.map((item, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border">
+                            <div key={idx} className="flex items-center justify-between p-2 rounded border" style={{ background: theme.cardBg, borderColor: theme.border }}>
                               <div className="flex items-center gap-3">
                                 <div 
                                   className="w-4 h-4 rounded" 
                                   style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                                 ></div>
-                                <span className="text-sm font-medium">{item.name}</span>
+                                <span className="text-sm font-medium" style={{ color: theme.textBody }}>{item.name}</span>
                               </div>
                               <div className="text-right">
                                 <div className="text-sm font-semibold text-blue-600">{item.value} pcs</div>
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs" style={{ color: theme.textSecondary }}>
                                   {((item.value / totalQty) * 100).toFixed(1)}%
                                 </div>
                               </div>
                             </div>
                           ))}
                         </div>
-                        <div className="mt-4 pt-3 border-t">
+                        <div className="mt-4 pt-3 border-t" style={{ borderColor: theme.border }}>
                           <div className="flex justify-between items-center">
-                            <span className="font-semibold text-gray-700">Total Stok</span>
+                            <span className="font-semibold" style={{ color: theme.textBody }}>Total Stok</span>
                             <span className="text-lg font-bold text-blue-600">{totalQty} pcs</span>
                           </div>
                         </div>
@@ -1287,11 +1324,11 @@ export default function InitialStockPage() {
       </Card>
 
       {/* History Table */}
-      <Card className="p-4">
-        <h2 className="font-semibold mb-4">Riwayat Transaksi Stock Seragam</h2>
+      <Card className="p-4" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
+        <h2 className="font-semibold mb-4" style={{ color: theme.textPrimary }}>Riwayat Transaksi Stock Seragam</h2>
         
         {loadingHistory ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8" style={{ color: theme.textSecondary }}>
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
             <p>Memuat data...</p>
           </div>
@@ -1328,12 +1365,13 @@ export default function InitialStockPage() {
               {/* Filters */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 <div className="flex flex-col gap-1">
-                  <Label htmlFor="filterSupplier" className="text-sm">Supplier:</Label>
+                  <Label htmlFor="filterSupplier" className="text-sm" style={{ color: theme.textSecondary }}>Supplier:</Label>
                   <select
                     id="filterSupplier"
                     value={filterSupplier}
                     onChange={(e) => { setFilterSupplier(e.target.value); setCurrentPage(1) }}
-                    className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
                   >
                     <option value="all">Semua Supplier</option>
                     {hasNoSupplier && <option value="null">Stock Awal (Tanpa Supplier)</option>}
@@ -1346,12 +1384,13 @@ export default function InitialStockPage() {
                 </div>
                 
                 <div className="flex flex-col gap-1">
-                  <Label htmlFor="filterUniform" className="text-sm">Seragam:</Label>
+                  <Label htmlFor="filterUniform" className="text-sm" style={{ color: theme.textSecondary }}>Seragam:</Label>
                   <select
                     id="filterUniform"
                     value={filterUniform}
                     onChange={(e) => { setFilterUniform(e.target.value); setCurrentPage(1) }}
-                    className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
                   >
                     <option value="all">Semua Seragam</option>
                     {uniqueUniforms.map(u => (
@@ -1363,12 +1402,13 @@ export default function InitialStockPage() {
                 </div>
                 
                 <div className="flex flex-col gap-1">
-                  <Label htmlFor="filterSize" className="text-sm">Ukuran:</Label>
+                  <Label htmlFor="filterSize" className="text-sm" style={{ color: theme.textSecondary }}>Ukuran:</Label>
                   <select
                     id="filterSize"
                     value={filterSize}
                     onChange={(e) => { setFilterSize(e.target.value); setCurrentPage(1) }}
-                    className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
                   >
                     <option value="all">Semua Ukuran</option>
                     {uniqueSizes.map(s => (
@@ -1413,7 +1453,7 @@ export default function InitialStockPage() {
                 const paginatedHistory = filteredHistory.slice(startIndex, endIndex)
                 
                 return filteredHistory.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8" style={{ color: theme.textSecondary }}>
               <div className="text-4xl mb-2">📋</div>
               <p>Belum ada data history</p>
             </div>
@@ -1421,20 +1461,21 @@ export default function InitialStockPage() {
             <div className="overflow-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="text-left border-b bg-gray-50">
-                    <th className="py-2 px-3 font-semibold text-gray-700">Waktu</th>
-                    <th className="py-2 px-3 font-semibold text-gray-700">Seragam</th>
-                    <th className="py-2 px-3 font-semibold text-gray-700">Ukuran</th>
-                    <th className="py-2 px-3 font-semibold text-gray-700">Qty</th>
-                    <th className="py-2 px-3 font-semibold text-gray-700">Tipe</th>
-                    <th className="py-2 px-3 font-semibold text-gray-700">Supplier</th>
-                    <th className="py-2 px-3 font-semibold text-gray-700">Notes</th>
+                  <tr className="text-left border-b" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Waktu</th>
+                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Seragam</th>
+                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Ukuran</th>
+                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Qty</th>
+                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Tipe</th>
+                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Supplier</th>
+                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Notes</th>
+                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedHistory.map((row, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="py-2 px-3 whitespace-nowrap">
+                    <tr key={idx} className="border-b" style={{ borderColor: theme.border }}>
+                      <td className="py-2 px-3 whitespace-nowrap" style={{ color: theme.textBody }}>
                         {new Date(row.created_at).toLocaleDateString('id-ID', {
                           day: '2-digit',
                           month: 'short',
@@ -1443,31 +1484,54 @@ export default function InitialStockPage() {
                           minute: '2-digit'
                         })}
                       </td>
-                      <td className="py-2 px-3">
+                      <td className="py-2 px-3" style={{ color: theme.textBody }}>
                         {row.uniform?.uniform_name || '-'}
                         {row.uniform?.is_universal && (
                           <span className="ml-1 text-xs">🌐</span>
                         )}
                       </td>
-                      <td className="py-2 px-3">{row.size?.size_name || '-'}</td>
+                      <td className="py-2 px-3" style={{ color: theme.textBody }}>{row.size?.size_name || '-'}</td>
                       <td className="py-2 px-3">
                         <span className={`font-semibold ${row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {row.qty_delta >= 0 ? '+' : ''}{row.qty_delta}
                         </span>
                       </td>
                       <td className="py-2 px-3">
-                        <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                        <span className="px-2 py-1 rounded text-xs font-medium" style={{ background: theme.subtleBg, color: theme.textBody }}>
                           {row.txn_type}
                         </span>
                       </td>
                       <td className="py-2 px-3">
                         {row.supplier ? (
-                          <span className="text-xs">{row.supplier.supplier_code} - {row.supplier.supplier_name}</span>
+                          <span className="text-xs" style={{ color: theme.textBody }}>{row.supplier.supplier_code} - {row.supplier.supplier_name}</span>
                         ) : (
-                          <span className="text-gray-400 italic text-xs">Stock Awal</span>
+                          <span className="italic text-xs" style={{ color: theme.textSecondary }}>Stock Awal</span>
                         )}
                       </td>
-                      <td className="py-2 px-3 text-xs text-gray-600">{row.notes || '-'}</td>
+                      <td className="py-2 px-3 text-xs" style={{ color: theme.textSecondary }}>{row.notes || '-'}</td>
+                      <td className="py-2 px-3">
+                        {row.txn_type === 'init' && (
+                          <button
+                            onClick={() => {
+                              setAdjustModal({
+                                open: true,
+                                txn_id: row.txn_id,
+                                uniform_name: row.uniform?.uniform_name || '-',
+                                size_name: row.size?.size_name || '-',
+                                supplier_name: row.supplier ? `${row.supplier.supplier_code} - ${row.supplier.supplier_name}` : 'Tanpa Supplier',
+                                current_qty: row.qty_delta,
+                                notes: row.notes || ''
+                              })
+                              setAdjustNewQty(String(row.qty_delta))
+                              setAdjustError('')
+                            }}
+                            className="text-xs px-2 py-1 rounded font-medium"
+                            style={{ background: theme.yellowBg, color: theme.yellowText, border: `1px solid ${theme.border}` }}
+                          >
+                            ✏️ Edit Qty
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1476,7 +1540,7 @@ export default function InitialStockPage() {
               {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm" style={{ color: theme.textSecondary }}>
                     Halaman {currentPage} dari {totalPages}
                     <span className="mx-2">•</span>
                     Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredHistory.length)} dari {filteredHistory.length} transaksi
@@ -1509,7 +1573,7 @@ export default function InitialStockPage() {
               )}
               
               {totalPages <= 1 && (
-                <div className="mt-4 text-sm text-gray-600">
+                <div className="mt-4 text-sm" style={{ color: theme.textSecondary }}>
                   {(filterSupplier !== 'all' || filterUniform !== 'all' || filterSize !== 'all') ? (
                     <>
                       Menampilkan: <span className="font-semibold">{filteredHistory.length} transaksi</span>
@@ -1530,11 +1594,11 @@ export default function InitialStockPage() {
       </Card>
 
       {/* List of Items */}
-      <Card className="p-4">
-        <h2 className="font-semibold mb-4">Daftar Item Stock Awal (Pending Input)</h2>
+      <Card className="p-4" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
+        <h2 className="font-semibold mb-4" style={{ color: theme.textPrimary }}>Daftar Item Stock Awal (Pending Input)</h2>
         
         {initialStockItems.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12" style={{ color: theme.textSecondary }}>
             <div className="text-4xl mb-2">📦</div>
             <p>Belum ada item pending. Klik "+ Input Stock Awal" untuk menambah.</p>
           </div>
@@ -1544,27 +1608,27 @@ export default function InitialStockPage() {
             <div className="hidden md:block overflow-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="text-left border-b bg-gray-50">
-                    <th className="py-3 px-3 font-semibold text-gray-700">Unit</th>
-                    <th className="py-3 px-3 font-semibold text-gray-700">Seragam</th>
-                    <th className="py-3 px-3 font-semibold text-gray-700">Ukuran</th>
-                    <th className="py-3 px-3 font-semibold text-gray-700">Supplier</th>
-                    <th className="py-3 px-3 font-semibold text-gray-700 text-right">Qty</th>
-                    <th className="py-3 px-3 font-semibold text-gray-700">Keterangan</th>
-                    <th className="py-3 px-3 font-semibold text-gray-700">Aksi</th>
+                  <tr className="text-left border-b" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Unit</th>
+                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Seragam</th>
+                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Ukuran</th>
+                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Supplier</th>
+                    <th className="py-3 px-3 font-semibold text-right" style={{ color: theme.textSecondary }}>Qty</th>
+                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Keterangan</th>
+                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {initialStockItems.map((item, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-3">{item.unit_name}</td>
-                      <td className="py-3 px-3">{item.uniform_name}</td>
-                      <td className="py-3 px-3">{item.size_name}</td>
+                    <tr key={idx} className="border-b" style={{ borderColor: theme.border }}>
+                      <td className="py-3 px-3" style={{ color: theme.textBody }}>{item.unit_name}</td>
+                      <td className="py-3 px-3" style={{ color: theme.textBody }}>{item.uniform_name}</td>
+                      <td className="py-3 px-3" style={{ color: theme.textBody }}>{item.size_name}</td>
                       <td className="py-3 px-3">
-                        {item.supplier_name || <span className="text-gray-400 italic">Tanpa Supplier</span>}
+                        {item.supplier_name || <span className="italic" style={{ color: theme.textSecondary }}>Tanpa Supplier</span>}
                       </td>
-                      <td className="py-3 px-3 text-right font-medium">{item.qty}</td>
-                      <td className="py-3 px-3 text-gray-600">{item.notes || '-'}</td>
+                      <td className="py-3 px-3 text-right font-medium" style={{ color: theme.textBody }}>{item.qty}</td>
+                      <td className="py-3 px-3" style={{ color: theme.textSecondary }}>{item.notes || '-'}</td>
                       <td className="py-3 px-3">
                         <button
                           onClick={() => removeItem(idx)}
@@ -1582,14 +1646,14 @@ export default function InitialStockPage() {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3">
               {initialStockItems.map((item, idx) => (
-                <div key={idx} className="border rounded-lg p-3 bg-white">
+                <div key={idx} className="border rounded-lg p-3" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
                   <div className="space-y-2 text-sm">
                     <div><span className="font-medium">Unit:</span> {item.unit_name}</div>
                     <div><span className="font-medium">Seragam:</span> {item.uniform_name}</div>
                     <div><span className="font-medium">Ukuran:</span> {item.size_name}</div>
                     <div>
                       <span className="font-medium">Supplier:</span>{' '}
-                      {item.supplier_name || <span className="text-gray-400 italic">Tanpa Supplier</span>}
+                      {item.supplier_name || <span className="italic" style={{ color: theme.textSecondary }}>Tanpa Supplier</span>}
                     </div>
                     <div><span className="font-medium">Qty:</span> {item.qty}</div>
                     <div><span className="font-medium">Keterangan:</span> {item.notes || '-'}</div>
@@ -1808,6 +1872,63 @@ export default function InitialStockPage() {
         message={exportNotification.message}
         type={exportNotification.type}
       />
+
+      {/* Adjust Init Stock Modal */}
+      <Modal
+        isOpen={adjustModal.open}
+        onClose={() => setAdjustModal(prev => ({ ...prev, open: false }))}
+        title="✏️ Sesuaikan Stok Awal"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg p-3 text-sm space-y-1" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
+            <div style={{ color: theme.textSecondary }}>Seragam: <span className="font-medium" style={{ color: theme.textBody }}>{adjustModal.uniform_name}</span></div>
+            <div style={{ color: theme.textSecondary }}>Ukuran: <span className="font-medium" style={{ color: theme.textBody }}>{adjustModal.size_name}</span></div>
+            <div style={{ color: theme.textSecondary }}>Supplier: <span className="font-medium" style={{ color: theme.textBody }}>{adjustModal.supplier_name}</span></div>
+            <div style={{ color: theme.textSecondary }}>Qty saat ini: <span className="font-bold text-blue-600">{adjustModal.current_qty}</span></div>
+          </div>
+
+          <div className="rounded-lg px-3 py-2 text-xs" style={{ background: theme.yellowBg, color: theme.yellowText, border: `1px solid ${theme.border}` }}>
+            ⚠️ Fitur ini hanya untuk penyesuaian data selama masa trial. Riwayat transaksi akan langsung diperbarui.
+          </div>
+
+          <div>
+            <Label style={{ color: theme.textSecondary }}>Qty Baru *</Label>
+            <input
+              type="number"
+              min="0"
+              value={adjustNewQty}
+              onChange={e => setAdjustNewQty(e.target.value)}
+              className="w-full rounded px-3 py-2 mt-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
+              placeholder="Masukkan jumlah baru"
+            />
+          </div>
+
+          {adjustError && (
+            <div className="text-sm px-3 py-2 rounded" style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}` }}>
+              {adjustError}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2 border-t" style={{ borderColor: theme.border }}>
+            <Button
+              onClick={() => setAdjustModal(prev => ({ ...prev, open: false }))}
+              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+              disabled={adjustSaving}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={saveAdjustInit}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold"
+              disabled={adjustSaving || adjustNewQty === ''}
+            >
+              {adjustSaving ? '⏳ Menyimpan...' : '✓ Simpan Perubahan'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
