@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PDF / Document generation utilities for Topic New page.
  * 
  * Extracted from page.jsx to reduce file size.
@@ -1756,12 +1756,16 @@ for (let ci = 0; ci < coreChunks.length; ci++) {
   autoTable(doc, tableOptions(chunkBody, chunkMeta, mt + 12));
 }
 
-// Render non-core subjects (5 per page, 2-column table, no title)
+// Render non-core subjects (5 per page, same 6-column format as core)
 for (let ci = 0; ci < nonCoreChunks.length; ci++) {
   doc.addPage();
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(17, 24, 39);
+  doc.text(`Summary of ${semesterLabel} Student Progress`, ml, mt + 6);
   const indexOffset = coreRows.length + ci * SUBJECTS_PER_PAGE;
-  const { body: chunkBody, meta: chunkMeta } = buildNonCoreTableData(nonCoreChunks[ci], indexOffset);
-  autoTable(doc, nonCoreTableOptions(chunkBody, chunkMeta, mt + 6));
+  const { body: chunkBody, meta: chunkMeta } = buildTableData(nonCoreChunks[ci], indexOffset);
+  autoTable(doc, tableOptions(chunkBody, chunkMeta, mt + 12));
 }
 
 // ── Attendance + Mentor Comment section ──────────────────────────────────

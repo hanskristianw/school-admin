@@ -247,11 +247,22 @@ function LoginContent() {
                 redirect_uri: window.location.origin
               })
             })
-            const tokenData = await tokenRes.json()
+
+            // Safe parse — server might return HTML on crash / stale build
+            let tokenData
+            const rawText = await tokenRes.text()
+            try {
+              tokenData = JSON.parse(rawText)
+            } catch (_) {
+              console.error('Token endpoint returned non-JSON:', rawText.slice(0, 300))
+              setError('Server error. Coba restart server atau refresh halaman.')
+              setIsSubmitting(false)
+              return
+            }
             
             if (!tokenRes.ok || !tokenData.access_token) {
               console.error('Token exchange failed:', tokenData)
-              setError(tokenData.details || 'Gagal mendapatkan token')
+              setError(tokenData.details || tokenData.error || 'Gagal mendapatkan token')
               setIsSubmitting(false)
               return
             }
@@ -262,7 +273,7 @@ function LoginContent() {
             await completeLogin(tokenData.access_token, tokenData.refresh_token, tokenData.expires_in)
           } catch (err) {
             console.error('Token exchange error:', err)
-            setError('Terjadi kesalahan saat login')
+            setError('Terjadi kesalahan saat login. Silakan coba lagi.')
             setIsSubmitting(false)
           }
         } else {
