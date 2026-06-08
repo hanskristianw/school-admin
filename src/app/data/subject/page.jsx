@@ -28,6 +28,7 @@ export default function SubjectManagement() {
     subject_guide: '',
     grading_method: 'highest',
     core_subject: false,
+    is_community_project: false,
     print_order: 0,
     include_in_print: true,
     subject_group_id: '',
@@ -118,6 +119,7 @@ export default function SubjectManagement() {
           subject_icon,
           grading_method,
           core_subject,
+          is_community_project,
           print_order,
           include_in_print,
           subject_group_id,
@@ -151,6 +153,7 @@ export default function SubjectManagement() {
         subject_icon: subject.subject_icon || '',
         grading_method: subject.grading_method || 'highest',
         core_subject: subject.core_subject || false,
+        is_community_project: subject.is_community_project || false,
         print_order: subject.print_order ?? 0,
         include_in_print: subject.include_in_print !== false,
         user_nama_depan: subject.users?.user_nama_depan || '',
@@ -409,6 +412,7 @@ export default function SubjectManagement() {
         subject_guide: formData.subject_guide?.trim() || null,
         grading_method: formData.grading_method || 'highest',
         core_subject: formData.core_subject || false,
+        is_community_project: formData.is_community_project || false,
         print_order: Number(formData.print_order) || 0,
         include_in_print: formData.include_in_print !== false,
         subject_group_id: formData.subject_group_id ? Number(formData.subject_group_id) : null,
@@ -478,6 +482,7 @@ export default function SubjectManagement() {
         subject_guide: '',
         grading_method: 'highest',
         core_subject: false,
+        is_community_project: false,
         print_order: 0,
         include_in_print: true,
         custom_grade_boundaries: ''
@@ -509,6 +514,7 @@ export default function SubjectManagement() {
       subject_guide: subject.subject_guide || '',
       grading_method: subject.grading_method || 'highest',
       core_subject: subject.core_subject || false,
+      is_community_project: subject.is_community_project || false,
       print_order: subject.print_order ?? 0,
       include_in_print: subject.include_in_print !== false,
       subject_group_id: subject.subject_group_id || '',
@@ -564,6 +570,7 @@ export default function SubjectManagement() {
       subject_guide: '',
       grading_method: 'highest',
       core_subject: false,
+      is_community_project: false,
       print_order: 0,
       include_in_print: true,
       subject_group_id: ''
@@ -1325,6 +1332,24 @@ export default function SubjectManagement() {
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
                     formData.core_subject ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <Label style={{ color: theme.textBody }}>Community Project</Label>
+                  <p className="text-xs mb-2" style={{ color: theme.textSecondary }}>Tandai sebagai Community Project (muncul di halaman CP pada rapor)</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, is_community_project: !prev.is_community_project, core_subject: !prev.is_community_project ? false : prev.core_subject }))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    formData.is_community_project ? 'bg-purple-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    formData.is_community_project ? 'translate-x-6' : 'translate-x-1'
                   }`} />
                 </button>
               </div>

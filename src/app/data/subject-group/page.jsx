@@ -17,6 +17,7 @@ const BANDS = [
   { label: '7-8', min: 7, max: 8 },
 ];
 const MYP_YEARS = [1, 2, 3, 4, 5];
+const UNIVERSAL_YEAR = 0; // myp_year=0 means "applies to all years" (e.g. Community Project)
 const SEMESTERS = [
   { value: 0, label: 'S1 & S2 (Shared)' },
   { value: 1, label: 'Semester 1 Only' },
@@ -118,7 +119,7 @@ export default function SubjectGroupPage() {
   };
 
   const handleSaveAllDescriptors = async () => {
-    if (!selectedGroupId || !selectedYear) return;
+    if (!selectedGroupId || selectedYear === undefined || selectedYear === null) return;
     setSavingDesc(true);
     try {
       const dirtyEntries = Object.entries(descriptors).filter(([, v]) => v.dirty);
@@ -226,6 +227,13 @@ export default function SubjectGroupPage() {
               <div className="flex items-center gap-2">
                 <Label className="text-sm text-gray-500 mr-1">MYP Year:</Label>
                 <div className="flex gap-1">
+                  <button
+                    onClick={() => setSelectedYear(UNIVERSAL_YEAR)}
+                    title="Universal — berlaku untuk semua MYP Year (ideal untuk Community Project)"
+                    className={`px-2 h-8 rounded text-xs font-medium transition-colors ${
+                      selectedYear === UNIVERSAL_YEAR ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-purple-100'
+                    }`}
+                  >★ All</button>
                   {MYP_YEARS.map(yr => (
                     <button key={yr}
                       onClick={() => setSelectedYear(yr)}
@@ -257,7 +265,14 @@ export default function SubjectGroupPage() {
                 Jika kolom dibiarkan kosong, sistem akan otomatis menggunakan descriptor <em>Shared</em> sebagai fallback.
               </div>
             )}
-            {selectedSemester === 0 && (
+            {selectedYear === UNIVERSAL_YEAR && (
+              <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg text-xs text-purple-700">
+                <strong>★ Mode Universal (All Years):</strong> Descriptor di sini berlaku untuk <em>semua</em> MYP Year.
+                Gunakan untuk subject seperti <strong>Community Project</strong> yang deskriptornya sama di setiap tahun.
+                Jika ada descriptor khusus di MYP Year tertentu, descriptor tersebut yang akan digunakan sebagai override.
+              </div>
+            )}
+            {selectedSemester === 0 && selectedYear !== UNIVERSAL_YEAR && (
               <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
                 <strong>ℹ️ Mode Shared:</strong> Descriptor di sini berlaku untuk S1 maupun S2.
                 Jika ada descriptor khusus di tab <em>Semester 1 Only</em> atau <em>Semester 2 Only</em>, descriptor tersebut yang akan digunakan (Shared sebagai fallback).

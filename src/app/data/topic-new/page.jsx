@@ -22,6 +22,7 @@ import {
 } from './lib/pdfGenerators'
 import useAiHelp from './lib/useAiHelp'
 import WizardStepContent from './components/WizardStepContent'
+import CommunityProjectTab from './components/CommunityProjectTab'
 import 'driver.js/dist/driver.css'
 
 export default function TopicNewPage() {
@@ -4228,6 +4229,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     { id: 'assessment', label: t('topicNew.tabs.assessment'), icon: faClipboardCheck },
     { id: 'comment', label: t('topicNew.tabs.comment'), icon: faComments },
     ...(isWaliKelas ? [{ id: 'mentor', label: t('topicNew.tabs.mentorComment'), icon: faHouseUser }] : []),
+    { id: 'community_project', label: 'Community Project', icon: faLightbulb },
     { id: 'report', label: t('topicNew.tabs.report'), icon: faChartBar }
   ]
 
@@ -5682,6 +5684,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'community_project' && (
+          <CommunityProjectTab
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+          />
         )}
 
         {activeTab === 'report' && (

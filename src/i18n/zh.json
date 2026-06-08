@@ -930,6 +930,32 @@
       "deleteConfirm": "确定要删除此单元吗？",
       "enterUnitName": "请输入单元名称",
       "selectSubjectFirst": "请先选择学科"
+    },
+    "cp": {
+      "title": "社区项目",
+      "description": "为每位学生填写 A、B、C、D 成绩、项目主题和教师评语。数据存储为年度评估（不按学期区分）。",
+      "selectYear": "学年",
+      "selectYearPlaceholder": "\u2014 选择学年 \u2014",
+      "selectClass": "班级与科目",
+      "selectClassPlaceholder": "\u2014 选择班级/科目 \u2014",
+      "selectYearFirst": "请先选择学年。",
+      "noSubjects": "没有可用的社区项目科目。",
+      "noSubjectsHint": "请确保在 /data/subject 中创建了启用社区项目开关的科目。",
+      "noDetailKelas": "社区项目科目尚未分配到任何班级。",
+      "noDetailKelasHint": "打开 /data/class，选择班级，然后添加社区项目科目。",
+      "topic": "主题",
+      "topicPlaceholder": "项目主题标题\u2026",
+      "comment": "评语",
+      "commentPlaceholder": "为该学生填写教师评语\u2026",
+      "saveAll": "全部保存",
+      "saving": "保存中\u2026",
+      "saved": "已保存 \u2713",
+      "student": "学生姓名",
+      "loading": "正在加载社区项目数据\u2026",
+      "loadingStudents": "正在加载学生数据\u2026",
+      "noStudents": "该班级暂无学生。",
+      "noClassesForYear": "该学年没有班级。",
+      "errorPrefix": "错误："
     }
   },
   "admission": {

@@ -931,6 +931,32 @@
       "deleteConfirm": "Are you sure you want to delete this unit?",
       "enterUnitName": "Please enter a unit name",
       "selectSubjectFirst": "Select subject first"
+    },
+    "cp": {
+      "title": "Community Project",
+      "description": "Enter grades A, B, C, D, project topic, and teacher comment per student. Data is stored as an annual assessment (not semester-bound).",
+      "selectYear": "Academic Year",
+      "selectYearPlaceholder": "— Select Academic Year —",
+      "selectClass": "Class & Subject",
+      "selectClassPlaceholder": "— Select Class / Subject —",
+      "selectYearFirst": "Please select an Academic Year first.",
+      "noSubjects": "No Community Project subjects available.",
+      "noSubjectsHint": "Make sure a subject has been created at /data/subject with the Community Project toggle enabled.",
+      "noDetailKelas": "Community Project subject is not assigned to any class.",
+      "noDetailKelasHint": "Open /data/class, select a class, then add the Community Project subject.",
+      "topic": "Topic",
+      "topicPlaceholder": "Project topic title…",
+      "comment": "Comment",
+      "commentPlaceholder": "Teacher comment for this student…",
+      "saveAll": "Save All",
+      "saving": "Saving…",
+      "saved": "Saved ✓",
+      "student": "Student Name",
+      "loading": "Loading Community Project data…",
+      "loadingStudents": "Loading student data…",
+      "noStudents": "No students in this class.",
+      "noClassesForYear": "No classes found for this academic year.",
+      "errorPrefix": "Error: "
     }
   },
   "admission": {

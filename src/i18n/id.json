@@ -931,6 +931,32 @@
       "deleteConfirm": "Apakah Anda yakin ingin menghapus unit ini?",
       "enterUnitName": "Silakan masukkan nama unit",
       "selectSubjectFirst": "Pilih mata pelajaran terlebih dahulu"
+    },
+    "cp": {
+      "title": "Community Project",
+      "description": "Isi nilai A, B, C, D, topik proyek, dan komentar guru untuk setiap siswa. Data disimpan sebagai penilaian tahunan (tidak terikat semester).",
+      "selectYear": "Tahun Ajaran",
+      "selectYearPlaceholder": "\u2014 Pilih Tahun Ajaran \u2014",
+      "selectClass": "Kelas & Subject",
+      "selectClassPlaceholder": "\u2014 Pilih Kelas / Subject \u2014",
+      "selectYearFirst": "Pilih Tahun Ajaran terlebih dahulu.",
+      "noSubjects": "Tidak ada subject Community Project yang tersedia.",
+      "noSubjectsHint": "Pastikan subject sudah dibuat di /data/subject dengan toggle Community Project diaktifkan.",
+      "noDetailKelas": "Subject Community Project belum ditugaskan ke kelas manapun.",
+      "noDetailKelasHint": "Buka /data/class, pilih kelas, lalu tambahkan subject Community Project.",
+      "topic": "Topik",
+      "topicPlaceholder": "Judul topik proyek\u2026",
+      "comment": "Komentar",
+      "commentPlaceholder": "Komentar guru untuk siswa ini\u2026",
+      "saveAll": "Simpan Semua",
+      "saving": "Menyimpan\u2026",
+      "saved": "Tersimpan \u2713",
+      "student": "Nama Siswa",
+      "loading": "Memuat data Community Project\u2026",
+      "loadingStudents": "Memuat data siswa\u2026",
+      "noStudents": "Tidak ada siswa di kelas ini.",
+      "noClassesForYear": "Tidak ada kelas untuk tahun ajaran ini.",
+      "errorPrefix": "Error: "
     }
   },
   "admission": {

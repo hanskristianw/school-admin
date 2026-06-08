@@ -1628,8 +1628,9 @@ const nonCoreTableOptions = (body, rowMeta, startY) => ({
   didDrawPage: () => { drawFooter(); }
 });
 
-const coreRows = reportRows.filter(r => r.core_subject);
-const nonCoreRows = reportRows.filter(r => !r.core_subject);
+const coreRows = reportRows.filter(r => r.core_subject && !r.is_community_project);
+const nonCoreRows = reportRows.filter(r => !r.core_subject && !r.is_community_project);
+const cpRows = reportRows.filter(r => r.is_community_project);
 // Flatten: core first, then non-core (already sorted) — then chunk by page
 const allRows = [...coreRows, ...nonCoreRows];
 const SUBJECTS_PER_PAGE = 5;
@@ -2407,7 +2408,7 @@ if (semester === '2') {
     });
   }
 
-  const progBody = reportRows.map((row, idx) => {
+  const progBody = reportRows.filter(r => !r.is_community_project).map((row, idx) => {
     // S1 IB score + DIKNAS (conversion for core subjects with 3 or 4 criteria graded)
     const s1Entry         = s1Map[row.subject_id];
     const s1Score         = s1Entry?.semester_overview != null ? String(s1Entry.semester_overview) : '-';
@@ -2620,6 +2621,183 @@ if (semester === '2') {
 }
 
 
+// ── COMMUNITY PROJECT PAGES ───────────────────────────────────────────────
+if (cpRows.length > 0) {
+  for (const row of cpRows) {
+    doc.addPage();
+
+    // ── Watermark
+    if (logoBase64) {
+      try {
+        const wmH = 80; const wmProps = doc.getImageProperties(logoBase64);
+        const wmW = (wmProps.width / wmProps.height) * wmH;
+        doc.saveGraphicsState(); doc.setGState(new doc.GState({ opacity: 0.07 }));
+        doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH);
+        doc.restoreGraphicsState();
+      } catch (e) {}
+    }
+
+    // ── Header: logo + title + school name + divider
+    let cpY = mt;
+    if (logoBase64) {
+      try {
+        const logoH = 26; const imgP = doc.getImageProperties(logoBase64);
+        const logoW = (imgP.width / imgP.height) * logoH;
+        doc.addImage(logoBase64, 'PNG', ml, cpY, logoW, logoH);
+      } catch (e) {}
+    }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(17, 24, 39);
+    doc.text('COMMUNITY PROJECT', pw / 2, cpY + 12, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(107, 114, 128);
+    doc.text('Chung Chung Christian School', pw / 2, cpY + 19, { align: 'center' });
+    cpY += 30;
+    doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.4);
+    doc.line(ml, cpY, pw - mr, cpY); cpY += 4;
+
+    // ── Name / Class / Topic info table
+    autoTable(doc, {
+      startY: cpY,
+      body: [
+        ['Name:', studentName.toUpperCase()],
+        ['Class:', `${kelasName} \u2014 ${semesterLabel}`],
+        ...(row.cp_topic ? [['Topic:', row.cp_topic]] : []),
+      ],
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: { top: 2, right: 3, bottom: 2, left: 3 }, textColor: [31, 41, 55] },
+      columnStyles: { 0: { cellWidth: 28, fontStyle: 'bold', textColor: [107, 114, 128] } },
+      margin: { left: ml, right: mr },
+    });
+    cpY = doc.lastAutoTable.finalY + 5;
+
+    // ── Subject grades + criterion descriptors table
+    const subIconB64 = iconBySubjectId[row.subject_id];
+    const mypYr = semester === '1' ? (row.myp_year_s1 || 1) : (row.myp_year_s2 || 1);
+    const dKey = row.subject_group_id ? `${row.subject_group_id}_${mypYr}_${parseInt(semester)}` : null;
+    const descriptors = dKey ? (descriptorCache[dKey] || null) : null;
+    const crNames = criteriaNameCache[row.subject_id] || {};
+    const body = []; const meta = [];
+    body.push([
+      { content: row.subject_name + '\n' + row.teacher_name, styles: { textColor: [255, 255, 255] } },
+      row.grades.A !== null ? String(row.grades.A) : '-',
+      row.grades.B !== null ? String(row.grades.B) : '-',
+      row.grades.C !== null ? String(row.grades.C) : '-',
+      row.grades.D !== null ? String(row.grades.D) : '-',
+      row.semester_overview !== null ? String(row.semester_overview) : '-'
+    ]);
+    meta.push({ type: 'subject' });
+    body.push([{ content: 'Criterion Descriptors', colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 5, right: 2, bottom: 1, left: 2 } } }]);
+    meta.push({ type: 'cd_header' });
+    const _cpCrW = pw - ml - mr - 10;
+    for (const cr of ['A', 'B', 'C', 'D']) {
+      const gradeVal = row.grades[cr]; if (gradeVal === null) continue;
+      const crLabel = crNames[cr] ? `${cr}: ${crNames[cr]}` : `Criterion ${cr}`;
+      const bMin = descriptors ? gradeToBandMin(gradeVal) : null;
+      const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bStudent\b/g, studentFirstName) : '';
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      const descLines = descText ? doc.splitTextToSize(descText, _cpCrW) : [];
+      const contentStr = crLabel + (descLines.length ? '\n' + descLines.join('\n') : '');
+      const minCellHeight = 11 + descLines.length * 5;
+      body.push([{ content: contentStr, colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 4, right: 2, bottom: 6, left: 2 }, minCellHeight } }]);
+      meta.push({ type: 'criterion', label: crLabel, desc: descText });
+    }
+    if (row.comment) {
+      // Comment is in body — rendered via didDrawCell below
+      // (kept for layout spacing; actual text drawn in didDrawCell)
+    }
+    autoTable(doc, {
+      startY: cpY,
+      head: [['', 'A', 'B', 'C', 'D', `${semesterLabel}\nProgress\nOverview`]],
+      body, theme: 'plain',
+      styles: { fontSize: 9, cellPadding: { top: 5, right: 2, bottom: 5, left: 2 }, lineColor: [209, 213, 219], lineWidth: 0.3, overflow: 'linebreak', textColor: [255, 255, 255] },
+      headStyles: { fillColor: [255, 255, 255], textColor: [107, 114, 128], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+      columnStyles: {
+        0: { cellWidth: 'auto', cellPadding: { top: 5, right: 3, bottom: 5, left: 14 } },
+        1: { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] },
+        2: { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] },
+        3: { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] },
+        4: { cellWidth: 14, halign: 'center', fontStyle: 'bold', valign: 'top', textColor: [31, 41, 55] },
+        5: { cellWidth: 22, halign: 'center', fontStyle: 'bold', textColor: [31, 41, 55], valign: 'top' }
+      },
+      tableLineColor: [209, 213, 219], tableLineWidth: 0.3,
+      margin: { left: ml, right: mr },
+      didDrawCell: (data) => {
+        if (data.cell.section !== 'body') return;
+        const m = meta[data.row.index]; if (!m) return;
+        if (m.type === 'subject') {
+          if (data.column.index !== 0) return;
+          const cx = data.cell.x; const cy = data.cell.y;
+          if (subIconB64) { try { doc.addImage(subIconB64, 'PNG', cx + 2, cy + 4, 8, 8); } catch (_e) {} }
+          else { drawLetterAvatar(cx + 2, cy + 4, row.subject_name.charAt(0).toUpperCase()); }
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(30, 58, 95);
+          doc.text(row.subject_name, cx + 14, cy + 8);
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(107, 114, 128);
+          doc.text(row.teacher_name, cx + 14, cy + 14);
+        } else if (m.type === 'cd_header') {
+          if (data.column.index !== 0) return;
+          const cx = data.cell.x + 2; const cy = data.cell.y + data.cell.height / 2 + 1;
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(107, 114, 128);
+          doc.text('Criterion Descriptors', cx, cy);
+        } else if (m.type === 'criterion') {
+          if (data.column.index !== 0) return;
+          const cx = data.cell.x + 2; const cy = data.cell.y; const maxW = data.cell.width - 10;
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(17, 24, 39);
+          doc.text(m.label, cx, cy + 5);
+          if (m.desc) {
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(17, 24, 39);
+            const dLines = doc.splitTextToSize(m.desc, maxW);
+            let ty = cy + 11; dLines.forEach(dl => { doc.text(dl, cx, ty); ty += 5; });
+          }
+        } else if (m.type === 'comment') {
+          if (data.column.index !== 0) return;
+          const cx = data.cell.x + 2; const cy = data.cell.y; const maxW = data.cell.width - 4;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(17, 24, 39);
+          const cLines = doc.splitTextToSize(m.text, maxW);
+          const lineH = 5; const blockH = (cLines.length - 1) * lineH;
+          let ty = cy + Math.max(5, (data.cell.height - blockH) / 2);
+          cLines.forEach(cl => { doc.text(cl, cx, ty); ty += lineH; });
+        }
+      },
+      didDrawPage: () => { drawFooter(); },
+    });
+    // Comment — rendered as a separate block before boundaries table
+    if (row.comment) {
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY,
+        body: [
+          [{ content: 'Teacher Comment', styles: { fontStyle: 'bold', textColor: [107, 114, 128], fontSize: 8, cellPadding: { top: 5, right: 3, bottom: 1, left: 3 } } }],
+          [{ content: row.comment, styles: { fontStyle: 'normal', textColor: [31, 41, 55], fontSize: 9, cellPadding: { top: 2, right: 3, bottom: 6, left: 3 } } }],
+        ],
+        theme: 'plain',
+        styles: { overflow: 'linebreak', lineColor: [209, 213, 219], lineWidth: 0.3 },
+        tableLineColor: [209, 213, 219], tableLineWidth: 0.3,
+        margin: { left: ml, right: mr },
+      });
+    }
+    // Boundaries table
+    const cpNumCr = ['A','B','C','D'].filter(c => row.grades[c] !== null).length;
+    const cpScale = cpNumCr / 4;
+    const cpBounds = (row.custom_grade_boundaries?.length === 6)
+      ? row.custom_grade_boundaries
+      : [5,9,14,18,23,27].map(v => Math.round(v * cpScale));
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY,
+      head: [['', '1', '2', '3', '4', '5', '6', '7']],
+      body: [['Boundaries',
+        `0\u2013${cpBounds[0]}`, `${cpBounds[0]+1}\u2013${cpBounds[1]}`,
+        `${cpBounds[1]+1}\u2013${cpBounds[2]}`, `${cpBounds[2]+1}\u2013${cpBounds[3]}`,
+        `${cpBounds[3]+1}\u2013${cpBounds[4]}`, `${cpBounds[4]+1}\u2013${cpBounds[5]}`,
+        `${cpBounds[5]+1}\u2013${cpNumCr * 8}`
+      ]],
+      theme: 'plain',
+      styles: { fontSize: 8, cellPadding: { top: 3, right: 2, bottom: 3, left: 2 }, lineColor: [209, 213, 219], lineWidth: 0.3, textColor: [31, 41, 55] },
+      headStyles: { fillColor: [255, 255, 255], textColor: [107, 114, 128], fontStyle: 'normal', fontSize: 8, halign: 'center', cellPadding: { top: 2, right: 2, bottom: 2, left: 2 } },
+      columnStyles: { 0: { fontStyle: 'bold', textColor: [107, 114, 128], halign: 'left' } },
+      tableLineColor: [209, 213, 219], tableLineWidth: 0.3,
+      margin: { left: ml, right: mr },
+    });
+    drawFooter();
+  }
+}
 
 
 // ── HEALTH REPORT CARD PAGE ───────────────────────────────────────────────
@@ -2915,7 +3093,8 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           print_order,
           include_in_print,
           subject_group_id,
-          custom_grade_boundaries
+          custom_grade_boundaries,
+          is_community_project
         )
       `)
       .eq('detail_kelas_kelas_id', kelasId);
@@ -3043,13 +3222,15 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         }
       }
       
-      // Fetch assessments for this subject + semester (draft or approved)
+      // CP subjects use semester=0 (annual); regular subjects use the current semester
+      const isCpSubject = dk.subject.is_community_project === true;
+      const semestersToQuery = isCpSubject ? [0] : (parseInt(semester) === 2 ? [parseInt(semester)] : [parseInt(semester)]);
       const { data: assessmentsData, error: aError } = await supabase
         .from('assessment')
         .select('assessment_id')
         .eq('assessment_detail_kelas_id', dk.detail_kelas_id)
         .in('assessment_status', [0, 1, 3])
-        .eq('assessment_semester', parseInt(semester));
+        .in('assessment_semester', semestersToQuery);
       
       if (aError) continue;
       
@@ -3061,7 +3242,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       if (assessmentIds.length > 0) {
         const { data: gradesData, error: gError } = await supabase
           .from('assessment_grades')
-          .select('criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade, final_grade')
+          .select('criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade, final_grade, cp_topic')
           .eq('detail_siswa_id', studentId)
           .in('assessment_id', assessmentIds);
         
@@ -3095,17 +3276,32 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
           }
         }
       }
+
+      // Extract cp_topic (only meaningful for CP subjects — taken from first grade row)
+      const cpTopic = isCpSubject && assessmentIds.length > 0
+        ? (await supabase
+            .from('assessment_grades')
+            .select('cp_topic')
+            .eq('detail_siswa_id', studentId)
+            .in('assessment_id', assessmentIds)
+            .not('cp_topic', 'is', null)
+            .limit(1)
+            .maybeSingle()
+          ).data?.cp_topic || ''
+        : '';
       
       // Fetch subject_comment from dedicated table
+      // CP subjects always store comments with semester=0 (annual)
       let comment = '';
       if (studentUserId) {
+        const commentSemester = isCpSubject ? 0 : parseInt(semester);
         const { data: commentData } = await supabase
           .from('subject_comment')
           .select('comment_text')
           .eq('subject_id', dk.subject.subject_id)
           .eq('kelas_id', kelasId)
           .eq('student_user_id', studentUserId)
-          .eq('semester', parseInt(semester))
+          .eq('semester', commentSemester)
           .single();
         comment = commentData?.comment_text || '';
       }
@@ -3119,6 +3315,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         subject_name: dk.subject.subject_name,
         subject_icon: dk.subject.subject_icon || null,
         core_subject: dk.subject.core_subject || false,
+        is_community_project: dk.subject.is_community_project || false,
         print_order: dk.subject.print_order ?? 0,
         teacher_name: teacherName,
         grades,
@@ -3127,7 +3324,8 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         subject_group_id: dk.subject.subject_group_id || null,
         myp_year_s1: dk.myp_year_s1 || 1,
         myp_year_s2: dk.myp_year_s2 || 1,
-        custom_grade_boundaries: dk.subject.custom_grade_boundaries || null
+        custom_grade_boundaries: dk.subject.custom_grade_boundaries || null,
+        cp_topic: cpTopic || ''
       });
     }
     
@@ -3182,21 +3380,25 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
         const semInt = parseInt(semester);
         const dKey = `${row.subject_group_id}_${mypYr}_${semInt}`;
         if (!descriptorCache[dKey]) {
-          // Fetch shared (semester=0) AND semester-specific rows in one query
+          // Fetch: myp_year=0 (Universal/CP) + year-specific; semester=0 (shared) + semester-specific
           const { data: dData } = await supabase
             .from('criterion_descriptors')
-            .select('criterion, band_min, descriptor, semester')
+            .select('criterion, band_min, descriptor, semester, myp_year')
             .eq('subject_group_id', row.subject_group_id)
-            .eq('myp_year', mypYr)
+            .in('myp_year', [0, mypYr])   // 0 = universal (e.g. Community Project)
             .in('semester', [0, semInt]);
-          // Build merged map: shared first, then semester-specific overrides
+          // Build merged map: universal first, year-specific overrides; shared first, semester-specific overrides
           const byBand = {};
-          const shared = (dData || []).filter(d => d.semester === 0);
-          const specific = (dData || []).filter(d => d.semester === semInt);
-          [...shared, ...specific].forEach(d => {
-            if (!byBand[d.criterion]) byBand[d.criterion] = {};
-            if (d.descriptor) byBand[d.criterion][d.band_min] = d.descriptor;
-          });
+          const applyRows = (rows) => {
+            const shared = rows.filter(d => d.semester === 0);
+            const specific = rows.filter(d => d.semester === semInt);
+            [...shared, ...specific].forEach(d => {
+              if (!byBand[d.criterion]) byBand[d.criterion] = {};
+              if (d.descriptor) byBand[d.criterion][d.band_min] = d.descriptor;
+            });
+          };
+          applyRows((dData || []).filter(d => d.myp_year === 0));      // universal base
+          applyRows((dData || []).filter(d => d.myp_year === mypYr));  // year-specific overrides
           descriptorCache[dKey] = byBand;
         }
       }
@@ -3363,7 +3565,7 @@ export const generateClassReportZIP = async ({
         myp_year_s2,
         subject:detail_kelas_subject_id (
           subject_id, subject_name, subject_user_id, subject_icon,
-          core_subject, print_order, include_in_print, subject_group_id, custom_grade_boundaries
+          core_subject, print_order, include_in_print, subject_group_id, custom_grade_boundaries, is_community_project
         )
       `)
       .eq('detail_kelas_kelas_id', kelasId);
@@ -3385,13 +3587,15 @@ export const generateClassReportZIP = async ({
     }
 
     // Fetch all assessments for all subjects in batch
+    // CP subjects use semester=0 (annual); include both the current semester and 0
     const detailKelasIds = printableSubjects.map(dk => dk.detail_kelas_id);
+    const semestersToFetch = semesterInt === 2 ? [semesterInt, 0] : [semesterInt];
     const { data: allAssessments } = await supabase
       .from('assessment')
       .select('assessment_id, assessment_detail_kelas_id')
       .in('assessment_detail_kelas_id', detailKelasIds)
       .in('assessment_status', [0, 1, 3])
-      .eq('assessment_semester', semesterInt);
+      .in('assessment_semester', semestersToFetch);
     const allAssessmentIds = (allAssessments || []).map(a => a.assessment_id);
 
     // Fetch ALL grades for ALL students in batch (1 query!)
@@ -3399,20 +3603,22 @@ export const generateClassReportZIP = async ({
     if (allAssessmentIds.length > 0) {
       const { data } = await supabase
         .from('assessment_grades')
-        .select('assessment_id, detail_siswa_id, criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade, final_grade')
+        .select('assessment_id, detail_siswa_id, criterion_a_grade, criterion_b_grade, criterion_c_grade, criterion_d_grade, final_grade, cp_topic')
         .in('assessment_id', allAssessmentIds);
       allGradesData = data || [];
     }
 
     // Fetch ALL subject comments for this class+semester in batch (1 query!)
+    // Include semester=0 for CP subjects (annual comments) when generating S2
     const allStudentUserIds = reportStudents.map(s => s.user_id).filter(Boolean);
     let allCommentsData = [];
     if (allStudentUserIds.length > 0) {
+      const commentSemesters = semesterInt === 2 ? [semesterInt, 0] : [semesterInt];
       const { data } = await supabase
         .from('subject_comment')
-        .select('subject_id, student_user_id, comment_text')
+        .select('subject_id, student_user_id, comment_text, semester')
         .eq('kelas_id', kelasId)
-        .eq('semester', semesterInt)
+        .in('semester', commentSemesters)
         .in('student_user_id', allStudentUserIds);
       allCommentsData = data || [];
     }
@@ -3445,7 +3651,9 @@ export const generateClassReportZIP = async ({
     const dobMap = new Map();
     (allDobData || []).forEach(d => { dobMap.set(d.user_id, d.user_tanggal_lahir); });
     const commentMap = new Map();
-    (allCommentsData || []).forEach(c => { commentMap.set(`${c.subject_id}_${c.student_user_id}`, c.comment_text); });
+    // Sort: semester=0 first, then semester-specific overrides (so CP comments don't get overridden)
+    const sortedComments = [...(allCommentsData || [])].sort((a, b) => a.semester - b.semester);
+    sortedComments.forEach(c => { commentMap.set(`${c.subject_id}_${c.student_user_id}`, c.comment_text); });
 
     const gradesLookup = new Map();
     allGradesData.forEach(g => {
@@ -3488,19 +3696,24 @@ export const generateClassReportZIP = async ({
         const mypYr = semester === '1' ? (dk.myp_year_s1 || 1) : (dk.myp_year_s2 || 1);
         const dKey = `${dk.subject.subject_group_id}_${mypYr}_${semesterInt}`;
         if (!descriptorCache[dKey]) {
+          // Fetch: myp_year=0 (Universal/CP) + year-specific; semester=0 (shared) + semester-specific
           const { data: dData } = await supabase
             .from('criterion_descriptors')
-            .select('criterion, band_min, descriptor, semester')
+            .select('criterion, band_min, descriptor, semester, myp_year')
             .eq('subject_group_id', dk.subject.subject_group_id)
-            .eq('myp_year', mypYr)
+            .in('myp_year', [0, mypYr])   // 0 = universal (e.g. Community Project)
             .in('semester', [0, semesterInt]);
           const byBand = {};
-          const shared = (dData || []).filter(d => d.semester === 0);
-          const specific = (dData || []).filter(d => d.semester === semesterInt);
-          [...shared, ...specific].forEach(d => {
-            if (!byBand[d.criterion]) byBand[d.criterion] = {};
-            if (d.descriptor) byBand[d.criterion][d.band_min] = d.descriptor;
-          });
+          const applyRows = (rows) => {
+            const shared = rows.filter(d => d.semester === 0);
+            const specific = rows.filter(d => d.semester === semesterInt);
+            [...shared, ...specific].forEach(d => {
+              if (!byBand[d.criterion]) byBand[d.criterion] = {};
+              if (d.descriptor) byBand[d.criterion][d.band_min] = d.descriptor;
+            });
+          };
+          applyRows((dData || []).filter(d => d.myp_year === 0));           // universal base
+          applyRows((dData || []).filter(d => d.myp_year === mypYr));       // year-specific overrides
           descriptorCache[dKey] = byBand;
         }
       }
@@ -3592,6 +3805,11 @@ export const generateClassReportZIP = async ({
         }
 
         const comment = commentMap.get(`${dk.subject.subject_id}_${studentUserId}`) || '';
+        // cp_topic: per-student topic stored in assessment_grades (CP subjects only)
+        const isCp = dk.subject.is_community_project === true;
+        const studentGradesForDk = (gradesLookup.get(studentId) || []).filter(g => dkAssessmentIds.includes(g.assessment_id));
+        const cpTopic = isCp ? (studentGradesForDk.find(g => g.cp_topic)?.cp_topic || '') : '';
+
         const hasGrades = grades.A !== null || grades.B !== null || grades.C !== null || grades.D !== null || semesterOverview !== null;
         if (!hasGrades) continue;
 
@@ -3600,6 +3818,7 @@ export const generateClassReportZIP = async ({
           subject_name: dk.subject.subject_name,
           subject_icon: dk.subject.subject_icon || null,
           core_subject: dk.subject.core_subject || false,
+          is_community_project: dk.subject.is_community_project || false,
           print_order: dk.subject.print_order ?? 0,
           teacher_name: teacherName,
           grades,
@@ -3608,7 +3827,8 @@ export const generateClassReportZIP = async ({
           subject_group_id: dk.subject.subject_group_id || null,
           myp_year_s1: dk.myp_year_s1 || 1,
           myp_year_s2: dk.myp_year_s2 || 1,
-          custom_grade_boundaries: dk.subject.custom_grade_boundaries || null
+          custom_grade_boundaries: dk.subject.custom_grade_boundaries || null,
+          cp_topic: cpTopic
         });
       }
 
