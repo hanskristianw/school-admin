@@ -2431,15 +2431,29 @@ if (semester === '2') {
     return (a.print_order ?? 0) - (b.print_order ?? 0);
   });
 
+  // ── Helper: get DIKNAS from a known IB score (1–7) ─────────────────────
+  // Uses midpoints of the standard grade bands on the 4-criteria normalized scale
+  // (bands: ≤5 | 6-9 | 10-14 | 15-18 | 19-23 | 24-27 | 28-32)
+  const ibToNorm4 = { 1: 4, 2: 7, 3: 12, 4: 16, 5: 21, 6: 25, 7: 30 };
+  const getDiknasFromIBScore = (ibScore, numCriteria) => {
+    const ib = Math.max(1, Math.min(7, Math.round(ibScore)));
+    const norm4 = ibToNorm4[ib];
+    if (!norm4) return '';
+    const nc = numCriteria || 4;
+    // Scale representative 4-criteria total to the actual numCriteria, then route through getDiknas
+    const scaledTotal = norm4 * nc / 4;
+    return getDiknas(true, scaledTotal, nc);
+  };
+
   const progBody = allProgRows.map((row, idx) => {
-    // S1 IB score + DIKNAS
+    // ── S1 data ────────────────────────────────────────────────────────────
     const s1Entry         = s1Map[row.subject_id];
     const s1Score         = s1Entry?.semester_overview != null ? String(s1Entry.semester_overview) : '-';
     const s1NumCriteria   = s1Entry?.numCriteria ?? 0;
     const s1HasConversion = (s1NumCriteria === 4 || s1NumCriteria === 3 || s1NumCriteria === 2);
     const s1Diknas        = s1HasConversion ? getDiknas(true, s1Entry?.criteriaTotal ?? null, s1NumCriteria) : '';
 
-    // S2 IB score + DIKNAS
+    // ── S2 data ────────────────────────────────────────────────────────────
     const s2Score         = row.semester_overview != null ? String(row.semester_overview) : '-';
     const s2Grades        = row.grades || {};
     const s2Vals          = [s2Grades.A, s2Grades.B, s2Grades.C, s2Grades.D].filter(g => g !== null && g !== undefined);
@@ -2447,27 +2461,56 @@ if (semester === '2') {
     const s2HasConversion = (s2Vals.length === 4 || s2Vals.length === 3 || s2Vals.length === 2);
     const s2Diknas        = s2HasConversion ? getDiknas(true, s2Total, s2Vals.length) : '';
 
-    // Final Grade: use S2 if available, otherwise fall back to S1
-    let finalScore, finalDiknas;
-    if (s2HasConversion) {
-      finalScore  = s2Score;
-      finalDiknas = getDiknas(true, s2Total, s2Vals.length);
-    } else if (s1HasConversion) {
-      finalScore  = s1Score;
-      finalDiknas = s1Diknas;
-    } else {
-      finalScore  = '';
-      finalDiknas = '';
+    // ── MRMC Final IB Score ────────────────────────────────────────────────
+    // Rules:
+    //   |Δ| ≤ 1  →  Final = S2 (stable / small drop, take most recent)
+    //   |Δ| > 1  →  Final = S1 + sign(Δ) × ceil(|Δ|/2), clamped [1,7]
+    //   Only S1  →  Final = S1
+    //   Only S2  →  Final = S2
+    const hasS1IB = s1Entry?.semester_overview != null;
+    const hasS2IB = row.semester_overview != null;
+    const s1IB    = hasS1IB ? s1Entry.semester_overview : null;
+    const s2IB    = hasS2IB ? row.semester_overview : null;
+
+    let finalIB = null;
+    if (hasS1IB && hasS2IB) {
+      const delta = s2IB - s1IB;
+      if (Math.abs(delta) <= 1) {
+        finalIB = s2IB; // stable or single-point drop → most recent
+      } else {
+        const steps     = Math.ceil(Math.abs(delta) / 2);
+        const direction = delta > 0 ? 1 : -1;
+        finalIB = Math.max(1, Math.min(7, s1IB + direction * steps));
+      }
+    } else if (hasS1IB) {
+      finalIB = s1IB; // S1 only
+    } else if (hasS2IB) {
+      finalIB = s2IB; // S2 only
     }
+
+    // ── Final Conversion: average of S1 DIKNAS and S2 DIKNAS ───────────────
+    const s1DiknasNum = s1Diknas !== '' ? parseFloat(s1Diknas) : null;
+    const s2DiknasNum = s2Diknas !== '' ? parseFloat(s2Diknas) : null;
+    let finalDiknas = '';
+    if (s1DiknasNum !== null && s2DiknasNum !== null) {
+      finalDiknas = String(Math.round((s1DiknasNum + s2DiknasNum) / 2));
+    } else if (s1DiknasNum !== null) {
+      finalDiknas = String(s1DiknasNum); // S1 only
+    } else if (s2DiknasNum !== null) {
+      finalDiknas = String(s2DiknasNum); // S2 only
+    }
+
+    const finalScore = finalIB !== null ? String(finalIB) : '';
 
     return [
       String(idx + 1),
       row.subject_name,
       s1Score,    s1Diknas,    // S1 IB | S1 Conversion
       s2Score,    s2Diknas,    // S2 IB | S2 Conversion
-      finalScore, finalDiknas, // Final IB | Final Conversion
+      finalScore, finalDiknas, // Final IB (MRMC) | Final Conversion
     ];
   });
+
 
 
 
