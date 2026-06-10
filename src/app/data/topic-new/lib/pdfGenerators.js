@@ -1293,7 +1293,8 @@ const buildStudentReportPDF = async ({
   unitSignaturePrincipalUrl, unitStampUrl,
   logoBase64, reportRows, iconCache, iconBySubjectId,
   criteriaNameCache, descriptorCache, mentorComment,
-  semester1Rows, healthData, nurseName, nurseSignatureUrl
+  semester1Rows, healthData, nurseName, nurseSignatureUrl,
+  includeCpPage = true
 }) => {
 // async: needed for fetching signature images inside progression page
 const doc = new jsPDF('portrait', 'mm', 'a4');
@@ -2408,15 +2409,37 @@ if (semester === '2') {
     });
   }
 
-  const progBody = reportRows.filter(r => !r.is_community_project).map((row, idx) => {
-    // S1 IB score + DIKNAS (conversion for core subjects with 3 or 4 criteria graded)
+  // Build unified subject list for conversion table:
+  // - Start with current-semester rows (excluding CP)
+  // - Add any S1-only rows: subjects in semester1Rows that have no entry in current semester
+  const s2ProgRows = reportRows.filter(r => !r.is_community_project);
+  const s2SubjectIds = new Set(s2ProgRows.map(r => r.subject_id));
+  const s1OnlyRows = (semester1Rows || [])
+    .filter(r => !r.is_community_project && !s2SubjectIds.has(r.subject_id))
+    .map(r => ({
+      ...r,
+      semester_overview: null, // no S2 score
+      grades: {},              // no S2 grades
+    }));
+
+  // Merge and sort by the same order as the main report pages:
+  // core subjects first, then non-core; within each group sort by print_order
+  const allProgRows = [...s2ProgRows, ...s1OnlyRows].sort((a, b) => {
+    const aCore = a.core_subject ? 0 : 1;
+    const bCore = b.core_subject ? 0 : 1;
+    if (aCore !== bCore) return aCore - bCore;
+    return (a.print_order ?? 0) - (b.print_order ?? 0);
+  });
+
+  const progBody = allProgRows.map((row, idx) => {
+    // S1 IB score + DIKNAS
     const s1Entry         = s1Map[row.subject_id];
     const s1Score         = s1Entry?.semester_overview != null ? String(s1Entry.semester_overview) : '-';
     const s1NumCriteria   = s1Entry?.numCriteria ?? 0;
     const s1HasConversion = (s1NumCriteria === 4 || s1NumCriteria === 3 || s1NumCriteria === 2);
     const s1Diknas        = s1HasConversion ? getDiknas(true, s1Entry?.criteriaTotal ?? null, s1NumCriteria) : '';
 
-    // S2 IB score + DIKNAS (conversion for core subjects with 3 or 4 criteria graded)
+    // S2 IB score + DIKNAS
     const s2Score         = row.semester_overview != null ? String(row.semester_overview) : '-';
     const s2Grades        = row.grades || {};
     const s2Vals          = [s2Grades.A, s2Grades.B, s2Grades.C, s2Grades.D].filter(g => g !== null && g !== undefined);
@@ -2424,9 +2447,18 @@ if (semester === '2') {
     const s2HasConversion = (s2Vals.length === 4 || s2Vals.length === 3 || s2Vals.length === 2);
     const s2Diknas        = s2HasConversion ? getDiknas(true, s2Total, s2Vals.length) : '';
 
-    // Final Grade: show when core subject has 3 or 4 criteria graded in S2
-    const finalScore      = s2HasConversion ? s2Score  : '';
-    const finalDiknas     = s2HasConversion ? getDiknas(true, s2Total, s2Vals.length) : '';
+    // Final Grade: use S2 if available, otherwise fall back to S1
+    let finalScore, finalDiknas;
+    if (s2HasConversion) {
+      finalScore  = s2Score;
+      finalDiknas = getDiknas(true, s2Total, s2Vals.length);
+    } else if (s1HasConversion) {
+      finalScore  = s1Score;
+      finalDiknas = s1Diknas;
+    } else {
+      finalScore  = '';
+      finalDiknas = '';
+    }
 
     return [
       String(idx + 1),
@@ -2436,6 +2468,7 @@ if (semester === '2') {
       finalScore, finalDiknas, // Final IB | Final Conversion
     ];
   });
+
 
 
 
@@ -2622,7 +2655,7 @@ if (semester === '2') {
 
 
 // ── COMMUNITY PROJECT PAGES ───────────────────────────────────────────────
-if (cpRows.length > 0) {
+if (includeCpPage && cpRows.length > 0) {
   for (const row of cpRows) {
     doc.addPage();
 
@@ -3009,7 +3042,7 @@ if (healthData) {
   return pdfBlob;
 };
 
-export const generateStudentReportHTML = async ({ reportFilters, reportStudents, reportKelasOptions, reportYears, setLoadingReport, onError }) => {
+export const generateStudentReportHTML = async ({ reportFilters, reportStudents, reportKelasOptions, reportYears, setLoadingReport, includeCpPage = true, onError }) => {
   if (!reportFilters.kelas || !reportFilters.student) {
     alert('Silakan pilih kelas dan siswa terlebih dahulu');
     return;
@@ -3460,6 +3493,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
             subject_id:     dk.subject.subject_id,
             subject_name:   dk.subject.subject_name,
             core_subject:   dk.subject.core_subject || false,
+            print_order:    dk.subject.print_order ?? 0,
             semester_overview: s1Overview,
             criteriaTotal:  s1Vals.length > 0 ? s1Vals.reduce((a, b) => a + b, 0) : null,
             numCriteria:    s1Vals.length,
@@ -3477,7 +3511,8 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       unitSignaturePrincipalUrl, unitStampUrl,
       logoBase64, reportRows, iconCache, iconBySubjectId,
       criteriaNameCache, descriptorCache, mentorComment,
-      semester1Rows, healthData, nurseName, nurseSignatureUrl
+      semester1Rows, healthData, nurseName, nurseSignatureUrl,
+      includeCpPage
     });
     const pdfUrl = URL.createObjectURL(pdfBlob);
     window.open(pdfUrl, '_blank');
@@ -3496,7 +3531,7 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
  */
 export const generateClassReportZIP = async ({
   reportFilters, reportStudents, reportKelasOptions, reportYears,
-  subjects, setLoadingReport, onProgress, onError
+  subjects, setLoadingReport, includeCpPage = true, onProgress, onError
 }) => {
   if (!reportFilters.kelas) {
     alert('Silakan pilih kelas terlebih dahulu');
@@ -3929,6 +3964,7 @@ export const generateClassReportZIP = async ({
               subject_id:     dk.subject.subject_id,
               subject_name:   dk.subject.subject_name,
               core_subject:   dk.subject.core_subject || false,
+              print_order:    dk.subject.print_order ?? 0,
               semester_overview: s1Overview,
               criteriaTotal:  s1Vals.length > 0 ? s1Vals.reduce((a, b) => a + b, 0) : null,
               numCriteria:    s1Vals.length,
@@ -3945,7 +3981,8 @@ export const generateClassReportZIP = async ({
         unitSignaturePrincipalUrl, unitStampUrl,
         logoBase64, reportRows, iconCache, iconBySubjectId,
         criteriaNameCache, descriptorCache, mentorComment,
-        semester1Rows, healthData, nurseName: batchNurseName, nurseSignatureUrl: batchNurseSignatureUrl
+        semester1Rows, healthData, nurseName: batchNurseName, nurseSignatureUrl: batchNurseSignatureUrl,
+        includeCpPage
       });
 
       const safeName = studentName.replace(/[^a-zA-Z0-9\s\-]/g, '').trim();

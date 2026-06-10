@@ -294,6 +294,7 @@ export default function TopicNewPage() {
   const [loadingReportStudents, setLoadingReportStudents] = useState(false)
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, name: '' })
   const [reportMode, setReportMode] = useState('single') // 'single' or 'class'
+  const [includeCpPage, setIncludeCpPage] = useState(true) // whether to include CP pages in PDF
   
   // Class Recap state (for assessment tab)
   const [recapSemesterFilter, setRecapSemesterFilter] = useState('')
@@ -2036,6 +2037,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       reportKelasOptions,
       reportYears,
       setLoadingReport,
+      includeCpPage,
       onError: (err) => alert('Gagal menghasilkan report: ' + err.message)
     })
   }
@@ -2050,6 +2052,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       reportYears,
       subjects,
       setLoadingReport,
+      includeCpPage,
       onProgress: (current, total, name) => setBatchProgress({ current, total, name }),
       onError: (err) => alert('Gagal menghasilkan report kelas: ' + err.message)
     })
@@ -5800,6 +5803,21 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   {t('topicNew.report.classInfoBanner', { count: reportStudents.length })}
                 </div>
               )}
+
+              {/* Community Project page toggle */}
+              <div className="mt-4 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="includeCpPage"
+                  checked={includeCpPage}
+                  onChange={e => setIncludeCpPage(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer"
+                  style={{ accentColor: theme.textPrimary }}
+                />
+                <label htmlFor="includeCpPage" className="text-sm cursor-pointer select-none" style={{ color: theme.textBody }}>
+                  Cetak halaman <strong>Community Project</strong>
+                </label>
+              </div>
               
               <div className="mt-4 flex flex-col gap-3">
                 {/* Progress bar for batch generation */}
