@@ -96,6 +96,10 @@ export default function KwitansiModal({ isOpen, onClose, sale, items, uniforms, 
     };
   });
 
+  // Always compute total from the items actually displayed so that
+  // the TOTAL row and terbilang are consistent with what's on screen.
+  const computedTotal = itemsData.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Cetak Kwitansi" size="2xl">
       <div className="space-y-4">
@@ -196,7 +200,7 @@ export default function KwitansiModal({ isOpen, onClose, sale, items, uniforms, 
                 <div className="colon" style={{ width: '20px' }}>:</div>
                 <div className="value" style={{ flex: 1 }}>
                   <div className="nominal-box" style={{ border: '2px solid #000', padding: '10px', background: '#f9f9f9' }}>
-                    <strong style={{ fontSize: '16px' }}>{formatTerbilang(sale.total_amount)}</strong>
+                    <strong style={{ fontSize: '16px' }}>{formatTerbilang(computedTotal)}</strong>
                   </div>
                 </div>
               </div>
@@ -233,7 +237,7 @@ export default function KwitansiModal({ isOpen, onClose, sale, items, uniforms, 
                 ))}
                 <tr>
                   <td colSpan="5" style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}><strong>TOTAL</strong></td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}><strong>{formatCurrency(sale.total_amount)}</strong></td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}><strong>{formatCurrency(computedTotal)}</strong></td>
                 </tr>
               </tbody>
             </table>

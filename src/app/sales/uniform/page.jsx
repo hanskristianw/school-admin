@@ -314,7 +314,25 @@ export default function UniformSalesPage() {
       }
 
       // 3) Insert items
-      const payloadItems = items.map(it => ({ sale_id: saleId, uniform_id: it.uniform_id, size_id: it.size_id, qty: Number(it.qty), unit_price: Number(it.unit_price || getPrice(it.uniform_id, it.size_id)), unit_hpp: Number(it.unit_hpp || getHpp(it.uniform_id, it.size_id)), subtotal: Number(it.qty) * Number(it.unit_price || getPrice(it.uniform_id, it.size_id)) }))
+      // Use explicit null/undefined check so user-entered price=0 is preserved.
+      // The `||` operator treats 0 as falsy and would incorrectly fall back to getPrice().
+      const payloadItems = items.map(it => {
+        const price = (it.unit_price !== null && it.unit_price !== undefined && it.unit_price !== '')
+          ? Number(it.unit_price)
+          : getPrice(it.uniform_id, it.size_id);
+        const hpp = (it.unit_hpp !== null && it.unit_hpp !== undefined && it.unit_hpp !== '')
+          ? Number(it.unit_hpp)
+          : getHpp(it.uniform_id, it.size_id);
+        return {
+          sale_id:    saleId,
+          uniform_id: it.uniform_id,
+          size_id:    it.size_id,
+          qty:        Number(it.qty),
+          unit_price: price,
+          unit_hpp:   hpp,
+          subtotal:   Number(it.qty) * price,
+        };
+      });
       const { error: itemErr } = await supabase.from('uniform_sale_item').insert(payloadItems)
       if (itemErr) throw itemErr
 

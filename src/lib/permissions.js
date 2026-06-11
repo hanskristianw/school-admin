@@ -18,7 +18,7 @@ export function canVoidTransactions(userData) {
     isAdmin: userData.isAdmin,
     isPrincipal: userData.isPrincipal
   })
-  return !!userData.canVoidTransactions
+  return !!userData.canVoidTransactions || !!userData.isAdmin
 }
 
 /**
