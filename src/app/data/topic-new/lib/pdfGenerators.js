@@ -2343,7 +2343,7 @@ if (semester === '2') {
   doc.text(yearName || '', ml + 45, py);
 
   // ── Progression Table ──
-  py += 8;
+  py += 4;
 
   // ── DIKNAS conversion lookup table (core subjects, 4 criteria, boundary 4–32) ──
   const CORE_DIKNAS = {
@@ -2613,7 +2613,7 @@ if (semester === '2') {
   const cb1Text = 'The student has met the required standards and is eligible to be promoted to the next grade level';
   const cb1Lines = doc.splitTextToSize(cb1Text, cw - 6);
   cb1Lines.forEach((line, i) => { doc.text(line, ml + 5, afterTableY + (i * 4)); });
-  afterTableY += cb1Lines.length * 4 + 4;
+  afterTableY += cb1Lines.length * 4 + 2;
 
   // Checkbox 2: Conditional promotion (unchecked)
   drawCheckbox(ml, afterTableY, false);
