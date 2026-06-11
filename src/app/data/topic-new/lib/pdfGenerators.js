@@ -2396,6 +2396,17 @@ if (semester === '2') {
     return CORE_DIKNAS[normalized] !== undefined ? String(CORE_DIKNAS[normalized]) : '';
   };
 
+  // ── IB Final Grade → DIKNAS band (batas bawah & batas atas) ────────────
+  // Used to clamp the averaged Final Conversion into its valid DIKNAS range.
+  const IB_DIKNAS_BAND = {
+    1: { min: 60, max:  61 },
+    2: { min: 63, max:  67 },
+    3: { min: 69, max:  74 },
+    4: { min: 76, max:  80 },
+    5: { min: 81, max:  87 },
+    6: { min: 89, max:  93 },
+    7: { min: 94, max: 100 },
+  };
   // Build s1 lookup map: subject_id → { semester_overview, criteriaTotal, numCriteria, core_subject }
   const s1Map = {};
   if (semester1Rows && semester1Rows.length > 0) {
@@ -2488,16 +2499,26 @@ if (semester === '2') {
       finalIB = s2IB; // S2 only
     }
 
-    // ── Final Conversion: average of S1 DIKNAS and S2 DIKNAS ───────────────
+    // ── Final Conversion: average(S1, S2 DIKNAS) clamped to IB grade band ──
+    // Step 1: compute raw average from available semesters
     const s1DiknasNum = s1Diknas !== '' ? parseFloat(s1Diknas) : null;
     const s2DiknasNum = s2Diknas !== '' ? parseFloat(s2Diknas) : null;
+    let rawAvg = null;
+    if      (s1DiknasNum !== null && s2DiknasNum !== null) rawAvg = (s1DiknasNum + s2DiknasNum) / 2;
+    else if (s1DiknasNum !== null)                         rawAvg = s1DiknasNum;  // S1 only
+    else if (s2DiknasNum !== null)                         rawAvg = s2DiknasNum;  // S2 only
+
     let finalDiknas = '';
-    if (s1DiknasNum !== null && s2DiknasNum !== null) {
-      finalDiknas = String(Math.round((s1DiknasNum + s2DiknasNum) / 2));
-    } else if (s1DiknasNum !== null) {
-      finalDiknas = String(s1DiknasNum); // S1 only
-    } else if (s2DiknasNum !== null) {
-      finalDiknas = String(s2DiknasNum); // S2 only
+    if (rawAvg !== null) {
+      // Step 2: round (0.5 rounds up)
+      const rounded = Math.round(rawAvg);
+      // Steps 3-5: clamp to valid DIKNAS band for the final IB grade
+      const band = finalIB !== null ? IB_DIKNAS_BAND[finalIB] : null;
+      if (band) {
+        finalDiknas = String(Math.max(band.min, Math.min(band.max, rounded)));
+      } else {
+        finalDiknas = String(rounded); // no IB grade → use rounded as-is
+      }
     }
 
     const finalScore = finalIB !== null ? String(finalIB) : '';
