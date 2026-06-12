@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
 import KwitansiModal from '@/components/KwitansiModal'
+import DetailTransaksiModal from '@/components/DetailTransaksiModal'
 import { formatCurrency, toNumber } from '@/lib/utils'
 import { canVoidTransactions, getUserData } from '@/lib/permissions'
 
@@ -41,6 +42,11 @@ export default function UniformSalesPage() {
   const [showKwitansi, setShowKwitansi] = useState(false)
   const [selectedSaleForKwitansi, setSelectedSaleForKwitansi] = useState(null)
   const [kwitansiItems, setKwitansiItems] = useState([])
+
+  // Detail Transaksi modal states
+  const [showDetail, setShowDetail] = useState(false)
+  const [selectedSaleForDetail, setSelectedSaleForDetail] = useState(null)
+  const [detailItems, setDetailItems] = useState([])
   
   // Void states
   const [showVoidModal, setShowVoidModal] = useState(false)
@@ -527,7 +533,25 @@ export default function UniformSalesPage() {
     }
   }
 
+  // ── Print Detail Transaksi — open preview modal ────────────────────────────
+  const handlePrintDetail = async (sale) => {
+    try {
+      const { data: saleItems, error } = await supabase
+        .from('uniform_sale_item')
+        .select('*')
+        .eq('sale_id', sale.sale_id)
+      if (error) throw error
+      setDetailItems(saleItems || [])
+      setSelectedSaleForDetail(sale)
+      setShowDetail(true)
+    } catch (e) {
+      console.error('Error fetching detail items:', e)
+      setError('Gagal memuat detail transaksi')
+    }
+  }
+
   const handleMarkPaidFromHistory = async (sale) => {
+
     if (!confirm('Tandai transaksi ini sebagai LUNAS?')) return
 
     setSaving(true)
@@ -1935,6 +1959,16 @@ export default function UniformSalesPage() {
                                   🖨️ Cetak Kwitansi
                                 </Button>
                               )}
+
+                              {/* Tombol Cetak Detail Transaksi untuk Pending & Paid */}
+                              {!sale.is_voided && (sale.status === 'pending' || sale.status === 'paid') && (
+                                <Button
+                                  onClick={() => handlePrintDetail(sale)}
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 whitespace-nowrap"
+                                >
+                                  📋 Cetak Detail
+                                </Button>
+                              )}
                               
                               {/* Tombol Tandai Diambil untuk Paid tanpa pickup_date */}
                               {sale.status === 'paid' && !sale.is_voided && !sale.pickup_date && (
@@ -2223,6 +2257,20 @@ export default function UniformSalesPage() {
         }}
         sale={selectedSaleForKwitansi}
         items={kwitansiItems}
+        uniforms={uniforms}
+        sizes={sizes}
+      />
+
+      {/* Detail Transaksi Modal */}
+      <DetailTransaksiModal
+        isOpen={showDetail}
+        onClose={() => {
+          setShowDetail(false)
+          setSelectedSaleForDetail(null)
+          setDetailItems([])
+        }}
+        sale={selectedSaleForDetail}
+        items={detailItems}
         uniforms={uniforms}
         sizes={sizes}
       />
