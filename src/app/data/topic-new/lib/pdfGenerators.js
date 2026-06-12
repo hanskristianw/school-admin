@@ -2396,16 +2396,45 @@ if (semester === '2') {
     return CORE_DIKNAS[normalized] !== undefined ? String(CORE_DIKNAS[normalized]) : '';
   };
 
-  // ── IB Final Grade → DIKNAS band (batas bawah & batas atas) ────────────
-  // Used to clamp the averaged Final Conversion into its valid DIKNAS range.
-  const IB_DIKNAS_BAND = {
-    1: { min: 60, max:  61 },
-    2: { min: 63, max:  67 },
-    3: { min: 69, max:  74 },
-    4: { min: 76, max:  80 },
-    5: { min: 81, max:  87 },
-    6: { min: 89, max:  93 },
-    7: { min: 94, max: 100 },
+  // ── Inverted DIKNAS lookup tables ──────────────────────────────────────
+  // Given an averaged DIKNAS value, snap UP to the nearest valid table entry
+  // and read off the corresponding IB grade. One table per numCriteria variant.
+  const DIKNAS_TO_IB_4 = [
+    { d: 60, ib: 1 }, { d: 61, ib: 1 },
+    { d: 63, ib: 2 }, { d: 64, ib: 2 }, { d: 66, ib: 2 }, { d: 67, ib: 2 },
+    { d: 69, ib: 3 }, { d: 70, ib: 3 }, { d: 71, ib: 3 }, { d: 73, ib: 3 }, { d: 74, ib: 3 },
+    { d: 76, ib: 4 }, { d: 77, ib: 4 }, { d: 79, ib: 4 }, { d: 80, ib: 4 },
+    { d: 81, ib: 5 }, { d: 83, ib: 5 }, { d: 84, ib: 5 }, { d: 86, ib: 5 }, { d: 87, ib: 5 },
+    { d: 89, ib: 6 }, { d: 90, ib: 6 }, { d: 91, ib: 6 }, { d: 93, ib: 6 },
+    { d: 94, ib: 7 }, { d: 96, ib: 7 }, { d: 97, ib: 7 }, { d: 99, ib: 7 }, { d: 100, ib: 7 },
+  ];
+  const DIKNAS_TO_IB_3 = [
+    { d: 60, ib: 1 }, { d: 62, ib: 1 },
+    { d: 64, ib: 2 }, { d: 66, ib: 2 }, { d: 68, ib: 2 },
+    { d: 70, ib: 3 }, { d: 71, ib: 3 }, { d: 73, ib: 3 }, { d: 75, ib: 3 },
+    { d: 77, ib: 4 }, { d: 79, ib: 4 }, { d: 81, ib: 4 },
+    { d: 83, ib: 5 }, { d: 85, ib: 5 }, { d: 87, ib: 5 },
+    { d: 89, ib: 6 }, { d: 90, ib: 6 }, { d: 92, ib: 6 },
+    { d: 94, ib: 7 }, { d: 96, ib: 7 }, { d: 98, ib: 7 }, { d: 100, ib: 7 },
+  ];
+  const DIKNAS_TO_IB_2 = [
+    { d: 60, ib: 1 }, { d: 63, ib: 1 },
+    { d: 66, ib: 2 }, { d: 69, ib: 2 },
+    { d: 71, ib: 3 }, { d: 74, ib: 3 },
+    { d: 77, ib: 4 }, { d: 80, ib: 4 },
+    { d: 83, ib: 5 }, { d: 86, ib: 5 }, { d: 89, ib: 5 },
+    { d: 91, ib: 6 }, { d: 94, ib: 6 },
+    { d: 97, ib: 7 }, { d: 100, ib: 7 },
+  ];
+
+  // snapDiknas: round averaged DIKNAS → find first valid entry >= rounded value.
+  // If the value is below the table minimum, return the minimum entry.
+  // If above the table maximum, return the maximum entry.
+  const snapDiknas = (rounded, numCriteria) => {
+    const tbl = numCriteria === 3 ? DIKNAS_TO_IB_3
+              : numCriteria === 2 ? DIKNAS_TO_IB_2
+              : DIKNAS_TO_IB_4;
+    return tbl.find(e => e.d >= rounded) || tbl[tbl.length - 1];
   };
   // Build s1 lookup map: subject_id → { semester_overview, criteriaTotal, numCriteria, core_subject }
   const s1Map = {};
@@ -2442,19 +2471,7 @@ if (semester === '2') {
     return (a.print_order ?? 0) - (b.print_order ?? 0);
   });
 
-  // ── Helper: get DIKNAS from a known IB score (1–7) ─────────────────────
-  // Uses midpoints of the standard grade bands on the 4-criteria normalized scale
-  // (bands: ≤5 | 6-9 | 10-14 | 15-18 | 19-23 | 24-27 | 28-32)
-  const ibToNorm4 = { 1: 4, 2: 7, 3: 12, 4: 16, 5: 21, 6: 25, 7: 30 };
-  const getDiknasFromIBScore = (ibScore, numCriteria) => {
-    const ib = Math.max(1, Math.min(7, Math.round(ibScore)));
-    const norm4 = ibToNorm4[ib];
-    if (!norm4) return '';
-    const nc = numCriteria || 4;
-    // Scale representative 4-criteria total to the actual numCriteria, then route through getDiknas
-    const scaledTotal = norm4 * nc / 4;
-    return getDiknas(true, scaledTotal, nc);
-  };
+
 
   const progBody = allProgRows.map((row, idx) => {
     // ── S1 data ────────────────────────────────────────────────────────────
@@ -2472,63 +2489,34 @@ if (semester === '2') {
     const s2HasConversion = (s2Vals.length === 4 || s2Vals.length === 3 || s2Vals.length === 2);
     const s2Diknas        = s2HasConversion ? getDiknas(true, s2Total, s2Vals.length) : '';
 
-    // ── MRMC Final IB Score ────────────────────────────────────────────────
-    // Rules:
-    //   |Δ| ≤ 1  →  Final = S2 (stable / small drop, take most recent)
-    //   |Δ| > 1  →  Final = S1 + sign(Δ) × ceil(|Δ|/2), clamped [1,7]
-    //   Only S1  →  Final = S1
-    //   Only S2  →  Final = S2
-    const hasS1IB = s1Entry?.semester_overview != null;
-    const hasS2IB = row.semester_overview != null;
-    const s1IB    = hasS1IB ? s1Entry.semester_overview : null;
-    const s2IB    = hasS2IB ? row.semester_overview : null;
-
-    let finalIB = null;
-    if (hasS1IB && hasS2IB) {
-      const delta = s2IB - s1IB;
-      if (Math.abs(delta) <= 1) {
-        finalIB = s2IB; // stable or single-point drop → most recent
-      } else {
-        const steps     = Math.ceil(Math.abs(delta) / 2);
-        const direction = delta > 0 ? 1 : -1;
-        finalIB = Math.max(1, Math.min(7, s1IB + direction * steps));
-      }
-    } else if (hasS1IB) {
-      finalIB = s1IB; // S1 only
-    } else if (hasS2IB) {
-      finalIB = s2IB; // S2 only
-    }
-
-    // ── Final Conversion: average(S1, S2 DIKNAS) clamped to IB grade band ──
-    // Step 1: compute raw average from available semesters
+    // ── Final Grade: average(S1 DIKNAS, S2 DIKNAS) → snap to valid table entry ──
+    // 1. Compute raw average (use single semester value if only one exists)
     const s1DiknasNum = s1Diknas !== '' ? parseFloat(s1Diknas) : null;
     const s2DiknasNum = s2Diknas !== '' ? parseFloat(s2Diknas) : null;
     let rawAvg = null;
     if      (s1DiknasNum !== null && s2DiknasNum !== null) rawAvg = (s1DiknasNum + s2DiknasNum) / 2;
-    else if (s1DiknasNum !== null)                         rawAvg = s1DiknasNum;  // S1 only
-    else if (s2DiknasNum !== null)                         rawAvg = s2DiknasNum;  // S2 only
+    else if (s1DiknasNum !== null)                         rawAvg = s1DiknasNum;
+    else if (s2DiknasNum !== null)                         rawAvg = s2DiknasNum;
 
+    let finalScore  = '';
     let finalDiknas = '';
     if (rawAvg !== null) {
-      // Step 2: round (0.5 rounds up)
+      // 2. Round (0.5 rounds up via Math.round)
       const rounded = Math.round(rawAvg);
-      // Steps 3-5: clamp to valid DIKNAS band for the final IB grade
-      const band = finalIB !== null ? IB_DIKNAS_BAND[finalIB] : null;
-      if (band) {
-        finalDiknas = String(Math.max(band.min, Math.min(band.max, rounded)));
-      } else {
-        finalDiknas = String(rounded); // no IB grade → use rounded as-is
-      }
+      // 3. Determine numCriteria: prefer S2 (more recent), fall back to S1
+      const nc = s2HasConversion ? s2Vals.length : s1HasConversion ? s1NumCriteria : 4;
+      // 4. Snap upward to nearest valid DIKNAS entry → also gives Final IB
+      const snapped = snapDiknas(rounded, nc);
+      finalDiknas = String(snapped.d);
+      finalScore  = String(snapped.ib);
     }
-
-    const finalScore = finalIB !== null ? String(finalIB) : '';
 
     return [
       String(idx + 1),
       row.subject_name,
       s1Score,    s1Diknas,    // S1 IB | S1 Conversion
       s2Score,    s2Diknas,    // S2 IB | S2 Conversion
-      finalScore, finalDiknas, // Final IB (MRMC) | Final Conversion
+      finalScore, finalDiknas, // Final IB (from snap) | Final Conversion
     ];
   });
 
