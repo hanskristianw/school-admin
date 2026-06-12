@@ -1902,7 +1902,7 @@ for (const row of coreRows) {
     if (gradeVal === null) continue;
     const crLabel = crNames[cr] ? `${cr}: ${crNames[cr]}` : `Criterion ${cr}`;
     const bMin = descriptors ? gradeToBandMin(gradeVal) : null;
-    const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bStudent\b/g, studentFirstName) : '';
+    const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bstudent\b/gi, studentFirstName) : '';
     // Pre-compute lines so autoTable sizes the cell to exactly what we'll draw
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
@@ -2103,7 +2103,7 @@ for (const row of nonCoreRows) {
     const gradeVal = row.grades[cr];
     const crLabel = crNames[cr] ? `${cr}: ${crNames[cr]}` : `Criterion ${cr}`;
     const bMin = descriptors ? gradeToBandMin(gradeVal) : null;
-    const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bStudent\b/g, studentFirstName) : '';
+    const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bstudent\b/gi, studentFirstName) : '';
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     const descLines = descText ? doc.splitTextToSize(descText, _ncCriterionMaxW) : [];
@@ -2739,20 +2739,28 @@ if (includeCpPage && cpRows.length > 0) {
     doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.4);
     doc.line(ml, cpY, pw - mr, cpY); cpY += 4;
 
-    // ── Name / Class / Topic info table
+    // ── Name + Topic info table (single row, Class row removed)
     autoTable(doc, {
       startY: cpY,
       body: [
-        ['Name:', studentName.toUpperCase()],
-        ['Class:', `${kelasName} \u2014 ${semesterLabel}`],
-        ...(row.cp_topic ? [['Topic:', row.cp_topic]] : []),
+        [
+          { content: 'Name:' },
+          { content: studentName.toUpperCase() },
+          { content: row.cp_topic ? 'Topic:' : '' },
+          { content: row.cp_topic || '' },
+        ],
       ],
       theme: 'plain',
       styles: { fontSize: 9, cellPadding: { top: 2, right: 3, bottom: 2, left: 3 }, textColor: [31, 41, 55] },
-      columnStyles: { 0: { cellWidth: 28, fontStyle: 'bold', textColor: [107, 114, 128] } },
+      columnStyles: {
+        0: { cellWidth: 20, fontStyle: 'bold', textColor: [107, 114, 128], cellPadding: { top: 2, right: 3, bottom: 2, left: 0 } },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 20, fontStyle: 'bold', textColor: [107, 114, 128] },
+        3: { cellWidth: 'auto' },
+      },
       margin: { left: ml, right: mr },
     });
-    cpY = doc.lastAutoTable.finalY + 5;
+    cpY = doc.lastAutoTable.finalY + 2;
 
     // ── Subject grades + criterion descriptors table
     const subIconB64 = iconBySubjectId[row.subject_id];
@@ -2772,23 +2780,30 @@ if (includeCpPage && cpRows.length > 0) {
     meta.push({ type: 'subject' });
     body.push([{ content: 'Criterion Descriptors', colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 5, right: 2, bottom: 1, left: 2 } } }]);
     meta.push({ type: 'cd_header' });
-    const _cpCrW = pw - ml - mr - 10;
+    const _cpCrW = pw - ml - mr - 6; // must match maxW in didDrawCell (cell.width - 6)
     for (const cr of ['A', 'B', 'C', 'D']) {
       const gradeVal = row.grades[cr]; if (gradeVal === null) continue;
       const crLabel = crNames[cr] ? `${cr}: ${crNames[cr]}` : `Criterion ${cr}`;
       const bMin = descriptors ? gradeToBandMin(gradeVal) : null;
-      const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bStudent\b/g, studentFirstName) : '';
+      const descText = (descriptors && bMin) ? (descriptors[cr]?.[bMin] || '').replace(/\bstudent\b/gi, studentFirstName) : '';
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
       const descLines = descText ? doc.splitTextToSize(descText, _cpCrW) : [];
       const contentStr = crLabel + (descLines.length ? '\n' + descLines.join('\n') : '');
-      const minCellHeight = 11 + descLines.length * 5;
-      body.push([{ content: contentStr, colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 4, right: 2, bottom: 6, left: 2 }, minCellHeight } }]);
+      // Dynamic bottom space: tighter for shorter descriptors
+      const dynBottom   = descLines.length >= 4 ? 5 : 3;
+      const minCellHeight = 6 + descLines.length * 5 + dynBottom;
+      body.push([{ content: contentStr, colSpan: 6, styles: { textColor: [255, 255, 255], cellPadding: { top: 4, right: 2, bottom: 2, left: 2 }, minCellHeight } }]);
       meta.push({ type: 'criterion', label: crLabel, desc: descText });
     }
-    if (row.comment) {
-      // Comment is in body — rendered via didDrawCell below
-      // (kept for layout spacing; actual text drawn in didDrawCell)
-    }
+    // Justify helper: spread words to fill maxW (last line stays left-aligned)
+    const justifyLine = (doc, line, x, y, maxW) => {
+      const words = line.split(' ').filter(w => w.length > 0);
+      if (words.length <= 1) { doc.text(line, x, y); return; }
+      const textW = words.reduce((s, w) => s + doc.getTextWidth(w), 0);
+      const gap   = (maxW - textW) / (words.length - 1);
+      let curX = x;
+      words.forEach(w => { doc.text(w, curX, y); curX += doc.getTextWidth(w) + gap; });
+    };
     autoTable(doc, {
       startY: cpY,
       head: [['', 'A', 'B', 'C', 'D', `${semesterLabel}\nProgress\nOverview`]],
@@ -2824,13 +2839,22 @@ if (includeCpPage && cpRows.length > 0) {
           doc.text('Criterion Descriptors', cx, cy);
         } else if (m.type === 'criterion') {
           if (data.column.index !== 0) return;
-          const cx = data.cell.x + 2; const cy = data.cell.y; const maxW = data.cell.width - 10;
+          const lx   = data.cell.x + 3; // left x — matches teacher comment left padding
+          const cy   = data.cell.y;
+          const maxW = data.cell.width - 6;
+          // Criterion label — bold, left-aligned
           doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(17, 24, 39);
-          doc.text(m.label, cx, cy + 5);
+          doc.text(m.label, lx, cy + 5);
           if (m.desc) {
             doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(17, 24, 39);
             const dLines = doc.splitTextToSize(m.desc, maxW);
-            let ty = cy + 11; dLines.forEach(dl => { doc.text(dl, cx, ty); ty += 5; });
+            // Justify all lines except the last (last line stays left-aligned)
+            let ty = cy + 11;
+            dLines.forEach((dl, i) => {
+              if (i < dLines.length - 1) justifyLine(doc, dl, lx, ty, maxW);
+              else                        doc.text(dl, lx, ty);
+              ty += 5;
+            });
           }
         } else if (m.type === 'comment') {
           if (data.column.index !== 0) return;
@@ -2842,20 +2866,37 @@ if (includeCpPage && cpRows.length > 0) {
           cLines.forEach(cl => { doc.text(cl, cx, ty); ty += lineH; });
         }
       },
-      didDrawPage: () => { drawFooter(); },
+      didDrawPage: () => {},
     });
-    // Comment — rendered as a separate block before boundaries table
+    // Comment — separate block with same 5 mm line height as criterion descriptors
     if (row.comment) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      const _cmtMaxW  = pw - ml - mr - 6; // match didDrawCell maxW
+      const _cmtLines = doc.splitTextToSize(row.comment, _cmtMaxW);
+      const _cmtCellH = Math.max(10, _cmtLines.length * 5 + 4);
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY,
         body: [
-          [{ content: 'Teacher Comment', styles: { fontStyle: 'bold', textColor: [107, 114, 128], fontSize: 8, cellPadding: { top: 5, right: 3, bottom: 1, left: 3 } } }],
-          [{ content: row.comment, styles: { fontStyle: 'normal', textColor: [31, 41, 55], fontSize: 9, cellPadding: { top: 2, right: 3, bottom: 6, left: 3 } } }],
+          [{ content: '', styles: { fontSize: 9, cellPadding: { top: 4, right: 3, bottom: 2, left: 3 }, minCellHeight: _cmtCellH } }],
         ],
         theme: 'plain',
         styles: { overflow: 'linebreak', lineColor: [209, 213, 219], lineWidth: 0.3 },
         tableLineColor: [209, 213, 219], tableLineWidth: 0.3,
         margin: { left: ml, right: mr },
+        didDrawCell: (data) => {
+          if (data.row.index !== 0 || data.column.index !== 0) return;
+          const cx   = data.cell.x + 3;
+          const maxW = data.cell.width - 6;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(31, 41, 55);
+          const cLines = doc.splitTextToSize(row.comment, maxW);
+          // Justify all lines except the last — matches criterion descriptor style
+          let ty = data.cell.y + 5;
+          cLines.forEach((cl, i) => {
+            if (i < cLines.length - 1) justifyLine(doc, cl, cx, ty, maxW);
+            else                        doc.text(cl, cx, ty);
+            ty += 5;
+          });
+        },
       });
     }
     // Boundaries table
@@ -2879,8 +2920,9 @@ if (includeCpPage && cpRows.length > 0) {
       columnStyles: { 0: { fontStyle: 'bold', textColor: [107, 114, 128], halign: 'left' } },
       tableLineColor: [209, 213, 219], tableLineWidth: 0.3,
       margin: { left: ml, right: mr },
+      didDrawPage: () => { drawFooter(); },
     });
-    drawFooter();
+    // footer drawn by boundaries table's didDrawPage
   }
 }
 
