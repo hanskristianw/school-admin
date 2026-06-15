@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -277,14 +277,14 @@ export default function FpbSettingsPage() {
                   {steps.map((s, i) => {
                     const user = users.find(u => String(u.user_id) === s.approver_user_id)
                     return (
-                      <>
-                        <span key={`arr-${i}`} style={{ color: theme.textSecondary, fontSize: 14 }}>→</span>
-                        <span key={`step-${i}`} style={{ fontSize: 12, fontWeight: 600, color: '#6366f1', padding: '3px 10px',
+                      <React.Fragment key={`step-frag-${i}`}>
+                        <span style={{ color: theme.textSecondary, fontSize: 14 }}>→</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#6366f1', padding: '3px 10px',
                           borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)' }}>
                           {s.step_name || `Step ${i+1}`}
                           {user && <span style={{ opacity: 0.7, fontWeight: 400 }}> ({userName(user).split(' ')[0]})</span>}
                         </span>
-                      </>
+                      </React.Fragment>
                     )
                   })}
                   <span style={{ color: theme.textSecondary, fontSize: 14 }}>→</span>

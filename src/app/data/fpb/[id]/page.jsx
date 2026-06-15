@@ -33,6 +33,7 @@ export default function FpbDetailPage() {
   const [fpb, setFpb]         = useState(null)
   const [items, setItems]     = useState([])
   const [approvals, setApprovals] = useState([])
+  const [revisions, setRevisions] = useState([])  // revision history from submitter
   const [loading, setLoading] = useState(true)
   const [userId, setUserId]   = useState(null)
   const [action, setAction]   = useState(null) // 'approve'|'revision'|'reject'
@@ -61,6 +62,12 @@ export default function FpbDetailPage() {
         .select(`*, users!fpb_approvals_approver_user_id_fkey(user_nama_depan, user_nama_belakang)`)
         .eq('fpb_id', id).order('step_order')
       setApprovals(ap || [])
+
+      // Fetch revision history (submitter notes)
+      const { data: rv } = await supabase.from('fpb_revisions')
+        .select(`*, users!fpb_revisions_revised_by_fkey(user_nama_depan, user_nama_belakang)`)
+        .eq('fpb_id', id).order('revision_number', { ascending: false })
+      setRevisions(rv || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -213,6 +220,32 @@ export default function FpbDetailPage() {
             </table>
           </CardContent>
         </Card>
+
+        {/* Revision Note from Submitter */}
+        {revisions.length > 0 && revisions[0].revision_note && (
+          <div style={{
+            padding: '14px 18px',
+            borderRadius: 12,
+            background: 'rgba(245,158,11,0.08)',
+            border: '1.5px solid rgba(245,158,11,0.4)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 16 }}>📝</span>
+              <span style={{ fontWeight: 700, color: '#b45309', fontSize: 13 }}>
+                Catatan Revisi ke-{revisions[0].revision_number}
+              </span>
+              <span style={{ fontSize: 11, color: '#92400e', marginLeft: 'auto' }}>
+                {`${revisions[0].users?.user_nama_depan || ''} ${revisions[0].users?.user_nama_belakang || ''}`.trim()}
+                {revisions[0].revised_at && (
+                  <> · {new Date(revisions[0].revised_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                )}
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: 13, color: '#78350f', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+              {revisions[0].revision_note}
+            </p>
+          </div>
+        )}
 
         {/* Approval Timeline */}
         <Card style={{ background:theme.cardBg, borderColor:theme.border }}>
