@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import Modal from '@/components/ui/modal'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft, faCheck, faRotateLeft, faTimes, faSpinner, faPen } from '@fortawesome/free-solid-svg-icons'
 
@@ -30,16 +31,18 @@ export default function FpbDetailPage() {
   const router    = useRouter()
   const { id }    = useParams()
 
-  const [fpb, setFpb]         = useState(null)
-  const [items, setItems]     = useState([])
+  const [fpb, setFpb]           = useState(null)
+  const [items, setItems]       = useState([])
   const [approvals, setApprovals] = useState([])
-  const [revisions, setRevisions] = useState([])  // revision history from submitter
-  const [loading, setLoading] = useState(true)
-  const [userId, setUserId]   = useState(null)
-  const [action, setAction]   = useState(null) // 'approve'|'revision'|'reject'
-  const [comment, setComment] = useState('')
-  const [saving, setSaving]   = useState(false)
-  const [error, setError]     = useState('')
+  const [revisions, setRevisions] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [userId, setUserId]     = useState(null)
+  // action modal: 'approved' | 'revision' | 'reject' | null
+  const [action, setAction]     = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [comment, setComment]   = useState('')
+  const [saving, setSaving]     = useState(false)
+  const [error, setError]       = useState('')
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -85,13 +88,14 @@ export default function FpbDetailPage() {
     }
     setSaving(true); setError('')
     try {
-      // Update this approval record
+      // Update this approval record — status must match DB CHECK constraint
       await supabase.from('fpb_approvals').update({
-        status: action, comment: comment.trim() || null, action_at: new Date().toISOString()
+        status: action,                      // 'approved' | 'revision' | 'reject'
+        comment: comment.trim() || null,
+        action_at: new Date().toISOString()
       }).eq('approval_id', myPendingApproval.approval_id)
 
       if (action === 'approved') {
-        // Check if there's a next step
         const nextStep = approvals.find(a => a.step_order === fpb.current_step + 1)
         if (nextStep) {
           await supabase.from('fpb').update({ current_step: fpb.current_step + 1 }).eq('fpb_id', id)
@@ -99,7 +103,6 @@ export default function FpbDetailPage() {
           await supabase.from('fpb').update({ status: 'approved' }).eq('fpb_id', id)
         }
       } else if (action === 'revision') {
-        // Reset all approvals to pending, restart from step 1
         await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null })
           .eq('fpb_id', id).neq('approval_id', myPendingApproval.approval_id)
         await supabase.from('fpb').update({ status: 'revision', current_step: 1 }).eq('fpb_id', id)
@@ -107,7 +110,7 @@ export default function FpbDetailPage() {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', id)
       }
 
-      setAction(null); setComment(''); fetchData(userId)
+      setShowModal(false); setAction(null); setComment(''); fetchData(userId)
     } catch (e) { setError(e.message) }
     finally { setSaving(false) }
   }
@@ -294,58 +297,27 @@ export default function FpbDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Action Panel — Approver */}
+        {/* Action Panel — Approver: 3 buttons, open modal on click */}
         {myPendingApproval && fpb.status === 'pending' && (
           <Card style={{ background:theme.cardBg, borderColor:'#6366f1', boxShadow:'0 0 0 1px #6366f1' }}>
             <CardHeader className="pb-3">
               <CardTitle style={{ color:'#6366f1', fontSize:15 }}>⚡ Tindakan Anda — Step {fpb.current_step}: {myPendingApproval.step_name}</CardTitle>
             </CardHeader>
             <CardContent>
-              {!action ? (
-                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                  <button onClick={() => setAction('approve')}
-                    style={{ padding:'9px 20px', borderRadius:8, border:'none', background:'#059669', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-                    <FontAwesomeIcon icon={faCheck} style={{ marginRight:6 }} />Setujui
-                  </button>
-                  <button onClick={() => setAction('revision')}
-                    style={{ padding:'9px 20px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-                    <FontAwesomeIcon icon={faRotateLeft} style={{ marginRight:6 }} />Minta Revisi
-                  </button>
-                  <button onClick={() => setAction('reject')}
-                    style={{ padding:'9px 20px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-                    <FontAwesomeIcon icon={faTimes} style={{ marginRight:6 }} />Tolak
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ marginBottom:12, padding:'10px 14px', borderRadius:8, background:theme.subtleBg, fontSize:13, color:theme.textPrimary, fontWeight:600 }}>
-                    {action === 'approve' ? '✅ Menyetujui FPB ini' : action === 'revision' ? '🔄 Meminta revisi dari pengaju' : '❌ Menolak FPB ini'}
-                  </div>
-                  {action !== 'approve' && (
-                    <>
-                      <label style={{ fontSize:12, fontWeight:600, color:theme.textSecondary, display:'block', marginBottom:6 }}>
-                        Komentar / Alasan *
-                      </label>
-                      <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3}
-                        placeholder={action === 'revision' ? 'Jelaskan apa yang perlu direvisi...' : 'Jelaskan alasan penolakan...'}
-                        style={{ width:'100%', padding:'9px 12px', borderRadius:8, fontSize:13, border:`1px solid ${theme.border}`,
-                          background:theme.cardBg, color:theme.textPrimary, resize:'vertical', fontFamily:'inherit', boxSizing:'border-box' }} />
-                    </>
-                  )}
-                  {error && <p style={{ color:'#dc2626', fontSize:12, marginTop:6 }}>⚠ {error}</p>}
-                  <div style={{ display:'flex', gap:10, marginTop:14 }}>
-                    <button onClick={handleAction} disabled={saving}
-                      style={{ padding:'9px 20px', borderRadius:8, border:'none', fontWeight:700, fontSize:13, cursor:'pointer',
-                        background: action==='approve'?'#059669':action==='revision'?'#f59e0b':'#dc2626', color:'#fff' }}>
-                      {saving ? <FontAwesomeIcon icon={faSpinner} spin /> : 'Konfirmasi'}
-                    </button>
-                    <button onClick={() => { setAction(null); setComment(''); setError('') }}
-                      style={{ padding:'9px 20px', borderRadius:8, border:`1px solid ${theme.border}`, background:theme.cardBg, color:theme.textSecondary, fontWeight:600, fontSize:13, cursor:'pointer' }}>
-                      Batal
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowModal(true) }}
+                  style={{ padding:'9px 20px', borderRadius:8, border:'none', background:'#059669', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                  <FontAwesomeIcon icon={faCheck} style={{ marginRight:6 }} />Setujui
+                </button>
+                <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowModal(true) }}
+                  style={{ padding:'9px 20px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                  <FontAwesomeIcon icon={faRotateLeft} style={{ marginRight:6 }} />Minta Revisi
+                </button>
+                <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowModal(true) }}
+                  style={{ padding:'9px 20px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                  <FontAwesomeIcon icon={faTimes} style={{ marginRight:6 }} />Tolak
+                </button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -380,6 +352,82 @@ export default function FpbDetailPage() {
           </Card>
         )}
       </div>
+
+      {/* ── Confirmation Modal ─────────────────────────────────── */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => { if (!saving) { setShowModal(false); setAction(null); setComment(''); setError('') } }}
+        title={
+          action === 'approved' ? '✅ Konfirmasi Persetujuan' :
+          action === 'revision' ? '🔄 Konfirmasi Permintaan Revisi' :
+          '❌ Konfirmasi Penolakan'
+        }
+        size="md"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Summary */}
+          <div style={{
+            padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            background: action === 'approved' ? 'rgba(5,150,105,0.08)' : action === 'revision' ? 'rgba(245,158,11,0.08)' : 'rgba(220,38,38,0.08)',
+            color: action === 'approved' ? '#065f46' : action === 'revision' ? '#92400e' : '#991b1b',
+            border: `1px solid ${action === 'approved' ? 'rgba(5,150,105,0.25)' : action === 'revision' ? 'rgba(245,158,11,0.25)' : 'rgba(220,38,38,0.25)'}`,
+          }}>
+            {action === 'approved'
+              ? `Anda akan menyetujui FPB ${fpb?.fpb_number} — Step ${fpb?.current_step}: ${myPendingApproval?.step_name}`
+              : action === 'revision'
+              ? `Anda akan meminta revisi pada FPB ${fpb?.fpb_number}. Pengaju akan diminta memperbaiki FPB ini.`
+              : `Anda akan menolak FPB ${fpb?.fpb_number}. Tindakan ini tidak dapat dibatalkan.`
+            }
+          </div>
+
+          {/* Comment — required for revision & reject */}
+          {action !== 'approved' && (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>
+                {action === 'revision' ? 'Apa yang perlu direvisi? *' : 'Alasan penolakan *'}
+              </label>
+              <textarea
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+                rows={3}
+                autoFocus
+                placeholder={action === 'revision' ? 'Jelaskan apa yang perlu direvisi oleh pengaju...' : 'Jelaskan alasan penolakan FPB ini...'}
+                style={{
+                  width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13,
+                  border: `1px solid ${theme.border}`, background: theme.cardBg,
+                  color: theme.textPrimary, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          )}
+
+          {error && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>⚠ {error}</p>}
+
+          {/* Buttons */}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => { if (!saving) { setShowModal(false); setAction(null); setComment(''); setError('') } }}
+              disabled={saving}
+              style={{ padding: '9px 20px', borderRadius: 8, border: `1px solid ${theme.border}`,
+                background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleAction}
+              disabled={saving}
+              style={{
+                padding: '9px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer',
+                background: saving ? '#e5e7eb' : action === 'approved' ? '#059669' : action === 'revision' ? '#f59e0b' : '#dc2626',
+                color: saving ? '#9ca3af' : '#fff',
+              }}
+            >
+              {saving ? <FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} /> : null}
+              {saving ? 'Memproses...' : action === 'approved' ? '✅ Setujui' : action === 'revision' ? '🔄 Minta Revisi' : '❌ Tolak'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
