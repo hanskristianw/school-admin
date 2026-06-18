@@ -149,6 +149,10 @@ const iconMap = {
   , 'faFileInvoice': faFileInvoice
   , 'fas fa-file-invoice-dollar': faFileInvoiceDollar
   , 'faFileInvoiceDollar': faFileInvoiceDollar
+  , 'fas fa-fingerprint': require('@fortawesome/free-solid-svg-icons').faFingerprint
+  , 'faFingerprint': require('@fortawesome/free-solid-svg-icons').faFingerprint
+  , 'fas fa-clock': require('@fortawesome/free-solid-svg-icons').faClock
+  , 'faClock': require('@fortawesome/free-solid-svg-icons').faClock
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {
