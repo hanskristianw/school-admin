@@ -696,6 +696,168 @@ LIMIT 10;
 - **enable-rls-examples.sql** - Example RLS policies
 - **assessment-calendar.sql** - Assessment calendar (unrelated)
 
+### IoT Machine Webhook (June 2026)
+- **create-attendances-webhook.sql** - New IoT attendance system:
+  - Added `user_pin` (VARCHAR 50, UNIQUE) to `users` table
+  - Created `attendances` table with unique constraint `(user_id, scan_time)`
+  - Separate from student QR system (table `absen`)
+
+---
+
+## 🤖 IoT Attendance Machine Webhook
+
+### System Overview
+
+A secondary attendance system that captures data sent by a physical IoT attendance machine (e.g. fingerprint or face-recognition device). Completely separate from the student QR attendance flow.
+
+```
+Mesin Absensi IoT
+       │
+       │  POST /api/webhook/attendance
+       │  Authorization: Bearer <ATTENDANCE_WEBHOOK_SECRET>
+       │  Body: { "type": "attlog", "data": { "pin": "...", "scan": "...", "status_scan": "..." } }
+       ▼
+Next.js API Route
+  1. Verify Bearer token
+  2. Parse + convert scan_time to WIB TIMESTAMPTZ
+  3. Look up user by users.user_pin
+  4. Insert into attendances table
+  5. Return { "success": true }
+```
+
+### Database Schema
+
+#### Column: `users.user_pin`
+```sql
+ALTER TABLE users ADD COLUMN user_pin VARCHAR(50) UNIQUE;
+```
+- Maps physical machine PIN to internal `user_id`
+- VARCHAR to support leading zeros (`001`) and alphanumeric identifiers (`GURU-01`)
+- Set this value per karyawan melalui halaman admin
+
+#### Table: `attendances`
+```sql
+CREATE TABLE attendances (
+  id           BIGSERIAL PRIMARY KEY,
+  user_id      INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  scan_time    TIMESTAMPTZ NOT NULL,
+  status_scan  VARCHAR(10),
+  raw_payload  JSONB,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_attendances_user_scan UNIQUE (user_id, scan_time)
+);
+```
+- `status_scan`: `"0"` = check-in, `"1"` = check-out (tergantung konfigurasi mesin)
+- `raw_payload`: Seluruh JSON mentah dari mesin untuk debugging
+- Unique constraint `(user_id, scan_time)` mencegah duplikat dari auto-retry mesin
+
+### Environment Variables
+
+Tambahkan ke `.env.local`:
+```env
+# Secret untuk melindungi webhook dari request tidak sah.
+# Gunakan string acak yang panjang (minimal 32 karakter).
+# Contoh generate: openssl rand -hex 32
+ATTENDANCE_WEBHOOK_SECRET=your-random-secret-here
+```
+
+### API Endpoint
+
+**`POST /api/webhook/attendance`**
+
+**Headers yang wajib ada:**
+```
+Authorization: Bearer <ATTENDANCE_WEBHOOK_SECRET>
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+  "type": "attlog",
+  "cloud_id": "DEVICE-001",
+  "data": {
+    "pin": "155",
+    "scan": "2026-06-18 07:30:00",
+    "status_scan": "0"
+  }
+}
+```
+
+**Response sukses (200):**
+```json
+{ "success": true }
+```
+
+**Response duplikat dari retry (200):**
+```json
+{ "success": true, "note": "duplicate_ignored" }
+```
+
+**Response error:**
+| Status | Body | Penyebab |
+|--------|------|----------|
+| 401 | `{ "error": "Unauthorized" }` | Token salah atau tidak ada |
+| 400 | `{ "error": "Missing required fields: ..." }` | `pin` atau `scan` tidak ada |
+| 400 | `{ "error": "Invalid scan time format: ..." }` | Format waktu tidak bisa di-parse |
+| 404 | `{ "error": "Employee with PIN ... is not registered" }` | `user_pin` tidak ditemukan di tabel users |
+| 500 | `{ "error": "..." }` | Error server/database |
+
+### Scan Time Handling
+
+Mesin mengirim waktu tanpa timezone: `"2026-06-18 07:30:00"`.
+
+API route memaksa offset `+07:00` sebelum parsing:
+```javascript
+// "2026-06-18 07:30:00" → "2026-06-18T07:30:00+07:00"
+const scanTimeISO = scanRaw.trim().replace(' ', 'T') + '+07:00'
+const scanTimeParsed = new Date(scanTimeISO)
+```
+
+Data tersimpan di Supabase sebagai TIMESTAMPTZ (UTC internally), namun secara semantik merepresentasikan waktu WIB yang benar.
+
+### Idempotency (Handling Auto-Retry)
+
+Mesin IoT melakukan auto-retry jika tidak menerima `200 OK` dalam waktu tertentu (misalnya koneksi terputus sesaat). Solusi dua lapis:
+
+1. **Database:** Unique constraint `(user_id, scan_time)` mencegah duplikat tersimpan
+2. **API:** Error code `23505` (PostgreSQL unique violation) ditangkap dan dikembalikan sebagai sukses
+
+```javascript
+if (insertError.code === '23505') {
+  return NextResponse.json({ success: true, note: 'duplicate_ignored' })
+}
+```
+
+### Cara Setup PIN Karyawan
+
+1. Masuk ke halaman admin users
+2. Temukan karyawan yang bersangkutan
+3. Isi kolom `user_pin` sesuai PIN yang terdaftar di mesin absensi
+4. Simpan
+
+Atau via SQL langsung:
+```sql
+UPDATE users SET user_pin = '155' WHERE user_id = 42;
+```
+
+### Contoh cURL untuk Testing
+
+```bash
+curl -X POST https://your-domain.com/api/webhook/attendance \
+  -H "Authorization: Bearer your-random-secret-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "attlog",
+    "cloud_id": "TEST-DEVICE",
+    "data": {
+      "pin": "155",
+      "scan": "2026-06-18 07:30:00",
+      "status_scan": "0"
+    }
+  }'
+```
+
 ---
 
 ## 📊 Current System State (October 2025)

@@ -33,7 +33,8 @@ export default function UserManagement() {
     user_manual_picture: '',
     user_role_id: '',
     user_unit_id: '',
-    is_active: true
+    is_active: true,
+    user_pin: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -74,6 +75,7 @@ export default function UserManagement() {
     { key: 'role',          label: 'Role' },
     { key: 'unit',          label: 'Unit' },
     { key: 'status',        label: 'Status' },
+    { key: 'pin',           label: 'PIN Mesin' },
   ];
   const DEFAULT_COLUMNS = new Set(['id', 'nama', 'email', 'role', 'unit', 'status']);
 
@@ -570,7 +572,7 @@ export default function UserManagement() {
       // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin');
 
 
       if (usersError) {
@@ -817,7 +819,8 @@ export default function UserManagement() {
       user_manual_picture: user.user_manual_picture || '',
       user_role_id: user.user_role_id,
       user_unit_id: user.user_unit_id || '',
-      is_active: user.is_active
+      is_active: user.is_active,
+      user_pin: user.user_pin || ''
     });
     setImageFile(null);
     setSignatureBlob(null);
@@ -838,7 +841,8 @@ export default function UserManagement() {
       user_manual_picture: '',
       user_role_id: '',
       user_unit_id: '',
-      is_active: true
+      is_active: true,
+      user_pin: ''
     });
     setImageFile(null);
     setTempImageSrc(null);
@@ -1115,6 +1119,33 @@ export default function UserManagement() {
                 <Label htmlFor="is_active" style={{ color: theme.textBody }}>Active</Label>
               </div>
             )}
+
+            {/* Mesin Absensi PIN */}
+            <div className="md:col-span-2">
+              <div className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+                <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>🖐 PIN Mesin Absensi</p>
+                <p className="text-xs" style={{ color: theme.textSecondary }}>
+                  Isi dengan PIN karyawan yang terdaftar di mesin absensi (fingerprint/wajah).
+                  Webhook absensi menggunakan PIN ini untuk mengenali siapa yang sedang absen.
+                  Boleh dikosongkan jika karyawan tidak menggunakan mesin absensi.
+                </p>
+                <Input
+                  id="user_pin"
+                  name="user_pin"
+                  type="text"
+                  value={formData.user_pin || ''}
+                  onChange={handleInputChange}
+                  disabled={submitting}
+                  placeholder="Contoh: 155 atau GURU-01"
+                  style={inputStyle}
+                />
+                {formData.user_pin && (
+                  <p className="text-xs" style={{ color: theme.greenText }}>
+                    ✓ Karyawan ini akan dikenali mesin saat PIN <strong>{formData.user_pin}</strong> scan
+                  </p>
+                )}
+              </div>
+            </div>
 
             {/* Signature Upload */}
             <div className="md:col-span-2 border-t pt-3">
@@ -1591,6 +1622,7 @@ export default function UserManagement() {
                   {visibleColumns.has('role') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Role</th>}
                   {visibleColumns.has('unit') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Unit</th>}
                   {visibleColumns.has('status') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Status</th>}
+                  {visibleColumns.has('pin') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>PIN Mesin</th>}
                   <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Actions</th>
                 </tr>
               </thead>
@@ -1625,6 +1657,11 @@ export default function UserManagement() {
                           <span className="px-2 py-1 rounded text-xs" style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.subtleBg, color: theme.textSecondary }}>
                             {user.is_active ? 'Active' : 'Inactive'}
                           </span>
+                        </td>
+                      )}
+                      {visibleColumns.has('pin') && (
+                        <td className="px-4 py-2 font-mono text-xs" style={{ border: `1px solid ${theme.border}`, color: user.user_pin ? theme.textPrimary : theme.textSecondary }}>
+                          {user.user_pin || <span className="italic">—</span>}
                         </td>
                       )}
                       <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
