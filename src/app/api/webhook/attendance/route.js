@@ -94,15 +94,7 @@ export async function POST(req) {
 
   if (token !== webhookSecret) {
     console.warn('[webhook/attendance] Unauthorized. x-webhook-secret:', xSecret ? '[set]' : '[empty]', '| authorization:', authHeader ? '[set]' : '[empty]')
-    return NextResponse.json({
-      error: 'Unauthorized',
-      debug: {
-        received: token ? token.slice(0, 6) + '...' : '[empty]',
-        expected: webhookSecret.slice(0, 6) + '...',
-        x_secret_header: xSecret ? xSecret.slice(0, 6) + '...' : '[empty]',
-        auth_header: authHeader ? authHeader.slice(0, 13) + '...' : '[empty]',
-      }
-    }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   // Parse body
