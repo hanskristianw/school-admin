@@ -80,18 +80,29 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
   }
 
-  // Validasi Bearer Token
+  // Validasi secret — cek header X-Webhook-Secret (proxy-safe) ATAU Authorization Bearer
   const webhookSecret = process.env.ATTENDANCE_WEBHOOK_SECRET
   if (!webhookSecret) {
     console.error('[webhook/attendance] ATTENDANCE_WEBHOOK_SECRET env var not set.')
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
   }
 
+  const xSecret   = req.headers.get('x-webhook-secret') ?? ''
   const authHeader = req.headers.get('authorization') ?? ''
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
+  const token = xSecret || bearerToken
+
   if (token !== webhookSecret) {
-    console.warn('[webhook/attendance] Unauthorized request, token mismatch.')
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    console.warn('[webhook/attendance] Unauthorized. x-webhook-secret:', xSecret ? '[set]' : '[empty]', '| authorization:', authHeader ? '[set]' : '[empty]')
+    return NextResponse.json({
+      error: 'Unauthorized',
+      debug: {
+        received: token ? token.slice(0, 6) + '...' : '[empty]',
+        expected: webhookSecret.slice(0, 6) + '...',
+        x_secret_header: xSecret ? xSecret.slice(0, 6) + '...' : '[empty]',
+        auth_header: authHeader ? authHeader.slice(0, 13) + '...' : '[empty]',
+      }
+    }, { status: 401 })
   }
 
   // Parse body
