@@ -1191,5 +1191,37 @@
       "noStudents": "此班级暂无学生。",
       "noSubjects": "未找到有效科目。"
     }
+  },
+  "userMgmt": {
+    "addUser": "添加新用户",
+    "editUser": "编辑用户",
+    "tabInfo": "个人信息",
+    "tabMedia": "照片与签名",
+    "tabMesin": "考勤机",
+    "firstName": "名字",
+    "lastName": "姓氏",
+    "email": "电子邮件",
+    "dob": "出生日期",
+    "dobFormat": "格式：DD/MM/YYYY",
+    "role": "角色",
+    "unit": "单位",
+    "active": "活跃",
+    "optional": "可选",
+    "required": "必填",
+    "save": "保存用户",
+    "saving": "保存中...",
+    "update": "更新用户",
+    "cancel": "取消",
+    "profilePicture": "个人照片",
+    "signature": "签名",
+    "signatureDesc": "用于成绩单作为班主任签名。建议使用透明PNG图片以获得最佳效果。",
+    "signatureUnsaved": "新签名尚未保存，请点击保存按钮。",
+    "pinMachine": "考勤机PIN码",
+    "pinDesc": "输入员工在考勤机中注册的PIN码。不使用考勤机则留空。",
+    "pinConfirm": "打卡PIN {pin} 时将识别该员工",
+    "schedule": "考勤时间表",
+    "scheduleDesc": "预期上下班时间。留空使用默认值 07:30 和 16:30。",
+    "expectedCheckin": "预期上班时间",
+    "expectedCheckout": "预期下班时间"
   }
 }

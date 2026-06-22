@@ -1192,5 +1192,37 @@
       "noStudents": "No students in this class.",
       "noSubjects": "No active subjects found."
     }
+  },
+  "userMgmt": {
+    "addUser": "Add New User",
+    "editUser": "Edit User",
+    "tabInfo": "Personal Info",
+    "tabMedia": "Photo & Signature",
+    "tabMesin": "Attendance Machine",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "dob": "Date of Birth",
+    "dobFormat": "Format: DD/MM/YYYY",
+    "role": "Role",
+    "unit": "Unit",
+    "active": "Active",
+    "optional": "optional",
+    "required": "required",
+    "save": "Save User",
+    "saving": "Saving...",
+    "update": "Update User",
+    "cancel": "Cancel",
+    "profilePicture": "Profile Photo",
+    "signature": "Signature",
+    "signatureDesc": "Used in report cards as class teacher signature. Use transparent PNG for best results.",
+    "signatureUnsaved": "New signature not saved yet. Click save to store.",
+    "pinMachine": "Attendance Machine PIN",
+    "pinDesc": "Enter the employee's PIN registered in the attendance machine. Leave empty if not using a machine.",
+    "pinConfirm": "Employee will be recognized when PIN {pin} scans",
+    "schedule": "Attendance Schedule",
+    "scheduleDesc": "Expected check-in & check-out time. Leave empty to use default 07:30 & 16:30.",
+    "expectedCheckin": "Expected Check-in",
+    "expectedCheckout": "Expected Check-out"
   }
 }

@@ -6,17 +6,36 @@ import { useTheme } from '@/lib/theme'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFingerprint, faArrowRightToBracket, faArrowRightFromBracket,
-  faCalendarDay, faUsers, faRotate, faCopy, faCheck,
-  faChevronLeft, faChevronRight, faSearch, faCircleInfo
+  faCalendarDay, faUsers, faRotate,
+  faChevronLeft, faChevronRight, faSearch
 } from '@fortawesome/free-solid-svg-icons'
 
-const STATUS_LABEL = {
-  '0': { label: 'Check-in',  color: '#16a34a', bg: '#dcfce7' },
-  '1': { label: 'Check-out', color: '#d97706', bg: '#fef3c7' },
+const DEFAULT_CHECK_IN  = '07:30'
+const DEFAULT_CHECK_OUT = '16:30'
+
+// Konversi string "HH:MM" atau "HH:MM:SS" ke total menit
+function toMinutes(t) {
+  const [h, m] = (t ?? '').split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
 }
 
-function statusInfo(code) {
-  return STATUS_LABEL[String(code)] ?? { label: code ?? '-', color: '#6b7280', bg: '#f3f4f6' }
+// Tentukan status berdasarkan titik tengah antara expected check-in dan check-out user.
+// Jika expected_check_in/out kosong, pakai default 07:30 / 16:30.
+function resolveStatus(scanTimeISO, expectedCheckIn, expectedCheckOut) {
+  const ciMin  = toMinutes(expectedCheckIn  || DEFAULT_CHECK_IN)
+  const coMin  = toMinutes(expectedCheckOut || DEFAULT_CHECK_OUT)
+  const midMin = Math.floor((ciMin + coMin) / 2)
+
+  const dt      = new Date(scanTimeISO)
+  const scanMin = dt.getHours() * 60 + dt.getMinutes()
+
+  if (scanMin <= midMin) return { label: 'Check-in',  color: '#16a34a', bg: '#dcfce7', isIn: true  }
+  return                        { label: 'Check-out', color: '#d97706', bg: '#fef3c7', isIn: false }
+}
+
+function statusInfo(scanTimeISO, expectedCheckIn, expectedCheckOut) {
+  if (scanTimeISO) return resolveStatus(scanTimeISO, expectedCheckIn, expectedCheckOut)
+  return { label: '-', color: '#6b7280', bg: '#f3f4f6', isIn: false }
 }
 
 const PAGE_SIZE = 25
@@ -36,13 +55,6 @@ export default function AttendanceMachinePage() {
   const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD local
   const [filterDate, setFilterDate]   = useState(today)
   const [filterName, setFilterName]   = useState('')
-  const [webhookUrl, setWebhookUrl]   = useState('')
-  const [copied, setCopied]           = useState(false)
-
-  // Build webhook URL client-side so it reflects current domain
-  useEffect(() => {
-    setWebhookUrl(`${window.location.origin}/api/webhook/attendance`)
-  }, [])
 
   // ─── Fetch data ─────────────────────────────────────────────────────────
   const fetchRecords = useCallback(async () => {
@@ -52,7 +64,7 @@ export default function AttendanceMachinePage() {
         .from('attendances')
         .select(`
           id, scan_time, status_scan, created_at,
-          users:user_id ( user_id, user_nama_depan, user_nama_belakang, user_pin )
+          users:user_id ( user_id, user_nama_depan, user_nama_belakang, user_pin, expected_check_in, expected_check_out )
         `, { count: 'exact' })
         .order('scan_time', { ascending: false })
 
@@ -92,14 +104,14 @@ export default function AttendanceMachinePage() {
     try {
       const { data } = await supabase
         .from('attendances')
-        .select('status_scan')
+        .select('scan_time, users:user_id(expected_check_in, expected_check_out)')
         .gte('scan_time', `${today}T00:00:00+07:00`)
         .lte('scan_time', `${today}T23:59:59+07:00`)
 
       if (!data) return
       setTodayCount(data.length)
-      setCheckinCount(data.filter(r => String(r.status_scan) === '0').length)
-      setCheckoutCount(data.filter(r => String(r.status_scan) === '1').length)
+      setCheckinCount( data.filter(r => r.scan_time && resolveStatus(r.scan_time, r.users?.expected_check_in, r.users?.expected_check_out).isIn).length)
+      setCheckoutCount(data.filter(r => r.scan_time && !resolveStatus(r.scan_time, r.users?.expected_check_in, r.users?.expected_check_out).isIn).length)
     } catch (e) {
       console.error('[attendance-machine] summary error:', e)
     }
@@ -151,33 +163,6 @@ export default function AttendanceMachinePage() {
         >
           <FontAwesomeIcon icon={faRotate} /> Refresh
         </button>
-      </div>
-
-      {/* Webhook URL Info */}
-      <div className="rounded-lg p-4 space-y-2" style={{ background: theme.blueBg, border: `1px solid ${theme.border}` }}>
-        <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: theme.blueText }}>
-          <FontAwesomeIcon icon={faCircleInfo} />
-          URL Webhook — masukkan alamat ini ke konfigurasi program pengirim absensi
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <code
-            className="flex-1 text-sm px-3 py-1.5 rounded font-mono break-all"
-            style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
-          >
-            {webhookUrl || 'Loading...'}
-          </code>
-          <button
-            onClick={copyUrl}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md whitespace-nowrap"
-            style={{ background: copied ? theme.greenBg : theme.cardBg, border: `1px solid ${theme.border}`, color: copied ? theme.greenText : theme.blueText, cursor: 'pointer' }}
-          >
-            <FontAwesomeIcon icon={copied ? faCheck : faCopy} />
-            {copied ? 'Tersalin!' : 'Salin'}
-          </button>
-        </div>
-        <p className="text-xs" style={{ color: theme.blueText }}>
-          Method: <strong>POST</strong> &nbsp;·&nbsp; Header: <strong>Authorization: Bearer &lt;ATTENDANCE_WEBHOOK_SECRET&gt;</strong>
-        </p>
       </div>
 
       {/* Stats cards */}
@@ -260,7 +245,7 @@ export default function AttendanceMachinePage() {
               </thead>
               <tbody>
                 {records.map((row, idx) => {
-                  const si = statusInfo(row.status_scan)
+                  const si = statusInfo(row.scan_time, row.users?.expected_check_in, row.users?.expected_check_out)
                   const rowNum = (page - 1) * PAGE_SIZE + idx + 1
                   return (
                     <tr key={row.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
@@ -282,7 +267,7 @@ export default function AttendanceMachinePage() {
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
                           style={{ background: si.bg, color: si.color }}
                         >
-                          <FontAwesomeIcon icon={row.status_scan === '1' ? faArrowRightFromBracket : faArrowRightToBracket} />
+                          <FontAwesomeIcon icon={si.isIn ? faArrowRightToBracket : faArrowRightFromBracket} />
                           {si.label}
                         </span>
                       </td>

@@ -1192,5 +1192,37 @@
       "noStudents": "Tidak ada siswa di kelas ini.",
       "noSubjects": "Tidak ada mata pelajaran yang aktif."
     }
+  },
+  "userMgmt": {
+    "addUser": "Tambah User Baru",
+    "editUser": "Edit User",
+    "tabInfo": "Data Diri",
+    "tabMedia": "Foto & TTD",
+    "tabMesin": "Mesin Absensi",
+    "firstName": "Nama Depan",
+    "lastName": "Nama Belakang",
+    "email": "Email",
+    "dob": "Tanggal Lahir",
+    "dobFormat": "Format: DD/MM/YYYY",
+    "role": "Role",
+    "unit": "Unit",
+    "active": "Aktif",
+    "optional": "opsional",
+    "required": "wajib",
+    "save": "Simpan User",
+    "saving": "Menyimpan...",
+    "update": "Update User",
+    "cancel": "Batal",
+    "profilePicture": "Foto Profil",
+    "signature": "Tanda Tangan",
+    "signatureDesc": "Digunakan di laporan rapor sebagai tanda tangan wali kelas. Gunakan gambar PNG transparan untuk hasil terbaik.",
+    "signatureUnsaved": "Tanda tangan baru belum tersimpan. Klik simpan untuk menyimpan.",
+    "pinMachine": "PIN Mesin Absensi",
+    "pinDesc": "Isi dengan PIN karyawan di mesin absensi. Kosongkan jika tidak menggunakan mesin.",
+    "pinConfirm": "Karyawan dikenali mesin saat PIN {pin} scan",
+    "schedule": "Jadwal Absensi",
+    "scheduleDesc": "Jam masuk & pulang yang diharapkan. Kosongkan untuk memakai default 07:30 & 16:30.",
+    "expectedCheckin": "Expected Check-in",
+    "expectedCheckout": "Expected Check-out"
   }
 }

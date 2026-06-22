@@ -318,12 +318,12 @@ function LoginContent() {
         strategy="afterInteractive"
       />
 
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-blue-50 to-purple-50 px-4 py-8 relative overflow-y-auto">
+      <div className="min-h-screen flex items-start justify-center bg-gradient-to-br from-white via-blue-50 to-purple-50 px-4 py-8 relative overflow-y-auto">
       {/* Background Effects */}
       <FloatingOrbs />
       
       {/* Main Card */}
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-md relative z-10 my-auto">
         
         {/* iOS-style Frosted Glass Card */}
         <div className="relative backdrop-blur-2xl bg-white/70 border border-white/40 rounded-[2.5rem] shadow-2xl overflow-hidden">

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,12 @@ import ImageCropModal from '@/components/ImageCropModal';
 import { supabase, createSupabaseWithAuth } from '@/lib/supabase';
 import ImageCropUploader from '@/components/ui/image-crop-uploader';
 import { useTheme } from '@/lib/theme';
+import { useI18n } from '@/lib/i18n';
 
 
 export default function UserManagement() {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
   const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
 
@@ -24,6 +26,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [formTab, setFormTab] = useState('info'); // 'info' | 'media' | 'mesin'
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
     user_nama_depan: '',
@@ -34,7 +37,9 @@ export default function UserManagement() {
     user_role_id: '',
     user_unit_id: '',
     is_active: true,
-    user_pin: ''
+    user_pin: '',
+    expected_check_in: '',
+    expected_check_out: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -572,7 +577,7 @@ export default function UserManagement() {
       // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out');
 
 
       if (usersError) {
@@ -694,6 +699,10 @@ export default function UserManagement() {
 
     if (!formData.user_role_id) {
       errors.user_role_id = 'Role wajib dipilih';
+    }
+
+    if (!formData.user_unit_id) {
+      errors.user_unit_id = 'Unit wajib dipilih';
     }
 
     setFormErrors(errors);
@@ -820,7 +829,9 @@ export default function UserManagement() {
       user_role_id: user.user_role_id,
       user_unit_id: user.user_unit_id || '',
       is_active: user.is_active,
-      user_pin: user.user_pin || ''
+      user_pin: user.user_pin || '',
+      expected_check_in:  user.expected_check_in  ? user.expected_check_in.slice(0, 5)  : '',
+      expected_check_out: user.expected_check_out ? user.expected_check_out.slice(0, 5) : ''
     });
     setImageFile(null);
     setSignatureBlob(null);
@@ -842,7 +853,9 @@ export default function UserManagement() {
       user_role_id: '',
       user_unit_id: '',
       is_active: true,
-      user_pin: ''
+      user_pin: '',
+      expected_check_in: '',
+      expected_check_out: ''
     });
     setImageFile(null);
     setTempImageSrc(null);
@@ -853,6 +866,7 @@ export default function UserManagement() {
     setShowForm(false);
     setFormErrors({});
     setError('');
+    setFormTab('info');
   };
 
 
@@ -928,8 +942,9 @@ export default function UserManagement() {
       <Modal
         isOpen={showForm}
         onClose={resetForm}
-        title={editingUser ? 'Edit User' : 'Add New User'}
+        title={editingUser ? t('userMgmt.editUser') : t('userMgmt.addUser')}
         size="md"
+        disableBackdropClose
         containerStyle={{ background: theme.cardBg }}
         headerStyle={{ borderColor: theme.border }}
         titleStyle={{ color: theme.textPrimary }}
@@ -940,9 +955,36 @@ export default function UserManagement() {
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-3">
+
+          {/* ─── Tab Navigation ─── */}
+          <div className="flex rounded-lg overflow-hidden text-xs font-medium" style={{ border: `1px solid ${theme.border}` }}>
+            {[
+              { key: 'info',  label: t('userMgmt.tabInfo')  },
+              { key: 'media', label: t('userMgmt.tabMedia') },
+              { key: 'mesin', label: t('userMgmt.tabMesin') },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setFormTab(tab.key)}
+                className="flex-1 py-2 px-1 transition-colors"
+                style={{
+                  background: formTab === tab.key ? theme.textPrimary : theme.subtleBg,
+                  color:      formTab === tab.key ? theme.cardBg      : theme.textSecondary,
+                  cursor: 'pointer',
+                  borderRight: `1px solid ${theme.border}`,
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ─── Tab: Data Diri ─── */}
+          {formTab === 'info' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="user_nama_depan" style={{ color: theme.textBody }}>Nama Depan *</Label>
+              <Label htmlFor="user_nama_depan" style={{ color: theme.textBody }}>{t('userMgmt.firstName')} <span style={{ color: theme.redText }}>*</span></Label>
               <Input
                 id="user_nama_depan"
                 name="user_nama_depan"
@@ -957,7 +999,7 @@ export default function UserManagement() {
             </div>
 
             <div>
-              <Label htmlFor="user_nama_belakang" style={{ color: theme.textBody }}>Nama Belakang *</Label>
+              <Label htmlFor="user_nama_belakang" style={{ color: theme.textBody }}>{t('userMgmt.lastName')} <span style={{ color: theme.redText }}>*</span></Label>
               <Input
                 id="user_nama_belakang"
                 name="user_nama_belakang"
@@ -972,7 +1014,7 @@ export default function UserManagement() {
             </div>
 
             <div>
-              <Label htmlFor="user_email" style={{ color: theme.textBody }}>Email</Label>
+              <Label htmlFor="user_email" style={{ color: theme.textBody }}>{t('userMgmt.email')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></Label>
               <Input
                 id="user_email"
                 name="user_email"
@@ -991,7 +1033,7 @@ export default function UserManagement() {
             </div>
 
             <div>
-              <Label htmlFor="user_tanggal_lahir" style={{ color: theme.textBody }}>Tanggal Lahir</Label>
+              <Label htmlFor="user_tanggal_lahir" style={{ color: theme.textBody }}>{t('userMgmt.dob')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></Label>
               <Input
                 id="user_tanggal_lahir"
                 name="user_tanggal_lahir"
@@ -1009,59 +1051,12 @@ export default function UserManagement() {
                 maxLength={10}
                 style={inputStyle}
               />
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>Format: DD/MM/YYYY</p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('userMgmt.dobFormat')}</p>
             </div>
 
 
             <div>
-              <Label htmlFor="user_manual_picture" style={{ color: theme.textBody }}>Profile Picture (Opsional)</Label>
-              <Input
-                id="user_manual_picture"
-                name="user_manual_picture"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      setTempImageSrc(reader.result);
-                      setShowCropModal(true);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                disabled={submitting || uploadingImage}
-                className="cursor-pointer"
-                style={inputStyle}
-              />
-              {imageFile && (
-                <div className="mt-2 space-y-1">
-                  <p className="text-sm font-medium" style={{ color: theme.textBody }}>Preview:</p>
-                  <img
-                    src={URL.createObjectURL(imageFile)}
-                    alt="Preview"
-                    className="w-24 h-24 object-cover rounded-full border"
-                  />
-                  <p className="text-xs" style={{ color: theme.textSecondary }}>
-                    Size: {(imageFile.size / 1024).toFixed(1)} KB
-                  </p>
-                </div>
-              )}
-              {!imageFile && formData.user_manual_picture && (
-                <div className="mt-2">
-                  <p className="text-sm font-medium mb-1" style={{ color: theme.textBody }}>Current:</p>
-                  <img
-                    src={formData.user_manual_picture}
-                    alt="Current"
-                    className="w-24 h-24 object-cover rounded-full border"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="user_role_id" style={{ color: theme.textBody }}>Role *</Label>
+              <Label htmlFor="user_role_id" style={{ color: theme.textBody }}>{t('userMgmt.role')} <span style={{ color: theme.redText }}>*</span></Label>
               <select
                 id="user_role_id"
                 name="user_role_id"
@@ -1084,7 +1079,7 @@ export default function UserManagement() {
             </div>
 
             <div>
-              <Label htmlFor="user_unit_id" style={{ color: theme.textBody }}>Unit</Label>
+              <Label htmlFor="user_unit_id" style={{ color: theme.textBody }}>{t('userMgmt.unit')} <span style={{ color: theme.redText }}>*</span></Label>
               <select
                 id="user_unit_id"
                 name="user_unit_id"
@@ -1094,7 +1089,7 @@ export default function UserManagement() {
                 className="w-full px-3 py-2 rounded-md"
                 style={{ ...selectStyle, ...(formErrors.user_unit_id ? { borderColor: theme.redText } : {}) }}
               >
-                <option value="">Pilih Unit (Opsional)</option>
+                <option value="">Pilih Unit</option>
                 {units.map(unit => (
                   <option key={unit.unit_id} value={unit.unit_id}>
                     {unit.unit_name}
@@ -1116,90 +1111,134 @@ export default function UserManagement() {
                   onChange={handleInputChange}
                   disabled={submitting}
                 />
-                <Label htmlFor="is_active" style={{ color: theme.textBody }}>Active</Label>
+                <Label htmlFor="is_active" style={{ color: theme.textBody }}>{t('userMgmt.active')}</Label>
               </div>
             )}
+          </div>
+          )}
 
-            {/* Mesin Absensi PIN */}
-            <div className="md:col-span-2">
-              <div className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-                <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>🖐 PIN Mesin Absensi</p>
-                <p className="text-xs" style={{ color: theme.textSecondary }}>
-                  Isi dengan PIN karyawan yang terdaftar di mesin absensi (fingerprint/wajah).
-                  Webhook absensi menggunakan PIN ini untuk mengenali siapa yang sedang absen.
-                  Boleh dikosongkan jika karyawan tidak menggunakan mesin absensi.
-                </p>
-                <Input
-                  id="user_pin"
-                  name="user_pin"
-                  type="text"
-                  value={formData.user_pin || ''}
-                  onChange={handleInputChange}
-                  disabled={submitting}
-                  placeholder="Contoh: 155 atau GURU-01"
-                  style={inputStyle}
-                />
-                {formData.user_pin && (
-                  <p className="text-xs" style={{ color: theme.greenText }}>
-                    ✓ Karyawan ini akan dikenali mesin saat PIN <strong>{formData.user_pin}</strong> scan
-                  </p>
-                )}
-              </div>
+          {/* ─── Tab: Foto & TTD ─── */}
+          {formTab === 'media' && (
+          <div className="space-y-4">
+            {/* Profile Picture */}
+            <div>
+              <p className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary }}>{t('userMgmt.profilePicture')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></p>
+              <Input
+                id="user_manual_picture"
+                name="user_manual_picture"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = () => { setTempImageSrc(reader.result); setShowCropModal(true); };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                disabled={submitting || uploadingImage}
+                className="cursor-pointer"
+                style={inputStyle}
+              />
+              {imageFile && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm font-medium" style={{ color: theme.textBody }}>Preview:</p>
+                  <img src={URL.createObjectURL(imageFile)} alt="Preview" className="w-20 h-20 object-cover rounded-full border" />
+                  <p className="text-xs" style={{ color: theme.textSecondary }}>Size: {(imageFile.size / 1024).toFixed(1)} KB</p>
+                </div>
+              )}
+              {!imageFile && formData.user_manual_picture && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium mb-1" style={{ color: theme.textBody }}>Foto saat ini:</p>
+                  <img src={formData.user_manual_picture} alt="Current" className="w-20 h-20 object-cover rounded-full border" />
+                </div>
+              )}
             </div>
 
-            {/* Signature Upload */}
-            <div className="md:col-span-2 border-t pt-3">
-              <p className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary }}>Tanda Tangan</p>
-              <p className="text-xs mb-2" style={{ color: theme.textSecondary }}>
-                Digunakan di laporan rapor sebagai tanda tangan wali kelas. Gunakan gambar PNG transparan untuk hasil terbaik.
-              </p>
+            {/* Signature */}
+            <div className="border-t pt-3">
+              <p className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary }}>{t('userMgmt.signature')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></p>
+              <p className="text-xs mb-2" style={{ color: theme.textSecondary }}>{t('userMgmt.signatureDesc')}</p>
               <ImageCropUploader
                 label="Upload Tanda Tangan"
                 previewUrl={signaturePreview}
                 uploading={uploadingSignature}
                 inputRef={signatureInputRef}
-                onCropped={(blob) => {
-                  setSignatureBlob(blob);
-                  // Show local preview immediately
-                  setSignaturePreview(URL.createObjectURL(blob));
-                }}
-                onRemove={() => {
-                  setSignatureBlob(null);
-                  setSignaturePreview('');
-                }}
+                onCropped={(blob) => { setSignatureBlob(blob); setSignaturePreview(URL.createObjectURL(blob)); }}
+                onRemove={() => { setSignatureBlob(null); setSignaturePreview(''); }}
               />
               {signatureBlob && (
-                <p className="text-xs text-amber-600 mt-1">
-                  âš  Tanda tangan baru belum tersimpan. Klik &quot;Update User&quot; / &quot;Create User&quot; untuk menyimpan.
-                </p>
+                <p className="text-xs text-amber-600 mt-1">{t('userMgmt.signatureUnsaved')}</p>
               )}
             </div>
           </div>
+          )}
 
+          {/* ─── Tab: Mesin Absensi ─── */}
+          {formTab === 'mesin' && (
+          <div className="space-y-4">
+            <div className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+              <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>🖐 {t('userMgmt.pinMachine')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></p>
+              <p className="text-xs" style={{ color: theme.textSecondary }}>{t('userMgmt.pinDesc')}</p>
+              <Input
+                id="user_pin"
+                name="user_pin"
+                type="text"
+                value={formData.user_pin || ''}
+                onChange={handleInputChange}
+                disabled={submitting}
+                placeholder="Contoh: 155 atau GURU-01"
+                style={inputStyle}
+              />
+              {formData.user_pin && (
+                <p className="text-xs" style={{ color: theme.greenText }}>
+                  ✓ {t('userMgmt.pinConfirm').replace('{pin}', formData.user_pin)}
+                </p>
+              )}
+            </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 pt-3">
-            <Button 
-              type="submit" 
-              className="flex-1 sm:flex-none"
+            <div className="rounded-lg p-3 space-y-3" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>🕐 {t('userMgmt.schedule')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></p>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>{t('userMgmt.scheduleDesc')}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>{t('userMgmt.expectedCheckin')}</label>
+                  <Input type="time" name="expected_check_in" value={formData.expected_check_in || ''} onChange={handleInputChange} disabled={submitting} style={inputStyle} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>{t('userMgmt.expectedCheckout')}</label>
+                  <Input type="time" name="expected_check_out" value={formData.expected_check_out || ''} onChange={handleInputChange} disabled={submitting} style={inputStyle} />
+                </div>
+              </div>
+            </div>
+          </div>
+          )}
+
+          {/* ─── Buttons — selalu tampil ─── */}
+          <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t" style={{ borderColor: theme.border }}>
+            <Button
+              type="submit"
+              className="flex-1"
               style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
               disabled={submitting}
             >
-              {submitting ? 'Processing...' : (editingUser ? 'Update User' : 'Create User')}
+              {submitting ? t('userMgmt.saving') : (editingUser ? t('userMgmt.update') : t('userMgmt.save'))}
             </Button>
-            <Button 
-              type="button" 
-              onClick={resetForm} 
+            <Button
+              type="button"
+              onClick={resetForm}
               variant="outline"
-              className="flex-1 sm:flex-none"
+              className="flex-1"
               style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
               disabled={submitting}
             >
-              Cancel
+              {t('userMgmt.cancel')}
             </Button>
           </div>
         </form>
       </Modal>
-
       {/* Import Users Modal */}
       <Modal
         isOpen={showImportModal}

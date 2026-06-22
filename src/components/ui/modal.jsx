@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './button';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md', zIndex = 'z-50', containerStyle = {}, headerStyle = {}, titleStyle = {} }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'md', zIndex = 'z-50', containerStyle = {}, headerStyle = {}, titleStyle = {}, disableBackdropClose = false }) => {
   if (!isOpen) return null;
 
   const sizeClasses = {
@@ -16,7 +16,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', zIndex = 'z-50',
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
+        onClick={disableBackdropClose ? undefined : onClose}
       />
       
       {/* Modal */}
