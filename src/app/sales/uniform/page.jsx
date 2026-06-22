@@ -298,37 +298,44 @@ export default function UniformSalesPage() {
     try {
       // Get user ID for processed_by tracking
       const processedBy = parseInt(localStorage.getItem('kr_id'), 10) || null
-      
-      // 1) Insert sale pending with user_id and their unit_id
+      const isFree = paymentMethod === 'free'
+
+      // For free promo: force all prices to 0
+      const effectiveItems = isFree
+        ? items.map(it => ({ ...it, unit_price: 0 }))
+        : items
+
+      const totalAmount = isFree ? 0 : totals.amount
+      const totalCost   = totals.cost
+
+      // 1) Insert sale with correct status
       const { data: sale, error: saleErr } = await supabase.from('uniform_sale').insert([{ 
         user_id: Number(userId), 
         unit_id: Number(selectedStudent.user_unit_id), 
-        status: 'pending', 
+        status: isFree ? 'paid' : 'pending', 
         payment_method: paymentMethod, 
-        total_amount: totals.amount, 
-        total_cost: totals.cost,
+        total_amount: totalAmount, 
+        total_cost: totalCost,
         processed_by: processedBy
       }]).select('sale_id').single()
       if (saleErr) throw saleErr
       const saleId = sale.sale_id
 
-      // 2) Upload receipt (optional)
-      let receiptUrl = null
-      if (receiptFile) {
-        receiptUrl = await uploadReceipt(saleId)
+      // 2) Upload receipt (only for transfer, optional)
+      if (!isFree && receiptFile) {
+        const receiptUrl = await uploadReceipt(saleId)
         await supabase.from('uniform_sale').update({ receipt_url: receiptUrl }).eq('sale_id', saleId)
       }
 
-      // 3) Insert items
-      // Use explicit null/undefined check so user-entered price=0 is preserved.
-      // The `||` operator treats 0 as falsy and would incorrectly fall back to getPrice().
-      const payloadItems = items.map(it => {
-        const price = (it.unit_price !== null && it.unit_price !== undefined && it.unit_price !== '')
-          ? Number(it.unit_price)
-          : getPrice(it.uniform_id, it.size_id);
+      // 3) Insert items (price 0 for free)
+      const payloadItems = effectiveItems.map(it => {
+        const price = isFree ? 0
+          : (it.unit_price !== null && it.unit_price !== undefined && it.unit_price !== '')
+            ? Number(it.unit_price)
+            : getPrice(it.uniform_id, it.size_id)
         const hpp = (it.unit_hpp !== null && it.unit_hpp !== undefined && it.unit_hpp !== '')
           ? Number(it.unit_hpp)
-          : getHpp(it.uniform_id, it.size_id);
+          : getHpp(it.uniform_id, it.size_id)
         return {
           sale_id:    saleId,
           uniform_id: it.uniform_id,
@@ -337,11 +344,72 @@ export default function UniformSalesPage() {
           unit_price: price,
           unit_hpp:   hpp,
           subtotal:   Number(it.qty) * price,
-        };
-      });
+        }
+      })
       const { error: itemErr } = await supabase.from('uniform_sale_item').insert(payloadItems)
       if (itemErr) throw itemErr
 
+      // 4) For free: immediately deduct stock and open kwitansi (skip confirm modal)
+      if (isFree) {
+        const stockRows = payloadItems.map(it => {
+          const cartItem = items.find(i => i.uniform_id === it.uniform_id && i.size_id === it.size_id)
+          return {
+            uniform_id: it.uniform_id,
+            size_id:    it.size_id,
+            supplier_id: cartItem?.supplier_id || null,
+            qty_delta:  -Number(it.qty),
+            txn_type:   'sale',
+            ref_table:  'uniform_sale',
+            ref_id:     saleId,
+            notes:      'promo free seragam'
+          }
+        })
+        if (stockRows.length) {
+          const { error: stErr } = await supabase.from('uniform_stock_txn').insert(stockRows)
+          if (stErr) throw stErr
+        }
+
+        // Set pickup_date = today for free
+        await supabase.from('uniform_sale').update({
+          pickup_date: new Date().toISOString().slice(0, 10),
+          updated_at: new Date().toISOString()
+        }).eq('sale_id', saleId)
+
+        // Refresh stock map
+        const { data: st } = await supabase.from('uniform_stock_txn').select('uniform_id, size_id, supplier_id, qty_delta')
+        const sm = new Map(); const sbs = new Map()
+        for (const row of (st || [])) {
+          const key = `${row.uniform_id}_${row.size_id}`
+          const suppKey = `${row.uniform_id}_${row.size_id}_${row.supplier_id || 'null'}`
+          sm.set(key, (sm.get(key) || 0) + Number(row.qty_delta))
+          sbs.set(suppKey, (sbs.get(suppKey) || 0) + Number(row.qty_delta))
+        }
+        setStockMap(sm); setStockBySupplier(sbs)
+
+        // Open kwitansi directly
+        const saleForKwitansi = {
+          sale_id: saleId,
+          status: 'paid',
+          payment_method: 'free',
+          total_amount: 0,
+          total_cost: totalCost,
+          sale_date: new Date().toISOString(),
+          pickup_date: new Date().toISOString().slice(0, 10),
+          user_name: selectedStudent?.user_name || 'Unknown',
+          unit_name: selectedStudent?.user_unit_name || '-'
+        }
+        setKwitansiItems(payloadItems)
+        setSelectedSaleForKwitansi(saleForKwitansi)
+        setShowKwitansi(true)
+
+        // Clear cart
+        setItems([])
+        setReceiptFile(null)
+        setPickupDate(new Date().toISOString().slice(0, 10))
+        return
+      }
+
+      // 5) For non-free: show confirm modal as before
       setShowConfirm(true)
     } catch (e) {
       setError(e.message)
@@ -1460,7 +1528,17 @@ export default function UniformSalesPage() {
                     <option value="cash">Cash/Tunai</option>
                     <option value="credit_card">Kartu Kredit</option>
                     <option value="debit_card">Kartu Debit</option>
+                    <option value="free">🎁 Promo Free Seragam</option>
                   </select>
+                  {paymentMethod === 'free' && (
+                    <div className="mt-2 flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <span className="text-lg">🎁</span>
+                      <div className="text-sm text-green-800">
+                        <p className="font-semibold">Promo Free Seragam</p>
+                        <p className="text-xs mt-0.5">Harga semua item akan otomatis menjadi Rp 0. Transaksi langsung selesai tanpa konfirmasi pembayaran.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {paymentMethod === 'transfer' && (
@@ -1556,8 +1634,16 @@ export default function UniformSalesPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-700">Total Harga:</span>
-                    <span className="text-2xl font-bold text-blue-900">{formatCurrency(totals.amount)}</span>
+                    <span className={`text-2xl font-bold ${paymentMethod === 'free' ? 'text-green-600 line-through' : 'text-blue-900'}`}>
+                      {paymentMethod === 'free' ? formatCurrency(totals.amount) : formatCurrency(totals.amount)}
+                    </span>
                   </div>
+                  {paymentMethod === 'free' && (
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-700">Total Setelah Promo:</span>
+                      <span className="text-2xl font-bold text-green-600">Rp 0</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">Perkiraan HPP:</span>
                     <span className="text-gray-700">{formatCurrency(totals.cost)}</span>
@@ -1571,9 +1657,13 @@ export default function UniformSalesPage() {
                 <Button 
                   onClick={createSale} 
                   disabled={saving || items.length === 0} 
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 font-semibold text-lg disabled:opacity-50"
+                  className={`w-full py-3 font-semibold text-lg disabled:opacity-50 text-white ${
+                    paymentMethod === 'free'
+                      ? 'bg-green-500 hover:bg-green-600'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
                 >
-                  {saving ? '⏳ Menyimpan...' : '✓ Simpan Transaksi (Pending)'}
+                  {saving ? '⏳ Menyimpan...' : paymentMethod === 'free' ? '🎁 Proses Free Seragam' : '✓ Simpan Transaksi (Pending)'}
                 </Button>
               </div>
             </>
@@ -1823,25 +1913,32 @@ export default function UniformSalesPage() {
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-1">
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                sale.is_voided
-                                  ? 'bg-gray-800 text-white'
+                            <div className="flex items-center gap-1.5">
+                              {sale.payment_method === 'free' && (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500 text-white">
+                                  🎁 Free
+                                </span>
+                              )}
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                  sale.is_voided
+                                    ? 'bg-gray-800 text-white'
+                                    : sale.status === 'paid'
+                                    ? 'bg-green-100 text-green-800'
+                                    : sale.status === 'pending'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {sale.is_voided
+                                  ? '🚫 VOID'
                                   : sale.status === 'paid'
-                                  ? 'bg-green-100 text-green-800'
+                                  ? 'Lunas'
                                   : sale.status === 'pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}
-                            >
-                              {sale.is_voided
-                                ? '🚫 VOID'
-                                : sale.status === 'paid'
-                                ? 'Lunas'
-                                : sale.status === 'pending'
-                                ? 'Pending'
-                                : 'Batal'}
-                            </span>
+                                  ? 'Pending'
+                                  : 'Batal'}
+                              </span>
+                            </div>
                             {sale.is_voided && (
                               <span className="text-xs text-gray-500">
                                 {new Date(sale.voided_at).toLocaleDateString('id-ID', {

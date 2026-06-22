@@ -62,6 +62,13 @@ export default function AddUniformStockPage() {
   const userData = useMemo(() => getUserData(), [])
   const hasVoidPermission = useMemo(() => canVoidTransactions(userData), [userData])
 
+  // Edit receipt state
+  const [editingReceipt, setEditingReceipt] = useState(null)    // { receipt_id, receipt_date, notes, purchase_id }
+  const [editReceiptItems, setEditReceiptItems] = useState([])  // [{ ri_id, purchase_item_id, uniform_id, size_id, qty_received, qty_received_orig, unit_cost }]
+  const [showEditReceiptModal, setShowEditReceiptModal] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editReceiptError, setEditReceiptError] = useState('')
+
   useEffect(() => {
     const fetchUnits = async () => {
       const { data, error } = await supabase.from('unit').select('unit_id, unit_name, is_school').order('unit_name')
@@ -415,6 +422,166 @@ export default function AddUniformStockPage() {
       setShowConfirm(true)
     } catch (e) { setError(e.message) } finally { setSaving(false) }
   }
+
+  // ─── Edit Receipt ─────────────────────────────────────────────────────────
+  const openEditReceipt = async (receipt) => {
+    setEditReceiptError('')
+    // Fetch receipt items joined with purchase_item for uniform/size info
+    const { data: riData, error: riErr } = await supabase
+      .from('uniform_purchase_receipt_item')
+      .select(`
+        receipt_item_id,
+        purchase_item_id,
+        qty_received,
+        unit_cost,
+        purchase_item:uniform_purchase_item(uniform_id, size_id)
+      `)
+      .eq('receipt_id', receipt.receipt_id)
+    if (riErr) {
+      // Show error in a global way since modal not open yet
+      setError('Gagal memuat data penerimaan: ' + riErr.message)
+      return
+    }
+
+    setEditingReceipt({ ...receipt })
+    setEditReceiptItems((riData || []).map(r => ({
+      receipt_item_id: r.receipt_item_id,
+      purchase_item_id: r.purchase_item_id,
+      uniform_id: r.purchase_item?.uniform_id,
+      size_id: r.purchase_item?.size_id,
+      qty_received: Number(r.qty_received || 0),
+      qty_received_orig: Number(r.qty_received || 0), // keep original for delta calc
+      unit_cost: Number(r.unit_cost || 0),
+    })))
+    setShowEditReceiptModal(true)
+  }
+
+  const saveEditReceipt = async () => {
+    if (!editingReceipt) return
+    setSavingEdit(true)
+    setEditReceiptError('')
+    try {
+      const rid = editingReceipt.receipt_id
+
+      // 1) Validate: qty must be >= 0 and <= originally ordered
+      for (const row of editReceiptItems) {
+        if (row.qty_received < 0) throw new Error('Qty tidak boleh negatif')
+      }
+
+      // 2) Stock validation for items where qty decreases
+      for (const row of editReceiptItems) {
+        const delta = row.qty_received - row.qty_received_orig // negative = stock reduction
+        if (delta < 0) {
+          // Check current total stock
+          const { data: txnData, error: txnErr } = await supabase
+            .from('uniform_stock_txn')
+            .select('qty_delta')
+            .eq('uniform_id', row.uniform_id)
+            .eq('size_id', row.size_id)
+          if (txnErr) throw txnErr
+          const currentStock = (txnData || []).reduce((s, t) => s + Number(t.qty_delta || 0), 0)
+          if (currentStock + delta < 0) {
+            const uName = uniforms.find(u => u.uniform_id === row.uniform_id)?.uniform_name || row.uniform_id
+            const sName = sizes.find(s => s.size_id === row.size_id)?.size_name || row.size_id
+            throw new Error(
+              `Stok tidak cukup untuk dikurangi: ${uName} (${sName}). ` +
+              `Stok saat ini: ${currentStock}, pengurangan: ${Math.abs(delta)}`
+            )
+          }
+        }
+      }
+
+      // 3) Delete old stock transactions from this receipt
+      const { error: delTxnErr } = await supabase
+        .from('uniform_stock_txn')
+        .delete()
+        .eq('ref_table', 'uniform_purchase_receipt')
+        .eq('ref_id', rid)
+      if (delTxnErr) throw delTxnErr
+
+      // 4) Update each receipt_item row
+      //    If qty_received = 0, delete the row (DB has CHECK qty_received > 0)
+      for (const row of editReceiptItems) {
+        if (row.qty_received === 0) {
+          const { error: delErr } = await supabase
+            .from('uniform_purchase_receipt_item')
+            .delete()
+            .eq('receipt_item_id', row.receipt_item_id)
+          if (delErr) throw delErr
+        } else {
+          const { error: updErr } = await supabase
+            .from('uniform_purchase_receipt_item')
+            .update({ qty_received: row.qty_received, unit_cost: row.unit_cost })
+            .eq('receipt_item_id', row.receipt_item_id)
+          if (updErr) throw updErr
+        }
+      }
+
+      // 5) Update receipt header (date)
+      const { error: recUpdErr } = await supabase
+        .from('uniform_purchase_receipt')
+        .update({ receipt_date: editingReceipt.receipt_date, notes: editingReceipt.notes || null })
+        .eq('receipt_id', rid)
+      if (recUpdErr) throw recUpdErr
+
+      // 6) Get supplier_id from purchase
+      const { data: phData } = await supabase
+        .from('uniform_purchase')
+        .select('supplier_id')
+        .eq('purchase_id', editingReceipt.purchase_id)
+        .single()
+      const supplierIdForTxn = phData?.supplier_id || null
+
+      // 7) Re-insert stock transactions with new quantities
+      const newTxns = editReceiptItems
+        .filter(r => r.qty_received > 0)
+        .map(r => ({
+          uniform_id: r.uniform_id,
+          size_id: r.size_id,
+          qty_delta: r.qty_received,
+          txn_type: 'purchase',
+          ref_table: 'uniform_purchase_receipt',
+          ref_id: rid,
+          supplier_id: supplierIdForTxn,
+          notes: `purchase receipt (edited)`
+        }))
+      if (newTxns.length > 0) {
+        const { error: txnInsErr } = await supabase.from('uniform_stock_txn').insert(newTxns)
+        if (txnInsErr) throw txnInsErr
+      }
+
+      // 8) Re-evaluate purchase status
+      const remMap = await getRemainingMap(editingReceipt.purchase_id)
+      const allZero = Array.from(remMap.values()).every(v => Number(v) === 0)
+      await supabase
+        .from('uniform_purchase')
+        .update({ status: allZero ? 'posted' : 'draft' })
+        .eq('purchase_id', editingReceipt.purchase_id)
+
+      // 9) Reload progress if still in receive modal
+      if (purchaseId === editingReceipt.purchase_id) {
+        await loadProgress(editingReceipt.purchase_id)
+      }
+      // Reload history if we're looking at history
+      if (historyHeader?.purchase_id === editingReceipt.purchase_id) {
+        await openHistory(editingReceipt.purchase_id)
+      }
+      // Refresh pending/completed lists
+      loadPending()
+      if (activeTab === 'history') loadCompleted()
+
+      setShowEditReceiptModal(false)
+      setEditingReceipt(null)
+      setEditReceiptItems([])
+      setSuccess('Riwayat penerimaan berhasil diperbarui')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (e) {
+      setEditReceiptError(e.message)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const loadProgress = async (pid) => {
     const { data: rec, error: re } = await supabase.from('uniform_purchase_receipt').select('receipt_id, receipt_date, notes, created_at').eq('purchase_id', pid).order('receipt_id',{ascending:false})
@@ -1836,6 +2003,13 @@ export default function AddUniformStockPage() {
 
       <Modal isOpen={showReceive} onClose={()=>setShowReceive(false)} title="Terima Barang (Partial)" size="lg">
         <div className="overflow-auto max-h-[60vh] pr-1">
+          {receiveRows.filter(r => Number(r.qty_remaining) > 0).length === 0 ? (
+            <div className="text-center py-10 text-gray-500">
+              <div className="text-4xl mb-3">✅</div>
+              <p className="font-medium">Semua barang sudah diterima</p>
+              <p className="text-sm mt-1">Tidak ada item yang tersisa untuk diterima.</p>
+            </div>
+          ) : (
           <table className="min-w-full text-sm">
             <thead>
               <tr className="text-left border-b">
@@ -1849,7 +2023,9 @@ export default function AddUniformStockPage() {
               </tr>
             </thead>
             <tbody>
-              {receiveRows.map((r, idx) => (
+              {receiveRows
+                .filter(r => Number(r.qty_remaining) > 0)
+                .map((r) => (
                 <tr key={r.purchase_item_id} className="border-b">
                   <td className="py-2 pr-4">{uniforms.find(u=>u.uniform_id===r.uniform_id)?.uniform_name || r.uniform_id}</td>
                   <td className="py-2 pr-4">{sizes.find(s=>s.size_id===r.size_id)?.size_name || r.size_id}</td>
@@ -1857,13 +2033,13 @@ export default function AddUniformStockPage() {
                   <td className="py-2 pr-4">
                     <Input inputMode="numeric" value={r.qty_receive} onChange={e=>{
                       const q = Math.max(0, Math.min(toNumber(e.target.value), Number(r.qty_remaining||0)))
-                      setReceiveRows(prev=> prev.map((x,i)=> i===idx ? { ...x, qty_receive: q } : x))
+                      setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, qty_receive: q } : x))
                     }} />
                   </td>
                   <td className="py-2 pr-4">
                     <button
                       type="button"
-                      onClick={() => receiveAllForRow(idx)}
+                      onClick={() => setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, qty_receive: Number(x.qty_remaining||0) } : x))}
                       className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded font-medium whitespace-nowrap"
                       title="Terima semua qty di baris ini"
                     >
@@ -1872,16 +2048,17 @@ export default function AddUniformStockPage() {
                   </td>
                   <td className="py-2 pr-4">
                     <Input inputMode="numeric" value={r.unit_cost} onChange={e=>{
-                      setReceiveRows(prev=> prev.map((x,i)=> i===idx ? { ...x, unit_cost: toNumber(e.target.value) } : x))
+                      setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, unit_cost: toNumber(e.target.value) } : x))
                     }} />
                   </td>
                   <td className="py-2 pr-4">
-                    <input type="checkbox" checked={!!r.update_hpp} onChange={e=> setReceiveRows(prev=> prev.map((x,i)=> i===idx ? { ...x, update_hpp: e.target.checked } : x)) } />
+                    <input type="checkbox" checked={!!r.update_hpp} onChange={e=>setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, update_hpp: e.target.checked } : x))} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          )}
         </div>
         <div className="mt-3 flex gap-2 justify-between items-center">
           <Button 
@@ -1894,12 +2071,31 @@ export default function AddUniformStockPage() {
         </div>
         <div className="mt-6">
           <h3 className="font-semibold mb-2">Riwayat Penerimaan</h3>
-          <ul className="list-disc ml-6 text-sm">
-            {receipts.map(r => (
-              <li key={r.receipt_id}>#{r.receipt_id} • {r.receipt_date} {r.notes ? '• '+r.notes : ''}</li>
-            ))}
-            {!receipts.length && <li className="text-gray-500">Belum ada penerimaan</li>}
-          </ul>
+          {receipts.length === 0 ? (
+            <p className="text-sm text-gray-500 italic">Belum ada penerimaan</p>
+          ) : (
+            <div className="divide-y border rounded-lg overflow-hidden">
+              {receipts.map(r => (
+                <div key={r.receipt_id} className="flex items-center justify-between px-4 py-2.5 bg-white hover:bg-gray-50">
+                  <div className="text-sm">
+                    <span className="font-medium text-gray-700">#{r.receipt_id}</span>
+                    <span className="mx-2 text-gray-400">•</span>
+                    <span className="text-gray-600">{r.receipt_date}</span>
+                    {r.notes && <span className="ml-2 text-gray-500 italic">• {r.notes}</span>}
+                  </div>
+                  {hasVoidPermission && (
+                    <button
+                      onClick={() => openEditReceipt({ ...r, purchase_id: purchaseId })}
+                      className="ml-3 text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-medium transition-colors"
+                      title="Edit jumlah penerimaan ini"
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -1947,15 +2143,157 @@ export default function AddUniformStockPage() {
         </div>
         <div>
           <h3 className="font-semibold mb-2">Riwayat Penerimaan</h3>
-          <ul className="list-disc ml-6 text-sm">
-            {historyReceipts.map(r => (
-              <li key={r.receipt_id}>
-                #{r.receipt_id} • {r.receipt_date} {r.notes ? '• '+r.notes : ''}
-              </li>
-            ))}
-            {!historyReceipts.length && <li className="text-gray-500">Belum ada penerimaan</li>}
-          </ul>
+          {historyReceipts.length === 0 ? (
+            <p className="text-sm text-gray-500 italic">Belum ada penerimaan</p>
+          ) : (
+            <div className="divide-y border rounded-lg overflow-hidden">
+              {historyReceipts.map(r => (
+                <div key={r.receipt_id} className="flex items-center justify-between px-4 py-2.5 bg-white hover:bg-gray-50">
+                  <div className="text-sm">
+                    <span className="font-medium text-gray-700">#{r.receipt_id}</span>
+                    <span className="mx-2 text-gray-400">•</span>
+                    <span className="text-gray-600">{r.receipt_date}</span>
+                    {r.notes && <span className="ml-2 text-gray-500 italic">• {r.notes}</span>}
+                  </div>
+                  {hasVoidPermission && (
+                    <button
+                      onClick={() => openEditReceipt({ ...r, purchase_id: historyHeader?.purchase_id })}
+                      className="ml-3 text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-medium transition-colors"
+                      title="Edit jumlah penerimaan ini"
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      </Modal>
+
+      {/* Edit Receipt Modal */}
+      <Modal
+        isOpen={showEditReceiptModal}
+        onClose={() => { setShowEditReceiptModal(false); setEditingReceipt(null); setEditReceiptItems([]); setEditReceiptError('') }}
+        title={`✏️ Edit Penerimaan #${editingReceipt?.receipt_id}`}
+        size="lg"
+      >
+        {editingReceipt && (
+          <div className="space-y-4">
+            {/* Warning banner */}
+            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <span className="text-lg mt-0.5">⚠️</span>
+              <div className="text-sm text-amber-800">
+                <p className="font-semibold">Perhatian: edit akan menyesuaikan stok secara otomatis.</p>
+                <p className="text-xs mt-1">Jika qty dikurangi, stok yang bersangkutan akan berkurang. Pastikan stok cukup.</p>
+              </div>
+            </div>
+
+            {/* Receipt date & notes */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tanggal Penerimaan</Label>
+                <Input
+                  type="date"
+                  value={editingReceipt.receipt_date || ''}
+                  onChange={e => setEditingReceipt(prev => ({ ...prev, receipt_date: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Catatan</Label>
+                <Input
+                  value={editingReceipt.notes || ''}
+                  onChange={e => setEditingReceipt(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Opsional"
+                />
+              </div>
+            </div>
+
+            {/* Items table */}
+            <div className="overflow-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left border-b bg-gray-50">
+                    <th className="py-2 px-3 font-semibold text-gray-700">Seragam</th>
+                    <th className="py-2 px-3 font-semibold text-gray-700">Ukuran</th>
+                    <th className="py-2 px-3 font-semibold text-gray-700 text-center">Qty Awal</th>
+                    <th className="py-2 px-3 font-semibold text-gray-700">Qty Diterima (Koreksi)</th>
+                    <th className="py-2 px-3 font-semibold text-gray-700">Harga/Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {editReceiptItems.map((row, idx) => {
+                    const uName = uniforms.find(u => u.uniform_id === row.uniform_id)?.uniform_name || row.uniform_id
+                    const sName = sizes.find(s => s.size_id === row.size_id)?.size_name || row.size_id
+                    const diff = row.qty_received - row.qty_received_orig
+                    return (
+                      <tr key={row.receipt_item_id} className="border-b hover:bg-gray-50">
+                        <td className="py-2 px-3">{uName}</td>
+                        <td className="py-2 px-3">{sName}</td>
+                        <td className="py-2 px-3 text-center text-gray-500">{row.qty_received_orig}</td>
+                        <td className="py-2 px-3">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={row.qty_received}
+                              onChange={e => {
+                                const val = Math.max(0, toNumber(e.target.value))
+                                setEditReceiptItems(prev => prev.map((x, i) => i === idx ? { ...x, qty_received: val } : x))
+                              }}
+                              className="w-24"
+                            />
+                            {diff !== 0 && (
+                              <span className={`text-xs font-semibold ${diff > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {diff > 0 ? `+${diff}` : diff}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2 px-3">
+                          <Input
+                            type="number"
+                            min="0"
+                            value={row.unit_cost}
+                            onChange={e => {
+                              const val = toNumber(e.target.value)
+                              setEditReceiptItems(prev => prev.map((x, i) => i === idx ? { ...x, unit_cost: val } : x))
+                            }}
+                            className="w-32"
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Error */}
+            {editReceiptError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                ⚠️ {editReceiptError}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 justify-end pt-3 border-t">
+              <Button
+                onClick={() => { setShowEditReceiptModal(false); setEditingReceipt(null); setEditReceiptItems([]); setEditReceiptError('') }}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={saveEditReceipt}
+                disabled={savingEdit}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 font-semibold disabled:opacity-50"
+              >
+                {savingEdit ? '⏳ Menyimpan...' : '✓ Simpan Perubahan'}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Void Reason Modal */}

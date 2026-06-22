@@ -64,7 +64,7 @@ export default function DetailTransaksiModal({ isOpen, onClose, sale, items, uni
 
           {/* Student Name */}
           <div style={{ marginBottom: '6px' }}>
-            MYP, Nama: &nbsp;&nbsp;&nbsp; <strong>{sale.user_name || '-'}</strong>
+            Nama: &nbsp;&nbsp;&nbsp; <strong>{sale.user_name || '-'}</strong>
           </div>
           <div style={{ marginBottom: '16px', fontSize: '12px', color: '#444' }}>
             Dipesan untuk siswa: <strong>{sale.user_name || '-'}</strong>

@@ -752,12 +752,20 @@ export default function UserManagement() {
 
       let result;
       const baseData = { ...submitData };
-      // Convert tanggal_lahir DD/MM/YYYY â†’ ISO YYYY-MM-DD before saving
+      // Convert tanggal_lahir DD/MM/YYYY → ISO YYYY-MM-DD before saving
       if (baseData.user_tanggal_lahir) {
         baseData.user_tanggal_lahir = toIsoDate(baseData.user_tanggal_lahir) || null;
       } else {
         baseData.user_tanggal_lahir = null;
       }
+
+      // Convert empty time strings to null (PostgreSQL rejects empty string for type time)
+      if (!baseData.expected_check_in) baseData.expected_check_in = null;
+      if (!baseData.expected_check_out) baseData.expected_check_out = null;
+
+      // user_pin has UNIQUE constraint — convert empty string to null so multiple
+      // users without a PIN don't trigger "duplicate key value violates unique constraint"
+      if (!baseData.user_pin) baseData.user_pin = null;
 
       if (editingUser) {
         // Upload profile image if new file selected
