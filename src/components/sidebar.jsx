@@ -53,6 +53,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
+import { faBell } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
 const iconMap = {
@@ -153,6 +154,8 @@ const iconMap = {
   , 'faFingerprint': require('@fortawesome/free-solid-svg-icons').faFingerprint
   , 'fas fa-clock': require('@fortawesome/free-solid-svg-icons').faClock
   , 'faClock': require('@fortawesome/free-solid-svg-icons').faClock
+  , 'fas fa-bell': faBell
+  , 'faBell': faBell
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

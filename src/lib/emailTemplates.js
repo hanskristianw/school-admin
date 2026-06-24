@@ -140,5 +140,135 @@ export const emailTemplates = {
       </div>
     `)
     return { subject, html }
+  },
+
+  // ─── Attendance Notification Templates ────────────────────────────────────
+
+  /**
+   * Sent to the individual user (teacher/staff) who had an attendance issue
+   * @param {object} params
+   * @param {string} params.userName - Full name of the user
+   * @param {string} params.date - Date string (e.g. "Kamis, 19 Juni 2026")
+   * @param {Array}  params.issues - Array of issue objects: { type, scheduledTime, actualTime, minutesDiff }
+   */
+  attendanceLate: ({ userName, date, issues }) => {
+    const subject = `⚠️ Notifikasi Kehadiran — ${date}`
+
+    const typeLabel = (type) => {
+      switch (type) {
+        case 'late':       return { icon: '🕐', label: 'Terlambat',       color: '#d97706', bg: '#fef3c7' }
+        case 'leave_early':return { icon: '🚪', label: 'Pulang Awal',     color: '#dc2626', bg: '#fee2e2' }
+        case 'no_checkin': return { icon: '❌', label: 'Tidak Check-In',  color: '#7c3aed', bg: '#ede9fe' }
+        case 'no_checkout':return { icon: '⚠️', label: 'Tidak Check-Out', color: '#ea580c', bg: '#ffedd5' }
+        default:           return { icon: '❓', label: type,              color: '#374151', bg: '#f3f4f6' }
+      }
+    }
+
+    const issueRows = (issues || []).map(issue => {
+      const { icon, label, color, bg } = typeLabel(issue.type)
+      const detail = issue.type === 'no_checkin' || issue.type === 'no_checkout'
+        ? `Tidak ada data absensi`
+        : issue.type === 'late'
+        ? `Check-in ${issue.actualTime} (seharusnya ${issue.scheduledTime}, terlambat ${issue.minutesDiff} menit)`
+        : `Check-out ${issue.actualTime} (seharusnya ${issue.scheduledTime}, lebih awal ${issue.minutesDiff} menit)`
+
+      return `
+        <div style="background:${bg};border-radius:10px;padding:14px 16px;margin-bottom:10px;">
+          <div style="font-size:15px;font-weight:700;color:${color};margin-bottom:4px;">${icon} ${label}</div>
+          <div style="font-size:13px;color:#555;">${detail}</div>
+        </div>`
+    }).join('')
+
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+          <h1>⚠️ Notifikasi Kehadiran</h1>
+          <p>Chung Chung Christian School</p>
+        </div>
+        <div class="body">
+          <p>Yth. <strong>${userName}</strong>,</p>
+          <p>Berikut adalah catatan kehadiran Anda pada tanggal <strong>${date}</strong>:</p>
+          ${issueRows}
+          <p style="margin-top:16px;font-size:13px;color:#666;">
+            Jika terdapat kekeliruan, mohon hubungi bagian HR/Admin untuk klarifikasi.<br>
+            Notifikasi ini dikirim secara otomatis oleh sistem absensi.
+          </p>
+        </div>
+        <div class="footer">
+          Pesan ini dikirim otomatis oleh sistem CCS — Chung Chung Christian School
+        </div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  /**
+   * Sent to admin/HR with a summary table of all attendance violations for the day
+   * @param {object} params
+   * @param {string} params.date - Date string (e.g. "Kamis, 19 Juni 2026")
+   * @param {Array}  params.violations - Array of { userName, roleName, unitName, type, scheduledTime, actualTime, minutesDiff }
+   */
+  attendanceSummaryAdmin: ({ date, violations }) => {
+    const subject = `📋 Rekap Kehadiran ${date} — ${violations.length} Pelanggaran`
+
+    const typeLabel = (type) => {
+      switch (type) {
+        case 'late':        return '🕐 Terlambat'
+        case 'leave_early': return '🚪 Pulang Awal'
+        case 'no_checkin':  return '❌ Tidak Check-In'
+        case 'no_checkout': return '⚠️ Tidak Check-Out'
+        default:            return type
+      }
+    }
+
+    const rows = (violations || []).map((v, i) => {
+      const bgColor = i % 2 === 0 ? '#f9fafb' : '#ffffff'
+      const detail = v.type === 'no_checkin' || v.type === 'no_checkout'
+        ? '—'
+        : `${v.actualTime} (${v.minutesDiff > 0 ? '+' : ''}${v.minutesDiff} mnt)`
+      return `
+        <tr style="background:${bgColor}">
+          <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0;">${v.userName}</td>
+          <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0;color:#6b7280;">${v.roleName || '-'}</td>
+          <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0;color:#6b7280;">${v.unitName || '-'}</td>
+          <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0;">${typeLabel(v.type)}</td>
+          <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0;color:#6b7280;">${v.scheduledTime || '—'}</td>
+          <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0;">${detail}</td>
+        </tr>`
+    }).join('')
+
+    const html = wrapHtml(`
+      <div class="container" style="max-width:720px;">
+        <div class="header" style="background: linear-gradient(135deg, #1e40af, #3b82f6);">
+          <h1>📋 Rekap Kehadiran Harian</h1>
+          <p>Chung Chung Christian School — ${date}</p>
+        </div>
+        <div class="body">
+          <p>Berikut adalah rekap pelanggaran kehadiran pada tanggal <strong>${date}</strong>:</p>
+          <div class="detail-box" style="padding:0;overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="background:#f0f9ff;">
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Nama</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Role</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Unit</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Jenis</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Seharusnya</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Aktual</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <p style="font-size:13px;color:#666;margin-top:16px;">
+            Total: <strong>${violations.length} catatan</strong> dari mesin absensi hari ${date}.
+          </p>
+        </div>
+        <div class="footer">
+          Rekap ini dikirim otomatis setiap hari jam 00:01 WIB — Sistem Absensi CCS
+        </div>
+      </div>
+    `)
+    return { subject, html }
   }
 }

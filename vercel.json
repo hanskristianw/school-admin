@@ -2,6 +2,15 @@
   "functions": {
     "src/app/api/assessment-pdf/route.js": {
       "maxDuration": 60
+    },
+    "src/app/api/attendance/notify/route.js": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/attendance/notify",
+      "schedule": "1 17 * * *"
+    }
+  ]
 }
