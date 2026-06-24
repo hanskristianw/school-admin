@@ -69,6 +69,7 @@ export default function AttendanceSettingsPage() {
   const [logsLoading, setLogsLoading]   = useState(false)
   const [testRunning, setTestRunning]   = useState(false)
   const [testResult, setTestResult]     = useState(null)
+  const [testEmail, setTestEmail]       = useState('')
 
   useEffect(() => {
     fetchRoles()
@@ -208,6 +209,27 @@ export default function AttendanceSettingsPage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  const sendTestEmail = async () => {
+    if (!testEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail.trim())) {
+      setTestResult({ success: false, message: 'Masukkan alamat email yang valid' })
+      return
+    }
+    setTestRunning(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/attendance/notify/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: testEmail.trim() })
+      })
+      const json = await res.json()
+      setTestResult(json)
+    } catch (e) {
+      setTestResult({ success: false, message: e.message })
+    }
+    setTestRunning(false)
+  }
+
   const fetchLogs = async () => {
     setLogsLoading(true)
     const { data } = await supabase
