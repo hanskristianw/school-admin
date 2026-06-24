@@ -208,8 +208,6 @@ export default function AttendanceSettingsPage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // LOGS
-  // ─────────────────────────────────────────────────────────────────────────
   const fetchLogs = async () => {
     setLogsLoading(true)
     const { data } = await supabase
@@ -630,37 +628,115 @@ export default function AttendanceSettingsPage() {
             </div>
           </div>
 
-          {/* Manual test */}
-          <div className="p-5 rounded-xl space-y-3" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-            <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>🧪 Test Notifikasi</h3>
-            <p className="text-sm" style={{ color: theme.textSecondary }}>
-              Jalankan proses notifikasi sekarang untuk data kemarin. Bearer token diambil dari <code style={{ background: theme.subtleBg, padding: '1px 4px', borderRadius: 4 }}>localStorage.attendance_cron_secret</code>.
-            </p>
-            <div className="flex items-center gap-3 flex-wrap">
+          {/* ── Test Email ────────────────────────────────────────────────── */}
+          <div className="p-5 rounded-xl space-y-4" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+            <div>
+              <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>🧪 Test Kirim Email</h3>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
+                Kirim 6 email contoh (semua jenis pelanggaran) ke alamat email yang Anda tentukan.
+                Subject akan diawali <code style={{ background: theme.subtleBg, padding: '1px 4px', borderRadius: 3 }}>[TEST]</code> agar mudah diidentifikasi.
+              </p>
+            </div>
+
+            {/* Email input + button */}
+            <div className="flex gap-3 items-end flex-wrap">
+              <div className="flex-1 min-w-[220px]">
+                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>
+                  Kirim test ke email:
+                </label>
+                <input
+                  type="email"
+                  value={testEmail}
+                  onChange={e => setTestEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && sendTestEmail()}
+                  placeholder="contoh@email.com"
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
+                />
+              </div>
               <button
-                onClick={triggerTestRun}
+                onClick={sendTestEmail}
                 disabled={testRunning}
-                className="px-5 py-2 rounded-lg text-sm font-medium"
-                style={{ background: '#d97706', color: '#fff', opacity: testRunning ? 0.6 : 1 }}
+                className="px-5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all"
+                style={{ background: '#d97706', color: '#fff', opacity: testRunning ? 0.6 : 1, whiteSpace: 'nowrap' }}
               >
-                {testRunning ? '⏳ Menjalankan...' : '▶️ Jalankan Sekarang'}
-              </button>
-              <button
-                onClick={fetchLogs}
-                className="px-4 py-2 rounded-lg text-sm font-medium"
-                style={{ color: theme.textBody, border: `1px solid ${theme.border}`, background: theme.subtleBg }}
-              >
-                🔄 Refresh Log
+                {testRunning
+                  ? <><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span> Mengirim...</>
+                  : '📨 Kirim Test Email'}
               </button>
             </div>
+
+            {/* Results */}
             {testResult && (
-              <div className="p-3 rounded-lg text-sm font-mono" style={{
-                background: testResult.success ? '#f0fdf4' : '#fef2f2',
-                color: testResult.success ? '#166534' : '#991b1b'
-              }}>
-                <pre className="whitespace-pre-wrap">{JSON.stringify(testResult, null, 2)}</pre>
+              <div>
+                {/* Summary banner */}
+                <div className="p-3 rounded-lg text-sm mb-3 flex items-center gap-2" style={{
+                  background: testResult.success ? '#f0fdf4' : (testResult.failed > 0 ? '#fff7ed' : '#fef2f2'),
+                  color:      testResult.success ? '#166534' : (testResult.failed > 0 ? '#92400e' : '#991b1b'),
+                  border: `1px solid ${testResult.success ? '#bbf7d0' : (testResult.failed > 0 ? '#fed7aa' : '#fecaca')}`
+                }}>
+                  <span style={{ fontSize: 18 }}>{testResult.success ? '✅' : testResult.failed > 0 ? '⚠️' : '❌'}</span>
+                  <div>
+                    <div className="font-semibold">{testResult.message}</div>
+                    {testResult.from && (
+                      <div className="text-xs mt-0.5" style={{ opacity: 0.8 }}>
+                        Dikirim dari: <strong>{testResult.from}</strong> → ke: <strong>{testResult.sentTo}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Per-type results table */}
+                {testResult.results && (
+                  <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ background: theme.subtleBg }}>
+                          <th className="text-left px-4 py-2 text-xs font-semibold" style={{ color: theme.textSecondary }}>JENIS EMAIL</th>
+                          <th className="text-left px-4 py-2 text-xs font-semibold" style={{ color: theme.textSecondary }}>STATUS</th>
+                          <th className="text-left px-4 py-2 text-xs font-semibold" style={{ color: theme.textSecondary }}>KETERANGAN</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testResult.results.map((r, i) => (
+                          <tr key={i} style={{ borderTop: i > 0 ? `1px solid ${theme.border}` : 'none', background: theme.cardBg }}>
+                            <td className="px-4 py-2.5 text-sm" style={{ color: theme.textPrimary }}>{r.label}</td>
+                            <td className="px-4 py-2.5">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{
+                                background: r.status === 'ok' ? '#dcfce7' : '#fee2e2',
+                                color:      r.status === 'ok' ? '#166534' : '#991b1b'
+                              }}>
+                                {r.status === 'ok' ? '✓ Terkirim' : '✗ Gagal'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-xs" style={{ color: theme.textSecondary }}>
+                              {r.status === 'ok' ? 'Cek inbox / spam folder' : (r.error || 'Error tidak diketahui')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
+
+            {/* Info: what emails are sent */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {[
+                { icon: '🕐', label: 'Terlambat',         desc: 'Check-in melebihi jadwal' },
+                { icon: '🚪', label: 'Pulang Awal',        desc: 'Check-out sebelum jadwal' },
+                { icon: '❌', label: 'Tidak Check-In',     desc: 'Tidak ada data check-in' },
+                { icon: '⚠️', label: 'Tidak Check-Out',    desc: 'Tidak ada data check-out' },
+                { icon: '🔀', label: 'Gabungan',           desc: 'Terlambat + Pulang Awal' },
+                { icon: '📋', label: 'Rekap Admin',        desc: 'Tabel semua pelanggaran' },
+              ].map(item => (
+                <div key={item.label} className="p-2.5 rounded-lg text-xs" style={{ background: theme.subtleBg }}>
+                  <div className="font-semibold" style={{ color: theme.textPrimary }}>{item.icon} {item.label}</div>
+                  <div style={{ color: theme.textSecondary }}>{item.desc}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Notification log */}

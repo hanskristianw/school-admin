@@ -152,37 +152,61 @@ export const emailTemplates = {
    * @param {Array}  params.issues - Array of issue objects: { type, scheduledTime, actualTime, minutesDiff }
    */
   attendanceLate: ({ userName, date, issues }) => {
-    const subject = `⚠️ Notifikasi Kehadiran — ${date}`
-
     const typeLabel = (type) => {
       switch (type) {
-        case 'late':       return { icon: '🕐', label: 'Terlambat',       color: '#d97706', bg: '#fef3c7' }
-        case 'leave_early':return { icon: '🚪', label: 'Pulang Awal',     color: '#dc2626', bg: '#fee2e2' }
-        case 'no_checkin': return { icon: '❌', label: 'Tidak Check-In',  color: '#7c3aed', bg: '#ede9fe' }
-        case 'no_checkout':return { icon: '⚠️', label: 'Tidak Check-Out', color: '#ea580c', bg: '#ffedd5' }
-        default:           return { icon: '❓', label: type,              color: '#374151', bg: '#f3f4f6' }
+        case 'late':        return { icon: '🕐', label: 'Terlambat',       color: '#d97706', bg: '#fef3c7', headerGrad: 'linear-gradient(135deg, #d97706, #f59e0b)' }
+        case 'leave_early': return { icon: '🚪', label: 'Pulang Awal',     color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
+        case 'no_checkin':  return { icon: '❌', label: 'Tidak Check-In',  color: '#7c3aed', bg: '#ede9fe', headerGrad: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }
+        case 'no_checkout': return { icon: '⚠️', label: 'Tidak Check-Out', color: '#ea580c', bg: '#ffedd5', headerGrad: 'linear-gradient(135deg, #ea580c, #f97316)' }
+        default:            return { icon: '❓', label: type,              color: '#374151', bg: '#f3f4f6', headerGrad: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
       }
     }
 
-    const issueRows = (issues || []).map(issue => {
+    // Build dynamic subject based on issue types
+    const issueList = issues || []
+    const typeNames = issueList.map(i => typeLabel(i.type).label)
+    let subject
+    if (typeNames.length === 1) {
+      // Single issue → specific subject
+      const { icon, label } = typeLabel(issueList[0].type)
+      subject = `${icon} ${label} — ${date}`
+    } else {
+      // Multiple issues → list them
+      subject = `⚠️ ${typeNames.join(' & ')} — ${date}`
+    }
+
+    // Header: use the first (most important) issue's color
+    const primaryMeta = typeLabel(issueList[0]?.type || 'late')
+    const headerTitle = typeNames.length === 1
+      ? `${primaryMeta.icon} ${primaryMeta.label}`
+      : `⚠️ Catatan Kehadiran`
+
+    const issueRows = issueList.map(issue => {
       const { icon, label, color, bg } = typeLabel(issue.type)
-      const detail = issue.type === 'no_checkin' || issue.type === 'no_checkout'
-        ? `Tidak ada data absensi`
-        : issue.type === 'late'
-        ? `Check-in ${issue.actualTime} (seharusnya ${issue.scheduledTime}, terlambat ${issue.minutesDiff} menit)`
-        : `Check-out ${issue.actualTime} (seharusnya ${issue.scheduledTime}, lebih awal ${issue.minutesDiff} menit)`
+      let detail
+      if (issue.type === 'no_checkin') {
+        detail = `Tidak ada data check-in. Jadwal check-in: ${issue.scheduledTime || '—'}`
+      } else if (issue.type === 'no_checkout') {
+        detail = `Tidak ada data check-out. Jadwal check-out: ${issue.scheduledTime || '—'}`
+      } else if (issue.type === 'late') {
+        detail = `Check-in pukul <strong>${issue.actualTime}</strong> — seharusnya ${issue.scheduledTime}, terlambat <strong>${issue.minutesDiff} menit</strong>`
+      } else if (issue.type === 'leave_early') {
+        detail = `Check-out pukul <strong>${issue.actualTime}</strong> — seharusnya ${issue.scheduledTime}, lebih awal <strong>${issue.minutesDiff} menit</strong>`
+      } else {
+        detail = '—'
+      }
 
       return `
         <div style="background:${bg};border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-          <div style="font-size:15px;font-weight:700;color:${color};margin-bottom:4px;">${icon} ${label}</div>
-          <div style="font-size:13px;color:#555;">${detail}</div>
+          <div style="font-size:15px;font-weight:700;color:${color};margin-bottom:6px;">${icon} ${label}</div>
+          <div style="font-size:13px;color:#555;line-height:1.6;">${detail}</div>
         </div>`
     }).join('')
 
     const html = wrapHtml(`
       <div class="container">
-        <div class="header" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
-          <h1>⚠️ Notifikasi Kehadiran</h1>
+        <div class="header" style="background: ${primaryMeta.headerGrad};">
+          <h1>${headerTitle}</h1>
           <p>Chung Chung Christian School</p>
         </div>
         <div class="body">
