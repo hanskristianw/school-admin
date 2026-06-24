@@ -42,6 +42,51 @@ function getDayNumber(dateStr) {
   return jsDay === 0 ? 7 : jsDay // convert to 1=Mon...7=Sun
 }
 
+// Helper: sleep for ms milliseconds
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Rate-limited email sender: respects Resend's 5 req/sec limit
+// Waits 250ms after each send (= max 4/sec). Retries once on 429.
+let _emailsSentThisSecond = 0
+let _emailSecondStart = Date.now()
+
+async function sendEmailRateLimited({ to, subject, html }) {
+  // Simple token-bucket: reset counter every second
+  const now = Date.now()
+  if (now - _emailSecondStart >= 1000) {
+    _emailsSentThisSecond = 0
+    _emailSecondStart = now
+  }
+
+  // If already at 4 this second, wait for the next second
+  if (_emailsSentThisSecond >= 4) {
+    const waitMs = 1000 - (Date.now() - _emailSecondStart) + 50
+    console.log(`[EmailRL] Rate limit: waiting ${waitMs}ms`)
+    await sleep(waitMs)
+    _emailsSentThisSecond = 0
+    _emailSecondStart = Date.now()
+  }
+
+  // Try send with one 429 retry
+  try {
+    await sendEmail({ to, subject, html })
+    _emailsSentThisSecond++
+    await sleep(250) // safety gap between sends
+  } catch (err) {
+    if (err.message?.includes('429') || err.statusCode === 429) {
+      // Hit rate limit — wait 1.5s and retry once
+      console.warn('[EmailRL] 429 received, waiting 1500ms before retry...')
+      await sleep(1500)
+      await sendEmail({ to, subject, html })
+      _emailsSentThisSecond = 1
+      _emailSecondStart = Date.now()
+      await sleep(250)
+    } else {
+      throw err
+    }
+  }
+}
+
 /**
  * POST /api/attendance/notify
  * 
@@ -282,14 +327,20 @@ export async function POST(request) {
 
       // ── Send email to user ─────────────────────────────────────────────
       let userEmailSuccess = false
-      if (user.user_email) {
+      let emailSkipped = false
+
+      if (!user.user_email) {
+        // No email configured — skip email but still log the violation
+        emailSkipped = true
+        console.log(`[AttendanceNotif] ${userName}: no email configured, violation logged only`)
+      } else {
         try {
           const { subject, html } = emailTemplates.attendanceLate({
             userName,
             date: targetDateLabel,
             issues: newIssues
           })
-          await sendEmail({ to: user.user_email, subject, html })
+          await sendEmailRateLimited({ to: user.user_email, subject, html })
           userEmailSuccess = true
           emailsSent++
         } catch (emailErr) {
@@ -297,7 +348,7 @@ export async function POST(request) {
         }
       }
 
-      // ── Log each issue ─────────────────────────────────────────────────
+      // ── Log each issue (always recorded, even without email) ──────────────
       const logRows = newIssues.map(issue => ({
         user_id: user.user_id,
         notif_date: targetDate,
@@ -306,19 +357,21 @@ export async function POST(request) {
         scheduled_time: issue.scheduledTime,
         actual_time: issue.actualTime,
         email_to: user.user_email ? [user.user_email] : [],
-        success: userEmailSuccess,
+        // success: true = email sent ok, false = email failed, null = no email configured
+        success: emailSkipped ? null : userEmailSuccess,
       }))
 
       await supabaseAdmin
         .from('attendance_notification_log')
         .upsert(logRows, { onConflict: 'user_id,notif_date,notif_type', ignoreDuplicates: true })
 
-      // ── Add to admin violations list ───────────────────────────────────
+      // ── Add to admin violations list (always, regardless of email) ────────
       for (const issue of newIssues) {
         allViolations.push({
           userName,
           roleName: user.role?.role_name || '-',
-          unitName: '-', // unit join not included to keep query simple
+          unitName: '-',
+          noEmail: emailSkipped,
           ...issue
         })
       }
@@ -331,7 +384,8 @@ export async function POST(request) {
           date: targetDateLabel,
           violations: allViolations
         })
-        await sendEmail({ to: adminEmails, subject, html })
+        // Admin summary = 1 email (even if multiple recipients, it's 1 API call)
+        await sendEmailRateLimited({ to: adminEmails, subject, html })
         emailsSent++
         console.log(`[AttendanceNotif] Admin summary sent to ${adminEmails.join(', ')}`)
       } catch (adminEmailErr) {
