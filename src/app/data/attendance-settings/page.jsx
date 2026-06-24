@@ -144,6 +144,7 @@ export default function AttendanceSettingsPage() {
 
     const payload = {
       name: newName.trim(),
+      date: newDateStart,          // backward compat — old NOT NULL column
       date_start: newDateStart,
       date_end: endDate,
       role_id: newRoleId ? parseInt(newRoleId, 10) : null,
