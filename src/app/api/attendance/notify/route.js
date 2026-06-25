@@ -38,8 +38,33 @@ function formatDateID(dateStr) {
 // Helper: get day number (1=Mon...7=Sun) from date string
 function getDayNumber(dateStr) {
   const d = new Date(dateStr + 'T00:00:00Z')
-  const jsDay = d.getUTCDay() // 0=Sun,1=Mon,...,6=Sat
-  return jsDay === 0 ? 7 : jsDay // convert to 1=Mon...7=Sun
+  const jsDay = d.getUTCDay()
+  return jsDay === 0 ? 7 : jsDay
+}
+
+const DEFAULT_CHECK_IN  = '07:30'
+const DEFAULT_CHECK_OUT = '16:30'
+
+/**
+ * Determines if a scan is a check-in or check-out based on midpoint logic.
+ * Same algorithm as /data/attendance-machine page — more reliable than status_scan.
+ */
+function resolveIsCheckIn(scanTimeISO, expectedCheckIn, expectedCheckOut) {
+  const ciMin  = timeToMinutes(expectedCheckIn  || DEFAULT_CHECK_IN)
+  const coMin  = timeToMinutes(expectedCheckOut || DEFAULT_CHECK_OUT)
+  const midMin = Math.floor((ciMin + coMin) / 2)
+  const dt = new Date(scanTimeISO)
+  const wib = new Date(dt.getTime() + 7 * 60 * 60 * 1000)
+  const scanMin = wib.getUTCHours() * 60 + wib.getUTCMinutes()
+  return scanMin <= midMin
+}
+
+// Convert ISO timestamp to WIB "HH:MM" string
+function wibTimeStr(isoStr) {
+  if (!isoStr) return null
+  const dt = new Date(isoStr)
+  const wib = new Date(dt.getTime() + 7 * 60 * 60 * 1000)
+  return `${String(wib.getUTCHours()).padStart(2,'0')}:${String(wib.getUTCMinutes()).padStart(2,'0')}`
 }
 
 // Helper: sleep for ms milliseconds
@@ -169,7 +194,7 @@ export async function POST(request) {
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
-      .not('expected_check_in', 'is', null)
+      // Note: users without expected_check_in use DEFAULT_CHECK_IN/OUT
 
     if (usersErr) throw usersErr
 
@@ -246,66 +271,65 @@ export async function POST(request) {
         continue
       }
 
-      const userAtts = attByUser[user.user_id] || []
-      const checkins  = userAtts.filter(a => a.status_scan === '0')
-      const checkouts = userAtts.filter(a => a.status_scan === '1')
+      const userAtts   = attByUser[user.user_id] || []
+      const expectedIn  = user.expected_check_in  || DEFAULT_CHECK_IN
+      const expectedOut = user.expected_check_out || DEFAULT_CHECK_OUT
 
-      const expectedIn  = timeToMinutes(user.expected_check_in)
-      const expectedOut = timeToMinutes(user.expected_check_out)
+      // Classify using midpoint logic (same as attendance-machine page)
+      const checkins  = userAtts
+        .filter(a => resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
+        .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+      const checkouts = userAtts
+        .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
+        .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+
+      const expectedInMins  = timeToMinutes(expectedIn)
+      const expectedOutMins = timeToMinutes(expectedOut)
 
       const issues = []
 
       // ── A. No check-in at all ────────────────────────────────────────────
-      if (checkins.length === 0 && expectedIn !== null) {
+      if (checkins.length === 0) {
         issues.push({
           type: 'no_checkin',
-          scheduledTime: user.expected_check_in?.slice(0, 5),
+          scheduledTime: expectedIn.slice(0, 5),
           actualTime: null,
           minutesDiff: null
         })
-      } else if (checkins.length > 0 && expectedIn !== null) {
+      } else {
         // ── B. Late check-in ──────────────────────────────────────────────
-        const firstCheckin = checkins[0]
-        const checkinTime = new Date(firstCheckin.scan_time)
-        const checkinMins = checkinTime.getHours() * 60 + checkinTime.getMinutes()
-        const lateMins = checkinMins - expectedIn - graceMinutes
+        const actualInStr  = wibTimeStr(checkins[0].scan_time)
+        const actualInMins = timeToMinutes(actualInStr)
+        const lateMins = actualInMins - expectedInMins - graceMinutes
         if (lateMins > 0) {
-          const hh = String(checkinTime.getHours()).padStart(2, '0')
-          const mm = String(checkinTime.getMinutes()).padStart(2, '0')
           issues.push({
             type: 'late',
-            scheduledTime: user.expected_check_in?.slice(0, 5),
-            actualTime: `${hh}:${mm}`,
+            scheduledTime: expectedIn.slice(0, 5),
+            actualTime: actualInStr,
             minutesDiff: lateMins
           })
         }
       }
 
-      if (expectedOut !== null) {
-        // ── C. No check-out ───────────────────────────────────────────────
-        if (checkouts.length === 0 && checkins.length > 0) {
+      // ── C. No check-out or leave early ───────────────────────────────────
+      if (checkouts.length === 0 && userAtts.length > 0) {
+        issues.push({
+          type: 'no_checkout',
+          scheduledTime: expectedOut.slice(0, 5),
+          actualTime: null,
+          minutesDiff: null
+        })
+      } else if (checkouts.length > 0) {
+        const actualOutStr  = wibTimeStr(checkouts[checkouts.length - 1].scan_time)
+        const actualOutMins = timeToMinutes(actualOutStr)
+        const earlyMins = expectedOutMins - actualOutMins - graceMinutes
+        if (earlyMins > 0) {
           issues.push({
-            type: 'no_checkout',
-            scheduledTime: user.expected_check_out?.slice(0, 5),
-            actualTime: null,
-            minutesDiff: null
+            type: 'leave_early',
+            scheduledTime: expectedOut.slice(0, 5),
+            actualTime: actualOutStr,
+            minutesDiff: earlyMins
           })
-        } else if (checkouts.length > 0) {
-          // ── D. Leave early ────────────────────────────────────────────
-          const lastCheckout = checkouts[checkouts.length - 1]
-          const coTime = new Date(lastCheckout.scan_time)
-          const coMins = coTime.getHours() * 60 + coTime.getMinutes()
-          const earlyMins = expectedOut - coMins - graceMinutes
-          if (earlyMins > 0) {
-            const hh = String(coTime.getHours()).padStart(2, '0')
-            const mm = String(coTime.getMinutes()).padStart(2, '0')
-            issues.push({
-              type: 'leave_early',
-              scheduledTime: user.expected_check_out?.slice(0, 5),
-              actualTime: `${hh}:${mm}`,
-              minutesDiff: earlyMins
-            })
-          }
         }
       }
 

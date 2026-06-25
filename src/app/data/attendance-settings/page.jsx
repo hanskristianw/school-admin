@@ -58,6 +58,14 @@ export default function AttendanceSettingsPage() {
   const [newRoleId, setNewRoleId]       = useState('') // '' = global
   const [addingHoliday, setAddingHoliday] = useState(false)
   const [holidayMsg, setHolidayMsg]     = useState('')
+  // edit state
+  const [editingId, setEditingId]         = useState(null)
+  const [editName, setEditName]           = useState('')
+  const [editDateStart, setEditDateStart] = useState('')
+  const [editDateEnd, setEditDateEnd]     = useState('')
+  const [editRoleId, setEditRoleId]       = useState('')
+  const [savingEdit, setSavingEdit]       = useState(false)
+  const [editMsg, setEditMsg]             = useState('')
 
   // ── Tab 3: Settings & Log ──────────────────────────────────────────────────
   const [adminEmails, setAdminEmails]   = useState('')
@@ -129,6 +137,23 @@ export default function AttendanceSettingsPage() {
     setHolidays(data || [])
   }
 
+  /**
+   * Cek apakah range [start, end] untuk role tertentu bentrok dengan
+   * holiday lain yang sudah ada (exclude excludeId jika sedang edit).
+   * Hari libur global bentrok dengan global. Role-specific hanya bentrok sesama role.
+   */
+  const checkHolidayOverlap = (start, end, roleId, excludeId = null) => {
+    return holidays.filter(h => {
+      if (excludeId && h.id === excludeId) return false
+      // Cek apakah role sama (null === null, atau id sama)
+      const sameRole = (h.role_id === null && roleId === null) ||
+                       (h.role_id !== null && roleId !== null && h.role_id === roleId)
+      if (!sameRole) return false
+      // Cek date overlap: tidak overlap hanya jika end < h.date_start OR start > h.date_end
+      return !(end < h.date_start || start > h.date_end)
+    })
+  }
+
   const addHoliday = async () => {
     if (!newDateStart || !newName.trim()) {
       setHolidayMsg('❌ Tanggal mulai dan nama wajib diisi')
@@ -139,17 +164,25 @@ export default function AttendanceSettingsPage() {
       setHolidayMsg('❌ Tanggal akhir tidak boleh sebelum tanggal mulai')
       return
     }
-    setAddingHoliday(true)
-    setHolidayMsg('')
 
-    const payload = {
-      name: newName.trim(),
-      date: newDateStart,          // backward compat — old NOT NULL column
-      date_start: newDateStart,
-      date_end: endDate,
-      role_id: newRoleId ? parseInt(newRoleId, 10) : null,
+    // Conflict check
+    const roleIdVal = newRoleId ? parseInt(newRoleId, 10) : null
+    const overlaps = checkHolidayOverlap(newDateStart, endDate, roleIdVal)
+    if (overlaps.length > 0) {
+      const o = overlaps[0]
+      setHolidayMsg(`❌ Bentrok dengan hari libur "${o.name}" (${formatDateRange(o.date_start, o.date_end)}) untuk role yang sama`)
+      return
     }
 
+    setAddingHoliday(true)
+    setHolidayMsg('')
+    const payload = {
+      name: newName.trim(),
+      date: newDateStart,          // backward compat
+      date_start: newDateStart,
+      date_end: endDate,
+      role_id: roleIdVal,
+    }
     const { error } = await supabase.from('school_holidays').insert([payload])
     setAddingHoliday(false)
     if (error) {
@@ -160,6 +193,59 @@ export default function AttendanceSettingsPage() {
       setNewName(''); setNewDateStart(''); setNewDateEnd(''); setNewRoleId('')
       fetchHolidays()
       setTimeout(() => setHolidayMsg(''), 3000)
+    }
+  }
+
+  const startEditHoliday = (h) => {
+    setEditingId(h.id)
+    setEditName(h.name)
+    setEditDateStart(h.date_start)
+    setEditDateEnd(h.date_end)
+    setEditRoleId(h.role_id !== null ? String(h.role_id) : '')
+    setEditMsg('')
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditMsg('')
+  }
+
+  const saveEditHoliday = async () => {
+    if (!editDateStart || !editName.trim()) {
+      setEditMsg('❌ Tanggal mulai dan nama wajib diisi')
+      return
+    }
+    const endDate = editDateEnd || editDateStart
+    if (endDate < editDateStart) {
+      setEditMsg('❌ Tanggal akhir tidak boleh sebelum tanggal mulai')
+      return
+    }
+
+    // Conflict check — exclude current record
+    const roleIdVal = editRoleId ? parseInt(editRoleId, 10) : null
+    const overlaps = checkHolidayOverlap(editDateStart, endDate, roleIdVal, editingId)
+    if (overlaps.length > 0) {
+      const o = overlaps[0]
+      setEditMsg(`❌ Bentrok dengan "${o.name}" (${formatDateRange(o.date_start, o.date_end)}) untuk role yang sama`)
+      return
+    }
+
+    setSavingEdit(true)
+    setEditMsg('')
+    const payload = {
+      name: editName.trim(),
+      date: editDateStart,
+      date_start: editDateStart,
+      date_end: endDate,
+      role_id: roleIdVal,
+    }
+    const { error } = await supabase.from('school_holidays').update(payload).eq('id', editingId)
+    setSavingEdit(false)
+    if (error) {
+      setEditMsg('❌ Gagal: ' + error.message)
+    } else {
+      setEditingId(null)
+      fetchHolidays()
     }
   }
 
@@ -533,6 +619,87 @@ export default function AttendanceSettingsPage() {
                   {displayedHolidays.map((h, i) => {
                     const days = diffDays(h.date_start, h.date_end)
                     const roleName = getRoleName(h.role_id)
+                    const isEditing = editingId === h.id
+
+                    // ── Inline edit row ──────────────────────────────────────
+                    if (isEditing) return (
+                      <tr key={h.id} style={{ borderTop: i > 0 ? `1px solid ${theme.border}` : 'none', background: theme.subtleBg }}>
+                        <td colSpan={5} className="px-4 py-3">
+                          <div className="space-y-3">
+                            <div className="text-xs font-semibold" style={{ color: theme.textSecondary }}>✏️ Edit Hari Libur</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {/* Name */}
+                              <div className="sm:col-span-2">
+                                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Nama *</label>
+                                <input
+                                  style={inputStyle}
+                                  type="text"
+                                  value={editName}
+                                  onChange={e => setEditName(e.target.value)}
+                                  placeholder="Nama hari libur"
+                                />
+                              </div>
+                              {/* Date Start */}
+                              <div>
+                                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Tanggal Mulai *</label>
+                                <input
+                                  style={inputStyle}
+                                  type="date"
+                                  value={editDateStart}
+                                  onChange={e => { setEditDateStart(e.target.value); if (editDateEnd < e.target.value) setEditDateEnd(e.target.value) }}
+                                />
+                              </div>
+                              {/* Date End */}
+                              <div>
+                                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Tanggal Akhir</label>
+                                <input
+                                  style={inputStyle}
+                                  type="date"
+                                  value={editDateEnd}
+                                  min={editDateStart}
+                                  onChange={e => setEditDateEnd(e.target.value)}
+                                />
+                              </div>
+                              {/* Role */}
+                              <div className="sm:col-span-2">
+                                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Berlaku untuk Role</label>
+                                <select style={inputStyle} value={editRoleId} onChange={e => setEditRoleId(e.target.value)}>
+                                  <option value="">🌐 Global (semua role)</option>
+                                  {roles.map(r => (
+                                    <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            {editMsg && (
+                              <div className="text-xs px-3 py-2 rounded-lg" style={{
+                                background: editMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
+                                color: editMsg.startsWith('✅') ? '#166534' : '#991b1b'
+                              }}>{editMsg}</div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={saveEditHoliday}
+                                disabled={savingEdit}
+                                className="px-4 py-1.5 rounded-lg text-xs font-medium"
+                                style={{ background: '#2563eb', color: '#fff', opacity: savingEdit ? 0.6 : 1 }}
+                              >
+                                {savingEdit ? 'Menyimpan...' : '💾 Simpan'}
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className="px-4 py-1.5 rounded-lg text-xs font-medium"
+                                style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+
+                    // ── Normal view row ───────────────────────────────────────
                     return (
                       <tr key={h.id} style={{ borderTop: i > 0 ? `1px solid ${theme.border}` : 'none', background: theme.cardBg }}>
                         <td className="px-4 py-3 text-sm font-medium" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>
@@ -555,7 +722,14 @@ export default function AttendanceSettingsPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right" style={{ whiteSpace: 'nowrap' }}>
+                          <button
+                            onClick={() => startEditHoliday(h)}
+                            className="text-xs px-3 py-1 rounded-lg font-medium mr-2"
+                            style={{ color: '#2563eb', background: '#eff6ff' }}
+                          >
+                            ✏️ Edit
+                          </button>
                           <button
                             onClick={() => deleteHoliday(h.id)}
                             className="text-xs px-3 py-1 rounded-lg font-medium"

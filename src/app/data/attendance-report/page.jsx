@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import * as XLSX from 'xlsx'
@@ -341,7 +341,7 @@ export default function AttendanceReportPage() {
                   </thead>
                   <tbody>
                     {filteredRows.map((row, ri) => (
-                      <>
+                      <Fragment key={row.user_id}>
                         <tr
                           key={row.user_id}
                           onClick={() => setExpandedUser(expandedUser === row.user_id ? null : row.user_id)}
@@ -466,7 +466,7 @@ export default function AttendanceReportPage() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                   {/* Footer totals */}
