@@ -292,23 +292,7 @@ export default function AttendanceReportPage() {
       {/* Report content */}
       {report && !loading && (
         <div className="space-y-4">
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { label: 'Keterlambatan', value: totals.late,        sub: fmtMins(totals.late_mins),    bg: '#fef3c7', color: '#92400e', icon: '🕐' },
-              { label: 'Pulang Awal',   value: totals.leave_early, sub: fmtMins(totals.le_mins),      bg: '#fee2e2', color: '#991b1b', icon: '🚪' },
-              { label: 'Tidak Masuk',   value: totals.absent,      sub: 'kali',                        bg: '#f3e8ff', color: '#6b21a8', icon: '❌' },
-              { label: 'Tidak Checkout',value: totals.no_checkout,  sub: 'kali',                        bg: '#ffedd5', color: '#9a3412', icon: '⚠️' },
-              { label: 'Karyawan',      value: filteredRows.length, sub: 'dengan PIN',                  bg: '#f0f9ff', color: '#0369a1', icon: '👤' },
-              { label: 'Total Terlambat',value: `${totals.late_mins}`, sub: 'total menit',             bg: '#dcfce7', color: '#166534', icon: '⏱' },
-            ].map(c => (
-              <div key={c.label} className="p-3 rounded-xl" style={{ background: c.bg }}>
-                <div className="text-lg font-bold" style={{ color: c.color }}>{c.icon} {c.value}</div>
-                <div className="text-xs font-medium" style={{ color: c.color, opacity: 0.8 }}>{c.label}</div>
-                <div className="text-xs" style={{ color: c.color, opacity: 0.6 }}>{c.sub}</div>
-              </div>
-            ))}
-          </div>
+
 
           {/* Unit tabs */}
           <div style={{ borderBottom: `1px solid ${theme.border}`, overflowX: 'auto' }}>

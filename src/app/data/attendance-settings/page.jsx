@@ -67,6 +67,22 @@ export default function AttendanceSettingsPage() {
   const [savingEdit, setSavingEdit]       = useState(false)
   const [editMsg, setEditMsg]             = useState('')
 
+  // ── Tab 4: Hari Khusus (Special Day Rules) ─────────────────────────────────────
+  const [specialRules, setSpecialRules]     = useState([])
+  const [allUsers, setAllUsers]             = useState([])
+  const [srMsg, setSrMsg]                   = useState('')
+  const [editingSrId, setEditingSrId]       = useState(null)
+  // form fields
+  const [srTanggal, setSrTanggal]           = useState('')
+  const [srScope, setSrScope]               = useState('all')
+  const [srRoleIds, setSrRoleIds]           = useState(new Set()) // multi-checkbox untuk jabatan
+  const [srUserId, setSrUserId]             = useState('')
+  const [srIsWorkDay, setSrIsWorkDay]       = useState(true)
+  const [srCheckIn, setSrCheckIn]           = useState('')
+  const [srCheckOut, setSrCheckOut]         = useState('')
+  const [srKet, setSrKet]                   = useState('')
+  const [savingSr, setSavingSr]             = useState(false)
+
   // ── Tab 3: Settings & Log ──────────────────────────────────────────────────
   const [adminEmails, setAdminEmails]   = useState('')
   const [graceMinutes, setGraceMinutes] = useState('0')
@@ -84,6 +100,8 @@ export default function AttendanceSettingsPage() {
     fetchHolidays()
     fetchSettings()
     fetchLogs()
+    fetchSpecialRules()
+    fetchAllUsers()
   }, [])
 
   // auto-fill end date when start changes (default to same day)
@@ -91,12 +109,134 @@ export default function AttendanceSettingsPage() {
     if (newDateStart && !newDateEnd) setNewDateEnd(newDateStart)
   }, [newDateStart])
 
+  const resetSrForm = () => {
+    setSrTanggal(''); setSrScope('all'); setSrRoleIds(new Set()); setSrUserId('')
+    setSrIsWorkDay(true); setSrCheckIn(''); setSrCheckOut(''); setSrKet('')
+    setEditingSrId(null)
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // ROLES
   // ─────────────────────────────────────────────────────────────────────────
   const fetchRoles = async () => {
     const { data } = await supabase.from('role').select('role_id, role_name, work_days').order('role_id')
     setRoles(data || [])
+  }
+
+  const fetchAllUsers = async () => {
+    const { data } = await supabase
+      .from('users')
+      .select('user_id, user_nama_depan, user_nama_belakang, user_pin')
+      .eq('is_active', true)
+      .not('user_pin', 'is', null)
+      .order('user_nama_depan')
+    setAllUsers(data || [])
+  }
+
+  const fetchSpecialRules = async () => {
+    try {
+      const res = await fetch('/api/attendance/special-day-rules')
+      const json = await res.json()
+      if (json.success) setSpecialRules(json.data || [])
+    } catch (_) {
+      setSpecialRules([])
+    }
+  }
+
+
+  const saveSr = async () => {
+    if (!srTanggal) { setSrMsg('\u274c Tanggal wajib diisi'); return }
+    if (srScope === 'role' && srRoleIds.size === 0) { setSrMsg('\u274c Pilih minimal satu jabatan'); return }
+    if (srScope === 'user' && !srUserId) { setSrMsg('\u274c Pilih karyawan'); return }
+    setSavingSr(true); setSrMsg('')
+
+    const basePayload = {
+      tanggal:          srTanggal,
+      is_work_day:      srIsWorkDay,
+      custom_check_in:  srCheckIn  || null,
+      custom_check_out: srCheckOut || null,
+      keterangan:       srKet.trim() || null,
+    }
+
+    try {
+      if (editingSrId) {
+        // Edit: selalu single row
+        const payload = {
+          ...basePayload,
+          scope_type: srScope,
+          role_id: srScope === 'role' ? [...srRoleIds][0] : null,
+          user_id: srScope === 'user' ? parseInt(srUserId, 10) : null,
+          id: editingSrId,
+        }
+        const res = await fetch('/api/attendance/special-day-rules', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const json = await res.json()
+        if (!json.success) throw new Error(json.message)
+      } else if (srScope === 'role') {
+        // Tambah: insert satu baris per jabatan yang dipilih
+        const inserts = [...srRoleIds].map(rid =>
+          fetch('/api/attendance/special-day-rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...basePayload, scope_type: 'role', role_id: rid, user_id: null }),
+          }).then(r => r.json())
+        )
+        const results = await Promise.all(inserts)
+        const failed = results.filter(r => !r.success)
+        if (failed.length > 0) throw new Error(failed[0].message)
+      } else {
+        // scope = all or user
+        const payload = {
+          ...basePayload,
+          scope_type: srScope,
+          role_id: null,
+          user_id: srScope === 'user' ? parseInt(srUserId, 10) : null,
+        }
+        const res = await fetch('/api/attendance/special-day-rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const json = await res.json()
+        if (!json.success) throw new Error(json.message)
+      }
+
+      setSrMsg(editingSrId ? '\u2705 Aturan berhasil diperbarui' : '\u2705 Aturan berhasil ditambahkan')
+      resetSrForm()
+      fetchSpecialRules()
+      setTimeout(() => setSrMsg(''), 3000)
+    } catch (err) {
+      setSrMsg('\u274c ' + err.message)
+    } finally {
+      setSavingSr(false)
+    }
+  }
+
+  const startEditSr = (r) => {
+    setEditingSrId(r.id)
+    setSrTanggal(r.tanggal)
+    setSrScope(r.scope_type)
+    setSrRoleIds(r.role_id ? new Set([r.role_id]) : new Set())
+    setSrUserId(r.user_id ? String(r.user_id) : '')
+    setSrIsWorkDay(r.is_work_day)
+    setSrCheckIn(r.custom_check_in  ? String(r.custom_check_in).slice(0,5)  : '')
+    setSrCheckOut(r.custom_check_out ? String(r.custom_check_out).slice(0,5) : '')
+    setSrKet(r.keterangan || '')
+    setSrMsg('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const deleteSr = async (id) => {
+    if (!confirm('Hapus aturan ini?')) return
+    const res = await fetch(`/api/attendance/special-day-rules?id=${id}`, { method: 'DELETE' })
+    const json = await res.json()
+    if (!json.success) { setSrMsg('\u274c ' + json.message); return }
+    setSrMsg('\u2705 Aturan dihapus')
+    fetchSpecialRules()
+    setTimeout(() => setSrMsg(''), 2000)
   }
 
   const toggleDay = (roleId, dayNum) => {
@@ -406,6 +546,7 @@ export default function AttendanceSettingsPage() {
       <div style={{ borderBottom: `1px solid ${theme.border}` }}>
         <button style={tabStyle('workdays')} onClick={() => setTab('workdays')}>📅 Hari Kerja per Role</button>
         <button style={tabStyle('holidays')} onClick={() => setTab('holidays')}>🗓️ Kalender Libur</button>
+        <button style={tabStyle('special')}  onClick={() => setTab('special')}>⭐ Hari Khusus</button>
         <button style={tabStyle('settings')} onClick={() => setTab('settings')}>⚙️ Pengaturan & Log</button>
       </div>
 
@@ -988,6 +1129,219 @@ export default function AttendanceSettingsPage() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* ════════════════════ TAB 4: HARI KHUSUS ════════════════════ */}
+      {tab === 'special' && (
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: theme.textSecondary }}>
+            Atur hari khusus: Sabtu wajib masuk, jam pulang lebih awal (misal 17 Agustus), dsb.
+            Berlaku untuk semua karyawan, jabatan tertentu, atau karyawan tertentu.
+          </p>
+
+          {srMsg && (
+            <div className="p-3 rounded-lg text-sm" style={{
+              background: srMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
+              color: srMsg.startsWith('✅') ? '#166534' : '#991b1b'
+            }}>{srMsg}</div>
+          )}
+
+          {/* Form tambah/edit */}
+          <div className="p-4 rounded-xl space-y-4" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+            <div className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
+              {editingSrId ? '✏️ Edit Aturan Hari Khusus' : '➕ Tambah Aturan Hari Khusus'}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Tanggal */}
+              <div>
+                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Tanggal</label>
+                <input type="date" value={srTanggal} onChange={e => setSrTanggal(e.target.value)}
+                  style={inputStyle} />
+              </div>
+
+              {/* Berlaku untuk */}
+              <div>
+                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Berlaku untuk</label>
+                <select value={srScope} onChange={e => { setSrScope(e.target.value); setSrRoleIds(new Set()); setSrUserId('') }}
+                  style={inputStyle}>
+                  <option value="all">Semua karyawan</option>
+                  <option value="role">Jabatan tertentu</option>
+                  <option value="user">Karyawan tertentu</option>
+                </select>
+              </div>
+
+              {/* Jabatan (jika scope = role) — multi-checkbox */}
+              {srScope === 'role' && (
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium block mb-2" style={{ color: theme.textSecondary }}>
+                    Pilih Jabatan
+                    {srRoleIds.size > 0 && <span className="ml-2 text-blue-600">({srRoleIds.size} dipilih)</span>}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {roles.map(r => {
+                      const checked = srRoleIds.has(r.role_id)
+                      return (
+                        <button
+                          key={r.role_id}
+                          type="button"
+                          onClick={() => {
+                            setSrRoleIds(prev => {
+                              const next = new Set(prev)
+                              if (next.has(r.role_id)) next.delete(r.role_id)
+                              else next.add(r.role_id)
+                              return next
+                            })
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+                          style={{
+                            background: checked ? (theme.blueText || '#2563eb') : (theme.subtleBg || '#f3f4f6'),
+                            color: checked ? '#fff' : (theme.textBody),
+                            border: `1px solid ${checked ? (theme.blueText || '#2563eb') : (theme.border || '#e5e7eb')}`,
+                          }}
+                        >
+                          {checked ? '✓' : ''} {r.role_name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Karyawan (jika scope = user) */}
+              {srScope === 'user' && (
+                <div>
+                  <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Karyawan</label>
+                  <select value={srUserId} onChange={e => setSrUserId(e.target.value)} style={inputStyle}>
+                    <option value="">-- Pilih karyawan --</option>
+                    {allUsers.map(u => (
+                      <option key={u.user_id} value={u.user_id}>
+                        {u.user_nama_depan} {u.user_nama_belakang} (PIN: {u.user_pin})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Jam masuk custom */}
+              <div>
+                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Jam Masuk (kosong = pakai jam normal)</label>
+                <input type="time" value={srCheckIn} onChange={e => setSrCheckIn(e.target.value)} style={inputStyle} />
+              </div>
+
+              {/* Jam keluar custom */}
+              <div>
+                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Jam Keluar (kosong = pakai jam normal)</label>
+                <input type="time" value={srCheckOut} onChange={e => setSrCheckOut(e.target.value)} style={inputStyle} />
+              </div>
+
+              {/* Keterangan */}
+              <div className="md:col-span-2">
+                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Keterangan</label>
+                <input type="text" value={srKet} onChange={e => setSrKet(e.target.value)}
+                  placeholder="Contoh: Sabtu Wajib Masuk, Upacara 17 Agustus"
+                  style={inputStyle} />
+              </div>
+            </div>
+
+            {/* Is Work Day toggle */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSrIsWorkDay(!srIsWorkDay)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                style={{
+                  background: srIsWorkDay ? '#dcfce7' : '#fee2e2',
+                  color: srIsWorkDay ? '#166534' : '#991b1b',
+                  border: `1px solid ${srIsWorkDay ? '#bbf7d0' : '#fecaca'}`
+                }}
+              >
+                {srIsWorkDay ? '✅ Dihitung hari kerja' : '❌ Bukan hari kerja (libur pengganti)'}
+              </button>
+              <span className="text-xs" style={{ color: theme.textSecondary }}>
+                {srIsWorkDay
+                  ? 'Karyawan yang tidak hadir akan dihitung tidak masuk'
+                  : 'Karyawan tidak diwajibkan hadir (tidak masuk tidak dihitung absen)'}
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={saveSr}
+                disabled={savingSr}
+                className="px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ background: theme.blueText || '#2563eb', color: '#fff', opacity: savingSr ? 0.6 : 1 }}
+              >
+                {savingSr ? 'Menyimpan...' : editingSrId ? 'Perbarui Aturan' : 'Tambah Aturan'}
+              </button>
+              {editingSrId && (
+                <button onClick={resetSrForm} className="px-4 py-2 rounded-lg text-sm font-medium"
+                  style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+                  Batal
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Daftar aturan */}
+          <div className="overflow-x-auto rounded-xl" style={{ border: `1px solid ${theme.border}` }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+                  {['Tanggal', 'Berlaku untuk', 'Jam Masuk', 'Jam Keluar', 'Hari Kerja', 'Keterangan', ''].map(h => (
+                    <th key={h} className="text-left px-3 py-2 text-xs font-semibold"
+                      style={{ color: theme.textSecondary }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {specialRules.length === 0 && (
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-sm" style={{ color: theme.textSecondary }}>
+                    Belum ada aturan hari khusus
+                  </td></tr>
+                )}
+                {specialRules.map((r, ri) => {
+                  const scopeLabel = r.scope_type === 'all'
+                    ? '👥 Semua karyawan'
+                    : r.scope_type === 'role'
+                      ? `🏷️ ${r.role?.role_name || 'Jabatan'}`
+                      : `👤 ${r.user?.user_nama_depan || ''} ${r.user?.user_nama_belakang || ''}`
+                  return (
+                    <tr key={r.id} style={{ borderTop: ri > 0 ? `1px solid ${theme.border}` : 'none' }}>
+                      <td className="px-3 py-2 font-medium" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>
+                        {r.tanggal}
+                      </td>
+                      <td className="px-3 py-2 text-xs" style={{ color: theme.textBody }}>{scopeLabel}</td>
+                      <td className="px-3 py-2 text-xs" style={{ color: theme.textBody }}>
+                        {r.custom_check_in ? String(r.custom_check_in).slice(0,5) : <span style={{ color: theme.textSecondary }}>—</span>}
+                      </td>
+                      <td className="px-3 py-2 text-xs" style={{ color: theme.textBody }}>
+                        {r.custom_check_out ? String(r.custom_check_out).slice(0,5) : <span style={{ color: theme.textSecondary }}>—</span>}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
+                          background: r.is_work_day ? '#dcfce7' : '#fee2e2',
+                          color:      r.is_work_day ? '#166534' : '#991b1b'
+                        }}>{r.is_work_day ? 'Hari Kerja' : 'Libur'}</span>
+                      </td>
+                      <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>
+                        {r.keterangan || '—'}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1">
+                          <button onClick={() => startEditSr(r)}
+                            className="px-2 py-1 rounded text-xs font-medium"
+                            style={{ background: '#eff6ff', color: '#1d4ed8' }}>Edit</button>
+                          <button onClick={() => deleteSr(r.id)}
+                            className="px-2 py-1 rounded text-xs font-medium"
+                            style={{ background: '#fef2f2', color: '#991b1b' }}>Hapus</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

@@ -118,6 +118,38 @@ export async function GET(request) {
       })
     }
 
+    // ── 1b. Special Day Rules ─────────────────────────────────────────────────
+    // Aturan hari khusus: Sabtu wajib masuk, jam pulang lebih awal, dsb.
+    // Prioritas: user-specific > role > global
+    let specialRules = []
+    try {
+      const { data: srData } = await supabaseAdmin
+        .from('special_day_rules')
+        .select('id, tanggal, scope_type, role_id, user_id, is_work_day, custom_check_in, custom_check_out')
+        .gte('tanggal', start)
+        .lte('tanggal', end)
+      specialRules = srData || []
+    } catch (_) {
+      specialRules = []
+    }
+
+    /**
+     * Cari aturan khusus yang berlaku untuk (tanggal, roleId, userId).
+     * Prioritas: user > role > global. Kembalikan null jika tidak ada.
+     */
+    const resolveSpecialRule = (dateStr, userRoleId, userId) => {
+      const matching = specialRules.filter(r => r.tanggal === dateStr)
+      // user-specific (highest priority)
+      const userRule = matching.find(r => r.scope_type === 'user' && String(r.user_id) === String(userId))
+      if (userRule) return userRule
+      // role-specific
+      const roleRule = matching.find(r => r.scope_type === 'role' && String(r.role_id) === String(userRoleId))
+      if (roleRule) return roleRule
+      // global
+      const globalRule = matching.find(r => r.scope_type === 'all')
+      return globalRule || null
+    }
+
     // ── 2. Units ─────────────────────────────────────────────────────────────
     const { data: unitList } = await supabaseAdmin
       .from('unit').select('unit_id, unit_name')
@@ -152,18 +184,36 @@ export async function GET(request) {
     const userIds = users.map(u => u.user_id)
 
     // ── 4. All attendances for the range ─────────────────────────────────────
+    // Supabase default limit = 1000 rows. Monthly reports can have thousands of
+    // scans (100 users × 2 scans × 25 days = ~5000). We paginate in batches of
+    // 1000 to collect ALL records without hitting the row limit.
     const tsStart = `${start}T00:00:00+07:00`
     const tsEnd   = `${end}T23:59:59+07:00`
 
-    const { data: attendances, error: attErr } = await supabaseAdmin
-      .from('attendances')
-      .select('user_id, scan_time, status_scan')
-      .in('user_id', userIds)
-      .gte('scan_time', tsStart)
-      .lte('scan_time', tsEnd)
-      .order('scan_time', { ascending: true })
+    const BATCH_SIZE = 1000
+    let allAttendances = []
+    let offset = 0
+    let hasMore = true
 
-    if (attErr) throw attErr
+    while (hasMore) {
+      const { data: batch, error: attErr } = await supabaseAdmin
+        .from('attendances')
+        .select('user_id, scan_time, status_scan')
+        .in('user_id', userIds)
+        .gte('scan_time', tsStart)
+        .lte('scan_time', tsEnd)
+        .order('scan_time', { ascending: true })
+        .range(offset, offset + BATCH_SIZE - 1)
+
+      if (attErr) throw attErr
+      if (!batch || batch.length === 0) break
+
+      allAttendances = allAttendances.concat(batch)
+      hasMore = batch.length === BATCH_SIZE
+      offset += BATCH_SIZE
+    }
+
+    const attendances = allAttendances
 
     // Index: attMap[user_id][date] = [{ scan_time, isCheckIn }]
     const attMap = {}
@@ -205,8 +255,25 @@ export async function GET(request) {
 
       for (const dateStr of allDates) {
         const dayNum = getDayNumber(dateStr)
-        if (!workDays.includes(dayNum)) continue
-        if (isHoliday(dateStr, user.user_role_id)) continue
+        const specialRule = resolveSpecialRule(dateStr, user.user_role_id, user.user_id)
+
+        // Tentukan apakah hari ini dihitung hari kerja:
+        // - Jika ada special rule dengan is_work_day=true  → paksa jadi hari kerja (override weekend/libur)
+        // - Jika ada special rule dengan is_work_day=false → skip (bukan hari kerja)
+        // - Tanpa special rule → ikut jadwal normal (work_days + bukan libur)
+        let isWorkDay
+        if (specialRule) {
+          isWorkDay = specialRule.is_work_day
+        } else {
+          isWorkDay = workDays.includes(dayNum) && !isHoliday(dateStr, user.user_role_id)
+        }
+        if (!isWorkDay) continue
+
+        // Jam masuk/keluar: pakai custom dari special rule jika ada, atau default user/role
+        const effIn  = (specialRule?.custom_check_in  ? String(specialRule.custom_check_in).slice(0,5)  : null) || expectedIn
+        const effOut = (specialRule?.custom_check_out ? String(specialRule.custom_check_out).slice(0,5) : null) || expectedOut
+        const effInMins  = timeToMinutes(effIn)
+        const effOutMins = timeToMinutes(effOut)
 
         summary.work_days_in_range++
 
@@ -242,11 +309,12 @@ export async function GET(request) {
 
         } else {
           // ── Analisis Check-In ────────────────────────────────────────
+          // Gunakan effInMins (bisa dioverride oleh special rule)
           if (!noCheckIn) {
             const timeStr = wibTimeStr(checkins[0].scan_time)
             dayRecord.checkin_time = timeStr
             const actualInMins = timeToMinutes(timeStr)
-            const lateMins = actualInMins - expectedInMins - grace
+            const lateMins = actualInMins - effInMins - grace
             if (lateMins > 0) {
               summary.late_count++
               summary.late_minutes_total += lateMins
@@ -258,11 +326,12 @@ export async function GET(request) {
           }
 
           // ── Analisis Check-Out ───────────────────────────────────────
+          // Gunakan effOutMins (bisa dioverride oleh special rule)
           if (!noCheckOut) {
             const timeStr = wibTimeStr(checkouts[checkouts.length - 1].scan_time)
             dayRecord.checkout_time = timeStr
             const actualOutMins = timeToMinutes(timeStr)
-            const earlyMins = expectedOutMins - actualOutMins - grace
+            const earlyMins = effOutMins - actualOutMins - grace
             if (earlyMins > 0) {
               summary.leave_early_count++
               summary.leave_early_minutes_total += earlyMins
@@ -280,6 +349,16 @@ export async function GET(request) {
             : dayRecord.issues.length === 1
               ? dayRecord.issues[0]
               : 'multiple'
+        }
+
+        // Simpan info special rule di dayRecord agar frontend bisa tampilkan
+        if (specialRule) {
+          dayRecord.special_rule = {
+            keterangan:       specialRule.keterangan || null,
+            custom_check_in:  effIn !== expectedIn  ? effIn  : null,
+            custom_check_out: effOut !== expectedOut ? effOut : null,
+            is_work_day:      specialRule.is_work_day,
+          }
         }
 
         summary.daily.push(dayRecord)
