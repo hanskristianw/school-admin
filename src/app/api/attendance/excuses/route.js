@@ -87,26 +87,27 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'Keterangan lain wajib diisi jika memilih Other' }, { status: 400 })
     }
 
-    // Get user's unit to determine approvers
+    // Get user's role to determine approvers
     const { data: userData, error: uErr } = await supabaseAdmin
       .from('users')
-      .select('user_unit_id')
+      .select('user_role_id')
       .eq('user_id', user_id)
       .single()
     if (uErr) throw uErr
 
-    const { data: unitApprover, error: aErr } = await supabaseAdmin
-      .from('unit_approvers')
+    const { data: roleApprover, error: aErr } = await supabaseAdmin
+      .from('role_approvers')
       .select('approver1_id, approver2_id')
-      .eq('unit_id', userData.user_unit_id)
+      .eq('role_id', userData.user_role_id)
       .single()
 
-    if (aErr || !unitApprover) {
+    if (aErr || !roleApprover) {
       return NextResponse.json({
         success: false,
-        message: 'Approver belum dikonfigurasi untuk unit Anda. Hubungi admin.'
+        message: 'Approver belum dikonfigurasi untuk jabatan Anda. Hubungi admin.'
       }, { status: 422 })
     }
+
 
     const payload = {
       user_id,
@@ -115,8 +116,8 @@ export async function POST(request) {
       late_minutes: late_minutes || null,
       category,
       other_reason: category === 'other' ? other_reason.trim() : null,
-      approver1_id: unitApprover.approver1_id,
-      approver2_id: unitApprover.approver2_id,
+      approver1_id: roleApprover.approver1_id,
+      approver2_id: roleApprover.approver2_id,
       status: 'pending',
     }
 

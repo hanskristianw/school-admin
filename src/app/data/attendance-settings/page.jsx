@@ -67,11 +67,11 @@ export default function AttendanceSettingsPage() {
   const [savingEdit, setSavingEdit]       = useState(false)
   const [editMsg, setEditMsg]             = useState('')
 
-  // ── Tab 5: Approver per Unit ──────────────────────────────────────────────
-  const [unitApprovers, setUnitApprovers]   = useState([]) // [{unit_id, unit_name, approver1_id, approver2_id}]
-  const [uaEdits, setUaEdits]               = useState({}) // unit_id → {approver1_id, approver2_id}
+  // ── Tab 5: Approver per Jabatan ───────────────────────────────────────────
+  const [roleApprovers, setRoleApprovers]   = useState([]) // [{role_id, role_name, approver1_id, approver2_id}]
+  const [uaEdits, setUaEdits]               = useState({}) // role_id → {approver1_id, approver2_id}
   const [uaMsg, setUaMsg]                   = useState('')
-  const [savingUa, setSavingUa]             = useState(null) // unit_id being saved
+  const [savingUa, setSavingUa]             = useState(null) // role_id being saved
 
   // ── Tab 4: Hari Khusus (Special Day Rules) ─────────────────────────────────────
   const [specialRules, setSpecialRules]     = useState([])
@@ -108,7 +108,7 @@ export default function AttendanceSettingsPage() {
     fetchLogs()
     fetchSpecialRules()
     fetchAllUsers()
-    fetchUnitApprovers()
+    fetchRoleApprovers()
   }, [])
 
   // auto-fill end date when start changes (default to same day)
@@ -140,18 +140,17 @@ export default function AttendanceSettingsPage() {
     setAllUsers(data || [])
   }
 
-  const fetchUnitApprovers = async () => {
+  const fetchRoleApprovers = async () => {
     try {
-      const res = await fetch('/api/attendance/unit-approvers')
+      const res = await fetch('/api/attendance/role-approvers')
       const json = await res.json()
       if (json.success) {
-        setUnitApprovers(json.data || [])
-        // Initialize edit state from current config
+        setRoleApprovers(json.data || [])
         const edits = {}
-        for (const u of (json.data || [])) {
-          edits[u.unit_id] = {
-            approver1_id: u.approver1_id ? String(u.approver1_id) : '',
-            approver2_id: u.approver2_id ? String(u.approver2_id) : '',
+        for (const r of (json.data || [])) {
+          edits[r.role_id] = {
+            approver1_id: r.approver1_id ? String(r.approver1_id) : '',
+            approver2_id: r.approver2_id ? String(r.approver2_id) : '',
           }
         }
         setUaEdits(edits)
@@ -159,19 +158,19 @@ export default function AttendanceSettingsPage() {
     } catch (_) {}
   }
 
-  const saveUnitApprover = async (unit_id) => {
-    const edit = uaEdits[unit_id] || {}
+  const saveRoleApprover = async (role_id) => {
+    const edit = uaEdits[role_id] || {}
     if (!edit.approver1_id || !edit.approver2_id) {
       setUaMsg('❌ Pilih Approver 1 dan Approver 2 terlebih dahulu')
       return
     }
-    setSavingUa(unit_id); setUaMsg('')
+    setSavingUa(role_id); setUaMsg('')
     try {
-      const res = await fetch('/api/attendance/unit-approvers', {
+      const res = await fetch('/api/attendance/role-approvers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          unit_id,
+          role_id,
           approver1_id: parseInt(edit.approver1_id, 10),
           approver2_id: parseInt(edit.approver2_id, 10),
         }),
@@ -179,7 +178,7 @@ export default function AttendanceSettingsPage() {
       const json = await res.json()
       if (!json.success) throw new Error(json.message)
       setUaMsg('✅ Approver berhasil disimpan')
-      fetchUnitApprovers()
+      fetchRoleApprovers()
       setTimeout(() => setUaMsg(''), 3000)
     } catch (err) {
       setUaMsg('❌ ' + err.message)
@@ -1401,12 +1400,13 @@ export default function AttendanceSettingsPage() {
           </div>
         </div>
       )}
-      {/* ════════════════════ TAB 5: APPROVER PER UNIT ════════════════════ */}
+      {/* ════════════════════ TAB 5: APPROVER PER JABATAN ════════════════════ */}
       {tab === 'approvers' && (
         <div className="space-y-4">
           <p className="text-sm" style={{ color: theme.textSecondary }}>
-            Tentukan siapa Approver 1 dan Approver 2 untuk setiap unit.
-            Konfigurasi ini digunakan untuk alur persetujuan surat keterangan absensi (terlambat, pulang awal, tidak masuk).
+            Tentukan siapa <strong>Approver 1</strong> dan <strong>Approver 2</strong> untuk setiap jabatan.
+            Konfigurasi ini digunakan saat karyawan mengajukan surat keterangan absensi — approver ditentukan
+            berdasarkan jabatan karyawan yang bersangkutan.
           </p>
 
           {uaMsg && (
@@ -1417,22 +1417,17 @@ export default function AttendanceSettingsPage() {
           )}
 
           <div className="space-y-3">
-            {unitApprovers.map(unit => {
-              const edit = uaEdits[unit.unit_id] || { approver1_id: '', approver2_id: '' }
-              const a1Name = edit.approver1_id
-                ? allUsers.find(u => u.user_id === parseInt(edit.approver1_id))?.user_nama_depan
-                : null
-              const a2Name = edit.approver2_id
-                ? allUsers.find(u => u.user_id === parseInt(edit.approver2_id))?.user_nama_depan
-                : null
+            {roleApprovers.map(role => {
+              const edit = uaEdits[role.role_id] || { approver1_id: '', approver2_id: '' }
+              const configured = role.approver1 || role.approver2
 
               return (
-                <div key={unit.unit_id} className="p-4 rounded-xl"
+                <div key={role.role_id} className="p-4 rounded-xl"
                   style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
                   <div className="flex items-center justify-between flex-wrap gap-4">
-                    {/* Unit name */}
-                    <div className="font-semibold text-sm min-w-[120px]" style={{ color: theme.textPrimary }}>
-                      {unit.unit_name}
+                    {/* Role name */}
+                    <div className="font-semibold text-sm min-w-[160px]" style={{ color: theme.textPrimary }}>
+                      {role.role_name}
                     </div>
 
                     {/* Approver selects */}
@@ -1441,7 +1436,7 @@ export default function AttendanceSettingsPage() {
                         <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Approver 1</label>
                         <select
                           value={edit.approver1_id}
-                          onChange={e => setUaEdits(prev => ({ ...prev, [unit.unit_id]: { ...prev[unit.unit_id], approver1_id: e.target.value } }))}
+                          onChange={e => setUaEdits(prev => ({ ...prev, [role.role_id]: { ...prev[role.role_id], approver1_id: e.target.value } }))}
                           style={inputStyle}
                         >
                           <option value="">-- Pilih Approver 1 --</option>
@@ -1457,7 +1452,7 @@ export default function AttendanceSettingsPage() {
                         <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Approver 2</label>
                         <select
                           value={edit.approver2_id}
-                          onChange={e => setUaEdits(prev => ({ ...prev, [unit.unit_id]: { ...prev[unit.unit_id], approver2_id: e.target.value } }))}
+                          onChange={e => setUaEdits(prev => ({ ...prev, [role.role_id]: { ...prev[role.role_id], approver2_id: e.target.value } }))}
                           style={inputStyle}
                         >
                           <option value="">-- Pilih Approver 2 --</option>
@@ -1472,32 +1467,36 @@ export default function AttendanceSettingsPage() {
 
                     {/* Save button */}
                     <button
-                      onClick={() => saveUnitApprover(unit.unit_id)}
-                      disabled={savingUa === unit.unit_id}
+                      onClick={() => saveRoleApprover(role.role_id)}
+                      disabled={savingUa === role.role_id}
                       className="px-4 py-2 rounded-lg text-sm font-medium"
                       style={{
                         background: theme.blueText || '#2563eb',
                         color: '#fff',
-                        opacity: savingUa === unit.unit_id ? 0.6 : 1,
+                        opacity: savingUa === role.role_id ? 0.6 : 1,
                         alignSelf: 'flex-end',
                         marginBottom: '2px',
                       }}
                     >
-                      {savingUa === unit.unit_id ? 'Menyimpan...' : 'Simpan'}
+                      {savingUa === role.role_id ? 'Menyimpan...' : 'Simpan'}
                     </button>
                   </div>
 
-                  {/* Current config display */}
-                  {(unit.approver1 || unit.approver2) && (
-                    <div className="mt-2 text-xs" style={{ color: theme.textSecondary }}>
-                      Tersimpan:
-                      <span className="ml-1 font-medium" style={{ color: theme.textBody }}>
-                        {unit.approver1 ? `${unit.approver1.user_nama_depan} ${unit.approver1.user_nama_belakang}` : '—'}
-                      </span>
-                      <span className="mx-1">→</span>
+                  {/* Current saved config */}
+                  {configured ? (
+                    <div className="mt-2 text-xs flex items-center gap-1" style={{ color: theme.textSecondary }}>
+                      <span>Tersimpan:</span>
                       <span className="font-medium" style={{ color: theme.textBody }}>
-                        {unit.approver2 ? `${unit.approver2.user_nama_depan} ${unit.approver2.user_nama_belakang}` : '—'}
+                        {role.approver1 ? `${role.approver1.user_nama_depan} ${role.approver1.user_nama_belakang}` : '—'}
                       </span>
+                      <span>→</span>
+                      <span className="font-medium" style={{ color: theme.textBody }}>
+                        {role.approver2 ? `${role.approver2.user_nama_depan} ${role.approver2.user_nama_belakang}` : '—'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-xs" style={{ color: theme.textSecondary }}>
+                      Belum dikonfigurasi
                     </div>
                   )}
                 </div>
@@ -1506,6 +1505,7 @@ export default function AttendanceSettingsPage() {
           </div>
         </div>
       )}
+
     </div>
   )
 }
