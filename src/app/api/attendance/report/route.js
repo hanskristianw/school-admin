@@ -75,11 +75,12 @@ export async function GET(request) {
     const defEnd = now.toISOString().slice(0, 10)
     const defStart = `${defEnd.slice(0, 7)}-01`
 
-    const start  = searchParams.get('start')   || defStart
-    const end    = searchParams.get('end')     || defEnd
-    const unitId = searchParams.get('unit_id') || null
-    const roleId = searchParams.get('role_id') || null
-    const grace  = parseInt(searchParams.get('grace') || '0', 10)
+    const start      = searchParams.get('start')   || defStart
+    const end        = searchParams.get('end')     || defEnd
+    const unitId     = searchParams.get('unit_id') || null
+    const roleId     = searchParams.get('role_id') || null
+    const singleUser = searchParams.get('user_id') || null  // filter satu karyawan
+    const grace      = parseInt(searchParams.get('grace') || '0', 10)
 
     if (start > end) {
       return NextResponse.json({ success: false, message: 'start harus <= end' }, { status: 400 })
@@ -168,8 +169,9 @@ export async function GET(request) {
       .eq('is_active', true)
       .not('user_pin', 'is', null)
 
-    if (unitId) userQuery = userQuery.eq('user_unit_id', parseInt(unitId, 10))
-    if (roleId) userQuery = userQuery.eq('user_role_id', parseInt(roleId, 10))
+    if (unitId)     userQuery = userQuery.eq('user_unit_id', parseInt(unitId, 10))
+    if (roleId)     userQuery = userQuery.eq('user_role_id', parseInt(roleId, 10))
+    if (singleUser) userQuery = userQuery.eq('user_id',      parseInt(singleUser, 10))
 
     const { data: users, error: usersErr } = await userQuery
     if (usersErr) throw usersErr
@@ -225,7 +227,24 @@ export async function GET(request) {
       attMap[att.user_id][dateStr].push(att)
     }
 
+    // ── 4b. Excuse Map ────────────────────────────────────────────────────────
+    // Fetch approved/rejected excuses for this date range to overlay on report
+    let excuseMap = {} // excuseMap[user_id][dateStr] = excuse row
+    try {
+      const { data: excuses } = await supabaseAdmin
+        .from('attendance_excuses')
+        .select('user_id, excuse_type, attendance_date, status, approver1_id, approver2_id, approver1_action, approver1_note, approver2_action, approver2_note')
+        .in('user_id', userIds)
+        .gte('attendance_date', start)
+        .lte('attendance_date', end)
+      for (const ex of (excuses || [])) {
+        if (!excuseMap[ex.user_id]) excuseMap[ex.user_id] = {}
+        excuseMap[ex.user_id][ex.attendance_date] = ex
+      }
+    } catch (_) {}
+
     // ── 5. Compute per-user stats ─────────────────────────────────────────────
+
     const results = []
 
     for (const user of users) {
@@ -361,7 +380,51 @@ export async function GET(request) {
           }
         }
 
+        // ── Overlay: Excuse (Surat Keterangan) ───────────────────────────────
+        const excuse = excuseMap[user.user_id]?.[dateStr]
+        if (excuse) {
+          dayRecord.excuse = {
+            status:       excuse.status,
+            excuse_type:  excuse.excuse_type,
+          }
+
+          if (excuse.status === 'approved') {
+            // Disetujui: tandai sebagai excused — tidak ubah catatan terlambat,
+            // tapi flag agar laporan tampilkan "Dimaafkan"
+            dayRecord.excused = true
+
+          } else if (excuse.status === 'rejected') {
+            // Ditolak: override jadi absent dengan catatan
+            const rejectedBy = excuse.approver1_action === 'rejected'
+              ? excuse.approver1_note || 'Approver 1'
+              : excuse.approver2_note || 'Approver 2'
+
+            // Batalkan counter sebelumnya jika sudah dihitung late/leave_early
+            if (dayRecord.issues.includes('late')) {
+              summary.late_count = Math.max(0, summary.late_count - 1)
+              summary.late_minutes_total = Math.max(0, summary.late_minutes_total - (dayRecord.late_minutes || 0))
+            }
+            if (dayRecord.issues.includes('leave_early')) {
+              summary.leave_early_count = Math.max(0, summary.leave_early_count - 1)
+              summary.leave_early_minutes_total = Math.max(0, summary.leave_early_minutes_total - (dayRecord.leave_early_minutes || 0))
+            }
+            // Tambahkan ke absent counter jika belum absent
+            if (!dayRecord.issues.includes('absent')) {
+              summary.absent_count++
+            }
+
+            dayRecord.status  = 'absent'
+            dayRecord.issues  = ['absent']
+            dayRecord.excuse.rejected_note = rejectedBy
+
+          } else if (excuse.status === 'pending' || excuse.status === 'approved_1') {
+            // Dalam proses — tandai saja, jangan ubah status
+            dayRecord.excuse_pending = true
+          }
+        }
+
         summary.daily.push(dayRecord)
+
       }
 
       results.push(summary)

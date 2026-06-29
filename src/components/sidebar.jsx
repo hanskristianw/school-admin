@@ -55,6 +55,8 @@ import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
 import { faBell } from "@fortawesome/free-solid-svg-icons"
 import { faChartBar } from "@fortawesome/free-solid-svg-icons"
+import { faFileSignature } from "@fortawesome/free-solid-svg-icons"
+import { faCheckDouble } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
 const iconMap = {
@@ -159,6 +161,10 @@ const iconMap = {
   , 'faBell': faBell
   , 'fas fa-chart-bar': faChartBar
   , 'faChartBar': faChartBar
+  , 'fas fa-file-signature': faFileSignature
+  , 'faFileSignature': faFileSignature
+  , 'fas fa-check-double': faCheckDouble
+  , 'faCheckDouble': faCheckDouble
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

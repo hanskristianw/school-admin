@@ -67,6 +67,12 @@ export default function AttendanceSettingsPage() {
   const [savingEdit, setSavingEdit]       = useState(false)
   const [editMsg, setEditMsg]             = useState('')
 
+  // ── Tab 5: Approver per Unit ──────────────────────────────────────────────
+  const [unitApprovers, setUnitApprovers]   = useState([]) // [{unit_id, unit_name, approver1_id, approver2_id}]
+  const [uaEdits, setUaEdits]               = useState({}) // unit_id → {approver1_id, approver2_id}
+  const [uaMsg, setUaMsg]                   = useState('')
+  const [savingUa, setSavingUa]             = useState(null) // unit_id being saved
+
   // ── Tab 4: Hari Khusus (Special Day Rules) ─────────────────────────────────────
   const [specialRules, setSpecialRules]     = useState([])
   const [allUsers, setAllUsers]             = useState([])
@@ -102,6 +108,7 @@ export default function AttendanceSettingsPage() {
     fetchLogs()
     fetchSpecialRules()
     fetchAllUsers()
+    fetchUnitApprovers()
   }, [])
 
   // auto-fill end date when start changes (default to same day)
@@ -131,6 +138,54 @@ export default function AttendanceSettingsPage() {
       .not('user_pin', 'is', null)
       .order('user_nama_depan')
     setAllUsers(data || [])
+  }
+
+  const fetchUnitApprovers = async () => {
+    try {
+      const res = await fetch('/api/attendance/unit-approvers')
+      const json = await res.json()
+      if (json.success) {
+        setUnitApprovers(json.data || [])
+        // Initialize edit state from current config
+        const edits = {}
+        for (const u of (json.data || [])) {
+          edits[u.unit_id] = {
+            approver1_id: u.approver1_id ? String(u.approver1_id) : '',
+            approver2_id: u.approver2_id ? String(u.approver2_id) : '',
+          }
+        }
+        setUaEdits(edits)
+      }
+    } catch (_) {}
+  }
+
+  const saveUnitApprover = async (unit_id) => {
+    const edit = uaEdits[unit_id] || {}
+    if (!edit.approver1_id || !edit.approver2_id) {
+      setUaMsg('❌ Pilih Approver 1 dan Approver 2 terlebih dahulu')
+      return
+    }
+    setSavingUa(unit_id); setUaMsg('')
+    try {
+      const res = await fetch('/api/attendance/unit-approvers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          unit_id,
+          approver1_id: parseInt(edit.approver1_id, 10),
+          approver2_id: parseInt(edit.approver2_id, 10),
+        }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.message)
+      setUaMsg('✅ Approver berhasil disimpan')
+      fetchUnitApprovers()
+      setTimeout(() => setUaMsg(''), 3000)
+    } catch (err) {
+      setUaMsg('❌ ' + err.message)
+    } finally {
+      setSavingUa(null)
+    }
   }
 
   const fetchSpecialRules = async () => {
@@ -547,7 +602,8 @@ export default function AttendanceSettingsPage() {
         <button style={tabStyle('workdays')} onClick={() => setTab('workdays')}>📅 Hari Kerja per Role</button>
         <button style={tabStyle('holidays')} onClick={() => setTab('holidays')}>🗓️ Kalender Libur</button>
         <button style={tabStyle('special')}  onClick={() => setTab('special')}>⭐ Hari Khusus</button>
-        <button style={tabStyle('settings')} onClick={() => setTab('settings')}>⚙️ Pengaturan & Log</button>
+        <button style={tabStyle('approvers')} onClick={() => setTab('approvers')}>👥 Approver per Unit</button>
+        <button style={tabStyle('settings')} onClick={() => setTab('settings')}>⚙️ Pengaturan &amp; Log</button>
       </div>
 
       {/* ══════════════════ TAB 1: WORK DAYS ══════════════════ */}
@@ -1342,6 +1398,111 @@ export default function AttendanceSettingsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+      {/* ════════════════════ TAB 5: APPROVER PER UNIT ════════════════════ */}
+      {tab === 'approvers' && (
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: theme.textSecondary }}>
+            Tentukan siapa Approver 1 dan Approver 2 untuk setiap unit.
+            Konfigurasi ini digunakan untuk alur persetujuan surat keterangan absensi (terlambat, pulang awal, tidak masuk).
+          </p>
+
+          {uaMsg && (
+            <div className="p-3 rounded-lg text-sm" style={{
+              background: uaMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
+              color: uaMsg.startsWith('✅') ? '#166534' : '#991b1b',
+            }}>{uaMsg}</div>
+          )}
+
+          <div className="space-y-3">
+            {unitApprovers.map(unit => {
+              const edit = uaEdits[unit.unit_id] || { approver1_id: '', approver2_id: '' }
+              const a1Name = edit.approver1_id
+                ? allUsers.find(u => u.user_id === parseInt(edit.approver1_id))?.user_nama_depan
+                : null
+              const a2Name = edit.approver2_id
+                ? allUsers.find(u => u.user_id === parseInt(edit.approver2_id))?.user_nama_depan
+                : null
+
+              return (
+                <div key={unit.unit_id} className="p-4 rounded-xl"
+                  style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    {/* Unit name */}
+                    <div className="font-semibold text-sm min-w-[120px]" style={{ color: theme.textPrimary }}>
+                      {unit.unit_name}
+                    </div>
+
+                    {/* Approver selects */}
+                    <div className="flex gap-3 flex-1 flex-wrap">
+                      <div className="flex-1 min-w-[180px]">
+                        <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Approver 1</label>
+                        <select
+                          value={edit.approver1_id}
+                          onChange={e => setUaEdits(prev => ({ ...prev, [unit.unit_id]: { ...prev[unit.unit_id], approver1_id: e.target.value } }))}
+                          style={inputStyle}
+                        >
+                          <option value="">-- Pilih Approver 1 --</option>
+                          {allUsers.map(u => (
+                            <option key={u.user_id} value={u.user_id}>
+                              {u.user_nama_depan} {u.user_nama_belakang}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex-1 min-w-[180px]">
+                        <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Approver 2</label>
+                        <select
+                          value={edit.approver2_id}
+                          onChange={e => setUaEdits(prev => ({ ...prev, [unit.unit_id]: { ...prev[unit.unit_id], approver2_id: e.target.value } }))}
+                          style={inputStyle}
+                        >
+                          <option value="">-- Pilih Approver 2 --</option>
+                          {allUsers.map(u => (
+                            <option key={u.user_id} value={u.user_id}>
+                              {u.user_nama_depan} {u.user_nama_belakang}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Save button */}
+                    <button
+                      onClick={() => saveUnitApprover(unit.unit_id)}
+                      disabled={savingUa === unit.unit_id}
+                      className="px-4 py-2 rounded-lg text-sm font-medium"
+                      style={{
+                        background: theme.blueText || '#2563eb',
+                        color: '#fff',
+                        opacity: savingUa === unit.unit_id ? 0.6 : 1,
+                        alignSelf: 'flex-end',
+                        marginBottom: '2px',
+                      }}
+                    >
+                      {savingUa === unit.unit_id ? 'Menyimpan...' : 'Simpan'}
+                    </button>
+                  </div>
+
+                  {/* Current config display */}
+                  {(unit.approver1 || unit.approver2) && (
+                    <div className="mt-2 text-xs" style={{ color: theme.textSecondary }}>
+                      Tersimpan:
+                      <span className="ml-1 font-medium" style={{ color: theme.textBody }}>
+                        {unit.approver1 ? `${unit.approver1.user_nama_depan} ${unit.approver1.user_nama_belakang}` : '—'}
+                      </span>
+                      <span className="mx-1">→</span>
+                      <span className="font-medium" style={{ color: theme.textBody }}>
+                        {unit.approver2 ? `${unit.approver2.user_nama_depan} ${unit.approver2.user_nama_belakang}` : '—'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
