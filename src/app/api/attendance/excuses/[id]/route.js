@@ -8,14 +8,12 @@ const supabaseAdmin = createClient(
 
 const EXCUSE_SELECT = `
   id, user_id, excuse_type, attendance_date, late_minutes,
-  category, other_reason, status,
+  category, other_reason, attachment_url, status,
   approver1_id, approver2_id,
   approver1_action, approver1_note, approver1_at,
   approver2_action, approver2_note, approver2_at,
   created_at, updated_at,
-  submitter:user_id (user_id, user_nama_depan, user_nama_belakang, user_unit_id,
-    unit:user_unit_id (unit_name)
-  ),
+  submitter:user_id (user_id, user_nama_depan, user_nama_belakang, user_unit_id),
   approver1:approver1_id (user_id, user_nama_depan, user_nama_belakang),
   approver2:approver2_id (user_id, user_nama_depan, user_nama_belakang)
 `

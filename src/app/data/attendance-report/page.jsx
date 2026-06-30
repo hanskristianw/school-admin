@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtMins(mins) {
@@ -110,70 +110,176 @@ export default function AttendanceReportPage() {
     : allRows.filter(r => r.unit_id === activeTab)
 
   // ── Export Excel ───────────────────────────────────────────────────────────
-  const exportExcel = () => {
+  const exportExcel = async () => {
     if (!report?.data?.length) return
 
-    const wb = XLSX.utils.book_new()
+    const HDR_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } }
+    const ALT_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } }
+    const WHITE_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
+    const LATE_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }
+    const LE_FILL    = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
+    const ABS_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } }
+    const OK_FILL    = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }
+    const NOCHK_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }
+    const EXC_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }
+    const PEND_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } }
+    const REJ_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
+
+    const hdrFont   = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+    const lateFont  = { color: { argb: 'FF92400E' }, bold: true }
+    const leFont    = { color: { argb: 'FF991B1B' }, bold: true }
+    const absFont   = { color: { argb: 'FF6B21A8' }, bold: true }
+    const okFont    = { color: { argb: 'FF166534' } }
+    const noChkFont = { color: { argb: 'FF9A3412' }, bold: true }
+    const excFont   = { color: { argb: 'FF065F46' } }
+    const pendFont  = { color: { argb: 'FF854D0E' } }
+    const rejFont   = { color: { argb: 'FF991B1B' } }
+
+    const cellBorder = {
+      top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+    }
+    const hdrBorder = {
+      bottom: { style: 'medium', color: { argb: 'FFBFDBFE' } },
+    }
+
+    const styleRow = (row, fill, font) => {
+      row.eachCell({ includeEmpty: true }, cell => {
+        cell.fill = fill
+        if (font) cell.font = font
+        cell.border = cellBorder
+        cell.alignment = { vertical: 'middle' }
+      })
+    }
+
+    const excuseLabel = (d) => {
+      if (!d.excuse && !d.excused && !d.excuse_pending) return ''
+      if (d.excuse?.status === 'approved' || d.excused) return 'Disetujui'
+      if (d.excuse_pending) return 'Menunggu Persetujuan'
+      if (d.excuse?.status === 'rejected') return `Ditolak${d.excuse.rejected_note ? ' (' + d.excuse.rejected_note + ')' : ''}`
+      return ''
+    }
+
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'School Admin'
+    wb.created = new Date()
+
     const allUnits = ['all', ...units.filter(u => allRows.some(r => r.unit_id === u.unit_id)).map(u => u.unit_id)]
 
-    allUnits.forEach(uid => {
+    for (const uid of allUnits) {
       const rows = uid === 'all' ? allRows : allRows.filter(r => r.unit_id === uid)
-      if (!rows.length) return
+      if (!rows.length) continue
       const sheetName = uid === 'all' ? 'Semua Unit' : (units.find(u => u.unit_id === uid)?.unit_name || 'Unit')
 
-      // Summary sheet
-      const summaryData = [
-        ['Nama', 'Unit', 'Role', 'Jadwal Masuk', 'Jadwal Keluar',
-         'Hari Kerja', 'Terlambat (×)', 'Total Mnt Telat', 'Pulang Awal (×)', 'Total Mnt PA',
-         'Tidak Masuk (×)', 'Tidak Checkout (×)'],
-        ...rows.map(r => [
-          r.name, r.unit_name, r.role_name, r.expected_check_in, r.expected_check_out,
-          r.work_days_in_range,
-          r.late_count, r.late_minutes_total,
-          r.leave_early_count, r.leave_early_minutes_total,
-          r.absent_count, r.no_checkout_count
-        ])
+      // ── Summary Sheet ──────────────────────────────────────────────────────
+      const ws = wb.addWorksheet(sheetName.slice(0, 31))
+      ws.views = [{ state: 'frozen', ySplit: 1 }]
+      ws.columns = [
+        { header: 'No',                 key: 'no',     width: 5  },
+        { header: 'Nama',               key: 'name',   width: 30 },
+        { header: 'PIN',                key: 'pin',    width: 7  },
+        { header: 'Unit',               key: 'unit',   width: 18 },
+        { header: 'Role',               key: 'role',   width: 22 },
+        { header: 'Jadwal Masuk',       key: 'ci',     width: 13 },
+        { header: 'Jadwal Keluar',      key: 'co',     width: 13 },
+        { header: 'Hari Kerja',         key: 'wd',     width: 11 },
+        { header: 'Terlambat (x)',      key: 'late_n', width: 13 },
+        { header: 'Total Mnt Telat',    key: 'late_m', width: 14 },
+        { header: 'Pulang Awal (x)',    key: 'le_n',   width: 13 },
+        { header: 'Total Mnt PA',       key: 'le_m',   width: 12 },
+        { header: 'Tidak Masuk (x)',    key: 'absent', width: 14 },
+        { header: 'Tidak Checkout (x)', key: 'nochk',  width: 16 },
       ]
-      const ws = XLSX.utils.aoa_to_sheet(summaryData)
+      const hdrRow1 = ws.getRow(1)
+      hdrRow1.height = 32
+      hdrRow1.eachCell({ includeEmpty: true }, cell => {
+        cell.fill = HDR_FILL; cell.font = hdrFont; cell.border = hdrBorder
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+      })
 
-      // Auto column width
-      ws['!cols'] = summaryData[0].map((_, i) => ({
-        wch: Math.max(...summaryData.map(row => String(row[i] ?? '').length), 10)
-      }))
+      rows.forEach((r, ri) => {
+        const dr = ws.addRow({
+          no: ri + 1, name: r.name, pin: r.user_pin || '',
+          unit: r.unit_name, role: r.role_name,
+          ci: r.expected_check_in, co: r.expected_check_out,
+          wd: r.work_days_in_range,
+          late_n: r.late_count || 0,   late_m: r.late_minutes_total || 0,
+          le_n: r.leave_early_count || 0, le_m: r.leave_early_minutes_total || 0,
+          absent: r.absent_count || 0, nochk: r.no_checkout_count || 0,
+        })
+        styleRow(dr, ri % 2 === 1 ? ALT_FILL : WHITE_FILL, null)
+        if (r.late_count > 0)          { dr.getCell('late_n').fill = LATE_FILL; dr.getCell('late_n').font = lateFont; dr.getCell('late_m').fill = LATE_FILL; dr.getCell('late_m').font = lateFont }
+        if (r.leave_early_count > 0)   { dr.getCell('le_n').fill = LE_FILL;   dr.getCell('le_n').font = leFont;   dr.getCell('le_m').fill = LE_FILL;   dr.getCell('le_m').font = leFont   }
+        if (r.absent_count > 0)        { dr.getCell('absent').fill = ABS_FILL; dr.getCell('absent').font = absFont }
+        if (r.no_checkout_count > 0)   { dr.getCell('nochk').fill = NOCHK_FILL; dr.getCell('nochk').font = noChkFont }
+      })
 
-      // Style header row
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
-      for (let c = range.s.c; c <= range.e.c; c++) {
-        const cell = XLSX.utils.encode_cell({ r: 0, c })
-        if (!ws[cell]) continue
-        ws[cell].s = { font: { bold: true }, fill: { fgColor: { rgb: 'DBEAFE' } } }
-      }
-
-      XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31))
-
-      // Detail sheet per unit (daily breakdown)
+      // ── Detail Sheet per unit ──────────────────────────────────────────────
       if (uid !== 'all') {
-        const detailRows = [['Nama', 'Tanggal', 'Check-In', 'Terlambat (mnt)', 'Check-Out', 'Pulang Awal (mnt)', 'Status']]
+        const wsDet = wb.addWorksheet(`${sheetName.slice(0, 23)} - Detail`)
+        wsDet.views = [{ state: 'frozen', ySplit: 1 }]
+        wsDet.columns = [
+          { header: 'Nama',              key: 'name',   width: 30 },
+          { header: 'PIN',               key: 'pin',    width: 7  },
+          { header: 'Tanggal',           key: 'date',   width: 13 },
+          { header: 'Check-In',          key: 'ci',     width: 11 },
+          { header: 'Terlambat (mnt)',   key: 'late',   width: 15 },
+          { header: 'Check-Out',         key: 'co',     width: 11 },
+          { header: 'Pulang Awal (mnt)', key: 'le',     width: 16 },
+          { header: 'Status',            key: 'status', width: 22 },
+          { header: 'Surat Keterangan',  key: 'excuse', width: 30 },
+        ]
+        const hdrRow2 = wsDet.getRow(1)
+        hdrRow2.height = 32
+        hdrRow2.eachCell({ includeEmpty: true }, cell => {
+          cell.fill = HDR_FILL; cell.font = hdrFont; cell.border = hdrBorder
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+        })
+
+        let detRi = 0
         rows.forEach(r => {
           r.daily?.forEach(d => {
-            detailRows.push([
-              r.name, d.date,
-              d.checkin_time || '—', d.late_minutes || 0,
-              d.checkout_time || '—', d.leave_early_minutes || 0,
-              d.issues.length === 0 ? 'OK' : d.issues.join(', ')
-            ])
+            const statusText = d.issues.length === 0 ? 'OK'
+              : d.issues.includes('absent') ? 'Tidak Masuk'
+              : d.issues.map(i => ({ late: 'Terlambat', leave_early: 'Pulang Awal', no_checkout: 'No Check-Out', no_checkin: 'No Check-In' }[i] || i)).join(', ')
+            const dr = wsDet.addRow({
+              name: r.name, pin: r.user_pin || '', date: d.date,
+              ci: d.checkin_time || '-', late: d.late_minutes || 0,
+              co: d.checkout_time || '-', le: d.leave_early_minutes || 0,
+              status: statusText, excuse: excuseLabel(d),
+            })
+            styleRow(dr, detRi % 2 === 1 ? ALT_FILL : WHITE_FILL, null)
+            // Color status cell
+            const stCell = dr.getCell('status')
+            if      (d.excuse?.status === 'approved' || d.excused)                       { stCell.fill = EXC_FILL;  stCell.font = excFont  }
+            else if (d.excuse_pending)                                                     { stCell.fill = PEND_FILL; stCell.font = pendFont }
+            else if (d.excuse?.status === 'rejected')                                     { stCell.fill = REJ_FILL;  stCell.font = rejFont  }
+            else if (d.issues.length === 0)                                               { stCell.fill = OK_FILL;   stCell.font = okFont   }
+            else if (d.issues.includes('absent'))                                         { stCell.fill = ABS_FILL;  stCell.font = absFont  }
+            else if (d.issues.includes('late'))                                           { stCell.fill = LATE_FILL; stCell.font = lateFont }
+            else if (d.issues.includes('leave_early'))                                    { stCell.fill = LE_FILL;   stCell.font = leFont   }
+            else if (d.issues.includes('no_checkout') || d.issues.includes('no_checkin')) { stCell.fill = NOCHK_FILL; stCell.font = noChkFont }
+            // Color excuse cell
+            const exCell = dr.getCell('excuse')
+            if      (d.excuse?.status === 'approved' || d.excused) { exCell.fill = EXC_FILL;  exCell.font = excFont  }
+            else if (d.excuse_pending)                              { exCell.fill = PEND_FILL; exCell.font = pendFont }
+            else if (d.excuse?.status === 'rejected')              { exCell.fill = REJ_FILL;  exCell.font = rejFont  }
+            detRi++
           })
         })
-        const wsDet = XLSX.utils.aoa_to_sheet(detailRows)
-        wsDet['!cols'] = detailRows[0].map((_, i) => ({
-          wch: Math.max(...detailRows.map(row => String(row[i] ?? '').length), 10)
-        }))
-        XLSX.utils.book_append_sheet(wb, wsDet, `${sheetName.slice(0, 25)} - Detail`)
       }
-    })
+    }
 
-    const fileName = `Rekap_Absensi_${report.range.start}_sd_${report.range.end}.xlsx`
-    XLSX.writeFile(wb, fileName)
+    const buffer = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Rekap_Absensi_${report.range.start}_sd_${report.range.end}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -410,8 +516,13 @@ export default function AttendanceReportPage() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {row.daily.map((d, di) => {
+                                     {row.daily.map((d, di) => {
                                       const hasProblem = d.issues.length > 0
+                                      const excLabel = !d.excuse && !d.excused && !d.excuse_pending ? null
+                                        : d.excuse?.status === 'approved' || d.excused ? { text: '✅ Disetujui', bg: '#d1fae5', color: '#065f46' }
+                                        : d.excuse_pending ? { text: '⏳ Menunggu Persetujuan', bg: '#fef9c3', color: '#854d0e' }
+                                        : d.excuse?.status === 'rejected' ? { text: `❌ Ditolak${d.excuse.rejected_note ? ' — ' + d.excuse.rejected_note : ''}`, bg: '#fee2e2', color: '#991b1b' }
+                                        : null
                                       return (
                                         <tr key={d.date} style={{ borderTop: di > 0 ? `1px solid ${theme.border}` : 'none' }}>
                                           <td className="px-3 py-1.5 font-medium" style={{ color: theme.textPrimary }}>{d.date}</td>
@@ -432,22 +543,29 @@ export default function AttendanceReportPage() {
                                               : <span style={{ color: theme.textSecondary }}>—</span>}
                                           </td>
                                           <td className="px-3 py-1.5">
-                                            {d.issues.length === 0 ? (
-                                              <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: '#dcfce7', color: '#166534' }}>✓ OK</span>
-                                            ) : d.status === 'absent' ? (
-                                              <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: '#f3e8ff', color: '#6b21a8' }}>❌ Tidak Masuk</span>
-                                            ) : (
-                                              <div className="flex flex-wrap gap-1">
-                                                {d.issues.map(issue => {
-                                                  const m = STATUS_META[issue] || STATUS_META.multiple
-                                                  return (
-                                                    <span key={issue} className="px-1.5 py-0.5 rounded-full font-medium" style={{ background: m.bg, color: m.color }}>
-                                                      {m.label}
-                                                    </span>
-                                                  )
-                                                })}
-                                              </div>
-                                            )}
+                                            <div className="flex flex-col gap-1">
+                                              {d.issues.length === 0 ? (
+                                                <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: '#dcfce7', color: '#166534' }}>✓ OK</span>
+                                              ) : d.status === 'absent' ? (
+                                                <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: '#f3e8ff', color: '#6b21a8' }}>❌ Tidak Masuk</span>
+                                              ) : (
+                                                <div className="flex flex-wrap gap-1">
+                                                  {d.issues.map(issue => {
+                                                    const m = STATUS_META[issue] || STATUS_META.multiple
+                                                    return (
+                                                      <span key={issue} className="px-1.5 py-0.5 rounded-full font-medium" style={{ background: m.bg, color: m.color }}>
+                                                        {m.label}
+                                                      </span>
+                                                    )
+                                                  })}
+                                                </div>
+                                              )}
+                                              {excLabel && (
+                                                <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: excLabel.bg, color: excLabel.color }}>
+                                                  {excLabel.text}
+                                                </span>
+                                              )}
+                                            </div>
                                           </td>
                                         </tr>
                                       )

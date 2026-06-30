@@ -5,15 +5,31 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/theme'
 
 const CATEGORY_LABEL = {
-  woke_up_late:    'Woke Up Late',
-  traffic_jam:     'Traffic Jam',
-  sick:            'Sick / Unwell',
-  education:       'Education',
-  family_personal: 'Family / Personal Matter',
-  other:           'Other',
+  // Late / Leave Early
+  woke_up_late:          'Woke Up Late',
+  traffic_jam:           'Traffic Jam / Transportation Issue',
+  sick:                  'Sick / Unwell',
+  family_personal:       'Family / Personal Matter',
+  // Absent
+  sick_no_letter:        'Sick without letter',
+  sick_with_letter:      'Sick with letter & diagnosis',
+  unpaid_leave:          'Unpaid Personal Leave',
+  annual_leave:          'Annual Leave',
+  school_duty:           'School Duty (Training/Workshop/IB)',
+  // No scan
+  forgot_scan:           'Forgot to check in/out',
+  scanned_not_recorded:  'Already scanned but not recorded',
+  // Common
+  other:                 'Other',
 }
 
-const TYPE_LABEL = { late: 'Terlambat', leave_early: 'Pulang Awal', absent: 'Tidak Masuk' }
+const TYPE_LABEL = {
+  late:        'Terlambat',
+  leave_early: 'Pulang Awal',
+  absent:      'Tidak Masuk',
+  no_checkin:  'Tidak Check-In',
+  no_checkout: 'Tidak Check-Out',
+}
 
 function fmtMins(m) {
   if (!m) return null
@@ -190,7 +206,7 @@ export default function AttendanceApprovalsPage() {
             const isPending = (myStep === 1 && e.status === 'pending') || (myStep === 2 && e.status === 'approved_1')
 
             const submitterName = `${e.submitter?.user_nama_depan || ''} ${e.submitter?.user_nama_belakang || ''}`.trim()
-            const unitName      = e.submitter?.unit?.unit_name || '—'
+            const unitId        = e.submitter?.user_unit_id || '—'
 
             return (
               <div key={e.id} className="rounded-xl p-5 space-y-3"
@@ -203,7 +219,7 @@ export default function AttendanceApprovalsPage() {
                       {submitterName}
                     </div>
                     <div className="text-xs mt-0.5 flex gap-2" style={{ color: theme.textSecondary }}>
-                      <span>{unitName}</span>
+                      <span>Unit {unitId}</span>
                       <span>·</span>
                       <span>{TYPE_LABEL[e.excuse_type] || e.excuse_type}</span>
                       <span>·</span>
