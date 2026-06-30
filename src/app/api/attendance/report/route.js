@@ -94,7 +94,7 @@ export async function GET(request) {
     try {
       const { data, error } = await supabaseAdmin
         .from('school_holidays')
-        .select('date_start, date_end, role_id')
+        .select('date_start, date_end, role_id, name')
         .lte('date_start', end)
         .gte('date_end', start)
       if (!error) holidays = data || []
@@ -102,10 +102,10 @@ export async function GET(request) {
         // Fallback: old schema with single `date` column
         const { data: old } = await supabaseAdmin
           .from('school_holidays')
-          .select('date, role_id')
+          .select('date, role_id, name')
           .gte('date', start)
           .lte('date', end)
-        holidays = (old || []).map(h => ({ date_start: h.date, date_end: h.date, role_id: h.role_id }))
+        holidays = (old || []).map(h => ({ date_start: h.date, date_end: h.date, role_id: h.role_id, name: h.name }))
       }
     } catch (_) {
       holidays = []
@@ -117,6 +117,17 @@ export async function GET(request) {
         if (h.role_id === null || h.role_id === undefined) return true   // global
         return String(h.role_id) === String(userRoleId)                  // role-specific
       })
+    }
+
+    const getHolidayName = (dateStr, userRoleId) => {
+      // Find most specific matching holiday name (role-specific > global)
+      const matching = holidays.filter(h =>
+        dateStr >= h.date_start && dateStr <= h.date_end &&
+        (h.role_id === null || h.role_id === undefined || String(h.role_id) === String(userRoleId))
+      )
+      const roleSpecific = matching.find(h => h.role_id !== null && h.role_id !== undefined)
+      const found = roleSpecific || matching[0]
+      return found?.name || null
     }
 
     // ── 1b. Special Day Rules ─────────────────────────────────────────────────
@@ -285,15 +296,38 @@ export async function GET(request) {
         // - Jika ada special rule dengan is_work_day=false → skip (bukan hari kerja)
         // - Tanpa special rule → ikut jadwal normal (work_days + bukan libur)
         let isWorkDay
+        let dayIsHoliday = false
+        let dayIsDayOff  = false
+        let dayHolidayName = null
         if (specialRule) {
           isWorkDay = specialRule.is_work_day
         } else {
-          isWorkDay = workDays.includes(dayNum) && !isHoliday(dateStr, user.user_role_id)
+          dayIsHoliday = isHoliday(dateStr, user.user_role_id)
+          dayIsDayOff  = !workDays.includes(dayNum)
+          isWorkDay    = !dayIsHoliday && !dayIsDayOff
         }
-        if (!isWorkDay) continue
 
         // ── Filter join_date: skip hari sebelum tanggal masuk karyawan ─────
         if (user.join_date && dateStr < user.join_date) continue
+
+        if (!isWorkDay) {
+          // Include non-workdays in daily[] for Excel (holiday/dayoff rows)
+          let statusType = 'dayoff'
+          if (dayIsHoliday) {
+            statusType = 'holiday'
+            dayHolidayName = getHolidayName(dateStr, user.user_role_id)
+          } else if (specialRule && !specialRule.is_work_day) {
+            statusType = specialRule.keterangan ? 'holiday' : 'dayoff'
+            dayHolidayName = specialRule.keterangan || null
+          }
+          summary.daily.push({
+            date: dateStr, status: statusType,
+            holiday_name: dayHolidayName,
+            checkin_time: null, checkout_time: null,
+            late_minutes: 0, leave_early_minutes: 0, issues: [],
+          })
+          continue
+        }
 
         // Jam masuk/keluar: pakai custom dari special rule jika ada, atau default user/role
         const effIn  = (specialRule?.custom_check_in  ? String(specialRule.custom_check_in).slice(0,5)  : null) || expectedIn

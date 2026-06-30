@@ -53,7 +53,7 @@ export async function POST(request) {
 
     if (!role_id)      return NextResponse.json({ success: false, message: 'role_id wajib diisi' },     { status: 400 })
     if (!approver1_id) return NextResponse.json({ success: false, message: 'approver1_id wajib diisi' }, { status: 400 })
-    if (!approver2_id) return NextResponse.json({ success: false, message: 'approver2_id wajib diisi' }, { status: 400 })
+    // approver2_id is optional — null means single-approver flow
 
     const { data, error } = await supabaseAdmin
       .from('role_approvers')

@@ -396,6 +396,8 @@ export default function AttendanceExcusesPage() {
       if (reportJson.success) {
         for (const user of (reportJson.data || [])) {
           for (const day of (user.daily || [])) {
+            // Hari libur & day off tidak perlu surat keterangan
+            if (day.status === 'holiday' || day.status === 'dayoff' || day.status === 'off') continue
             const hasIssue = day.issues?.some(i =>
               ['late', 'leave_early', 'absent', 'no_checkin', 'no_checkout'].includes(i)
             )

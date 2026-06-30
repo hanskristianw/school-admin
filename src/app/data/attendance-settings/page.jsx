@@ -160,8 +160,8 @@ export default function AttendanceSettingsPage() {
 
   const saveRoleApprover = async (role_id) => {
     const edit = uaEdits[role_id] || {}
-    if (!edit.approver1_id || !edit.approver2_id) {
-      setUaMsg('❌ Pilih Approver 1 dan Approver 2 terlebih dahulu')
+    if (!edit.approver1_id) {
+      setUaMsg('❌ Pilih Approver 1 terlebih dahulu')
       return
     }
     setSavingUa(role_id); setUaMsg('')
@@ -172,7 +172,7 @@ export default function AttendanceSettingsPage() {
         body: JSON.stringify({
           role_id,
           approver1_id: parseInt(edit.approver1_id, 10),
-          approver2_id: parseInt(edit.approver2_id, 10),
+          approver2_id: edit.approver2_id ? parseInt(edit.approver2_id, 10) : null,
         }),
       })
       const json = await res.json()
@@ -1404,7 +1404,8 @@ export default function AttendanceSettingsPage() {
       {tab === 'approvers' && (
         <div className="space-y-4">
           <p className="text-sm" style={{ color: theme.textSecondary }}>
-            Tentukan siapa <strong>Approver 1</strong> dan <strong>Approver 2</strong> untuk setiap jabatan.
+            Tentukan siapa <strong>Approver 1</strong> (wajib) dan <strong>Approver 2</strong> (opsional) untuk setiap jabatan.
+            Jika hanya Approver 1 yang diset, pengajuan langsung disetujui setelah Approver 1 menyetujui.
             Konfigurasi ini digunakan saat karyawan mengajukan surat keterangan absensi — approver ditentukan
             berdasarkan jabatan karyawan yang bersangkutan.
           </p>
@@ -1449,13 +1450,13 @@ export default function AttendanceSettingsPage() {
                       </div>
 
                       <div className="flex-1 min-w-[180px]">
-                        <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Approver 2</label>
+                        <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Approver 2 <span style={{ fontWeight: 400, color: theme.textSecondary }}>(opsional)</span></label>
                         <select
                           value={edit.approver2_id}
                           onChange={e => setUaEdits(prev => ({ ...prev, [role.role_id]: { ...prev[role.role_id], approver2_id: e.target.value } }))}
                           style={inputStyle}
                         >
-                          <option value="">-- Pilih Approver 2 --</option>
+                          <option value="">-- Tanpa Approver 2 --</option>
                           {allUsers.map(u => (
                             <option key={u.user_id} value={u.user_id}>
                               {u.user_nama_depan} {u.user_nama_belakang}
@@ -1489,10 +1490,16 @@ export default function AttendanceSettingsPage() {
                       <span className="font-medium" style={{ color: theme.textBody }}>
                         {role.approver1 ? `${role.approver1.user_nama_depan} ${role.approver1.user_nama_belakang}` : '—'}
                       </span>
-                      <span>→</span>
-                      <span className="font-medium" style={{ color: theme.textBody }}>
-                        {role.approver2 ? `${role.approver2.user_nama_depan} ${role.approver2.user_nama_belakang}` : '—'}
-                      </span>
+                      {role.approver2 ? (
+                        <>
+                          <span>→</span>
+                          <span className="font-medium" style={{ color: theme.textBody }}>
+                            {role.approver2.user_nama_depan} {role.approver2.user_nama_belakang}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: '#f3f4f6', color: '#6b7280' }}>1 Approver</span>
+                      )}
                     </div>
                   ) : (
                     <div className="mt-2 text-xs" style={{ color: theme.textSecondary }}>

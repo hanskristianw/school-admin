@@ -113,171 +113,226 @@ export default function AttendanceReportPage() {
   const exportExcel = async () => {
     if (!report?.data?.length) return
 
-    const HDR_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } }
-    const ALT_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } }
+    // ── Style definitions ──────────────────────────────────────────────────
+    const COL_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } }
+    const ALT_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F0FB' } }
     const WHITE_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
     const LATE_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }
     const LE_FILL    = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
     const ABS_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } }
-    const OK_FILL    = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }
-    const NOCHK_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }
-    const EXC_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }
+    const HOL_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC0C0' } }  // merah muda — Hari Libur
+    const OFF_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }  // abu — Day Off
+    const APPR_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }
     const PEND_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } }
     const REJ_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
-
-    const hdrFont   = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
-    const lateFont  = { color: { argb: 'FF92400E' }, bold: true }
-    const leFont    = { color: { argb: 'FF991B1B' }, bold: true }
-    const absFont   = { color: { argb: 'FF6B21A8' }, bold: true }
-    const okFont    = { color: { argb: 'FF166534' } }
-    const noChkFont = { color: { argb: 'FF9A3412' }, bold: true }
-    const excFont   = { color: { argb: 'FF065F46' } }
-    const pendFont  = { color: { argb: 'FF854D0E' } }
-    const rejFont   = { color: { argb: 'FF991B1B' } }
+    const HOL_FONT   = { size: 10, color: { argb: 'FF991B1B' }, bold: true }  // teks merah untuk libur
+    const OFF_FONT   = { size: 10, color: { argb: 'FF9CA3AF' }, italic: true } // abu untuk day off
 
     const cellBorder = {
-      top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-      left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-      bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-      right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-    }
-    const hdrBorder = {
-      bottom: { style: 'medium', color: { argb: 'FFBFDBFE' } },
+      top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      right:  { style: 'thin', color: { argb: 'FFD1D5DB' } },
     }
 
-    const styleRow = (row, fill, font) => {
-      row.eachCell({ includeEmpty: true }, cell => {
-        cell.fill = fill
-        if (font) cell.font = font
-        cell.border = cellBorder
-        cell.alignment = { vertical: 'middle' }
-      })
+    // ── Helper functions ───────────────────────────────────────────────────
+    const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
+
+    const minsToHMS = (mins) => {
+      if (!mins || mins <= 0) return '00:00:00'
+      const h = Math.floor(mins / 60)
+      const m = mins % 60
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`
     }
 
-    const excuseLabel = (d) => {
-      if (!d.excuse && !d.excused && !d.excuse_pending) return ''
-      if (d.excuse?.status === 'approved' || d.excused) return 'Disetujui'
-      if (d.excuse_pending) return 'Menunggu Persetujuan'
-      if (d.excuse?.status === 'rejected') return `Ditolak${d.excuse.rejected_note ? ' (' + d.excuse.rejected_note + ')' : ''}`
+    const timeDiff = (from, to) => {
+      if (!from || !to) return ''
+      try {
+        const parse = s => { const [h,m,sec] = s.split(':').map(Number); return h*3600 + m*60 + (sec||0) }
+        const diff  = Math.max(0, parse(to) - parse(from))
+        return `${String(Math.floor(diff/3600)).padStart(2,'0')}:${String(Math.floor((diff%3600)/60)).padStart(2,'0')}:${String(diff%60).padStart(2,'0')}`
+      } catch { return '' }
+    }
+
+    const getKeterangan = (d) => {
+      // Holiday / Day Off — langsung return nama liburnya
+      if (d.status === 'holiday') return d.holiday_name || 'Hari Libur'
+      if (d.status === 'dayoff' || d.status === 'off') {
+        // Cek apakah ini Sabtu/Minggu
+        const dow = new Date(d.date + 'T00:00:00').getDay()
+        if (dow === 0) return 'Day Off (Minggu)'
+        if (dow === 6) return 'Day Off (Sabtu)'
+        return 'Day Off'
+      }
+      if (d.excuse || d.excused || d.excuse_pending) {
+        const cat = d.excuse?.category_label || d.excuse?.category || ''
+        const catStr = cat ? ` — ${cat}` : ''
+        if (d.excuse?.status === 'approved' || d.excused) return `Disetujui${catStr}`
+        if (d.excuse_pending)                             return `Permohonan Diproses${catStr}`
+        if (d.excuse?.status === 'rejected')              return `Ditolak${catStr}`
+      }
+      if (d.issues?.length > 0) {
+        const map = { absent:'Tidak Masuk', late:'Terlambat', leave_early:'Pulang Awal', no_checkin:'Tidak Check-In', no_checkout:'Tidak Check-Out' }
+        const labels = d.issues.map(i => map[i] || i).filter(Boolean)
+        return `${labels.join(', ')} — Belum Mengisi Form Permohonan`
+      }
       return ''
     }
 
+    // ── Month label ────────────────────────────────────────────────────────
+    const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
+    const startDate  = new Date(report.range.start)
+    const monthLabel = `${MONTHS_ID[startDate.getMonth()]} ${startDate.getFullYear()}`
+
+    const COLS = [
+      { key:'nama',       width:28 },
+      { key:'hari',       width:10 },
+      { key:'tanggal',    width:13 },
+      { key:'jamMasuk',   width:12 },
+      { key:'jamKeluar',  width:12 },
+      { key:'scanMasuk',  width:13 },
+      { key:'scanPulang', width:13 },
+      { key:'terlambat',  width:18 },
+      { key:'pulangCepat',width:14 },
+      { key:'jamKerja',   width:14 },
+      { key:'lembur',     width: 9 },
+      { key:'keterangan', width:40 },
+      { key:'kehadiran',  width:14 },
+    ]
+    const HDRS = [
+      'Nama Karyawan','Hari','Tanggal','Jam Masuk','Jam Keluar',
+      'Scan Masuk','Scan Pulang','Terlambat','Pulang Cepat',
+      'Jml Jam Kerja','Lembur','Keterangan','Jml Kehadiran',
+    ]
+
     const wb = new ExcelJS.Workbook()
-    wb.creator = 'School Admin'
+    wb.creator = 'Chung Chung Christian School'
     wb.created = new Date()
 
-    const allUnits = ['all', ...units.filter(u => allRows.some(r => r.unit_id === u.unit_id)).map(u => u.unit_id)]
+    // unit sheets first, All last
+    const unitList = units.filter(u => allRows.some(r => r.unit_id === u.unit_id))
+    const sheetDefs = [
+      ...unitList.map(u => ({ uid: u.unit_id, name: u.unit_name })),
+      { uid: 'all', name: 'All' },
+    ]
 
-    for (const uid of allUnits) {
+    for (const { uid, name } of sheetDefs) {
       const rows = uid === 'all' ? allRows : allRows.filter(r => r.unit_id === uid)
       if (!rows.length) continue
-      const sheetName = uid === 'all' ? 'Semua Unit' : (units.find(u => u.unit_id === uid)?.unit_name || 'Unit')
 
-      // ── Summary Sheet ──────────────────────────────────────────────────────
-      const ws = wb.addWorksheet(sheetName.slice(0, 31))
-      ws.views = [{ state: 'frozen', ySplit: 1 }]
-      ws.columns = [
-        { header: 'No',                 key: 'no',     width: 5  },
-        { header: 'Nama',               key: 'name',   width: 30 },
-        { header: 'PIN',                key: 'pin',    width: 7  },
-        { header: 'Unit',               key: 'unit',   width: 18 },
-        { header: 'Role',               key: 'role',   width: 22 },
-        { header: 'Jadwal Masuk',       key: 'ci',     width: 13 },
-        { header: 'Jadwal Keluar',      key: 'co',     width: 13 },
-        { header: 'Hari Kerja',         key: 'wd',     width: 11 },
-        { header: 'Terlambat (x)',      key: 'late_n', width: 13 },
-        { header: 'Total Mnt Telat',    key: 'late_m', width: 14 },
-        { header: 'Pulang Awal (x)',    key: 'le_n',   width: 13 },
-        { header: 'Total Mnt PA',       key: 'le_m',   width: 12 },
-        { header: 'Tidak Masuk (x)',    key: 'absent', width: 14 },
-        { header: 'Tidak Checkout (x)', key: 'nochk',  width: 16 },
-      ]
-      const hdrRow1 = ws.getRow(1)
-      hdrRow1.height = 32
-      hdrRow1.eachCell({ includeEmpty: true }, cell => {
-        cell.fill = HDR_FILL; cell.font = hdrFont; cell.border = hdrBorder
+      const ws = wb.addWorksheet(name.slice(0, 31))
+      ws.columns = COLS
+
+      // Row 1 blank
+      ws.addRow([])
+      // Row 2 school name
+      ws.addRow(['Chung Chung Christian School'])
+      ws.mergeCells('A2:M2')
+      const titleCell      = ws.getCell('A2')
+      titleCell.value      = 'Chung Chung Christian School'
+      titleCell.font       = { bold: true, size: 16, color: { argb: 'FF1E3A5F' } }
+      titleCell.alignment  = { horizontal: 'center', vertical: 'middle' }
+      ws.getRow(2).height  = 28
+
+      // Row 3 Presensi Month Year
+      ws.addRow([`Presensi ${monthLabel}`])
+      ws.mergeCells('A3:M3')
+      const subCell        = ws.getCell('A3')
+      subCell.value        = `Presensi ${monthLabel}`
+      subCell.font         = { bold: true, size: 13, color: { argb: 'FF374151' } }
+      subCell.alignment    = { horizontal: 'center', vertical: 'middle' }
+      ws.getRow(3).height  = 22
+
+      // Row 4 blank
+      ws.addRow([])
+
+      // Row 5 column headers
+      const hdrRow = ws.addRow(HDRS)
+      hdrRow.height = 30
+      hdrRow.eachCell({ includeEmpty: true }, cell => {
+        cell.fill      = COL_FILL
+        cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+        cell.border    = cellBorder
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
       })
+      ws.views = [{ state: 'frozen', ySplit: 5 }]
 
-      rows.forEach((r, ri) => {
-        const dr = ws.addRow({
-          no: ri + 1, name: r.name, pin: r.user_pin || '',
-          unit: r.unit_name, role: r.role_name,
-          ci: r.expected_check_in, co: r.expected_check_out,
-          wd: r.work_days_in_range,
-          late_n: r.late_count || 0,   late_m: r.late_minutes_total || 0,
-          le_n: r.leave_early_count || 0, le_m: r.leave_early_minutes_total || 0,
-          absent: r.absent_count || 0, nochk: r.no_checkout_count || 0,
-        })
-        styleRow(dr, ri % 2 === 1 ? ALT_FILL : WHITE_FILL, null)
-        if (r.late_count > 0)          { dr.getCell('late_n').fill = LATE_FILL; dr.getCell('late_n').font = lateFont; dr.getCell('late_m').fill = LATE_FILL; dr.getCell('late_m').font = lateFont }
-        if (r.leave_early_count > 0)   { dr.getCell('le_n').fill = LE_FILL;   dr.getCell('le_n').font = leFont;   dr.getCell('le_m').fill = LE_FILL;   dr.getCell('le_m').font = leFont   }
-        if (r.absent_count > 0)        { dr.getCell('absent').fill = ABS_FILL; dr.getCell('absent').font = absFont }
-        if (r.no_checkout_count > 0)   { dr.getCell('nochk').fill = NOCHK_FILL; dr.getCell('nochk').font = noChkFont }
-      })
+      // Data rows
+      let ri = 0
+      for (const r of rows) {
+        const expIn  = r.expected_check_in  ? r.expected_check_in.slice(0,5)  : '07:30'
+        const expOut = r.expected_check_out ? r.expected_check_out.slice(0,5) : '16:30'
+        const stdMins = 9 * 60  // 09:00
 
-      // ── Detail Sheet per unit ──────────────────────────────────────────────
-      if (uid !== 'all') {
-        const wsDet = wb.addWorksheet(`${sheetName.slice(0, 23)} - Detail`)
-        wsDet.views = [{ state: 'frozen', ySplit: 1 }]
-        wsDet.columns = [
-          { header: 'Nama',              key: 'name',   width: 30 },
-          { header: 'PIN',               key: 'pin',    width: 7  },
-          { header: 'Tanggal',           key: 'date',   width: 13 },
-          { header: 'Check-In',          key: 'ci',     width: 11 },
-          { header: 'Terlambat (mnt)',   key: 'late',   width: 15 },
-          { header: 'Check-Out',         key: 'co',     width: 11 },
-          { header: 'Pulang Awal (mnt)', key: 'le',     width: 16 },
-          { header: 'Status',            key: 'status', width: 22 },
-          { header: 'Surat Keterangan',  key: 'excuse', width: 30 },
-        ]
-        const hdrRow2 = wsDet.getRow(1)
-        hdrRow2.height = 32
-        hdrRow2.eachCell({ includeEmpty: true }, cell => {
-          cell.fill = HDR_FILL; cell.font = hdrFont; cell.border = hdrBorder
-          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-        })
+        for (const d of (r.daily || [])) {
+          const dateObj = new Date(d.date + 'T00:00:00')
+          const hariStr = HARI_ID[dateObj.getDay()]
+          const scanIn  = d.checkin_time  ? d.checkin_time.slice(0,8)  : ''
+          const scanOut = d.checkout_time ? d.checkout_time.slice(0,8) : ''
+          const lateMins = d.late_minutes || 0
+          const leMins   = d.leave_early_minutes || 0
+          const lateTxt  = lateMins > 0 ? minsToHMS(lateMins) : 'tidak terlambat'
+          const leTxt    = minsToHMS(leMins)
+          const jamKerjaTxt   = minsToHMS(Math.max(0, stdMins - lateMins))
+          const kehadiranTxt  = timeDiff(scanIn, scanOut)
+          const keterangan    = getKeterangan(d)
 
-        let detRi = 0
-        rows.forEach(r => {
-          r.daily?.forEach(d => {
-            const statusText = d.issues.length === 0 ? 'OK'
-              : d.issues.includes('absent') ? 'Tidak Masuk'
-              : d.issues.map(i => ({ late: 'Terlambat', leave_early: 'Pulang Awal', no_checkout: 'No Check-Out', no_checkin: 'No Check-In' }[i] || i)).join(', ')
-            const dr = wsDet.addRow({
-              name: r.name, pin: r.user_pin || '', date: d.date,
-              ci: d.checkin_time || '-', late: d.late_minutes || 0,
-              co: d.checkout_time || '-', le: d.leave_early_minutes || 0,
-              status: statusText, excuse: excuseLabel(d),
-            })
-            styleRow(dr, detRi % 2 === 1 ? ALT_FILL : WHITE_FILL, null)
-            // Color status cell
-            const stCell = dr.getCell('status')
-            if      (d.excuse?.status === 'approved' || d.excused)                       { stCell.fill = EXC_FILL;  stCell.font = excFont  }
-            else if (d.excuse_pending)                                                     { stCell.fill = PEND_FILL; stCell.font = pendFont }
-            else if (d.excuse?.status === 'rejected')                                     { stCell.fill = REJ_FILL;  stCell.font = rejFont  }
-            else if (d.issues.length === 0)                                               { stCell.fill = OK_FILL;   stCell.font = okFont   }
-            else if (d.issues.includes('absent'))                                         { stCell.fill = ABS_FILL;  stCell.font = absFont  }
-            else if (d.issues.includes('late'))                                           { stCell.fill = LATE_FILL; stCell.font = lateFont }
-            else if (d.issues.includes('leave_early'))                                    { stCell.fill = LE_FILL;   stCell.font = leFont   }
-            else if (d.issues.includes('no_checkout') || d.issues.includes('no_checkin')) { stCell.fill = NOCHK_FILL; stCell.font = noChkFont }
-            // Color excuse cell
-            const exCell = dr.getCell('excuse')
-            if      (d.excuse?.status === 'approved' || d.excused) { exCell.fill = EXC_FILL;  exCell.font = excFont  }
-            else if (d.excuse_pending)                              { exCell.fill = PEND_FILL; exCell.font = pendFont }
-            else if (d.excuse?.status === 'rejected')              { exCell.fill = REJ_FILL;  exCell.font = rejFont  }
-            detRi++
+          const dr = ws.addRow([
+            r.name, hariStr, d.date,
+            expIn + ':00', expOut + ':00',
+            scanIn, scanOut,
+            lateTxt, leTxt, jamKerjaTxt,
+            '-', keterangan, kehadiranTxt,
+          ])
+          dr.height = 18
+
+          const baseFill = ri % 2 === 0 ? WHITE_FILL : ALT_FILL
+          dr.eachCell({ includeEmpty: true }, cell => {
+            cell.border    = cellBorder
+            cell.alignment = { vertical: 'middle' }
+            cell.fill      = baseFill
+            cell.font      = { size: 10 }
           })
-        })
+
+          // Row highlight by status — applied BEFORE keterangan override
+          const isHolidayRow = d.status === 'holiday'
+          const isDayOffRow  = d.status === 'dayoff' || d.status === 'off'
+          let rowFill = null
+          let rowFont = null
+          const ket = keterangan
+          if (isHolidayRow)                                          { rowFill = HOL_FILL; rowFont = HOL_FONT }
+          else if (isDayOffRow)                                       { rowFill = OFF_FILL; rowFont = OFF_FONT }
+          else if (d.issues?.includes('absent'))                      rowFill = ABS_FILL
+          else if (d.issues?.includes('late'))                        rowFill = LATE_FILL
+          else if (d.issues?.includes('leave_early'))                 rowFill = LE_FILL
+          if (rowFill) dr.eachCell({ includeEmpty: true }, cell => { cell.fill = rowFill; if (rowFont) cell.font = rowFont })
+
+          // Keterangan cell special colour by excuse status (only for work days)
+          if (!isHolidayRow && !isDayOffRow) {
+            const ketCell = dr.getCell('keterangan')
+            if      (d.excuse?.status === 'approved' || d.excused) { ketCell.fill = APPR_FILL; ketCell.font = { size:10, color:{ argb:'FF065F46' } } }
+            else if (d.excuse_pending)                              { ketCell.fill = PEND_FILL; ketCell.font = { size:10, color:{ argb:'FF854D0E' } } }
+            else if (d.excuse?.status === 'rejected')               { ketCell.fill = REJ_FILL;  ketCell.font = { size:10, color:{ argb:'FF991B1B' } } }
+          }
+
+          // Bold terlambat when actually late
+          if (lateMins > 0) dr.getCell('terlambat').font = { bold:true, size:10, color:{ argb:'FF92400E' } }
+
+          // Center time columns
+          ;['hari','tanggal','jamMasuk','jamKeluar','scanMasuk','scanPulang','terlambat','pulangCepat','jamKerja','lembur','kehadiran']
+            .forEach(k => { dr.getCell(k).alignment = { horizontal:'center', vertical:'middle' } })
+
+          ri++
+        }
       }
     }
 
     const buffer = await wb.xlsx.writeBuffer()
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `Rekap_Absensi_${report.range.start}_sd_${report.range.end}.xlsx`
+    const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url    = URL.createObjectURL(blob)
+    const a      = document.createElement('a')
+    a.href       = url
+    a.download   = `Presensi_${monthLabel.replace(' ', '_')}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   }
