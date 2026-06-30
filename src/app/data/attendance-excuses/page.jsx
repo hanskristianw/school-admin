@@ -16,12 +16,25 @@ const CATEGORIES_LATE_LEAVE_EARLY = [
 ]
 
 const CATEGORIES_ABSENT = [
-  { value: 'sick_no_letter',    label: 'Sick without letter (unpaid personal leave)' },
-  { value: 'sick_with_letter',  label: 'Sick with letter & diagnosis (upload required)', requireUpload: true },
-  { value: 'unpaid_leave',      label: 'Unpaid Personal Leave' },
-  { value: 'annual_leave',      label: 'Annual Leave' },
-  { value: 'school_duty',       label: 'School Duty — Training / Workshop / IB Trainer / Examiner (upload required)', requireUpload: true },
-  { value: 'other',             label: 'Other' },
+  // Sakit
+  { value: 'sick_no_letter',      label: 'Sick without letter (unpaid personal leave)' },
+  { value: 'sick_with_letter',    label: 'Sick with letter & diagnosis from doctor', requireUpload: true, uploadLabel: 'Upload surat dokter (wajib)' },
+  // Cuti keluarga
+  { value: 'marriage_employee',   label: "Employee's marriage leave (max 3 days)", requireUpload: true, uploadLabel: 'Upload undangan pernikahan' },
+  { value: 'marriage_child',      label: "Employee's child(ren) marriage (max 2 days)", requireUpload: true, uploadLabel: 'Upload undangan pernikahan anak' },
+  { value: 'bereavement_core',    label: 'Bereavement — father/mother/spouse/child/parent-in-law/son or daughter-in-law (max 2 days)' },
+  { value: 'bereavement_sibling', label: 'Bereavement — sibling by blood (same house, max 1 day)' },
+  { value: 'childbirth',          label: "Wife gives birth or miscarriage (max 2 days)" },
+  { value: 'circumcision_child',  label: "Circumcise employee's child (max 2 days)" },
+  { value: 'baptism_child',       label: "Baptize employee's child (max 2 days)" },
+  // Tugas / diklat
+  { value: 'ib_trainer',          label: 'Official IB Trainer / Examiner (days per assignment letter)', requireUpload: true, uploadLabel: 'Upload IB assignment letter' },
+  { value: 'school_duty',         label: 'School Duty — Training / Workshop', requireUpload: true, uploadLabel: 'Upload surat tugas / undangan' },
+  // Cuti tahunan
+  { value: 'annual_leave',        label: 'Annual Leave (12 days — eligible staff)' },
+  // Tanpa bayar
+  { value: 'unpaid_leave',        label: 'Unpaid Personal Leave' },
+  { value: 'other',               label: 'Other' },
 ]
 
 const CATEGORIES_NO_SCAN = [
@@ -166,22 +179,31 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
       onClick={handleBackdrop}
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
         padding: '16px',
+        overflowY: 'auto',
       }}
     >
       <div style={{
         background: theme.cardBg,
         borderRadius: '16px',
-        padding: '24px',
         width: '100%',
-        maxWidth: '440px',
+        maxWidth: '460px',
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
         border: `1px solid ${theme.border}`,
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: 'calc(100vh - 32px)',
+        marginTop: 'auto',
+        marginBottom: 'auto',
+        alignSelf: 'center',
       }}>
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        {/* Header — fixed, tidak scroll */}
+        <div className="flex items-start justify-between"
+          style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: theme.textPrimary }}>
               📝 Surat Keterangan
@@ -195,6 +217,8 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
             style={{ color: theme.textSecondary }}>×</button>
         </div>
 
+        {/* Scrollable body */}
+        <div style={{ overflowY: 'auto', padding: '16px 24px', flex: 1 }}>
         {/* Record info */}
         <div className="rounded-xl p-3 mb-4 space-y-1.5"
           style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
@@ -250,11 +274,11 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
           </div>
         </div>
 
-        {/* Upload attachment — for sick_with_letter and school_duty */}
+        {/* Upload attachment */}
         {requireUpload && (
           <div className="mb-3">
             <label className="text-xs font-medium block mb-1.5" style={{ color: theme.textSecondary }}>
-              Upload Dokumen <span style={{ color: '#ef4444' }}>*</span>
+              {selectedCat?.uploadLabel || 'Upload Dokumen'} <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <div className="flex items-center gap-2">
               <label className="flex-1 cursor-pointer">
@@ -297,9 +321,11 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
             background: '#fef2f2', color: '#991b1b',
           }}>{msg}</div>
         )}
+        </div>{/* end scrollable body */}
 
-        {/* Buttons */}
-        <div className="flex gap-2">
+        {/* Footer buttons — fixed, tidak scroll */}
+        <div className="flex gap-2"
+          style={{ padding: '12px 24px 20px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
           <button onClick={onClose}
             className="px-4 py-2.5 rounded-lg text-sm font-medium flex-1"
             style={{ background: theme.subtleBg, color: theme.textSecondary }}>

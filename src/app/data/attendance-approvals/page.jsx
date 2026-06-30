@@ -10,12 +10,23 @@ const CATEGORY_LABEL = {
   traffic_jam:           'Traffic Jam / Transportation Issue',
   sick:                  'Sick / Unwell',
   family_personal:       'Family / Personal Matter',
-  // Absent
-  sick_no_letter:        'Sick without letter',
-  sick_with_letter:      'Sick with letter & diagnosis',
+  // Absent — Sakit
+  sick_no_letter:        'Sick without letter (unpaid)',
+  sick_with_letter:      'Sick with letter & diagnosis from doctor',
+  // Absent — Cuti keluarga
+  marriage_employee:     "Employee's marriage leave (max 3 days)",
+  marriage_child:        "Employee's child(ren) marriage (max 2 days)",
+  bereavement_core:      'Bereavement — immediate family (max 2 days)',
+  bereavement_sibling:   'Bereavement — sibling by blood, same house (max 1 day)',
+  childbirth:            "Wife gives birth or miscarriage (max 2 days)",
+  circumcision_child:    "Circumcise employee's child (max 2 days)",
+  baptism_child:         "Baptize employee's child (max 2 days)",
+  // Absent — Tugas / diklat
+  ib_trainer:            'Official IB Trainer / Examiner',
+  school_duty:           'School Duty — Training / Workshop',
+  // Absent — Cuti
+  annual_leave:          'Annual Leave (12 days)',
   unpaid_leave:          'Unpaid Personal Leave',
-  annual_leave:          'Annual Leave',
-  school_duty:           'School Duty (Training/Workshop/IB)',
   // No scan
   forgot_scan:           'Forgot to check in/out',
   scanned_not_recorded:  'Already scanned but not recorded',
