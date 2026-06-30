@@ -336,7 +336,15 @@ export default function AttendanceReportPage() {
                           }}
                         >
                           <td className="px-3 py-3 font-medium" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>
-                            {row.name}
+                            <div className="flex items-center gap-2">
+                              <span>{row.name}</span>
+                              {row.user_pin && (
+                                <span className="text-xs px-1.5 py-0.5 rounded font-mono"
+                                  style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+                                  {row.user_pin}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-3 text-xs" style={{ color: theme.textSecondary }}>{row.role_name}</td>
                           <td className="px-3 py-3 text-xs" style={{ color: theme.textSecondary }}>{row.unit_name}</td>

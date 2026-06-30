@@ -8,14 +8,12 @@ const supabaseAdmin = createClient(
 
 const EXCUSE_SELECT = `
   id, user_id, excuse_type, attendance_date, late_minutes,
-  category, other_reason, status,
+  category, other_reason, attachment_url, status,
   approver1_id, approver2_id,
   approver1_action, approver1_note, approver1_at,
   approver2_action, approver2_note, approver2_at,
   created_at, updated_at,
-  submitter:user_id (user_id, user_nama_depan, user_nama_belakang, user_unit_id,
-    unit:user_unit_id (unit_name)
-  ),
+  submitter:user_id (user_id, user_nama_depan, user_nama_belakang, user_unit_id),
   approver1:approver1_id (user_id, user_nama_depan, user_nama_belakang),
   approver2:approver2_id (user_id, user_nama_depan, user_nama_belakang)
 `
@@ -78,7 +76,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { user_id, excuse_type, attendance_date, late_minutes, category, other_reason } = body
+    const { user_id, excuse_type, attendance_date, late_minutes, category, other_reason, attachment_url } = body
 
     if (!user_id)        return NextResponse.json({ success: false, message: 'user_id wajib diisi' }, { status: 400 })
     if (!attendance_date) return NextResponse.json({ success: false, message: 'attendance_date wajib diisi' }, { status: 400 })
@@ -116,6 +114,7 @@ export async function POST(request) {
       late_minutes: late_minutes || null,
       category,
       other_reason: category === 'other' ? other_reason.trim() : null,
+      attachment_url: attachment_url || null,
       approver1_id: roleApprover.approver1_id,
       approver2_id: roleApprover.approver2_id,
       status: 'pending',

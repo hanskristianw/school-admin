@@ -6,16 +6,40 @@ import { useTheme } from '@/lib/theme'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const CATEGORIES = [
+// Categories per excuse/issue type
+const CATEGORIES_LATE_LEAVE_EARLY = [
   { value: 'woke_up_late',    label: 'Woke Up Late' },
-  { value: 'traffic_jam',     label: 'Traffic Jam' },
+  { value: 'traffic_jam',     label: 'Traffic Jam / Transportation Issue' },
   { value: 'sick',            label: 'Sick / Unwell' },
-  { value: 'education',       label: 'Education' },
   { value: 'family_personal', label: 'Family / Personal Matter' },
   { value: 'other',           label: 'Other' },
 ]
 
-const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label]))
+const CATEGORIES_ABSENT = [
+  { value: 'sick_no_letter',    label: 'Sick without letter (unpaid personal leave)' },
+  { value: 'sick_with_letter',  label: 'Sick with letter & diagnosis (upload required)', requireUpload: true },
+  { value: 'unpaid_leave',      label: 'Unpaid Personal Leave' },
+  { value: 'annual_leave',      label: 'Annual Leave' },
+  { value: 'school_duty',       label: 'School Duty — Training / Workshop / IB Trainer / Examiner (upload required)', requireUpload: true },
+  { value: 'other',             label: 'Other' },
+]
+
+const CATEGORIES_NO_SCAN = [
+  { value: 'forgot_scan',       label: 'Forgot to check in/out' },
+  { value: 'scanned_not_recorded', label: 'Already scanned but not recorded' },
+  { value: 'other',             label: 'Other' },
+]
+
+function getCategoriesForType(issueType) {
+  if (issueType === 'absent') return CATEGORIES_ABSENT
+  if (issueType === 'no_checkin' || issueType === 'no_checkout') return CATEGORIES_NO_SCAN
+  return CATEGORIES_LATE_LEAVE_EARLY
+}
+
+const ALL_CATEGORY_LABELS = Object.fromEntries(
+  [...CATEGORIES_LATE_LEAVE_EARLY, ...CATEGORIES_ABSENT, ...CATEGORIES_NO_SCAN]
+    .map(c => [c.value, c.label])
+)
 
 const STATUS_CONFIG = {
   pending:    { label: 'Menunggu Approver 1', color: '#92400e', bg: '#fef3c7', icon: '⏳' },
@@ -53,12 +77,22 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
   const [otherReason, setOtherReason] = useState('')
   const [submitting, setSubmitting]   = useState(false)
   const [msg, setMsg]                 = useState('')
+  const [uploadFile, setUploadFile]   = useState(null)
+  const [uploading, setUploading]     = useState(false)
 
   const issueType = record.issues?.includes('late')
     ? 'late'
     : record.issues?.includes('leave_early')
       ? 'leave_early'
-      : 'absent'
+      : record.issues?.includes('absent')
+        ? 'absent'
+        : record.issues?.includes('no_checkin')
+          ? 'no_checkin'
+          : 'no_checkout'
+
+  const categories = getCategoriesForType(issueType)
+  const selectedCat = categories.find(c => c.value === category)
+  const requireUpload = selectedCat?.requireUpload || false
 
   const duration = issueType === 'late'
     ? record.late_minutes
@@ -66,13 +100,31 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
       ? record.leave_early_minutes
       : null
 
-  const ic = ISSUE_CONFIG[issueType] || ISSUE_CONFIG.late
+  const ic = ISSUE_CONFIG[issueType] || ISSUE_CONFIG.absent
+
+  const uploadAttachment = async () => {
+    if (!uploadFile) return null
+    const formData = new FormData()
+    formData.append('file', uploadFile)
+    setUploading(true)
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.message || 'Upload gagal')
+      return json.url
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!category) { setMsg('❌ Pilih kategori alasan'); return }
     if (category === 'other' && !otherReason.trim()) { setMsg('❌ Isi keterangan untuk Other'); return }
+    if (requireUpload && !uploadFile) { setMsg('❌ Upload file wajib untuk kategori ini'); return }
     setSubmitting(true); setMsg('')
     try {
+      let attachmentUrl = null
+      if (uploadFile) attachmentUrl = await uploadAttachment()
       const res = await fetch('/api/attendance/excuses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,6 +135,7 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
           late_minutes:    duration || null,
           category,
           other_reason:    category === 'other' ? otherReason.trim() : null,
+          attachment_url:  attachmentUrl,
         }),
       })
       const json = await res.json()
@@ -173,9 +226,9 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
             Penyebab <span style={{ color: '#ef4444' }}>*</span>
           </label>
           <div className="space-y-1.5">
-            {CATEGORIES.map(c => (
+            {categories.map(c => (
               <label key={c.value}
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer"
+                className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer"
                 style={{
                   background: category === c.value
                     ? (theme.blueText ? `${theme.blueText}18` : '#eff6ff')
@@ -184,13 +237,45 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
                 }}>
                 <input type="radio" name="category" value={c.value}
                   checked={category === c.value}
-                  onChange={() => setCategory(c.value)}
-                  style={{ accentColor: theme.blueText || '#2563eb' }} />
-                <span className="text-sm" style={{ color: theme.textBody }}>{c.label}</span>
+                  onChange={() => { setCategory(c.value); setUploadFile(null) }}
+                  style={{ accentColor: theme.blueText || '#2563eb', marginTop: '2px', flexShrink: 0 }} />
+                <div>
+                  <span className="text-sm" style={{ color: theme.textBody }}>{c.label}</span>
+                  {c.requireUpload && (
+                    <span className="text-xs ml-1 px-1.5 py-0.5 rounded" style={{ background: '#fef3c7', color: '#92400e' }}>📎 wajib</span>
+                  )}
+                </div>
               </label>
             ))}
           </div>
         </div>
+
+        {/* Upload attachment — for sick_with_letter and school_duty */}
+        {requireUpload && (
+          <div className="mb-3">
+            <label className="text-xs font-medium block mb-1.5" style={{ color: theme.textSecondary }}>
+              Upload Dokumen <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="flex-1 cursor-pointer">
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
+                  style={{ border: `1px dashed ${theme.border}`, background: theme.subtleBg }}>
+                  <span className="text-lg">📎</span>
+                  <span className="text-xs" style={{ color: theme.textSecondary }}>
+                    {uploadFile ? uploadFile.name : 'Klik untuk pilih file (PDF, JPG, PNG)'}
+                  </span>
+                </div>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+                  onChange={e => setUploadFile(e.target.files[0] || null)} />
+              </label>
+              {uploadFile && (
+                <button onClick={() => setUploadFile(null)}
+                  className="text-xs px-2 py-1 rounded"
+                  style={{ background: '#fee2e2', color: '#991b1b' }}>✕</button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Other reason */}
         {category === 'other' && (
@@ -228,7 +313,7 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
               color: '#fff',
               opacity: submitting ? 0.7 : 1,
             }}>
-            {submitting ? 'Mengajukan...' : 'Ajukan Surat Keterangan'}
+            {submitting ? (uploading ? 'Mengupload...' : 'Mengajukan...') : 'Ajukan Surat Keterangan'}
           </button>
         </div>
       </div>

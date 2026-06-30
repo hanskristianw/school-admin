@@ -257,6 +257,7 @@ export async function GET(request) {
       const summary = {
         user_id:    user.user_id,
         name:       `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim(),
+        user_pin:   user.user_pin || null,
         unit_id:    user.user_unit_id,
         unit_name:  unitMap[String(user.user_unit_id)] || '—',
         role_name:  user.role?.role_name || '—',
