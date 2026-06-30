@@ -39,7 +39,8 @@ export default function UserManagement() {
     is_active: true,
     user_pin: '',
     expected_check_in: '',
-    expected_check_out: ''
+    expected_check_out: '',
+    join_date: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -621,6 +622,7 @@ export default function UserManagement() {
           user_pin: user.user_pin || null,
           expected_check_in: user.expected_check_in || null,
           expected_check_out: user.expected_check_out || null,
+          join_date: user.join_date || null,
           role_name: role?.role_name || '',
           is_admin: role?.is_admin || false,
           unit_name: unit?.unit_name || '',
@@ -762,9 +764,11 @@ export default function UserManagement() {
         baseData.user_tanggal_lahir = null;
       }
 
-      // Convert empty time strings to null (PostgreSQL rejects empty string for type time)
+      // Convert empty time strings to null
       if (!baseData.expected_check_in) baseData.expected_check_in = null;
       if (!baseData.expected_check_out) baseData.expected_check_out = null;
+      // Convert empty join_date to null
+      if (!baseData.join_date) baseData.join_date = null;
 
       // user_pin has UNIQUE constraint — convert empty string to null so multiple
       // users without a PIN don't trigger "duplicate key value violates unique constraint"
@@ -842,7 +846,8 @@ export default function UserManagement() {
       is_active: user.is_active,
       user_pin: user.user_pin || '',
       expected_check_in:  user.expected_check_in  ? user.expected_check_in.slice(0, 5)  : '',
-      expected_check_out: user.expected_check_out ? user.expected_check_out.slice(0, 5) : ''
+      expected_check_out: user.expected_check_out ? user.expected_check_out.slice(0, 5) : '',
+      join_date: user.join_date || ''
     });
     setImageFile(null);
     setSignatureBlob(null);
@@ -866,7 +871,8 @@ export default function UserManagement() {
       is_active: true,
       user_pin: '',
       expected_check_in: '',
-      expected_check_out: ''
+      expected_check_out: '',
+      join_date: ''
     });
     setImageFile(null);
     setTempImageSrc(null);
@@ -1223,6 +1229,29 @@ export default function UserManagement() {
                   <Input type="time" name="expected_check_out" value={formData.expected_check_out || ''} onChange={handleInputChange} disabled={submitting} style={inputStyle} />
                 </div>
               </div>
+            </div>
+
+            {/* Join Date */}
+            <div className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>📅 Tanggal Bergabung <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>(opsional)</span></p>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+                  Karyawan tidak akan dihitung absen sebelum tanggal ini. Kosongkan jika sudah lama bergabung.
+                </p>
+              </div>
+              <Input
+                type="date"
+                name="join_date"
+                value={formData.join_date || ''}
+                onChange={handleInputChange}
+                disabled={submitting}
+                style={inputStyle}
+              />
+              {formData.join_date && (
+                <p className="text-xs" style={{ color: theme.greenText }}>
+                  ✓ Mulai dihitung absen dari: {formData.join_date}
+                </p>
+              )}
             </div>
           </div>
           )}

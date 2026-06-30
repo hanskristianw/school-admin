@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/theme'
+import { supabase } from '@/lib/supabase'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-// Categories per excuse/issue type
-const CATEGORIES_LATE_LEAVE_EARLY = [
+// Fallback statis jika DB belum load
+const CATEGORIES_LATE_LEAVE_EARLY_STATIC = [
   { value: 'woke_up_late',    label: 'Woke Up Late' },
   { value: 'traffic_jam',     label: 'Traffic Jam / Transportation Issue' },
   { value: 'sick',            label: 'Sick / Unwell' },
@@ -15,44 +16,35 @@ const CATEGORIES_LATE_LEAVE_EARLY = [
   { value: 'other',           label: 'Other' },
 ]
 
-const CATEGORIES_ABSENT = [
-  // Sakit
-  { value: 'sick_no_letter',      label: 'Sick without letter (unpaid personal leave)' },
-  { value: 'sick_with_letter',    label: 'Sick with letter & diagnosis from doctor', requireUpload: true, uploadLabel: 'Upload surat dokter (wajib)' },
-  // Cuti keluarga
-  { value: 'marriage_employee',   label: "Employee's marriage leave (max 3 days)", requireUpload: true, uploadLabel: 'Upload undangan pernikahan' },
-  { value: 'marriage_child',      label: "Employee's child(ren) marriage (max 2 days)", requireUpload: true, uploadLabel: 'Upload undangan pernikahan anak' },
-  { value: 'bereavement_core',    label: 'Bereavement — father/mother/spouse/child/parent-in-law/son or daughter-in-law (max 2 days)' },
-  { value: 'bereavement_sibling', label: 'Bereavement — sibling by blood (same house, max 1 day)' },
-  { value: 'childbirth',          label: "Wife gives birth or miscarriage (max 2 days)" },
-  { value: 'circumcision_child',  label: "Circumcise employee's child (max 2 days)" },
-  { value: 'baptism_child',       label: "Baptize employee's child (max 2 days)" },
-  // Tugas / diklat
-  { value: 'ib_trainer',          label: 'Official IB Trainer / Examiner (days per assignment letter)', requireUpload: true, uploadLabel: 'Upload IB assignment letter' },
-  { value: 'school_duty',         label: 'School Duty — Training / Workshop', requireUpload: true, uploadLabel: 'Upload surat tugas / undangan' },
-  // Cuti tahunan
-  { value: 'annual_leave',        label: 'Annual Leave (12 days — eligible staff)' },
-  // Tanpa bayar
-  { value: 'unpaid_leave',        label: 'Unpaid Personal Leave' },
-  { value: 'other',               label: 'Other' },
-]
-
-const CATEGORIES_NO_SCAN = [
-  { value: 'forgot_scan',       label: 'Forgot to check in/out' },
+const CATEGORIES_NO_SCAN_STATIC = [
+  { value: 'forgot_scan',          label: 'Forgot to check in/out' },
   { value: 'scanned_not_recorded', label: 'Already scanned but not recorded' },
-  { value: 'other',             label: 'Other' },
+  { value: 'other',                label: 'Other' },
 ]
 
-function getCategoriesForType(issueType) {
-  if (issueType === 'absent') return CATEGORIES_ABSENT
-  if (issueType === 'no_checkin' || issueType === 'no_checkout') return CATEGORIES_NO_SCAN
-  return CATEGORIES_LATE_LEAVE_EARLY
+// Konversi record dari leave_types DB ke format {value, label, requireUpload, uploadLabel}
+function dbToCategory(lt) {
+  return {
+    value:       lt.code,
+    label:       lt.name_en,
+    requireUpload: lt.requires_upload || false,
+    uploadLabel: lt.upload_label || '',
+    max_days:    lt.max_days || null,
+    deduct_quota: lt.deduct_quota || false,
+  }
 }
 
-const ALL_CATEGORY_LABELS = Object.fromEntries(
-  [...CATEGORIES_LATE_LEAVE_EARLY, ...CATEGORIES_ABSENT, ...CATEGORIES_NO_SCAN]
-    .map(c => [c.value, c.label])
-)
+function getCategoriesForType(issueType, leaveTypes) {
+  if (!leaveTypes?.length) {
+    if (issueType === 'absent') return []
+    if (issueType === 'no_checkin' || issueType === 'no_checkout') return CATEGORIES_NO_SCAN_STATIC
+    return CATEGORIES_LATE_LEAVE_EARLY_STATIC
+  }
+  return leaveTypes
+    .filter(lt => lt.is_active && lt.issue_types?.includes(issueType))
+    .map(dbToCategory)
+}
+
 
 const STATUS_CONFIG = {
   pending:    { label: 'Menunggu Approver 1', color: '#92400e', bg: '#fef3c7', icon: '⏳' },
@@ -62,10 +54,11 @@ const STATUS_CONFIG = {
 }
 
 const ISSUE_CONFIG = {
-  late:        { label: 'Terlambat',     color: '#92400e', bg: '#fef3c7', icon: '🕐' },
-  leave_early: { label: 'Pulang Awal',   color: '#9a3412', bg: '#ffedd5', icon: '🚪' },
-  absent:      { label: 'Tidak Masuk',   color: '#6b21a8', bg: '#f3e8ff', icon: '❌' },
-  no_checkout: { label: 'Tidak Checkout',color: '#1e40af', bg: '#dbeafe', icon: '⚠️' },
+  late:        { label: 'Terlambat',      color: '#92400e', bg: '#fef3c7', icon: '🕐' },
+  leave_early: { label: 'Pulang Awal',    color: '#9a3412', bg: '#ffedd5', icon: '🚪' },
+  absent:      { label: 'Tidak Masuk',    color: '#6b21a8', bg: '#f3e8ff', icon: '❌' },
+  no_checkout: { label: 'Tidak Check-Out',color: '#1e40af', bg: '#dbeafe', icon: '⚠️' },
+  no_checkin:  { label: 'Tidak Check-In', color: '#9d174d', bg: '#fce7f3', icon: '🔴' },
 }
 
 function fmtMins(m) {
@@ -84,7 +77,7 @@ function monthEnd(ym) {
 
 // ─── Excuse Modal ────────────────────────────────────────────────────────────
 
-function ExcuseModal({ record, userId, onClose, onSuccess }) {
+function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
   const { theme } = useTheme()
   const [category, setCategory]       = useState('')
   const [otherReason, setOtherReason] = useState('')
@@ -103,7 +96,7 @@ function ExcuseModal({ record, userId, onClose, onSuccess }) {
           ? 'no_checkin'
           : 'no_checkout'
 
-  const categories = getCategoriesForType(issueType)
+  const categories = getCategoriesForType(issueType, leaveTypes)
   const selectedCat = categories.find(c => c.value === category)
   const requireUpload = selectedCat?.requireUpload || false
 
@@ -360,6 +353,13 @@ export default function AttendanceExcusesPage() {
   const [loading, setLoading]         = useState(false)
   const [modalRecord, setModalRecord] = useState(null)
   const [successDate, setSuccessDate] = useState(null)
+  const [leaveTypes, setLeaveTypes]   = useState([])  // from DB
+
+  // Fetch leave types from DB on mount (for dynamic categories)
+  useEffect(() => {
+    supabase.from('leave_types').select('*').eq('is_active', true).order('sort_order')
+      .then(({ data }) => { if (data) setLeaveTypes(data) })
+  }, [])
 
   useEffect(() => {
     const id = localStorage.getItem('kr_id')
@@ -397,7 +397,7 @@ export default function AttendanceExcusesPage() {
         for (const user of (reportJson.data || [])) {
           for (const day of (user.daily || [])) {
             const hasIssue = day.issues?.some(i =>
-              ['late', 'leave_early', 'absent'].includes(i)
+              ['late', 'leave_early', 'absent', 'no_checkin', 'no_checkout'].includes(i)
             )
             if (hasIssue) rows.push(day)
           }
@@ -444,7 +444,7 @@ export default function AttendanceExcusesPage() {
             📝 Surat Keterangan Absensi
           </h1>
           <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>
-            Absensi bermasalah Anda — klik <strong>Ajukan</strong> untuk mengisi surat keterangan
+            Catatan kehadiran yang memerlukan keterangan — klik <strong>Ajukan</strong> untuk mengisi surat keterangan
           </p>
         </div>
 
@@ -497,7 +497,7 @@ export default function AttendanceExcusesPage() {
             const st     = excuse ? STATUS_CONFIG[excuse.status] : null
 
             // Determine primary issue for this day
-            const primaryIssue = ['late', 'leave_early', 'absent'].find(i =>
+            const primaryIssue = ['late', 'leave_early', 'absent', 'no_checkout', 'no_checkin'].find(i =>
               day.issues?.includes(i)
             )
             const ic = ISSUE_CONFIG[primaryIssue] || ISSUE_CONFIG.absent
@@ -580,6 +580,7 @@ export default function AttendanceExcusesPage() {
         <ExcuseModal
           record={modalRecord}
           userId={userId}
+          leaveTypes={leaveTypes}
           onClose={() => setModalRecord(null)}
           onSuccess={handleModalSuccess}
         />

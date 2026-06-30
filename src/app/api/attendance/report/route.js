@@ -163,11 +163,14 @@ export async function GET(request) {
       .select(`
         user_id, user_nama_depan, user_nama_belakang,
         user_unit_id, user_role_id, user_pin,
-        expected_check_in, expected_check_out,
+        expected_check_in, expected_check_out, join_date,
         role:user_role_id (role_name, work_days)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
+      // Hanya tampilkan user yang sudah bergabung sebelum atau pada akhir period laporan
+      // (join_date NULL = tidak ada batasan)
+      .or(`join_date.is.null,join_date.lte.${end}`)
 
     if (unitId)     userQuery = userQuery.eq('user_unit_id', parseInt(unitId, 10))
     if (roleId)     userQuery = userQuery.eq('user_role_id', parseInt(roleId, 10))
@@ -288,6 +291,9 @@ export async function GET(request) {
           isWorkDay = workDays.includes(dayNum) && !isHoliday(dateStr, user.user_role_id)
         }
         if (!isWorkDay) continue
+
+        // ── Filter join_date: skip hari sebelum tanggal masuk karyawan ─────
+        if (user.join_date && dateStr < user.join_date) continue
 
         // Jam masuk/keluar: pakai custom dari special rule jika ada, atau default user/role
         const effIn  = (specialRule?.custom_check_in  ? String(specialRule.custom_check_in).slice(0,5)  : null) || expectedIn

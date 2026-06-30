@@ -62,11 +62,32 @@ export async function PATCH(request, { params }) {
 
     if (excuse.status === 'pending' && excuse.approver1_id === aid) {
       // Approver 1's turn
-      updates = {
-        approver1_action: action,
-        approver1_note:   note?.trim() || null,
-        approver1_at:     new Date().toISOString(),
-        status:           action === 'approved' ? 'approved_1' : 'rejected',
+      const hasApprover2 = !!excuse.approver2_id
+
+      if (action === 'approved' && hasApprover2) {
+        // Dua approver: lanjut ke step 2
+        updates = {
+          approver1_action: 'approved',
+          approver1_note:   note?.trim() || null,
+          approver1_at:     new Date().toISOString(),
+          status:           'approved_1',
+        }
+      } else if (action === 'approved' && !hasApprover2) {
+        // Satu approver saja: langsung approved
+        updates = {
+          approver1_action: 'approved',
+          approver1_note:   note?.trim() || null,
+          approver1_at:     new Date().toISOString(),
+          status:           'approved',
+        }
+      } else {
+        // Ditolak (oleh siapapun)
+        updates = {
+          approver1_action: 'rejected',
+          approver1_note:   note?.trim() || null,
+          approver1_at:     new Date().toISOString(),
+          status:           'rejected',
+        }
       }
     } else if (excuse.status === 'approved_1' && excuse.approver2_id === aid) {
       // Approver 2's turn

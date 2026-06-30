@@ -278,15 +278,24 @@ export default function AttendanceApprovalsPage() {
                       {e.approver1_action === 'rejected' && ' ✗'}
                     </span>
                   </div>
-                  <span style={{ color: theme.border }}>→</span>
-                  <div className="flex items-center gap-1">
-                    <span style={{ color: theme.textSecondary }}>A2:</span>
-                    <span style={{ color: e.approver2_action === 'approved' ? '#166534' : e.approver2_action === 'rejected' ? '#991b1b' : theme.textSecondary }}>
-                      {e.approver2?.user_nama_depan || '—'}
-                      {e.approver2_action === 'approved' && ' ✓'}
-                      {e.approver2_action === 'rejected' && ' ✗'}
+                  {e.approver2_id && (
+                    <>
+                      <span style={{ color: theme.border }}>→</span>
+                      <div className="flex items-center gap-1">
+                        <span style={{ color: theme.textSecondary }}>A2:</span>
+                        <span style={{ color: e.approver2_action === 'approved' ? '#166534' : e.approver2_action === 'rejected' ? '#991b1b' : theme.textSecondary }}>
+                          {e.approver2?.user_nama_depan || '—'}
+                          {e.approver2_action === 'approved' && ' ✓'}
+                          {e.approver2_action === 'rejected' && ' ✗'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {!e.approver2_id && (
+                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#f3f4f6', color: '#6b7280' }}>
+                      1 Approver
                     </span>
-                  </div>
+                  )}
                 </div>
 
                 {/* Action panel (only if pending for me) */}
