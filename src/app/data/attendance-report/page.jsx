@@ -41,12 +41,27 @@ export default function AttendanceReportPage() {
   const { theme } = useTheme()
 
   // Filters
-  const [dateStart, setDateStart] = useState(getMonthStart())
-  const [dateEnd,   setDateEnd]   = useState(getToday())
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  )
+  const [graceMin,  setGraceMin]  = useState(0)
   const [units,     setUnits]     = useState([])
   const [roles,     setRoles]     = useState([])
-  const [graceMin,  setGraceMin]  = useState(0)
   const [activeTab, setActiveTab] = useState('all') // unit_id | 'all'
+
+  // Derived date range from selectedMonth
+  const dateStart = `${selectedMonth}-01`
+  const dateEnd   = (() => {
+    const [y, m] = selectedMonth.split('-').map(Number)
+    const lastDay = new Date(y, m, 0).getDate()
+    return `${selectedMonth}-${String(lastDay).padStart(2, '0')}`
+  })()
+
+  // Month label — computed at component scope so all export functions can use it
+  const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
+  const [mYear, mMonth] = selectedMonth.split('-').map(Number)
+  const monthLabel = `${MONTHS_ID[mMonth - 1]} ${mYear}`
 
   // Data
   const [report,   setReport]   = useState(null)  // { data, dates, range }
@@ -179,10 +194,6 @@ export default function AttendanceReportPage() {
       return ''
     }
 
-    // ── Month label ────────────────────────────────────────────────────────
-    const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
-    const startDate  = new Date(report.range.start)
-    const monthLabel = `${MONTHS_ID[startDate.getMonth()]} ${startDate.getFullYear()}`
 
     const COLS = [
       { key:'nama',       width:28 },
@@ -209,15 +220,16 @@ export default function AttendanceReportPage() {
     wb.creator = 'Chung Chung Christian School'
     wb.created = new Date()
 
-    // unit sheets first, All last
-    const unitList = units.filter(u => allRows.some(r => r.unit_id === u.unit_id))
+    // unit sheets first, All last — exclude vendor employees
+    const nonVendorRows = allRows.filter(r => !r.is_vendor)
+    const unitList = units.filter(u => nonVendorRows.some(r => r.unit_id === u.unit_id))
     const sheetDefs = [
       ...unitList.map(u => ({ uid: u.unit_id, name: u.unit_name })),
       { uid: 'all', name: 'All' },
     ]
 
     for (const { uid, name } of sheetDefs) {
-      const rows = uid === 'all' ? allRows : allRows.filter(r => r.unit_id === uid)
+      const rows = uid === 'all' ? nonVendorRows : nonVendorRows.filter(r => r.unit_id === uid)
       if (!rows.length) continue
 
       const ws = wb.addWorksheet(name.slice(0, 31))
@@ -322,9 +334,171 @@ export default function AttendanceReportPage() {
           ;['hari','tanggal','jamMasuk','jamKeluar','scanMasuk','scanPulang','terlambat','pulangCepat','jamKerja','lembur','kehadiran']
             .forEach(k => { dr.getCell(k).alignment = { horizontal:'center', vertical:'middle' } })
 
-          ri++
+        ri++
         }
       }
+    }
+
+    // ── Rekap Absensi Summary Sheet (always last) ─────────────────────────────
+    {
+      const REKAP_HDR_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }
+      const REKAP_SUB_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E75B6' } }
+      const REKAP_ALT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6E4F7' } }
+      const REKAP_WHT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
+      const REKAP_BORDER   = {
+        top: { style:'thin', color:{argb:'FFB8CCE4'} },
+        left: { style:'thin', color:{argb:'FFB8CCE4'} },
+        bottom: { style:'thin', color:{argb:'FFB8CCE4'} },
+        right: { style:'thin', color:{argb:'FFB8CCE4'} },
+      }
+
+      const sheetTitle = `Rekap Absensi ${monthLabel}`
+      const wsRekap = wb.addWorksheet(sheetTitle.slice(0, 31))
+
+      // Total days in the period
+      const periodeStart = new Date(report.range.start + 'T00:00:00')
+      const periodeEnd   = new Date(report.range.end   + 'T00:00:00')
+      const daysInPeriod = Math.round((periodeEnd - periodeStart) / 86400000) + 1
+
+      // Column widths
+      wsRekap.columns = [
+        { key:'no',           width: 5  },
+        { key:'nama',         width: 30 },
+        { key:'posisi',       width: 28 },
+        { key:'workingDay',   width: 13 },
+        { key:'dayOff',       width: 10 },
+        { key:'daysInMonth',  width: 16 },
+        { key:'late',         width: 16 },
+        { key:'absent',       width: 14 },
+        { key:'leaveEarly',   width: 13 },
+        { key:'annualLeave',  width: 14 },
+        { key:'remarks',      width: 16 },
+      ]
+
+      // ── Title rows ──────────────────────────────────────────────────────────
+      wsRekap.addRow([])
+      wsRekap.addRow(['Chung Chung Christian School'])
+      wsRekap.mergeCells('A2:K2')
+      const rTitleCell = wsRekap.getCell('A2')
+      rTitleCell.value     = 'Chung Chung Christian School'
+      rTitleCell.font      = { bold: true, size: 16, color: { argb: 'FF1F4E79' } }
+      rTitleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+      wsRekap.getRow(2).height = 28
+
+      wsRekap.addRow([sheetTitle])
+      wsRekap.mergeCells('A3:K3')
+      const rSubCell = wsRekap.getCell('A3')
+      rSubCell.value     = sheetTitle
+      rSubCell.font      = { bold: true, size: 13, color: { argb: 'FF374151' } }
+      rSubCell.alignment = { horizontal: 'center', vertical: 'middle' }
+      wsRekap.getRow(3).height = 22
+
+      wsRekap.addRow([])
+
+      // ── Merged header row 5 ─────────────────────────────────────────────────
+      wsRekap.addRow(['No', "Employee's Name", 'Position', '', '', '', 'Summary', '', '', '', 'Remarks'])
+      wsRekap.mergeCells('D5:F5')   // Summary label spans D-F (Working Day, Day Off, Days in Month)
+      wsRekap.mergeCells('G5:J5')   // Summary spans Late, Absent, Leave Early, Annual Leave
+      const hdr5 = wsRekap.getRow(5)
+      hdr5.height = 24
+      // merge No, Name, Position across rows 5-6 will be done via mergeCells below
+
+      // ── Sub-header row 6 ───────────────────────────────────────────────────
+      wsRekap.addRow(['', '', '', 'Working Day', 'Day Off', 'Days in a Month', 'Late (minutes)', 'Absent (Day)', 'Leave Early', 'Annual Leave', ''])
+      const hdr6 = wsRekap.getRow(6)
+      hdr6.height = 28
+
+      // Merge row 5-6 for No, Name, Position, Remarks
+      wsRekap.mergeCells('A5:A6')
+      wsRekap.mergeCells('B5:B6')
+      wsRekap.mergeCells('C5:C6')
+      wsRekap.mergeCells('K5:K6')
+
+      // Style row 5
+      hdr5.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        cell.fill      = REKAP_HDR_FILL
+        cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+        cell.border    = REKAP_BORDER
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+      })
+      // Style row 6
+      hdr6.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        cell.fill      = REKAP_SUB_FILL
+        cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+        cell.border    = REKAP_BORDER
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+      })
+
+      wsRekap.views = [{ state: 'frozen', ySplit: 6 }]
+
+      // ── Data rows ──────────────────────────────────────────────────────────
+      const sortedRows = [...allRows].sort((a, b) => {
+        if (a.unit_name !== b.unit_name) return a.unit_name.localeCompare(b.unit_name)
+        return a.name.localeCompare(b.name)
+      })
+
+      sortedRows.forEach((r, idx) => {
+        const workDays   = r.work_days_in_range || 0
+        const dayOff     = daysInPeriod - workDays
+        const lateMins   = r.late_minutes_total || 0
+        const leMins     = r.leave_early_minutes_total || 0
+        const absentDays = r.absent_count || 0
+
+        // Annual leave = days with approved excuse
+        const annualLeave = (r.daily || []).filter(d =>
+          d.excused === true || d.excuse?.status === 'approved'
+        ).length
+
+        const lateTxt = minsToHMS(lateMins)
+        const leTxt   = minsToHMS(leMins)
+
+        const dr = wsRekap.addRow([
+          idx + 1,
+          r.name,
+          r.position || '',  // Position — dari user_position_history
+          workDays,
+          dayOff,
+          daysInPeriod,
+          lateTxt,
+          absentDays,
+          leTxt,
+          annualLeave,
+          '',               // Remarks — selalu kosong
+        ])
+        dr.height = 18
+
+        const fill = idx % 2 === 0 ? REKAP_WHT_FILL : REKAP_ALT_FILL
+        dr.eachCell({ includeEmpty: true }, cell => {
+          cell.fill      = fill
+          cell.border    = REKAP_BORDER
+          cell.alignment = { vertical: 'middle' }
+          cell.font      = { size: 10 }
+        })
+
+        // Center numeric and time columns
+        ;['no','workingDay','dayOff','daysInMonth','late','absent','leaveEarly','annualLeave']
+          .forEach(k => { dr.getCell(k).alignment = { horizontal: 'center', vertical: 'middle' } })
+
+        // Highlight late > 0
+        if (lateMins > 0) {
+          dr.getCell('late').font = { bold: true, size: 10, color: { argb: 'FF92400E' } }
+          dr.getCell('late').fill = LATE_FILL
+        }
+        // Highlight absent > 0
+        if (absentDays > 0) {
+          dr.getCell('absent').font = { bold: true, size: 10, color: { argb: 'FF6B21A8' } }
+          dr.getCell('absent').fill = ABS_FILL
+        }
+        // Highlight leave early > 0
+        if (leMins > 0) {
+          dr.getCell('leaveEarly').fill = LE_FILL
+        }
+        // Annual leave badge
+        if (annualLeave > 0) {
+          dr.getCell('annualLeave').font = { bold: true, size: 10, color: { argb: 'FF065F46' } }
+          dr.getCell('annualLeave').fill = APPR_FILL
+        }
+      })
     }
 
     const buffer = await wb.xlsx.writeBuffer()
@@ -333,6 +507,137 @@ export default function AttendanceReportPage() {
     const a      = document.createElement('a')
     a.href       = url
     a.download   = `Presensi_${monthLabel.replace(' ', '_')}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // ── Export Vendor Excel ────────────────────────────────────────────────────
+  const exportVendorExcel = async () => {
+    if (!report?.data?.length) return
+
+    // Filter hanya user dengan role is_vendor = true
+    const vendorRows = (report.data || []).filter(r => r.is_vendor === true)
+    if (!vendorRows.length) {
+      alert('Tidak ada karyawan vendor dalam laporan ini. Pastikan sudah set is_vendor di Role Management.')
+      return
+    }
+
+    const ExcelJS = (await import('exceljs')).default
+    const wb = new ExcelJS.Workbook()
+
+    const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
+
+    const HDR_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD46B00' } }
+    const ALT_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3E0' } }
+    const WHT_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
+    const cellBorder = {
+      top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+      left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+      bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+      right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+    }
+
+    // Satu sheet "Presensi Vendor" berisi semua vendor karyawan
+    const ws = wb.addWorksheet('Presensi Vendor')
+
+    ws.columns = [
+      { key: 'nama',      width: 28 },
+      { key: 'hari',      width: 12 },
+      { key: 'tanggal',   width: 14 },
+      { key: 'scanMasuk', width: 14 },
+      { key: 'scanPulang',width: 14 },
+    ]
+
+    // Title rows
+    ws.addRow([])
+    ws.addRow(['Chung Chung Christian School'])
+    ws.mergeCells('A2:E2')
+    const r2 = ws.getCell('A2')
+    r2.value = 'Chung Chung Christian School'
+    r2.font      = { bold: true, size: 14 }
+    r2.alignment = { horizontal: 'center', vertical: 'middle' }
+    ws.getRow(2).height = 24
+
+    ws.addRow([`Presensi ${monthLabel}`])
+    ws.mergeCells('A3:E3')
+    const r3 = ws.getCell('A3')
+    r3.value = `Presensi ${monthLabel}`
+    r3.font      = { bold: true, size: 12 }
+    r3.alignment = { horizontal: 'center', vertical: 'middle' }
+    ws.getRow(3).height = 20
+
+    ws.addRow([])
+
+    // Header row
+    const hdrRow = ws.addRow({
+      nama: 'Nama', hari: 'Hari', tanggal: 'Tanggal', scanMasuk: 'Scan Masuk', scanPulang: 'Scan Pulang'
+    })
+    hdrRow.height = 20
+    hdrRow.eachCell({ includeEmpty: true }, cell => {
+      cell.fill      = HDR_FILL
+      cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+      cell.alignment = { horizontal: 'center', vertical: 'middle' }
+      cell.border    = cellBorder
+    })
+    ws.views = [{ state: 'frozen', ySplit: 5 }]
+
+    // Kumpulkan semua baris: flatten lalu sort per tanggal, kemudian per nama
+    const allVendorDays = []
+    for (const user of vendorRows) {
+      for (const d of (user.daily || [])) {
+        allVendorDays.push({ user, d })
+      }
+    }
+    allVendorDays.sort((a, b) => {
+      if (a.user.name !== b.user.name) return a.user.name.localeCompare(b.user.name)
+      return a.d.date.localeCompare(b.d.date)
+    })
+
+    allVendorDays.forEach(({ user, d }, idx) => {
+      const dow  = new Date(d.date + 'T00:00:00').getDay()
+      const hari = HARI_ID[dow]
+      const scanMasuk  = d.checkin_time  ? d.checkin_time.slice(0, 8)  : ''
+      const scanPulang = d.checkout_time ? d.checkout_time.slice(0, 8) : ''
+
+      const dr = ws.addRow({
+        nama: user.name,
+        hari,
+        tanggal:    d.date,
+        scanMasuk,
+        scanPulang,
+      })
+      dr.height = 18
+
+      const fill = idx % 2 === 0 ? WHT_FILL : ALT_FILL
+      dr.eachCell({ includeEmpty: true }, cell => {
+        cell.fill      = fill
+        cell.border    = cellBorder
+        cell.font      = { size: 10 }
+        cell.alignment = { vertical: 'middle' }
+      })
+      ;['hari','tanggal','scanMasuk','scanPulang'].forEach(k => {
+        dr.getCell(k).alignment = { horizontal: 'center', vertical: 'middle' }
+      })
+
+      if (d.status === 'holiday') {
+        dr.eachCell({ includeEmpty: true }, cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC0C0' } }
+          cell.font = { size: 10, color: { argb: 'FF991B1B' }, bold: true }
+        })
+      } else if (d.status === 'dayoff' || d.status === 'off') {
+        dr.eachCell({ includeEmpty: true }, cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
+          cell.font = { size: 10, color: { argb: 'FF9CA3AF' }, italic: true }
+        })
+      }
+    })
+
+    const buffer = await wb.xlsx.writeBuffer()
+    const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url    = URL.createObjectURL(blob)
+    const a      = document.createElement('a')
+    a.href       = url
+    a.download   = `Presensi_Vendor_${monthLabel.replace(' ', '_')}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -383,31 +688,46 @@ export default function AttendanceReportPage() {
             Rekap keterlambatan, pulang awal, dan ketidakhadiran karyawan per periode
           </p>
         </div>
-        <button
-          onClick={exportExcel}
-          disabled={!report?.data?.length}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-          style={{
-            background: report?.data?.length ? '#16a34a' : theme.subtleBg,
-            color: report?.data?.length ? '#fff' : theme.textSecondary,
-            border: `1px solid ${report?.data?.length ? '#16a34a' : theme.border}`,
-          }}
-        >
-          📥 Export Excel
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={exportVendorExcel}
+            disabled={!report?.data?.length}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{
+              background: report?.data?.length ? '#ea580c' : theme.subtleBg,
+              color: report?.data?.length ? '#fff' : theme.textSecondary,
+              border: `1px solid ${report?.data?.length ? '#ea580c' : theme.border}`,
+            }}
+          >
+            🏭 Export Vendor
+          </button>
+          <button
+            onClick={exportExcel}
+            disabled={!report?.data?.length}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{
+              background: report?.data?.length ? '#16a34a' : theme.subtleBg,
+              color: report?.data?.length ? '#fff' : theme.textSecondary,
+              border: `1px solid ${report?.data?.length ? '#16a34a' : theme.border}`,
+            }}
+          >
+            📥 Export Excel
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}
       <div className="p-4 rounded-xl flex flex-wrap gap-3 items-end" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Dari Tanggal</label>
-          <input type="date" style={inputStyle} value={dateStart}
-            onChange={e => setDateStart(e.target.value)} max={dateEnd} />
-        </div>
-        <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Sampai Tanggal</label>
-          <input type="date" style={inputStyle} value={dateEnd}
-            onChange={e => setDateEnd(e.target.value)} min={dateStart} />
+          <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Bulan</label>
+          <input
+            type="month"
+            style={inputStyle}
+            value={selectedMonth}
+            onChange={e => {
+              setSelectedMonth(e.target.value)
+            }}
+          />
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Toleransi (mnt)</label>

@@ -55,6 +55,16 @@ export default function UserManagement() {
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const signatureInputRef = { current: null }; // will be passed to ImageCropUploader
 
+  // Position history state
+  const [positionHistory, setPositionHistory] = useState([]);
+  const [posHistLoading, setPosHistLoading]   = useState(false);
+  const [posHistMsg, setPosHistMsg]           = useState('');
+  const [editingPosId, setEditingPosId]       = useState(null); // id being edited
+  const [newPosTitle, setNewPosTitle]         = useState('');
+  const [newPosStart, setNewPosStart]         = useState('');
+  const [newPosEnd, setNewPosEnd]             = useState('');
+  const [newPosNotes, setNewPosNotes]         = useState('');
+  const [showAddPos, setShowAddPos]           = useState(false);
   
   // Notification modal states
   const [notification, setNotification] = useState({
@@ -854,6 +864,70 @@ export default function UserManagement() {
     setSignaturePreview(user.signature_url || '');
     setShowForm(true);
     setFormErrors({});
+    // Load position history for this user
+    loadPositionHistory(user.user_id);
+  };
+
+  // ── Position History Helpers ─────────────────────────────────────────────────
+  const loadPositionHistory = async (uid) => {
+    setPosHistLoading(true);
+    const { data } = await supabase
+      .from('user_position_history')
+      .select('*')
+      .eq('user_id', uid)
+      .order('start_date', { ascending: false });
+    setPositionHistory(data || []);
+    setPosHistLoading(false);
+  };
+
+  const resetPosForm = () => {
+    setNewPosTitle(''); setNewPosStart(''); setNewPosEnd(''); setNewPosNotes('');
+    setEditingPosId(null); setShowAddPos(false); setPosHistMsg('');
+  };
+
+  const handleSavePosition = async () => {
+    if (!newPosTitle.trim() || !newPosStart) {
+      setPosHistMsg('❌ Nama posisi dan tanggal mulai wajib diisi');
+      return;
+    }
+    if (newPosEnd && newPosEnd < newPosStart) {
+      setPosHistMsg('❌ Tanggal selesai tidak boleh sebelum tanggal mulai');
+      return;
+    }
+    setPosHistMsg('');
+    const payload = {
+      user_id:        editingUser.user_id,
+      position_title: newPosTitle.trim(),
+      start_date:     newPosStart,
+      end_date:       newPosEnd || null,
+      notes:          newPosNotes.trim() || null,
+    };
+    let error;
+    if (editingPosId) {
+      ({ error } = await supabase.from('user_position_history').update(payload).eq('id', editingPosId));
+    } else {
+      ({ error } = await supabase.from('user_position_history').insert([payload]));
+    }
+    if (error) { setPosHistMsg('❌ ' + error.message); return; }
+    resetPosForm();
+    loadPositionHistory(editingUser.user_id);
+  };
+
+  const handleDeletePosition = async (id) => {
+    if (!confirm('Hapus riwayat posisi ini?')) return;
+    const { error } = await supabase.from('user_position_history').delete().eq('id', id);
+    if (error) { setPosHistMsg('❌ ' + error.message); return; }
+    loadPositionHistory(editingUser.user_id);
+  };
+
+  const handleEditPosition = (pos) => {
+    setEditingPosId(pos.id);
+    setNewPosTitle(pos.position_title);
+    setNewPosStart(pos.start_date);
+    setNewPosEnd(pos.end_date || '');
+    setNewPosNotes(pos.notes || '');
+    setShowAddPos(true);
+    setPosHistMsg('');
   };
 
 
@@ -884,6 +958,9 @@ export default function UserManagement() {
     setFormErrors({});
     setError('');
     setFormTab('info');
+    // Reset position state
+    setPositionHistory([]);
+    resetPosForm();
   };
 
 
@@ -979,6 +1056,7 @@ export default function UserManagement() {
               { key: 'info',  label: t('userMgmt.tabInfo')  },
               { key: 'media', label: t('userMgmt.tabMedia') },
               { key: 'mesin', label: t('userMgmt.tabMesin') },
+              ...(editingUser ? [{ key: 'posisi', label: '📋 Posisi' }] : []),
             ].map(tab => (
               <button
                 key={tab.key}
@@ -1253,6 +1331,103 @@ export default function UserManagement() {
                 </p>
               )}
             </div>
+          </div>
+          )}
+
+          {/* ─── Tab: Riwayat Posisi ─── */}
+          {formTab === 'posisi' && editingUser && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium" style={{ color: theme.textPrimary }}>Riwayat Posisi / Jabatan</p>
+              {!showAddPos && (
+                <button type="button"
+                  onClick={() => { setShowAddPos(true); setEditingPosId(null); setNewPosTitle(''); setNewPosStart(''); setNewPosEnd(''); setNewPosNotes(''); }}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                  style={{ background: theme.blueText || '#2563eb', color: '#fff' }}>
+                  + Tambah Posisi
+                </button>
+              )}
+            </div>
+
+            {/* Add/Edit form */}
+            {showAddPos && (
+              <div className="p-3 rounded-xl space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+                <p className="text-xs font-semibold" style={{ color: theme.textPrimary }}>
+                  {editingPosId ? '✏️ Edit Posisi' : '➕ Tambah Posisi Baru'}
+                </p>
+                <div>
+                  <label className="text-xs" style={{ color: theme.textSecondary }}>Nama Posisi / Jabatan <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input type="text" value={newPosTitle} onChange={e => setNewPosTitle(e.target.value)}
+                    placeholder="Contoh: Mathematic Teacher, Vice Principal..."
+                    className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
+                    style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs" style={{ color: theme.textSecondary }}>Mulai Berlaku <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input type="date" value={newPosStart} onChange={e => setNewPosStart(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+                  </div>
+                  <div>
+                    <label className="text-xs" style={{ color: theme.textSecondary }}>Selesai (kosong = masih aktif)</label>
+                    <input type="date" value={newPosEnd} onChange={e => setNewPosEnd(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs" style={{ color: theme.textSecondary }}>Catatan (opsional)</label>
+                  <input type="text" value={newPosNotes} onChange={e => setNewPosNotes(e.target.value)}
+                    placeholder="Keterangan tambahan..."
+                    className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
+                    style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+                </div>
+                {posHistMsg && <p className="text-xs" style={{ color: posHistMsg.startsWith('❌') ? '#ef4444' : '#16a34a' }}>{posHistMsg}</p>}
+                <div className="flex gap-2 pt-1">
+                  <button type="button" onClick={handleSavePosition}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    style={{ background: theme.blueText || '#2563eb', color: '#fff' }}>
+                    {editingPosId ? 'Simpan Perubahan' : 'Simpan'}
+                  </button>
+                  <button type="button" onClick={resetPosForm}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* List */}
+            {posHistLoading ? (
+              <p className="text-xs text-center py-3" style={{ color: theme.textSecondary }}>Memuat...</p>
+            ) : positionHistory.length === 0 ? (
+              <p className="text-xs text-center py-4" style={{ color: theme.textSecondary }}>Belum ada riwayat posisi.</p>
+            ) : (
+              <div className="space-y-2">
+                {positionHistory.map(pos => (
+                  <div key={pos.id} className="flex items-start justify-between gap-2 p-3 rounded-lg"
+                    style={{ border: `1px solid ${theme.border}`, background: theme.cardBg }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: theme.textPrimary }}>{pos.position_title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+                        {pos.start_date} → {pos.end_date || <span style={{ color: theme.blueText || '#2563eb' }}>sekarang</span>}
+                      </p>
+                      {pos.notes && <p className="text-xs mt-0.5 italic" style={{ color: theme.textSecondary }}>{pos.notes}</p>}
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button type="button" onClick={() => handleEditPosition(pos)}
+                        className="text-xs px-2 py-1 rounded"
+                        style={{ background: '#eff6ff', color: '#2563eb' }}>✏️</button>
+                      <button type="button" onClick={() => handleDeletePosition(pos.id)}
+                        className="text-xs px-2 py-1 rounded"
+                        style={{ background: '#fef2f2', color: '#ef4444' }}>🗑️</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           )}
 

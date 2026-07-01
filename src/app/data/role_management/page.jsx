@@ -29,7 +29,8 @@ export default function RoleManagementPage() {
     is_counselor: false,
     is_curriculum: false,
     is_nurse: false,
-    can_void_transactions: false
+    can_void_transactions: false,
+    is_vendor: false
   })
 
   const isAdmin = useMemo(() => {
@@ -56,7 +57,7 @@ export default function RoleManagementPage() {
         // Fetch roles with dashboard_type info
         const { data, error } = await supabase
           .from('role')
-          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions')
+          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor')
           .order('role_priority', { ascending: false })
           .order('role_name')
         if (error) throw new Error(error.message)
@@ -75,7 +76,7 @@ export default function RoleManagementPage() {
   }, [roles, search])
 
   const openNew = () => {
-    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, is_curriculum: false, is_nurse: false, can_void_transactions: false })
+    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, is_curriculum: false, is_nurse: false, can_void_transactions: false, is_vendor: false })
     setShowEdit(true)
   }
   const openEdit = (r) => {
@@ -91,7 +92,8 @@ export default function RoleManagementPage() {
       is_counselor: !!r.is_counselor,
       is_curriculum: !!r.is_curriculum,
       is_nurse: !!r.is_nurse,
-      can_void_transactions: !!r.can_void_transactions
+      can_void_transactions: !!r.can_void_transactions,
+      is_vendor: !!r.is_vendor
     })
     setShowEdit(true)
   }
@@ -119,7 +121,8 @@ export default function RoleManagementPage() {
         is_counselor: !!form.is_counselor,
         is_curriculum: !!form.is_curriculum,
         is_nurse: !!form.is_nurse,
-        can_void_transactions: !!form.can_void_transactions
+        can_void_transactions: !!form.can_void_transactions,
+        is_vendor: !!form.is_vendor
       }
       if (form.role_id) {
         const { error } = await supabase.from('role').update(payload).eq('role_id', form.role_id)
@@ -128,7 +131,7 @@ export default function RoleManagementPage() {
         const { error } = await supabase.from('role').insert([payload])
         if (error) throw new Error(error.message)
       }
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions').order('role_priority', { ascending: false }).order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor').order('role_priority', { ascending: false }).order('role_name')
       if (rErr) throw new Error(rErr.message)
       setRoles(data || [])
       setShowEdit(false)
@@ -223,7 +226,8 @@ export default function RoleManagementPage() {
                           {r.is_student && <span className="px-2 py-0.5 rounded bg-green-100 text-green-800">Student</span>}
                           {r.is_counselor && <span className="px-2 py-0.5 rounded bg-pink-100 text-pink-800">Counselor</span>}
                           {r.is_nurse && <span className="px-2 py-0.5 rounded bg-red-100 text-red-700">Nurse</span>}
-                          {!r.is_admin && !r.is_curriculum && !r.is_teacher && !r.is_principal && !r.is_student && !r.is_counselor && !r.is_nurse && (
+                          {r.is_vendor && <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">🏭 Vendor</span>}
+                          {!r.is_admin && !r.is_curriculum && !r.is_teacher && !r.is_principal && !r.is_student && !r.is_counselor && !r.is_nurse && !r.is_vendor && (
                             <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">Staff</span>
                           )}
                         </div>
@@ -290,6 +294,14 @@ export default function RoleManagementPage() {
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_counselor} onChange={e=>setForm(p=>({...p,is_counselor:e.target.checked}))} />Counselor</label>
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_curriculum} onChange={e=>setForm(p=>({...p,is_curriculum:e.target.checked}))} /><span className="text-teal-700 font-medium">Curriculum</span></label>
             <label className="inline-flex items-center gap-2"><input type="checkbox" checked={form.is_nurse} onChange={e=>setForm(p=>({...p,is_nurse:e.target.checked}))} /><span className="text-red-700 font-medium">Nurse</span></label>
+          </div>
+          <div className="border-t pt-3">
+            <Label className="text-sm font-medium mb-2 block">Attendance</Label>
+            <label className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg" style={{ background: form.is_vendor ? '#fff7ed' : '#f9fafb', border: `1px solid ${form.is_vendor ? '#f97316' : '#e5e7eb'}` }}>
+              <input type="checkbox" checked={form.is_vendor} onChange={e=>setForm(p=>({...p,is_vendor:e.target.checked}))} />
+              <span className={form.is_vendor ? 'text-orange-700 font-semibold' : ''}>🏭 Vendor (laporan absensi terpisah)</span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1">Role ini dianggap karyawan vendor — laporan Excel presensi akan dipisah dari karyawan internal</p>
           </div>
           <div className="border-t pt-3">
             <Label className="text-sm font-medium mb-2 block">Permissions</Label>

@@ -175,7 +175,7 @@ export async function GET(request) {
         user_id, user_nama_depan, user_nama_belakang,
         user_unit_id, user_role_id, user_pin,
         expected_check_in, expected_check_out, join_date,
-        role:user_role_id (role_name, work_days)
+        role:user_role_id (role_name, work_days, is_vendor)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
@@ -257,6 +257,27 @@ export async function GET(request) {
       }
     } catch (_) {}
 
+    // ── 5b. Position History ───────────────────────────────────────────────
+    // positionMap[user_id] = position_title active during the report period
+    const positionMap = {}
+    try {
+      const { data: posHistory } = await supabaseAdmin
+        .from('user_position_history')
+        .select('user_id, position_title, start_date, end_date')
+        .in('user_id', userIds)
+        .lte('start_date', end)   // started before or during period
+
+      for (const ph of (posHistory || [])) {
+        // Active during period: end_date is null OR end_date >= start of period
+        if (ph.end_date && ph.end_date < start) continue
+        const uid = ph.user_id
+        // Keep the one with the latest start_date (most recent position)
+        if (!positionMap[uid] || ph.start_date > positionMap[uid].start_date) {
+          positionMap[uid] = ph
+        }
+      }
+    } catch (_) {}
+
     // ── 5. Compute per-user stats ─────────────────────────────────────────────
 
     const results = []
@@ -275,6 +296,8 @@ export async function GET(request) {
         unit_id:    user.user_unit_id,
         unit_name:  unitMap[String(user.user_unit_id)] || '—',
         role_name:  user.role?.role_name || '—',
+        is_vendor:  !!user.role?.is_vendor,
+        position:   positionMap[user.user_id]?.position_title || '',
         expected_check_in:  expectedIn.slice(0, 5),
         expected_check_out: expectedOut.slice(0, 5),
         late_count:                0,

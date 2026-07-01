@@ -372,7 +372,16 @@ export default function AttendanceExcusesPage() {
     setLoading(true)
     try {
       const start = monthStart(ym)
-      const end   = monthEnd(ym)
+      // Jika bulan yang dipilih adalah bulan berjalan, gunakan kemarin sebagai akhir
+      // agar hari yang belum berlalu tidak dihitung sebagai tidak masuk
+      const today     = new Date()
+      const yesterday = new Date(today)
+      yesterday.setDate(today.getDate() - 1)
+      const yesterdayStr = yesterday.toISOString().slice(0, 10)
+      const currentYM    = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+      const end = ym === currentYM
+        ? (yesterdayStr < monthEnd(ym) ? yesterdayStr : monthEnd(ym))
+        : monthEnd(ym)
 
       // Parallel: fetch report + existing excuses
       const [reportRes, excusesRes] = await Promise.all([
