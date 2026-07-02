@@ -271,7 +271,9 @@ export default function AttendanceReportPage() {
 
       // Data rows
       let ri = 0
-      for (const r of rows) {
+      const userList = rows
+      for (let ui = 0; ui < userList.length; ui++) {
+        const r = userList[ui]
         const expIn  = r.expected_check_in  ? r.expected_check_in.slice(0,5)  : '07:30'
         const expOut = r.expected_check_out ? r.expected_check_out.slice(0,5) : '16:30'
         const stdMins = 9 * 60  // 09:00
@@ -334,7 +336,16 @@ export default function AttendanceReportPage() {
           ;['hari','tanggal','jamMasuk','jamKeluar','scanMasuk','scanPulang','terlambat','pulangCepat','jamKerja','lembur','kehadiran']
             .forEach(k => { dr.getCell(k).alignment = { horizontal:'center', vertical:'middle' } })
 
-        ri++
+          ri++
+        }
+
+        // ── Separator row between employees ──
+        if (ui < userList.length - 1) {
+          const sep = ws.addRow([])
+          sep.height = 8
+          for (let col = 1; col <= COLS.length; col++) {
+            sep.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9CA3AF' } }
+          }
         }
       }
     }
@@ -581,33 +592,51 @@ export default function AttendanceReportPage() {
     })
     ws.views = [{ state: 'frozen', ySplit: 5 }]
 
-    // Kumpulkan semua baris: flatten lalu sort per tanggal, kemudian per nama
+    // Kumpulkan semua baris: semua hari kalender (bukan hanya hari kerja)
+    // Build scan lookup per user: Map<userId, Map<date, {in, out}>>
     const allVendorDays = []
     for (const user of vendorRows) {
+      // Build lookup dari daily (yang sudah ada scan datanya)
+      const scanByDate = new Map()
       for (const d of (user.daily || [])) {
-        allVendorDays.push({ user, d })
+        scanByDate.set(d.date, {
+          scanMasuk:  d.checkin_time  ? d.checkin_time.slice(0, 8)  : '',
+          scanPulang: d.checkout_time ? d.checkout_time.slice(0, 8) : '',
+        })
+      }
+      // Generate SEMUA hari dalam periode (dateStart s/d dateEnd)
+      const cur = new Date(dateStart + 'T00:00:00')
+      const end = new Date(dateEnd   + 'T00:00:00')
+      while (cur <= end) {
+        const dateStr = cur.toISOString().slice(0, 10)
+        allVendorDays.push({
+          user,
+          dateStr,
+          ...(scanByDate.get(dateStr) || { scanMasuk: '', scanPulang: '' }),
+        })
+        cur.setDate(cur.getDate() + 1)
       }
     }
+    // Sort: nama dulu → tanggal naik
     allVendorDays.sort((a, b) => {
       if (a.user.name !== b.user.name) return a.user.name.localeCompare(b.user.name)
-      return a.d.date.localeCompare(b.d.date)
+      return a.dateStr.localeCompare(b.dateStr)
     })
 
-    allVendorDays.forEach(({ user, d }, idx) => {
-      const dow  = new Date(d.date + 'T00:00:00').getDay()
+    allVendorDays.forEach(({ user, dateStr, scanMasuk, scanPulang }, idx) => {
+      const dow  = new Date(dateStr + 'T00:00:00').getDay()
       const hari = HARI_ID[dow]
-      const scanMasuk  = d.checkin_time  ? d.checkin_time.slice(0, 8)  : ''
-      const scanPulang = d.checkout_time ? d.checkout_time.slice(0, 8) : ''
 
       const dr = ws.addRow({
         nama: user.name,
         hari,
-        tanggal:    d.date,
+        tanggal:    dateStr,
         scanMasuk,
         scanPulang,
       })
       dr.height = 18
 
+      // Alternating color per row — no holiday/dayoff distinction for vendor
       const fill = idx % 2 === 0 ? WHT_FILL : ALT_FILL
       dr.eachCell({ includeEmpty: true }, cell => {
         cell.fill      = fill
@@ -618,18 +647,6 @@ export default function AttendanceReportPage() {
       ;['hari','tanggal','scanMasuk','scanPulang'].forEach(k => {
         dr.getCell(k).alignment = { horizontal: 'center', vertical: 'middle' }
       })
-
-      if (d.status === 'holiday') {
-        dr.eachCell({ includeEmpty: true }, cell => {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC0C0' } }
-          cell.font = { size: 10, color: { argb: 'FF991B1B' }, bold: true }
-        })
-      } else if (d.status === 'dayoff' || d.status === 'off') {
-        dr.eachCell({ includeEmpty: true }, cell => {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
-          cell.font = { size: 10, color: { argb: 'FF9CA3AF' }, italic: true }
-        })
-      }
     })
 
     const buffer = await wb.xlsx.writeBuffer()

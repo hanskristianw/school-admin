@@ -175,7 +175,7 @@ export async function GET(request) {
         user_id, user_nama_depan, user_nama_belakang,
         user_unit_id, user_role_id, user_pin,
         expected_check_in, expected_check_out, join_date,
-        role:user_role_id (role_name, work_days, is_vendor)
+        role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
@@ -284,6 +284,7 @@ export async function GET(request) {
 
     for (const user of users) {
       const workDays = (user.role?.work_days || '1,2,3,4,5').split(',').map(Number)
+      const isPartTime = !!user.role?.is_part_time_staff
       const expectedIn  = user.expected_check_in  || DEFAULT_CHECK_IN
       const expectedOut = user.expected_check_out || DEFAULT_CHECK_OUT
       const expectedInMins  = timeToMinutes(expectedIn)
@@ -297,6 +298,7 @@ export async function GET(request) {
         unit_name:  unitMap[String(user.user_unit_id)] || '—',
         role_name:  user.role?.role_name || '—',
         is_vendor:  !!user.role?.is_vendor,
+        is_part_time_staff: !!user.role?.is_part_time_staff,
         position:   positionMap[user.user_id]?.position_title || '',
         expected_check_in:  expectedIn.slice(0, 5),
         expected_check_out: expectedOut.slice(0, 5),
@@ -385,43 +387,50 @@ export async function GET(request) {
         const noCheckOut = checkouts.length === 0
 
         if (noCheckIn && noCheckOut) {
-          // ── Tidak masuk sama sekali ───────────────────────────────────
-          summary.absent_count++
-          dayRecord.status = 'absent'
-          dayRecord.issues.push('absent')
+          if (isPartTime) {
+            // Part-time: tidak masuk = tidak dicatat sebagai absen
+            dayRecord.status = 'ok'
+          } else {
+            // ── Tidak masuk sama sekali ───────────────────────────────────
+            summary.absent_count++
+            dayRecord.status = 'absent'
+            dayRecord.issues.push('absent')
+          }
 
         } else {
           // ── Analisis Check-In ────────────────────────────────────────
-          // Gunakan effInMins (bisa dioverride oleh special rule)
           if (!noCheckIn) {
             const timeStr = wibTimeStr(checkins[0].scan_time)
             dayRecord.checkin_time = timeStr
-            const actualInMins = timeToMinutes(timeStr)
-            const lateMins = actualInMins - effInMins - grace
-            if (lateMins > 0) {
-              summary.late_count++
-              summary.late_minutes_total += lateMins
-              dayRecord.late_minutes = lateMins
-              dayRecord.issues.push('late')
+            if (!isPartTime) {
+              const actualInMins = timeToMinutes(timeStr)
+              const lateMins = actualInMins - effInMins - grace
+              if (lateMins > 0) {
+                summary.late_count++
+                summary.late_minutes_total += lateMins
+                dayRecord.late_minutes = lateMins
+                dayRecord.issues.push('late')
+              }
             }
-          } else {
+          } else if (!isPartTime) {
             dayRecord.issues.push('no_checkin')
           }
 
           // ── Analisis Check-Out ───────────────────────────────────────
-          // Gunakan effOutMins (bisa dioverride oleh special rule)
           if (!noCheckOut) {
             const timeStr = wibTimeStr(checkouts[checkouts.length - 1].scan_time)
             dayRecord.checkout_time = timeStr
-            const actualOutMins = timeToMinutes(timeStr)
-            const earlyMins = effOutMins - actualOutMins - grace
-            if (earlyMins > 0) {
-              summary.leave_early_count++
-              summary.leave_early_minutes_total += earlyMins
-              dayRecord.leave_early_minutes = earlyMins
-              dayRecord.issues.push('leave_early')
+            if (!isPartTime) {
+              const actualOutMins = timeToMinutes(timeStr)
+              const earlyMins = effOutMins - actualOutMins - grace
+              if (earlyMins > 0) {
+                summary.leave_early_count++
+                summary.leave_early_minutes_total += earlyMins
+                dayRecord.leave_early_minutes = earlyMins
+                dayRecord.issues.push('leave_early')
+              }
             }
-          } else if (!noCheckIn) {
+          } else if (!noCheckIn && !isPartTime) {
             // Check-in ada tapi tidak check-out
             summary.no_checkout_count++
             dayRecord.issues.push('no_checkout')
