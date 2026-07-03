@@ -55,13 +55,15 @@ export default function TopicNewPage() {
   // Data state
   const [topics, setTopics] = useState([])
   const [subjects, setSubjects] = useState([])
-  const [allKelas, setAllKelas] = useState([]) // All available kelas for dropdown
+  const [allKelas, setAllKelas] = useState([]) // All available kelas (with kelas_year_id)
+  const [allKelasRaw, setAllKelasRaw] = useState([]) // Full list, unfiltered by year
+  const [yearOptions, setYearOptions] = useState([]) // All years for filter
   const [kelasLoading, setKelasLoading] = useState(false) // Loading state for kelas
   const [kelasNameMap, setKelasNameMap] = useState(new Map())
   const [loading, setLoading] = useState(true)
   
   // Filters
-  const [filters, setFilters] = useState({ subject: '', kelas: '', search: '' })
+  const [filters, setFilters] = useState({ year: '', kelas: '', subject: '', search: '' })
   
   // Assessment state
   const [assessments, setAssessments] = useState([])
@@ -322,6 +324,7 @@ export default function TopicNewPage() {
   
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
+  const [wizardYear, setWizardYear] = useState('') // Selected year in wizard step 0
   
   // Assessment data for wizard step 7 (after formative assessment)
   const [wizardAssessment, setWizardAssessment] = useState({
@@ -504,17 +507,38 @@ export default function TopicNewPage() {
     }
   }, [])
 
-  // Fetch all kelas for filter dropdown
+  // Fetch all kelas for filter dropdown (includes kelas_year_id for year filtering)
   const fetchAllKelas = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: kelasData, error: kelasError } = await supabase
         .from('kelas')
-        .select('kelas_id, kelas_nama')
+        .select('kelas_id, kelas_nama, kelas_year_id')
         .order('kelas_nama')
-      
-      if (error) throw error
-      setAllKelas(data || [])
-      console.log('📚 All kelas loaded for filter:', data)
+      if (kelasError) throw kelasError
+
+      const { data: yearData, error: yearError } = await supabase
+        .from('year')
+        .select('year_id, year_name, start_date, end_date')
+        .order('year_name', { ascending: false })
+      if (yearError) throw yearError
+
+      setAllKelasRaw(kelasData || [])
+      setAllKelas(kelasData || [])
+      setYearOptions(yearData || [])
+
+      // Auto-select the year whose range contains today
+      const today = new Date()
+      const current = (yearData || []).find(y => {
+        if (!y.start_date || !y.end_date) return false
+        return new Date(y.start_date) <= today && today <= new Date(y.end_date)
+      })
+      if (current) {
+        const filtered = kelasData.filter(k => String(k.kelas_year_id) === String(current.year_id))
+        setAllKelas(filtered)
+        setFilters(prev => ({ ...prev, year: String(current.year_id) }))
+      }
+
+      console.log('📚 All kelas loaded for filter:', kelasData)
     } catch (err) {
       console.error('❌ Error fetching all kelas:', err)
     }
@@ -3134,7 +3158,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   const openAddModal = () => {
     setIsAddMode(true)
     setCurrentStep(0) // Start from first step
-    setAllKelas([]) // Reset kelas options
+    // Initialize wizard year from current filter; also pre-filter kelas
+    const initYear = filters.year || ''
+    setWizardYear(initYear)
+    if (initYear) {
+      setAllKelas(allKelasRaw.filter(k => String(k.kelas_year_id) === String(initYear)))
+    } else {
+      setAllKelas([]) // Reset kelas options
+    }
     setSelectedTopic({
       topic_nama: '',
       topic_subject_id: '', // Start with empty - user must select
@@ -4083,14 +4114,19 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   }
   
   // Filter and sort topics
+  const kelasIdsForYear = filters.year
+    ? new Set(allKelasRaw.filter(k => String(k.kelas_year_id) === String(filters.year)).map(k => k.kelas_id))
+    : null
+
   const filteredTopics = topics
     .filter(topic => {
+      const matchYear    = !kelasIdsForYear || kelasIdsForYear.has(topic.topic_kelas_id)
       const matchSubject = !filters.subject || topic.topic_subject_id === parseInt(filters.subject)
-      const matchKelas = !filters.kelas || topic.topic_kelas_id === parseInt(filters.kelas)
-      const matchSearch = !filters.search || 
+      const matchKelas   = !filters.kelas   || topic.topic_kelas_id   === parseInt(filters.kelas)
+      const matchSearch  = !filters.search  ||
         topic.topic_nama?.toLowerCase().includes(filters.search.toLowerCase()) ||
         subjectMap.get(topic.topic_subject_id)?.toLowerCase().includes(filters.search.toLowerCase())
-      return matchSubject && matchKelas && matchSearch
+      return matchYear && matchSubject && matchKelas && matchSearch
     })
     .sort((a, b) => {
       // First: sort by grade
@@ -4327,26 +4363,31 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </div>
                   
                   {/* Filters */}
-                  <div className="mb-5 flex gap-3 items-end">
-                    <div className="flex-1">
+                  <div className="mb-5 flex gap-3 items-end flex-wrap">
+                    {/* Year filter */}
+                    <div className="flex-1 min-w-[140px]">
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                        {t('topicNew.filters.subject')}
+                        Tahun Ajaran
                       </label>
                       <select
-                        value={filters.subject}
-                        onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+                        value={filters.year}
+                        onChange={(e) => {
+                          const yr = e.target.value
+                          const filtered = yr ? allKelasRaw.filter(k => String(k.kelas_year_id) === String(yr)) : allKelasRaw
+                          setAllKelas(filtered)
+                          setFilters({ ...filters, year: yr, kelas: '', subject: '' })
+                        }}
                         className="w-full px-3 py-2 text-xs focus:outline-none"
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
-                        <option value="">{t('topicNew.filters.allSubjects')}</option>
-                        {subjects.map(s => (
-                          <option key={s.subject_id} value={s.subject_id}>
-                            {s.subject_name}
-                          </option>
+                        <option value="">Semua Tahun</option>
+                        {yearOptions.map(y => (
+                          <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
                         ))}
                       </select>
                     </div>
-                    <div className="flex-1">
+                    {/* Kelas filter */}
+                    <div className="flex-1 min-w-[140px]">
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                         {t('topicNew.filters.class')}
                       </label>
@@ -4364,7 +4405,26 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         ))}
                       </select>
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-[140px]">
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
+                        {t('topicNew.filters.subject')}
+                      </label>
+                      <select
+                        value={filters.subject}
+                        onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+                        className="w-full px-3 py-2 text-xs focus:outline-none"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                      >
+                        <option value="">{t('topicNew.filters.allSubjects')}</option>
+                        {subjects.map(s => (
+                          <option key={s.subject_id} value={s.subject_id}>
+                            {s.subject_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* Search */}
+                    <div className="flex-1 min-w-[140px]">
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                         {t('topicNew.filters.search')}
                       </label>
@@ -6101,6 +6161,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         fetchKelasForSubject={fetchKelasForSubject}
                         setAllKelas={setAllKelas}
                         fetchStrandsForCriteria={fetchStrandsForCriteria}
+                        yearOptions={yearOptions}
+                        allKelasRaw={allKelasRaw}
+                        wizardYear={wizardYear}
+                        onWizardYearChange={(yr) => {
+                          setWizardYear(yr)
+                          const filtered = yr ? allKelasRaw.filter(k => String(k.kelas_year_id) === String(yr)) : []
+                          setAllKelas(filtered)
+                          setSelectedTopic(prev => ({ ...prev, topic_kelas_id: '', topic_subject_id: '' }))
+                        }}
                         t={t}
                       />
                       {/* Navigation Buttons */}

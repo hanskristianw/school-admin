@@ -32,6 +32,8 @@ export default function WizardStepContent({
   setSelectedResources, setSelectedAtlSkills,
   // parent helpers
   isStepCompleted, fetchKelasForSubject, setAllKelas, fetchStrandsForCriteria,
+  // year (academic year for wizard step 0)
+  yearOptions, allKelasRaw, wizardYear, onWizardYearChange,
   // i18n
   t,
 }) {
@@ -41,6 +43,42 @@ export default function WizardStepContent({
       {currentStep === 0 && (
         <>
           <div className="grid grid-cols-2 gap-4">
+            {/* Tahun Ajaran — spans full width */}
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Tahun Ajaran <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={wizardYear || ''}
+                onChange={(e) => onWizardYearChange && onWizardYearChange(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              >
+                <option value="">Pilih Tahun Ajaran</option>
+                {(yearOptions || []).map(y => (
+                  <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                ))}
+              </select>
+            </div>
+            {/* Kelas — filtered by year */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                {t('topicNew.fields.class')} <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedTopic.topic_kelas_id || ''}
+                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_kelas_id: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                disabled={!wizardYear}
+              >
+                <option value="">{!wizardYear ? 'Pilih tahun ajaran dulu' : t('topicNew.fields.selectClass')}</option>
+                {allKelas.map(kelas => (
+                  <option key={kelas.kelas_id} value={kelas.kelas_id}>
+                    {kelas.kelas_nama}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Subject */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 {t('topicNew.fields.subject')} <span className="text-red-500">*</span>
@@ -49,17 +87,7 @@ export default function WizardStepContent({
                 value={selectedTopic.topic_subject_id || ''}
                 onChange={(e) => {
                   const subjectId = e.target.value
-                  setSelectedTopic(prev => ({ 
-                    ...prev, 
-                    topic_subject_id: subjectId,
-                    topic_kelas_id: '' // Reset kelas when subject changes
-                  }))
-                  // Fetch kelas for selected subject
-                  if (subjectId) {
-                    fetchKelasForSubject(subjectId)
-                  } else {
-                    setAllKelas([])
-                  }
+                  setSelectedTopic(prev => ({ ...prev, topic_subject_id: subjectId }))
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
@@ -70,29 +98,6 @@ export default function WizardStepContent({
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                {t('topicNew.fields.class')} <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={selectedTopic.topic_kelas_id || ''}
-                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_kelas_id: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                disabled={!selectedTopic.topic_subject_id || kelasLoading}
-              >
-                <option value="">
-                  {kelasLoading ? t('topicNew.fields.loadingClasses') : t('topicNew.fields.selectClass')}
-                </option>
-                {allKelas.map(kelas => (
-                  <option key={kelas.kelas_id} value={kelas.kelas_id}>
-                    {kelas.kelas_nama}
-                  </option>
-                ))}
-              </select>
-              {!kelasLoading && selectedTopic.topic_subject_id && allKelas.length === 0 && (
-                <p className="text-xs text-amber-600 mt-1">⚠️ No classes mapped to this subject in detail_kelas</p>
-              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">

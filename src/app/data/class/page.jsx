@@ -64,6 +64,7 @@ export default function ClassManagement() {
 
   // Filter states
   const [filters, setFilters] = useState({
+    year: '',
     unit: '',
     waliKelas: ''
   });
@@ -228,17 +229,24 @@ export default function ClassManagement() {
 
   const fetchYears = async () => {
     try {
-      // Menggunakan Supabase untuk fetch years
       const { data, error } = await supabase
         .from('year')
-        .select('year_id, year_name')
+        .select('year_id, year_name, start_date, end_date')
         .order('year_name');
 
-      if (error) {
-        throw new Error(error.message);
-      }
+      if (error) throw new Error(error.message);
 
       setYears(data || []);
+
+      // Auto-select the year whose range contains today
+      const today = new Date();
+      const current = (data || []).find(y => {
+        if (!y.start_date || !y.end_date) return false;
+        return new Date(y.start_date) <= today && today <= new Date(y.end_date);
+      });
+      if (current) {
+        setFilters(prev => ({ ...prev, year: String(current.year_id) }));
+      }
     } catch (err) {
       console.error('Error fetching years:', err);
     }
@@ -548,19 +556,28 @@ export default function ClassManagement() {
   // Filter classes based on selected filters
   const getFilteredClasses = () => {
     return classes.filter(kelas => {
+      const yearMatch = !filters.year || String(kelas.kelas_year_id) === String(filters.year);
       const unitMatch = !filters.unit || kelas.unit_name === filters.unit;
       const waliKelasMatch = !filters.waliKelas || 
         `${kelas.user_nama_depan} ${kelas.user_nama_belakang}`.toLowerCase().includes(filters.waliKelas.toLowerCase());
       
-      return unitMatch && waliKelasMatch;
+      return yearMatch && unitMatch && waliKelasMatch;
     });
   };
 
-  // Get unique units from classes for filter dropdown
-  const getUniqueUnits = () => {
-    const unitSet = new Set(classes.map(kelas => kelas.unit_name).filter(Boolean));
-    return Array.from(unitSet).sort();
+  // Get unique years from classes for filter dropdown
+  const getUniqueYears = () => {
+    const seen = new Map();
+    classes.forEach(k => { if (k.kelas_year_id && k.year_name) seen.set(k.kelas_year_id, k.year_name); });
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => String(b.name).localeCompare(String(a.name)));
   };
+
+  // Get unique units — optionally scoped to selected year
+  const getUniqueUnits = () => {
+    const src = filters.year ? classes.filter(k => String(k.kelas_year_id) === String(filters.year)) : classes;
+    const unitSet = new Set(src.map(k => k.unit_name).filter(Boolean));
+    return Array.from(unitSet).sort();
+  }; 
 
   const validateForm = () => {
     const errors = {};
@@ -721,7 +738,22 @@ export default function ClassManagement() {
             <CardTitle style={{ color: theme.textPrimary }}>{t('classManagement.filtersTitle') || 'Filters'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="filter-year" style={{ color: theme.textBody }}>Tahun Ajaran</Label>
+                <select
+                  id="filter-year"
+                  value={filters.year}
+                  onChange={e => setFilters(prev => ({ ...prev, year: e.target.value, unit: '' }))}
+                  style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '6px' }}
+                  className="w-full px-3 py-2 text-sm"
+                >
+                  <option value="">Semua Tahun Ajaran</option>
+                  {getUniqueYears().map(y => (
+                    <option key={y.id} value={y.id}>{y.name}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <Label htmlFor="filter-unit" style={{ color: theme.textBody }}>{t('classManagement.filterByUnit') || 'Filter by Unit'}</Label>
                 <select
@@ -750,9 +782,15 @@ export default function ClassManagement() {
             </div>
 
             {/* Active Filters Display */}
-            {(filters.unit || filters.waliKelas) && (
+            {(filters.year || filters.unit || filters.waliKelas) && (
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="text-sm" style={{ color: theme.textSecondary }}>{t('classManagement.activeFilters') || 'Active filters:'}</span>
+                {filters.year && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ background: theme.yellowBg, color: theme.yellowText }}>
+                    Tahun Ajaran: {getUniqueYears().find(y => String(y.id) === String(filters.year))?.name || filters.year}
+                    <button onClick={() => setFilters(prev => ({ ...prev, year: '', unit: '' }))} className="ml-2" style={{ color: theme.yellowText }}>×</button>
+                  </span>
+                )}
                 {filters.unit && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ background: theme.blueBg, color: theme.blueText }}>
                     {t('classManagement.unit') || 'Unit'}: {filters.unit}
@@ -778,7 +816,7 @@ export default function ClassManagement() {
                   </span>
                 )}
                 <button
-                  onClick={() => setFilters({ unit: undefined, waliKelas: '' })}
+                  onClick={() => setFilters({ year: '', unit: '', waliKelas: '' })}
                   className="text-sm underline"
                   style={{ color: theme.textSecondary }}
                 >
