@@ -57,6 +57,7 @@ import { faBell } from "@fortawesome/free-solid-svg-icons"
 import { faChartBar } from "@fortawesome/free-solid-svg-icons"
 import { faFileSignature } from "@fortawesome/free-solid-svg-icons"
 import { faCheckDouble } from "@fortawesome/free-solid-svg-icons"
+import { faListCheck, faCalendarCheck } from "@fortawesome/free-solid-svg-icons"
 
 // Object untuk mapping nama icon ke component FontAwesome
 const iconMap = {
@@ -165,6 +166,10 @@ const iconMap = {
   , 'faFileSignature': faFileSignature
   , 'fas fa-check-double': faCheckDouble
   , 'faCheckDouble': faCheckDouble
+  , 'fas fa-list-check': faListCheck
+  , 'faListCheck': faListCheck
+  , 'fas fa-calendar-check': faCalendarCheck
+  , 'faCalendarCheck': faCalendarCheck
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

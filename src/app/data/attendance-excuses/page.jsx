@@ -25,12 +25,11 @@ const CATEGORIES_NO_SCAN_STATIC = [
 // Konversi record dari leave_types DB ke format {value, label, requireUpload, uploadLabel}
 function dbToCategory(lt) {
   return {
-    value:       lt.code,
-    label:       lt.name_en,
+    value:        lt.code,
+    label:        lt.name_en,
     requireUpload: lt.requires_upload || false,
-    uploadLabel: lt.upload_label || '',
-    max_days:    lt.max_days || null,
-    deduct_quota: lt.deduct_quota || false,
+    uploadLabel:  lt.upload_label || '',
+    max_days:     lt.max_days || null,
   }
 }
 
@@ -85,6 +84,8 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
   const [msg, setMsg]                 = useState('')
   const [uploadFile, setUploadFile]   = useState(null)
   const [uploading, setUploading]     = useState(false)
+  const [quotaInfo, setQuotaInfo]     = useState(null)  // { total_days, used_days, year_name } | null
+  const [quotaLoading, setQuotaLoading] = useState(false)
 
   const issueType = record.issues?.includes('late')
     ? 'late'
@@ -99,6 +100,33 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
   const categories = getCategoriesForType(issueType, leaveTypes)
   const selectedCat = categories.find(c => c.value === category)
   const requireUpload = selectedCat?.requireUpload || false
+
+  // Fetch sisa quota ketika kategori berubah dan deduct_quota=true
+  const fetchQuota = async (catCode) => {
+    if (!catCode) { setQuotaInfo(null); return }
+    setQuotaLoading(true)
+    try {
+      const targetDate = record.date
+      // Fetch individual + global records sekaligus (API sudah return keduanya via OR filter)
+      const res = await fetch(`/api/attendance/leave-quotas?user_id=${userId}&leave_type_code=${catCode}`)
+      const json = await res.json()
+      const records = json.data || []
+
+      // Pisahkan individual vs global
+      const indiv = records.find(q => !q.is_global && q.year?.start_date <= targetDate && q.year?.end_date >= targetDate)
+      const global = records.find(q =>  q.is_global && q.year?.start_date <= targetDate && q.year?.end_date >= targetDate)
+
+      if (indiv) {
+        setQuotaInfo({ total_days: indiv.total_days, used_days: indiv.used_days, year_name: indiv.year?.year_name || '', is_global: false })
+      } else if (global) {
+        // Belum ada record individual → tampilkan jatah global (used=0 untuk karyawan ini)
+        setQuotaInfo({ total_days: global.total_days, used_days: 0, year_name: global.year?.year_name || '', is_global: true })
+      } else {
+        setQuotaInfo({ notFound: true })
+      }
+    } catch { setQuotaInfo(null) }
+    finally { setQuotaLoading(false) }
+  }
 
   const duration = issueType === 'late'
     ? record.late_minutes
@@ -254,7 +282,12 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
                 }}>
                 <input type="radio" name="category" value={c.value}
                   checked={category === c.value}
-                  onChange={() => { setCategory(c.value); setUploadFile(null) }}
+                  onChange={() => {
+                    setCategory(c.value)
+                    setUploadFile(null)
+                    setQuotaInfo(null)
+                    fetchQuota(c.value)
+                  }}
                   style={{ accentColor: theme.blueText || '#2563eb', marginTop: '2px', flexShrink: 0 }} />
                 <div>
                   <span className="text-sm" style={{ color: theme.textBody }}>{c.label}</span>
@@ -267,7 +300,33 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
           </div>
         </div>
 
-        {/* Upload attachment */}
+        {/* Quota info */}
+        {/* Quota info — tampil jika ada quota record */}
+        {quotaInfo && !quotaInfo.notFound && (
+          <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
+            {quotaLoading ? (
+              <span className="text-xs" style={{ color: theme.textSecondary }}>⏳ Mengecek sisa jatah...</span>
+            ) : quotaInfo?.notFound ? (
+              <span className="text-xs" style={{ color: '#92400e' }}>⚠️ Jatah cuti belum diset oleh admin untuk tahun ajaran ini</span>
+            ) : quotaInfo ? (
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: theme.textSecondary }}>
+                  📋 Jatah {selectedCat.label} · {quotaInfo.year_name}
+                </span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: (quotaInfo.total_days - quotaInfo.used_days) <= 0 ? '#fee2e2' : '#dcfce7',
+                    color:      (quotaInfo.total_days - quotaInfo.used_days) <= 0 ? '#991b1b' : '#166534'
+                  }}>
+                  Sisa {quotaInfo.total_days - quotaInfo.used_days} / {quotaInfo.total_days} hari
+                </span>
+              </div>
+            ) : (
+              <span className="text-xs" style={{ color: theme.textSecondary }}>📋 Pilih kategori untuk cek sisa jatah</span>
+            )}
+          </div>
+        )}
+
         {requireUpload && (
           <div className="mb-3">
             <label className="text-xs font-medium block mb-1.5" style={{ color: theme.textSecondary }}>

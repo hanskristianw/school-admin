@@ -49,10 +49,10 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ success: false, message: 'approver_user_id wajib diisi' }, { status: 400 })
     }
 
-    // Fetch current excuse
+    // Fetch current excuse — including fields needed for quota deduction
     const { data: excuse, error: fetchErr } = await supabaseAdmin
       .from('attendance_excuses')
-      .select('id, status, approver1_id, approver2_id')
+      .select('id, status, approver1_id, approver2_id, user_id, category, attendance_date')
       .eq('id', id)
       .single()
     if (fetchErr) throw fetchErr
@@ -112,6 +112,65 @@ export async function PATCH(request, { params }) {
       .single()
 
     if (error) throw error
+
+    // ── Deduct quota jika final approved ──────────────────────────────────
+    // Logika baru: ada quota record = ada batas → deduct. Tidak ada = bebas (skip).
+    if (updates.status === 'approved' && excuse.category) {
+      try {
+        // Cari tahun ajaran yang mencakup attendance_date
+        const { data: yearRow } = await supabaseAdmin
+          .from('year')
+          .select('year_id')
+          .lte('start_date', excuse.attendance_date)
+          .gte('end_date',   excuse.attendance_date)
+          .maybeSingle()
+
+        if (yearRow?.year_id) {
+          // 1. Cek record individual karyawan ini
+          const { data: indivQuota } = await supabaseAdmin
+            .from('leave_quotas')
+            .select('id, used_days')
+            .eq('user_id',         excuse.user_id)
+            .eq('leave_type_code', excuse.category)
+            .eq('year_id',         yearRow.year_id)
+            .maybeSingle()
+
+          if (indivQuota) {
+            // Record individual ada → update
+            await supabaseAdmin
+              .from('leave_quotas')
+              .update({ used_days: indivQuota.used_days + 1, updated_at: new Date().toISOString() })
+              .eq('id', indivQuota.id)
+          } else {
+            // 2. Tidak ada individual → cek global template (user_id IS NULL)
+            const { data: globalQuota } = await supabaseAdmin
+              .from('leave_quotas')
+              .select('id, total_days')
+              .is('user_id', null)
+              .eq('leave_type_code', excuse.category)
+              .eq('year_id',         yearRow.year_id)
+              .maybeSingle()
+
+            if (globalQuota) {
+              // Global template ada → auto-create individual record untuk karyawan ini
+              await supabaseAdmin
+                .from('leave_quotas')
+                .insert({
+                  user_id:         excuse.user_id,
+                  leave_type_code: excuse.category,
+                  year_id:         yearRow.year_id,
+                  total_days:      globalQuota.total_days,
+                  used_days:       1,
+                })
+            }
+            // Tidak ada individual maupun global → jenis ini tidak terbatas, skip
+          }
+        }
+      } catch (_) {
+        // Quota deduction failure tidak membatalkan approval
+      }
+    }
+
     return NextResponse.json({ success: true, data })
   } catch (err) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 })
