@@ -151,12 +151,18 @@ export async function POST(request) {
 
     if (globalHoliday) {
       console.log(`[AttendanceNotif] ${targetDate} is a global holiday: ${globalHoliday.name}. Skipping.`)
+      await supabaseAdmin.from('attendance_notify_run_log').insert({
+        target_date: targetDate, users_processed: 0, violations_found: 0,
+        emails_sent: 0, emails_failed: 0,
+        skipped_reason: `Hari libur: ${globalHoliday.name}`,
+      }).catch(() => {})
       return NextResponse.json({
         success: true,
         message: `Skipped: ${targetDate} is global holiday (${globalHoliday.name})`,
         processed: 0
       })
     }
+
 
     // ─── 4. Load settings ─────────────────────────────────────────────────────
     const { data: settingsRows } = await supabaseAdmin
@@ -167,8 +173,14 @@ export async function POST(request) {
     const settings = Object.fromEntries((settingsRows || []).map(r => [r.key, r.value]))
 
     if (settings.attendance_notif_enabled === 'false') {
+      await supabaseAdmin.from('attendance_notify_run_log').insert({
+        target_date: targetDate, users_processed: 0, violations_found: 0,
+        emails_sent: 0, emails_failed: 0,
+        skipped_reason: 'Notifikasi dinonaktifkan di pengaturan',
+      }).catch(() => {})
       return NextResponse.json({ success: true, message: 'Notifications disabled in settings', processed: 0 })
     }
+
 
     const graceMinutes = parseInt(settings.attendance_notif_grace_minutes || '0', 10)
     const adminEmails = (settings.attendance_notif_admin_emails || '')
@@ -389,52 +401,75 @@ export async function POST(request) {
         .from('attendance_notification_log')
         .upsert(logRows, { onConflict: 'user_id,notif_date,notif_type', ignoreDuplicates: true })
 
-      // ── Add to admin violations list (always, regardless of email) ────────
+      // ── Add to admin violations list ───────────────────────────────────────────
       for (const issue of newIssues) {
         allViolations.push({
           userName,
           roleName: user.role?.role_name || '-',
           unitName: '-',
-          noEmail: emailSkipped,
+          noEmail:     emailSkipped,
+          emailFailed: !emailSkipped && !userEmailSuccess,
           ...issue
         })
       }
     }
 
+
     // ─── 8. Send admin summary email ─────────────────────────────────────────
+    let adminEmailOk = null
     if (allViolations.length > 0 && adminEmails.length > 0) {
       try {
         const { subject, html } = emailTemplates.attendanceSummaryAdmin({
           date: targetDateLabel,
           violations: allViolations
         })
-        // Admin summary = 1 email (even if multiple recipients, it's 1 API call)
         await sendEmailRateLimited({ to: adminEmails, subject, html })
         emailsSent++
+        adminEmailOk = true
         console.log(`[AttendanceNotif] Admin summary sent to ${adminEmails.join(', ')}`)
       } catch (adminEmailErr) {
+        adminEmailOk = false
         console.error('[AttendanceNotif] Failed to send admin summary:', adminEmailErr.message)
       }
     }
 
-    console.log(`[AttendanceNotif] Done. Violations: ${allViolations.length}, Emails sent: ${emailsSent}`)
+    // ─── 9. Write run log ─────────────────────────────────────────────────────
+    const emailsFailed = allViolations.filter(v => v.emailFailed).length
+    await supabaseAdmin.from('attendance_notify_run_log').insert({
+      target_date:      targetDate,
+      users_processed:  users?.length || 0,
+      violations_found: allViolations.length,
+      emails_sent:      emailsSent,
+      emails_failed:    emailsFailed,
+      admin_emails:     adminEmails,
+      admin_email_ok:   adminEmailOk,
+    }).catch(e => console.error('[AttendanceNotif] Failed to write run log:', e.message))
+
+    console.log(`[AttendanceNotif] Done. Violations: ${allViolations.length}, Sent: ${emailsSent}, Failed: ${emailsFailed}`)
 
     return NextResponse.json({
       success: true,
       date: targetDate,
       violations: allViolations.length,
       emailsSent,
+      emailsFailed,
       message: `Processed ${users?.length || 0} users, found ${allViolations.length} violations`
     })
 
   } catch (err) {
     console.error('[AttendanceNotif] Error:', err)
+    await supabaseAdmin.from('attendance_notify_run_log').insert({
+      users_processed: 0, violations_found: 0,
+      emails_sent: 0, emails_failed: 0,
+      error_message: err.message,
+    }).catch(() => {})
     return NextResponse.json(
       { success: false, error: err.message },
       { status: 500 }
     )
   }
 }
+
 
 /**
  * GET /api/attendance/notify

@@ -96,6 +96,7 @@ export default function AttendanceSettingsPage() {
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsMsg, setSettingsMsg]   = useState('')
   const [notifLogs, setNotifLogs]       = useState([])
+  const [runLogs, setRunLogs]           = useState([])
   const [logsLoading, setLogsLoading]   = useState(false)
   const [testRunning, setTestRunning]   = useState(false)
   const [testResult, setTestResult]     = useState(null)
@@ -106,10 +107,12 @@ export default function AttendanceSettingsPage() {
     fetchHolidays()
     fetchSettings()
     fetchLogs()
+    fetchRunLogs()
     fetchSpecialRules()
     fetchAllUsers()
     fetchRoleApprovers()
   }, [])
+
 
   // auto-fill end date when start changes (default to same day)
   useEffect(() => {
@@ -517,10 +520,20 @@ export default function AttendanceSettingsPage() {
       .from('attendance_notification_log')
       .select('*, user:user_id (user_nama_depan, user_nama_belakang)')
       .order('sent_at', { ascending: false })
-      .limit(30)
+      .limit(50)
     setNotifLogs(data || [])
     setLogsLoading(false)
   }
+
+  const fetchRunLogs = async () => {
+    const { data } = await supabase
+      .from('attendance_notify_run_log')
+      .select('*')
+      .order('ran_at', { ascending: false })
+      .limit(30)
+    setRunLogs(data || [])
+  }
+
 
   const triggerTestRun = async () => {
     setTestRunning(true)
@@ -537,11 +550,13 @@ export default function AttendanceSettingsPage() {
       const json = await res.json()
       setTestResult(json)
       fetchLogs()
+      fetchRunLogs()
     } catch (e) {
       setTestResult({ success: false, error: e.message })
     }
     setTestRunning(false)
   }
+
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER HELPERS
@@ -1132,10 +1147,78 @@ export default function AttendanceSettingsPage() {
             </div>
           </div>
 
-          {/* Notification log */}
+          {/* ── Riwayat Kirim Harian (run log) ── */}
           <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
             <div className="px-4 py-3 flex items-center justify-between" style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-              <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>📋 Log Notifikasi Terbaru</h3>
+              <div>
+                <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>🗓️ Riwayat Eksekusi Cron (per hari)</h3>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>Setiap cron berjalan mencatat 1 baris di sini — termasuk skip & error.</p>
+              </div>
+              <button onClick={fetchRunLogs} className="text-xs px-3 py-1 rounded-lg" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textSecondary, cursor: 'pointer' }}>↻ Refresh</button>
+            </div>
+            {runLogs.length === 0 ? (
+              <div className="p-6 text-center text-sm" style={{ color: theme.textSecondary }}>Belum ada data — cron belum pernah berjalan atau tabel belum dibuat.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ background: theme.subtleBg }}>
+                      {['Dijalankan (WIB)', 'Tgl Proses', 'User', 'Pelanggaran', 'Email OK', 'Email Gagal', 'Admin Email', 'Keterangan'].map(h => (
+                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold" style={{ color: theme.textSecondary, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runLogs.map(r => {
+                      const ranAtWIB = r.ran_at ? new Date(new Date(r.ran_at).getTime() + 7*60*60*1000) : null
+                      const ranStr = ranAtWIB
+                        ? `${String(ranAtWIB.getUTCDate()).padStart(2,'0')}/${String(ranAtWIB.getUTCMonth()+1).padStart(2,'0')} ${String(ranAtWIB.getUTCHours()).padStart(2,'0')}:${String(ranAtWIB.getUTCMinutes()).padStart(2,'0')}`
+                        : '—'
+                      const isSkip  = !!r.skipped_reason
+                      const isError = !!r.error_message
+                      const rowBg   = isError ? '#fef2f2' : isSkip ? (theme.subtleBg) : theme.cardBg
+                      return (
+                        <tr key={r.id} style={{ borderTop: `1px solid ${theme.border}`, background: rowBg }}>
+                          <td className="px-3 py-2 text-xs font-mono" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>{ranStr}</td>
+                          <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>{r.target_date || '—'}</td>
+                          <td className="px-3 py-2 text-xs text-center" style={{ color: theme.textBody }}>{isSkip || isError ? '—' : r.users_processed}</td>
+                          <td className="px-3 py-2 text-xs text-center" style={{ color: r.violations_found > 0 ? '#92400e' : theme.textSecondary }}>
+                            {isSkip || isError ? '—' : r.violations_found}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-center">
+                            {isSkip || isError ? <span style={{ color: theme.textSecondary }}>—</span>
+                              : <span style={{ fontWeight: 600, color: r.emails_sent > 0 ? '#166534' : theme.textSecondary }}>{r.emails_sent}</span>}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-center">
+                            {isSkip || isError ? <span style={{ color: theme.textSecondary }}>—</span>
+                              : r.emails_failed > 0
+                                ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#fee2e2', color: '#991b1b' }}>❌ {r.emails_failed}</span>
+                                : <span style={{ color: theme.textSecondary }}>0</span>}
+                          </td>
+                          <td className="px-3 py-2 text-xs">
+                            {r.admin_email_ok === true  && <span className="px-2 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#166534', fontSize: 11, fontWeight: 600 }}>✓ {(r.admin_emails||[]).join(', ')}</span>}
+                            {r.admin_email_ok === false && <span className="px-2 py-0.5 rounded-full" style={{ background: '#fee2e2', color: '#991b1b', fontSize: 11, fontWeight: 600 }}>✗ Gagal</span>}
+                            {r.admin_email_ok === null  && <span style={{ color: theme.textSecondary, fontSize: 11 }}>—</span>}
+                          </td>
+                          <td className="px-3 py-2 text-xs" style={{ color: isError ? '#991b1b' : isSkip ? '#92400e' : theme.textSecondary }}>
+                            {isError ? `⚠️ ${r.error_message}` : isSkip ? `⏭ ${r.skipped_reason}` : '✓ Normal'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── Log Notifikasi per Karyawan ── */}
+          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
+            <div className="px-4 py-3 flex items-center justify-between" style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+              <div>
+                <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>📋 Log Notifikasi per Karyawan</h3>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>Tiap baris = satu pelanggaran satu karyawan. Status email per orang.</p>
+              </div>
               {logsLoading && <span className="text-xs" style={{ color: theme.textSecondary }}>Memuat...</span>}
             </div>
             {notifLogs.length === 0 ? (
@@ -1145,8 +1228,8 @@ export default function AttendanceSettingsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ background: theme.subtleBg }}>
-                      {['Dikirim', 'Nama', 'Tgl Kejadian', 'Jenis', 'Terjadwal', 'Aktual', 'Status'].map(h => (
-                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold" style={{ color: theme.textSecondary }}>{h}</th>
+                      {['Dikirim (WIB)', 'Nama', 'Tgl Kejadian', 'Jenis', 'Terjadwal', 'Aktual', 'Email Ke', 'Status Email'].map(h => (
+                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold" style={{ color: theme.textSecondary, whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1156,25 +1239,34 @@ export default function AttendanceSettingsPage() {
                         ? `${log.user.user_nama_depan || ''} ${log.user.user_nama_belakang || ''}`.trim()
                         : `User #${log.user_id}`
                       const notifInfo = NOTIF_TYPES[log.notif_type] || { label: log.notif_type, bg: '#f3f4f6', color: '#374151' }
+                      const sentAtWIB = log.sent_at ? new Date(new Date(log.sent_at).getTime() + 7*60*60*1000) : null
+                      const sentStr = sentAtWIB
+                        ? `${String(sentAtWIB.getUTCDate()).padStart(2,'0')}/${String(sentAtWIB.getUTCMonth()+1).padStart(2,'0')} ${String(sentAtWIB.getUTCHours()).padStart(2,'0')}:${String(sentAtWIB.getUTCMinutes()).padStart(2,'0')}`
+                        : '—'
+                      // 3-state: true=sent, false=failed, null=no email configured
+                      const statusBadge = log.success === true
+                        ? { bg: '#dcfce7', color: '#166534', label: '✓ Terkirim' }
+                        : log.success === false
+                        ? { bg: '#fee2e2', color: '#991b1b', label: '✗ Gagal' }
+                        : { bg: '#f3f4f6', color: '#6b7280', label: '— Tidak ada email' }
                       return (
                         <tr key={log.id} style={{ borderTop: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                          <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>
-                            {new Date(log.sent_at).toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
-                          </td>
+                          <td className="px-3 py-2 text-xs font-mono" style={{ color: theme.textSecondary, whiteSpace: 'nowrap' }}>{sentStr}</td>
                           <td className="px-3 py-2 text-xs font-medium" style={{ color: theme.textPrimary }}>{nm}</td>
                           <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>{log.notif_date}</td>
                           <td className="px-3 py-2">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                              style={{ background: notifInfo.bg, color: notifInfo.color }}>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: notifInfo.bg, color: notifInfo.color }}>
                               {notifInfo.label}
                             </span>
                           </td>
                           <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>{log.scheduled_time || '—'}</td>
                           <td className="px-3 py-2 text-xs" style={{ color: theme.textPrimary }}>{log.actual_time || '—'}</td>
+                          <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>
+                            {(log.email_to || []).join(', ') || '—'}
+                          </td>
                           <td className="px-3 py-2">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                              style={{ background: log.success ? '#dcfce7' : '#fee2e2', color: log.success ? '#166534' : '#991b1b' }}>
-                              {log.success ? '✓ Terkirim' : '✗ Gagal'}
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: statusBadge.bg, color: statusBadge.color }}>
+                              {statusBadge.label}
                             </span>
                           </td>
                         </tr>
@@ -1187,6 +1279,7 @@ export default function AttendanceSettingsPage() {
           </div>
         </div>
       )}
+
       {/* ════════════════════ TAB 4: HARI KHUSUS ════════════════════ */}
       {tab === 'special' && (
         <div className="space-y-4">
