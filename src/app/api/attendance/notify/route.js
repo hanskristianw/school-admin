@@ -3,10 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/mailer'
 import { emailTemplates } from '@/lib/emailTemplates'
 
+// Prevent Next.js from statically caching this route
+export const dynamic = 'force-dynamic'
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
+
 
 // Helper: convert time string "HH:MM" or "HH:MM:SS" to minutes from midnight
 function timeToMinutes(timeStr) {
@@ -121,16 +125,43 @@ async function sendEmailRateLimited({ to, subject, html }) {
  * Auth: Authorization: Bearer <ATTENDANCE_WEBHOOK_SECRET>
  */
 export async function POST(request) {
+  return handleNotify(request)
+}
+
+/**
+ * GET /api/attendance/notify
+ * Called by Vercel Cron (vercel.json schedule) — GET is Vercel Cron default method.
+ * Also accepts manual trigger with Bearer token for testing.
+ */
+export async function GET(request) {
+  return handleNotify(request)
+}
+
+/**
+ * Core handler — shared between GET (cron) and POST (manual trigger)
+ */
+async function handleNotify(request) {
   try {
     // ─── 1. Auth check ───────────────────────────────────────────────────────
     const authHeader = request.headers.get('authorization') || ''
+    const userAgent  = request.headers.get('user-agent') || ''
     const cronSecret = process.env.ATTENDANCE_WEBHOOK_SECRET || ''
-    const isVercelCron = request.headers.get('x-vercel-cron') === '1'
+    const vercelCronSecret = process.env.CRON_SECRET || ''
 
-    // Accept: Vercel Cron header OR Bearer token
-    if (!isVercelCron && authHeader !== `Bearer ${cronSecret}`) {
+    // Vercel Cron uses User-Agent: vercel-cron/1.0
+    const isVercelCron = userAgent.includes('vercel-cron')
+      || request.headers.get('x-vercel-cron') === '1'
+
+    const hasBearerToken = (cronSecret && authHeader === `Bearer ${cronSecret}`)
+      || (vercelCronSecret && authHeader === `Bearer ${vercelCronSecret}`)
+
+    console.log(`[AttendanceNotif] Auth: isVercelCron=${isVercelCron}, hasBearerToken=${hasBearerToken}, UA=${userAgent}`)
+
+    if (!isVercelCron && !hasBearerToken) {
+      console.warn('[AttendanceNotif] Unauthorized request rejected')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
 
     // ─── 2. Determine target date (yesterday WIB) ─────────────────────────────
     const targetDate = getYesterdayWIB()
@@ -470,27 +501,3 @@ export async function POST(request) {
   }
 }
 
-
-/**
- * GET /api/attendance/notify
- * Returns status and recent notification log (admin use)
- */
-export async function GET(request) {
-  try {
-    const authHeader = request.headers.get('authorization') || ''
-    const cronSecret = process.env.ATTENDANCE_WEBHOOK_SECRET || ''
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: logs } = await supabaseAdmin
-      .from('attendance_notification_log')
-      .select('*, user:user_id (user_nama_depan, user_nama_belakang)')
-      .order('sent_at', { ascending: false })
-      .limit(50)
-
-    return NextResponse.json({ success: true, logs })
-  } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
-  }
-}
