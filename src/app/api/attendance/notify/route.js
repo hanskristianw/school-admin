@@ -11,6 +11,15 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
+// Safe helper: insert to run log without throwing (Supabase returns PostgrestFilterBuilder, not native Promise)
+async function safeInsertRunLog(data) {
+  try {
+    await supabaseAdmin.from('attendance_notify_run_log').insert(data)
+  } catch (e) {
+    console.error('[AttendanceNotif] Failed to write run log:', e?.message || e)
+  }
+}
+
 
 // Helper: convert time string "HH:MM" or "HH:MM:SS" to minutes from midnight
 function timeToMinutes(timeStr) {
@@ -182,17 +191,18 @@ async function handleNotify(request) {
 
     if (globalHoliday) {
       console.log(`[AttendanceNotif] ${targetDate} is a global holiday: ${globalHoliday.name}. Skipping.`)
-      await supabaseAdmin.from('attendance_notify_run_log').insert({
+      await safeInsertRunLog({
         target_date: targetDate, users_processed: 0, violations_found: 0,
         emails_sent: 0, emails_failed: 0,
         skipped_reason: `Hari libur: ${globalHoliday.name}`,
-      }).catch(() => {})
+      })
       return NextResponse.json({
         success: true,
         message: `Skipped: ${targetDate} is global holiday (${globalHoliday.name})`,
         processed: 0
       })
     }
+
 
 
     // ─── 4. Load settings ─────────────────────────────────────────────────────
@@ -204,13 +214,14 @@ async function handleNotify(request) {
     const settings = Object.fromEntries((settingsRows || []).map(r => [r.key, r.value]))
 
     if (settings.attendance_notif_enabled === 'false') {
-      await supabaseAdmin.from('attendance_notify_run_log').insert({
+      await safeInsertRunLog({
         target_date: targetDate, users_processed: 0, violations_found: 0,
         emails_sent: 0, emails_failed: 0,
         skipped_reason: 'Notifikasi dinonaktifkan di pengaturan',
-      }).catch(() => {})
+      })
       return NextResponse.json({ success: true, message: 'Notifications disabled in settings', processed: 0 })
     }
+
 
 
     const graceMinutes = parseInt(settings.attendance_notif_grace_minutes || '0', 10)
@@ -466,7 +477,7 @@ async function handleNotify(request) {
 
     // ─── 9. Write run log ─────────────────────────────────────────────────────
     const emailsFailed = allViolations.filter(v => v.emailFailed).length
-    await supabaseAdmin.from('attendance_notify_run_log').insert({
+    await safeInsertRunLog({
       target_date:      targetDate,
       users_processed:  users?.length || 0,
       violations_found: allViolations.length,
@@ -474,7 +485,8 @@ async function handleNotify(request) {
       emails_failed:    emailsFailed,
       admin_emails:     adminEmails,
       admin_email_ok:   adminEmailOk,
-    }).catch(e => console.error('[AttendanceNotif] Failed to write run log:', e.message))
+    })
+
 
     console.log(`[AttendanceNotif] Done. Violations: ${allViolations.length}, Sent: ${emailsSent}, Failed: ${emailsFailed}`)
 
@@ -489,15 +501,16 @@ async function handleNotify(request) {
 
   } catch (err) {
     console.error('[AttendanceNotif] Error:', err)
-    await supabaseAdmin.from('attendance_notify_run_log').insert({
+    await safeInsertRunLog({
       users_processed: 0, violations_found: 0,
       emails_sent: 0, emails_failed: 0,
       error_message: err.message,
-    }).catch(() => {})
+    })
     return NextResponse.json(
       { success: false, error: err.message },
       { status: 500 }
     )
   }
 }
+
 
