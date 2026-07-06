@@ -2083,15 +2083,14 @@ export default function AddUniformStockPage() {
                     <span className="text-gray-600">{r.receipt_date}</span>
                     {r.notes && <span className="ml-2 text-gray-500 italic">• {r.notes}</span>}
                   </div>
-                  {hasVoidPermission && (
-                    <button
-                      onClick={() => openEditReceipt({ ...r, purchase_id: purchaseId })}
-                      className="ml-3 text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-medium transition-colors"
-                      title="Edit jumlah penerimaan ini"
-                    >
-                      ✏️ Edit
-                    </button>
-                  )}
+                  <button
+                    onClick={() => openEditReceipt({ ...r, purchase_id: purchaseId })}
+                    className="ml-3 text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-medium transition-colors"
+                    title="Edit jumlah penerimaan ini"
+                  >
+                    ✏️ Edit
+                  </button>
+
                 </div>
               ))}
             </div>
@@ -2155,15 +2154,14 @@ export default function AddUniformStockPage() {
                     <span className="text-gray-600">{r.receipt_date}</span>
                     {r.notes && <span className="ml-2 text-gray-500 italic">• {r.notes}</span>}
                   </div>
-                  {hasVoidPermission && (
-                    <button
-                      onClick={() => openEditReceipt({ ...r, purchase_id: historyHeader?.purchase_id })}
-                      className="ml-3 text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-medium transition-colors"
-                      title="Edit jumlah penerimaan ini"
-                    >
-                      ✏️ Edit
-                    </button>
-                  )}
+                  <button
+                    onClick={() => openEditReceipt({ ...r, purchase_id: historyHeader?.purchase_id })}
+                    className="ml-3 text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-medium transition-colors"
+                    title="Edit jumlah penerimaan ini"
+                  >
+                    ✏️ Edit
+                  </button>
+
                 </div>
               ))}
             </div>
