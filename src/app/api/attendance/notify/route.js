@@ -222,17 +222,13 @@ async function handleNotify(request) {
       return NextResponse.json({ success: true, message: 'Notifications disabled in settings', processed: 0 })
     }
 
-
-
     const graceMinutes = parseInt(settings.attendance_notif_grace_minutes || '0', 10)
     const adminEmails = (settings.attendance_notif_admin_emails || '')
       .split(',')
       .map(e => e.trim())
       .filter(Boolean)
 
-    // ─── 5. Fetch active users with attendance config ─────────────────────────
-    // Only users with user_pin are registered on the IoT machine → only they have
-    // data in `attendances`. Users without a PIN are skipped entirely.
+    // ─── 5. Fetch active users with attendance config ───────────────────────────────
     const { data: users, error: usersErr } = await supabaseAdmin
       .from('users')
       .select(`
@@ -244,27 +240,20 @@ async function handleNotify(request) {
         user_pin,
         expected_check_in,
         expected_check_out,
-        role:user_role_id (role_name, work_days)
+        role:user_role_id (role_name, work_days, is_part_time_staff)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
-      // Note: users without expected_check_in use DEFAULT_CHECK_IN/OUT
 
     if (usersErr) throw usersErr
 
-    // ─── 6. Fetch all attendances for target date ─────────────────────────────
+    // ─── 6. Fetch attendances for target date ───────────────────────────────────
     const userIds = (users || []).map(u => u.user_id)
     if (userIds.length === 0) {
       return NextResponse.json({ success: true, message: 'No users with attendance config', processed: 0 })
     }
 
-    // Query attendances for yesterday (scan_time is TIMESTAMPTZ stored in WIB)
-    const startUTC = new Date(targetDate + 'T17:00:00.000Z') // Yesterday 00:00 WIB = day-before 17:00 UTC
-    const endUTC   = new Date(targetDate + 'T16:59:59.999Z') // Yesterday 23:59 WIB
-    // Actually: targetDate 00:00 WIB = (targetDate-1)T17:00:00Z but let's do it properly:
-    const dayStart = targetDate + 'T17:00:00.000Z' // This is wrong - let's fix
-    // Since scan_time is stored as WIB TIMESTAMPTZ (the device sends WIB, stored as-is)
-    // We filter by the date portion. Use between approach:
+    // scan_time stored as TIMESTAMPTZ — filter by WIB date range
     const tsStart = `${targetDate}T00:00:00+07:00`
     const tsEnd   = `${targetDate}T23:59:59+07:00`
 
@@ -285,51 +274,78 @@ async function handleNotify(request) {
       attByUser[att.user_id].push(att)
     }
 
-    // ─── 7. Pre-fetch role-specific holidays for target date ──────────────────
-    // Fetch all role-specific holidays that cover targetDate (role_id NOT NULL)
-    const roleIds = [...new Set((users || []).map(u => u.user_role_id).filter(Boolean))]
-    let roleHolidaySet = new Set() // Set of role_id strings that are on holiday today
+    // ─── 6b. Fetch special day rules for targetDate ──────────────────────────────
+    // Matches report API — user > role > global priority
+    let specialRules = []
+    try {
+      const { data: srData } = await supabaseAdmin
+        .from('special_day_rules')
+        .select('id, tanggal, scope_type, role_id, user_id, is_work_day, custom_check_in, custom_check_out, keterangan')
+        .eq('tanggal', targetDate)
+      specialRules = srData || []
+    } catch (_) {}
 
-    if (roleIds.length > 0) {
-      const { data: roleHolidays } = await supabaseAdmin
-        .from('school_holidays')
-        .select('role_id, name')
-        .not('role_id', 'is', null)
-        .in('role_id', roleIds)
-        .lte('date_start', targetDate)
-        .gte('date_end', targetDate)
-
-      for (const rh of (roleHolidays || [])) {
-        roleHolidaySet.add(String(rh.role_id))
-        console.log(`[AttendanceNotif] Role ${rh.role_id} is on holiday: ${rh.name}`)
-      }
+    const resolveSpecialRule = (userRoleId, userId) => {
+      const userRule = specialRules.find(r => r.scope_type === 'user' && String(r.user_id) === String(userId))
+      if (userRule) return userRule
+      const roleRule = specialRules.find(r => r.scope_type === 'role' && String(r.role_id) === String(userRoleId))
+      if (roleRule) return roleRule
+      return specialRules.find(r => r.scope_type === 'all') || null
     }
 
-    // ─── 8. Process each user ─────────────────────────────────────────────────
+    // ─── 7. Pre-fetch role-specific holidays for target date ────────────────────────
+    const roleIds = [...new Set((users || []).map(u => u.user_role_id).filter(Boolean))]
+    // All holidays on this date (global + role-specific)
+    let allHolidays = []
+    try {
+      const { data: hData } = await supabaseAdmin
+        .from('school_holidays')
+        .select('role_id, name')
+        .lte('date_start', targetDate)
+        .gte('date_end', targetDate)
+      allHolidays = hData || []
+    } catch (_) {}
+
+    const isHoliday = (userRoleId) =>
+      allHolidays.some(h =>
+        h.role_id === null || h.role_id === undefined ||
+        String(h.role_id) === String(userRoleId)
+      )
+
+    // ─── 8. Process each user ─────────────────────────────────────────────────────
     const allViolations = []
     let emailsSent = 0
 
     for (const user of (users || [])) {
-      const userName = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
-      const workDays = (user.role?.work_days || '1,2,3,4,5').split(',').map(Number)
+      const userName    = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
+      const workDays    = (user.role?.work_days || '1,2,3,4,5').split(',').map(Number)
+      const isPartTime  = !!user.role?.is_part_time_staff
 
-      // Skip if today is not a work day for this role
-      if (!workDays.includes(targetDayNum)) {
-        console.log(`[AttendanceNotif] ${userName}: day ${targetDayNum} not in work_days [${workDays}]. Skip.`)
+      // ── Resolve special rule for this user/date ──
+      const specialRule = resolveSpecialRule(user.user_role_id, user.user_id)
+
+      // ── Determine if today is a work day (same logic as report API) ──
+      let isWorkDay
+      if (specialRule) {
+        isWorkDay = specialRule.is_work_day
+      } else {
+        isWorkDay = workDays.includes(targetDayNum) && !isHoliday(user.user_role_id)
+      }
+
+      if (!isWorkDay) {
+        console.log(`[AttendanceNotif] ${userName}: not a work day. Skip.`)
         continue
       }
 
-      // Skip if this role has a role-specific holiday today
-      if (roleHolidaySet.has(String(user.user_role_id))) {
-        console.log(`[AttendanceNotif] ${userName}: role ${user.user_role_id} is on holiday today. Skip.`)
-        continue
-      }
-
-      const userAtts   = attByUser[user.user_id] || []
+      const userAtts    = attByUser[user.user_id] || []
       const expectedIn  = user.expected_check_in  || DEFAULT_CHECK_IN
       const expectedOut = user.expected_check_out || DEFAULT_CHECK_OUT
 
-      // Classify using midpoint logic (same as attendance-machine page)
+      // Apply special rule custom hours if present
+      const effIn  = (specialRule?.custom_check_in  ? String(specialRule.custom_check_in).slice(0,5)  : null) || expectedIn
+      const effOut = (specialRule?.custom_check_out ? String(specialRule.custom_check_out).slice(0,5) : null) || expectedOut
+
+      // Classify scans using midpoint logic (same as report API)
       const checkins  = userAtts
         .filter(a => resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
         .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
@@ -337,55 +353,51 @@ async function handleNotify(request) {
         .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
         .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
 
-      const expectedInMins  = timeToMinutes(expectedIn)
-      const expectedOutMins = timeToMinutes(expectedOut)
+      const effInMins  = timeToMinutes(effIn)
+      const effOutMins = timeToMinutes(effOut)
+
+      const noCheckIn  = checkins.length === 0
+      const noCheckOut = checkouts.length === 0
 
       const issues = []
 
-      // ── A. No check-in at all ────────────────────────────────────────────
-      if (checkins.length === 0) {
-        issues.push({
-          type: 'no_checkin',
-          scheduledTime: expectedIn.slice(0, 5),
-          actualTime: null,
-          minutesDiff: null
-        })
+      if (noCheckIn && noCheckOut) {
+        // ── A. Tidak masuk sama sekali (absent = Tidak Masuk) ─────────────────
+        if (!isPartTime) {
+          issues.push({ type: 'absent', scheduledTime: effIn.slice(0,5), actualTime: null, minutesDiff: null })
+        }
       } else {
-        // ── B. Late check-in ──────────────────────────────────────────────
-        const actualInStr  = wibTimeStr(checkins[0].scan_time)
-        const actualInMins = timeToMinutes(actualInStr)
-        const lateMins = actualInMins - expectedInMins - graceMinutes
-        if (lateMins > 0) {
-          issues.push({
-            type: 'late',
-            scheduledTime: expectedIn.slice(0, 5),
-            actualTime: actualInStr,
-            minutesDiff: lateMins
-          })
+        // ── B. Analisis Check-In ──────────────────────────────────────────────
+        if (!noCheckIn) {
+          if (!isPartTime) {
+            const actualInStr  = wibTimeStr(checkins[0].scan_time)
+            const actualInMins = timeToMinutes(actualInStr)
+            const lateMins = actualInMins - effInMins - graceMinutes
+            if (lateMins > 0) {
+              issues.push({ type: 'late', scheduledTime: effIn.slice(0,5), actualTime: actualInStr, minutesDiff: lateMins })
+            }
+          }
+        } else if (!isPartTime) {
+          // Ada scan (checkout) tapi tidak ada check-in
+          issues.push({ type: 'no_checkin', scheduledTime: effIn.slice(0,5), actualTime: null, minutesDiff: null })
+        }
+
+        // ── C. Analisis Check-Out ─────────────────────────────────────────────
+        if (!noCheckOut) {
+          if (!isPartTime) {
+            const actualOutStr  = wibTimeStr(checkouts[checkouts.length - 1].scan_time)
+            const actualOutMins = timeToMinutes(actualOutStr)
+            const earlyMins = effOutMins - actualOutMins - graceMinutes
+            if (earlyMins > 0) {
+              issues.push({ type: 'leave_early', scheduledTime: effOut.slice(0,5), actualTime: actualOutStr, minutesDiff: earlyMins })
+            }
+          }
+        } else if (!noCheckIn && !isPartTime) {
+          // Ada check-in tapi tidak ada check-out
+          issues.push({ type: 'no_checkout', scheduledTime: effOut.slice(0,5), actualTime: null, minutesDiff: null })
         }
       }
 
-      // ── C. No check-out or leave early ───────────────────────────────────
-      if (checkouts.length === 0 && userAtts.length > 0) {
-        issues.push({
-          type: 'no_checkout',
-          scheduledTime: expectedOut.slice(0, 5),
-          actualTime: null,
-          minutesDiff: null
-        })
-      } else if (checkouts.length > 0) {
-        const actualOutStr  = wibTimeStr(checkouts[checkouts.length - 1].scan_time)
-        const actualOutMins = timeToMinutes(actualOutStr)
-        const earlyMins = expectedOutMins - actualOutMins - graceMinutes
-        if (earlyMins > 0) {
-          issues.push({
-            type: 'leave_early',
-            scheduledTime: expectedOut.slice(0, 5),
-            actualTime: actualOutStr,
-            minutesDiff: earlyMins
-          })
-        }
-      }
 
       if (issues.length === 0) continue
 

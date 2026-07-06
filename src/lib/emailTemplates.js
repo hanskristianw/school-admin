@@ -154,11 +154,12 @@ export const emailTemplates = {
   attendanceLate: ({ userName, date, issues }) => {
     const typeLabel = (type) => {
       switch (type) {
-        case 'late':        return { icon: '🕐', label: 'Terlambat',       color: '#d97706', bg: '#fef3c7', headerGrad: 'linear-gradient(135deg, #d97706, #f59e0b)' }
-        case 'leave_early': return { icon: '🚪', label: 'Pulang Awal',     color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
-        case 'no_checkin':  return { icon: '❌', label: 'Tidak Check-In',  color: '#7c3aed', bg: '#ede9fe', headerGrad: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }
-        case 'no_checkout': return { icon: '⚠️', label: 'Tidak Check-Out', color: '#ea580c', bg: '#ffedd5', headerGrad: 'linear-gradient(135deg, #ea580c, #f97316)' }
-        default:            return { icon: '❓', label: type,              color: '#374151', bg: '#f3f4f6', headerGrad: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
+        case 'late':        return { icon: '🕐', label: 'Terlambat',        color: '#d97706', bg: '#fef3c7', headerGrad: 'linear-gradient(135deg, #d97706, #f59e0b)' }
+        case 'leave_early': return { icon: '🚪', label: 'Pulang Awal',      color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
+        case 'absent':      return { icon: '🚫', label: 'Tidak Masuk',      color: '#6b21a8', bg: '#f3e8ff', headerGrad: 'linear-gradient(135deg, #6b21a8, #9333ea)' }
+        case 'no_checkin':  return { icon: '❌', label: 'Tidak Check-In',   color: '#7c3aed', bg: '#ede9fe', headerGrad: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }
+        case 'no_checkout': return { icon: '⚠️', label: 'Tidak Check-Out',  color: '#ea580c', bg: '#ffedd5', headerGrad: 'linear-gradient(135deg, #ea580c, #f97316)' }
+        default:            return { icon: '❓', label: type,               color: '#374151', bg: '#f3f4f6', headerGrad: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
       }
     }
 
@@ -184,7 +185,9 @@ export const emailTemplates = {
     const issueRows = issueList.map(issue => {
       const { icon, label, color, bg } = typeLabel(issue.type)
       let detail
-      if (issue.type === 'no_checkin') {
+      if (issue.type === 'absent') {
+        detail = `Tidak ada data kehadiran sama sekali pada tanggal ini. Jadwal masuk: ${issue.scheduledTime || '—'}`
+      } else if (issue.type === 'no_checkin') {
         detail = `Tidak ada data check-in. Jadwal check-in: ${issue.scheduledTime || '—'}`
       } else if (issue.type === 'no_checkout') {
         detail = `Tidak ada data check-out. Jadwal check-out: ${issue.scheduledTime || '—'}`
@@ -239,6 +242,7 @@ export const emailTemplates = {
       switch (type) {
         case 'late':        return '🕐 Terlambat'
         case 'leave_early': return '🚪 Pulang Awal'
+        case 'absent':      return '🚫 Tidak Masuk'
         case 'no_checkin':  return '❌ Tidak Check-In'
         case 'no_checkout': return '⚠️ Tidak Check-Out'
         default:            return type
@@ -247,7 +251,7 @@ export const emailTemplates = {
 
     const rows = (violations || []).map((v, i) => {
       const bgColor = i % 2 === 0 ? '#f9fafb' : '#ffffff'
-      const detail = v.type === 'no_checkin' || v.type === 'no_checkout'
+      const detail = (v.type === 'absent' || v.type === 'no_checkin' || v.type === 'no_checkout')
         ? '—'
         : `${v.actualTime} (${v.minutesDiff > 0 ? '+' : ''}${v.minutesDiff} mnt)`
       return `
