@@ -419,11 +419,13 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
 
 // ─── Create FPB Modal ─────────────────────────────────────────────────────────
 function CreateFpbModal({ onClose, onSuccess, theme }) {
-  const [step, setStep]       = useState(1)
-  const [types, setTypes]     = useState([])
-  const [selType, setSelType] = useState(null)
-  const [saving, setSaving]   = useState(false)
-  const [done, setDone]       = useState(null)
+  const [step, setStep]         = useState(1)
+  const [types, setTypes]       = useState([])
+  const [selType, setSelType]   = useState(null)
+  const [saving, setSaving]     = useState(false)
+  const [done, setDone]         = useState(null)
+  const [approverStatus, setApproverStatus] = useState('loading') // 'loading' | 'ok' | 'no_role' | 'no_approver'
+  const [userRoleName, setUserRoleName] = useState('')
 
   const [division, setDivision]   = useState('')
   const [note, setNote]           = useState('')
@@ -432,16 +434,31 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
   const [errors, setErrors]       = useState({})
 
   useEffect(() => {
+    const uid = parseInt(localStorage.getItem('kr_id'))
+
+    // Load FPB types
     supabase.from('fpb_types').select('*').eq('is_active', true).order('created_at')
       .then(({ data }) => setTypes(data || []))
-    const uid = parseInt(localStorage.getItem('kr_id'))
+
     if (uid) {
-      supabase.from('users').select('user_unit_id').eq('user_id', uid).single()
+      // Load user info: unit + role
+      supabase.from('users').select('user_unit_id, user_role_id, role!users_user_role_id_fkey(role_name)').eq('user_id', uid).single()
         .then(async ({ data: u }) => {
+          // Set division from unit
           if (u?.user_unit_id) {
             const { data: unit } = await supabase.from('unit').select('unit_name').eq('unit_id', u.user_unit_id).single()
             if (unit) setDivision(unit.unit_name)
           }
+          // Check approver configuration
+          if (!u?.user_role_id) {
+            setUserRoleName('—')
+            setApproverStatus('no_role')
+            return
+          }
+          setUserRoleName(u.role?.role_name || '—')
+          const { data: ra } = await supabase.from('fpb_role_approvers')
+            .select('approver1_id').eq('role_id', u.user_role_id).maybeSingle()
+          setApproverStatus(ra?.approver1_id ? 'ok' : 'no_approver')
         })
     }
   }, [])
@@ -542,6 +559,27 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
           </div>
         </div>
         <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
+          {/* ── Approver not configured warning ── */}
+          {(approverStatus === 'no_role' || approverStatus === 'no_approver') && (
+            <div style={{ margin: '0 0 20px', padding: '20px 22px', borderRadius: 14, background: 'rgba(251,191,36,0.08)', border: '2px solid rgba(251,191,36,0.5)', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 32, flexShrink: 0, lineHeight: 1 }}>🔒</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#92400e', marginBottom: 6 }}>
+                  Pengajuan FPB belum dapat diproses
+                </div>
+                <p style={{ fontSize: 13, color: '#78350f', margin: '0 0 10px', lineHeight: 1.6 }}>
+                  {approverStatus === 'no_role'
+                    ? 'Jabatan (role) Anda belum dikonfigurasi di sistem. Hubungi administrator untuk mengatur jabatan akun Anda.'
+                    : `Approver untuk jabatan ${userRoleName ? `"${userRoleName}"` : 'Anda'} belum diatur oleh administrator. Pengajuan FPB tidak dapat diproses sampai administrator mengkonfigurasi approver di menu Pengaturan FPB.`
+                  }
+                </p>
+                <div style={{ fontSize: 12, color: '#92400e', fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.15)', display: 'inline-block' }}>
+                  ⚙️ Admin: buka <strong>Pengaturan → Approval FPB</strong> untuk mengkonfigurasi approver
+                </div>
+              </div>
+            </div>
+          )}
+
           {done && (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
@@ -553,6 +591,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
               </div>
             </div>
           )}
+
           {!done && step === 1 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 14 }}>
               {types.filter(t => t.type_code !== 'large' && t.type_code !== 'repair').map(t => (
