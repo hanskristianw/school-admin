@@ -1,17 +1,15 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
-// Protect server-side for direct URL hits and prevent flashes
+// /settings and /data are handled by AccessGuard client-side (same pattern as /data/user, /data/class)
+// Middleware only guards /teacher, /student, /room which have server-side session requirements
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Only guard app sections under these prefixes
-  // REMOVED /data from middleware - let AccessGuard handle it client-side
-  const protectedPrefixes = ['/settings', '/teacher', '/student', '/room']
+  const protectedPrefixes = ['/teacher', '/student', '/room']
   const isProtected = protectedPrefixes.some(p => pathname === p || pathname.startsWith(p + '/'))
   if (!isProtected) return NextResponse.next()
 
-  // No session at all → login
   const krId = req.cookies.get('kr_id')?.value
   if (!krId) {
     const url = req.nextUrl.clone()
@@ -19,18 +17,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Admins bypass all path checks
   const isAdmin = req.cookies.get('is_admin')?.value === '1'
   if (isAdmin) return NextResponse.next()
 
-  // If allowed_paths cookie is missing or empty, pass through and let
-  // AccessGuard (client-side) do the real check. This prevents false redirects
-  // on Vercel where the cookie may not have been set yet (e.g. right after login,
-  // hard refresh, or cookie expiry while localStorage is still valid).
   const rawAllowed = req.cookies.get('allowed_paths')?.value
   if (!rawAllowed) return NextResponse.next()
 
-  // Normalize helper
   const normalize = (p: string) => {
     if (!p) return ''
     let s = String(p).trim()
@@ -57,6 +49,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // REMOVED /data/:path* - let AccessGuard handle /data routes client-side
-  matcher: ['/settings/:path*', '/teacher/:path*', '/student/:path*', '/room/:path*']
+  matcher: ['/teacher/:path*', '/student/:path*', '/room/:path*']
 }
