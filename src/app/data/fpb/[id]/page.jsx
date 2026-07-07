@@ -62,8 +62,8 @@ export default function FpbDetailPage() {
       setItems(it || [])
 
       const { data: ap } = await supabase.from('fpb_approvals')
-        .select(`*, users!fpb_approvals_approver_user_id_fkey(user_nama_depan, user_nama_belakang)`)
-        .eq('fpb_id', id).order('step_order')
+        .select(`*, users!fpb_approvals_approver_user_id_fkey(user_nama_depan, user_nama_belakang), role!fpb_approvals_approver_role_id_fkey(role_name)`)
+        .eq('fpb_id', id).order('step_order').order('approval_id')
       setApprovals(ap || [])
 
       // Fetch revision history (submitter notes)
@@ -75,9 +75,11 @@ export default function FpbDetailPage() {
     finally { setLoading(false) }
   }
 
+  // AND logic: find MY pending approval in current step
   const myPendingApproval = approvals.find(
     a => a.approver_user_id === userId && a.status === 'pending' && a.step_order === fpb?.current_step
   )
+  const currentStepApprovals = approvals.filter(a => a.step_order === fpb?.current_step)
   const isSubmitter = fpb?.submitted_by === userId
   const canRevise   = isSubmitter && fpb?.status === 'revision'
 
@@ -88,23 +90,28 @@ export default function FpbDetailPage() {
     }
     setSaving(true); setError('')
     try {
-      // Update this approval record — status must match DB CHECK constraint
       await supabase.from('fpb_approvals').update({
-        status: action,                      // 'approved' | 'revision' | 'reject'
+        status: action,
         comment: comment.trim() || null,
         action_at: new Date().toISOString()
       }).eq('approval_id', myPendingApproval.approval_id)
 
       if (action === 'approved') {
-        const nextStep = approvals.find(a => a.step_order === fpb.current_step + 1)
-        if (nextStep) {
-          await supabase.from('fpb').update({ current_step: fpb.current_step + 1 }).eq('fpb_id', id)
-        } else {
-          await supabase.from('fpb').update({ status: 'approved' }).eq('fpb_id', id)
+        // AND logic: re-fetch current step rows to check all approved
+        const { data: freshStep } = await supabase.from('fpb_approvals')
+          .select('status').eq('fpb_id', id).eq('step_order', fpb.current_step)
+        const allDone = freshStep?.every(a => a.status === 'approved')
+        if (allDone) {
+          const nextStepRow = approvals.find(a => a.step_order === fpb.current_step + 1)
+          if (nextStepRow) {
+            await supabase.from('fpb').update({ current_step: fpb.current_step + 1 }).eq('fpb_id', id)
+          } else {
+            await supabase.from('fpb').update({ status: 'approved' }).eq('fpb_id', id)
+          }
         }
+        // else: wait for other approvers in same step
       } else if (action === 'revision') {
-        await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null })
-          .eq('fpb_id', id).neq('approval_id', myPendingApproval.approval_id)
+        await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null }).eq('fpb_id', id)
         await supabase.from('fpb').update({ status: 'revision', current_step: 1 }).eq('fpb_id', id)
       } else if (action === 'reject') {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', id)
@@ -250,49 +257,70 @@ export default function FpbDetailPage() {
           </div>
         )}
 
-        {/* Approval Timeline */}
+        {/* Approval Timeline — grouped by step, per-approver sub-rows */}
         <Card style={{ background:theme.cardBg, borderColor:theme.border }}>
           <CardHeader className="pb-3"><CardTitle style={{ color:theme.textPrimary, fontSize:15 }}>Progress Approval</CardTitle></CardHeader>
           <CardContent>
             <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-              {approvals.map((ap, idx) => {
-                const isActive  = ap.step_order === fpb.current_step && fpb.status === 'pending'
-                const isDone    = ap.status === 'approved'
-                const isRevision= ap.status === 'revision'
-                const isRejected= ap.status === 'rejected'
-                const dotColor  = isDone ? '#059669' : isRevision ? '#f59e0b' : isRejected ? '#dc2626' : isActive ? '#6366f1' : theme.border
-                const approverName = `${ap.users?.user_nama_depan||''} ${ap.users?.user_nama_belakang||''}`.trim()
-                return (
-                  <div key={ap.approval_id} style={{ display:'flex', gap:16, paddingBottom: idx < approvals.length-1 ? 24 : 0 }}>
-                    {/* Dot + Line */}
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
-                      <div style={{ width:32, height:32, borderRadius:99, background: isDone?'#059669':isRevision?'#f59e0b':isRejected?'#dc2626':isActive?'#6366f1':theme.subtleBg,
-                        border:`2px solid ${dotColor}`, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:13, fontWeight:700 }}>
-                        {isDone ? <FontAwesomeIcon icon={faCheck} /> : isRejected ? <FontAwesomeIcon icon={faTimes} /> : isRevision ? <FontAwesomeIcon icon={faRotateLeft} /> : ap.step_order}
-                      </div>
-                      {idx < approvals.length-1 && <div style={{ width:2, flex:1, background:isDone?'#059669':theme.border, marginTop:4, minHeight:20 }} />}
-                    </div>
-                    {/* Content */}
-                    <div style={{ flex:1, paddingBottom:4 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-                        <span style={{ fontWeight:700, color:theme.textPrimary, fontSize:14 }}>{ap.step_name}</span>
-                        {isActive && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(99,102,241,0.15)', color:'#6366f1', fontWeight:700 }}>Menunggu</span>}
-                        {isDone && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(5,150,105,0.12)', color:'#059669', fontWeight:700 }}>Disetujui</span>}
-                        {isRevision && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontWeight:700 }}>Minta Revisi</span>}
-                        {isRejected && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(220,38,38,0.12)', color:'#dc2626', fontWeight:700 }}>Ditolak</span>}
-                      </div>
-                      <div style={{ fontSize:12, color:theme.textSecondary }}>Approver: <strong style={{ color:theme.textPrimary }}>{approverName}</strong></div>
-                      {ap.action_at && <div style={{ fontSize:11, color:theme.textSecondary, marginTop:2 }}>{fmtDt(ap.action_at)}</div>}
-                      {ap.comment && (
-                        <div style={{ marginTop:8, padding:'8px 12px', borderRadius:8, background:isRevision?'rgba(245,158,11,0.08)':isRejected?'rgba(220,38,38,0.08)':'rgba(5,150,105,0.08)',
-                          fontSize:12, color:theme.textPrimary, borderLeft:`3px solid ${dotColor}` }}>
-                          {ap.comment}
+              {(() => {
+                const stepOrders = [...new Set(approvals.map(a => a.step_order))].sort((a,b)=>a-b)
+                return stepOrders.map((stepOrder, stepIdx) => {
+                  const stepRows    = approvals.filter(a => a.step_order === stepOrder)
+                  const stepName    = stepRows[0]?.step_name || `Step ${stepOrder}`
+                  const isActive    = stepOrder === fpb.current_step && fpb.status === 'pending'
+                  const allDone     = stepRows.every(a => a.status === 'approved')
+                  const anyRevision = stepRows.some(a => a.status === 'revision')
+                  const anyRejected = stepRows.some(a => a.status === 'rejected')
+                  const dotColor    = allDone ? '#059669' : anyRevision ? '#f59e0b' : anyRejected ? '#dc2626' : isActive ? '#6366f1' : theme.border
+                  const dotBg       = allDone ? '#059669' : anyRevision ? '#f59e0b' : anyRejected ? '#dc2626' : isActive ? '#6366f1' : theme.subtleBg
+                  return (
+                    <div key={stepOrder} style={{ display:'flex', gap:16, paddingBottom: stepIdx < stepOrders.length-1 ? 24 : 0 }}>
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
+                        <div style={{ width:32, height:32, borderRadius:99, background:dotBg, border:`2px solid ${dotColor}`, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:13, fontWeight:700 }}>
+                          {allDone ? <FontAwesomeIcon icon={faCheck} /> : anyRejected ? <FontAwesomeIcon icon={faTimes} /> : anyRevision ? <FontAwesomeIcon icon={faRotateLeft} /> : stepOrder}
                         </div>
-                      )}
+                        {stepIdx < stepOrders.length-1 && <div style={{ width:2, flex:1, background:allDone?'#059669':theme.border, marginTop:4, minHeight:20 }} />}
+                      </div>
+                      <div style={{ flex:1, paddingBottom:4 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8, flexWrap:'wrap' }}>
+                          <span style={{ fontWeight:700, color:theme.textPrimary, fontSize:14 }}>{stepName}</span>
+                          {stepRows[0]?.role?.role_name && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:theme.subtleBg, border:`1px solid ${theme.border}`, color:theme.textSecondary }}>{stepRows[0].role.role_name}</span>}
+                          {isActive    && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(99,102,241,0.15)', color:'#6366f1', fontWeight:700 }}>Menunggu</span>}
+                          {allDone     && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(5,150,105,0.12)', color:'#059669', fontWeight:700 }}>Disetujui</span>}
+                          {anyRevision && !allDone && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontWeight:700 }}>Minta Revisi</span>}
+                          {anyRejected && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(220,38,38,0.12)', color:'#dc2626', fontWeight:700 }}>Ditolak</span>}
+                        </div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                          {stepRows.map(ap => {
+                            const approverName = `${ap.users?.user_nama_depan||''} ${ap.users?.user_nama_belakang||''}`.trim()
+                            const isPending  = ap.status === 'pending'
+                            const isDone     = ap.status === 'approved'
+                            const isRev      = ap.status === 'revision'
+                            const isRej      = ap.status === 'rejected'
+                            return (
+                              <div key={ap.approval_id} style={{ padding:'8px 12px', borderRadius:8, background:theme.subtleBg+'55', border:`1px solid ${theme.border}`, fontSize:13 }}>
+                                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                                  <strong style={{ color:theme.textPrimary }}>{approverName || 'User'}</strong>
+                                  {isPending && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(99,102,241,0.1)', color:'#6366f1', fontWeight:700 }}>Menunggu</span>}
+                                  {isDone    && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(5,150,105,0.12)', color:'#059669', fontWeight:700 }}>✓ Disetujui</span>}
+                                  {isRev     && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontWeight:700 }}>↩ Revisi</span>}
+                                  {isRej     && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(220,38,38,0.12)', color:'#dc2626', fontWeight:700 }}>✕ Ditolak</span>}
+                                  {ap.action_at && <span style={{ fontSize:11, color:theme.textSecondary, marginLeft:'auto' }}>{fmtDt(ap.action_at)}</span>}
+                                </div>
+                                {ap.comment && (
+                                  <div style={{ marginTop:6, padding:'6px 10px', borderRadius:7, background:isRev?'rgba(245,158,11,0.08)':isRej?'rgba(220,38,38,0.08)':'rgba(5,150,105,0.08)', fontSize:12, color:theme.textPrimary, borderLeft:`3px solid ${isRev?'#f59e0b':isRej?'#dc2626':'#059669'}` }}>
+                                    {ap.comment}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              })()}
             </div>
           </CardContent>
         </Card>

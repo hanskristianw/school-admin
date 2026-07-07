@@ -60,9 +60,10 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
       setFpb(f)
       const { data: it } = await supabase.from('fpb_items').select('*').eq('fpb_id', fpbId).order('created_at')
       setItems(it || [])
+      // approvals now has one row per approver per step
       const { data: ap } = await supabase.from('fpb_approvals')
-        .select('*, users!fpb_approvals_approver_user_id_fkey(user_nama_depan, user_nama_belakang)')
-        .eq('fpb_id', fpbId).order('step_order')
+        .select('*, users!fpb_approvals_approver_user_id_fkey(user_nama_depan, user_nama_belakang), role!fpb_approvals_approver_role_id_fkey(role_name)')
+        .eq('fpb_id', fpbId).order('step_order').order('approval_id')
       setApprovals(ap || [])
       const { data: rv } = await supabase.from('fpb_revisions')
         .select('*, users!fpb_revisions_revised_by_fkey(user_nama_depan, user_nama_belakang)')
@@ -72,9 +73,14 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     finally { setLoading(false) }
   }
 
+  // AND logic: find MY pending row in current step
   const myPendingApproval = approvals.find(
     a => a.approver_user_id === userId && a.status === 'pending' && a.step_order === fpb?.current_step
   )
+  // All approvals for current step
+  const currentStepApprovals = approvals.filter(a => a.step_order === fpb?.current_step)
+  // AND: step done only when all rows in step are approved
+  const currentStepAllApproved = currentStepApprovals.length > 0 && currentStepApprovals.every(a => a.status === 'approved')
   const isSubmitter = fpb?.submitted_by === userId
   const canRevise   = isSubmitter && fpb?.status === 'revision'
 
@@ -85,20 +91,30 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     }
     setSaving(true); setError('')
     try {
+      // Mark THIS approver's row
       await supabase.from('fpb_approvals').update({
         status: action, comment: comment.trim() || null, action_at: new Date().toISOString()
       }).eq('approval_id', myPendingApproval.approval_id)
 
       if (action === 'approved') {
-        const nextStep = approvals.find(a => a.step_order === fpb.current_step + 1)
-        if (nextStep) {
-          await supabase.from('fpb').update({ current_step: fpb.current_step + 1 }).eq('fpb_id', fpbId)
-        } else {
-          await supabase.from('fpb').update({ status: 'approved' }).eq('fpb_id', fpbId)
+        // AND logic: check if all approvers in current step have now approved
+        const { data: freshStep } = await supabase.from('fpb_approvals')
+          .select('status').eq('fpb_id', fpbId).eq('step_order', fpb.current_step)
+        const allDone = freshStep?.every(a => a.status === 'approved')
+        if (allDone) {
+          // All approvers in this step done — advance
+          const nextStepRow = approvals.find(a => a.step_order === fpb.current_step + 1)
+          if (nextStepRow) {
+            await supabase.from('fpb').update({ current_step: fpb.current_step + 1 }).eq('fpb_id', fpbId)
+          } else {
+            // No more steps — FPB approved
+            await supabase.from('fpb').update({ status: 'approved' }).eq('fpb_id', fpbId)
+          }
         }
+        // else: other approvers in step still pending, wait for them
       } else if (action === 'revision') {
-        await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null })
-          .eq('fpb_id', fpbId).neq('approval_id', myPendingApproval.approval_id)
+        // Reset ALL approvals to pending, go back to step 1
+        await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null }).eq('fpb_id', fpbId)
         await supabase.from('fpb').update({ status: 'revision', current_step: 1 }).eq('fpb_id', fpbId)
       } else if (action === 'reject') {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', fpbId)
@@ -242,44 +258,75 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   </div>
                 )}
 
-                {/* Approval Timeline */}
+                {/* Approval Timeline — grouped by step (AND logic) */}
                 <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
                   <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary, marginBottom: 16 }}>Progress Approval</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {approvals.map((ap, idx) => {
-                      const isActive   = ap.step_order === fpb.current_step && fpb.status === 'pending'
-                      const isDone     = ap.status === 'approved'
-                      const isRevision = ap.status === 'revision'
-                      const isRejected = ap.status === 'rejected'
-                      const dotColor   = isDone ? '#059669' : isRevision ? '#f59e0b' : isRejected ? '#dc2626' : isActive ? '#6366f1' : theme.border
-                      const approverName = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim()
-                      return (
-                        <div key={ap.approval_id} style={{ display: 'flex', gap: 14, paddingBottom: idx < approvals.length - 1 ? 20 : 0 }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                            <div style={{ width: 30, height: 30, borderRadius: 99, background: isDone ? '#059669' : isRevision ? '#f59e0b' : isRejected ? '#dc2626' : isActive ? '#6366f1' : theme.subtleBg, border: `2px solid ${dotColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700 }}>
-                              {isDone ? <FontAwesomeIcon icon={faCheck} /> : isRejected ? <FontAwesomeIcon icon={faTimes} /> : isRevision ? <FontAwesomeIcon icon={faRotateLeft} /> : ap.step_order}
-                            </div>
-                            {idx < approvals.length - 1 && <div style={{ width: 2, flex: 1, background: isDone ? '#059669' : theme.border, marginTop: 4, minHeight: 18 }} />}
-                          </div>
-                          <div style={{ flex: 1, paddingBottom: 4 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 13 }}>{ap.step_name}</span>
-                              {isActive    && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(99,102,241,0.15)', color: '#6366f1', fontWeight: 700 }}>Menunggu</span>}
-                              {isDone      && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(5,150,105,0.12)', color: '#059669', fontWeight: 700 }}>Disetujui</span>}
-                              {isRevision  && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', fontWeight: 700 }}>Minta Revisi</span>}
-                              {isRejected  && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(220,38,38,0.12)', color: '#dc2626', fontWeight: 700 }}>Ditolak</span>}
-                            </div>
-                            <div style={{ fontSize: 12, color: theme.textSecondary }}>Approver: <strong style={{ color: theme.textPrimary }}>{approverName}</strong></div>
-                            {ap.action_at && <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{fmtDt(ap.action_at)}</div>}
-                            {ap.comment && (
-                              <div style={{ marginTop: 6, padding: '7px 11px', borderRadius: 8, background: isRevision ? 'rgba(245,158,11,0.08)' : isRejected ? 'rgba(220,38,38,0.08)' : 'rgba(5,150,105,0.08)', fontSize: 12, color: theme.textPrimary, borderLeft: `3px solid ${dotColor}` }}>
-                                {ap.comment}
+                    {/* Group approvals by step_order */}
+                    {(() => {
+                      const steps = []
+                      const seen = new Set()
+                      approvals.forEach(ap => {
+                        if (!seen.has(ap.step_order)) { seen.add(ap.step_order); steps.push(ap.step_order) }
+                      })
+                      return steps.map((stepOrder, stepIdx) => {
+                        const stepRows   = approvals.filter(a => a.step_order === stepOrder)
+                        const stepName   = stepRows[0]?.step_name || `Step ${stepOrder}`
+                        const isActive   = stepOrder === fpb.current_step && fpb.status === 'pending'
+                        const allDone    = stepRows.every(a => a.status === 'approved')
+                        const anyRevision= stepRows.some(a => a.status === 'revision')
+                        const anyRejected= stepRows.some(a => a.status === 'rejected')
+                        const dotColor   = allDone ? '#059669' : anyRevision ? '#f59e0b' : anyRejected ? '#dc2626' : isActive ? '#6366f1' : theme.border
+                        const dotBg      = allDone ? '#059669' : anyRevision ? '#f59e0b' : anyRejected ? '#dc2626' : isActive ? '#6366f1' : theme.subtleBg
+                        return (
+                          <div key={stepOrder} style={{ display: 'flex', gap: 14, paddingBottom: stepIdx < steps.length - 1 ? 20 : 0 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                              <div style={{ width: 30, height: 30, borderRadius: 99, background: dotBg, border: `2px solid ${dotColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700 }}>
+                                {allDone ? <FontAwesomeIcon icon={faCheck} /> : anyRejected ? <FontAwesomeIcon icon={faTimes} /> : anyRevision ? <FontAwesomeIcon icon={faRotateLeft} /> : stepOrder}
                               </div>
-                            )}
+                              {stepIdx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: allDone ? '#059669' : theme.border, marginTop: 4, minHeight: 18 }} />}
+                            </div>
+                            <div style={{ flex: 1, paddingBottom: 4 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 13 }}>{stepName}</span>
+                                {stepRows[0]?.role?.role_name && <span style={{ fontSize: 10, color: theme.textSecondary, background: theme.subtleBg, border: `1px solid ${theme.border}`, padding: '1px 6px', borderRadius: 99 }}>{stepRows[0].role.role_name}</span>}
+                                {isActive    && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(99,102,241,0.15)', color: '#6366f1', fontWeight: 700 }}>Menunggu</span>}
+                                {allDone     && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(5,150,105,0.12)', color: '#059669', fontWeight: 700 }}>Disetujui</span>}
+                                {anyRevision && !allDone && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', fontWeight: 700 }}>Minta Revisi</span>}
+                                {anyRejected && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(220,38,38,0.12)', color: '#dc2626', fontWeight: 700 }}>Ditolak</span>}
+                              </div>
+                              {/* Per-approver sub-rows */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {stepRows.map(ap => {
+                                  const approverName = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim()
+                                  const isPending  = ap.status === 'pending'
+                                  const isDone     = ap.status === 'approved'
+                                  const isRev      = ap.status === 'revision'
+                                  const isRej      = ap.status === 'rejected'
+                                  return (
+                                    <div key={ap.approval_id} style={{ padding: '7px 11px', borderRadius: 8, background: theme.subtleBg + '55', border: `1px solid ${theme.border}`, fontSize: 12 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ fontWeight: 600, color: theme.textPrimary }}>{approverName || 'User'}</span>
+                                        {isPending && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 700 }}>Menunggu</span>}
+                                        {isDone    && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(5,150,105,0.12)', color: '#059669', fontWeight: 700 }}>✓ Disetujui</span>}
+                                        {isRev     && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', fontWeight: 700 }}>↩ Revisi</span>}
+                                        {isRej     && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(220,38,38,0.12)', color: '#dc2626', fontWeight: 700 }}>✕ Ditolak</span>}
+                                        {ap.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(ap.action_at)}</span>}
+                                      </div>
+                                      {ap.comment && (
+                                        <div style={{ marginTop: 5, padding: '5px 8px', borderRadius: 6, background: isRev ? 'rgba(245,158,11,0.08)' : isRej ? 'rgba(220,38,38,0.08)' : 'rgba(5,150,105,0.08)', color: theme.textPrimary, borderLeft: `3px solid ${isRev ? '#f59e0b' : isRej ? '#dc2626' : '#059669'}` }}>
+                                          {ap.comment}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })
+                    })()}
                   </div>
                 </div>
 
@@ -424,21 +471,56 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
       const year = new Date().getFullYear()
       const { count } = await supabase.from('fpb').select('*', { count: 'exact', head: true }).like('fpb_number', `FPB/${year}/%`)
       const fpbNumber = `FPB/${year}/${String((count || 0) + 1).padStart(3, '0')}`
-      const { data: steps } = await supabase.from('fpb_approval_steps').select('*').eq('fpb_type_id', selType.fpb_type_id).order('step_order')
+
+      // Load steps (now with approver_role_id)
+      const { data: steps } = await supabase.from('fpb_approval_steps')
+        .select('*').eq('fpb_type_id', selType.fpb_type_id).order('step_order')
       if (!steps?.length) throw new Error('Belum ada konfigurasi approval untuk tipe ini. Hubungi administrator.')
+
+      // Load role approvers for all roles used in steps
+      const roleIds = [...new Set(steps.map(s => s.approver_role_id).filter(Boolean))]
+      const { data: roleApprovers } = await supabase.from('fpb_role_approvers')
+        .select('*').in('role_id', roleIds)
+      if (!roleApprovers?.length) throw new Error('Belum ada konfigurasi approver untuk tipe ini. Atur di Pengaturan FPB.')
+
+      const raMap = {}
+      roleApprovers.forEach(ra => { raMap[ra.role_id] = ra })
+
+      // Build one row per approver per step (AND logic)
+      const approvalRows = []
+      for (const s of steps) {
+        const ra = raMap[s.approver_role_id]
+        if (!ra) throw new Error(`Role untuk step "${s.step_name}" belum dikonfigurasi approvernya.`)
+        const approverIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
+        if (!approverIds.length) throw new Error(`Step "${s.step_name}" belum memiliki approver.`)
+        for (const approverId of approverIds) {
+          approvalRows.push({
+            fpb_id:           null, // will set after fpb insert
+            step_order:       s.step_order,
+            step_name:        s.step_name,
+            approver_user_id: approverId,
+            approver_role_id: s.approver_role_id,
+            status:           'pending',
+          })
+        }
+      }
+
       const { data: fpb, error: fpbErr } = await supabase.from('fpb').insert({
         fpb_number: fpbNumber, fpb_type_id: selType.fpb_type_id, division, submitted_by: uid,
         grand_total: grandTotal, note, usage_date: usageDate, status: 'pending', current_step: 1,
       }).select().single()
       if (fpbErr) throw fpbErr
+
       const { error: itemErr } = await supabase.from('fpb_items').insert(
         items.map(i => ({ fpb_id: fpb.fpb_id, item_name: i.item_name.trim(), quantity: Number(i.quantity), unit: i.unit, unit_price: Number(i.unit_price) }))
       )
       if (itemErr) throw itemErr
+
       const { error: apErr } = await supabase.from('fpb_approvals').insert(
-        steps.map(s => ({ fpb_id: fpb.fpb_id, step_order: s.step_order, step_name: s.step_name, approver_user_id: s.approver_user_id, status: 'pending' }))
+        approvalRows.map(r => ({ ...r, fpb_id: fpb.fpb_id }))
       )
       if (apErr) throw apErr
+
       setDone({ fpb_id: fpb.fpb_id, fpb_number: fpbNumber })
       onSuccess()
     } catch (e) {
