@@ -11,6 +11,7 @@ export function middleware(req: NextRequest) {
   const isProtected = protectedPrefixes.some(p => pathname === p || pathname.startsWith(p + '/'))
   if (!isProtected) return NextResponse.next()
 
+  // No session at all → login
   const krId = req.cookies.get('kr_id')?.value
   if (!krId) {
     const url = req.nextUrl.clone()
@@ -18,8 +19,16 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Admins bypass all path checks
   const isAdmin = req.cookies.get('is_admin')?.value === '1'
   if (isAdmin) return NextResponse.next()
+
+  // If allowed_paths cookie is missing or empty, pass through and let
+  // AccessGuard (client-side) do the real check. This prevents false redirects
+  // on Vercel where the cookie may not have been set yet (e.g. right after login,
+  // hard refresh, or cookie expiry while localStorage is still valid).
+  const rawAllowed = req.cookies.get('allowed_paths')?.value
+  if (!rawAllowed) return NextResponse.next()
 
   // Normalize helper
   const normalize = (p: string) => {
@@ -30,7 +39,7 @@ export function middleware(req: NextRequest) {
     return s
   }
 
-  const allowed = decodeURIComponent(req.cookies.get('allowed_paths')?.value || '')
+  const allowed = decodeURIComponent(rawAllowed)
   const defaults = ['/dashboard', '/profile']
   const allowedPaths = Array.from(new Set([
     ...defaults.map(normalize),
