@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faPlus, faClipboardList, faClock, faEye, faSpinner,
   faArrowLeft, faTrash, faTimes, faShoppingCart, faBoxOpen, faTools,
-  faCheck, faRotateLeft, faPen, faExternalLinkAlt,
+  faCheck, faRotateLeft, faPen, faExternalLinkAlt, faCheckDouble,
 } from '@fortawesome/free-solid-svg-icons'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,7 +112,15 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
           }
         }
       } else if (action === 'revision') {
-        await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null }).eq('fpb_id', fpbId)
+        // Reset ALL other approvals (except this one — keep the revision comment so requester can see it)
+        await supabase.from('fpb_approvals')
+          .update({ status: 'pending', comment: null, action_at: null })
+          .eq('fpb_id', fpbId)
+          .neq('approval_id', myPendingApproval.approval_id)
+        // Keep the revisor's comment but reset their status so they can re-approve after fix
+        await supabase.from('fpb_approvals')
+          .update({ status: 'revision' })
+          .eq('approval_id', myPendingApproval.approval_id)
         await supabase.from('fpb').update({ status: 'revision', current_step: 1 }).eq('fpb_id', fpbId)
       } else if (action === 'reject') {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', fpbId)
@@ -138,230 +146,208 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     finally { setSavingBudget(false) }
   }
 
+  const statusIcon = (s) => {
+    if (s === 'approved') return <span style={{ color: '#059669', fontWeight: 700 }}>✓</span>
+    if (s === 'revision') return <span style={{ color: '#f59e0b', fontWeight: 700 }}>↩</span>
+    if (s === 'rejected') return <span style={{ color: '#dc2626', fontWeight: 700 }}>✕</span>
+    return <span style={{ color: '#6366f1' }}>…</span>
+  }
+
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 18, width: '100%', maxWidth: 860, maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.3)' }}>
+        <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 16, width: '100%', maxWidth: 780, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
 
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
-            {loading ? (
-              <div style={{ fontWeight: 700, color: theme.textSecondary, fontSize: 15 }}>Memuat...</div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 17, color: theme.textPrimary }}>{fpb?.fpb_number || '—'}</div>
-                  <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>{fpb?.fpb_types?.type_name}</div>
-                </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
+            {loading ? <span style={{ color: theme.textSecondary, fontSize: 14 }}>Memuat...</span> : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 800, fontSize: 16, color: theme.textPrimary }}>{fpb?.fpb_number || '—'}</span>
+                <span style={{ fontSize: 11, color: theme.textSecondary }}>{fpb?.fpb_types?.type_name}</span>
                 {fpb && <StatusBadge status={fpb.status} />}
                 {fpb?.revision_count > 0 && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Revisi ke-{fpb.revision_count}</span>}
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: 6, fontSize: 18 }}>
-                <FontAwesomeIcon icon={faTimes} />
-              </button>
-            </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}>
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
           </div>
 
           {/* Body */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: 48, color: theme.textSecondary }}>
-                <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 28 }} />
-                <p style={{ marginTop: 12 }}>Memuat detail FPB...</p>
+              <div style={{ textAlign: 'center', padding: 40, color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 24 }} />
               </div>
             ) : !fpb ? (
-              <div style={{ textAlign: 'center', padding: 48, color: '#dc2626' }}>FPB tidak ditemukan.</div>
+              <div style={{ textAlign: 'center', padding: 40, color: '#dc2626' }}>FPB tidak ditemukan.</div>
             ) : (
               <>
-                {/* Informasi FPB */}
-                <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary, marginBottom: 14 }}>Informasi FPB</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(170px,1fr))', gap: 12 }}>
-                    {[
-                      ['Pengaju', `${fpb.users?.user_nama_depan || ''} ${fpb.users?.user_nama_belakang || ''}`.trim()],
-                      ['Divisi', fpb.division || '—'],
-                      ['Tgl Dibuat', fmtDate(fpb.created_at)],
-                      ['Tgl Kebutuhan', fmtDate(fpb.usage_date)],
-                      ['Grand Total', fmt(fpb.grand_total)],
-                    ].map(([label, val]) => (
-                      <div key={label}>
-                        <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 600, marginBottom: 3 }}>{label}</div>
-                        <div style={{ fontSize: 13, color: label === 'Grand Total' ? '#6366f1' : theme.textPrimary, fontWeight: label === 'Grand Total' ? 800 : 500 }}>{val}</div>
-                      </div>
-                    ))}
-                    {fpb.note && (
-                      <div style={{ gridColumn: '1 / -1' }}>
-                        <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 600, marginBottom: 3 }}>Catatan</div>
-                        <div style={{ fontSize: 13, color: theme.textPrimary }}>{fpb.note}</div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Budget section */}
-                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${theme.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>💰 Budget</span>
-                      {canEditBudget && !editBudget && (
-                        <button onClick={() => setEditBudget(true)}
-                          style={{ fontSize: 11, padding: '3px 10px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary, cursor: 'pointer', fontWeight: 600 }}>
-                          ✏️ Edit
-                        </button>
-                      )}
-                    </div>
-                    {editBudget ? (
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: 160 }}>
-                          <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Budget (Rp)</label>
-                          <input type="number" min="0" value={budgetVal} onChange={e => setBudgetVal(e.target.value)}
-                            style={{ width: '100%', padding: '7px 10px', borderRadius: 8, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 160 }}>
-                          <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Remaining Budget (Rp)</label>
-                          <input type="number" min="0" value={remainingVal} onChange={e => setRemainingVal(e.target.value)}
-                            style={{ width: '100%', padding: '7px 10px', borderRadius: 8, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => setEditBudget(false)}
-                            style={{ padding: '7px 14px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Batal</button>
-                          <button onClick={handleSaveBudget} disabled={savingBudget}
-                            style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                            {savingBudget ? 'Menyimpan...' : '💾 Simpan'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div style={{ padding: '10px 14px', borderRadius: 10, background: fpb.budget != null ? 'rgba(99,102,241,0.07)' : theme.subtleBg, border: `1px solid ${fpb.budget != null ? 'rgba(99,102,241,0.25)' : theme.border}` }}>
-                          <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 600, marginBottom: 3 }}>Budget</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: fpb.budget != null ? '#6366f1' : theme.textSecondary }}>
-                            {fpb.budget != null ? fmt(fpb.budget) : <span style={{ fontStyle: 'italic', fontWeight: 400, fontSize: 12 }}>Belum diisi</span>}
-                          </div>
-                        </div>
-                        <div style={{ padding: '10px 14px', borderRadius: 10, background: fpb.remaining_budget != null ? 'rgba(5,150,105,0.07)' : theme.subtleBg, border: `1px solid ${fpb.remaining_budget != null ? 'rgba(5,150,105,0.25)' : theme.border}` }}>
-                          <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 600, marginBottom: 3 }}>Remaining Budget</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: fpb.remaining_budget != null ? '#059669' : theme.textSecondary }}>
-                            {fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : <span style={{ fontStyle: 'italic', fontWeight: 400, fontSize: 12 }}>Belum diisi</span>}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                {/* Info bar — compact single row */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 20px', padding: '10px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.subtleBg, fontSize: 12 }}>
+                  {[
+                    ['Pengaju', `${fpb.users?.user_nama_depan || ''} ${fpb.users?.user_nama_belakang || ''}`.trim()],
+                    ['Divisi', fpb.division || '—'],
+                    ['Tgl Dibuat', fmtDate(fpb.created_at)],
+                    ['Tgl Kebutuhan', fmtDate(fpb.usage_date)],
+                  ].map(([l, v]) => (
+                    <span key={l}><span style={{ color: theme.textSecondary }}>{l}: </span><strong style={{ color: theme.textPrimary }}>{v}</strong></span>
+                  ))}
+                  {fpb.note && <span style={{ width: '100%', marginTop: 2 }}><span style={{ color: theme.textSecondary }}>Catatan: </span><span style={{ color: theme.textPrimary }}>{fpb.note}</span></span>}
                 </div>
 
-                {/* Daftar Barang — read-only */}
-                <div style={{ borderRadius: 12, border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 18px', borderBottom: `1px solid ${theme.border}`, fontWeight: 700, fontSize: 13, color: theme.textPrimary, background: theme.cardBg }}>
-                    Daftar Barang
-                  </div>
+                {/* Items table */}
+                <div style={{ borderRadius: 10, border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: theme.subtleBg }}>
-                          {['Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal', 'Link Referensi'].map(h => (
-                            <th key={h} style={{ padding: '8px 14px', textAlign: h === 'Nama Barang' || h === 'Link Referensi' ? 'left' : 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>{h}</th>
+                          {['#', 'Nama Barang', 'Qty', 'Sat', 'Harga', 'Subtotal', 'Link'].map(h => (
+                            <th key={h} style={{ padding: '7px 10px', textAlign: h === 'Nama Barang' || h === 'Link' ? 'left' : h === '#' ? 'center' : 'right', color: theme.textSecondary, fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {items.map((it, i) => (
-                          <tr key={it.item_id} style={{ borderBottom: `1px solid ${theme.border}`, background: i % 2 === 0 ? 'transparent' : theme.subtleBg + '44' }}>
-                            <td style={{ padding: '9px 14px', color: theme.textPrimary, fontWeight: 500 }}>{it.item_name}</td>
-                            <td style={{ padding: '9px 14px', textAlign: 'center', color: theme.textPrimary }}>{it.quantity}</td>
-                            <td style={{ padding: '9px 14px', textAlign: 'center', color: theme.textSecondary }}>{it.unit}</td>
-                            <td style={{ padding: '9px 14px', textAlign: 'right', color: theme.textPrimary }}>{fmt(it.unit_price)}</td>
-                            <td style={{ padding: '9px 14px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary }}>{fmt(it.quantity * it.unit_price)}</td>
-                            <td style={{ padding: '9px 14px' }}>
-                              {it.seller_url ? (
-                                <a href={it.seller_url} target="_blank" rel="noreferrer"
-                                  style={{ fontSize: 11, color: '#6366f1', textDecoration: 'none' }}>🔗 Lihat</a>
-                              ) : <span style={{ fontSize: 11, color: theme.textSecondary }}>—</span>}
+                        {items.length === 0 ? (
+                          <tr><td colSpan={7} style={{ padding: '16px', textAlign: 'center', color: theme.textSecondary, fontStyle: 'italic', fontSize: 12 }}>Tidak ada barang</td></tr>
+                        ) : items.map((it, i) => (
+                          <tr key={it.item_id} style={{ borderTop: `1px solid ${theme.border}` }}>
+                            <td style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary }}>{i + 1}</td>
+                            <td style={{ padding: '7px 10px', color: theme.textPrimary, fontWeight: 500 }}>{it.item_name}</td>
+                            <td style={{ padding: '7px 10px', textAlign: 'right' }}>{it.quantity}</td>
+                            <td style={{ padding: '7px 10px', textAlign: 'right', color: theme.textSecondary }}>{it.unit}</td>
+                            <td style={{ padding: '7px 10px', textAlign: 'right' }}>{fmt(it.unit_price)}</td>
+                            <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary }}>{fmt(it.quantity * it.unit_price)}</td>
+                            <td style={{ padding: '7px 10px' }}>
+                              {it.seller_url
+                                ? <a href={it.seller_url} target="_blank" rel="noreferrer" style={{ color: '#6366f1', fontSize: 11 }}>🔗</a>
+                                : <span style={{ color: theme.textSecondary }}>—</span>}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
-                          <td colSpan={5} style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary }}>Grand Total</td>
-                          <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, fontSize: 15, color: '#6366f1' }}>{fmt(fpb.grand_total)}</td>
+                          <td colSpan={5} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>Grand Total</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#6366f1' }}>{fmt(fpb.grand_total)}</td>
+                          <td />
                         </tr>
                       </tfoot>
                     </table>
                   </div>
                 </div>
 
-                {/* Revision history */}
+                {/* Budget — compact inline */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.cardBg, fontSize: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 12 }}>💰 Budget</span>
+                  <span style={{ color: fpb.budget != null ? '#6366f1' : theme.textSecondary, fontWeight: 700 }}>
+                    {fpb.budget != null ? fmt(fpb.budget) : <i>—</i>}
+                  </span>
+                  <span style={{ color: theme.textSecondary }}>·</span>
+                  <span style={{ fontSize: 11, color: theme.textSecondary }}>Sisa:</span>
+                  <span style={{ color: fpb.remaining_budget != null ? '#059669' : theme.textSecondary, fontWeight: 700 }}>
+                    {fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : <i>—</i>}
+                  </span>
+                  {canEditBudget && !editBudget && (
+                    <button onClick={() => setEditBudget(true)} style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 9px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary, cursor: 'pointer' }}>✏️ Edit</button>
+                  )}
+                  {editBudget && (
+                    <div style={{ width: '100%', display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 6 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 3 }}>Budget (Rp)</div>
+                        <input type="number" min="0" value={budgetVal} onChange={e => setBudgetVal(e.target.value)}
+                          style={{ padding: '5px 8px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, width: 140 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 3 }}>Sisa Budget (Rp)</div>
+                        <input type="number" min="0" value={remainingVal} onChange={e => setRemainingVal(e.target.value)}
+                          style={{ padding: '5px 8px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, width: 140 }} />
+                      </div>
+                      <button onClick={() => setEditBudget(false)} style={{ padding: '5px 12px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontSize: 12, cursor: 'pointer' }}>Batal</button>
+                      <button onClick={handleSaveBudget} disabled={savingBudget} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                        {savingBudget ? '…' : 'Simpan'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Revision request notice — shown prominently to requester */}
+                {(() => {
+                  const revisionRequests = approvals.filter(a => a.status === 'revision' && a.comment)
+                  if (revisionRequests.length === 0) return null
+                  return (
+                    <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(245,158,11,0.09)', border: '1.5px solid rgba(245,158,11,0.45)' }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>⚠ Permintaan Revisi dari Approver</div>
+                      {revisionRequests.map(ap => (
+                        <div key={ap.approval_id} style={{ fontSize: 12, marginBottom: revisionRequests.length > 1 ? 8 : 0 }}>
+                          <span style={{ fontWeight: 600, color: '#92400e' }}>
+                            {`${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim()}
+                          </span>
+                          {ap.action_at && <span style={{ color: '#b45309', fontSize: 11, marginLeft: 6 }}>{fmtDt(ap.action_at)}</span>}
+                          <p style={{ margin: '4px 0 0', color: '#78350f', lineHeight: 1.5, paddingLeft: 8, borderLeft: '3px solid #f59e0b' }}>{ap.comment}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
+                {/* Revision note from requester (re-submit notes) */}
                 {revisions.length > 0 && revisions[0].revision_note && (
-                  <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1.5px solid rgba(245,158,11,0.4)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span>📝</span>
-                      <span style={{ fontWeight: 700, color: '#b45309', fontSize: 13 }}>Catatan Revisi ke-{revisions[0].revision_number}</span>
-                      <span style={{ fontSize: 11, color: '#92400e', marginLeft: 'auto' }}>
+                  <div style={{ padding: '9px 13px', borderRadius: 9, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.35)', fontSize: 12 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, color: '#b45309' }}>📝 Revisi ke-{revisions[0].revision_number}</span>
+                      <span style={{ color: '#92400e', fontSize: 11, marginLeft: 'auto' }}>
                         {`${revisions[0].users?.user_nama_depan || ''} ${revisions[0].users?.user_nama_belakang || ''}`.trim()}
-                        {revisions[0].revised_at && <> · {fmtDt(revisions[0].revised_at)}</>}
+                        {revisions[0].revised_at && ` · ${fmtDt(revisions[0].revised_at)}`}
                       </span>
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, color: '#78350f', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{revisions[0].revision_note}</p>
+                    <p style={{ margin: 0, color: '#78350f', lineHeight: 1.5 }}>{revisions[0].revision_note}</p>
                   </div>
                 )}
 
-                {/* Approval Timeline */}
-                <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary, marginBottom: 16 }}>Progress Approval</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {/* Approval — compact single-line per approver */}
+                <div style={{ padding: '10px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary, marginBottom: 8 }}>Progress Approval</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {(() => {
                       const steps = []
                       const seen = new Set()
                       approvals.forEach(ap => { if (!seen.has(ap.step_order)) { seen.add(ap.step_order); steps.push(ap.step_order) } })
-                      return steps.map((stepOrder, stepIdx) => {
-                        const stepRows    = approvals.filter(a => a.step_order === stepOrder)
-                        const stepName    = stepRows[0]?.step_name || `Step ${stepOrder}`
-                        const isActive    = stepOrder === fpb.current_step && fpb.status === 'pending'
-                        const allDone     = stepRows.every(a => a.status === 'approved')
-                        const anyRevision = stepRows.some(a => a.status === 'revision')
-                        const anyRejected = stepRows.some(a => a.status === 'rejected')
-                        const dotBg       = allDone ? '#059669' : anyRevision ? '#f59e0b' : anyRejected ? '#dc2626' : isActive ? '#6366f1' : theme.subtleBg
-                        const dotColor    = allDone ? '#059669' : anyRevision ? '#f59e0b' : anyRejected ? '#dc2626' : isActive ? '#6366f1' : theme.border
+                      return steps.map((stepOrder) => {
+                        const stepRows = approvals.filter(a => a.step_order === stepOrder)
+                        const stepName = stepRows[0]?.step_name || `Step ${stepOrder}`
+                        const isActive = stepOrder === fpb.current_step && fpb.status === 'pending'
+                        const allDone  = stepRows.every(a => a.status === 'approved')
                         return (
-                          <div key={stepOrder} style={{ display: 'flex', gap: 14, paddingBottom: stepIdx < steps.length - 1 ? 20 : 0 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                              <div style={{ width: 30, height: 30, borderRadius: 99, background: dotBg, border: `2px solid ${dotColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700 }}>
-                                {allDone ? <FontAwesomeIcon icon={faCheck} /> : anyRejected ? <FontAwesomeIcon icon={faTimes} /> : anyRevision ? <FontAwesomeIcon icon={faRotateLeft} /> : stepOrder}
+                          <div key={stepOrder}>
+                            {/* Step header */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
+                              <div style={{ width: 18, height: 18, borderRadius: 99, background: allDone ? '#059669' : isActive ? '#6366f1' : theme.subtleBg, border: `2px solid ${allDone ? '#059669' : isActive ? '#6366f1' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                                {allDone ? '✓' : stepOrder}
                               </div>
-                              {stepIdx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: allDone ? '#059669' : theme.border, marginTop: 4, minHeight: 18 }} />}
+                              <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>{stepName}</span>
+                              {stepRows[0]?.role?.role_name && <span style={{ fontSize: 10, color: theme.textSecondary }}>({stepRows[0].role.role_name})</span>}
+                              {isActive && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Aktif</span>}
+                              {allDone  && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Selesai</span>}
                             </div>
-                            <div style={{ flex: 1, paddingBottom: 4 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                                <span style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 13 }}>{stepName}</span>
-                                {stepRows[0]?.role?.role_name && <span style={{ fontSize: 10, color: theme.textSecondary, background: theme.subtleBg, border: `1px solid ${theme.border}`, padding: '1px 6px', borderRadius: 99 }}>{stepRows[0].role.role_name}</span>}
-                                {isActive     && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(99,102,241,0.15)', color: '#6366f1', fontWeight: 700 }}>Menunggu</span>}
-                                {allDone      && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(5,150,105,0.12)', color: '#059669', fontWeight: 700 }}>Disetujui</span>}
-                                {anyRevision && !allDone && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', fontWeight: 700 }}>Minta Revisi</span>}
-                                {anyRejected  && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(220,38,38,0.12)', color: '#dc2626', fontWeight: 700 }}>Ditolak</span>}
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                {stepRows.map(ap => {
-                                  const approverName = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim()
-                                  return (
-                                    <div key={ap.approval_id} style={{ padding: '7px 11px', borderRadius: 8, background: theme.subtleBg + '55', border: `1px solid ${theme.border}`, fontSize: 12 }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                        <span style={{ fontWeight: 600, color: theme.textPrimary }}>{approverName || 'User'}</span>
-                                        {ap.status === 'pending'   && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 700 }}>Menunggu</span>}
-                                        {ap.status === 'approved'  && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(5,150,105,0.12)', color: '#059669', fontWeight: 700 }}>✓ Disetujui</span>}
-                                        {ap.status === 'revision'  && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', fontWeight: 700 }}>↩ Revisi</span>}
-                                        {ap.status === 'rejected'  && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(220,38,38,0.12)', color: '#dc2626', fontWeight: 700 }}>✕ Ditolak</span>}
-                                        {ap.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(ap.action_at)}</span>}
-                                      </div>
-                                      {ap.comment && (
-                                        <div style={{ marginTop: 5, padding: '5px 8px', borderRadius: 6, background: ap.status === 'revision' ? 'rgba(245,158,11,0.08)' : ap.status === 'rejected' ? 'rgba(220,38,38,0.08)' : 'rgba(5,150,105,0.08)', color: theme.textPrimary, borderLeft: `3px solid ${ap.status === 'revision' ? '#f59e0b' : ap.status === 'rejected' ? '#dc2626' : '#059669'}` }}>
-                                          {ap.comment}
-                                        </div>
-                                      )}
+                            {/* Approver rows */}
+                            <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              {stepRows.map(ap => {
+                                const name = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim() || 'User'
+                                return (
+                                  <div key={ap.approval_id}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
+                                      <span style={{ fontSize: 13 }}>{statusIcon(ap.status)}</span>
+                                      <span style={{ color: theme.textPrimary }}>{name}</span>
+                                      {ap.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(ap.action_at)}</span>}
                                     </div>
-                                  )
-                                })}
-                              </div>
+                                    {ap.comment && (
+                                      <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${ap.status === 'revision' ? '#f59e0b' : ap.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
+                                        {ap.comment}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
                             </div>
                           </div>
                         )
@@ -372,19 +358,17 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
 
                 {/* Approver action buttons */}
                 {myPendingApproval && fpb.status === 'pending' && (
-                  <div style={{ padding: '16px 18px', borderRadius: 12, border: '1px solid #6366f1', background: theme.cardBg }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: '#6366f1', marginBottom: 12 }}>⚡ Tindakan Anda — Step {fpb.current_step}: {myPendingApproval.step_name}</div>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                        <FontAwesomeIcon icon={faCheck} style={{ marginRight: 6 }} />Setujui
-                      </button>
-                      <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                        <FontAwesomeIcon icon={faRotateLeft} style={{ marginRight: 6 }} />Minta Revisi
-                      </button>
-                      <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                        <FontAwesomeIcon icon={faTimes} style={{ marginRight: 6 }} />Tolak
-                      </button>
-                    </div>
+                  <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid #6366f1', background: 'rgba(99,102,241,0.04)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: 12, color: '#6366f1', flex: 1 }}>⚡ Step {fpb.current_step}: {myPendingApproval.step_name}</span>
+                    <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <FontAwesomeIcon icon={faCheck} />Setujui
+                    </button>
+                    <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <FontAwesomeIcon icon={faRotateLeft} />Revisi
+                    </button>
+                    <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <FontAwesomeIcon icon={faTimes} />Tolak
+                    </button>
                   </div>
                 )}
               </>
@@ -397,34 +381,34 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
       {showActionModal && (
         <div onClick={() => { if (!saving) { setShowActionModal(false); setAction(null); setComment(''); setError('') } }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 14, width: '100%', maxWidth: 440, padding: 24, boxShadow: '0 12px 48px rgba(0,0,0,0.3)' }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: theme.textPrimary, marginBottom: 16 }}>
-              {action === 'approved' ? '✅ Konfirmasi Persetujuan' : action === 'revision' ? '🔄 Konfirmasi Permintaan Revisi' : '❌ Konfirmasi Penolakan'}
+          <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 14, width: '100%', maxWidth: 420, padding: 22, boxShadow: '0 12px 48px rgba(0,0,0,0.3)' }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: theme.textPrimary, marginBottom: 14 }}>
+              {action === 'approved' ? '✅ Konfirmasi Persetujuan' : action === 'revision' ? '🔄 Konfirmasi Revisi' : '❌ Konfirmasi Penolakan'}
             </div>
-            <div style={{ padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, marginBottom: 14, background: action === 'approved' ? 'rgba(5,150,105,0.08)' : action === 'revision' ? 'rgba(245,158,11,0.08)' : 'rgba(220,38,38,0.08)', color: action === 'approved' ? '#065f46' : action === 'revision' ? '#92400e' : '#991b1b', border: `1px solid ${action === 'approved' ? 'rgba(5,150,105,0.25)' : action === 'revision' ? 'rgba(245,158,11,0.25)' : 'rgba(220,38,38,0.25)'}` }}>
-              {action === 'approved' ? `Anda akan menyetujui FPB ${fpb?.fpb_number} — Step ${fpb?.current_step}: ${myPendingApproval?.step_name}`
-                : action === 'revision' ? `Anda akan meminta revisi pada FPB ${fpb?.fpb_number}. Pengaju akan diminta memperbaiki FPB ini.`
-                : `Anda akan menolak FPB ${fpb?.fpb_number}. Tindakan ini tidak dapat dibatalkan.`}
+            <div style={{ padding: '9px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, marginBottom: 12, background: action === 'approved' ? 'rgba(5,150,105,0.08)' : action === 'revision' ? 'rgba(245,158,11,0.08)' : 'rgba(220,38,38,0.08)', color: action === 'approved' ? '#065f46' : action === 'revision' ? '#92400e' : '#991b1b', border: `1px solid ${action === 'approved' ? 'rgba(5,150,105,0.25)' : action === 'revision' ? 'rgba(245,158,11,0.25)' : 'rgba(220,38,38,0.25)'}` }}>
+              {action === 'approved' ? `Setujui FPB ${fpb?.fpb_number} — Step ${fpb?.current_step}`
+                : action === 'revision' ? `Minta revisi FPB ${fpb?.fpb_number}. Pengaju akan diminta memperbaiki.`
+                : `Tolak FPB ${fpb?.fpb_number}. Tindakan tidak dapat dibatalkan.`}
             </div>
             {action !== 'approved' && (
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>
-                  {action === 'revision' ? 'Apa yang perlu direvisi? *' : 'Alasan penolakan *'}
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>
+                  {action === 'revision' ? 'Yang perlu direvisi *' : 'Alasan penolakan *'}
                 </label>
                 <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} autoFocus
-                  placeholder={action === 'revision' ? 'Jelaskan apa yang perlu direvisi...' : 'Jelaskan alasan penolakan FPB ini...'}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  placeholder={action === 'revision' ? 'Jelaskan apa yang perlu direvisi...' : 'Jelaskan alasan penolakan...'}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
             )}
-            {error && <p style={{ color: '#dc2626', fontSize: 12, margin: '0 0 12px' }}>⚠ {error}</p>}
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            {error && <p style={{ color: '#dc2626', fontSize: 12, margin: '0 0 10px' }}>⚠ {error}</p>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { if (!saving) { setShowActionModal(false); setAction(null); setComment(''); setError('') } }} disabled={saving}
-                style={{ padding: '9px 20px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                style={{ padding: '8px 18px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
                 Batal
               </button>
               <button onClick={handleAction} disabled={saving}
-                style={{ padding: '9px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? '#e5e7eb' : action === 'approved' ? '#059669' : action === 'revision' ? '#f59e0b' : '#dc2626', color: saving ? '#9ca3af' : '#fff' }}>
-                {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Memproses...</> : action === 'approved' ? '✅ Setujui' : action === 'revision' ? '🔄 Minta Revisi' : '❌ Tolak'}
+                style={{ padding: '8px 22px', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 12, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? '#e5e7eb' : action === 'approved' ? '#059669' : action === 'revision' ? '#f59e0b' : '#dc2626', color: saving ? '#9ca3af' : '#fff' }}>
+                {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 5 }} />Memproses...</> : action === 'approved' ? 'Setujui' : action === 'revision' ? 'Minta Revisi' : 'Tolak'}
               </button>
             </div>
           </div>
@@ -1055,6 +1039,7 @@ export default function FpbListPage() {
   const [tab, setTab]               = useState('mine')
   const [myFpbs, setMyFpbs]         = useState([])
   const [pendingFpbs, setPending]   = useState([])
+  const [historyFpbs, setHistory]   = useState([])
   const [loading, setLoading]       = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [viewFpbId, setViewFpbId]   = useState(null)
@@ -1085,52 +1070,62 @@ export default function FpbListPage() {
         a => a.fpb?.current_step === a.step_order && a.fpb?.status === 'pending'
       )
 
-      if (!candidates.length) { setPending([]); return }
+      if (!candidates.length) {
+        setPending([])
+      } else {
+        // Step 2: Fetch ALL approvals for those FPBs (need approval_id + status of each row in the step)
+        const fpbIds = [...new Set(candidates.map(c => c.fpb_id))]
+        const { data: allStepApprovals } = await supabase
+          .from('fpb_approvals')
+          .select('approval_id, fpb_id, step_order, approver_order, status')
+          .in('fpb_id', fpbIds)
 
-      // Step 2: Fetch ALL approvals for those FPBs (need approval_id + status of each row in the step)
-      const fpbIds = [...new Set(candidates.map(c => c.fpb_id))]
-      const { data: allStepApprovals } = await supabase
-        .from('fpb_approvals')
-        .select('approval_id, fpb_id, step_order, approver_order, status')
-        .in('fpb_id', fpbIds)
+        // Step 3: Sequential check
+        const pending = candidates
+          .filter(a => {
+            const allInStep = (allStepApprovals || []).filter(
+              ap => ap.fpb_id === a.fpb_id && ap.step_order === a.step_order
+            )
+            const hasOrder = allInStep.every(ap => ap.approver_order != null)
+            let myPos, blockers
+            if (hasOrder) {
+              myPos = a.approver_order ?? 1
+              blockers = allInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
+            } else {
+              const sorted = [...allInStep].sort((x, y) => x.approval_id - y.approval_id)
+              myPos = sorted.findIndex(ap => ap.approval_id === a.approval_id)
+              if (myPos <= 0) return true
+              blockers = sorted.slice(0, myPos).filter(ap => ap.status !== 'approved')
+            }
+            return blockers.length === 0
+          })
+          .map(a => ({ ...a.fpb, my_step: a.step_order, my_step_name: a.step_name }))
 
-      // Step 3: Sequential check
-      // An approver should only see an FPB if ALL approvers with a LOWER approver_order
-      // (or lower approval_id as fallback for rows without approver_order) have status = 'approved'
-      const pending = candidates
-        .filter(a => {
-          const allInStep = (allStepApprovals || []).filter(
-            ap => ap.fpb_id === a.fpb_id && ap.step_order === a.step_order
-          )
-
-          // Determine my position — prefer approver_order, fall back to approval_id rank
-          const hasOrder = allInStep.every(ap => ap.approver_order != null)
-          let myPos, blockers
-
-          if (hasOrder) {
-            // Use approver_order (set for new FPBs)
-            myPos = a.approver_order ?? 1
-            blockers = allInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
-          } else {
-            // Fallback: use approval_id rank (smaller approval_id = inserted first = higher priority)
-            const sorted = [...allInStep].sort((x, y) => x.approval_id - y.approval_id)
-            myPos = sorted.findIndex(ap => ap.approval_id === a.approval_id)
-            if (myPos <= 0) return true // First in list always sees it
-            blockers = sorted.slice(0, myPos).filter(ap => ap.status !== 'approved')
-          }
-
-          return blockers.length === 0
+        const seen = new Set()
+        const uniquePending = pending.filter(f => {
+          if (seen.has(f.fpb_id)) return false
+          seen.add(f.fpb_id)
+          return true
         })
-        .map(a => ({ ...a.fpb, my_step: a.step_order, my_step_name: a.step_name }))
+        setPending(uniquePending)
+      }
 
-      // Deduplicate by fpb_id
-      const seen = new Set()
-      const uniquePending = pending.filter(f => {
-        if (seen.has(f.fpb_id)) return false
-        seen.add(f.fpb_id)
-        return true
+      // Tab 3: History — FPBs fully approved where I was an approver
+      const { data: myApprovedRows } = await supabase
+        .from('fpb_approvals')
+        .select('fpb_id, step_name, action_at, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, fpb_types(type_name), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
+        .eq('approver_user_id', uid)
+        .eq('status', 'approved')
+      const approvedFpbs = (myApprovedRows || [])
+        .filter(r => r.fpb?.status === 'approved')
+        .map(r => ({ ...r.fpb, my_step_name: r.step_name, my_action_at: r.action_at }))
+      // Deduplicate by fpb_id (keep latest action_at)
+      const histMap = new Map()
+      approvedFpbs.forEach(f => {
+        const existing = histMap.get(f.fpb_id)
+        if (!existing || new Date(f.my_action_at) > new Date(existing.my_action_at)) histMap.set(f.fpb_id, f)
       })
-      setPending(uniquePending)
+      setHistory([...histMap.values()].sort((a, b) => new Date(b.my_action_at) - new Date(a.my_action_at)))
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -1143,9 +1138,10 @@ export default function FpbListPage() {
   const tabs = [
     { key: 'mine',    label: 'Pengajuan Saya',         icon: faClipboardList, count: myFpbs.length },
     { key: 'pending', label: 'Menunggu Approval Saya', icon: faClock,         count: pendingFpbs.length },
+    { key: 'history', label: 'History Approval',       icon: faCheckDouble,   count: historyFpbs.length },
   ]
 
-  const FpbRow = ({ f, isPending }) => {
+  const FpbRow = ({ f, isPending, isHistory }) => {
     const canEdit   = f.status === 'revision'
     const canDelete = f.status === 'pending' && (f.revision_count === 0 || f.revision_count == null)
     return (
@@ -1163,11 +1159,21 @@ export default function FpbListPage() {
             <div style={{ fontSize: 11, color: theme.textSecondary }}>{f.my_step_name}</div>
           </td>
         )}
+        {isHistory && (
+          <td style={{ padding: '12px 14px', fontSize: 13, color: theme.textPrimary }}>
+            {`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`.trim() || '—'}
+          </td>
+        )}
         <td style={{ padding: '12px 14px', fontSize: 13, color: theme.textPrimary, fontWeight: 600 }}>{fmt(f.grand_total)}</td>
         <td style={{ padding: '12px 14px', fontSize: 12, color: theme.textSecondary }}>{fmtDate(f.usage_date)}</td>
         <td style={{ padding: '12px 14px' }}><StatusBadge status={f.status} /></td>
-        {!isPending && (
+        {!isPending && !isHistory && (
           <td style={{ padding: '12px 14px', fontSize: 11, color: theme.textSecondary }}>{f.revision_count > 0 ? `Revisi ke-${f.revision_count}` : ''}</td>
+        )}
+        {isHistory && (
+          <td style={{ padding: '12px 14px', fontSize: 11, color: '#059669', fontWeight: 600 }}>
+            {f.my_action_at ? fmtDt(f.my_action_at) : '—'}
+          </td>
         )}
         <td style={{ padding: '12px 14px', textAlign: 'right' }}>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
@@ -1177,7 +1183,7 @@ export default function FpbListPage() {
               <FontAwesomeIcon icon={faEye} />Lihat
             </button>
             {/* Edit — only in 'mine' tab */}
-            {!isPending && (
+            {!isPending && !isHistory && (
               <button onClick={e => { e.stopPropagation(); if (canEdit) setEditFpbId(f.fpb_id) }}
                 title={!canEdit ? 'Hanya bisa diedit saat berstatus Revisi' : 'Edit FPB ini'}
                 style={{ padding: '5px 11px', borderRadius: 7, border: `1px solid ${canEdit ? '#f59e0b' : theme.border}`, background: canEdit ? 'rgba(245,158,11,0.08)' : theme.subtleBg, color: canEdit ? '#b45309' : theme.textSecondary, fontSize: 12, cursor: canEdit ? 'pointer' : 'not-allowed', opacity: canEdit ? 1 : 0.45, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
@@ -1185,7 +1191,7 @@ export default function FpbListPage() {
               </button>
             )}
             {/* Hapus — only in 'mine' tab */}
-            {!isPending && (
+            {!isPending && !isHistory && (
               <button onClick={e => { e.stopPropagation(); if (canDelete) setDeleteFpb(f) }}
                 title={!canDelete ? 'FPB yang sudah diproses approver tidak dapat dihapus' : 'Hapus FPB ini'}
                 style={{ padding: '5px 11px', borderRadius: 7, border: `1px solid ${canDelete ? '#dc2626' : theme.border}`, background: canDelete ? 'rgba(220,38,38,0.07)' : theme.subtleBg, color: canDelete ? '#dc2626' : theme.textSecondary, fontSize: 12, cursor: canDelete ? 'pointer' : 'not-allowed', opacity: canDelete ? 1 : 0.45, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
@@ -1198,7 +1204,7 @@ export default function FpbListPage() {
     )
   }
 
-  const currentList = tab === 'mine' ? myFpbs : pendingFpbs
+  const currentList = tab === 'mine' ? myFpbs : tab === 'pending' ? pendingFpbs : historyFpbs
 
   return (
     <div style={{ padding: '28px 32px', background: theme.pageBg, minHeight: '100vh' }}>
@@ -1252,10 +1258,10 @@ export default function FpbListPage() {
             <div style={{ padding: 60, textAlign: 'center' }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
               <p style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 15, marginBottom: 6 }}>
-                {tab === 'mine' ? 'Belum ada FPB yang diajukan' : 'Tidak ada FPB yang menunggu approval Anda'}
+                {tab === 'mine' ? 'Belum ada FPB yang diajukan' : tab === 'pending' ? 'Tidak ada FPB yang menunggu approval Anda' : 'Belum ada FPB yang Anda setujui'}
               </p>
               <p style={{ color: theme.textSecondary, fontSize: 13 }}>
-                {tab === 'mine' ? 'Klik "Buat FPB Baru" untuk membuat pengajuan pertama Anda' : 'Semua sudah diproses!'}
+                {tab === 'mine' ? 'Klik "Buat FPB Baru" untuk membuat pengajuan pertama Anda' : tab === 'pending' ? 'Semua sudah diproses!' : 'FPB yang telah Anda approve secara penuh akan muncul di sini'}
               </p>
               {tab === 'mine' && (
                 <button onClick={() => setShowCreate(true)}
@@ -1272,15 +1278,17 @@ export default function FpbListPage() {
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Nomor FPB</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Divisi</th>
                     {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Step Saya</th>}
+                    {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Pengaju</th>}
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Grand Total</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Tgl Kebutuhan</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Status</th>
                     {tab === 'mine' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}></th>}
+                    {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Tgl Disetujui</th>}
                     <th style={{ padding: '10px 14px' }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentList.map(f => <FpbRow key={f.fpb_id} f={f} isPending={tab === 'pending'} />)}
+                  {currentList.map(f => <FpbRow key={f.fpb_id} f={f} isPending={tab === 'pending'} isHistory={tab === 'history'} />)}
                 </tbody>
               </table>
             </div>
