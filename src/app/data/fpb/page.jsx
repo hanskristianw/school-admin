@@ -586,14 +586,15 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         .select('*').eq('role_id', submitter.user_role_id).single()
       if (!ra?.approver1_id) throw new Error('Approver untuk jabatan Anda belum dikonfigurasi. Hubungi administrator untuk mengatur di Pengaturan FPB.')
 
-      // Build approval rows — 1 per approver (AND logic, all must approve)
+      // Build approval rows — 1 per approver, sequential order
       const approverIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
-      const approvalRows = approverIds.map(approverId => ({
+      const approvalRows = approverIds.map((approverId, idx) => ({
         fpb_id:           null, // set after fpb insert
         step_order:       1,
         step_name:        'Persetujuan',
         approver_user_id: approverId,
         approver_role_id: submitter.user_role_id,
+        approver_order:   idx + 1, // 1 = first, 2 = second, 3 = third
         status:           'pending',
       }))
 
@@ -827,13 +828,45 @@ export default function FpbListPage() {
         .eq('submitted_by', uid).order('created_at', { ascending: false })
       setMyFpbs(mine || [])
 
-      const { data: approvals } = await supabase
-        .from('fpb_approvals').select('fpb_id, step_order, step_name, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
+      // Step 1: My pending approval rows (with approver_order)
+      const { data: myApprovals } = await supabase
+        .from('fpb_approvals')
+        .select('fpb_id, step_order, step_name, approver_order, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
         .eq('approver_user_id', uid).eq('status', 'pending')
-      const pending = (approvals || [])
-        .filter(a => a.fpb?.current_step === a.step_order && a.fpb?.status === 'pending')
+
+      // Filter: only FPBs in correct step and status
+      const candidates = (myApprovals || []).filter(
+        a => a.fpb?.current_step === a.step_order && a.fpb?.status === 'pending'
+      )
+
+      if (!candidates.length) { setPending([]); return }
+
+      // Step 2: Fetch all approvals for those FPBs (to check who has approved before me)
+      const fpbIds = [...new Set(candidates.map(c => c.fpb_id))]
+      const { data: allStepApprovals } = await supabase
+        .from('fpb_approvals')
+        .select('fpb_id, step_order, approver_order, status')
+        .in('fpb_id', fpbIds)
+
+      // Step 3: Only show FPBs where ALL earlier approvers (lower approver_order) have approved
+      const pending = candidates
+        .filter(a => {
+          const myOrder = a.approver_order ?? 1
+          if (myOrder === 1) return true // First approver always sees it
+          const blockers = (allStepApprovals || []).filter(
+            ap => ap.fpb_id === a.fpb_id
+              && ap.step_order === a.step_order
+              && (ap.approver_order ?? 1) < myOrder
+              && ap.status !== 'approved'
+          )
+          return blockers.length === 0
+        })
         .map(a => ({ ...a.fpb, my_step: a.step_order, my_step_name: a.step_name }))
-      setPending(pending)
+
+      // Deduplicate by fpb_id (in case user appears multiple times)
+      const seen = new Set()
+      const uniquePending = pending.filter(f => { if (seen.has(f.fpb_id)) return false; seen.add(f.fpb_id); return true })
+      setPending(uniquePending)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
