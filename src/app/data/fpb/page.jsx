@@ -45,6 +45,11 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const [comment, setComment]       = useState('')
   const [saving, setSaving]         = useState(false)
   const [error, setError]           = useState('')
+  const [canEditBudget, setCanEditBudget]   = useState(false)
+  const [editBudget, setEditBudget]         = useState(false)
+  const [budgetVal, setBudgetVal]           = useState('')
+  const [remainingVal, setRemainingVal]     = useState('')
+  const [savingBudget, setSavingBudget]     = useState(false)
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -58,6 +63,10 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
         .select('*, fpb_types(type_name, type_code, max_amount), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)')
         .eq('fpb_id', fpbId).single()
       setFpb(f)
+      if (f) {
+        setBudgetVal(f.budget != null ? String(f.budget) : '')
+        setRemainingVal(f.remaining_budget != null ? String(f.remaining_budget) : '')
+      }
       const { data: it } = await supabase.from('fpb_items').select('*').eq('fpb_id', fpbId).order('created_at')
       setItems(it || [])
       // approvals now has one row per approver per step
@@ -69,6 +78,12 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
         .select('*, users!fpb_revisions_revised_by_fkey(user_nama_depan, user_nama_belakang)')
         .eq('fpb_id', fpbId).order('revision_number', { ascending: false })
       setRevisions(rv || [])
+      // Check if user's role can edit budget
+      const { data: userRow } = await supabase.from('users').select('user_role_id').eq('user_id', uid).single()
+      if (userRow?.user_role_id) {
+        const { data: br } = await supabase.from('fpb_budget_roles').select('role_id').eq('role_id', userRow.user_role_id).maybeSingle()
+        setCanEditBudget(!!br)
+      }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -145,6 +160,20 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     finally { setSaving(false) }
   }
 
+  const handleSaveBudget = async () => {
+    setSavingBudget(true)
+    try {
+      const { error: e } = await supabase.from('fpb').update({
+        budget:           budgetVal !== '' ? parseFloat(budgetVal) : null,
+        remaining_budget: remainingVal !== '' ? parseFloat(remainingVal) : null,
+      }).eq('fpb_id', fpbId)
+      if (e) throw e
+      setEditBudget(false)
+      await fetchData(userId)
+    } catch (e) { setError(e.message) }
+    finally { setSavingBudget(false) }
+  }
+
   const inp = { width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none' }
 
   return (
@@ -208,6 +237,56 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                       </div>
                     ))}
                   </div>
+
+                  {/* Budget section — visible to all, editable by budget roles */}
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${theme.border}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>💰 Budget</span>
+                      {canEditBudget && !editBudget && (
+                        <button onClick={() => setEditBudget(true)}
+                          style={{ fontSize: 11, padding: '3px 10px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary, cursor: 'pointer', fontWeight: 600 }}>
+                          ✏️ Edit
+                        </button>
+                      )}
+                    </div>
+                    {editBudget ? (
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                          <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Budget (Rp)</label>
+                          <input type="number" min="0" value={budgetVal} onChange={e => setBudgetVal(e.target.value)}
+                            placeholder="0" style={{ width: '100%', padding: '7px 10px', borderRadius: 8, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                          <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Remaining Budget (Rp)</label>
+                          <input type="number" min="0" value={remainingVal} onChange={e => setRemainingVal(e.target.value)}
+                            placeholder="0" style={{ width: '100%', padding: '7px 10px', borderRadius: 8, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => setEditBudget(false)}
+                            style={{ padding: '7px 14px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Batal</button>
+                          <button onClick={handleSaveBudget} disabled={savingBudget}
+                            style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                            {savingBudget ? 'Menyimpan...' : '💾 Simpan'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div style={{ padding: '10px 14px', borderRadius: 10, background: fpb.budget != null ? 'rgba(99,102,241,0.07)' : theme.subtleBg, border: `1px solid ${fpb.budget != null ? 'rgba(99,102,241,0.25)' : theme.border}` }}>
+                          <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 600, marginBottom: 3 }}>Budget</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: fpb.budget != null ? '#6366f1' : theme.textSecondary }}>
+                            {fpb.budget != null ? fmt(fpb.budget) : <span style={{ fontStyle: 'italic', fontWeight: 400, fontSize: 12 }}>Belum diisi</span>}
+                          </div>
+                        </div>
+                        <div style={{ padding: '10px 14px', borderRadius: 10, background: fpb.remaining_budget != null ? 'rgba(5,150,105,0.07)' : theme.subtleBg, border: `1px solid ${fpb.remaining_budget != null ? 'rgba(5,150,105,0.25)' : theme.border}` }}>
+                          <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 600, marginBottom: 3 }}>Remaining Budget</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: fpb.remaining_budget != null ? '#059669' : theme.textSecondary }}>
+                            {fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : <span style={{ fontStyle: 'italic', fontWeight: 400, fontSize: 12 }}>Belum diisi</span>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Items table */}
@@ -217,8 +296,8 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
                         <tr style={{ background: theme.subtleBg }}>
-                          {['Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal'].map(h => (
-                            <th key={h} style={{ padding: '8px 14px', textAlign: h === 'Nama Barang' ? 'left' : 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>{h}</th>
+                          {['Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal', 'Link Referensi'].map(h => (
+                            <th key={h} style={{ padding: '8px 14px', textAlign: h === 'Nama Barang' || h === 'Link Referensi' ? 'left' : 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -230,12 +309,20 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                             <td style={{ padding: '9px 14px', textAlign: 'center', color: theme.textSecondary }}>{it.unit}</td>
                             <td style={{ padding: '9px 14px', textAlign: 'right', color: theme.textPrimary }}>{fmt(it.unit_price)}</td>
                             <td style={{ padding: '9px 14px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary }}>{fmt(it.quantity * it.unit_price)}</td>
+                            <td style={{ padding: '9px 14px' }}>
+                              {it.seller_url ? (
+                                <a href={it.seller_url} target="_blank" rel="noreferrer"
+                                  style={{ fontSize: 11, color: '#6366f1', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  🔗 Lihat Referensi
+                                </a>
+                              ) : <span style={{ fontSize: 11, color: theme.textSecondary, fontStyle: 'italic' }}>—</span>}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
-                          <td colSpan={4} style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary }}>Grand Total</td>
+                          <td colSpan={5} style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary }}>Grand Total</td>
                           <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, fontSize: 15, color: '#6366f1' }}>{fmt(fpb.grand_total)}</td>
                         </tr>
                       </tfoot>
@@ -517,7 +604,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
       if (fpbErr) throw fpbErr
 
       const { error: itemErr } = await supabase.from('fpb_items').insert(
-        items.map(i => ({ fpb_id: fpb.fpb_id, item_name: i.item_name.trim(), quantity: Number(i.quantity), unit: i.unit, unit_price: Number(i.unit_price) }))
+        items.map(i => ({ fpb_id: fpb.fpb_id, item_name: i.item_name.trim(), quantity: Number(i.quantity), unit: i.unit, unit_price: Number(i.unit_price), seller_url: i.seller_url?.trim() || null }))
       )
       if (itemErr) throw itemErr
 
@@ -634,7 +721,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: theme.subtleBg }}>
-                        {['Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal', ''].map(h => (
+                        {['Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal', 'Link Referensi', ''].map(h => (
                           <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -658,6 +745,14 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
                           </td>
                           <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary, whiteSpace: 'nowrap' }}>
                             {fmt((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}
+                          </td>
+                          <td style={{ padding: '7px 10px', minWidth: 180 }}>
+                            <input
+                              value={item.seller_url || ''}
+                              onChange={e => updateItem(item._id, 'seller_url', e.target.value)}
+                              placeholder="https://tokopedia.com/..."
+                              style={{ ...inputStyle, padding: '5px 9px', fontSize: 11 }}
+                            />
                           </td>
                           <td style={{ padding: '7px 6px', textAlign: 'center' }}>
                             {items.length > 1 && <button onClick={() => removeItem(item._id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 4 }}><FontAwesomeIcon icon={faTrash} /></button>}

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFileInvoiceDollar, faSave, faSpinner, faCheck,
-  faUsers, faUserTie, faShield,
+  faUsers, faUserTie, faShield, faWallet,
 } from '@fortawesome/free-solid-svg-icons'
 
 const userName = (u) => u ? `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim() : '—'
@@ -16,12 +16,13 @@ const userName = (u) => u ? `${u.user_nama_depan || ''} ${u.user_nama_belakang |
 export default function FpbSettingsPage() {
   const { theme } = useTheme()
 
-  const [roles, setRoles]       = useState([])
-  const [users, setUsers]       = useState([])
-  const [selRole, setSelRole]   = useState(null)
-
-  // roleApprovers map: { [role_id]: { id, approver1_id, approver2_id, approver3_id } }
+  const [roles, setRoles]         = useState([])
+  const [users, setUsers]         = useState([])
+  const [selRole, setSelRole]     = useState(null)
   const [roleApprovers, setRoleApprovers] = useState({})
+  const [budgetRoleIds, setBudgetRoleIds] = useState(new Set()) // role_ids that can edit budget
+  const [savingBudget, setSavingBudget]   = useState(false)
+  const [savedBudget, setSavedBudget]     = useState(false)
 
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -33,10 +34,10 @@ export default function FpbSettingsPage() {
       supabase.from('role').select('role_id, role_name').order('role_name'),
       supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').eq('is_active', true).order('user_nama_depan'),
       supabase.from('fpb_role_approvers').select('*'),
-    ]).then(([{ data: r }, { data: u }, { data: ra }]) => {
+      supabase.from('fpb_budget_roles').select('role_id'),
+    ]).then(([{ data: r }, { data: u }, { data: ra }, { data: br }]) => {
       setRoles(r || [])
       setUsers(u || [])
-
       const map = {}
       ;(ra || []).forEach(row => {
         map[row.role_id] = {
@@ -47,7 +48,7 @@ export default function FpbSettingsPage() {
         }
       })
       setRoleApprovers(map)
-
+      setBudgetRoleIds(new Set((br || []).map(b => b.role_id)))
       if (r?.length) setSelRole(r[0])
       setLoading(false)
     })
@@ -109,6 +110,33 @@ export default function FpbSettingsPage() {
       setError(e.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const toggleBudgetRole = (roleId) => {
+    setBudgetRoleIds(prev => {
+      const next = new Set(prev)
+      next.has(roleId) ? next.delete(roleId) : next.add(roleId)
+      return next
+    })
+  }
+
+  const saveBudgetRoles = async () => {
+    setSavingBudget(true)
+    try {
+      // Delete all existing, then insert selected
+      await supabase.from('fpb_budget_roles').delete().neq('role_id', 0)
+      if (budgetRoleIds.size > 0) {
+        const { error: insErr } = await supabase.from('fpb_budget_roles')
+          .insert([...budgetRoleIds].map(rid => ({ role_id: rid })))
+        if (insErr) throw insErr
+      }
+      setSavedBudget(true)
+      setTimeout(() => setSavedBudget(false), 3000)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSavingBudget(false)
     }
   }
 
@@ -287,6 +315,55 @@ export default function FpbSettingsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Budget Roles Card ────────────────────────────────────────────── */}
+      <Card style={{ background: theme.cardBg, borderColor: theme.border, marginTop: 24 }}>
+        <CardHeader className="pb-3">
+          <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>
+            <FontAwesomeIcon icon={faWallet} style={{ marginRight: 8, color: '#6366f1' }} />
+            Hak Akses Edit Budget FPB
+          </CardTitle>
+          <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
+            Pilih jabatan yang berhak mengisi dan mengubah kolom <strong>Budget</strong> dan <strong>Remaining Budget</strong> pada setiap FPB.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 20 }}>
+            {roles.map(r => {
+              const checked = budgetRoleIds.has(r.role_id)
+              return (
+                <label key={r.role_id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, cursor: 'pointer', border: `2px solid ${checked ? '#6366f1' : theme.border}`, background: checked ? 'rgba(99,102,241,0.07)' : theme.cardBg, transition: 'all 0.15s', userSelect: 'none' }}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleBudgetRole(r.role_id)}
+                    style={{ width: 16, height: 16, accentColor: '#6366f1', cursor: 'pointer', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>{r.role_name}</div>
+                    {checked && <div style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginTop: 1 }}>✓ Bisa edit budget</div>}
+                  </div>
+                </label>
+              )
+            })}
+          </div>
+          {budgetRoleIds.size > 0 && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', fontSize: 12, color: theme.textSecondary }}>
+              <strong style={{ color: '#6366f1' }}>{budgetRoleIds.size} jabatan</strong> dapat mengisi/mengubah Budget & Remaining Budget pada FPB.
+            </div>
+          )}
+          {budgetRoleIds.size === 0 && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', fontSize: 12, color: '#dc2626' }}>
+              ⚠ Belum ada jabatan yang bisa mengisi budget. Kolom budget tidak akan muncul di halaman FPB.
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+            <Button onClick={saveBudgetRoles} disabled={savingBudget}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: savedBudget ? '#059669' : savingBudget ? theme.subtleBg : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: savingBudget ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: savingBudget ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+              {savingBudget ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</>
+                : savedBudget ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</>
+                : <><FontAwesomeIcon icon={faSave} />Simpan Hak Akses Budget</>}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
