@@ -162,7 +162,7 @@ export default function CreateFpbPage() {
       <p style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 32 }}>Pilih jenis formulir pembelian yang sesuai dengan kebutuhan Anda</p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16 }}>
-        {types.map(t => (
+        {types.filter(t => t.type_code !== 'large' && t.type_code !== 'repair').map(t => (
           <button key={t.fpb_type_id} onClick={() => { setSelType(t); setStep(2) }}
             style={{ textAlign: 'left', padding: 24, borderRadius: 14, border: `2px solid ${theme.border}`,
               background: theme.cardBg, cursor: 'pointer', transition: 'all 0.18s' }}
@@ -268,7 +268,7 @@ export default function CreateFpbPage() {
                       </td>
                       <td style={{ padding: '8px 12px' }}>
                         <select value={item.unit} onChange={e => updateItem(item._id, 'unit', e.target.value)} style={{ ...inputStyle, padding: '6px 10px' }}>
-                          {['pcs', 'kg', 'liter', 'box', 'rim', 'lusin', 'unit', 'set'].map(u => <option key={u}>{u}</option>)}
+                          {['pcs', 'kg', 'liter', 'box', 'rim', 'lusin', 'unit', 'set', 'lump sum'].map(u => <option key={u} value={u}>{u}</option>)}
                         </select>
                       </td>
                       <td style={{ padding: '8px 12px' }}>
@@ -303,11 +303,10 @@ export default function CreateFpbPage() {
           </CardContent>
         </Card>
 
-        {/* Warning if exceeds */}
         {exceeds && (
           <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5',
             color: '#dc2626', fontSize: 13, fontWeight: 600 }}>
-            ⚠ Grand total melebihi batas. Gunakan tipe <strong>FPB Besar</strong> untuk pembelian di atas {fmt(selType?.max_amount)}.
+            ⚠ Grand total melebihi batas maksimum {fmt(selType?.max_amount)} untuk tipe FPB ini.
           </div>
         )}
 
