@@ -472,38 +472,26 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
       const { count } = await supabase.from('fpb').select('*', { count: 'exact', head: true }).like('fpb_number', `FPB/${year}/%`)
       const fpbNumber = `FPB/${year}/${String((count || 0) + 1).padStart(3, '0')}`
 
-      // Load steps (now with approver_role_id)
-      const { data: steps } = await supabase.from('fpb_approval_steps')
-        .select('*').eq('fpb_type_id', selType.fpb_type_id).order('step_order')
-      if (!steps?.length) throw new Error('Belum ada konfigurasi approval untuk tipe ini. Hubungi administrator.')
+      // Get submitter's role
+      const { data: submitter } = await supabase.from('users')
+        .select('user_role_id').eq('user_id', uid).single()
+      if (!submitter?.user_role_id) throw new Error('Jabatan (role) Anda belum dikonfigurasi. Hubungi administrator.')
 
-      // Load role approvers for all roles used in steps
-      const roleIds = [...new Set(steps.map(s => s.approver_role_id).filter(Boolean))]
-      const { data: roleApprovers } = await supabase.from('fpb_role_approvers')
-        .select('*').in('role_id', roleIds)
-      if (!roleApprovers?.length) throw new Error('Belum ada konfigurasi approver untuk tipe ini. Atur di Pengaturan FPB.')
+      // Get approvers for submitter's role
+      const { data: ra } = await supabase.from('fpb_role_approvers')
+        .select('*').eq('role_id', submitter.user_role_id).single()
+      if (!ra?.approver1_id) throw new Error('Approver untuk jabatan Anda belum dikonfigurasi. Hubungi administrator untuk mengatur di Pengaturan FPB.')
 
-      const raMap = {}
-      roleApprovers.forEach(ra => { raMap[ra.role_id] = ra })
-
-      // Build one row per approver per step (AND logic)
-      const approvalRows = []
-      for (const s of steps) {
-        const ra = raMap[s.approver_role_id]
-        if (!ra) throw new Error(`Role untuk step "${s.step_name}" belum dikonfigurasi approvernya.`)
-        const approverIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
-        if (!approverIds.length) throw new Error(`Step "${s.step_name}" belum memiliki approver.`)
-        for (const approverId of approverIds) {
-          approvalRows.push({
-            fpb_id:           null, // will set after fpb insert
-            step_order:       s.step_order,
-            step_name:        s.step_name,
-            approver_user_id: approverId,
-            approver_role_id: s.approver_role_id,
-            status:           'pending',
-          })
-        }
-      }
+      // Build approval rows — 1 per approver (AND logic, all must approve)
+      const approverIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
+      const approvalRows = approverIds.map(approverId => ({
+        fpb_id:           null, // set after fpb insert
+        step_order:       1,
+        step_name:        'Persetujuan',
+        approver_user_id: approverId,
+        approver_role_id: submitter.user_role_id,
+        status:           'pending',
+      }))
 
       const { data: fpb, error: fpbErr } = await supabase.from('fpb').insert({
         fpb_number: fpbNumber, fpb_type_id: selType.fpb_type_id, division, submitted_by: uid,
