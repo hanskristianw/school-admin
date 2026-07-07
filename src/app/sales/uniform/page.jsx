@@ -76,6 +76,11 @@ export default function UniformSalesPage() {
   const userData = useMemo(() => getUserData(), [])
   const hasVoidPermission = useMemo(() => canVoidTransactions(userData), [userData])
 
+  // Note (catatan) states
+  const [showNoteModal, setShowNoteModal] = useState(false)
+  const [selectedSaleForNote, setSelectedSaleForNote] = useState(null)
+  const [noteEdit, setNoteEdit] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
 
   // Laporan states
   const [reportPeriod, setReportPeriod] = useState('month') // 'month' or 'custom'
@@ -509,10 +514,10 @@ export default function UniformSalesPage() {
   const fetchSalesHistory = async () => {
     setLoadingHistory(true)
     try {
-      // Fetch sales with user info (including void columns, pickup_date, and processed_by)
+      // Fetch sales with user info (including void columns, pickup_date, processed_by, and note)
       const { data: sales, error: salesErr } = await supabase
         .from('uniform_sale')
-        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason, pickup_date, processed_by')
+        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason, pickup_date, processed_by, note')
         .order('sale_id', { ascending: false })
         .limit(100)
 
@@ -783,6 +788,26 @@ export default function UniformSalesPage() {
       setError('Gagal update bukti transfer: ' + e.message)
     } finally {
       setUpdatingReceipt(false)
+    }
+  }
+
+  const handleSaveNote = async () => {
+    if (!selectedSaleForNote) return
+    setSavingNote(true)
+    try {
+      const { error } = await supabase
+        .from('uniform_sale')
+        .update({ note: noteEdit.trim() || null })
+        .eq('sale_id', selectedSaleForNote.sale_id)
+      if (error) throw error
+      setShowNoteModal(false)
+      setSelectedSaleForNote(null)
+      setNoteEdit('')
+      await fetchSalesHistory()
+    } catch (e) {
+      setError('Gagal menyimpan catatan: ' + e.message)
+    } finally {
+      setSavingNote(false)
     }
   }
 
@@ -2004,6 +2029,13 @@ export default function UniformSalesPage() {
                                 </>
                               )}
                             </div>
+                            {/* Note / Catatan */}
+                            {sale.note && (
+                              <div className="flex items-start gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1.5 rounded mt-1">
+                                <span className="flex-shrink-0">📝</span>
+                                <span className="text-xs">{sale.note}</span>
+                              </div>
+                            )}
                             {sale.pickup_date && (
                               <div className="flex items-center gap-2 text-green-700 bg-green-50 px-2 py-1 rounded">
                                 <span>✅</span>
@@ -2091,6 +2123,20 @@ export default function UniformSalesPage() {
                                 </Button>
                               )}
                               
+                              {/* Tombol Edit Catatan */}
+                              {!sale.is_voided && (
+                                <Button
+                                  onClick={() => {
+                                    setSelectedSaleForNote(sale)
+                                    setNoteEdit(sale.note || '')
+                                    setShowNoteModal(true)
+                                  }}
+                                  className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-2 whitespace-nowrap"
+                                >
+                                  📝 {sale.note ? 'Edit Catatan' : 'Tambah Catatan'}
+                                </Button>
+                              )}
+
                               {/* Tombol Batalkan */}
                               {!sale.is_voided && (sale.status === 'pending' || sale.status === 'paid') && (
                                 hasVoidPermission ? (
@@ -2789,6 +2835,51 @@ export default function UniformSalesPage() {
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold disabled:opacity-50"
             >
               {updatingReceipt ? '⏳ Mengupload...' : '📤 Upload Bukti'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      {/* ── Modal Edit Catatan ── */}
+      <Modal
+        isOpen={showNoteModal}
+        onClose={() => { setShowNoteModal(false); setSelectedSaleForNote(null); setNoteEdit('') }}
+        title="📝 Catatan Penjualan"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded p-3">
+            <p className="text-sm text-amber-800">
+              Tambahkan catatan untuk transaksi <strong>#{selectedSaleForNote?.sale_id}</strong> atas nama <strong>{selectedSaleForNote?.user_name}</strong>.
+            </p>
+            <p className="text-xs text-amber-600 mt-1">Contoh: kelebihan bayar Rp 50.000, sudah dikembalikan.</p>
+          </div>
+
+          <div>
+            <Label>Catatan</Label>
+            <textarea
+              value={noteEdit}
+              onChange={e => setNoteEdit(e.target.value)}
+              rows={4}
+              placeholder="Tulis catatan di sini... (kosongkan untuk menghapus catatan)"
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+              disabled={savingNote}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2 border-t">
+            <Button
+              onClick={() => { setShowNoteModal(false); setSelectedSaleForNote(null); setNoteEdit('') }}
+              disabled={savingNote}
+              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveNote}
+              disabled={savingNote}
+              className="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 font-semibold disabled:opacity-50"
+            >
+              {savingNote ? '⏳ Menyimpan...' : '💾 Simpan Catatan'}
             </Button>
           </div>
         </div>

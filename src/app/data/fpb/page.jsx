@@ -805,6 +805,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
   )
 }
 
+
 // ─── FPB List Page ────────────────────────────────────────────────────────────
 export default function FpbListPage() {
   const { theme } = useTheme()
@@ -828,44 +829,62 @@ export default function FpbListPage() {
         .eq('submitted_by', uid).order('created_at', { ascending: false })
       setMyFpbs(mine || [])
 
-      // Step 1: My pending approval rows (with approver_order)
+      // Step 1: Get MY pending approval rows, include approval_id for position detection
       const { data: myApprovals } = await supabase
         .from('fpb_approvals')
-        .select('fpb_id, step_order, step_name, approver_order, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
+        .select('approval_id, fpb_id, step_order, step_name, approver_order, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
         .eq('approver_user_id', uid).eq('status', 'pending')
 
-      // Filter: only FPBs in correct step and status
+      // Filter: only FPBs at the correct current step with status pending
       const candidates = (myApprovals || []).filter(
         a => a.fpb?.current_step === a.step_order && a.fpb?.status === 'pending'
       )
 
       if (!candidates.length) { setPending([]); return }
 
-      // Step 2: Fetch all approvals for those FPBs (to check who has approved before me)
+      // Step 2: Fetch ALL approvals for those FPBs (need approval_id + status of each row in the step)
       const fpbIds = [...new Set(candidates.map(c => c.fpb_id))]
       const { data: allStepApprovals } = await supabase
         .from('fpb_approvals')
-        .select('fpb_id, step_order, approver_order, status')
+        .select('approval_id, fpb_id, step_order, approver_order, status')
         .in('fpb_id', fpbIds)
 
-      // Step 3: Only show FPBs where ALL earlier approvers (lower approver_order) have approved
+      // Step 3: Sequential check
+      // An approver should only see an FPB if ALL approvers with a LOWER approver_order
+      // (or lower approval_id as fallback for rows without approver_order) have status = 'approved'
       const pending = candidates
         .filter(a => {
-          const myOrder = a.approver_order ?? 1
-          if (myOrder === 1) return true // First approver always sees it
-          const blockers = (allStepApprovals || []).filter(
-            ap => ap.fpb_id === a.fpb_id
-              && ap.step_order === a.step_order
-              && (ap.approver_order ?? 1) < myOrder
-              && ap.status !== 'approved'
+          const allInStep = (allStepApprovals || []).filter(
+            ap => ap.fpb_id === a.fpb_id && ap.step_order === a.step_order
           )
+
+          // Determine my position — prefer approver_order, fall back to approval_id rank
+          const hasOrder = allInStep.every(ap => ap.approver_order != null)
+          let myPos, blockers
+
+          if (hasOrder) {
+            // Use approver_order (set for new FPBs)
+            myPos = a.approver_order ?? 1
+            blockers = allInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
+          } else {
+            // Fallback: use approval_id rank (smaller approval_id = inserted first = higher priority)
+            const sorted = [...allInStep].sort((x, y) => x.approval_id - y.approval_id)
+            myPos = sorted.findIndex(ap => ap.approval_id === a.approval_id)
+            if (myPos <= 0) return true // First in list always sees it
+            blockers = sorted.slice(0, myPos).filter(ap => ap.status !== 'approved')
+          }
+
           return blockers.length === 0
         })
         .map(a => ({ ...a.fpb, my_step: a.step_order, my_step_name: a.step_name }))
 
-      // Deduplicate by fpb_id (in case user appears multiple times)
+      // Deduplicate by fpb_id
       const seen = new Set()
-      const uniquePending = pending.filter(f => { if (seen.has(f.fpb_id)) return false; seen.add(f.fpb_id); return true })
+      const uniquePending = pending.filter(f => {
+        if (seen.has(f.fpb_id)) return false
+        seen.add(f.fpb_id)
+        return true
+      })
       setPending(uniquePending)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
