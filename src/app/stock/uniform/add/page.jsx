@@ -67,6 +67,7 @@ export default function AddUniformStockPage() {
   const [editReceiptItems, setEditReceiptItems] = useState([])  // [{ ri_id, purchase_item_id, uniform_id, size_id, qty_received, qty_received_orig, unit_cost }]
   const [showEditReceiptModal, setShowEditReceiptModal] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [receiveError, setReceiveError] = useState('')
   const [editReceiptError, setEditReceiptError] = useState('')
 
   useEffect(() => {
@@ -433,6 +434,8 @@ export default function AddUniformStockPage() {
         receipt_item_id,
         purchase_item_id,
         qty_received,
+        qty_rejected,
+        reject_reason,
         unit_cost,
         purchase_item:uniform_purchase_item(uniform_id, size_id)
       `)
@@ -450,7 +453,10 @@ export default function AddUniformStockPage() {
       uniform_id: r.purchase_item?.uniform_id,
       size_id: r.purchase_item?.size_id,
       qty_received: Number(r.qty_received || 0),
-      qty_received_orig: Number(r.qty_received || 0), // keep original for delta calc
+      qty_received_orig: Number(r.qty_received || 0),
+      qty_rejected: Number(r.qty_rejected || 0),
+      qty_rejected_orig: Number(r.qty_rejected || 0),
+      reject_reason: r.reject_reason || '',
       unit_cost: Number(r.unit_cost || 0),
     })))
     setShowEditReceiptModal(true)
@@ -463,16 +469,18 @@ export default function AddUniformStockPage() {
     try {
       const rid = editingReceipt.receipt_id
 
-      // 1) Validate: qty must be >= 0 and <= originally ordered
+      // 1) Validate: qty must be >= 0
       for (const row of editReceiptItems) {
-        if (row.qty_received < 0) throw new Error('Qty tidak boleh negatif')
+        if (row.qty_received < 0) throw new Error('Qty diterima tidak boleh negatif')
+        if ((row.qty_rejected ?? 0) < 0) throw new Error('Qty ditolak tidak boleh negatif')
       }
 
-      // 2) Stock validation for items where qty decreases
+      // 2) Stock validation for items where qty_received decreases
+      //    Note: if user is reversing a rejection (qty_rejected → 0, qty_received ↑),
+      //    the stock will increase which is always safe — no check needed for that case.
       for (const row of editReceiptItems) {
         const delta = row.qty_received - row.qty_received_orig // negative = stock reduction
         if (delta < 0) {
-          // Check current total stock
           const { data: txnData, error: txnErr } = await supabase
             .from('uniform_stock_txn')
             .select('qty_delta')
@@ -500,9 +508,8 @@ export default function AddUniformStockPage() {
       if (delTxnErr) throw delTxnErr
 
       // 4) Update each receipt_item row
-      //    If qty_received = 0, delete the row (DB has CHECK qty_received > 0)
       for (const row of editReceiptItems) {
-        if (row.qty_received === 0) {
+        if (row.qty_received === 0 && row.qty_rejected === 0) {
           const { error: delErr } = await supabase
             .from('uniform_purchase_receipt_item')
             .delete()
@@ -511,7 +518,12 @@ export default function AddUniformStockPage() {
         } else {
           const { error: updErr } = await supabase
             .from('uniform_purchase_receipt_item')
-            .update({ qty_received: row.qty_received, unit_cost: row.unit_cost })
+            .update({
+              qty_received: row.qty_received,
+              qty_rejected: row.qty_rejected ?? 0,
+              reject_reason: (row.qty_rejected > 0) ? (row.reject_reason || null) : null,
+              unit_cost: row.unit_cost
+            })
             .eq('receipt_item_id', row.receipt_item_id)
           if (updErr) throw updErr
         }
@@ -592,13 +604,23 @@ export default function AddUniformStockPage() {
 
   const openReceive = async (pid) => {
     setPurchaseId(pid)
-    // build rows based on current remaining per item
+    setReceiveError('')
     const [piRes] = await Promise.all([
       supabase.from('uniform_purchase_item').select('item_id, uniform_id, size_id, unit_cost').eq('purchase_id', pid)
     ])
     if (piRes.error) { setError(piRes.error?.message); return }
     const progMap = await getRemainingMap(pid)
-    const rows = (piRes.data||[]).map(r => ({ purchase_item_id: r.item_id, uniform_id: r.uniform_id, size_id: r.size_id, qty_remaining: progMap.get(r.item_id) ?? 0, qty_receive: 0, unit_cost: r.unit_cost, update_hpp: false }))
+    const rows = (piRes.data||[]).map(r => ({
+      purchase_item_id: r.item_id,
+      uniform_id: r.uniform_id,
+      size_id: r.size_id,
+      qty_remaining: progMap.get(r.item_id) ?? 0,
+      qty_receive: 0,
+      qty_reject: 0,
+      reject_reason: '',
+      unit_cost: r.unit_cost,
+      update_hpp: false
+    }))
     setReceiveRows(rows)
     await loadProgress(pid)
     setShowReceive(true)
@@ -610,25 +632,27 @@ export default function AddUniformStockPage() {
     if (!view.error && Array.isArray(view.data)) {
       return new Map(view.data.map(x => [x.purchase_item_id, Number(x.qty_remaining||0)]))
     }
-    // fallback: compute from items and receipt items
+    // fallback: compute from items and receipt items (includes qty_rejected)
     const [piRes, recRes] = await Promise.all([
       supabase.from('uniform_purchase_item').select('item_id, qty').eq('purchase_id', pid),
       supabase.from('uniform_purchase_receipt').select('receipt_id').eq('purchase_id', pid)
     ])
     const base = new Map((piRes.data||[]).map(x => [x.item_id, Number(x.qty||0)]))
     const ids = (recRes.data||[]).map(r => r.receipt_id)
-    if (!ids.length) {
-      return base
-    }
-    const { data: ri } = await supabase.from('uniform_purchase_receipt_item').select('purchase_item_id, qty_received').in('receipt_id', ids)
-    const recv = new Map()
+    if (!ids.length) return base
+    const { data: ri } = await supabase
+      .from('uniform_purchase_receipt_item')
+      .select('purchase_item_id, qty_received, qty_rejected')
+      .in('receipt_id', ids)
+    const consumed = new Map()
     for (const row of (ri||[])) {
       const k = row.purchase_item_id
-      recv.set(k, (recv.get(k)||0) + Number(row.qty_received||0))
+      const prev = consumed.get(k) || 0
+      consumed.set(k, prev + Number(row.qty_received||0) + Number(row.qty_rejected||0))
     }
     const rem = new Map()
     for (const [k, q] of base.entries()) {
-      rem.set(k, Math.max(0, q - (recv.get(k)||0)))
+      rem.set(k, Math.max(0, q - (consumed.get(k)||0)))
     }
     return rem
   }
@@ -644,15 +668,22 @@ export default function AddUniformStockPage() {
     // Items summary
     const { data: pi } = await supabase.from('uniform_purchase_item').select('item_id, uniform_id, size_id, qty, unit_cost').eq('purchase_id', pid)
     const remMap = await getRemainingMap(pid)
-    const items = (pi||[]).map(x => ({
-      purchase_item_id: x.item_id,
-      uniform_id: x.uniform_id,
-      size_id: x.size_id,
-      qty_ordered: Number(x.qty||0),
-      qty_remaining: Number(remMap.get(x.item_id) || 0),
-      qty_received: Math.max(0, Number(x.qty||0) - Number(remMap.get(x.item_id) || 0)),
-      unit_cost: Number(x.unit_cost||0)
-    }))
+    // Also fetch from view to get qty_received and qty_rejected separately
+    const { data: progData } = await supabase.from('v_uniform_purchase_item_progress').select('purchase_item_id, qty_received, qty_rejected').eq('purchase_id', pid)
+    const progByItemId = new Map((progData || []).map(p => [p.purchase_item_id, p]))
+    const items = (pi||[]).map(x => {
+      const prog = progByItemId.get(x.item_id)
+      return {
+        purchase_item_id: x.item_id,
+        uniform_id: x.uniform_id,
+        size_id: x.size_id,
+        qty_ordered: Number(x.qty||0),
+        qty_remaining: Number(remMap.get(x.item_id) || 0),
+        qty_received: prog ? Number(prog.qty_received || 0) : Math.max(0, Number(x.qty||0) - Number(remMap.get(x.item_id) || 0)),
+        qty_rejected: prog ? Number(prog.qty_rejected || 0) : 0,
+        unit_cost: Number(x.unit_cost||0)
+      }
+    })
     setHistoryItems(items)
     // Receipts list
     const { data: rec } = await supabase
@@ -700,9 +731,25 @@ export default function AddUniformStockPage() {
 
   const postReceipt = async () => {
     if (!purchaseId) return
-    const anyQty = receiveRows.some(r => Number(r.qty_receive) > 0)
-    if (!anyQty) { setError('Isi jumlah diterima'); return }
-    setSaving(true); setError('')
+    setReceiveError('')
+    const anyQty = receiveRows.some(r => Number(r.qty_receive) > 0 || Number(r.qty_reject) > 0)
+    if (!anyQty) { setReceiveError('Isi jumlah diterima atau ditolak terlebih dahulu'); return }
+    // Validate: reject reason required if any item rejected
+    for (const r of receiveRows) {
+      if (Number(r.qty_reject) > 0 && !r.reject_reason?.trim()) {
+        const uName = uniforms.find(u => u.uniform_id === r.uniform_id)?.uniform_name || ''
+        const sName = sizes.find(s => s.size_id === r.size_id)?.size_name || ''
+        setReceiveError(`Alasan penolakan wajib diisi untuk: ${uName} (${sName})`)
+        return
+      }
+      if (Number(r.qty_receive) + Number(r.qty_reject) > Number(r.qty_remaining)) {
+        const uName = uniforms.find(u => u.uniform_id === r.uniform_id)?.uniform_name || ''
+        const sName = sizes.find(s => s.size_id === r.size_id)?.size_name || ''
+        setReceiveError(`Diterima + Ditolak melebihi sisa untuk: ${uName} (${sName})`)
+        return
+      }
+    }
+    setSaving(true)
     try {
       // 0) Get supplier_id from purchase header
       const { data: purchaseHeader, error: phErr } = await supabase
@@ -712,55 +759,72 @@ export default function AddUniformStockPage() {
         .single()
       if (phErr) throw phErr
       const supplierId = purchaseHeader?.supplier_id || null
-      
+
       // Get user ID for received_by tracking
       const userId = parseInt(localStorage.getItem('kr_id'), 10) || null
-      
+
       // 1) create receipt header
-      const { data: rec, error: rerr } = await supabase.from('uniform_purchase_receipt').insert([{ 
-        purchase_id: purchaseId, 
+      const { data: rec, error: rerr } = await supabase.from('uniform_purchase_receipt').insert([{
+        purchase_id: purchaseId,
         receipt_date: new Date().toISOString().slice(0,10),
         received_by: userId
       }]).select('receipt_id').single()
       if (rerr) throw rerr
       const rid = rec.receipt_id
-      // 2) filter positive rows and insert receipt items
-      const ritems = receiveRows.filter(r => Number(r.qty_receive) > 0).map(r => ({ receipt_id: rid, purchase_item_id: r.purchase_item_id, qty_received: Number(r.qty_receive), unit_cost: Number(r.unit_cost||0) }))
+
+      // 2) insert receipt items — ensure qty_received >= 0 (DB may have CHECK qty_received > 0)
+      //    Only insert rows where at least one of qty_receive or qty_reject > 0
+      const ritems = receiveRows
+        .filter(r => Number(r.qty_receive) > 0 || Number(r.qty_reject) > 0)
+        .map(r => ({
+          receipt_id: rid,
+          purchase_item_id: r.purchase_item_id,
+          qty_received: Number(r.qty_receive) || 0,
+          qty_rejected: Number(r.qty_reject) || 0,
+          reject_reason: r.qty_reject > 0 ? r.reject_reason.trim() : null,
+          unit_cost: Number(r.unit_cost||0)
+        }))
       const { error: rierr } = await supabase.from('uniform_purchase_receipt_item').insert(ritems)
       if (rierr) throw rierr
-      // 3) post stock for each receipt item with supplier_id
-      for (const r of ritems) {
-        const base = receiveRows.find(x=>x.purchase_item_id===r.purchase_item_id)
-        await supabase.from('uniform_stock_txn').insert([{ 
-          uniform_id: base.uniform_id, 
-          size_id: base.size_id, 
-          qty_delta: r.qty_received, 
-          txn_type: 'purchase', 
-          ref_table: 'uniform_purchase_receipt', 
-          ref_id: rid, 
-          supplier_id: supplierId,
-          notes: invoiceNo ? `inv:${invoiceNo}` : 'purchase receipt' 
-        }])
-        if (base.update_hpp) {
-          await supabase.from('uniform_variant').update({ hpp: r.unit_cost }).eq('uniform_id', base.uniform_id).eq('size_id', base.size_id)
+
+      // 3) post stock ONLY for qty_received (not qty_rejected)
+      for (const ri of ritems) {
+        if (Number(ri.qty_received) > 0) {
+          const base = receiveRows.find(x => x.purchase_item_id === ri.purchase_item_id)
+          await supabase.from('uniform_stock_txn').insert([{
+            uniform_id: base.uniform_id,
+            size_id: base.size_id,
+            qty_delta: ri.qty_received,
+            txn_type: 'purchase',
+            ref_table: 'uniform_purchase_receipt',
+            ref_id: rid,
+            supplier_id: supplierId,
+            notes: invoiceNo ? `inv:${invoiceNo}` : 'purchase receipt'
+          }])
+          if (base.update_hpp) {
+            await supabase.from('uniform_variant').update({ hpp: ri.unit_cost }).eq('uniform_id', base.uniform_id).eq('size_id', base.size_id)
+          }
         }
       }
-      // 4) refresh progress and clear qty_receive
+
+      // 4) refresh progress and clear qty inputs
       await loadProgress(purchaseId)
-      // auto-complete purchase when fully received
       const remMap = await getRemainingMap(purchaseId)
       const allZero = Array.from(remMap.values()).every(v => Number(v) === 0)
       if (allZero) {
         await supabase.from('uniform_purchase').update({ status: 'posted' }).eq('purchase_id', purchaseId)
       }
-      setReceiveRows(prev => prev.map(r => ({ ...r, qty_receive: 0 })))
-      // refresh pending list (it may drop if completed)
+      setReceiveRows(prev => prev.map(r => ({ ...r, qty_receive: 0, qty_reject: 0, reject_reason: '' })))
       loadPending()
-      // Show success notification and close modal
       setSuccess(allZero ? 'Penerimaan berhasil disimpan. Purchase order selesai!' : 'Penerimaan barang berhasil disimpan')
       setTimeout(() => setSuccess(''), 3000)
+      setReceiveError('')
       setShowReceive(false)
-    } catch (e) { setError(e.message) } finally { setSaving(false) }
+    } catch (e) {
+      setReceiveError('Gagal menyimpan: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const receiveAllForRow = (idx) => {
@@ -2001,7 +2065,7 @@ export default function AddUniformStockPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={showReceive} onClose={()=>setShowReceive(false)} title="Terima Barang (Partial)" size="lg">
+      <Modal isOpen={showReceive} onClose={()=>{ setShowReceive(false); setReceiveError('') }} title="Terima Barang (Partial)" size="lg">
         <div className="overflow-auto max-h-[60vh] pr-1">
           {receiveRows.filter(r => Number(r.qty_remaining) > 0).length === 0 ? (
             <div className="text-center py-10 text-gray-500">
@@ -2013,13 +2077,15 @@ export default function AddUniformStockPage() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="text-left border-b">
-                <th className="py-2 pr-4">Seragam</th>
-                <th className="py-2 pr-4">Ukuran</th>
-                <th className="py-2 pr-4">Sisa</th>
-                <th className="py-2 pr-4">Terima</th>
-                <th className="py-2 pr-4">Aksi</th>
-                <th className="py-2 pr-4">Biaya/Unit</th>
-                <th className="py-2 pr-4">Update HPP?</th>
+                <th className="py-2 pr-3">Seragam</th>
+                <th className="py-2 pr-3">Ukuran</th>
+                <th className="py-2 pr-3">Sisa</th>
+                <th className="py-2 pr-3 text-green-700">Diterima</th>
+                <th className="py-2 pr-3 text-red-700">Ditolak</th>
+                <th className="py-2 pr-3 text-red-600">Alasan Tolak</th>
+                <th className="py-2 pr-3">Aksi</th>
+                <th className="py-2 pr-3">Biaya/Unit</th>
+                <th className="py-2 pr-3">Update HPP?</th>
               </tr>
             </thead>
             <tbody>
@@ -2027,31 +2093,60 @@ export default function AddUniformStockPage() {
                 .filter(r => Number(r.qty_remaining) > 0)
                 .map((r) => (
                 <tr key={r.purchase_item_id} className="border-b">
-                  <td className="py-2 pr-4">{uniforms.find(u=>u.uniform_id===r.uniform_id)?.uniform_name || r.uniform_id}</td>
-                  <td className="py-2 pr-4">{sizes.find(s=>s.size_id===r.size_id)?.size_name || r.size_id}</td>
-                  <td className="py-2 pr-4">{r.qty_remaining}</td>
-                  <td className="py-2 pr-4">
-                    <Input inputMode="numeric" value={r.qty_receive} onChange={e=>{
-                      const q = Math.max(0, Math.min(toNumber(e.target.value), Number(r.qty_remaining||0)))
-                      setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, qty_receive: q } : x))
-                    }} />
+                  <td className="py-2 pr-3">{uniforms.find(u=>u.uniform_id===r.uniform_id)?.uniform_name || r.uniform_id}</td>
+                  <td className="py-2 pr-3">{sizes.find(s=>s.size_id===r.size_id)?.size_name || r.size_id}</td>
+                  <td className="py-2 pr-3 font-medium">{r.qty_remaining}</td>
+                  <td className="py-2 pr-3">
+                    <Input
+                      inputMode="numeric"
+                      value={r.qty_receive}
+                      className="w-20 border-green-300 focus:border-green-500"
+                      onChange={e=>{
+                        const q = Math.max(0, Math.min(toNumber(e.target.value), Number(r.qty_remaining||0) - Number(r.qty_reject||0)))
+                        setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, qty_receive: q } : x))
+                      }} />
                   </td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-3">
+                    <Input
+                      inputMode="numeric"
+                      value={r.qty_reject}
+                      className="w-20 border-red-300 focus:border-red-500"
+                      onChange={e=>{
+                        const q = Math.max(0, Math.min(toNumber(e.target.value), Number(r.qty_remaining||0) - Number(r.qty_receive||0)))
+                        setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, qty_reject: q } : x))
+                      }} />
+                  </td>
+                  <td className="py-2 pr-3">
+                    {Number(r.qty_reject) > 0 ? (
+                      <input
+                        type="text"
+                        value={r.reject_reason}
+                        placeholder="Alasan wajib diisi..."
+                        className={`w-40 border rounded px-2 py-1 text-xs ${
+                          !r.reject_reason?.trim() ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                        }`}
+                        onChange={e=>setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, reject_reason: e.target.value } : x))}
+                      />
+                    ) : (
+                      <span className="text-gray-300 text-xs">-</span>
+                    )}
+                  </td>
+                  <td className="py-2 pr-3">
                     <button
                       type="button"
-                      onClick={() => setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, qty_receive: Number(x.qty_remaining||0) } : x))}
+                      onClick={() => setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, qty_receive: Number(x.qty_remaining||0), qty_reject: 0 } : x))}
                       className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded font-medium whitespace-nowrap"
                       title="Terima semua qty di baris ini"
                     >
                       Terima Semua
                     </button>
                   </td>
-                  <td className="py-2 pr-4">
-                    <Input inputMode="numeric" value={r.unit_cost} onChange={e=>{
+                  <td className="py-2 pr-3">
+                    <Input inputMode="numeric" value={r.unit_cost} className="w-28" onChange={e=>{
                       setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, unit_cost: toNumber(e.target.value) } : x))
                     }} />
                   </td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-3">
                     <input type="checkbox" checked={!!r.update_hpp} onChange={e=>setReceiveRows(prev=>prev.map(x=> x.purchase_item_id===r.purchase_item_id ? { ...x, update_hpp: e.target.checked } : x))} />
                   </td>
                 </tr>
@@ -2060,17 +2155,27 @@ export default function AddUniformStockPage() {
           </table>
           )}
         </div>
+        {receiveError && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700 flex items-start gap-2">
+            <span className="text-red-500 mt-0.5">⚠️</span>
+            <span>{receiveError}</span>
+          </div>
+        )}
         <div className="mt-3 flex gap-2 justify-between items-center">
-          <Button 
-            onClick={receiveAllRows}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium"
-          >
-            ✓ Terima Semua Barang
+          <p className="text-xs text-gray-500">
+            💡 Gunakan tombol <strong>Terima Semua</strong> di setiap baris untuk mengisi otomatis. Barang ditolak tidak akan menambah stok.
+          </p>
+          <Button onClick={postReceipt} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            {saving ? '⏳ Menyimpan...' : '✓ Simpan Penerimaan'}
           </Button>
-          <Button onClick={postReceipt} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">Simpan Penerimaan</Button>
         </div>
         <div className="mt-6">
-          <h3 className="font-semibold mb-2">Riwayat Penerimaan</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">Riwayat Penerimaan</h3>
+            <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded">
+              ✏️ Salah input? Klik Edit di bawah untuk koreksi atau reverse penolakan
+            </span>
+          </div>
           {receipts.length === 0 ? (
             <p className="text-sm text-gray-500 italic">Belum ada penerimaan</p>
           ) : (
@@ -2117,7 +2222,8 @@ export default function AddUniformStockPage() {
                   <th className="py-2 pr-4">Seragam</th>
                   <th className="py-2 pr-4">Ukuran</th>
                   <th className="py-2 pr-4">Dipesan</th>
-                  <th className="py-2 pr-4">Diterima</th>
+                  <th className="py-2 pr-4 text-green-700">Diterima</th>
+                  <th className="py-2 pr-4 text-red-700">Ditolak</th>
                   <th className="py-2 pr-4">Sisa</th>
                 </tr>
               </thead>
@@ -2127,7 +2233,14 @@ export default function AddUniformStockPage() {
                     <td className="py-2 pr-4">{uniforms.find(u=>u.uniform_id===it.uniform_id)?.uniform_name || it.uniform_id}</td>
                     <td className="py-2 pr-4">{sizes.find(s=>s.size_id===it.size_id)?.size_name || it.size_id}</td>
                     <td className="py-2 pr-4">{it.qty_ordered}</td>
-                    <td className="py-2 pr-4">{it.qty_received}</td>
+                    <td className="py-2 pr-4 text-green-700 font-medium">{it.qty_received}</td>
+                    <td className="py-2 pr-4">
+                      {it.qty_rejected > 0 ? (
+                        <span className="text-red-600 font-medium">{it.qty_rejected}</span>
+                      ) : (
+                        <span className="text-gray-400">0</span>
+                      )}
+                    </td>
                     <td className="py-2 pr-4">{it.qty_remaining}</td>
                   </tr>
                 ))}
@@ -2215,7 +2328,9 @@ export default function AddUniformStockPage() {
                     <th className="py-2 px-3 font-semibold text-gray-700">Seragam</th>
                     <th className="py-2 px-3 font-semibold text-gray-700">Ukuran</th>
                     <th className="py-2 px-3 font-semibold text-gray-700 text-center">Qty Awal</th>
-                    <th className="py-2 px-3 font-semibold text-gray-700">Qty Diterima (Koreksi)</th>
+                    <th className="py-2 px-3 font-semibold text-green-700">Diterima (Koreksi)</th>
+                    <th className="py-2 px-3 font-semibold text-red-700">Ditolak</th>
+                    <th className="py-2 px-3 font-semibold text-red-600">Alasan Tolak</th>
                     <th className="py-2 px-3 font-semibold text-gray-700">Harga/Unit</th>
                   </tr>
                 </thead>
@@ -2247,6 +2362,29 @@ export default function AddUniformStockPage() {
                               </span>
                             )}
                           </div>
+                        </td>
+                        <td className="py-2 px-3">
+                          <Input
+                            type="number"
+                            min="0"
+                            value={row.qty_rejected ?? 0}
+                            onChange={e => {
+                              const val = Math.max(0, toNumber(e.target.value))
+                              setEditReceiptItems(prev => prev.map((x, i) => i === idx ? { ...x, qty_rejected: val } : x))
+                            }}
+                            className="w-20 border-red-300"
+                          />
+                        </td>
+                        <td className="py-2 px-3">
+                          {(row.qty_rejected > 0) ? (
+                            <input
+                              type="text"
+                              value={row.reject_reason || ''}
+                              placeholder="Alasan penolakan"
+                              className="w-36 border rounded px-2 py-1 text-xs border-gray-300"
+                              onChange={e => setEditReceiptItems(prev => prev.map((x, i) => i === idx ? { ...x, reject_reason: e.target.value } : x))}
+                            />
+                          ) : <span className="text-gray-300 text-xs">-</span>}
                         </td>
                         <td className="py-2 px-3">
                           <Input
