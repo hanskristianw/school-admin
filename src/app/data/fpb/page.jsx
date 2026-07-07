@@ -718,43 +718,52 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
                   </button>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed' }}>
+                    <colgroup>
+                      <col style={{ width: '28%' }} />  {/* Nama Barang */}
+                      <col style={{ width: '60px' }} /> {/* Qty */}
+                      <col style={{ width: '100px' }} />{/* Satuan */}
+                      <col style={{ width: '120px' }} />{/* Harga Satuan */}
+                      <col style={{ width: '110px' }} />{/* Subtotal */}
+                      <col />                           {/* Link Referensi */}
+                      <col style={{ width: '36px' }} /> {/* Hapus */}
+                    </colgroup>
                     <thead>
                       <tr style={{ background: theme.subtleBg }}>
                         {['Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal', 'Link Referensi', ''].map(h => (
-                          <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
+                          <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {items.map(item => (
                         <tr key={item._id} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                          <td style={{ padding: '7px 10px', minWidth: 180 }}>
-                            <input value={item.item_name} onChange={e => updateItem(item._id, 'item_name', e.target.value)} placeholder="Nama barang..." style={{ ...inputStyle, padding: '5px 9px' }} />
+                          <td style={{ padding: '7px 8px' }}>
+                            <input value={item.item_name} onChange={e => updateItem(item._id, 'item_name', e.target.value)} placeholder="Nama barang..." style={{ ...inputStyle, padding: '5px 8px', width: '100%' }} />
                           </td>
-                          <td style={{ padding: '7px 10px', width: 70 }}>
-                            <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item._id, 'quantity', e.target.value)} style={{ ...inputStyle, padding: '5px 9px', textAlign: 'center' }} />
+                          <td style={{ padding: '7px 6px' }}>
+                            <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item._id, 'quantity', e.target.value)} style={{ ...inputStyle, padding: '5px 6px', textAlign: 'center', width: '100%', minWidth: 44 }} />
                           </td>
-                          <td style={{ padding: '7px 10px', width: 110 }}>
-                            <select value={item.unit} onChange={e => updateItem(item._id, 'unit', e.target.value)} style={{ ...inputStyle, padding: '5px 9px' }}>
+                          <td style={{ padding: '7px 6px' }}>
+                            <select value={item.unit} onChange={e => updateItem(item._id, 'unit', e.target.value)} style={{ ...inputStyle, padding: '5px 4px', width: '100%' }}>
                               {['pcs','kg','liter','box','rim','lusin','unit','set','lump sum'].map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
                           </td>
-                          <td style={{ padding: '7px 10px', width: 130 }}>
-                            <input type="number" min="0" value={item.unit_price} onChange={e => updateItem(item._id, 'unit_price', e.target.value)} placeholder="0" style={{ ...inputStyle, padding: '5px 9px', textAlign: 'right' }} />
+                          <td style={{ padding: '7px 6px' }}>
+                            <input type="number" min="0" value={item.unit_price} onChange={e => updateItem(item._id, 'unit_price', e.target.value)} placeholder="0" style={{ ...inputStyle, padding: '5px 8px', textAlign: 'right', width: '100%' }} />
                           </td>
-                          <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary, whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {fmt((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}
                           </td>
-                          <td style={{ padding: '7px 10px', minWidth: 180 }}>
+                          <td style={{ padding: '7px 6px' }}>
                             <input
                               value={item.seller_url || ''}
                               onChange={e => updateItem(item._id, 'seller_url', e.target.value)}
                               placeholder="https://tokopedia.com/..."
-                              style={{ ...inputStyle, padding: '5px 9px', fontSize: 11 }}
+                              style={{ ...inputStyle, padding: '5px 8px', fontSize: 11, width: '100%' }}
                             />
                           </td>
-                          <td style={{ padding: '7px 6px', textAlign: 'center' }}>
+                          <td style={{ padding: '7px 4px', textAlign: 'center' }}>
                             {items.length > 1 && <button onClick={() => removeItem(item._id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 4 }}><FontAwesomeIcon icon={faTrash} /></button>}
                           </td>
                         </tr>
@@ -763,8 +772,8 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
                     <tfoot>
                       <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
                         <td colSpan={4} style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary, fontSize: 13 }}>Grand Total</td>
-                        <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, fontSize: 15, color: exceeds ? '#dc2626' : '#059669' }}>{fmt(grandTotal)}</td>
-                        <td />
+                        <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 800, fontSize: 15, color: exceeds ? '#dc2626' : '#059669' }}>{fmt(grandTotal)}</td>
+                        <td /><td />
                       </tr>
                     </tfoot>
                   </table>
