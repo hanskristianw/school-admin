@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
 // Simple client-side access guard using menu_permissions
@@ -14,23 +14,6 @@ export default function AccessGuard({ children }) {
   const [authorized, setAuthorized] = useState(false)
   const [checking, setChecking] = useState(true)
 
-  const { roleName, isAdmin, isCounselor, isTeacher, isStudent } = useMemo(() => {
-    if (typeof window === 'undefined') return { roleName: null, isAdmin: false }
-    try {
-      const userRaw = localStorage.getItem('user_data')
-      const user = userRaw ? JSON.parse(userRaw) : null
-      const storedRole = localStorage.getItem('user_role')
-      const roleName = user?.roleName || storedRole || null
-      const isAdmin = !!user?.isAdmin || roleName === 'admin' || roleName === 'Admin'
-      const isCounselor = !!user?.isCounselor
-  const isTeacher = !!user?.isTeacher
-  const isStudent = !!user?.isStudent
-  return { roleName, isAdmin, isCounselor, isTeacher, isStudent }
-    } catch {
-  return { roleName: null, isAdmin: false, isCounselor: false, isTeacher: false, isStudent: false }
-    }
-  }, [])
-
   useEffect(() => {
     let mounted = true
     const check = async () => {
@@ -41,6 +24,23 @@ export default function AccessGuard({ children }) {
           router.replace('/login')
           return
         }
+
+        // Read user data from localStorage (client-side only, never SSR)
+        let roleName = null
+        let isAdmin = false
+        let isCounselor = false
+        let isTeacher = false
+        let isStudent = false
+        try {
+          const userRaw = localStorage.getItem('user_data')
+          const user = userRaw ? JSON.parse(userRaw) : null
+          const storedRole = localStorage.getItem('user_role')
+          roleName = user?.roleName || storedRole || null
+          isAdmin = !!user?.isAdmin || roleName === 'admin' || roleName === 'Admin'
+          isCounselor = !!user?.isCounselor
+          isTeacher = !!user?.isTeacher
+          isStudent = !!user?.isStudent
+        } catch {}
 
         if (isAdmin) {
           if (!mounted) return
