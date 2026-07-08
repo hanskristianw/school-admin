@@ -136,7 +136,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     setSavingBudget(true)
     try {
       const { error: e } = await supabase.from('fpb').update({
-        budget:           budgetVal !== '' ? parseFloat(budgetVal) : null,
+        budget:           budgetVal !== '' ? budgetVal.trim() : null,
         remaining_budget: remainingVal !== '' ? parseFloat(remainingVal) : null,
       }).eq('fpb_id', fpbId)
       if (e) throw e
@@ -197,9 +197,8 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                 </div>
 
                 {/* Items table */}
-                <div style={{ borderRadius: 10, border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <div style={{ borderRadius: 10, border: `1px solid ${theme.border}`, display: 'block', overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 580, width: '100%' }}>
                       <thead>
                         <tr style={{ background: theme.subtleBg }}>
                           {['#', 'Nama Barang', 'Qty', 'Sat', 'Harga', 'Subtotal', 'Link'].map(h => (
@@ -234,14 +233,13 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                         </tr>
                       </tfoot>
                     </table>
-                  </div>
                 </div>
 
                 {/* Budget — compact inline */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.cardBg, fontSize: 12, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 12 }}>💰 Budget</span>
                   <span style={{ color: fpb.budget != null ? '#6366f1' : theme.textSecondary, fontWeight: 700 }}>
-                    {fpb.budget != null ? fmt(fpb.budget) : <i>—</i>}
+                    {fpb.budget != null ? fpb.budget : <i>—</i>}
                   </span>
                   <span style={{ color: theme.textSecondary }}>·</span>
                   <span style={{ fontSize: 11, color: theme.textSecondary }}>Sisa:</span>
@@ -254,8 +252,8 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   {editBudget && (
                     <div style={{ width: '100%', display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 6 }}>
                       <div>
-                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 3 }}>Budget (Rp)</div>
-                        <input type="number" min="0" value={budgetVal} onChange={e => setBudgetVal(e.target.value)}
+                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 3 }}>Budget</div>
+                        <input type="text" value={budgetVal} onChange={e => setBudgetVal(e.target.value)}
                           style={{ padding: '5px 8px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, width: 140 }} />
                       </div>
                       <div>
@@ -1159,6 +1157,11 @@ export default function FpbListPage() {
             <div style={{ fontSize: 11, color: theme.textSecondary }}>{f.my_step_name}</div>
           </td>
         )}
+        {isPending && (
+          <td style={{ padding: '12px 14px', fontSize: 13, color: theme.textPrimary }}>
+            {`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`.trim() || '—'}
+          </td>
+        )}
         {isHistory && (
           <td style={{ padding: '12px 14px', fontSize: 13, color: theme.textPrimary }}>
             {`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`.trim() || '—'}
@@ -1278,6 +1281,7 @@ export default function FpbListPage() {
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Nomor FPB</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Divisi</th>
                     {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Step Saya</th>}
+                    {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Pengaju</th>}
                     {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Pengaju</th>}
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Grand Total</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Tgl Kebutuhan</th>
