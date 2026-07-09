@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -428,8 +428,128 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
 }
 
 
+
 // --- Print FPB Modal ---
 const fmtDatePrint = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'
+
+function buildPrintHtml(fpb, items, approvals) {
+  const submitterName = ((fpb.users?.user_nama_depan || '') + ' ' + (fpb.users?.user_nama_belakang || '')).trim()
+  const fmtRp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID')
+  const fmtD  = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+
+  const itemRows = items.map((it, i) => `
+    <tr>
+      <td style="border:1px solid #9ca3af;padding:6px 8px;text-align:center">${i + 1}</td>
+      <td style="border:1px solid #9ca3af;padding:6px 8px">${it.item_name}</td>
+      <td style="border:1px solid #9ca3af;padding:6px 8px;text-align:right">${it.quantity}</td>
+      <td style="border:1px solid #9ca3af;padding:6px 8px;text-align:right">${it.unit}</td>
+      <td style="border:1px solid #9ca3af;padding:6px 8px;text-align:right">${fmtRp(it.unit_price)}</td>
+      <td style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">${fmtRp(it.quantity * it.unit_price)}</td>
+    </tr>`).join('')
+
+  const approvalHeaders = approvals.map((ap, i) =>
+    `<th style="border:1px solid #9ca3af;padding:7px 8px;text-align:center;background:#f9fafb;font-weight:700">Approved ${i + 1}</th>`
+  ).join('')
+
+  const approvalCells = approvals.map(ap => {
+    const name = ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
+    const dateStr = ap.status === 'approved' ? fmtD(ap.action_at) : ap.status === 'rejected' ? '(Ditolak)' : ap.status === 'revision' ? '(Revisi)' : '(Menunggu)'
+    return `<td style="border:1px solid #9ca3af;padding:8px;text-align:center;min-width:100px">
+      <div style="font-weight:600;color:${ap.status === 'approved' ? '#111827' : '#9ca3af'}">${name}</div>
+      <div style="font-size:11px;margin-top:4px;color:${ap.status === 'approved' ? '#374151' : '#d1d5db'}">${dateStr}</div>
+    </td>`
+  }).join('')
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>FPB - ${fpb.fpb_number}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111827; background: #fff; }
+    @page { size: A4 portrait; margin: 14mm; }
+    table { border-collapse: collapse; width: 100%; }
+    .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.06; width: 260px; z-index: 0; pointer-events: none; }
+    .content { position: relative; z-index: 1; }
+    hr { border: none; border-top: 2px solid #111827; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+  <img class="watermark" src="${origin}/images/login-logo.png" alt="" />
+  <div class="content">
+    <table style="margin-bottom:16px">
+      <tr>
+        <td style="width:80px;vertical-align:middle">
+          <img src="${origin}/images/login-logo.png" style="width:72px;height:72px;object-fit:contain" />
+        </td>
+        <td style="vertical-align:middle;padding-left:14px">
+          <div style="font-weight:800;font-size:16px">Chung Chung Christian School</div>
+          <div style="font-weight:700;font-size:14px;margin-top:3px">FPB (Form Permohonan Barang)</div>
+        </td>
+      </tr>
+    </table>
+    <hr />
+    <table style="margin-bottom:12px">
+      <tr>
+        <td style="width:50%;padding-bottom:4px"><span style="font-weight:600">No FPB : </span><strong>${fpb.fpb_number}</strong></td>
+        <td style="padding-bottom:4px"><span style="font-weight:600">Division : </span>${fpb.division || '-'}</td>
+      </tr>
+      <tr><td><span style="font-weight:600">Date FPB : </span>${fmtD(fpb.created_at)}</td></tr>
+    </table>
+    <table style="margin-bottom:16px">
+      <thead>
+        <tr style="background:#f3f4f6">
+          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:center;font-weight:700">No</th>
+          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:left;font-weight:700">Item</th>
+          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Qty</th>
+          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Sat</th>
+          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Harga</th>
+          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemRows}
+        <tr style="background:#f9fafb">
+          <td colspan="4" style="border:1px solid #9ca3af;padding:6px 8px;text-align:center;font-weight:700">GRAND TOTAL</td>
+          <td colspan="2" style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:800;color:#1d4ed8">${fmtRp(fpb.grand_total)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <table style="margin-bottom:18px">
+      <tr>
+        <td style="width:50%;padding-bottom:6px;padding-right:12px;vertical-align:top"><span style="font-weight:600">Note : </span>${fpb.note || '-'}</td>
+        <td style="padding-bottom:6px;vertical-align:top"><span style="font-weight:600">Budget : </span>${fpb.budget || '-'}</td>
+      </tr>
+      <tr>
+        <td style="padding-bottom:6px"><span style="font-weight:600">Usage Date : </span>${fmtD(fpb.usage_date)}</td>
+        <td style="padding-bottom:6px"><span style="font-weight:600">Remaining Budget : </span>${fpb.remaining_budget != null ? fmtRp(fpb.remaining_budget) : '-'}</td>
+      </tr>
+    </table>
+    <table style="margin-bottom:14px">
+      <thead>
+        <tr>
+          <th style="border:1px solid #9ca3af;padding:7px 8px;text-align:center;background:#f9fafb;font-weight:700">Created</th>
+          ${approvalHeaders}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="border:1px solid #9ca3af;padding:8px;text-align:center;min-width:100px">
+            <div style="font-weight:600">${submitterName}</div>
+            <div style="font-size:11px;margin-top:4px;color:#6b7280">${fmtD(fpb.created_at)}</div>
+          </td>
+          ${approvalCells}
+        </tr>
+      </tbody>
+    </table>
+    <div style="font-size:11px;color:#374151;font-style:italic">** This document has been digitally signed.</div>
+  </div>
+  <script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); }</script>
+</body>
+</html>`
+}
 
 function PrintFpbModal({ fpbId, onClose }) {
   const [fpb, setFpb]             = useState(null)
@@ -454,143 +574,135 @@ function PrintFpbModal({ fpbId, onClose }) {
   const pendingApprovers = approvals.filter(a => a.status !== 'approved' && a.status !== 'rejected')
   const submitterName    = fpb ? (fpb.users?.user_nama_depan || '') + ' ' + (fpb.users?.user_nama_belakang || '') : ''
 
-  const printStyle = `
-    @media print {
-      body > * { display: none !important; }
-      #fpb-print-root { display: block !important; position: fixed; inset: 0; background: #fff; z-index: 99999; padding: 0; margin: 0; overflow: visible; }
-      #fpb-print-root .no-print { display: none !important; }
-      #fpb-print-paper { box-shadow: none !important; max-height: none !important; overflow: visible !important; border-radius: 0 !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
-      @page { size: A4 portrait; margin: 14mm; }
-    }
-  `
+  const handlePrint = () => {
+    if (!fpb) return
+    const html = buildPrintHtml(fpb, items, approvals)
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (w) { w.document.write(html); w.document.close() }
+  }
 
   return (
-    <>
-      <style>{printStyle}</style>
-      <div id="fpb-print-root"
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px 0', overflowY: 'auto' }}>
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px 0', overflowY: 'auto' }}>
 
-        <div className="no-print" style={{ position: 'fixed', top: 16, right: 24, display: 'flex', gap: 8, zIndex: 2001 }}>
-          <button onClick={() => window.print()} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <FontAwesomeIcon icon={faPrint} /> Cetak
-          </button>
-          <button onClick={onClose} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-            Tutup
-          </button>
-        </div>
+      <div style={{ position: 'fixed', top: 16, right: 24, display: 'flex', gap: 8, zIndex: 2001 }}>
+        <button onClick={handlePrint} disabled={loading || !fpb}
+          style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: loading ? '#a5b4fc' : '#6366f1', color: '#fff', fontWeight: 700, fontSize: 13, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FontAwesomeIcon icon={faPrint} /> {loading ? 'Memuat...' : 'Cetak'}
+        </button>
+        <button onClick={onClose}
+          style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+          Tutup
+        </button>
+      </div>
 
-        <div id="fpb-print-paper" onClick={e => e.stopPropagation()}
-          style={{ background: '#fff', width: '210mm', borderRadius: 4, boxShadow: '0 8px 40px rgba(0,0,0,0.35)', position: 'relative', padding: '16mm', marginTop: 60, marginBottom: 24, fontFamily: 'Arial, sans-serif' }}>
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}><FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 28 }} /></div>
-          ) : !fpb ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#dc2626' }}>FPB tidak ditemukan.</div>
-          ) : (
-            <>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
-                <img src="/images/login-logo.png" alt="" style={{ width: 260, opacity: 0.06, userSelect: 'none' }} />
-              </div>
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}><tbody><tr>
-                  <td style={{ width: 80, verticalAlign: 'middle' }}>
-                    <img src="/images/login-logo.png" alt="Logo" style={{ width: 72, height: 72, objectFit: 'contain' }} />
-                  </td>
-                  <td style={{ verticalAlign: 'middle', paddingLeft: 14 }}>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>Chung Chung Christian School</div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', marginTop: 3 }}>FPB (Form Permohonan Barang)</div>
-                  </td>
-                </tr></tbody></table>
-                <hr style={{ border: 'none', borderTop: '2px solid #111827', marginBottom: 14 }} />
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 13 }}><tbody>
-                  <tr>
-                    <td style={{ width: '50%', paddingBottom: 4 }}><span style={{ fontWeight: 600 }}>No FPB : </span><strong>{fpb.fpb_number}</strong></td>
-                    <td style={{ paddingBottom: 4 }}><span style={{ fontWeight: 600 }}>Division : </span>{fpb.division || '-'}</td>
-                  </tr>
-                  <tr><td><span style={{ fontWeight: 600 }}>Date FPB : </span>{fmtDatePrint(fpb.created_at)}</td></tr>
-                </tbody></table>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 16 }}>
-                  <thead><tr style={{ background: '#f3f4f6' }}>
-                    {['No','Item','Qty','Sat','Harga','Subtotal'].map((h, i) => (
-                      <th key={h} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: i === 0 ? 'center' : i === 1 ? 'left' : 'right', fontWeight: 700 }}>{h}</th>
-                    ))}
-                  </tr></thead>
-                  <tbody>
-                    {items.map((it, i) => (
-                      <tr key={it.item_id}>
-                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'center' }}>{i + 1}</td>
-                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px' }}>{it.item_name}</td>
-                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{it.quantity}</td>
-                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{it.unit}</td>
-                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{fmt(it.unit_price)}</td>
-                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>{fmt(it.quantity * it.unit_price)}</td>
-                      </tr>
-                    ))}
-                    <tr style={{ background: '#f9fafb' }}>
-                      <td colSpan={4} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>GRAND TOTAL</td>
-                      <td colSpan={2} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right', fontWeight: 800, color: '#1d4ed8' }}>{fmt(fpb.grand_total)}</td>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: '#fff', width: '210mm', borderRadius: 4, boxShadow: '0 8px 40px rgba(0,0,0,0.35)', position: 'relative', padding: '16mm', marginTop: 60, marginBottom: 24, fontFamily: 'Arial, sans-serif' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}><FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 28 }} /></div>
+        ) : !fpb ? (
+          <div style={{ textAlign: 'center', padding: 60, color: '#dc2626' }}>FPB tidak ditemukan.</div>
+        ) : (
+          <>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
+              <img src="/images/login-logo.png" alt="" style={{ width: 260, opacity: 0.06, userSelect: 'none' }} />
+            </div>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}><tbody><tr>
+                <td style={{ width: 80, verticalAlign: 'middle' }}>
+                  <img src="/images/login-logo.png" alt="Logo" style={{ width: 72, height: 72, objectFit: 'contain' }} />
+                </td>
+                <td style={{ verticalAlign: 'middle', paddingLeft: 14 }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>Chung Chung Christian School</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', marginTop: 3 }}>FPB (Form Permohonan Barang)</div>
+                </td>
+              </tr></tbody></table>
+              <hr style={{ border: 'none', borderTop: '2px solid #111827', marginBottom: 14 }} />
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 13 }}><tbody>
+                <tr>
+                  <td style={{ width: '50%', paddingBottom: 4 }}><span style={{ fontWeight: 600 }}>No FPB : </span><strong>{fpb.fpb_number}</strong></td>
+                  <td style={{ paddingBottom: 4 }}><span style={{ fontWeight: 600 }}>Division : </span>{fpb.division || '-'}</td>
+                </tr>
+                <tr><td><span style={{ fontWeight: 600 }}>Date FPB : </span>{fmtDatePrint(fpb.created_at)}</td></tr>
+              </tbody></table>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 16 }}>
+                <thead><tr style={{ background: '#f3f4f6' }}>
+                  {['No','Item','Qty','Sat','Harga','Subtotal'].map((h, i) => (
+                    <th key={h} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: i === 0 ? 'center' : i === 1 ? 'left' : 'right', fontWeight: 700 }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {items.map((it, i) => (
+                    <tr key={it.item_id}>
+                      <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'center' }}>{i + 1}</td>
+                      <td style={{ border: '1px solid #9ca3af', padding: '6px 8px' }}>{it.item_name}</td>
+                      <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{it.quantity}</td>
+                      <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{it.unit}</td>
+                      <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{fmt(it.unit_price)}</td>
+                      <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>{fmt(it.quantity * it.unit_price)}</td>
                     </tr>
-                  </tbody>
-                </table>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 18 }}><tbody>
-                  <tr>
-                    <td style={{ width: '50%', paddingBottom: 6, paddingRight: 12, verticalAlign: 'top' }}><span style={{ fontWeight: 600 }}>Note : </span>{fpb.note || '-'}</td>
-                    <td style={{ paddingBottom: 6, verticalAlign: 'top' }}><span style={{ fontWeight: 600 }}>Budget : </span>{fpb.budget || '-'}</td>
+                  ))}
+                  <tr style={{ background: '#f9fafb' }}>
+                    <td colSpan={4} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>GRAND TOTAL</td>
+                    <td colSpan={2} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right', fontWeight: 800, color: '#1d4ed8' }}>{fmt(fpb.grand_total)}</td>
                   </tr>
-                  <tr>
-                    <td style={{ paddingBottom: 6 }}><span style={{ fontWeight: 600 }}>Usage Date : </span>{fmtDatePrint(fpb.usage_date)}</td>
-                    <td style={{ paddingBottom: 6 }}><span style={{ fontWeight: 600 }}>Remaining Budget : </span>{fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : '-'}</td>
-                  </tr>
-                </tbody></table>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
-                  <thead><tr>
-                    <th style={{ border: '1px solid #9ca3af', padding: '7px 8px', textAlign: 'center', background: '#f9fafb', fontWeight: 700 }}>Created</th>
-                    {approvals.map((ap, i) => (
-                      <th key={ap.approval_id} style={{ border: '1px solid #9ca3af', padding: '7px 8px', textAlign: 'center', background: '#f9fafb', fontWeight: 700 }}>Approved {i + 1}</th>
-                    ))}
-                  </tr></thead>
-                  <tbody><tr>
-                    <td style={{ border: '1px solid #9ca3af', padding: '8px', textAlign: 'center', minWidth: 100 }}>
-                      <div style={{ fontWeight: 600 }}>{submitterName.trim()}</div>
-                      <div style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>{fmtDatePrint(fpb.created_at)}</div>
-                    </td>
-                    {approvals.map(ap => {
-                      const name = ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
-                      return (
-                        <td key={ap.approval_id} style={{ border: '1px solid #9ca3af', padding: '8px', textAlign: 'center', minWidth: 100 }}>
-                          <div style={{ fontWeight: 600, color: ap.status === 'approved' ? '#111827' : '#9ca3af' }}>{name}</div>
-                          <div style={{ fontSize: 11, marginTop: 4, color: ap.status === 'approved' ? '#374151' : '#d1d5db' }}>
-                            {ap.status === 'approved' ? fmtDatePrint(ap.action_at) : ap.status === 'rejected' ? '(Ditolak)' : ap.status === 'revision' ? '(Revisi)' : '(Menunggu)'}
-                          </div>
-                        </td>
-                      )
-                    })}
-                  </tr></tbody>
-                </table>
-                <div style={{ fontSize: 11, color: '#374151', fontStyle: 'italic' }}>** This document has been digitally signed.</div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {!loading && pendingApprovers.length > 0 && (
-          <div className="no-print" style={{ position: 'fixed', bottom: 24, right: 24, background: '#fffbeb', border: '1.5px solid #f59e0b', borderRadius: 12, padding: '12px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', maxWidth: 300, zIndex: 2001 }}>
-            <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>Belum selesai disetujui</div>
-            {pendingApprovers.map(ap => (
-              <div key={ap.approval_id} style={{ fontSize: 11, color: '#374151', marginBottom: 2 }}>
-                - {((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim()} ({ap.status === 'revision' ? 'Diminta Revisi' : 'Menunggu Approval'})
-              </div>
-            ))}
-          </div>
+                </tbody>
+              </table>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 18 }}><tbody>
+                <tr>
+                  <td style={{ width: '50%', paddingBottom: 6, paddingRight: 12, verticalAlign: 'top' }}><span style={{ fontWeight: 600 }}>Note : </span>{fpb.note || '-'}</td>
+                  <td style={{ paddingBottom: 6, verticalAlign: 'top' }}><span style={{ fontWeight: 600 }}>Budget : </span>{fpb.budget || '-'}</td>
+                </tr>
+                <tr>
+                  <td style={{ paddingBottom: 6 }}><span style={{ fontWeight: 600 }}>Usage Date : </span>{fmtDatePrint(fpb.usage_date)}</td>
+                  <td style={{ paddingBottom: 6 }}><span style={{ fontWeight: 600 }}>Remaining Budget : </span>{fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : '-'}</td>
+                </tr>
+              </tbody></table>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
+                <thead><tr>
+                  <th style={{ border: '1px solid #9ca3af', padding: '7px 8px', textAlign: 'center', background: '#f9fafb', fontWeight: 700 }}>Created</th>
+                  {approvals.map((ap, i) => (
+                    <th key={ap.approval_id} style={{ border: '1px solid #9ca3af', padding: '7px 8px', textAlign: 'center', background: '#f9fafb', fontWeight: 700 }}>Approved {i + 1}</th>
+                  ))}
+                </tr></thead>
+                <tbody><tr>
+                  <td style={{ border: '1px solid #9ca3af', padding: '8px', textAlign: 'center', minWidth: 100 }}>
+                    <div style={{ fontWeight: 600 }}>{submitterName.trim()}</div>
+                    <div style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>{fmtDatePrint(fpb.created_at)}</div>
+                  </td>
+                  {approvals.map(ap => {
+                    const name = ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
+                    return (
+                      <td key={ap.approval_id} style={{ border: '1px solid #9ca3af', padding: '8px', textAlign: 'center', minWidth: 100 }}>
+                        <div style={{ fontWeight: 600, color: ap.status === 'approved' ? '#111827' : '#9ca3af' }}>{name}</div>
+                        <div style={{ fontSize: 11, marginTop: 4, color: ap.status === 'approved' ? '#374151' : '#d1d5db' }}>
+                          {ap.status === 'approved' ? fmtDatePrint(ap.action_at) : ap.status === 'rejected' ? '(Ditolak)' : ap.status === 'revision' ? '(Revisi)' : '(Menunggu)'}
+                        </div>
+                      </td>
+                    )
+                  })}
+                </tr></tbody>
+              </table>
+              <div style={{ fontSize: 11, color: '#374151', fontStyle: 'italic' }}>** This document has been digitally signed.</div>
+            </div>
+          </>
         )}
       </div>
-    </>
+
+      {!loading && pendingApprovers.length > 0 && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#fffbeb', border: '1.5px solid #f59e0b', borderRadius: 12, padding: '12px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', maxWidth: 300, zIndex: 2001 }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>Belum selesai disetujui</div>
+          {pendingApprovers.map(ap => (
+            <div key={ap.approval_id} style={{ fontSize: 11, color: '#374151', marginBottom: 2 }}>
+              - {((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim()} ({ap.status === 'revision' ? 'Diminta Revisi' : 'Menunggu Approval'})
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
+
 
 // ─── Edit FPB Modal ───────────────────────────────────────────────────────────
 function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
