@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFileInvoiceDollar, faSave, faSpinner, faCheck,
-  faUsers, faUserTie, faShield, faWallet,
+  faUsers, faUserTie, faShield, faWallet, faSearch,
 } from '@fortawesome/free-solid-svg-icons'
 
 const userName = (u) => u ? `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim() : '—'
@@ -20,14 +20,19 @@ export default function FpbSettingsPage() {
   const [users, setUsers]         = useState([])
   const [selRole, setSelRole]     = useState(null)
   const [roleApprovers, setRoleApprovers] = useState({})
-  const [budgetRoleIds, setBudgetRoleIds] = useState(new Set()) // role_ids that can edit budget
+  const [budgetRoleIds, setBudgetRoleIds] = useState(new Set())
   const [savingBudget, setSavingBudget]   = useState(false)
   const [savedBudget, setSavedBudget]     = useState(false)
 
-  const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
-  const [error, setError]       = useState('')
+  const [screenerId, setScreenerId]         = useState('')
+  const [screenerRowId, setScreenerRowId]   = useState(null)
+  const [savingScreener, setSavingScreener] = useState(false)
+  const [savedScreener, setSavedScreener]   = useState(false)
+
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving]   = useState(false)
+  const [saved, setSaved]     = useState(false)
+  const [error, setError]     = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -35,7 +40,8 @@ export default function FpbSettingsPage() {
       supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').eq('is_active', true).order('user_nama_depan'),
       supabase.from('fpb_role_approvers').select('*'),
       supabase.from('fpb_budget_roles').select('role_id'),
-    ]).then(([{ data: r }, { data: u }, { data: ra }, { data: br }]) => {
+      supabase.from('fpb_screener').select('*').limit(1).maybeSingle(),
+    ]).then(([{ data: r }, { data: u }, { data: ra }, { data: br }, { data: sc }]) => {
       setRoles(r || [])
       setUsers(u || [])
       const map = {}
@@ -49,6 +55,7 @@ export default function FpbSettingsPage() {
       })
       setRoleApprovers(map)
       setBudgetRoleIds(new Set((br || []).map(b => b.role_id)))
+      if (sc) { setScreenerId(String(sc.screener_user_id)); setScreenerRowId(sc.id) }
       if (r?.length) setSelRole(r[0])
       setLoading(false)
     })
@@ -58,28 +65,18 @@ export default function FpbSettingsPage() {
     if (!selRole) return
     setRoleApprovers(prev => ({
       ...prev,
-      [selRole.role_id]: {
-        ...(prev[selRole.role_id] || {}),
-        [field]: val,
-      }
+      [selRole.role_id]: { ...(prev[selRole.role_id] || {}), [field]: val },
     }))
   }
 
   const handleSave = async () => {
     if (!selRole) return
     setError('')
-
     const ra = roleApprovers[selRole.role_id] || {}
-    if (!ra.approver1_id) {
-      setError('Minimal 1 approver wajib diisi'); return
-    }
-
-    // Validate: no duplicate approvers
+    if (!ra.approver1_id) { setError('Minimal 1 approver wajib diisi'); return }
     const ids = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
-    if (new Set(ids).size !== ids.length) {
-      setError('Approver tidak boleh sama'); return
-    }
-
+    if (new Set(ids).size !== ids.length) { setError('Approver tidak boleh sama'); return }
+    if (screenerId && ids.includes(screenerId)) { setError('Approver tidak boleh sama dengan Screener'); return }
     setSaving(true)
     try {
       const payload = {
@@ -88,11 +85,8 @@ export default function FpbSettingsPage() {
         approver2_id: ra.approver2_id ? parseInt(ra.approver2_id) : null,
         approver3_id: ra.approver3_id ? parseInt(ra.approver3_id) : null,
       }
-      const { error: err } = await supabase.from('fpb_role_approvers')
-        .upsert(payload, { onConflict: 'role_id' })
+      const { error: err } = await supabase.from('fpb_role_approvers').upsert(payload, { onConflict: 'role_id' })
       if (err) throw err
-
-      // Reload
       const { data: ra2 } = await supabase.from('fpb_role_approvers').select('*')
       const map = {}
       ;(ra2 || []).forEach(row => {
@@ -104,40 +98,49 @@ export default function FpbSettingsPage() {
         }
       })
       setRoleApprovers(map)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setSaving(false)
-    }
+      setSaved(true); setTimeout(() => setSaved(false), 3000)
+    } catch (e) { setError(e.message) }
+    finally { setSaving(false) }
+  }
+
+  const handleSaveScreener = async () => {
+    setError('')
+    setSavingScreener(true)
+    try {
+      if (screenerId) {
+        const payload = { screener_user_id: parseInt(screenerId) }
+        if (screenerRowId) {
+          const { error: e } = await supabase.from('fpb_screener').update(payload).eq('id', screenerRowId)
+          if (e) throw e
+        } else {
+          const { data: ins, error: e } = await supabase.from('fpb_screener').insert(payload).select().single()
+          if (e) throw e
+          setScreenerRowId(ins.id)
+        }
+      } else {
+        if (screenerRowId) await supabase.from('fpb_screener').delete().eq('id', screenerRowId)
+        setScreenerRowId(null)
+      }
+      setSavedScreener(true); setTimeout(() => setSavedScreener(false), 3000)
+    } catch (e) { setError(e.message) }
+    finally { setSavingScreener(false) }
   }
 
   const toggleBudgetRole = (roleId) => {
-    setBudgetRoleIds(prev => {
-      const next = new Set(prev)
-      next.has(roleId) ? next.delete(roleId) : next.add(roleId)
-      return next
-    })
+    setBudgetRoleIds(prev => { const next = new Set(prev); next.has(roleId) ? next.delete(roleId) : next.add(roleId); return next })
   }
 
   const saveBudgetRoles = async () => {
     setSavingBudget(true)
     try {
-      // Delete all existing, then insert selected
       await supabase.from('fpb_budget_roles').delete().neq('role_id', 0)
       if (budgetRoleIds.size > 0) {
-        const { error: insErr } = await supabase.from('fpb_budget_roles')
-          .insert([...budgetRoleIds].map(rid => ({ role_id: rid })))
+        const { error: insErr } = await supabase.from('fpb_budget_roles').insert([...budgetRoleIds].map(rid => ({ role_id: rid })))
         if (insErr) throw insErr
       }
-      setSavedBudget(true)
-      setTimeout(() => setSavedBudget(false), 3000)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setSavingBudget(false)
-    }
+      setSavedBudget(true); setTimeout(() => setSavedBudget(false), 3000)
+    } catch (e) { setError(e.message) }
+    finally { setSavingBudget(false) }
   }
 
   const inputStyle = {
@@ -155,29 +158,84 @@ export default function FpbSettingsPage() {
 
   const curRa = selRole ? (roleApprovers[selRole.role_id] || {}) : {}
   const isConfigured = !!curRa.approver1_id
+  const screenerUser = users.find(u => String(u.user_id) === screenerId)
+  const approverIds  = selRole ? [curRa.approver1_id, curRa.approver2_id, curRa.approver3_id].filter(Boolean) : []
 
   return (
     <div className="p-4">
-      {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
           <FontAwesomeIcon icon={faFileInvoiceDollar} style={{ color: '#6366f1', fontSize: 22 }} />
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>
-            Pengaturan Approval FPB
-          </h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>Pengaturan Approval FPB</h1>
         </div>
-        <p style={{ fontSize: 13, color: theme.textSecondary }}>
-          Konfigurasi siapa yang menyetujui FPB berdasarkan jabatan (role) pengaju
-        </p>
+        <p style={{ fontSize: 13, color: theme.textSecondary }}>Konfigurasi screener dan approver untuk setiap jabatan pengaju</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20, alignItems: 'start' }}>
+      {/* Screener Card */}
+      <Card style={{ background: theme.cardBg, borderColor: theme.border, marginBottom: 24 }}>
+        <CardHeader className="pb-3">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
+              <FontAwesomeIcon icon={faSearch} />
+            </div>
+            <div>
+              <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>Screener FPB (Global)</CardTitle>
+              <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                Screener melakukan verifikasi awal sebelum FPB masuk ke approver.
+                <strong style={{ color: '#d97706' }}> Berlaku untuk semua pengaju.</strong>
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 12, border: `1px solid ${screenerId ? 'rgba(245,158,11,0.4)' : theme.border}`, background: screenerId ? 'rgba(245,158,11,0.04)' : theme.subtleBg + '33', marginBottom: 16 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 99, background: screenerId ? '#d97706' : theme.subtleBg, border: `2px solid ${screenerId ? '#d97706' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: screenerId ? '#fff' : theme.textSecondary, fontWeight: 800, fontSize: 18, flexShrink: 0 }}>
+              🔍
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>
+                Screener <span style={{ fontWeight: 400 }}>(opsional — jika kosong, FPB langsung ke Approver 1)</span>
+              </label>
+              <select value={screenerId} onChange={e => setScreenerId(e.target.value)} style={inputStyle}>
+                <option value="">— Tidak ada (skip screening) —</option>
+                {users.map(u => (<option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>))}
+              </select>
+            </div>
+            {screenerUser && (
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>{userName(screenerUser).split(' ')[0]}</div>
+                <div style={{ fontSize: 10, color: '#d97706', fontWeight: 600, marginTop: 2 }}>✓ Dipilih</div>
+              </div>
+            )}
+          </div>
+          {screenerUser && (
+            <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 8, textTransform: 'uppercase' }}>Preview Alur dengan Screener</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
+                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Pengaju</span>
+                <span style={{ color: theme.textSecondary }}>→</span>
+                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', color: '#d97706', fontWeight: 600 }}>🔍 {userName(screenerUser).split(' ')[0]}</span>
+                <span style={{ color: theme.textSecondary }}>→</span>
+                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366f1', fontWeight: 600 }}>Approver 1, 2, ...</span>
+                <span style={{ color: theme.textSecondary }}>→</span>
+                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Approved</span>
+              </div>
+            </div>
+          )}
+          {error && <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13, marginBottom: 12 }}>⚠ {error}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button onClick={handleSaveScreener} disabled={savingScreener}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: savedScreener ? '#059669' : savingScreener ? theme.subtleBg : 'linear-gradient(135deg,#d97706,#f59e0b)', color: savingScreener ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: savingScreener ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+              {savingScreener ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : savedScreener ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Screener</>}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* ── Left: Role List ─────────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20, alignItems: 'start' }}>
+        {/* Left: Role List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 4px' }}>
-            Jabatan / Role
-          </p>
+          <p style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 4px' }}>Jabatan / Role</p>
           {roles.map(r => {
             const ra = roleApprovers[r.role_id]
             const configured = !!ra?.approver1_id
@@ -189,9 +247,7 @@ export default function FpbSettingsPage() {
                   <FontAwesomeIcon icon={faUserTie} style={{ color: isSelected ? '#6366f1' : theme.textSecondary, fontSize: 13, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.role_name}</div>
-                    <div style={{ fontSize: 11, marginTop: 2, color: configured ? '#059669' : '#d97706', fontWeight: 600 }}>
-                      {configured ? '✓ Terkonfigurasi' : '⚠ Belum diatur'}
-                    </div>
+                    <div style={{ fontSize: 11, marginTop: 2, color: configured ? '#059669' : '#d97706', fontWeight: 600 }}>{configured ? '✓ Terkonfigurasi' : '⚠ Belum diatur'}</div>
                   </div>
                 </div>
               </button>
@@ -199,7 +255,7 @@ export default function FpbSettingsPage() {
           })}
         </div>
 
-        {/* ── Right: Approver Config ───────────────────────────────────────────── */}
+        {/* Right: Approver Config */}
         {selRole ? (
           <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
             <CardHeader className="pb-3">
@@ -210,7 +266,7 @@ export default function FpbSettingsPage() {
                 <div>
                   <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>{selRole.role_name}</CardTitle>
                   <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                    Setiap pengajuan FPB oleh pegawai dengan jabatan ini akan disetujui oleh approver berikut.
+                    Konfigurasi approver untuk pengaju dengan jabatan ini.
                     <strong style={{ color: '#6366f1' }}> Semua approver harus menyetujui (AND logic).</strong>
                   </p>
                 </div>
@@ -218,31 +274,26 @@ export default function FpbSettingsPage() {
             </CardHeader>
             <CardContent>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-                {/* Approver slots */}
                 {[
-                  { key: 'approver1_id', label: 'Approver 1', required: true,  desc: 'Wajib — approver utama' },
-                  { key: 'approver2_id', label: 'Approver 2', required: false, desc: 'Opsional — approver kedua' },
-                  { key: 'approver3_id', label: 'Approver 3', required: false, desc: 'Opsional — approver ketiga' },
+                  { key: 'approver1_id', label: 'Approver 1', required: true,  desc: 'Wajib' },
+                  { key: 'approver2_id', label: 'Approver 2', required: false, desc: 'Opsional' },
+                  { key: 'approver3_id', label: 'Approver 3', required: false, desc: 'Opsional' },
                 ].map(({ key, label, required, desc }) => {
                   const selectedUserId = curRa[key] || ''
                   const selectedUser   = users.find(u => String(u.user_id) === selectedUserId)
                   return (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 12, border: `1px solid ${selectedUserId ? 'rgba(99,102,241,0.3)' : theme.border}`, background: selectedUserId ? 'rgba(99,102,241,0.04)' : theme.subtleBg + '33', transition: 'all 0.15s' }}>
-                      {/* Step circle */}
                       <div style={{ width: 36, height: 36, borderRadius: 99, background: selectedUserId ? '#6366f1' : theme.subtleBg, border: `2px solid ${selectedUserId ? '#6366f1' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: selectedUserId ? '#fff' : theme.textSecondary, fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
                         {key === 'approver1_id' ? 1 : key === 'approver2_id' ? 2 : 3}
                       </div>
                       <div style={{ flex: 1 }}>
                         <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>
                           {label} {required ? <span style={{ color: '#dc2626' }}>*</span> : <span style={{ fontWeight: 400 }}>(opsional)</span>}
-                          <span style={{ marginLeft: 6, fontWeight: 400, color: theme.textSecondary }}>{desc}</span>
+                          <span style={{ marginLeft: 6, fontWeight: 400 }}>{desc}</span>
                         </label>
                         <select value={selectedUserId} onChange={e => updateApprover(key, e.target.value)} style={inputStyle}>
                           <option value="">— Tidak ada —</option>
-                          {users.map(u => (
-                            <option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>
-                          ))}
+                          {users.map(u => (<option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>))}
                         </select>
                       </div>
                       {selectedUser && (
@@ -255,55 +306,41 @@ export default function FpbSettingsPage() {
                   )
                 })}
 
-                {/* Preview */}
                 {isConfigured && (
                   <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
                     <p style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', marginBottom: 10, textTransform: 'uppercase' }}>
                       <FontAwesomeIcon icon={faUsers} style={{ marginRight: 6 }} />Preview Alur Approval
                     </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#059669', padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)' }}>
-                        Pengaju ({selRole.role_name})
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
+                      <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Pengaju ({selRole.role_name})</span>
                       <span style={{ color: theme.textSecondary }}>→</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                        {[curRa.approver1_id, curRa.approver2_id, curRa.approver3_id].filter(Boolean).map((uid, i) => {
+                      {screenerUser && <>
+                        <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', color: '#d97706', fontWeight: 600 }}>🔍 {userName(screenerUser).split(' ')[0]}</span>
+                        <span style={{ color: theme.textSecondary }}>→</span>
+                      </>}
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {approverIds.map((uid, i) => {
                           const u = users.find(u => String(u.user_id) === uid)
                           return (
                             <React.Fragment key={uid}>
                               {i > 0 && <span style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 700 }}>+</span>}
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#6366f1', padding: '3px 10px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)' }}>
-                                {u ? userName(u).split(' ')[0] : uid}
-                              </span>
+                              <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366f1', fontWeight: 600 }}>{u ? userName(u).split(' ')[0] : uid}</span>
                             </React.Fragment>
                           )
                         })}
                       </div>
                       <span style={{ color: theme.textSecondary }}>→</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#059669', padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)' }}>
-                        ✅ FPB Approved
-                      </span>
+                      <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Approved</span>
                     </div>
-                    <p style={{ fontSize: 11, color: theme.textSecondary, marginTop: 8 }}>
-                      Semua {[curRa.approver1_id, curRa.approver2_id, curRa.approver3_id].filter(Boolean).length} approver harus menyetujui sebelum FPB dianggap disetujui.
-                    </p>
                   </div>
                 )}
 
-                {/* Error */}
-                {error && (
-                  <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>
-                    ⚠ {error}
-                  </div>
-                )}
+                {error && <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>⚠ {error}</div>}
 
-                {/* Save */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
                   <Button onClick={handleSave} disabled={saving}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: saved ? '#059669' : saving ? theme.subtleBg : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: saving ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saved || saving ? 'none' : '0 2px 12px rgba(99,102,241,0.3)', transition: 'all 0.2s' }}>
-                    {saving ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</>
-                      : saved ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</>
-                      : <><FontAwesomeIcon icon={faSave} />Simpan Konfigurasi</>}
+                    {saving ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : saved ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Konfigurasi</>}
                   </Button>
                 </div>
               </div>
@@ -316,7 +353,7 @@ export default function FpbSettingsPage() {
         )}
       </div>
 
-      {/* ── Budget Roles Card ────────────────────────────────────────────── */}
+      {/* Budget Roles Card */}
       <Card style={{ background: theme.cardBg, borderColor: theme.border, marginTop: 24 }}>
         <CardHeader className="pb-3">
           <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>
@@ -351,15 +388,13 @@ export default function FpbSettingsPage() {
           )}
           {budgetRoleIds.size === 0 && (
             <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', fontSize: 12, color: '#dc2626' }}>
-              ⚠ Belum ada jabatan yang bisa mengisi budget. Kolom budget tidak akan muncul di halaman FPB.
+              ⚠ Belum ada jabatan yang bisa mengisi budget.
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
             <Button onClick={saveBudgetRoles} disabled={savingBudget}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: savedBudget ? '#059669' : savingBudget ? theme.subtleBg : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: savingBudget ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: savingBudget ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
-              {savingBudget ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</>
-                : savedBudget ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</>
-                : <><FontAwesomeIcon icon={faSave} />Simpan Hak Akses Budget</>}
+              {savingBudget ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : savedBudget ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Hak Akses Budget</>}
             </Button>
           </div>
         </CardContent>

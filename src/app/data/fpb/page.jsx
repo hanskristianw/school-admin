@@ -85,9 +85,16 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     finally { setLoading(false) }
   }
 
-  const myPendingApproval = approvals.find(
-    a => a.approver_user_id === userId && a.status === 'pending' && a.step_order === fpb?.current_step
-  )
+  // Screener = approver_order 0; regular approvers = order >= 1
+  const screeningRow     = approvals.find(a => a.approver_order === 0)
+  const screeningDone    = screeningRow ? screeningRow.status === 'approved' : true
+  const iAmScreener      = screeningRow?.approver_user_id === userId
+  const myScreeningPending = iAmScreener && screeningRow?.status === 'pending' && fpb?.status === 'pending'
+
+  // Regular approver: only active after screening is done
+  const myPendingApproval = myScreeningPending
+    ? screeningRow
+    : approvals.find(a => a.approver_user_id === userId && a.status === 'pending' && a.step_order === fpb?.current_step && a.approver_order !== 0)
 
   const handleAction = async () => {
     if (!myPendingApproval) return
@@ -101,11 +108,19 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
       }).eq('approval_id', myPendingApproval.approval_id)
 
       if (action === 'approved') {
+        // If just finished screening, check if all screening rows done (always 1)
         const { data: freshStep } = await supabase.from('fpb_approvals')
-          .select('status').eq('fpb_id', fpbId).eq('step_order', fpb.current_step)
-        const allDone = freshStep?.every(a => a.status === 'approved')
-        if (allDone) {
-          const nextStepRow = approvals.find(a => a.step_order === fpb.current_step + 1)
+          .select('status, approver_order').eq('fpb_id', fpbId).eq('step_order', fpb.current_step)
+        // Filter: screening rows vs regular approver rows
+        const isScreeningAction = myPendingApproval?.approver_order === 0
+        const regularRows = (freshStep || []).filter(a => a.approver_order !== 0)
+        const allRegularDone = regularRows.length > 0 && regularRows.every(a => a.status === 'approved')
+        const screeningJustDone = isScreeningAction
+        if (screeningJustDone) {
+          // Screening passed → stay on same step, now regular approvers can act
+          // No step change needed; screener row is approved, regular rows still pending
+        } else if (allRegularDone) {
+          const nextStepRow = approvals.find(a => a.step_order === fpb.current_step + 1 && a.approver_order !== 0)
           if (nextStepRow) {
             await supabase.from('fpb').update({ current_step: fpb.current_step + 1 }).eq('fpb_id', fpbId)
           } else {
@@ -312,32 +327,68 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   </div>
                 )}
 
-                {/* Approval — compact single-line per approver */}
+                {/* Progress: Screening + Approval */}
                 <div style={{ padding: '10px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary, marginBottom: 8 }}>Progress Approval</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary, marginBottom: 8 }}>Progress</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+
+                    {/* Screening row */}
+                    {screeningRow && (() => {
+                      const sc = screeningRow
+                      const scDone    = sc.status === 'approved'
+                      const scActive  = !scDone && fpb.status === 'pending' && sc.status === 'pending'
+                      const scRevised = sc.status === 'revision'
+                      const scRejected= sc.status === 'rejected'
+                      const scName    = `${sc.users?.user_nama_depan || ''} ${sc.users?.user_nama_belakang || ''}`.trim() || 'Screener'
+                      return (
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
+                            <div style={{ width: 18, height: 18, borderRadius: 99, background: scDone ? '#059669' : scRejected ? '#dc2626' : scActive ? '#d97706' : theme.subtleBg, border: `2px solid ${scDone ? '#059669' : scRejected ? '#dc2626' : scActive ? '#d97706' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                              {scDone ? '✓' : scRejected ? '✕' : '🔍'}
+                            </div>
+                            <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>Screening</span>
+                            {scActive  && <span style={{ fontSize: 10, color: '#d97706', fontWeight: 600, marginLeft: 'auto' }}>Menunggu Screener</span>}
+                            {scDone    && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Lolos</span>}
+                            {scRejected && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginLeft: 'auto' }}>Ditolak</span>}
+                            {scRevised  && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600, marginLeft: 'auto' }}>Revisi</span>}
+                          </div>
+                          <div style={{ marginLeft: 24 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
+                              <span style={{ fontSize: 13 }}>{statusIcon(sc.status)}</span>
+                              <span style={{ color: theme.textPrimary }}>{scName}</span>
+                              {sc.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(sc.action_at)}</span>}
+                            </div>
+                            {sc.comment && (
+                              <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${sc.status === 'revision' ? '#f59e0b' : sc.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
+                                {sc.comment}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Regular approval steps */}
                     {(() => {
-                      const steps = []
-                      const seen = new Set()
-                      approvals.forEach(ap => { if (!seen.has(ap.step_order)) { seen.add(ap.step_order); steps.push(ap.step_order) } })
+                      const regularApprovals = approvals.filter(a => a.approver_order !== 0)
+                      const steps = []; const seen = new Set()
+                      regularApprovals.forEach(ap => { if (!seen.has(ap.step_order)) { seen.add(ap.step_order); steps.push(ap.step_order) } })
                       return steps.map((stepOrder) => {
-                        const stepRows = approvals.filter(a => a.step_order === stepOrder)
+                        const stepRows = regularApprovals.filter(a => a.step_order === stepOrder)
                         const stepName = stepRows[0]?.step_name || `Step ${stepOrder}`
-                        const isActive = stepOrder === fpb.current_step && fpb.status === 'pending'
+                        const isActive = stepOrder === fpb.current_step && fpb.status === 'pending' && screeningDone
                         const allDone  = stepRows.every(a => a.status === 'approved')
                         return (
                           <div key={stepOrder}>
-                            {/* Step header */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
                               <div style={{ width: 18, height: 18, borderRadius: 99, background: allDone ? '#059669' : isActive ? '#6366f1' : theme.subtleBg, border: `2px solid ${allDone ? '#059669' : isActive ? '#6366f1' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
                                 {allDone ? '✓' : stepOrder}
                               </div>
                               <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>{stepName}</span>
-                              {stepRows[0]?.role?.role_name && <span style={{ fontSize: 10, color: theme.textSecondary }}>({stepRows[0].role.role_name})</span>}
+                              {!screeningDone && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>Menunggu screening</span>}
                               {isActive && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Aktif</span>}
                               {allDone  && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Selesai</span>}
                             </div>
-                            {/* Approver rows */}
                             <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2 }}>
                               {stepRows.map(ap => {
                                 const name = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim() || 'User'
@@ -364,8 +415,24 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   </div>
                 </div>
 
-                {/* Approver action buttons */}
-                {myPendingApproval && fpb.status === 'pending' && (
+                {/* Action buttons — screener */}
+                {myScreeningPending && (
+                  <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid #d97706', background: 'rgba(245,158,11,0.04)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: 12, color: '#d97706', flex: 1 }}>🔍 Screening: giliran Anda untuk memverifikasi FPB ini</span>
+                    <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <FontAwesomeIcon icon={faCheck} />Loloskan
+                    </button>
+                    <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <FontAwesomeIcon icon={faRotateLeft} />Revisi
+                    </button>
+                    <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <FontAwesomeIcon icon={faTimes} />Tolak
+                    </button>
+                  </div>
+                )}
+
+                {/* Action buttons — regular approver */}
+                {!myScreeningPending && myPendingApproval && fpb.status === 'pending' && screeningDone && (
                   <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid #6366f1', background: 'rgba(99,102,241,0.04)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: 12, color: '#6366f1', flex: 1 }}>⚡ Step {fpb.current_step}: {myPendingApproval.step_name}</span>
                     <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -394,7 +461,8 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
               {action === 'approved' ? '✅ Konfirmasi Persetujuan' : action === 'revision' ? '🔄 Konfirmasi Revisi' : '❌ Konfirmasi Penolakan'}
             </div>
             <div style={{ padding: '9px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, marginBottom: 12, background: action === 'approved' ? 'rgba(5,150,105,0.08)' : action === 'revision' ? 'rgba(245,158,11,0.08)' : 'rgba(220,38,38,0.08)', color: action === 'approved' ? '#065f46' : action === 'revision' ? '#92400e' : '#991b1b', border: `1px solid ${action === 'approved' ? 'rgba(5,150,105,0.25)' : action === 'revision' ? 'rgba(245,158,11,0.25)' : 'rgba(220,38,38,0.25)'}` }}>
-              {action === 'approved' ? `Setujui FPB ${fpb?.fpb_number} — Step ${fpb?.current_step}`
+              {action === 'approved'
+                ? (myScreeningPending ? `Loloskan screening FPB ${fpb?.fpb_number} — FPB akan lanjut ke approver` : `Setujui FPB ${fpb?.fpb_number} — Step ${fpb?.current_step}`)
                 : action === 'revision' ? `Minta revisi FPB ${fpb?.fpb_number}. Pengaju akan diminta memperbaiki.`
                 : `Tolak FPB ${fpb?.fpb_number}. Tindakan tidak dapat dibatalkan.`}
             </div>
@@ -1108,14 +1176,28 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
       // Build approval rows — 1 per approver, sequential order
       const approverIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
       const approvalRows = approverIds.map((approverId, idx) => ({
-        fpb_id:           null, // set after fpb insert
+        fpb_id:           null,
         step_order:       1,
         step_name:        'Persetujuan',
         approver_user_id: approverId,
         approver_role_id: submitter.user_role_id,
-        approver_order:   idx + 1, // 1 = first, 2 = second, 3 = third
+        approver_order:   idx + 1,
         status:           'pending',
       }))
+
+      // Fetch global screener (if any)
+      const { data: sc } = await supabase.from('fpb_screener').select('screener_user_id').limit(1).maybeSingle()
+      if (sc?.screener_user_id) {
+        approvalRows.unshift({
+          fpb_id:           null,
+          step_order:       1,
+          step_name:        'Screening',
+          approver_user_id: sc.screener_user_id,
+          approver_role_id: null,
+          approver_order:   0,
+          status:           'pending',
+        })
+      }
 
       const { data: fpb, error: fpbErr } = await supabase.from('fpb').insert({
         fpb_number: fpbNumber, fpb_type_id: selType.fpb_type_id, division, submitted_by: uid,
@@ -1372,19 +1454,26 @@ export default function FpbListPage() {
           .select('approval_id, fpb_id, step_order, approver_order, status')
           .in('fpb_id', fpbIds)
 
-        // Step 3: Sequential check
+        // Step 3: Sequential check — screener (order=0) has no blockers; regular approvers blocked by screener
         const pending = candidates
           .filter(a => {
             const allInStep = (allStepApprovals || []).filter(
               ap => ap.fpb_id === a.fpb_id && ap.step_order === a.step_order
             )
-            const hasOrder = allInStep.every(ap => ap.approver_order != null)
+            // Screener (order=0) is always first — no blockers
+            if (a.approver_order === 0) return true
+            // Regular approvers: check if screener (order=0) has approved first
+            const screenerRow = allInStep.find(ap => ap.approver_order === 0)
+            if (screenerRow && screenerRow.status !== 'approved') return false // screening not done yet
+            // Then check sequential order among regular approvers
+            const regularInStep = allInStep.filter(ap => ap.approver_order !== 0)
+            const hasOrder = regularInStep.every(ap => ap.approver_order != null)
             let myPos, blockers
             if (hasOrder) {
               myPos = a.approver_order ?? 1
-              blockers = allInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
+              blockers = regularInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
             } else {
-              const sorted = [...allInStep].sort((x, y) => x.approval_id - y.approval_id)
+              const sorted = [...regularInStep].sort((x, y) => x.approval_id - y.approval_id)
               myPos = sorted.findIndex(ap => ap.approval_id === a.approval_id)
               if (myPos <= 0) return true
               blockers = sorted.slice(0, myPos).filter(ap => ap.status !== 'approved')
@@ -1447,8 +1536,11 @@ export default function FpbListPage() {
         <td style={{ padding: '12px 14px', fontSize: 13, color: theme.textSecondary }}>{f.division || '—'}</td>
         {isPending && (
           <td style={{ padding: '12px 14px', fontSize: 13 }}>
-            <span style={{ color: '#6366f1', fontWeight: 600 }}>Step {f.my_step}</span>
-            <div style={{ fontSize: 11, color: theme.textSecondary }}>{f.my_step_name}</div>
+            {f.my_step_name === 'Screening'
+              ? <span style={{ color: '#d97706', fontWeight: 700, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', padding: '2px 8px', borderRadius: 99, fontSize: 11 }}>🔍 Screening</span>
+              : <><span style={{ color: '#6366f1', fontWeight: 600 }}>Step {f.my_step}</span>
+                  <div style={{ fontSize: 11, color: theme.textSecondary }}>{f.my_step_name}</div></>
+            }
           </td>
         )}
         {isPending && (
