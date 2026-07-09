@@ -50,6 +50,13 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const [savingBudget, setSavingBudget]     = useState(false)
   const [printFpbId, setPrintFpbId]         = useState(null)
   const [userRoleId, setUserRoleId]         = useState(null)
+  // Screener edit items
+  const [screenerEditMode, setScreenerEditMode] = useState(false)
+  const [editItems, setEditItems]               = useState([])
+  const [savingItems, setSavingItems]           = useState(false)
+  const [savedItems, setSavedItems]             = useState(false)
+  const [itemsEditedByName, setItemsEditedByName] = useState(null)
+  const [itemsEditedAt, setItemsEditedAt]       = useState(null)
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -60,12 +67,20 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     setLoading(true)
     try {
       const { data: f } = await supabase.from('fpb')
-        .select('*, fpb_types(type_name, type_code, max_amount), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)')
+        .select('*, fpb_types(type_name, type_code, max_amount), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang), editor:users!fpb_items_edited_by_fkey(user_nama_depan, user_nama_belakang)')
         .eq('fpb_id', fpbId).single()
       setFpb(f)
       if (f) {
         setBudgetVal(f.budget != null ? String(f.budget) : '')
         setRemainingVal(f.remaining_budget != null ? String(f.remaining_budget) : '')
+        if (f.items_edited_by) {
+          const edName = `${f.editor?.user_nama_depan || ''} ${f.editor?.user_nama_belakang || ''}`.trim()
+          setItemsEditedByName(edName || 'Screener')
+          setItemsEditedAt(f.items_edited_at)
+        } else {
+          setItemsEditedByName(null)
+          setItemsEditedAt(null)
+        }
       }
       const { data: it } = await supabase.from('fpb_items').select('*').eq('fpb_id', fpbId).order('created_at')
       setItems(it || [])
@@ -166,6 +181,41 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     finally { setSavingBudget(false) }
   }
 
+  const handleSaveScreenerItems = async () => {
+    if (!editItems.length) return
+    const invalid = editItems.some(i => !i.item_name?.trim() || !i.unit_price || Number(i.unit_price) <= 0)
+    if (invalid) { setError('Semua nama barang dan harga satuan wajib diisi'); return }
+    setSavingItems(true); setError('')
+    try {
+      const newTotal = editItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0)
+      // Delete all existing items then re-insert
+      const { error: delErr } = await supabase.from('fpb_items').delete().eq('fpb_id', fpbId)
+      if (delErr) throw delErr
+      const { error: insErr } = await supabase.from('fpb_items').insert(
+        editItems.map(i => ({
+          fpb_id:     fpbId,
+          item_name:  i.item_name.trim(),
+          quantity:   Number(i.quantity),
+          unit:       i.unit || 'pcs',
+          unit_price: Number(i.unit_price),
+          seller_url: i.seller_url?.trim() || null,
+        }))
+      )
+      if (insErr) throw insErr
+      // Save audit trail: who edited + when
+      const { error: fpbErr } = await supabase.from('fpb').update({
+        grand_total:      newTotal,
+        items_edited_by:  userId,
+        items_edited_at:  new Date().toISOString(),
+      }).eq('fpb_id', fpbId)
+      if (fpbErr) throw fpbErr
+      setSavedItems(true); setTimeout(() => setSavedItems(false), 3000)
+      setScreenerEditMode(false)
+      await fetchData(userId)
+    } catch (e) { setError(e.message) }
+    finally { setSavingItems(false) }
+  }
+
   const statusIcon = (s) => {
     if (s === 'approved') return <span style={{ color: '#059669', fontWeight: 700 }}>✓</span>
     if (s === 'revision') return <span style={{ color: '#f59e0b', fontWeight: 700 }}>↩</span>
@@ -225,8 +275,99 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   {fpb.note && <span style={{ width: '100%', marginTop: 2 }}><span style={{ color: theme.textSecondary }}>Catatan: </span><span style={{ color: theme.textPrimary }}>{fpb.note}</span></span>}
                 </div>
 
-                {/* Items table */}
-                <div style={{ borderRadius: 10, border: `1px solid ${theme.border}`, display: 'block', overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                {/* Items table — editable for screener during screening */}
+                <div style={{ borderRadius: 10, border: `1px solid ${screenerEditMode ? '#d97706' : theme.border}`, display: 'block', overflow: 'auto', WebkitOverflowScrolling: 'touch', transition: 'border-color 0.2s' }}>
+                  {/* Screener edit mode header */}
+                  {myScreeningPending && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: `1px solid ${screenerEditMode ? '#d97706' : theme.border}`, background: screenerEditMode ? 'rgba(245,158,11,0.05)' : theme.cardBg }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: screenerEditMode ? '#d97706' : theme.textSecondary }}>
+                          🔍 Tabel Barang
+                        </span>
+                        {screenerEditMode && <span style={{ fontSize: 11, color: '#d97706' }}>— Mode Edit Screener</span>}
+                      </div>
+                      {!screenerEditMode ? (
+                        <button onClick={() => { setEditItems(items.map(i => ({ ...i, _id: crypto.randomUUID() }))); setScreenerEditMode(true) }}
+                          style={{ fontSize: 11, padding: '4px 12px', borderRadius: 6, border: '1px solid #d97706', background: 'rgba(245,158,11,0.08)', color: '#d97706', cursor: 'pointer', fontWeight: 700 }}>
+                          ✏️ Edit Barang
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => { setScreenerEditMode(false); setError('') }}
+                            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, cursor: 'pointer' }}>
+                            Batal
+                          </button>
+                          <button onClick={handleSaveScreenerItems} disabled={savingItems}
+                            style={{ fontSize: 11, padding: '4px 12px', borderRadius: 6, border: 'none', background: savedItems ? '#059669' : savingItems ? '#e5e7eb' : '#d97706', color: savingItems ? '#9ca3af' : '#fff', cursor: savingItems ? 'not-allowed' : 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            {savingItems ? '⏳ Menyimpan...' : savedItems ? '✓ Tersimpan!' : '💾 Simpan Perubahan'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {screenerEditMode ? (
+                    /* ── Editable table ── */
+                    <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 620, width: '100%' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(245,158,11,0.06)' }}>
+                          {['#', 'Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal', 'Link', ''].map(h => (
+                            <th key={h} style={{ padding: '7px 8px', textAlign: h === 'Nama Barang' || h === 'Link' ? 'left' : h === '#' || h === '' ? 'center' : 'right', color: '#b45309', fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {editItems.map((it, i) => (
+                          <tr key={it._id} style={{ borderTop: `1px solid ${theme.border}` }}>
+                            <td style={{ padding: '5px 8px', textAlign: 'center', color: theme.textSecondary, fontSize: 11 }}>{i + 1}</td>
+                            <td style={{ padding: '4px 6px' }}>
+                              <input value={it.item_name} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, item_name: e.target.value } : x))}
+                                style={{ width: '100%', minWidth: 160, padding: '4px 7px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 12 }} />
+                            </td>
+                            <td style={{ padding: '4px 5px' }}>
+                              <input type="number" min="1" value={it.quantity} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x))}
+                                style={{ width: 55, padding: '4px 6px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 12, textAlign: 'right' }} />
+                            </td>
+                            <td style={{ padding: '4px 5px' }}>
+                              <input value={it.unit} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, unit: e.target.value } : x))}
+                                style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 12 }} />
+                            </td>
+                            <td style={{ padding: '4px 5px' }}>
+                              <input type="number" min="0" value={it.unit_price} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, unit_price: e.target.value } : x))}
+                                style={{ width: 100, padding: '4px 6px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 12, textAlign: 'right' }} />
+                            </td>
+                            <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 12, color: '#6366f1', whiteSpace: 'nowrap' }}>
+                              {fmt(Number(it.quantity) * Number(it.unit_price))}
+                            </td>
+                            <td style={{ padding: '4px 5px' }}>
+                              <input value={it.seller_url || ''} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, seller_url: e.target.value } : x))}
+                                placeholder="https://..." style={{ width: 90, padding: '4px 6px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 11 }} />
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                              {editItems.length > 1 && (
+                                <button onClick={() => setEditItems(prev => prev.filter((_, j) => j !== i))}
+                                  style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 14, padding: 2 }}>✕</button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop: `1px solid ${theme.border}`, background: 'rgba(245,158,11,0.04)' }}>
+                          <td colSpan={8} style={{ padding: '6px 8px' }}>
+                            <button onClick={() => setEditItems(prev => [...prev, { _id: crypto.randomUUID(), item_name: '', quantity: 1, unit: 'pcs', unit_price: '', seller_url: '' }])}
+                              style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px dashed #d97706', background: 'rgba(245,158,11,0.06)', color: '#d97706', cursor: 'pointer', fontWeight: 600 }}>
+                              + Tambah Barang
+                            </button>
+                            <span style={{ float: 'right', fontWeight: 800, fontSize: 13, color: '#6366f1', padding: '3px 8px' }}>
+                              Total: {fmt(editItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0))}
+                            </span>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  ) : (
+                    /* ── Read-only table ── */
                     <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 580, width: '100%' }}>
                       <thead>
                         <tr style={{ background: theme.subtleBg }}>
@@ -262,7 +403,17 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                         </tr>
                       </tfoot>
                     </table>
+                  )}
                 </div>
+
+                {/* Screener edit audit note */}
+                {itemsEditedByName && (
+                  <div style={{ padding: '7px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 11, color: '#92400e', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    ✏️ <strong>Tabel barang diperbarui oleh screener:</strong> {itemsEditedByName}
+                    {itemsEditedAt && <span style={{ color: theme.textSecondary, marginLeft: 4 }}>— {fmtDt(itemsEditedAt)}</span>}
+                  </div>
+                )}
+
 
                 {/* Budget — compact inline */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.cardBg, fontSize: 12, flexWrap: 'wrap' }}>
