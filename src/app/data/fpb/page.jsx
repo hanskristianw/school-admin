@@ -1179,10 +1179,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
       const month = now.getMonth() + 1
       const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII']
       const roman = ROMAN[month - 1]
-      const { count } = await supabase.from('fpb')
-        .select('*', { count: 'exact', head: true })
-        .like('fpb_number', `%/YPMS/FPB/${roman}/${year}`)
-      const fpbNumber = `${String((count || 0) + 1).padStart(2, '0')}/YPMS/FPB/${roman}/${year}`
+      const pattern = `/YPMS/FPB/${roman}/${year}`
 
       // Get submitter's role
       const { data: submitter } = await supabase.from('users')
@@ -1220,11 +1217,32 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         })
       }
 
-      const { data: fpb, error: fpbErr } = await supabase.from('fpb').insert({
-        fpb_number: fpbNumber, fpb_type_id: selType.fpb_type_id, division, submitted_by: uid,
-        grand_total: grandTotal, note, usage_date: usageDate, status: 'pending', current_step: 1,
-      }).select().single()
-      if (fpbErr) throw fpbErr
+      // Generate FPB number: get max existing sequence for this month, then retry on duplicate
+      let fpb = null
+      let fpbNumber = ''
+      let attempt = 0
+      while (attempt < 5) {
+        // Query all existing numbers for this month to find the current max sequence
+        const { data: existingFpbs } = await supabase.from('fpb')
+          .select('fpb_number')
+          .like('fpb_number', `%${pattern}`)
+        const maxSeq = (existingFpbs || []).reduce((max, f) => {
+          const match = f.fpb_number?.match(/^(\d+)\//)
+          return match ? Math.max(max, parseInt(match[1])) : max
+        }, 0)
+        fpbNumber = `${String(maxSeq + 1 + attempt).padStart(2, '0')}/YPMS/FPB/${roman}/${year}`
+
+        const { data: inserted, error: fpbErr } = await supabase.from('fpb').insert({
+          fpb_number: fpbNumber, fpb_type_id: selType.fpb_type_id, division, submitted_by: uid,
+          grand_total: grandTotal, note, usage_date: usageDate, status: 'pending', current_step: 1,
+        }).select().single()
+
+        if (!fpbErr) { fpb = inserted; break }
+        // 23505 = unique violation — another insert raced us, try next number
+        if (fpbErr.code === '23505') { attempt++; continue }
+        throw fpbErr
+      }
+      if (!fpb) throw new Error('Gagal membuat nomor FPB unik. Silakan coba lagi.')
 
       const { error: itemErr } = await supabase.from('fpb_items').insert(
         items.map(i => ({ fpb_id: fpb.fpb_id, item_name: i.item_name.trim(), quantity: Number(i.quantity), unit: i.unit, unit_price: Number(i.unit_price), seller_url: i.seller_url?.trim() || null }))
