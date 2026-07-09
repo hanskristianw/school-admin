@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { Card, CardContent } from '@/components/ui/card'
@@ -1827,7 +1826,7 @@ export default function FpbListPage() {
     try {
       // Date range for selected month
       const startDate = `${exportYear}-${String(exportMonth).padStart(2,'0')}-01`
-      const endDate   = new Date(exportYear, exportMonth, 1).toISOString().slice(0,10) // first day of next month
+      const endDate   = new Date(exportYear, exportMonth, 1).toISOString().slice(0,10)
 
       // Fetch all FPBs in that month
       const { data: fpbs, error: fpbErr } = await supabase
@@ -1849,64 +1848,110 @@ export default function FpbListPage() {
       if (itErr) throw itErr
 
       // Build flat rows — one row per item
-      const rows = []
+      const dataRows = []
       let no = 1
       for (const fpb of fpbs) {
         const items = (allItems || []).filter(i => i.fpb_id === fpb.fpb_id)
         const submitter = `${fpb.users?.user_nama_depan || ''} ${fpb.users?.user_nama_belakang || ''}`.trim()
-        for (const item of items) {
-          const subtotal = item.quantity * item.unit_price
-          rows.push({
-            'No':               no++,
-            'No FPB':           fpb.fpb_number || '',
-            'Created By':       submitter,
-            'Divisi':           fpb.division || '',
-            'Item Name':        item.item_name || '',
-            'Qty':              item.quantity,
-            'Unit':             item.unit || '',
-            'Price':            item.unit_price,
-            'Total':            subtotal,
-            'Status':           STATUS_LABEL[fpb.status] || fpb.status,
-            'Budget':           fpb.budget ?? '',
-            'Remaining Budget': fpb.remaining_budget ?? '',
-          })
-        }
-        if (!items.length) {
-          // FPB without items — still include a row
-          rows.push({
-            'No':               no++,
-            'No FPB':           fpb.fpb_number || '',
-            'Created By':       submitter,
-            'Divisi':           fpb.division || '',
-            'Item Name':        '',
-            'Qty':              '',
-            'Unit':             '',
-            'Price':            '',
-            'Total':            '',
-            'Status':           STATUS_LABEL[fpb.status] || fpb.status,
-            'Budget':           fpb.budget ?? '',
-            'Remaining Budget': fpb.remaining_budget ?? '',
-          })
-        }
+        const makeRow = (item) => [
+          no++,
+          fpb.fpb_number || '',
+          submitter,
+          fpb.division || '',
+          item?.item_name || '',
+          item ? item.quantity : '',
+          item?.unit || '',
+          item ? item.unit_price : '',
+          item ? item.quantity * item.unit_price : '',
+          STATUS_LABEL[fpb.status] || fpb.status,
+          fpb.budget ?? '',
+          fpb.remaining_budget ?? '',
+        ]
+        if (items.length) items.forEach(it => dataRows.push(makeRow(it)))
+        else dataRows.push(makeRow(null))
       }
 
       const monthLabel = MONTHS_ID[exportMonth - 1]
-      const ws = XLSX.utils.json_to_sheet([])
-      // Title rows
-      XLSX.utils.sheet_add_aoa(ws, [
-        ['Chung Chung Christian School'],
-        [`FPB ${monthLabel} ${exportYear}`],
-        [],
-      ], { origin: 'A1' })
-      XLSX.utils.sheet_add_json(ws, rows, { origin: 'A4', skipHeader: false })
-      ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } },
-      ]
-      ws['!cols'] = [4,20,20,15,30,6,8,14,14,16,14,16].map(w => ({ wch: w }))
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, `FPB ${monthLabel} ${exportYear}`)
-      XLSX.writeFile(wb, `FPB_${monthLabel}_${exportYear}.xlsx`)
+      const HEADERS = ['No', 'No FPB', 'Created By', 'Divisi', 'Item Name', 'Qty', 'Unit', 'Price', 'Total', 'Status', 'Budget', 'Remaining Budget']
+      const NCOLS = HEADERS.length
+
+      // Use ExcelJS for full styling support
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      const ws = wb.addWorksheet(`FPB ${monthLabel} ${exportYear}`)
+
+      // Column widths
+      ws.columns = [5, 22, 22, 15, 32, 6, 9, 15, 15, 18, 15, 18].map((w, i) => ({ key: String(i), width: w }))
+
+      // Helper: apply border to a cell
+      const applyBorder = (cell, color = 'FFB0B0B0') => {
+        cell.border = {
+          top:    { style: 'thin', color: { argb: color } },
+          left:   { style: 'thin', color: { argb: color } },
+          bottom: { style: 'thin', color: { argb: color } },
+          right:  { style: 'thin', color: { argb: color } },
+        }
+      }
+
+      // ── Row 1: Institution title ──
+      ws.mergeCells(1, 1, 1, NCOLS)
+      const r1 = ws.getRow(1)
+      r1.height = 24
+      const c1 = r1.getCell(1)
+      c1.value = 'Chung Chung Christian School'
+      c1.alignment = { horizontal: 'center', vertical: 'middle' }
+      c1.font = { bold: true, size: 14, color: { argb: 'FF1E3A5F' } }
+
+      // ── Row 2: Month title ──
+      ws.mergeCells(2, 1, 2, NCOLS)
+      const r2 = ws.getRow(2)
+      r2.height = 20
+      const c2 = r2.getCell(1)
+      c2.value = `FPB ${monthLabel} ${exportYear}`
+      c2.alignment = { horizontal: 'center', vertical: 'middle' }
+      c2.font = { bold: true, size: 12, color: { argb: 'FF1E3A5F' } }
+
+      // ── Row 3: Empty spacer ──
+      ws.addRow([])
+
+      // ── Row 4: Column headers ──
+      const headerRow = ws.addRow(HEADERS)
+      headerRow.height = 20
+      headerRow.eachCell((cell) => {
+        cell.value = cell.value  // keep value
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } }
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: false }
+        applyBorder(cell, 'FF1E3A5F')
+      })
+
+      // ── Data rows ──
+      dataRows.forEach((rowData, idx) => {
+        const row = ws.addRow(rowData)
+        row.height = 16
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+          // Alternate row background
+          if (idx % 2 === 1) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } }
+          }
+          applyBorder(cell)
+          // Right-align numbers
+          if (colNum === 1 || colNum === 6 || colNum === 8 || colNum === 9 || colNum === 11 || colNum === 12) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' }
+          } else {
+            cell.alignment = { vertical: 'middle' }
+          }
+        })
+      })
+
+      // ── Download ──
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href = url; a.download = `FPB_${monthLabel}_${exportYear}.xlsx`
+      document.body.appendChild(a); a.click()
+      document.body.removeChild(a); URL.revokeObjectURL(url)
     } catch (e) { setExportError(e.message || 'Gagal export') }
     finally { setExportLoading(false) }
   }
