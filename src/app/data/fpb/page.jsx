@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,6 +10,7 @@ import {
   faPlus, faClipboardList, faClock, faEye, faSpinner,
   faArrowLeft, faTrash, faTimes, faShoppingCart, faBoxOpen, faTools,
   faCheck, faRotateLeft, faPen, faExternalLinkAlt, faCheckDouble, faPrint,
+  faFileExcel,
 } from '@fortawesome/free-solid-svg-icons'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1692,6 +1694,13 @@ export default function FpbListPage() {
   const [printListId, setPrintListId] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  // Export
+  const [canExport, setCanExport]       = useState(false)
+  const now = new Date()
+  const [exportMonth, setExportMonth]   = useState(now.getMonth() + 1)
+  const [exportYear, setExportYear]     = useState(now.getFullYear())
+  const [exportLoading, setExportLoading] = useState(false)
+  const [exportError, setExportError]   = useState('')
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -1709,6 +1718,13 @@ export default function FpbListPage() {
       // Get user's role_id for role-based screener detection
       const { data: myUserRow } = await supabase.from('users').select('user_role_id').eq('user_id', uid).single()
       const myRoleId = myUserRow?.user_role_id || null
+
+      // Check if user can export (screener role or budget role)
+      const [{ data: screenerRow }, { data: budgetRow }] = await Promise.all([
+        myRoleId ? supabase.from('fpb_screener').select('screener_role_id').eq('screener_role_id', myRoleId).maybeSingle() : { data: null },
+        myRoleId ? supabase.from('fpb_budget_roles').select('role_id').eq('role_id', myRoleId).maybeSingle()               : { data: null },
+      ])
+      setCanExport(!!(screenerRow || budgetRow))
 
       // Step 1a: My regular pending approval rows (by user_id)
       const { data: myApprovals } = await supabase
@@ -1803,10 +1819,103 @@ export default function FpbListPage() {
     if (uid) fetchAll(uid)
   }
 
+  const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
+  const STATUS_LABEL = { pending: 'Menunggu Approval', approved: 'Disetujui', rejected: 'Ditolak', revision: 'Revisi', draft: 'Draft' }
+
+  const handleExport = async () => {
+    setExportLoading(true); setExportError('')
+    try {
+      // Date range for selected month
+      const startDate = `${exportYear}-${String(exportMonth).padStart(2,'0')}-01`
+      const endDate   = new Date(exportYear, exportMonth, 1).toISOString().slice(0,10) // first day of next month
+
+      // Fetch all FPBs in that month
+      const { data: fpbs, error: fpbErr } = await supabase
+        .from('fpb')
+        .select('fpb_id, fpb_number, status, grand_total, usage_date, division, budget, remaining_budget, created_at, fpb_types(type_name, type_code), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang), procurement_status')
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .order('fpb_number', { ascending: true })
+      if (fpbErr) throw fpbErr
+      if (!fpbs?.length) { setExportError('Tidak ada data FPB untuk bulan ini'); setExportLoading(false); return }
+
+      // Fetch all items for those FPBs
+      const fpbIds = fpbs.map(f => f.fpb_id)
+      const { data: allItems, error: itErr } = await supabase
+        .from('fpb_items')
+        .select('fpb_id, item_name, quantity, unit, unit_price')
+        .in('fpb_id', fpbIds)
+        .order('fpb_id').order('item_id')
+      if (itErr) throw itErr
+
+      // Build flat rows — one row per item
+      const rows = []
+      let no = 1
+      for (const fpb of fpbs) {
+        const items = (allItems || []).filter(i => i.fpb_id === fpb.fpb_id)
+        const submitter = `${fpb.users?.user_nama_depan || ''} ${fpb.users?.user_nama_belakang || ''}`.trim()
+        for (const item of items) {
+          const subtotal = item.quantity * item.unit_price
+          rows.push({
+            'No':               no++,
+            'No FPB':           fpb.fpb_number || '',
+            'Created By':       submitter,
+            'Divisi':           fpb.division || '',
+            'Item Name':        item.item_name || '',
+            'Qty':              item.quantity,
+            'Unit':             item.unit || '',
+            'Price':            item.unit_price,
+            'Total':            subtotal,
+            'Status':           STATUS_LABEL[fpb.status] || fpb.status,
+            'Budget':           fpb.budget ?? '',
+            'Remaining Budget': fpb.remaining_budget ?? '',
+          })
+        }
+        if (!items.length) {
+          // FPB without items — still include a row
+          rows.push({
+            'No':               no++,
+            'No FPB':           fpb.fpb_number || '',
+            'Created By':       submitter,
+            'Divisi':           fpb.division || '',
+            'Item Name':        '',
+            'Qty':              '',
+            'Unit':             '',
+            'Price':            '',
+            'Total':            '',
+            'Status':           STATUS_LABEL[fpb.status] || fpb.status,
+            'Budget':           fpb.budget ?? '',
+            'Remaining Budget': fpb.remaining_budget ?? '',
+          })
+        }
+      }
+
+      const monthLabel = MONTHS_ID[exportMonth - 1]
+      const ws = XLSX.utils.json_to_sheet([])
+      // Title rows
+      XLSX.utils.sheet_add_aoa(ws, [
+        ['Chung Chung Christian School'],
+        [`FPB ${monthLabel} ${exportYear}`],
+        [],
+      ], { origin: 'A1' })
+      XLSX.utils.sheet_add_json(ws, rows, { origin: 'A4', skipHeader: false })
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } },
+      ]
+      ws['!cols'] = [4,20,20,15,30,6,8,14,14,16,14,16].map(w => ({ wch: w }))
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, `FPB ${monthLabel} ${exportYear}`)
+      XLSX.writeFile(wb, `FPB_${monthLabel}_${exportYear}.xlsx`)
+    } catch (e) { setExportError(e.message || 'Gagal export') }
+    finally { setExportLoading(false) }
+  }
+
   const tabs = [
     { key: 'mine',    label: 'Pengajuan Saya',         icon: faClipboardList, count: myFpbs.length },
     { key: 'pending', label: 'Menunggu Approval Saya', icon: faClock,         count: pendingFpbs.length },
     { key: 'history', label: 'History Approval',       icon: faCheckDouble,   count: historyFpbs.length },
+    ...(canExport ? [{ key: 'export', label: 'Export Excel', icon: faFileExcel }] : []),
   ]
 
   const FpbRow = ({ f, isPending, isHistory }) => {
@@ -1950,6 +2059,66 @@ export default function FpbListPage() {
 
       <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
         <CardContent className="p-0">
+          {/* Export tab panel */}
+          {tab === 'export' ? (
+            <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 520 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: theme.textPrimary, marginBottom: 6 }}>
+                  📊 Export Data FPB ke Excel
+                </div>
+                <div style={{ fontSize: 13, color: theme.textSecondary }}>
+                  Export semua FPB beserta detail barang untuk bulan yang dipilih. Setiap barang tampil dalam satu baris.
+                </div>
+              </div>
+
+              {/* Month & Year picker */}
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Bulan</label>
+                  <select value={exportMonth} onChange={e => setExportMonth(Number(e.target.value))}
+                    style={{ padding: '9px 14px', borderRadius: 9, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer', minWidth: 140 }}>
+                    {MONTHS_ID.map((m, i) => (
+                      <option key={i + 1} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Tahun</label>
+                  <select value={exportYear} onChange={e => setExportYear(Number(e.target.value))}
+                    style={{ padding: '9px 14px', borderRadius: 9, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer', minWidth: 100 }}>
+                    {[2024, 2025, 2026, 2027, 2028].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <button onClick={handleExport} disabled={exportLoading}
+                  style={{ padding: '9px 22px', borderRadius: 9, border: 'none', background: exportLoading ? '#e5e7eb' : 'linear-gradient(135deg,#059669,#10b981)', color: exportLoading ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 13, cursor: exportLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: exportLoading ? 'none' : '0 2px 10px rgba(5,150,105,0.3)', whiteSpace: 'nowrap' }}>
+                  <FontAwesomeIcon icon={exportLoading ? faSpinner : faFileExcel} spin={exportLoading} />
+                  {exportLoading ? 'Mengunduh...' : `Download Excel — ${MONTHS_ID[exportMonth - 1]} ${exportYear}`}
+                </button>
+              </div>
+
+              {exportError && (
+                <div style={{ padding: '10px 14px', borderRadius: 9, background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontSize: 13 }}>
+                  ⚠ {exportError}
+                </div>
+              )}
+
+              {/* Column preview */}
+              <div style={{ padding: '12px 16px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, marginBottom: 8 }}>KOLOM YANG DIEKSPOR</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px' }}>
+                  {['No', 'No FPB', 'Created By', 'Divisi', 'Item Name', 'Qty', 'Unit', 'Price', 'Total', 'Status', 'Budget', 'Remaining Budget'].map(c => (
+                    <span key={c} style={{ padding: '3px 9px', borderRadius: 6, background: theme.cardBg, border: `1px solid ${theme.border}`, fontSize: 11, color: theme.textPrimary }}>{c}</span>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 10 }}>
+                  * Setiap barang dalam satu FPB tampil sebagai baris terpisah
+                </div>
+              </div>
+            </div>
+          ) : (
+          <>
           {/* Search & Filter bar */}
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.border}`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
@@ -2021,6 +2190,8 @@ export default function FpbListPage() {
                 </tbody>
               </table>
             </div>
+          )}
+          </>
           )}
         </CardContent>
       </Card>
