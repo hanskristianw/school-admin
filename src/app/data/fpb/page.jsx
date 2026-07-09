@@ -231,6 +231,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
       setProcurementNote('')
       setShowProcurementNote(false)
       await fetchData(userId)
+      if (onActionDone) onActionDone()   // sync parent list
     } catch (e) { setError(e.message) }
     finally { setSavingProcurement(false) }
   }
