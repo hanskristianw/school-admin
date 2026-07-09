@@ -1688,6 +1688,9 @@ export default function FpbListPage() {
   const [viewFpbId, setViewFpbId]   = useState(null)
   const [editFpbId, setEditFpbId]   = useState(null)
   const [deleteFpb, setDeleteFpb]   = useState(null)
+  const [printListId, setPrintListId] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -1856,6 +1859,11 @@ export default function FpbListPage() {
         )}
         <td style={{ padding: '12px 14px', textAlign: 'right' }}>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+            <button onClick={e => { e.stopPropagation(); setPrintListId(f.fpb_id) }}
+              style={{ padding: '5px 11px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
+              title="Cetak FPB">
+              <FontAwesomeIcon icon={faPrint} />
+            </button>
             {/* Lihat */}
             <button onClick={e => { e.stopPropagation(); setViewFpbId(f.fpb_id) }}
               style={{ padding: '5px 11px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
@@ -1884,6 +1892,19 @@ export default function FpbListPage() {
   }
 
   const currentList = tab === 'mine' ? myFpbs : tab === 'pending' ? pendingFpbs : historyFpbs
+
+  // Filter by search query and status
+  const filteredList = currentList.filter(f => {
+    const q = searchQuery.toLowerCase()
+    const matchText = !q ||
+      (f.fpb_number || '').toLowerCase().includes(q) ||
+      (f.division || '').toLowerCase().includes(q) ||
+      (`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`).toLowerCase().includes(q) ||
+      (f.fpb_types?.type_name || '').toLowerCase().includes(q)
+    const matchStatus = !filterStatus || f.status === filterStatus ||
+      (filterStatus === 'ordered' && f.procurement_status === 'ordered')
+    return matchText && matchStatus
+  })
 
   return (
     <div style={{ padding: '28px 32px', background: theme.pageBg, minHeight: '100vh' }}>
@@ -1928,21 +1949,47 @@ export default function FpbListPage() {
 
       <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
         <CardContent className="p-0">
+          {/* Search & Filter bar */}
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.border}`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: theme.textSecondary, fontSize: 13, pointerEvents: 'none' }}>🔍</span>
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Cari nomor FPB, divisi, pengaju..."
+                style={{ width: '100%', padding: '7px 10px 7px 32px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer' }}>
+              <option value="">Semua Status</option>
+              <option value="pending">Menunggu</option>
+              <option value="revision">Revisi</option>
+              <option value="approved">Disetujui</option>
+              <option value="rejected">Ditolak</option>
+              <option value="ordered">📦 Dipesan</option>
+            </select>
+            {(searchQuery || filterStatus) && (
+              <button onClick={() => { setSearchQuery(''); setFilterStatus('') }}
+                style={{ padding: '7px 12px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                ✕ Reset
+              </button>
+            )}
+            <span style={{ fontSize: 11, color: theme.textSecondary, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{filteredList.length} FPB</span>
+          </div>
           {loading ? (
             <div style={{ padding: 40, textAlign: 'center', color: theme.textSecondary }}>
               <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 24 }} />
               <p style={{ marginTop: 10 }}>Memuat data...</p>
             </div>
-          ) : currentList.length === 0 ? (
+          ) : filteredList.length === 0 ? (
             <div style={{ padding: 60, textAlign: 'center' }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>{searchQuery || filterStatus ? '🔍' : '📋'}</div>
               <p style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 15, marginBottom: 6 }}>
-                {tab === 'mine' ? 'Belum ada FPB yang diajukan' : tab === 'pending' ? 'Tidak ada FPB yang menunggu approval Anda' : 'Belum ada FPB yang Anda setujui'}
+                {searchQuery || filterStatus ? 'Tidak ada FPB yang cocok dengan filter'
+                  : tab === 'mine' ? 'Belum ada FPB yang diajukan' : tab === 'pending' ? 'Tidak ada FPB yang menunggu approval Anda' : 'Belum ada FPB yang Anda setujui'}
               </p>
-              <p style={{ color: theme.textSecondary, fontSize: 13 }}>
-                {tab === 'mine' ? 'Klik "Buat FPB Baru" untuk membuat pengajuan pertama Anda' : tab === 'pending' ? 'Semua sudah diproses!' : 'FPB yang telah Anda approve secara penuh akan muncul di sini'}
-              </p>
-              {tab === 'mine' && (
+              {!(searchQuery || filterStatus) && tab === 'mine' && (
                 <button onClick={() => setShowCreate(true)}
                   style={{ marginTop: 16, padding: '9px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   <FontAwesomeIcon icon={faPlus} style={{ marginRight: 6 }} />Buat FPB Baru
@@ -1968,7 +2015,7 @@ export default function FpbListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {currentList.map(f => <FpbRow key={f.fpb_id} f={f} isPending={tab === 'pending'} isHistory={tab === 'history'} />)}
+                  {filteredList.map(f => <FpbRow key={f.fpb_id} f={f} isPending={tab === 'pending'} isHistory={tab === 'history'} />)}
                 </tbody>
               </table>
             </div>
@@ -1980,6 +2027,7 @@ export default function FpbListPage() {
       {viewFpbId && <ViewFpbModal fpbId={viewFpbId} theme={theme} onClose={() => setViewFpbId(null)} onActionDone={reloadAll} />}
       {editFpbId && <EditFpbModal fpbId={editFpbId} theme={theme} onClose={() => setEditFpbId(null)} onSuccess={reloadAll} />}
       {deleteFpb && <DeleteConfirmModal fpb={deleteFpb} theme={theme} onClose={() => setDeleteFpb(null)} onSuccess={reloadAll} />}
+      {printListId && <PrintFpbModal fpbId={printListId} theme={theme} onClose={() => setPrintListId(null)} />}
     </div>
   )
 }
