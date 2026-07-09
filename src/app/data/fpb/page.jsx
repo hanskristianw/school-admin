@@ -57,6 +57,10 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const [savedItems, setSavedItems]             = useState(false)
   const [itemsEditedByName, setItemsEditedByName] = useState(null)
   const [itemsEditedAt, setItemsEditedAt]       = useState(null)
+  // Procurement
+  const [savingProcurement, setSavingProcurement] = useState(false)
+  const [procurementNote, setProcurementNote]     = useState('')
+  const [showProcurementNote, setShowProcurementNote] = useState(false)
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -67,7 +71,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     setLoading(true)
     try {
       const { data: f } = await supabase.from('fpb')
-        .select('*, fpb_types(type_name, type_code, max_amount), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang), editor:users!fpb_items_edited_by_fkey(user_nama_depan, user_nama_belakang)')
+        .select('*, fpb_types(type_name, type_code, max_amount), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang), editor:users!fpb_items_edited_by_fkey(user_nama_depan, user_nama_belakang), procurator:users!fpb_procurement_by_fkey(user_nama_depan, user_nama_belakang)')
         .eq('fpb_id', fpbId).single()
       setFpb(f)
       if (f) {
@@ -214,6 +218,21 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
       await fetchData(userId)
     } catch (e) { setError(e.message) }
     finally { setSavingItems(false) }
+  }
+
+  const handleToggleProcurement = async (markOrdered) => {
+    setSavingProcurement(true); setError('')
+    try {
+      const payload = markOrdered
+        ? { procurement_status: 'ordered', procurement_by: userId, procurement_at: new Date().toISOString(), procurement_note: procurementNote.trim() || null }
+        : { procurement_status: null,      procurement_by: null,   procurement_at: null,                      procurement_note: null }
+      const { error: e } = await supabase.from('fpb').update(payload).eq('fpb_id', fpbId)
+      if (e) throw e
+      setProcurementNote('')
+      setShowProcurementNote(false)
+      await fetchData(userId)
+    } catch (e) { setError(e.message) }
+    finally { setSavingProcurement(false) }
   }
 
   const statusIcon = (s) => {
@@ -601,6 +620,66 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                     </button>
                   </div>
                 )}
+
+                {/* ── Procurement Section ── */}
+                {/* Visible to screener role or budget role, only when FPB is fully approved */}
+                {fpb.status === 'approved' && (iAmScreener || canEditBudget) && (
+                  <div style={{ padding: '12px 14px', borderRadius: 10, border: `2px solid ${fpb.procurement_status === 'ordered' ? '#059669' : theme.border}`, background: fpb.procurement_status === 'ordered' ? 'rgba(5,150,105,0.04)' : theme.cardBg, transition: 'all 0.25s' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      {/* Status indicator / toggle */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${fpb.procurement_status === 'ordered' ? '#059669' : theme.border}`, background: fpb.procurement_status === 'ordered' ? '#059669' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: !savingProcurement ? 'pointer' : 'not-allowed', flexShrink: 0, transition: 'all 0.2s' }}
+                          onClick={() => !savingProcurement && (fpb.procurement_status === 'ordered' ? handleToggleProcurement(false) : setShowProcurementNote(v => !v))}>
+                          {fpb.procurement_status === 'ordered' && <span style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>✓</span>}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 12, color: fpb.procurement_status === 'ordered' ? '#059669' : theme.textPrimary }}>
+                            {fpb.procurement_status === 'ordered' ? '✅ Sudah Dipesan / Dana Diberikan' : '📦 Tandai Pemesanan / Pemberian Dana'}
+                          </div>
+                          {fpb.procurement_status === 'ordered' && (
+                            <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                              oleh <strong>{`${fpb.procurator?.user_nama_depan || ''} ${fpb.procurator?.user_nama_belakang || ''}`.trim() || 'Admin'}</strong>
+                              {fpb.procurement_at && ` · ${fmtDt(fpb.procurement_at)}`}
+                            </div>
+                          )}
+                          {fpb.procurement_note && (
+                            <div style={{ fontSize: 11, color: '#065f46', marginTop: 3, padding: '2px 8px', borderLeft: '3px solid #059669', fontStyle: 'italic' }}>
+                              {fpb.procurement_note}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {fpb.procurement_status !== 'ordered' && (
+                        <button onClick={() => setShowProcurementNote(v => !v)}
+                          style={{ fontSize: 11, padding: '5px 14px', borderRadius: 7, border: '1px solid #059669', background: showProcurementNote ? '#059669' : 'rgba(5,150,105,0.08)', color: showProcurementNote ? '#fff' : '#059669', cursor: 'pointer', fontWeight: 700, transition: 'all 0.2s' }}>
+                          {showProcurementNote ? 'Tutup' : '📦 Tandai'}
+                        </button>
+                      )}
+                      {fpb.procurement_status === 'ordered' && (
+                        <button onClick={() => handleToggleProcurement(false)} disabled={savingProcurement}
+                          style={{ fontSize: 11, padding: '5px 14px', borderRadius: 7, border: '1px solid #dc2626', background: 'rgba(220,38,38,0.06)', color: '#dc2626', cursor: savingProcurement ? 'not-allowed' : 'pointer', fontWeight: 700 }}>
+                          {savingProcurement ? '⏳' : 'Batalkan'}
+                        </button>
+                      )}
+                    </div>
+                    {/* Note input — shown when about to mark */}
+                    {showProcurementNote && fpb.procurement_status !== 'ordered' && (
+                      <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Catatan (opsional)</label>
+                          <input value={procurementNote} onChange={e => setProcurementNote(e.target.value)}
+                            placeholder="mis: dana transfer ke toko X, tanggal..."
+                            style={{ width: '100%', padding: '6px 10px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, boxSizing: 'border-box' }} />
+                        </div>
+                        <button onClick={() => handleToggleProcurement(true)} disabled={savingProcurement}
+                          style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: savingProcurement ? '#e5e7eb' : '#059669', color: savingProcurement ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 12, cursor: savingProcurement ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+                          {savingProcurement ? '⏳ Menyimpan...' : '✅ Konfirmasi Pemesanan'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
               </>
             )}
           </div>
@@ -1619,7 +1698,7 @@ export default function FpbListPage() {
     setLoading(true)
     try {
       const { data: mine } = await supabase
-        .from('fpb').select('fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, fpb_types(type_name, type_code)')
+        .from('fpb').select('fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, procurement_status, fpb_types(type_name, type_code)')
         .eq('submitted_by', uid).order('created_at', { ascending: false })
       setMyFpbs(mine || [])
 
@@ -1698,7 +1777,7 @@ export default function FpbListPage() {
       // Tab 3: History — FPBs fully approved where I was an approver
       const { data: myApprovedRows } = await supabase
         .from('fpb_approvals')
-        .select('fpb_id, step_name, action_at, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, fpb_types(type_name), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
+        .select('fpb_id, step_name, action_at, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, procurement_status, fpb_types(type_name), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
         .eq('approver_user_id', uid)
         .eq('status', 'approved')
       const approvedFpbs = (myApprovedRows || [])
@@ -1759,7 +1838,14 @@ export default function FpbListPage() {
         )}
         <td style={{ padding: '12px 14px', fontSize: 13, color: theme.textPrimary, fontWeight: 600 }}>{fmt(f.grand_total)}</td>
         <td style={{ padding: '12px 14px', fontSize: 12, color: theme.textSecondary }}>{fmtDate(f.usage_date)}</td>
-        <td style={{ padding: '12px 14px' }}><StatusBadge status={f.status} /></td>
+        <td style={{ padding: '12px 14px' }}>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+            <StatusBadge status={f.status} />
+            {f.procurement_status === 'ordered' && (
+              <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 10, fontWeight: 700, color: '#065f46', background: 'rgba(5,150,105,0.12)', whiteSpace: 'nowrap' }}>📦 Dipesan</span>
+            )}
+          </div>
+        </td>
         {!isPending && !isHistory && (
           <td style={{ padding: '12px 14px', fontSize: 11, color: theme.textSecondary }}>{f.revision_count > 0 ? `Revisi ke-${f.revision_count}` : ''}</td>
         )}
