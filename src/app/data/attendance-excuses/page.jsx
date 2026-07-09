@@ -391,7 +391,7 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
               color: '#fff',
               opacity: submitting ? 0.7 : 1,
             }}>
-            {submitting ? (uploading ? 'Mengupload...' : 'Mengajukan...') : 'Ajukan Surat Keterangan'}
+            {submitting ? (uploading ? 'Mengupload...' : 'Mengajukan...') : 'Submit'}
           </button>
         </div>
       </div>
