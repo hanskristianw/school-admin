@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faPlus, faClipboardList, faClock, faEye, faSpinner,
   faArrowLeft, faTrash, faTimes, faShoppingCart, faBoxOpen, faTools,
-  faCheck, faRotateLeft, faPen, faExternalLinkAlt, faCheckDouble,
+  faCheck, faRotateLeft, faPen, faExternalLinkAlt, faCheckDouble, faPrint,
 } from '@fortawesome/free-solid-svg-icons'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -48,6 +48,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const [budgetVal, setBudgetVal]           = useState('')
   const [remainingVal, setRemainingVal]     = useState('')
   const [savingBudget, setSavingBudget]     = useState(false)
+  const [printFpbId, setPrintFpbId]         = useState(null)
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -168,9 +169,18 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                 {fpb?.revision_count > 0 && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Revisi ke-{fpb.revision_count}</span>}
               </div>
             )}
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}>
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {fpb && !loading && (
+                <button onClick={() => setPrintFpbId(fpbId)}
+                  style={{ background: 'none', border: `1px solid ${theme.border}`, color: theme.textSecondary, cursor: 'pointer', padding: '4px 10px', fontSize: 13, borderRadius: 7, display: 'flex', alignItems: 'center', gap: 5 }}
+                  title="Cetak FPB">
+                  <FontAwesomeIcon icon={faPrint} />
+                </button>
+              )}
+              <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}>
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </div>
           </div>
 
           {/* Body */}
@@ -412,6 +422,172 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
           </div>
         </div>
       )}
+      {printFpbId && <PrintFpbModal fpbId={printFpbId} onClose={() => setPrintFpbId(null)} theme={theme} />}
+    </>
+  )
+}
+
+
+// --- Print FPB Modal ---
+const fmtDatePrint = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'
+
+function PrintFpbModal({ fpbId, onClose }) {
+  const [fpb, setFpb]             = useState(null)
+  const [items, setItems]         = useState([])
+  const [approvals, setApprovals] = useState([])
+  const [loading, setLoading]     = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      const [{ data: f }, { data: it }, { data: ap }] = await Promise.all([
+        supabase.from('fpb').select('*, fpb_types(type_name), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)').eq('fpb_id', fpbId).single(),
+        supabase.from('fpb_items').select('*').eq('fpb_id', fpbId).order('item_id'),
+        supabase.from('fpb_approvals').select('*, users!fpb_approvals_approver_user_id_fkey(user_nama_depan, user_nama_belakang)').eq('fpb_id', fpbId).order('approver_order'),
+      ])
+      setFpb(f); setItems(it || []); setApprovals(ap || [])
+      setLoading(false)
+    }
+    load()
+  }, [fpbId])
+
+  const pendingApprovers = approvals.filter(a => a.status !== 'approved' && a.status !== 'rejected')
+  const submitterName    = fpb ? (fpb.users?.user_nama_depan || '') + ' ' + (fpb.users?.user_nama_belakang || '') : ''
+
+  const printStyle = `
+    @media print {
+      body > * { display: none !important; }
+      #fpb-print-root { display: block !important; position: fixed; inset: 0; background: #fff; z-index: 99999; padding: 0; margin: 0; overflow: visible; }
+      #fpb-print-root .no-print { display: none !important; }
+      #fpb-print-paper { box-shadow: none !important; max-height: none !important; overflow: visible !important; border-radius: 0 !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+      @page { size: A4 portrait; margin: 14mm; }
+    }
+  `
+
+  return (
+    <>
+      <style>{printStyle}</style>
+      <div id="fpb-print-root"
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px 0', overflowY: 'auto' }}>
+
+        <div className="no-print" style={{ position: 'fixed', top: 16, right: 24, display: 'flex', gap: 8, zIndex: 2001 }}>
+          <button onClick={() => window.print()} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FontAwesomeIcon icon={faPrint} /> Cetak
+          </button>
+          <button onClick={onClose} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+            Tutup
+          </button>
+        </div>
+
+        <div id="fpb-print-paper" onClick={e => e.stopPropagation()}
+          style={{ background: '#fff', width: '210mm', borderRadius: 4, boxShadow: '0 8px 40px rgba(0,0,0,0.35)', position: 'relative', padding: '16mm', marginTop: 60, marginBottom: 24, fontFamily: 'Arial, sans-serif' }}>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}><FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 28 }} /></div>
+          ) : !fpb ? (
+            <div style={{ textAlign: 'center', padding: 60, color: '#dc2626' }}>FPB tidak ditemukan.</div>
+          ) : (
+            <>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
+                <img src="/images/login-logo.png" alt="" style={{ width: 260, opacity: 0.06, userSelect: 'none' }} />
+              </div>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}><tbody><tr>
+                  <td style={{ width: 80, verticalAlign: 'middle' }}>
+                    <img src="/images/login-logo.png" alt="Logo" style={{ width: 72, height: 72, objectFit: 'contain' }} />
+                  </td>
+                  <td style={{ verticalAlign: 'middle', paddingLeft: 14 }}>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>Chung Chung Christian School</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', marginTop: 3 }}>FPB (Form Permohonan Barang)</div>
+                  </td>
+                </tr></tbody></table>
+                <hr style={{ border: 'none', borderTop: '2px solid #111827', marginBottom: 14 }} />
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12, fontSize: 13 }}><tbody>
+                  <tr>
+                    <td style={{ width: '50%', paddingBottom: 4 }}><span style={{ fontWeight: 600 }}>No FPB : </span><strong>{fpb.fpb_number}</strong></td>
+                    <td style={{ paddingBottom: 4 }}><span style={{ fontWeight: 600 }}>Division : </span>{fpb.division || '-'}</td>
+                  </tr>
+                  <tr><td><span style={{ fontWeight: 600 }}>Date FPB : </span>{fmtDatePrint(fpb.created_at)}</td></tr>
+                </tbody></table>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 16 }}>
+                  <thead><tr style={{ background: '#f3f4f6' }}>
+                    {['No','Item','Qty','Sat','Harga','Subtotal'].map((h, i) => (
+                      <th key={h} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: i === 0 ? 'center' : i === 1 ? 'left' : 'right', fontWeight: 700 }}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {items.map((it, i) => (
+                      <tr key={it.item_id}>
+                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'center' }}>{i + 1}</td>
+                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px' }}>{it.item_name}</td>
+                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{it.quantity}</td>
+                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{it.unit}</td>
+                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right' }}>{fmt(it.unit_price)}</td>
+                        <td style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>{fmt(it.quantity * it.unit_price)}</td>
+                      </tr>
+                    ))}
+                    <tr style={{ background: '#f9fafb' }}>
+                      <td colSpan={4} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>GRAND TOTAL</td>
+                      <td colSpan={2} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: 'right', fontWeight: 800, color: '#1d4ed8' }}>{fmt(fpb.grand_total)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 18 }}><tbody>
+                  <tr>
+                    <td style={{ width: '50%', paddingBottom: 6, paddingRight: 12, verticalAlign: 'top' }}><span style={{ fontWeight: 600 }}>Note : </span>{fpb.note || '-'}</td>
+                    <td style={{ paddingBottom: 6, verticalAlign: 'top' }}><span style={{ fontWeight: 600 }}>Budget : </span>{fpb.budget || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingBottom: 6 }}><span style={{ fontWeight: 600 }}>Usage Date : </span>{fmtDatePrint(fpb.usage_date)}</td>
+                    <td style={{ paddingBottom: 6 }}><span style={{ fontWeight: 600 }}>Remaining Budget : </span>{fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : '-'}</td>
+                  </tr>
+                </tbody></table>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
+                  <thead><tr>
+                    <th style={{ border: '1px solid #9ca3af', padding: '7px 8px', textAlign: 'center', background: '#f9fafb', fontWeight: 700 }}>Created</th>
+                    {approvals.map((ap, i) => (
+                      <th key={ap.approval_id} style={{ border: '1px solid #9ca3af', padding: '7px 8px', textAlign: 'center', background: '#f9fafb', fontWeight: 700 }}>Approved {i + 1}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody><tr>
+                    <td style={{ border: '1px solid #9ca3af', padding: '8px', textAlign: 'center', minWidth: 100 }}>
+                      <div style={{ fontWeight: 600 }}>{submitterName.trim()}</div>
+                      <div style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>{fmtDatePrint(fpb.created_at)}</div>
+                    </td>
+                    {approvals.map(ap => {
+                      const name = ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
+                      return (
+                        <td key={ap.approval_id} style={{ border: '1px solid #9ca3af', padding: '8px', textAlign: 'center', minWidth: 100 }}>
+                          <div style={{ fontWeight: 600, color: ap.status === 'approved' ? '#111827' : '#9ca3af' }}>{name}</div>
+                          <div style={{ fontSize: 11, marginTop: 4, color: ap.status === 'approved' ? '#374151' : '#d1d5db' }}>
+                            {ap.status === 'approved' ? fmtDatePrint(ap.action_at) : ap.status === 'rejected' ? '(Ditolak)' : ap.status === 'revision' ? '(Revisi)' : '(Menunggu)'}
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr></tbody>
+                </table>
+                <div style={{ fontSize: 11, color: '#374151', fontStyle: 'italic' }}>** This document has been digitally signed.</div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {!loading && pendingApprovers.length > 0 && (
+          <div className="no-print" style={{ position: 'fixed', bottom: 24, right: 24, background: '#fffbeb', border: '1.5px solid #f59e0b', borderRadius: 12, padding: '12px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', maxWidth: 300, zIndex: 2001 }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>Belum selesai disetujui</div>
+            {pendingApprovers.map(ap => (
+              <div key={ap.approval_id} style={{ fontSize: 11, color: '#374151', marginBottom: 2 }}>
+                - {((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim()} ({ap.status === 'revision' ? 'Diminta Revisi' : 'Menunggu Approval'})
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   )
 }
@@ -797,9 +973,15 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
     try {
       const uid = parseInt(localStorage.getItem('kr_id'))
       if (!uid) throw new Error('Tidak terautentikasi')
-      const year = new Date().getFullYear()
-      const { count } = await supabase.from('fpb').select('*', { count: 'exact', head: true }).like('fpb_number', `FPB/${year}/%`)
-      const fpbNumber = `FPB/${year}/${String((count || 0) + 1).padStart(3, '0')}`
+      const now   = new Date()
+      const year  = now.getFullYear()
+      const month = now.getMonth() + 1
+      const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII']
+      const roman = ROMAN[month - 1]
+      const { count } = await supabase.from('fpb')
+        .select('*', { count: 'exact', head: true })
+        .like('fpb_number', `%/YPMS/FPB/${roman}/${year}`)
+      const fpbNumber = `${String((count || 0) + 1).padStart(2, '0')}/YPMS/FPB/${roman}/${year}`
 
       // Get submitter's role
       const { data: submitter } = await supabase.from('users')
