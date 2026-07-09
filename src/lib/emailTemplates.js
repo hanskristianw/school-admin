@@ -151,78 +151,86 @@ export const emailTemplates = {
    * @param {string} params.date - Date string (e.g. "Kamis, 19 Juni 2026")
    * @param {Array}  params.issues - Array of issue objects: { type, scheduledTime, actualTime, minutesDiff }
    */
-  attendanceLate: ({ userName, date, issues }) => {
+  attendanceLate: ({ userName, date, issues, baseUrl }) => {
     const typeLabel = (type) => {
       switch (type) {
-        case 'late':        return { icon: '🕐', label: 'Terlambat',        color: '#d97706', bg: '#fef3c7', headerGrad: 'linear-gradient(135deg, #d97706, #f59e0b)' }
-        case 'leave_early': return { icon: '🚪', label: 'Pulang Awal',      color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
-        case 'absent':      return { icon: '🚫', label: 'Tidak Masuk',      color: '#6b21a8', bg: '#f3e8ff', headerGrad: 'linear-gradient(135deg, #6b21a8, #9333ea)' }
-        case 'no_checkin':  return { icon: '❌', label: 'Tidak Check-In',   color: '#7c3aed', bg: '#ede9fe', headerGrad: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }
-        case 'no_checkout': return { icon: '⚠️', label: 'Tidak Check-Out',  color: '#ea580c', bg: '#ffedd5', headerGrad: 'linear-gradient(135deg, #ea580c, #f97316)' }
-        default:            return { icon: '❓', label: type,               color: '#374151', bg: '#f3f4f6', headerGrad: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
+        case 'late':        return { icon: '🕐', label: 'Terlambat',          engLabel: 'Late Attendance',   color: '#d97706', bg: '#fef3c7', headerGrad: 'linear-gradient(135deg, #d97706, #f59e0b)' }
+        case 'leave_early': return { icon: '🚪', label: 'Pulang Lebih Awal',  engLabel: 'Early Departure',  color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
+        case 'absent':      return { icon: '🚫', label: 'Tidak Masuk',        engLabel: 'Absence',          color: '#6b21a8', bg: '#f3e8ff', headerGrad: 'linear-gradient(135deg, #6b21a8, #9333ea)' }
+        case 'no_checkin':  return { icon: '❌', label: 'Tidak Check-In',     engLabel: 'Missing Check-In', color: '#7c3aed', bg: '#ede9fe', headerGrad: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }
+        case 'no_checkout': return { icon: '⚠️', label: 'Tidak Check-Out',    engLabel: 'Missing Check-Out',color: '#ea580c', bg: '#ffedd5', headerGrad: 'linear-gradient(135deg, #ea580c, #f97316)' }
+        default:            return { icon: '❓', label: type,                  engLabel: type,               color: '#374151', bg: '#f3f4f6', headerGrad: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
       }
     }
 
-    // Build dynamic subject based on issue types
     const issueList = issues || []
-    const typeNames = issueList.map(i => typeLabel(i.type).label)
-    let subject
-    if (typeNames.length === 1) {
-      // Single issue → specific subject
-      const { icon, label } = typeLabel(issueList[0].type)
-      subject = `${icon} ${label} — ${date}`
-    } else {
-      // Multiple issues → list them
-      subject = `⚠️ ${typeNames.join(' & ')} — ${date}`
+    const primaryMeta = typeLabel(issueList[0]?.type || 'late')
+
+    // Subject: "Notice of [Violation Type]" — use English label
+    const engLabels = issueList.map(i => typeLabel(i.type).engLabel)
+    const subject = issueList.length === 1
+      ? `Notice of ${engLabels[0]}`
+      : `Notice of ${engLabels.join(' & ')}`
+
+    // Format duration helper
+    const formatDuration = (mins) => {
+      if (!mins && mins !== 0) return ''
+      const h = Math.floor(mins / 60)
+      const m = mins % 60
+      const parts = []
+      if (h > 0) parts.push(`${h} hour${h > 1 ? 's' : ''}`)
+      if (m > 0) parts.push(`${m} minute${m > 1 ? 's' : ''}`)
+      return parts.join(' ') || '0 minutes'
     }
 
-    // Header: use the first (most important) issue's color
-    const primaryMeta = typeLabel(issueList[0]?.type || 'late')
-    const headerTitle = typeNames.length === 1
-      ? `${primaryMeta.icon} ${primaryMeta.label}`
-      : `⚠️ Catatan Kehadiran`
-
-    const issueRows = issueList.map(issue => {
-      const { icon, label, color, bg } = typeLabel(issue.type)
-      let detail
-      if (issue.type === 'absent') {
-        detail = `Tidak ada data kehadiran sama sekali pada tanggal ini. Jadwal masuk: ${issue.scheduledTime || '—'}`
-      } else if (issue.type === 'no_checkin') {
-        detail = `Tidak ada data check-in. Jadwal check-in: ${issue.scheduledTime || '—'}`
-      } else if (issue.type === 'no_checkout') {
-        detail = `Tidak ada data check-out. Jadwal check-out: ${issue.scheduledTime || '—'}`
-      } else if (issue.type === 'late') {
-        detail = `Check-in pukul <strong>${issue.actualTime}</strong> — seharusnya ${issue.scheduledTime}, terlambat <strong>${issue.minutesDiff} menit</strong>`
+    // Build one plain-text style sentence per issue (matching screenshot style)
+    const issueLines = issueList.map(issue => {
+      const { label } = typeLabel(issue.type)
+      if (issue.type === 'late') {
+        return `On <strong>${date}</strong>, you were <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">late</span> by ${formatDuration(issue.minutesDiff)}.`
       } else if (issue.type === 'leave_early') {
-        detail = `Check-out pukul <strong>${issue.actualTime}</strong> — seharusnya ${issue.scheduledTime}, lebih awal <strong>${issue.minutesDiff} menit</strong>`
-      } else {
-        detail = '—'
+        return `On <strong>${date}</strong>, you were <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">leave early</span> by ${formatDuration(issue.minutesDiff)}.`
+      } else if (issue.type === 'absent') {
+        return `On <strong>${date}</strong>, you were recorded as <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">absent</span> (no attendance recorded).`
+      } else if (issue.type === 'no_checkin') {
+        return `On <strong>${date}</strong>, there was <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">no check-in record</span> found. Scheduled check-in: ${issue.scheduledTime || '—'}.`
+      } else if (issue.type === 'no_checkout') {
+        return `On <strong>${date}</strong>, there was <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">no check-out record</span> found. Scheduled check-out: ${issue.scheduledTime || '—'}.`
       }
+      return `On <strong>${date}</strong>, a <strong>${label}</strong> was recorded.`
+    })
 
-      return `
-        <div style="background:${bg};border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-          <div style="font-size:15px;font-weight:700;color:${color};margin-bottom:6px;">${icon} ${label}</div>
-          <div style="font-size:13px;color:#555;line-height:1.6;">${detail}</div>
-        </div>`
-    }).join('')
+    // Portal URL — use passed baseUrl, fallback to env, fallback to relative path
+    const appUrl = (baseUrl || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+    const portalUrl = appUrl
+      ? `${appUrl}/data/attendance-excuses`
+      : '/data/attendance-excuses'
 
     const html = wrapHtml(`
       <div class="container">
         <div class="header" style="background: ${primaryMeta.headerGrad};">
-          <h1>${headerTitle}</h1>
+          <h1>${issueList.length === 1 ? `${primaryMeta.icon} ${primaryMeta.label}` : '⚠️ Catatan Kehadiran'}</h1>
           <p>Chung Chung Christian School</p>
         </div>
         <div class="body">
-          <p>Yth. <strong>${userName}</strong>,</p>
-          <p>Berikut adalah catatan kehadiran Anda pada tanggal <strong>${date}</strong>:</p>
-          ${issueRows}
-          <p style="margin-top:16px;font-size:13px;color:#666;">
-            Jika terdapat kekeliruan, mohon hubungi bagian HR/Admin untuk klarifikasi.<br>
-            Notifikasi ini dikirim secara otomatis oleh sistem absensi.
+          <p>Good Morning, <strong>${userName}</strong>.</p>
+          ${issueLines.map(l => `<p>${l}</p>`).join('')}
+          <p style="margin-top:16px;">
+            Please fill Form in CCS Portal
+            (<a href="${portalUrl}" style="color:#1d4ed8;">${portalUrl}</a>)
+            &gt;&gt; Absence List<br>
+            Thank you.
+          </p>
+          <p style="margin-top:20px;color:#444;">
+            HCM Chung Chung Christian School
+          </p>
+          <p style="margin-top:12px;font-size:12px;color:#999;">
+            This email was sent to you by <strong>Chung Chung Christian School</strong>.
+            We kindly request that you <em>do not mark this email as spam.</em>
           </p>
         </div>
         <div class="footer">
-          Pesan ini dikirim otomatis oleh sistem CCS — Chung Chung Christian School
+          HCM Chung Chung Christian School
         </div>
       </div>
     `)
