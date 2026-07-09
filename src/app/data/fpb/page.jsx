@@ -1842,12 +1842,12 @@ export default function FpbListPage() {
         <td style={{ padding: '12px 14px', fontSize: 13, color: theme.textPrimary, fontWeight: 600 }}>{fmt(f.grand_total)}</td>
         <td style={{ padding: '12px 14px', fontSize: 12, color: theme.textSecondary }}>{fmtDate(f.usage_date)}</td>
         <td style={{ padding: '12px 14px' }}>
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-            <StatusBadge status={f.status} />
-            {f.procurement_status === 'ordered' && (
-              <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 10, fontWeight: 700, color: '#065f46', background: 'rgba(5,150,105,0.12)', whiteSpace: 'nowrap' }}>📦 Dipesan</span>
-            )}
-          </div>
+          <StatusBadge status={f.status} />
+        </td>
+        <td style={{ padding: '12px 14px' }}>
+          {f.procurement_status === 'ordered'
+            ? <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#065f46', background: 'rgba(5,150,105,0.12)', whiteSpace: 'nowrap' }}>📦 Dipesan</span>
+            : <span style={{ color: theme.textSecondary, fontSize: 12 }}>—</span>}
         </td>
         {!isPending && !isHistory && (
           <td style={{ padding: '12px 14px', fontSize: 11, color: theme.textSecondary }}>{f.revision_count > 0 ? `Revisi ke-${f.revision_count}` : ''}</td>
@@ -2009,6 +2009,7 @@ export default function FpbListPage() {
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Grand Total</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Tgl Kebutuhan</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Status</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Pemesanan</th>
                     {tab === 'mine' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}></th>}
                     {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Tgl Disetujui</th>}
                     <th style={{ padding: '10px 14px' }}></th>
