@@ -55,7 +55,7 @@ export default function FpbSettingsPage() {
       })
       setRoleApprovers(map)
       setBudgetRoleIds(new Set((br || []).map(b => b.role_id)))
-      if (sc) { setScreenerId(String(sc.screener_user_id)); setScreenerRowId(sc.id) }
+      if (sc) { setScreenerId(String(sc.screener_role_id)); setScreenerRowId(sc.id) }
       if (r?.length) setSelRole(r[0])
       setLoading(false)
     })
@@ -76,7 +76,6 @@ export default function FpbSettingsPage() {
     if (!ra.approver1_id) { setError('Minimal 1 approver wajib diisi'); return }
     const ids = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
     if (new Set(ids).size !== ids.length) { setError('Approver tidak boleh sama'); return }
-    if (screenerId && ids.includes(screenerId)) { setError('Approver tidak boleh sama dengan Screener'); return }
     setSaving(true)
     try {
       const payload = {
@@ -108,7 +107,7 @@ export default function FpbSettingsPage() {
     setSavingScreener(true)
     try {
       if (screenerId) {
-        const payload = { screener_user_id: parseInt(screenerId) }
+        const payload = { screener_role_id: parseInt(screenerId) }
         if (screenerRowId) {
           const { error: e } = await supabase.from('fpb_screener').update(payload).eq('id', screenerRowId)
           if (e) throw e
@@ -158,7 +157,7 @@ export default function FpbSettingsPage() {
 
   const curRa = selRole ? (roleApprovers[selRole.role_id] || {}) : {}
   const isConfigured = !!curRa.approver1_id
-  const screenerUser = users.find(u => String(u.user_id) === screenerId)
+  const screenerRole = roles.find(r => String(r.role_id) === screenerId)
   const approverIds  = selRole ? [curRa.approver1_id, curRa.approver2_id, curRa.approver3_id].filter(Boolean) : []
 
   return (
@@ -194,27 +193,27 @@ export default function FpbSettingsPage() {
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>
-                Screener <span style={{ fontWeight: 400 }}>(opsional — jika kosong, FPB langsung ke Approver 1)</span>
+                Role Screener <span style={{ fontWeight: 400 }}>(opsional — jika kosong, FPB langsung ke Approver 1)</span>
               </label>
               <select value={screenerId} onChange={e => setScreenerId(e.target.value)} style={inputStyle}>
                 <option value="">— Tidak ada (skip screening) —</option>
-                {users.map(u => (<option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>))}
+                {roles.map(r => (<option key={r.role_id} value={String(r.role_id)}>{r.role_name}</option>))}
               </select>
             </div>
-            {screenerUser && (
+            {screenerRole && (
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>{userName(screenerUser).split(' ')[0]}</div>
+                <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>{screenerRole.role_name}</div>
                 <div style={{ fontSize: 10, color: '#d97706', fontWeight: 600, marginTop: 2 }}>✓ Dipilih</div>
               </div>
             )}
           </div>
-          {screenerUser && (
+          {screenerRole && (
             <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 16 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 8, textTransform: 'uppercase' }}>Preview Alur dengan Screener</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
                 <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Pengaju</span>
                 <span style={{ color: theme.textSecondary }}>→</span>
-                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', color: '#d97706', fontWeight: 600 }}>🔍 {userName(screenerUser).split(' ')[0]}</span>
+                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', color: '#d97706', fontWeight: 600 }}>🔍 {screenerRole.role_name}</span>
                 <span style={{ color: theme.textSecondary }}>→</span>
                 <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366f1', fontWeight: 600 }}>Approver 1, 2, ...</span>
                 <span style={{ color: theme.textSecondary }}>→</span>
@@ -314,8 +313,8 @@ export default function FpbSettingsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
                       <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontWeight: 600 }}>Pengaju ({selRole.role_name})</span>
                       <span style={{ color: theme.textSecondary }}>→</span>
-                      {screenerUser && <>
-                        <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', color: '#d97706', fontWeight: 600 }}>🔍 {userName(screenerUser).split(' ')[0]}</span>
+                      {screenerRole && <>
+                        <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', color: '#d97706', fontWeight: 600 }}>🔍 {screenerRole.role_name}</span>
                         <span style={{ color: theme.textSecondary }}>→</span>
                       </>}
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

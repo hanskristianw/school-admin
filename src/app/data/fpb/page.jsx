@@ -49,6 +49,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const [remainingVal, setRemainingVal]     = useState('')
   const [savingBudget, setSavingBudget]     = useState(false)
   const [printFpbId, setPrintFpbId]         = useState(null)
+  const [userRoleId, setUserRoleId]         = useState(null)
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -78,6 +79,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
       setRevisions(rv || [])
       const { data: userRow } = await supabase.from('users').select('user_role_id').eq('user_id', uid).single()
       if (userRow?.user_role_id) {
+        setUserRoleId(userRow.user_role_id)
         const { data: br } = await supabase.from('fpb_budget_roles').select('role_id').eq('role_id', userRow.user_role_id).maybeSingle()
         setCanEditBudget(!!br)
       }
@@ -86,9 +88,10 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   }
 
   // Screener = approver_order 0; regular approvers = order >= 1
-  const screeningRow     = approvals.find(a => a.approver_order === 0)
-  const screeningDone    = screeningRow ? screeningRow.status === 'approved' : true
-  const iAmScreener      = screeningRow?.approver_user_id === userId
+  // Screener is role-based: check if user's role matches screener_role_id (approver_role_id)
+  const screeningRow       = approvals.find(a => a.approver_order === 0)
+  const screeningDone      = screeningRow ? screeningRow.status === 'approved' : true
+  const iAmScreener        = screeningRow && userRoleId && screeningRow.approver_role_id === userRoleId
   const myScreeningPending = iAmScreener && screeningRow?.status === 'pending' && fpb?.status === 'pending'
 
   // Regular approver: only active after screening is done
@@ -103,9 +106,10 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     }
     setSaving(true); setError('')
     try {
-      await supabase.from('fpb_approvals').update({
-        status: action, comment: comment.trim() || null, action_at: new Date().toISOString()
-      }).eq('approval_id', myPendingApproval.approval_id)
+      const updatePayload = { status: action, comment: comment.trim() || null, action_at: new Date().toISOString() }
+      // For role-based screener: also save who actually performed the screening
+      if (myScreeningPending && userId) updatePayload.approver_user_id = userId
+      await supabase.from('fpb_approvals').update(updatePayload).eq('approval_id', myPendingApproval.approval_id)
 
       if (action === 'approved') {
         // If just finished screening, check if all screening rows done (always 1)
@@ -339,7 +343,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                       const scActive  = !scDone && fpb.status === 'pending' && sc.status === 'pending'
                       const scRevised = sc.status === 'revision'
                       const scRejected= sc.status === 'rejected'
-                      const scName    = `${sc.users?.user_nama_depan || ''} ${sc.users?.user_nama_belakang || ''}`.trim() || 'Screener'
+                      const scName    = sc.role?.role_name || 'Screener'
                       return (
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
@@ -516,18 +520,35 @@ function buildPrintHtml(fpb, items, approvals) {
       <td style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">${fmtRp(it.quantity * it.unit_price)}</td>
     </tr>`).join('')
 
-  const approvalHeaders = approvals.map((ap, i) =>
-    `<th style="border:1px solid #9ca3af;padding:7px 8px;text-align:center;background:#f9fafb;font-weight:700">Approved ${i + 1}</th>`
-  ).join('')
+  // Separate screener row (order=0) from regular approvals
+  const screeningApproval = approvals.find(a => a.approver_order === 0)
+  const regularApprovals  = approvals.filter(a => a.approver_order !== 0)
 
-  const approvalCells = approvals.map(ap => {
-    const name = ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
+  const approvalHeaders = [
+    ...(screeningApproval ? [`<th style="border:1px solid #9ca3af;padding:7px 8px;text-align:center;background:#fff8ed;font-weight:700">Screening</th>`] : []),
+    ...regularApprovals.map((ap, i) =>
+      `<th style="border:1px solid #9ca3af;padding:7px 8px;text-align:center;background:#f9fafb;font-weight:700">Approved ${i + 1}</th>`)
+  ].join('')
+
+  const buildCell = (ap, label) => {
+    const name = ap.approver_order === 0
+      ? (ap.role?.role_name || 'Screener')
+      : ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
+    const actorName = ap.approver_order === 0 && ap.approver_user_id
+      ? ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim()
+      : null
     const dateStr = ap.status === 'approved' ? fmtD(ap.action_at) : ap.status === 'rejected' ? '(Ditolak)' : ap.status === 'revision' ? '(Revisi)' : '(Menunggu)'
-    return `<td style="border:1px solid #9ca3af;padding:8px;text-align:center;min-width:100px">
+    return `<td style="border:1px solid #9ca3af;padding:8px;text-align:center;min-width:100px;${ap.approver_order === 0 ? 'background:#fffbeb;' : ''}">
       <div style="font-weight:600;color:${ap.status === 'approved' ? '#111827' : '#9ca3af'}">${name}</div>
+      ${actorName ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">oleh: ${actorName}</div>` : ''}
       <div style="font-size:11px;margin-top:4px;color:${ap.status === 'approved' ? '#374151' : '#d1d5db'}">${dateStr}</div>
     </td>`
-  }).join('')
+  }
+
+  const approvalCells = [
+    ...(screeningApproval ? [buildCell(screeningApproval, 'Screening')] : []),
+    ...regularApprovals.map(ap => buildCell(ap, 'Approval'))
+  ].join('')
 
   return `<!DOCTYPE html>
 <html>
@@ -1185,15 +1206,15 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         status:           'pending',
       }))
 
-      // Fetch global screener (if any)
-      const { data: sc } = await supabase.from('fpb_screener').select('screener_user_id').limit(1).maybeSingle()
-      if (sc?.screener_user_id) {
+      // Fetch global screener role (if any)
+      const { data: sc } = await supabase.from('fpb_screener').select('screener_role_id').limit(1).maybeSingle()
+      if (sc?.screener_role_id) {
         approvalRows.unshift({
           fpb_id:           null,
           step_order:       1,
           step_name:        'Screening',
-          approver_user_id: sc.screener_user_id,
-          approver_role_id: null,
+          approver_user_id: null,
+          approver_role_id: sc.screener_role_id,
           approver_order:   0,
           status:           'pending',
         })
@@ -1433,14 +1454,28 @@ export default function FpbListPage() {
         .eq('submitted_by', uid).order('created_at', { ascending: false })
       setMyFpbs(mine || [])
 
-      // Step 1: Get MY pending approval rows, include approval_id for position detection
+      // Get user's role_id for role-based screener detection
+      const { data: myUserRow } = await supabase.from('users').select('user_role_id').eq('user_id', uid).single()
+      const myRoleId = myUserRow?.user_role_id || null
+
+      // Step 1a: My regular pending approval rows (by user_id)
       const { data: myApprovals } = await supabase
         .from('fpb_approvals')
         .select('approval_id, fpb_id, step_order, step_name, approver_order, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
         .eq('approver_user_id', uid).eq('status', 'pending')
 
+      // Step 1b: Screening rows pending for my role (role-based screener, approver_order=0)
+      const { data: myScreeningApprovals } = myRoleId ? await supabase
+        .from('fpb_approvals')
+        .select('approval_id, fpb_id, step_order, step_name, approver_order, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
+        .eq('approver_role_id', myRoleId).eq('approver_order', 0).eq('status', 'pending')
+        : { data: [] }
+
+      // Combine and deduplicate by fpb_id (screener rows take priority if duplicate)
+      const allMyApprovals = [...(myApprovals || []), ...(myScreeningApprovals || [])]
+
       // Filter: only FPBs at the correct current step with status pending
-      const candidates = (myApprovals || []).filter(
+      const candidates = allMyApprovals.filter(
         a => a.fpb?.current_step === a.step_order && a.fpb?.status === 'pending'
       )
 
