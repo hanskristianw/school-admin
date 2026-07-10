@@ -200,16 +200,13 @@ export const emailTemplates = {
       return `On <strong>${date}</strong>, a <strong>${label}</strong> was recorded.`
     })
 
-    // Portal URL — use passed baseUrl, fallback to env, fallback to relative path
-    const appUrl = (baseUrl || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
-    const portalUrl = appUrl
-      ? `${appUrl}/data/attendance-excuses`
-      : '/data/attendance-excuses'
+    // Portal URL — hardcoded to production domain
+    const portalUrl = 'https://manageccs.online/data/attendance-excuses'
 
     const html = wrapHtml(`
       <div class="container">
         <div class="header" style="background: ${primaryMeta.headerGrad};">
-          <h1>${issueList.length === 1 ? `${primaryMeta.icon} ${primaryMeta.label}` : '⚠️ Catatan Kehadiran'}</h1>
+          <h1>${issueList.length === 1 ? `${primaryMeta.icon} ${primaryMeta.engLabel}` : '⚠️ Attendance Notice'}</h1>
           <p>Chung Chung Christian School</p>
         </div>
         <div class="body">
