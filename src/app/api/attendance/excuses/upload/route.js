@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
 const ALLOWED_EXTS  = ['jpg', 'jpeg', 'png', 'pdf']
 const MAX_SIZE      = 5 * 1024 * 1024 // 5 MB
-const BUCKET        = 'excuse-attachments'
+const BUCKET        = 'profile-pictures'  // existing bucket
 
 export async function POST(request) {
   try {
@@ -45,7 +45,7 @@ export async function POST(request) {
       )
     }
 
-    const prefix   = userId ? `${userId}` : 'anon'
+    const prefix   = userId ? `excuses/${userId}` : 'excuses/anon'
     const fileName = `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
 
     const bytes  = await file.arrayBuffer()
@@ -56,7 +56,7 @@ export async function POST(request) {
       .upload(fileName, buffer, {
         contentType: file.type,
         cacheControl: '3600',
-        upsert: false,
+        upsert: true,
       })
 
     if (uploadError) {
