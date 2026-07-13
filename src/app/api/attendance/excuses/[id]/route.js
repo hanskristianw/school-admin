@@ -177,6 +177,57 @@ export async function PATCH(request, { params }) {
   }
 }
 
+// PUT /api/attendance/excuses/[id]
+// Edit a pending excuse (only if status = 'pending')
+export async function PUT(request, { params }) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+    const { category, other_reason, attachment_url, user_id } = body
+
+    // Verify ownership + pending status
+    const { data: excuse, error: fetchErr } = await supabaseAdmin
+      .from('attendance_excuses')
+      .select('id, status, user_id')
+      .eq('id', id)
+      .single()
+    if (fetchErr) throw fetchErr
+
+    if (excuse.status !== 'pending') {
+      return NextResponse.json({
+        success: false,
+        message: 'Pengajuan tidak dapat diubah karena sudah diproses oleh approver.',
+      }, { status: 403 })
+    }
+    if (excuse.user_id !== parseInt(user_id, 10)) {
+      return NextResponse.json({ success: false, message: 'Tidak diizinkan.' }, { status: 403 })
+    }
+
+    if (!category) {
+      return NextResponse.json({ success: false, message: 'category wajib diisi' }, { status: 400 })
+    }
+
+    const updates = {
+      category,
+      other_reason: category === 'other' ? (other_reason?.trim() || null) : null,
+      attachment_url: attachment_url || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('attendance_excuses')
+      .update(updates)
+      .eq('id', id)
+      .select(EXCUSE_SELECT)
+      .single()
+    if (error) throw error
+
+    return NextResponse.json({ success: true, data })
+  } catch (err) {
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 })
+  }
+}
+
 // DELETE /api/attendance/excuses/[id]
 // Hanya boleh jika status masih 'pending' (belum ada tindakan dari approver manapun)
 export async function DELETE(request, { params }) {

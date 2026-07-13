@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabase'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-// Fallback statis jika DB belum load
 const CATEGORIES_LATE_LEAVE_EARLY_STATIC = [
   { value: 'woke_up_late',    label: 'Woke Up Late' },
   { value: 'traffic_jam',     label: 'Traffic Jam / Transportation Issue' },
@@ -22,7 +21,6 @@ const CATEGORIES_NO_SCAN_STATIC = [
   { value: 'other',                label: 'Other' },
 ]
 
-// Konversi record dari leave_types DB ke format {value, label, requireUpload, uploadLabel}
 function dbToCategory(lt) {
   return {
     value:        lt.code,
@@ -74,17 +72,19 @@ function monthEnd(ym) {
   return `${ym}-${String(last.getDate()).padStart(2, '0')}`
 }
 
-// ─── Excuse Modal ────────────────────────────────────────────────────────────
+// ─── Excuse Modal (Submit + Edit) ────────────────────────────────────────────
 
-function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
+function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess }) {
   const { theme } = useTheme()
-  const [category, setCategory]       = useState('')
-  const [otherReason, setOtherReason] = useState('')
+  const isEdit = !!excuse   // editing an existing pending excuse
+
+  const [category, setCategory]       = useState(excuse?.category || '')
+  const [otherReason, setOtherReason] = useState(excuse?.other_reason || '')
   const [submitting, setSubmitting]   = useState(false)
   const [msg, setMsg]                 = useState('')
   const [uploadFile, setUploadFile]   = useState(null)
   const [uploading, setUploading]     = useState(false)
-  const [quotaInfo, setQuotaInfo]     = useState(null)  // { total_days, used_days, year_name } | null
+  const [quotaInfo, setQuotaInfo]     = useState(null)
   const [quotaLoading, setQuotaLoading] = useState(false)
 
   const issueType = record.issues?.includes('late')
@@ -101,29 +101,21 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
   const selectedCat = categories.find(c => c.value === category)
   const requireUpload = selectedCat?.requireUpload || false
 
-  // Fetch sisa quota ketika kategori berubah dan deduct_quota=true
   const fetchQuota = async (catCode) => {
     if (!catCode) { setQuotaInfo(null); return }
     setQuotaLoading(true)
     try {
       const targetDate = record.date
-      // Fetch individual + global records sekaligus (API sudah return keduanya via OR filter)
       const res = await fetch(`/api/attendance/leave-quotas?user_id=${userId}&leave_type_code=${catCode}`)
       const json = await res.json()
       const records = json.data || []
 
-      // Pisahkan individual vs global
-      const indiv = records.find(q => !q.is_global && q.year?.start_date <= targetDate && q.year?.end_date >= targetDate)
+      const indiv  = records.find(q => !q.is_global && q.year?.start_date <= targetDate && q.year?.end_date >= targetDate)
       const global = records.find(q =>  q.is_global && q.year?.start_date <= targetDate && q.year?.end_date >= targetDate)
 
-      if (indiv) {
-        setQuotaInfo({ total_days: indiv.total_days, used_days: indiv.used_days, year_name: indiv.year?.year_name || '', is_global: false })
-      } else if (global) {
-        // Belum ada record individual → tampilkan jatah global (used=0 untuk karyawan ini)
-        setQuotaInfo({ total_days: global.total_days, used_days: 0, year_name: global.year?.year_name || '', is_global: true })
-      } else {
-        setQuotaInfo({ notFound: true })
-      }
+      if (indiv)        setQuotaInfo({ total_days: indiv.total_days, used_days: indiv.used_days, year_name: indiv.year?.year_name || '', is_global: false })
+      else if (global)  setQuotaInfo({ total_days: global.total_days, used_days: 0, year_name: global.year?.year_name || '', is_global: true })
+      else              setQuotaInfo({ notFound: true })
     } catch { setQuotaInfo(null) }
     finally { setQuotaLoading(false) }
   }
@@ -136,13 +128,15 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
 
   const ic = ISSUE_CONFIG[issueType] || ISSUE_CONFIG.absent
 
+  // Upload to dedicated excuse-attachments endpoint
   const uploadAttachment = async () => {
-    if (!uploadFile) return null
+    if (!uploadFile) return excuse?.attachment_url || null
     const formData = new FormData()
     formData.append('file', uploadFile)
+    formData.append('user_id', String(userId))
     setUploading(true)
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      const res  = await fetch('/api/attendance/excuses/upload', { method: 'POST', body: formData })
       const json = await res.json()
       if (!json.success) throw new Error(json.message || 'Upload gagal')
       return json.url
@@ -154,26 +148,38 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
   const handleSubmit = async () => {
     if (!category) { setMsg('❌ Pilih kategori alasan'); return }
     if (category === 'other' && !otherReason.trim()) { setMsg('❌ Isi keterangan untuk Other'); return }
-    if (requireUpload && !uploadFile) { setMsg('❌ Upload file wajib untuk kategori ini'); return }
+    if (requireUpload && !uploadFile && !excuse?.attachment_url) { setMsg('❌ Upload file wajib untuk kategori ini'); return }
     setSubmitting(true); setMsg('')
     try {
-      let attachmentUrl = null
-      if (uploadFile) attachmentUrl = await uploadAttachment()
-      const res = await fetch('/api/attendance/excuses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id:         userId,
-          excuse_type:     issueType,
-          attendance_date: record.date,
-          late_minutes:    duration || null,
-          category,
-          other_reason:    category === 'other' ? otherReason.trim() : null,
-          attachment_url:  attachmentUrl,
-        }),
-      })
-      const json = await res.json()
-      if (!json.success) throw new Error(json.message)
+      const attachmentUrl = uploadFile ? await uploadAttachment() : (excuse?.attachment_url || null)
+
+      if (isEdit) {
+        // PUT to update
+        const res = await fetch(`/api/attendance/excuses/${excuse.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, category, other_reason: category === 'other' ? otherReason.trim() : null, attachment_url: attachmentUrl }),
+        })
+        const json = await res.json()
+        if (!json.success) throw new Error(json.message)
+      } else {
+        // POST to create
+        const res = await fetch('/api/attendance/excuses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id:         userId,
+            excuse_type:     issueType,
+            attendance_date: record.date,
+            late_minutes:    duration || null,
+            category,
+            other_reason:    category === 'other' ? otherReason.trim() : null,
+            attachment_url:  attachmentUrl,
+          }),
+        })
+        const json = await res.json()
+        if (!json.success) throw new Error(json.message)
+      }
       onSuccess()
     } catch (err) {
       setMsg('❌ ' + err.message)
@@ -181,7 +187,6 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
     }
   }
 
-  // Close on backdrop click
   const handleBackdrop = (e) => { if (e.target === e.currentTarget) onClose() }
 
   const inputStyle = {
@@ -222,15 +227,15 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
         marginBottom: 'auto',
         alignSelf: 'center',
       }}>
-        {/* Header — fixed, tidak scroll */}
+        {/* Header */}
         <div className="flex items-start justify-between"
           style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: theme.textPrimary }}>
-              📝 Surat Keterangan
+              {isEdit ? '✏️ Edit Surat Keterangan' : '📝 Surat Keterangan'}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
-              Ajukan alasan untuk absensi berikut
+              {isEdit ? 'Ubah alasan pengajuan Anda' : 'Ajukan alasan untuk catatan kehadiran berikut'}
             </p>
           </div>
           <button onClick={onClose}
@@ -301,17 +306,14 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
         </div>
 
         {/* Quota info */}
-        {/* Quota info — tampil jika ada quota record */}
         {quotaInfo && !quotaInfo.notFound && (
           <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
             {quotaLoading ? (
               <span className="text-xs" style={{ color: theme.textSecondary }}>⏳ Mengecek sisa jatah...</span>
-            ) : quotaInfo?.notFound ? (
-              <span className="text-xs" style={{ color: '#92400e' }}>⚠️ Jatah cuti belum diset oleh admin untuk tahun ajaran ini</span>
             ) : quotaInfo ? (
               <div className="flex items-center justify-between">
                 <span className="text-xs" style={{ color: theme.textSecondary }}>
-                  📋 Jatah {selectedCat.label} · {quotaInfo.year_name}
+                  📋 Jatah {selectedCat?.label} · {quotaInfo.year_name}
                 </span>
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{
@@ -321,24 +323,31 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
                   Sisa {quotaInfo.total_days - quotaInfo.used_days} / {quotaInfo.total_days} hari
                 </span>
               </div>
-            ) : (
-              <span className="text-xs" style={{ color: theme.textSecondary }}>📋 Pilih kategori untuk cek sisa jatah</span>
-            )}
+            ) : null}
           </div>
         )}
 
+        {/* File upload */}
         {requireUpload && (
           <div className="mb-3">
             <label className="text-xs font-medium block mb-1.5" style={{ color: theme.textSecondary }}>
               {selectedCat?.uploadLabel || 'Upload Dokumen'} <span style={{ color: '#ef4444' }}>*</span>
             </label>
+            {/* Show existing attachment if editing */}
+            {isEdit && excuse?.attachment_url && !uploadFile && (
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg text-xs"
+                style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
+                📎 <a href={excuse.attachment_url} target="_blank" rel="noreferrer" style={{ color: '#15803d', textDecoration: 'underline' }}>File terlampir</a>
+                <span style={{ color: theme.textSecondary }}>(upload baru untuk mengganti)</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <label className="flex-1 cursor-pointer">
                 <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
                   style={{ border: `1px dashed ${theme.border}`, background: theme.subtleBg }}>
                   <span className="text-lg">📎</span>
                   <span className="text-xs" style={{ color: theme.textSecondary }}>
-                    {uploadFile ? uploadFile.name : 'Klik untuk pilih file (PDF, JPG, PNG)'}
+                    {uploadFile ? uploadFile.name : 'Klik untuk pilih file (PDF, JPG, PNG, maks. 5MB)'}
                   </span>
                 </div>
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
@@ -375,7 +384,7 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
         )}
         </div>{/* end scrollable body */}
 
-        {/* Footer buttons — fixed, tidak scroll */}
+        {/* Footer buttons */}
         <div className="flex gap-2"
           style={{ padding: '12px 24px 20px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
           <button onClick={onClose}
@@ -391,7 +400,50 @@ function ExcuseModal({ record, userId, leaveTypes, onClose, onSuccess }) {
               color: '#fff',
               opacity: submitting ? 0.7 : 1,
             }}>
-            {submitting ? (uploading ? 'Mengupload...' : 'Mengajukan...') : 'Submit'}
+            {submitting ? (uploading ? 'Mengupload...' : isEdit ? 'Menyimpan...' : 'Mengajukan...') : 'Submit'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
+
+function DeleteConfirmModal({ excuse, onClose, onSuccess }) {
+  const { theme } = useTheme()
+  const [deleting, setDeleting] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const res  = await fetch(`/api/attendance/excuses/${excuse.id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.message)
+      onSuccess()
+    } catch (err) {
+      setMsg('❌ ' + err.message)
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ background: theme.cardBg, borderRadius: '16px', width: '100%', maxWidth: '380px', padding: '28px 24px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: `1px solid ${theme.border}` }}>
+        <div className="text-2xl mb-3 text-center">🗑️</div>
+        <h2 className="text-base font-semibold text-center mb-1" style={{ color: theme.textPrimary }}>Hapus Pengajuan?</h2>
+        <p className="text-sm text-center mb-4" style={{ color: theme.textSecondary }}>
+          Pengajuan untuk tanggal <strong>{excuse.attendance_date}</strong> akan dihapus permanen.
+        </p>
+        {msg && <div className="mb-3 p-2.5 rounded-lg text-sm" style={{ background: '#fef2f2', color: '#991b1b' }}>{msg}</div>}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium"
+            style={{ background: theme.subtleBg, color: theme.textSecondary }}>Batal</button>
+          <button onClick={handleDelete} disabled={deleting} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold"
+            style={{ background: '#dc2626', color: '#fff', opacity: deleting ? 0.7 : 1 }}>
+            {deleting ? 'Menghapus...' : 'Hapus'}
           </button>
         </div>
       </div>
@@ -407,14 +459,14 @@ export default function AttendanceExcusesPage() {
 
   const [userId, setUserId]           = useState(null)
   const [month, setMonth]             = useState(() => new Date().toISOString().slice(0, 7))
-  const [issueRows, setIssueRows]     = useState([])  // days with issues
-  const [excuseMap, setExcuseMap]     = useState({})  // date → excuse
+  const [issueRows, setIssueRows]     = useState([])
+  const [excuseMap, setExcuseMap]     = useState({})
   const [loading, setLoading]         = useState(false)
-  const [modalRecord, setModalRecord] = useState(null)
+  const [modalRecord, setModalRecord] = useState(null)   // { record, excuse? }
+  const [deleteExcuse, setDeleteExcuse] = useState(null)
   const [successDate, setSuccessDate] = useState(null)
-  const [leaveTypes, setLeaveTypes]   = useState([])  // from DB
+  const [leaveTypes, setLeaveTypes]   = useState([])
 
-  // Fetch leave types from DB on mount (for dynamic categories)
   useEffect(() => {
     supabase.from('leave_types').select('*').eq('is_active', true).order('sort_order')
       .then(({ data }) => { if (data) setLeaveTypes(data) })
@@ -431,8 +483,6 @@ export default function AttendanceExcusesPage() {
     setLoading(true)
     try {
       const start = monthStart(ym)
-      // Jika bulan yang dipilih adalah bulan berjalan, gunakan kemarin sebagai akhir
-      // agar hari yang belum berlalu tidak dihitung sebagai tidak masuk
       const today     = new Date()
       const yesterday = new Date(today)
       yesterday.setDate(today.getDate() - 1)
@@ -442,7 +492,6 @@ export default function AttendanceExcusesPage() {
         ? (yesterdayStr < monthEnd(ym) ? yesterdayStr : monthEnd(ym))
         : monthEnd(ym)
 
-      // Parallel: fetch report + existing excuses
       const [reportRes, excusesRes] = await Promise.all([
         fetch(`/api/attendance/report?user_id=${uid}&start=${start}&end=${end}`),
         fetch(`/api/attendance/excuses?user_id=${uid}&start=${start}&end=${end}`),
@@ -450,7 +499,6 @@ export default function AttendanceExcusesPage() {
       const reportJson  = await reportRes.json()
       const excusesJson = await excusesRes.json()
 
-      // Build excuse map by date
       const em = {}
       if (excusesJson.success) {
         for (const ex of (excusesJson.data || [])) {
@@ -459,12 +507,10 @@ export default function AttendanceExcusesPage() {
       }
       setExcuseMap(em)
 
-      // Extract days with issues from report
       const rows = []
       if (reportJson.success) {
         for (const user of (reportJson.data || [])) {
           for (const day of (user.daily || [])) {
-            // Hari libur & day off tidak perlu surat keterangan
             if (day.status === 'holiday' || day.status === 'dayoff' || day.status === 'off') continue
             const hasIssue = day.issues?.some(i =>
               ['late', 'leave_early', 'absent', 'no_checkin', 'no_checkout'].includes(i)
@@ -474,7 +520,6 @@ export default function AttendanceExcusesPage() {
         }
       }
 
-      // Sort by date descending
       rows.sort((a, b) => b.date.localeCompare(a.date))
       setIssueRows(rows)
     } finally {
@@ -487,16 +532,20 @@ export default function AttendanceExcusesPage() {
   }, [userId, month, loadData])
 
   const handleModalSuccess = () => {
-    setSuccessDate(modalRecord?.date)
+    const date = modalRecord?.record?.date
+    setSuccessDate(date)
     setModalRecord(null)
     loadData(userId, month)
     setTimeout(() => setSuccessDate(null), 3000)
   }
 
-  // ── Derived ─────────────────────────────────────────────────────────────────
+  const handleDeleteSuccess = () => {
+    setDeleteExcuse(null)
+    loadData(userId, month)
+  }
+
   const noExcuseCount = issueRows.filter(r => !excuseMap[r.date]).length
 
-  // ── Styles ──────────────────────────────────────────────────────────────────
   const cardStyle = {
     background: theme.cardBg,
     border: `1px solid ${theme.border}`,
@@ -538,7 +587,7 @@ export default function AttendanceExcusesPage() {
       {!loading && noExcuseCount > 0 && (
         <div className="p-3 rounded-xl flex items-center gap-3 text-sm"
           style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e' }}>
-          ⚠️ Anda memiliki <strong>{noExcuseCount} absensi bermasalah</strong> yang belum ada surat keterangannya bulan ini
+          ⚠️ Anda memiliki <strong>{noExcuseCount} catatan kehadiran</strong> yang belum ada surat keterangannya bulan ini
         </div>
       )}
 
@@ -558,7 +607,7 @@ export default function AttendanceExcusesPage() {
       ) : issueRows.length === 0 ? (
         <div className="py-16 text-center" style={{ color: theme.textSecondary }}>
           <div className="text-4xl mb-3">🎉</div>
-          <p className="text-sm font-medium">Tidak ada absensi bermasalah bulan ini!</p>
+          <p className="text-sm font-medium">Tidak ada catatan kehadiran yang perlu keterangan bulan ini!</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -566,7 +615,6 @@ export default function AttendanceExcusesPage() {
             const excuse = excuseMap[day.date]
             const st     = excuse ? STATUS_CONFIG[excuse.status] : null
 
-            // Determine primary issue for this day
             const primaryIssue = ['late', 'leave_early', 'absent', 'no_checkout', 'no_checkin'].find(i =>
               day.issues?.includes(i)
             )
@@ -578,10 +626,12 @@ export default function AttendanceExcusesPage() {
                 ? day.leave_early_minutes
                 : null
 
-            // Rejection info
             const rejectedBy = excuse?.approver1_action === 'rejected'
               ? excuse.approver1_note || 'Approver 1'
               : excuse?.approver2_note || 'Approver 2'
+
+            // Can edit/delete: excuse exists and status is still 'pending'
+            const canEditDelete = excuse && excuse.status === 'pending'
 
             return (
               <div key={day.date} style={cardStyle}
@@ -589,25 +639,21 @@ export default function AttendanceExcusesPage() {
 
                 {/* Left: date + issue type */}
                 <div className="flex items-center gap-3 flex-wrap">
-                  {/* Date */}
                   <div className="text-sm font-semibold min-w-[90px]" style={{ color: theme.textPrimary }}>
                     {day.date}
                   </div>
 
-                  {/* Issue badge */}
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium"
                     style={{ background: ic.bg, color: ic.color }}>
                     {ic.icon} {ic.label}
                   </span>
 
-                  {/* Duration */}
                   {duration > 0 && (
                     <span className="text-xs font-semibold" style={{ color: ic.color }}>
                       +{fmtMins(duration)}
                     </span>
                   )}
 
-                  {/* Checkin info */}
                   {day.checkin_time && (
                     <span className="text-xs" style={{ color: theme.textSecondary }}>
                       {day.checkin_time}
@@ -616,10 +662,10 @@ export default function AttendanceExcusesPage() {
                   )}
                 </div>
 
-                {/* Right: excuse status / button */}
-                <div className="flex items-center gap-2">
+                {/* Right: status + actions */}
+                <div className="flex items-center gap-2 flex-wrap">
                   {excuse ? (
-                    <div className="flex items-center gap-2">
+                    <>
                       <span className="text-xs px-2.5 py-1 rounded-full font-medium"
                         style={{ background: st.bg, color: st.color }}>
                         {st.icon} {st.label}
@@ -629,10 +675,27 @@ export default function AttendanceExcusesPage() {
                           ({rejectedBy})
                         </span>
                       )}
-                    </div>
+                      {/* Edit & Delete — only for pending */}
+                      {canEditDelete && (
+                        <>
+                          <button
+                            onClick={() => setModalRecord({ record: { ...day, issues: [primaryIssue] }, excuse })}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                            style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleteExcuse(excuse)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                            style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }}>
+                            🗑️
+                          </button>
+                        </>
+                      )}
+                    </>
                   ) : (
                     <button
-                      onClick={() => setModalRecord(day)}
+                      onClick={() => setModalRecord({ record: day })}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold"
                       style={{ background: theme.blueText || '#2563eb', color: '#fff' }}>
                       ✏️ Ajukan
@@ -645,14 +708,24 @@ export default function AttendanceExcusesPage() {
         </div>
       )}
 
-      {/* Excuse modal */}
+      {/* Excuse modal (submit or edit) */}
       {modalRecord && (
         <ExcuseModal
-          record={modalRecord}
+          record={modalRecord.record}
+          excuse={modalRecord.excuse || null}
           userId={userId}
           leaveTypes={leaveTypes}
           onClose={() => setModalRecord(null)}
           onSuccess={handleModalSuccess}
+        />
+      )}
+
+      {/* Delete confirm modal */}
+      {deleteExcuse && (
+        <DeleteConfirmModal
+          excuse={deleteExcuse}
+          onClose={() => setDeleteExcuse(null)}
+          onSuccess={handleDeleteSuccess}
         />
       )}
     </div>
