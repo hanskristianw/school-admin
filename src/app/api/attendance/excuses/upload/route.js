@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
 const ALLOWED_EXTS  = ['jpg', 'jpeg', 'png', 'pdf']
 const MAX_SIZE      = 5 * 1024 * 1024 // 5 MB
-const BUCKET        = 'profile-pictures'  // existing bucket
+const BUCKET        = 'attachments'  // dedicated bucket for document attachments
 
 export async function POST(request) {
   try {
