@@ -31,6 +31,13 @@ const StatusBadge = ({ status }) => {
   return <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: m.color, background: m.bg, whiteSpace: 'nowrap' }}>{m.label}</span>
 }
 
+const statusIcon = (s) => {
+  if (s === 'approved') return <span style={{ color: '#059669', fontWeight: 700 }}>✓</span>
+  if (s === 'revision') return <span style={{ color: '#f59e0b', fontWeight: 700 }}>↩</span>
+  if (s === 'rejected') return <span style={{ color: '#dc2626', fontWeight: 700 }}>✕</span>
+  return <span style={{ color: '#6366f1' }}>…</span>
+}
+
 // ─── Progress Section (collapseable) ─────────────────────────────────────────
 function ProgressSection({ screeningRow, approvals, fpb, screeningDone, theme }) {
   const [open, setOpen] = useState(false)
@@ -352,12 +359,6 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     finally { setSavingProcurement(false) }
   }
 
-  const statusIcon = (s) => {
-    if (s === 'approved') return <span style={{ color: '#059669', fontWeight: 700 }}>✓</span>
-    if (s === 'revision') return <span style={{ color: '#f59e0b', fontWeight: 700 }}>↩</span>
-    if (s === 'rejected') return <span style={{ color: '#dc2626', fontWeight: 700 }}>✕</span>
-    return <span style={{ color: '#6366f1' }}>…</span>
-  }
 
   return (
     <>
