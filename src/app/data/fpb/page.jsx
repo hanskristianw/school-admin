@@ -31,6 +31,121 @@ const StatusBadge = ({ status }) => {
   return <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: m.color, background: m.bg, whiteSpace: 'nowrap' }}>{m.label}</span>
 }
 
+// ─── Progress Section (collapseable) ─────────────────────────────────────────
+function ProgressSection({ screeningRow, approvals, fpb, screeningDone, theme }) {
+  const [open, setOpen] = useState(false)
+
+  const totalSteps = (screeningRow ? 1 : 0) +
+    [...new Set(approvals.filter(a => a.approver_order !== 0).map(a => a.step_order))].length
+
+  const doneSteps = (screeningRow?.status === 'approved' ? 1 : 0) + (() => {
+    const reg   = approvals.filter(a => a.approver_order !== 0)
+    const steps = [...new Set(reg.map(a => a.step_order))]
+    return steps.filter(s => reg.filter(a => a.step_order === s).every(a => a.status === 'approved')).length
+  })()
+
+  return (
+    <div style={{ borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.cardBg, overflow: 'hidden' }}>
+      {/* Toggle header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+      >
+        <span style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary, flex: 1 }}>Progress</span>
+        <span style={{ fontSize: 11, color: theme.textSecondary }}>{doneSteps}/{totalSteps} selesai</span>
+        <span style={{ fontSize: 12, color: theme.textSecondary, display: 'inline-block', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+      </button>
+
+      {/* Collapseable body */}
+      {open && (
+        <div style={{ padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', gap: 6, borderTop: `1px solid ${theme.border}` }}>
+
+          {/* Screening row */}
+          {screeningRow && (() => {
+            const sc = screeningRow
+            const scDone     = sc.status === 'approved'
+            const scActive   = !scDone && fpb.status === 'pending' && sc.status === 'pending'
+            const scRevised  = sc.status === 'revision'
+            const scRejected = sc.status === 'rejected'
+            const scName     = sc.role?.role_name || 'Screener'
+            return (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 99, background: scDone ? '#059669' : scRejected ? '#dc2626' : scActive ? '#d97706' : theme.subtleBg, border: `2px solid ${scDone ? '#059669' : scRejected ? '#dc2626' : scActive ? '#d97706' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                    {scDone ? '✓' : scRejected ? '✕' : '🔍'}
+                  </div>
+                  <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>Screening</span>
+                  {scActive   && <span style={{ fontSize: 10, color: '#d97706', fontWeight: 600, marginLeft: 'auto' }}>Menunggu Screener</span>}
+                  {scDone     && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Lolos</span>}
+                  {scRejected && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginLeft: 'auto' }}>Ditolak</span>}
+                  {scRevised  && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600, marginLeft: 'auto' }}>Revisi</span>}
+                </div>
+                <div style={{ marginLeft: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
+                    <span style={{ fontSize: 13 }}>{statusIcon(sc.status)}</span>
+                    <span style={{ color: theme.textPrimary }}>{scName}</span>
+                    {sc.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(sc.action_at)}</span>}
+                  </div>
+                  {sc.comment && (
+                    <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${sc.status === 'revision' ? '#f59e0b' : sc.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
+                      {sc.comment}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Regular approval steps */}
+          {(() => {
+            const regularApprovals = approvals.filter(a => a.approver_order !== 0)
+            const steps = []; const seen = new Set()
+            regularApprovals.forEach(ap => { if (!seen.has(ap.step_order)) { seen.add(ap.step_order); steps.push(ap.step_order) } })
+            return steps.map(stepOrder => {
+              const stepRows = regularApprovals.filter(a => a.step_order === stepOrder)
+              const stepName = stepRows[0]?.step_name || `Step ${stepOrder}`
+              const isActive = stepOrder === fpb.current_step && fpb.status === 'pending' && screeningDone
+              const allDone  = stepRows.every(a => a.status === 'approved')
+              return (
+                <div key={stepOrder}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 99, background: allDone ? '#059669' : isActive ? '#6366f1' : theme.subtleBg, border: `2px solid ${allDone ? '#059669' : isActive ? '#6366f1' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                      {allDone ? '✓' : stepOrder}
+                    </div>
+                    <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>{stepName}</span>
+                    {!screeningDone && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>Menunggu screening</span>}
+                    {isActive && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Aktif</span>}
+                    {allDone  && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Selesai</span>}
+                  </div>
+                  <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {stepRows.map(ap => {
+                      const name = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim() || 'User'
+                      return (
+                        <div key={ap.approval_id}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
+                            <span style={{ fontSize: 13 }}>{statusIcon(ap.status)}</span>
+                            <span style={{ color: theme.textPrimary }}>{name}</span>
+                            {ap.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(ap.action_at)}</span>}
+                          </div>
+                          {ap.comment && (
+                            <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${ap.status === 'revision' ? '#f59e0b' : ap.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
+                              {ap.comment}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })
+          })()}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── View FPB Modal (pure read-only) ─────────────────────────────────────────
 function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const [fpb, setFpb]               = useState(null)
@@ -503,93 +618,14 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   </div>
                 )}
 
-                {/* Progress: Screening + Approval */}
-                <div style={{ padding: '10px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary, marginBottom: 8 }}>Progress</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-
-                    {/* Screening row */}
-                    {screeningRow && (() => {
-                      const sc = screeningRow
-                      const scDone    = sc.status === 'approved'
-                      const scActive  = !scDone && fpb.status === 'pending' && sc.status === 'pending'
-                      const scRevised = sc.status === 'revision'
-                      const scRejected= sc.status === 'rejected'
-                      const scName    = sc.role?.role_name || 'Screener'
-                      return (
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
-                            <div style={{ width: 18, height: 18, borderRadius: 99, background: scDone ? '#059669' : scRejected ? '#dc2626' : scActive ? '#d97706' : theme.subtleBg, border: `2px solid ${scDone ? '#059669' : scRejected ? '#dc2626' : scActive ? '#d97706' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
-                              {scDone ? '✓' : scRejected ? '✕' : '🔍'}
-                            </div>
-                            <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>Screening</span>
-                            {scActive  && <span style={{ fontSize: 10, color: '#d97706', fontWeight: 600, marginLeft: 'auto' }}>Menunggu Screener</span>}
-                            {scDone    && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Lolos</span>}
-                            {scRejected && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginLeft: 'auto' }}>Ditolak</span>}
-                            {scRevised  && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600, marginLeft: 'auto' }}>Revisi</span>}
-                          </div>
-                          <div style={{ marginLeft: 24 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
-                              <span style={{ fontSize: 13 }}>{statusIcon(sc.status)}</span>
-                              <span style={{ color: theme.textPrimary }}>{scName}</span>
-                              {sc.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(sc.action_at)}</span>}
-                            </div>
-                            {sc.comment && (
-                              <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${sc.status === 'revision' ? '#f59e0b' : sc.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
-                                {sc.comment}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })()}
-
-                    {/* Regular approval steps */}
-                    {(() => {
-                      const regularApprovals = approvals.filter(a => a.approver_order !== 0)
-                      const steps = []; const seen = new Set()
-                      regularApprovals.forEach(ap => { if (!seen.has(ap.step_order)) { seen.add(ap.step_order); steps.push(ap.step_order) } })
-                      return steps.map((stepOrder) => {
-                        const stepRows = regularApprovals.filter(a => a.step_order === stepOrder)
-                        const stepName = stepRows[0]?.step_name || `Step ${stepOrder}`
-                        const isActive = stepOrder === fpb.current_step && fpb.status === 'pending' && screeningDone
-                        const allDone  = stepRows.every(a => a.status === 'approved')
-                        return (
-                          <div key={stepOrder}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
-                              <div style={{ width: 18, height: 18, borderRadius: 99, background: allDone ? '#059669' : isActive ? '#6366f1' : theme.subtleBg, border: `2px solid ${allDone ? '#059669' : isActive ? '#6366f1' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
-                                {allDone ? '✓' : stepOrder}
-                              </div>
-                              <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>{stepName}</span>
-                              {!screeningDone && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>Menunggu screening</span>}
-                              {isActive && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Aktif</span>}
-                              {allDone  && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Selesai</span>}
-                            </div>
-                            <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              {stepRows.map(ap => {
-                                const name = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim() || 'User'
-                                return (
-                                  <div key={ap.approval_id}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
-                                      <span style={{ fontSize: 13 }}>{statusIcon(ap.status)}</span>
-                                      <span style={{ color: theme.textPrimary }}>{name}</span>
-                                      {ap.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(ap.action_at)}</span>}
-                                    </div>
-                                    {ap.comment && (
-                                      <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${ap.status === 'revision' ? '#f59e0b' : ap.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
-                                        {ap.comment}
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )
-                      })
-                    })()}
-                  </div>
-                </div>
+                {/* Progress: Screening + Approval — collapseable */}
+                <ProgressSection
+                  screeningRow={screeningRow}
+                  approvals={approvals}
+                  fpb={fpb}
+                  screeningDone={screeningDone}
+                  theme={theme}
+                />
 
                 {/* Action buttons — screener */}
                 {myScreeningPending && (
@@ -1685,6 +1721,7 @@ export default function FpbListPage() {
   const [myFpbs, setMyFpbs]         = useState([])
   const [pendingFpbs, setPending]   = useState([])
   const [historyFpbs, setHistory]   = useState([])
+  const [isScreenerOrBudget, setIsScreenerOrBudget] = useState(false)
   const [loading, setLoading]       = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [viewFpbId, setViewFpbId]   = useState(null)
@@ -1723,7 +1760,9 @@ export default function FpbListPage() {
         myRoleId ? supabase.from('fpb_screener').select('screener_role_id').eq('screener_role_id', myRoleId).maybeSingle() : { data: null },
         myRoleId ? supabase.from('fpb_budget_roles').select('role_id').eq('role_id', myRoleId).maybeSingle()               : { data: null },
       ])
-      setCanExport(!!(screenerRow || budgetRow))
+      const isSOB = !!(screenerRow || budgetRow)
+      setCanExport(isSOB)
+      setIsScreenerOrBudget(isSOB)
 
       // Step 1a: My regular pending approval rows (by user_id)
       const { data: myApprovals } = await supabase
@@ -1793,22 +1832,32 @@ export default function FpbListPage() {
         setPending(uniquePending)
       }
 
-      // Tab 3: History — FPBs fully approved where I was an approver
-      const { data: myApprovedRows } = await supabase
-        .from('fpb_approvals')
-        .select('fpb_id, step_name, action_at, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, procurement_status, fpb_types(type_name), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
-        .eq('approver_user_id', uid)
-        .eq('status', 'approved')
-      const approvedFpbs = (myApprovedRows || [])
-        .filter(r => r.fpb?.status === 'approved')
-        .map(r => ({ ...r.fpb, my_step_name: r.step_name, my_action_at: r.action_at }))
-      // Deduplicate by fpb_id (keep latest action_at)
-      const histMap = new Map()
-      approvedFpbs.forEach(f => {
-        const existing = histMap.get(f.fpb_id)
-        if (!existing || new Date(f.my_action_at) > new Date(existing.my_action_at)) histMap.set(f.fpb_id, f)
-      })
-      setHistory([...histMap.values()].sort((a, b) => new Date(b.my_action_at) - new Date(a.my_action_at)))
+      // Tab 3: History
+      // For screener/budget roles: show ALL FPBs (pending + approved) regardless of their own action
+      // For regular approvers: show only FPBs fully approved where they took action
+      if (isSOB) {
+        const { data: allFpbs } = await supabase
+          .from('fpb')
+          .select('fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, procurement_status, fpb_types(type_name), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)')
+          .in('status', ['pending', 'approved', 'rejected'])
+          .order('created_at', { ascending: false })
+        setHistory((allFpbs || []).map(f => ({ ...f, my_step_name: null, my_action_at: f.created_at })))
+      } else {
+        const { data: myApprovedRows } = await supabase
+          .from('fpb_approvals')
+          .select('fpb_id, step_name, action_at, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, procurement_status, fpb_types(type_name), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
+          .eq('approver_user_id', uid)
+          .eq('status', 'approved')
+        const approvedFpbs = (myApprovedRows || [])
+          .filter(r => r.fpb?.status === 'approved')
+          .map(r => ({ ...r.fpb, my_step_name: r.step_name, my_action_at: r.action_at }))
+        const histMap = new Map()
+        approvedFpbs.forEach(f => {
+          const existing = histMap.get(f.fpb_id)
+          if (!existing || new Date(f.my_action_at) > new Date(existing.my_action_at)) histMap.set(f.fpb_id, f)
+        })
+        setHistory([...histMap.values()].sort((a, b) => new Date(b.my_action_at) - new Date(a.my_action_at)))
+      }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
