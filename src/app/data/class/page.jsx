@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
-import { supabase, createSupabaseWithAuth } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useI18n } from '@/lib/i18n';
 import { useTheme } from '@/lib/theme';
 
@@ -72,14 +72,6 @@ export default function ClassManagement() {
   // Cache roles for display
   const [roles, setRoles] = useState([]);
 
-  // Authenticated Supabase client for write operations (RLS requires JWT)
-  const db = useRef(supabase);
-  useEffect(() => {
-    try {
-      const tok = typeof window !== 'undefined' ? localStorage.getItem('app_jwt') : null;
-      if (tok) db.current = createSupabaseWithAuth(tok);
-    } catch {}
-  }, []);
 
   useEffect(() => {
     fetchClasses();
@@ -412,7 +404,7 @@ export default function ClassManagement() {
           detail_siswa_user_id: userId,
           detail_siswa_kelas_id: selectedClassForStudents.kelas_id
         }));
-        const { error: insertErr } = await db.current
+        const { error: insertErr } = await supabase
           .from('detail_siswa')
           .insert(rows);
         if (insertErr) throw new Error(insertErr.message);
@@ -420,7 +412,7 @@ export default function ClassManagement() {
 
       // Delete removed relations
       if (toRemove.length > 0) {
-        const { error: deleteErr } = await db.current
+        const { error: deleteErr } = await supabase
           .from('detail_siswa')
           .delete()
           .eq('detail_siswa_kelas_id', selectedClassForStudents.kelas_id)
@@ -478,7 +470,7 @@ export default function ClassManagement() {
           myp_year_s1: subjectMypYearMap[subjectId]?.s1 ?? 1,
           myp_year_s2: subjectMypYearMap[subjectId]?.s2 ?? 1
         }));
-        const { error: insertErr } = await db.current
+        const { error: insertErr } = await supabase
           .from('detail_kelas')
           .insert(rows);
         if (insertErr) throw new Error(insertErr.message);
@@ -488,7 +480,7 @@ export default function ClassManagement() {
       const toKeep = Array.from(selected).filter(id => existing.has(id));
       for (const subjectId of toKeep) {
         if (detailKelasIdMap[subjectId]) {
-          const { error: updateErr } = await db.current
+          const { error: updateErr } = await supabase
             .from('detail_kelas')
             .update({
               myp_year_s1: subjectMypYearMap[subjectId]?.s1 ?? 1,
@@ -501,7 +493,7 @@ export default function ClassManagement() {
 
       // Delete removed relations
       if (toRemove.length > 0) {
-        const { error: deleteErr } = await db.current
+        const { error: deleteErr } = await supabase
           .from('detail_kelas')
           .delete()
           .eq('detail_kelas_kelas_id', selectedClassForSubjects.kelas_id)
@@ -624,13 +616,13 @@ export default function ClassManagement() {
 
       if (editingClass) {
         // Update existing class
-        result = await db.current
+        result = await supabase
           .from('kelas')
           .update(submitData)
           .eq('kelas_id', editingClass.kelas_id);
       } else {
         // Create new class
-        result = await db.current
+        result = await supabase
           .from('kelas')
           .insert([submitData]);
       }
@@ -682,7 +674,7 @@ export default function ClassManagement() {
     }
 
     try {
-      const { error } = await db.current
+      const { error } = await supabase
         .from('kelas')
         .delete()
         .eq('kelas_id', kelas.kelas_id);
