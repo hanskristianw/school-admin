@@ -170,6 +170,16 @@ const iconMap = {
   , 'faListCheck': faListCheck
   , 'fas fa-calendar-check': faCalendarCheck
   , 'faCalendarCheck': faCalendarCheck
+  , 'fas fa-ticket': require('@fortawesome/free-solid-svg-icons').faTicket
+  , 'faTicket': require('@fortawesome/free-solid-svg-icons').faTicket
+  , 'fas fa-tools': require('@fortawesome/free-solid-svg-icons').faTools
+  , 'faTools': require('@fortawesome/free-solid-svg-icons').faTools
+  , 'fas fa-wrench': require('@fortawesome/free-solid-svg-icons').faWrench
+  , 'faWrench': require('@fortawesome/free-solid-svg-icons').faWrench
+  , 'fas fa-screwdriver-wrench': require('@fortawesome/free-solid-svg-icons').faScrewdriverWrench
+  , 'faScrewdriverWrench': require('@fortawesome/free-solid-svg-icons').faScrewdriverWrench
+  , 'fas fa-box-open': require('@fortawesome/free-solid-svg-icons').faBoxOpen
+  , 'faBoxOpen': require('@fortawesome/free-solid-svg-icons').faBoxOpen
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {
