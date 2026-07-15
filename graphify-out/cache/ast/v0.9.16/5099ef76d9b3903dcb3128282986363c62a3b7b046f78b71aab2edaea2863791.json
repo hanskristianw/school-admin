@@ -1,0 +1,1 @@
+{"nodes": [{"id": "c_users_kutut_school_admin_migrations_cleanup_voided_purchase_stock_sql", "label": "cleanup-voided-purchase-stock.sql", "file_type": "code", "source_file": "migrations/cleanup-voided-purchase-stock.sql", "source_location": null}], "edges": []}

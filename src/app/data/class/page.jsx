@@ -337,36 +337,25 @@ export default function ClassManagement() {
         role_name: roleMap.get(u.user_role_id) || 'Student'
       }));
 
-      // Fetch existing assignments from detail_siswa
-      const { data: details, error: detailErr } = await supabase
-        .from('detail_siswa')
-        .select('detail_siswa_user_id')
-        .eq('detail_siswa_kelas_id', kelas.kelas_id);
-      if (detailErr) throw new Error(detailErr.message);
-
-      const assignedIds = (details || []).map(d => d.detail_siswa_user_id);
-      // Find conflicts within same academic year
+      // Fetch existing assignments + year conflicts via API (service role bypasses RLS)
       const sameYearClassIds = classes
         .filter(c => c.kelas_year_id === kelas.kelas_year_id)
         .map(c => c.kelas_id);
 
-      let conflictMap = new Map();
-      if (sameYearClassIds.length > 0) {
-        const { data: allYearDetails, error: yearDetailsErr } = await supabase
-          .from('detail_siswa')
-          .select('detail_siswa_user_id, detail_siswa_kelas_id')
-          .in('detail_siswa_kelas_id', sameYearClassIds);
-        if (yearDetailsErr) throw new Error(yearDetailsErr.message);
+      const studentsRes = await fetch(
+        `/api/class/students?kelas_id=${kelas.kelas_id}&year_kelas_ids=${sameYearClassIds.join(',')}`
+      );
+      if (!studentsRes.ok) throw new Error('Failed to load student assignments');
+      const { assigned: assignedIds, year_details: allYearDetails } = await studentsRes.json();
 
-        const kelasMap = new Map(classes.map(c => [c.kelas_id, c.kelas_nama]));
-        for (const row of (allYearDetails || [])) {
-          // Record only if assigned to a different class than currently opened
-          if (row.detail_siswa_kelas_id !== kelas.kelas_id) {
-            conflictMap.set(row.detail_siswa_user_id, {
-              kelas_id: row.detail_siswa_kelas_id,
-              kelas_nama: kelasMap.get(row.detail_siswa_kelas_id) || ''
-            });
-          }
+      const kelasMap = new Map(classes.map(c => [c.kelas_id, c.kelas_nama]));
+      const conflictMap = new Map();
+      for (const row of (allYearDetails || [])) {
+        if (row.detail_siswa_kelas_id !== kelas.kelas_id) {
+          conflictMap.set(row.detail_siswa_user_id, {
+            kelas_id: row.detail_siswa_kelas_id,
+            kelas_nama: kelasMap.get(row.detail_siswa_kelas_id) || ''
+          });
         }
       }
 
@@ -403,26 +392,19 @@ export default function ClassManagement() {
   const toAdd = toAddRaw.filter(id => !yearConflictByUser.has(id));
       const toRemove = Array.from(existing).filter(id => !selected.has(id));
 
-      // Insert new relations
-      if (toAdd.length > 0) {
-        const rows = toAdd.map(userId => ({
-          detail_siswa_user_id: userId,
-          detail_siswa_kelas_id: selectedClassForStudents.kelas_id
-        }));
-        const { error: insertErr } = await supabase
-          .from('detail_siswa')
-          .insert(rows);
-        if (insertErr) throw new Error(insertErr.message);
-      }
-
-      // Delete removed relations
-      if (toRemove.length > 0) {
-        const { error: deleteErr } = await supabase
-          .from('detail_siswa')
-          .delete()
-          .eq('detail_siswa_kelas_id', selectedClassForStudents.kelas_id)
-          .in('detail_siswa_user_id', toRemove);
-        if (deleteErr) throw new Error(deleteErr.message);
+      // Save via API route (service role bypasses RLS on detail_siswa)
+      const res = await fetch('/api/class/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kelas_id: selectedClassForStudents.kelas_id,
+          to_add: toAdd,
+          to_remove: toRemove,
+        }),
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.error || 'Failed to save')
       }
 
       setAssignedStudentIds(selectedStudentIds);

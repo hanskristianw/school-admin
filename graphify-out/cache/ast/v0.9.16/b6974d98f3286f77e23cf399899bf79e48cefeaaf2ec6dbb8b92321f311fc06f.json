@@ -1,0 +1,1 @@
+{"nodes": [{"id": "c_users_kutut_school_admin_migrations_drop_low_stock_items_view_sql", "label": "drop-low-stock-items-view.sql", "file_type": "code", "source_file": "migrations/drop-low-stock-items-view.sql", "source_location": null}], "edges": []}

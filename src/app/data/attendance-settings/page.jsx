@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
+import { emailTemplates } from '@/lib/emailTemplates'
 
 const DAY_LABELS = [
   { num: 1, short: 'Sen', full: 'Senin' },
@@ -618,6 +619,7 @@ export default function AttendanceSettingsPage() {
         <button style={tabStyle('special')}  onClick={() => setTab('special')}>⭐ Hari Khusus</button>
         <button style={tabStyle('approvers')} onClick={() => setTab('approvers')}>👥 Approver per Unit</button>
         <button style={tabStyle('settings')} onClick={() => setTab('settings')}>⚙️ Pengaturan &amp; Log</button>
+        <button style={tabStyle('emailpreview')} onClick={() => setTab('emailpreview')}>📧 Email Preview</button>
       </div>
 
       {/* ══════════════════ TAB 1: WORK DAYS ══════════════════ */}
@@ -1606,6 +1608,108 @@ export default function AttendanceSettingsPage() {
         </div>
       )}
 
+      {/* ══════════════════ TAB: EMAIL PREVIEW ══════════════════ */}
+      {tab === 'emailpreview' && (
+        <EmailPreviewTab theme={theme} />
+      )}
+
+    </div>
+  )
+}
+
+// ─── EMAIL PREVIEW TAB COMPONENT ──────────────────────────────────────────
+function EmailPreviewTab({ theme }) {
+  const [selectedType, setSelectedType] = useState('late')
+
+  const ISSUE_TYPES = [
+    { value: 'late',        label: '🕐 Late Attendance' },
+    { value: 'leave_early', label: '🚪 Early Departure' },
+    { value: 'absent',      label: '🚫 Absence' },
+    { value: 'no_checkin',  label: '❌ Missing Check-In' },
+    { value: 'no_checkout', label: '⚠️ Missing Check-Out' },
+    { value: 'admin',       label: '📋 Admin Summary' },
+  ]
+
+  // Sample data for preview
+  const sampleDate = 'Tuesday, 15 July 2026'
+
+  const makeSampleIssue = (type) => ({
+    type,
+    scheduledTime: type === 'leave_early' || type === 'no_checkout' ? '16:30' : '07:30',
+    actualTime:    type === 'late' ? '07:45' : type === 'leave_early' ? '15:55' : null,
+    minutesDiff:   type === 'late' ? 15 : type === 'leave_early' ? 35 : null,
+  })
+
+  // Generate preview HTML from template
+  const generatePreview = (type) => {
+    try {
+      if (type === 'admin') {
+        const { html } = emailTemplates.attendanceSummaryAdmin({
+          date: sampleDate,
+          violations: [
+            { userName: 'Budi Santoso', roleName: 'Guru',  unitName: 'SD',  type: 'late',        scheduledTime: '07:30', actualTime: '07:45', minutesDiff: 15 },
+            { userName: 'Sari Dewi',    roleName: 'Staff', unitName: 'SMP', type: 'leave_early', scheduledTime: '16:30', actualTime: '15:55', minutesDiff: 35 },
+            { userName: 'Ahmad Fauzi',  roleName: 'Guru',  unitName: 'SMA', type: 'absent',      scheduledTime: '07:30', actualTime: null,    minutesDiff: null },
+          ]
+        })
+        return html
+      } else {
+        const { html } = emailTemplates.attendanceLate({
+          userName: 'Budi Santoso',
+          date: sampleDate,
+          issues: [makeSampleIssue(type)],
+          baseUrl: 'https://manageccs.online',
+        })
+        return html
+      }
+    } catch (e) {
+      return `<p style="color:red">Error generating preview: ${e.message}</p>`
+    }
+  }
+
+  // Using iframe srcdoc for safe HTML rendering
+  return (
+    <div>
+      <div className="mb-4" style={{ padding: '16px', background: theme.subtleBg, borderRadius: '10px', border: `1px solid ${theme.border}` }}>
+        <p className="text-sm mb-3" style={{ color: theme.textSecondary }}>
+          Preview email yang akan dikirim ke guru/staff. Data yang ditampilkan adalah contoh dummy.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {ISSUE_TYPES.map(it => (
+            <button
+              key={it.value}
+              onClick={() => setSelectedType(it.value)}
+              className="px-3 py-1.5 text-sm rounded-lg transition-all"
+              style={{
+                border: `1px solid ${selectedType === it.value ? theme.blueText : theme.border}`,
+                background: selectedType === it.value ? (theme.blueBg || '#eff6ff') : theme.inputBg,
+                color: selectedType === it.value ? (theme.blueText || '#1d4ed8') : theme.textBody,
+                fontWeight: selectedType === it.value ? 600 : 400,
+                cursor: 'pointer',
+              }}
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* iframe preview */}
+      <div style={{ border: `1px solid ${theme.border}`, borderRadius: '10px', overflow: 'hidden' }}>
+        <div style={{ padding: '10px 16px', background: theme.subtleBg, borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+          <span className="text-xs ml-2" style={{ color: theme.textSecondary }}>Email Preview — {ISSUE_TYPES.find(i => i.value === selectedType)?.label}</span>
+        </div>
+        <iframe
+          key={selectedType}
+          srcDoc={generatePreview(selectedType)}
+          style={{ width: '100%', height: '600px', border: 'none', background: '#f5f5f5' }}
+          title="Email Preview"
+          sandbox="allow-same-origin"
+        />
+      </div>
     </div>
   )
 }

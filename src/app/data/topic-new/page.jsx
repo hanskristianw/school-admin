@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -75,7 +75,7 @@ export default function TopicNewPage() {
         if (saved) return JSON.parse(saved)
       } catch (e) {}
     }
-    return { subject: '', kelas: '', status: '', search: '', noCriteria: false }
+    return { subject: '', kelas: '', year: '', status: '', search: '', noCriteria: false }
   })
   const [assessmentKelasOptions, setAssessmentKelasOptions] = useState([]) // Kelas yang diajar guru untuk assessment filter
   
@@ -303,6 +303,7 @@ export default function TopicNewPage() {
   const [loadingClassRecap, setLoadingClassRecap] = useState(false)
   
   // Comment tab state
+  const [commentYear, setCommentYear] = useState('')
   const [commentSubject, setCommentSubject] = useState('')
   const [commentKelas, setCommentKelas] = useState('')
   const [commentKelasOptions, setCommentKelasOptions] = useState([])
@@ -316,12 +317,21 @@ export default function TopicNewPage() {
   // Mentor Comment tab state
   const [isWaliKelas, setIsWaliKelas] = useState(false)
   const [mentorKelasOptions, setMentorKelasOptions] = useState([])
+  const [mentorYear, setMentorYear] = useState('')
   const [mentorKelas, setMentorKelas] = useState('')
   const [mentorSemester, setMentorSemester] = useState('')
   const [mentorStudents, setMentorStudents] = useState([])
   const [loadingMentorComments, setLoadingMentorComments] = useState(false)
   const [savingMentorCommentId, setSavingMentorCommentId] = useState(null)
-  
+
+  // Daily Attendance state (kelas_attendance table)
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [attendanceRecords, setAttendanceRecords] = useState({}) // { [detail_siswa_id]: { status, keterangan, id } }
+  const [loadingAttendance, setLoadingAttendance] = useState(false)
+  const [savingAttendanceId, setSavingAttendanceId] = useState(null)
+  const [attendanceStudents, setAttendanceStudents] = useState([]) // [{detail_siswa_id, nama}]
+  const [attendanceExpanded, setAttendanceExpanded] = useState(true)
+
   // Wizard/Stepper state for Add Mode
   const [currentStep, setCurrentStep] = useState(0)
   const [wizardYear, setWizardYear] = useState('') // Selected year in wizard step 0
@@ -427,6 +437,7 @@ export default function TopicNewPage() {
   }, [assessmentFilters])
 
   // Fetch kelas where logged-in user is wali kelas (or all kelas for admin)
+  // When mentorYear changes, reload kelas options filtered by that year
   useEffect(() => {
     if (!currentUserId) return
     const fetchWaliKelas = async () => {
@@ -435,10 +446,13 @@ export default function TopicNewPage() {
 
         let query = supabase
           .from('kelas')
-          .select('kelas_id, kelas_nama')
+          .select('kelas_id, kelas_nama, kelas_year_id')
           .order('kelas_nama')
         if (!adminRole) {
           query = query.eq('kelas_user_id', currentUserId)
+        }
+        if (mentorYear) {
+          query = query.eq('kelas_year_id', mentorYear)
         }
         const { data, error } = await query
         if (error) throw error
@@ -449,12 +463,16 @@ export default function TopicNewPage() {
           setIsWaliKelas(false)
           setMentorKelasOptions([])
         }
+        // Reset class & students when year changes
+        setMentorKelas('')
+        setMentorSemester('')
+        setMentorStudents([])
       } catch (err) {
         console.error('Error fetching wali kelas:', err)
       }
     }
     fetchWaliKelas()
-  }, [currentUserId, userRole])
+  }, [currentUserId, userRole, mentorYear])
 
   // Get current user ID
   useEffect(() => {
@@ -879,11 +897,11 @@ export default function TopicNewPage() {
           if (kelasIds.length > 0) {
             const { data: kelasData, error: kError } = await supabase
               .from('kelas')
-              .select('kelas_id, kelas_nama')
+              .select('kelas_id, kelas_nama, kelas_year_id')
               .in('kelas_id', kelasIds)
             
             if (!kError && kelasData) {
-              kelasData.forEach(k => kelasMap.set(k.kelas_id, k.kelas_nama))
+              kelasData.forEach(k => kelasMap.set(k.kelas_id, { nama: k.kelas_nama, year_id: k.kelas_year_id }))
             }
           }
           
@@ -1016,7 +1034,8 @@ export default function TopicNewPage() {
           subject_id: detailKelas.subject_id,
           subject_name: subjectMap.get(detailKelas.subject_id)?.name || 'N/A',
           kelas_id: detailKelas.kelas_id,
-          kelas_nama: kelasMap.get(detailKelas.kelas_id) || '',
+          kelas_nama: kelasMap.get(detailKelas.kelas_id)?.nama || '',
+          kelas_year_id: kelasMap.get(detailKelas.kelas_id)?.year_id || null,
           teacher_name: userMap.get(subjectMap.get(detailKelas.subject_id)?.user_id) || userMap.get(a.assessment_user_id) || 'Unknown',
           topic_nama: topicData.nama || null,
           topic_urutan: topicData.urutan || 999,
@@ -1121,7 +1140,7 @@ export default function TopicNewPage() {
         subject_id: d.detail_kelas_subject_id,
         subject_name: subjectMap.get(d.detail_kelas_subject_id) || 'Unknown Subject',
         kelas_id: d.detail_kelas_kelas_id,
-        kelas_nama: kelasMap.get(d.detail_kelas_kelas_id) || '-'
+        kelas_nama: kelasMap.get(d.detail_kelas_kelas_id)?.nama || '-'
       }))
       
       options.sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '') || (a.subject_name || '').localeCompare(b.subject_name || ''))
@@ -2181,11 +2200,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       if (!detailKelasData || detailKelasData.length === 0) return
       
       const kelasIds = [...new Set(detailKelasData.map(d => d.detail_kelas_kelas_id))]
-      const { data: kelasData, error: kError } = await supabase
+      let kelasQuery = supabase
         .from('kelas')
-        .select('kelas_id, kelas_nama')
+        .select('kelas_id, kelas_nama, kelas_year_id')
         .in('kelas_id', kelasIds)
         .order('kelas_nama')
+      // Filter by selected year if one is chosen
+      if (commentYear) kelasQuery = kelasQuery.eq('kelas_year_id', commentYear)
+      const { data: kelasData, error: kError } = await kelasQuery
       
       if (kError) throw kError
       setCommentKelasOptions(kelasData || [])
@@ -2687,6 +2709,115 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       s.user_id === userId ? { ...s, comment_text: text, saved: false } : s
     ))
   }
+
+  // ─── DAILY ATTENDANCE FUNCTIONS (via API route — bypasses RLS) ───────────
+
+  // Load students + attendance records together via single API call
+  const fetchDailyAttendance = useCallback(async (kelasId, date) => {
+    if (!kelasId || !date) {
+      setAttendanceStudents([])
+      setAttendanceRecords({})
+      return
+    }
+    setLoadingAttendance(true)
+    try {
+      const res = await fetch(`/api/kelas-attendance?kelas_id=${kelasId}&tanggal=${date}`)
+      if (!res.ok) throw new Error(await res.text())
+      const { students, records } = await res.json()
+      setAttendanceStudents(students || [])
+      setAttendanceRecords(records || {})
+    } catch (err) {
+      console.error('[attendance] fetchDailyAttendance error:', err)
+    } finally {
+      setLoadingAttendance(false)
+    }
+  }, [])
+
+  // Keep fetchAttendanceStudents as alias (called on kelas change without date)
+  const fetchAttendanceStudents = useCallback(async (kelasId) => {
+    if (!kelasId) { setAttendanceStudents([]); setAttendanceRecords({}); return }
+    // Students are fetched together with records in fetchDailyAttendance
+    // This is only called to pre-load student list when kelas changes
+    setLoadingAttendance(true)
+    try {
+      const res = await fetch(`/api/kelas-attendance?kelas_id=${kelasId}&tanggal=${attendanceDate}`)
+      if (!res.ok) throw new Error(await res.text())
+      const { students, records } = await res.json()
+      setAttendanceStudents(students || [])
+      setAttendanceRecords(records || {})
+    } catch (err) {
+      console.error('[attendance] fetchAttendanceStudents error:', err)
+    } finally {
+      setLoadingAttendance(false)
+    }
+  }, [attendanceDate])
+
+  // Upsert single student attendance via API route
+  const saveSingleAttendance = useCallback(async (detailSiswaId, status, keterangan) => {
+    if (!mentorKelas || !attendanceDate || !detailSiswaId) return
+    setSavingAttendanceId(detailSiswaId)
+    try {
+      const existing = attendanceRecords[detailSiswaId]
+      const res = await fetch('/api/kelas-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kelas_id: parseInt(mentorKelas),
+          detail_siswa_id: detailSiswaId,
+          tanggal: attendanceDate,
+          status,
+          keterangan: keterangan || '',
+          created_by: currentUserId || null,
+          existing_id: existing?.id || null,
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const saved = await res.json()
+      setAttendanceRecords(prev => ({
+        ...prev,
+        [detailSiswaId]: { id: saved.id, status: saved.status, keterangan: saved.keterangan || '' }
+      }))
+    } catch (err) {
+      console.error('[attendance] saveSingleAttendance error:', err)
+    } finally {
+      setSavingAttendanceId(null)
+    }
+  }, [mentorKelas, attendanceDate, attendanceRecords, currentUserId])
+
+  // Mark all students as 'hadir' at once
+  const markAllHadir = useCallback(async () => {
+    for (const s of attendanceStudents) {
+      await saveSingleAttendance(s.detail_siswa_id, 'hadir', '')
+    }
+  }, [attendanceStudents, saveSingleAttendance])
+
+  // Clear all attendance for selected kelas + date
+  const clearAttendance = useCallback(async () => {
+    if (!mentorKelas || !attendanceDate) return
+    const confirmMsg = t('topicNew.mentorCommentTab.dailyAttendance.confirmClear') || 'Clear all attendance records for this date?'
+    if (!window.confirm(confirmMsg)) return
+    setLoadingAttendance(true)
+    try {
+      const res = await fetch(`/api/kelas-attendance?kelas_id=${mentorKelas}&tanggal=${attendanceDate}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      setAttendanceRecords({})
+    } catch (err) {
+      console.error('[attendance] clearAttendance error:', err)
+    } finally {
+      setLoadingAttendance(false)
+    }
+  }, [mentorKelas, attendanceDate, t])
+
+  // Fetch attendance students when kelas changes
+  useEffect(() => {
+    if (mentorKelas) {
+      fetchAttendanceStudents(mentorKelas)
+      fetchDailyAttendance(mentorKelas, attendanceDate)
+    } else {
+      setAttendanceStudents([])
+      setAttendanceRecords({})
+    }
+  }, [mentorKelas, fetchAttendanceStudents, fetchDailyAttendance, attendanceDate])
 
   const updateMentorAttendance = (userId, field, value) => {
     const num = value === '' ? 0 : Math.max(0, parseInt(value) || 0)
@@ -4209,6 +4340,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   // Filter and sort assessments (same logic as topics)
   const filteredAssessments = assessments
     .filter(assessment => {
+      const matchYear = !assessmentFilters.year || String(assessment.kelas_year_id) === String(assessmentFilters.year)
       const matchSubject = !assessmentFilters.subject || assessment.subject_id === parseInt(assessmentFilters.subject)
       const matchKelas = !assessmentFilters.kelas || assessment.kelas_id === parseInt(assessmentFilters.kelas)
       const matchStatus = !assessmentFilters.status || assessment.assessment_status.toString() === assessmentFilters.status
@@ -4216,7 +4348,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         assessment.assessment_nama?.toLowerCase().includes(assessmentFilters.search.toLowerCase()) ||
         assessment.teacher_name?.toLowerCase().includes(assessmentFilters.search.toLowerCase())
       const matchNoCriteria = !assessmentFilters.noCriteria || !assessment.criteria || assessment.criteria.length === 0
-      return matchSubject && matchKelas && matchStatus && matchSearch && matchNoCriteria
+      return matchYear && matchSubject && matchKelas && matchStatus && matchSearch && matchNoCriteria
     })
     .sort((a, b) => {
       // First: sort by grade (extract from kelas_nama)
@@ -4954,7 +5086,22 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             </div>
             
             {/* Filters */}
-            <div className="mb-5 flex gap-3 items-end">
+            <div className="mb-5 flex gap-3 items-end flex-wrap">
+              {/* Year filter */}
+              <div className="flex-1 min-w-[140px]">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>Tahun Ajaran</label>
+                <select
+                  value={assessmentFilters.year}
+                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, year: e.target.value, kelas: '' })}
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                >
+                  <option value="">Semua Tahun</option>
+                  {yearOptions.map(y => (
+                    <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
                   {t('topicNew.filters.subject')}
@@ -4984,7 +5131,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                 >
                   <option value="">{t('topicNew.filters.allClasses')}</option>
-                  {assessmentKelasOptions.map(k => (
+                  {(assessmentFilters.year
+                    ? assessmentKelasOptions.filter(k => {
+                        const match = allKelas.find(ak => ak.kelas_id === k.kelas_id)
+                        return !match || String(match.kelas_year_id) === String(assessmentFilters.year)
+                      })
+                    : assessmentKelasOptions
+                  ).map(k => (
                     <option key={k.kelas_id} value={k.kelas_id}>
                       {k.kelas_nama}
                     </option>
@@ -5368,19 +5521,44 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             </div>
             <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>Write semester comments for each student per subject.</p>
             
-            {/* Filter row: Subject → Kelas → Semester */}
-            <div id="comment-filter-section" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+            {/* Filter row: Year → Subject → Kelas → Semester */}
+            <div id="comment-filter-section" className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
+              {/* Tahun Ajaran */}
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. Tahun Ajaran</label>
+                <select
+                  value={commentYear}
+                  onChange={(e) => {
+                    setCommentYear(e.target.value)
+                    // reset downstream
+                    setCommentSubject('')
+                    setCommentKelas('')
+                    setCommentSemester('')
+                    setCommentKelasOptions([])
+                    setCommentStudents([])
+                  }}
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                >
+                  <option value="">Pilih Tahun Ajaran</option>
+                  {yearOptions.map(y => (
+                    <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Subject */}
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. {t('topicNew.fields.subject')}</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. {t('topicNew.fields.subject')}</label>
                 <select
                   id="comment-subject-select"
                   value={commentSubject}
                   onChange={(e) => handleCommentSubjectChange(e.target.value)}
+                  disabled={!commentYear}
                   className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: !commentYear ? 0.5 : 1 }}
                 >
-                  <option value="">{t('topicNew.fields.selectSubject')}</option>
+                  <option value="">{!commentYear ? 'Pilih tahun dulu' : t('topicNew.fields.selectSubject')}</option>
                   {subjects.map(s => (
                     <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
                   ))}
@@ -5389,7 +5567,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               
               {/* Kelas */}
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. {t('topicNew.filters.class')}</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. {t('topicNew.filters.class')}</label>
                 <select
                   id="comment-kelas-select"
                   value={commentKelas}
@@ -5407,7 +5585,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               
               {/* Semester */}
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. Semester</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>4. Semester</label>
                 <div id="comment-semester-row" className="flex gap-2">
                   {[1, 2].map(sem => (
                     <button
@@ -5651,18 +5829,35 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             <h2 className="text-base font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>{t('topicNew.mentorCommentTab.title')}</h2>
             <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.subtitle')}</p>
 
-            {/* Filter row: Kelas → Semester */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-              {/* Kelas */}
+            {/* Filter row: Year → Kelas → Semester */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+              {/* Tahun Ajaran */}
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.classLabel')}</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. Tahun Ajaran</label>
                 <select
-                  value={mentorKelas}
-                  onChange={(e) => handleMentorKelasChange(e.target.value)}
+                  value={mentorYear}
+                  onChange={(e) => setMentorYear(e.target.value)}
                   className="w-full px-3 py-2 text-sm focus:outline-none"
                   style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                 >
-                  <option value="">{t('topicNew.mentorCommentTab.selectClass')}</option>
+                  <option value="">Pilih Tahun Ajaran</option>
+                  {yearOptions.map(y => (
+                    <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Kelas */}
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. {t('topicNew.mentorCommentTab.classLabel')}</label>
+                <select
+                  value={mentorKelas}
+                  onChange={(e) => handleMentorKelasChange(e.target.value)}
+                  disabled={!mentorYear}
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: !mentorYear ? 0.5 : 1 }}
+                >
+                  <option value="">{!mentorYear ? 'Pilih tahun ajaran dulu' : t('topicNew.mentorCommentTab.selectClass')}</option>
                   {mentorKelasOptions.map(k => (
                     <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
                   ))}
@@ -5671,7 +5866,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
               {/* Semester */}
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.semesterLabel')}</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. {t('topicNew.mentorCommentTab.semesterLabel')}</label>
                 <div className="flex gap-2">
                   {[1, 2].map(sem => (
                     <button
@@ -5804,6 +5999,193 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     <p className="text-xs text-right mt-1" style={{ color: theme.textSecondary }}>{(student.comment_text || '').length}/600</p>
                   </div>
                 ))}
+              </div>
+            )}
+            {/* ─── DAILY ATTENDANCE SECTION ─────────────────────────── */}
+            {mentorKelas && (
+              <div className="mt-8" style={{ borderTop: `2px solid ${theme.border}`, paddingTop: '24px' }}>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faClipboardList} style={{ color: theme.blueText }} />
+                    <h3 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
+                      {t('topicNew.mentorCommentTab.dailyAttendance.title') || 'Daily Attendance'}
+                    </h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: theme.blueBg, color: theme.blueText }}>
+                      {t('topicNew.mentorCommentTab.dailyAttendance.beta') || 'Beta'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAttendanceExpanded(v => !v)}
+                    className="text-xs px-2 py-1"
+                    style={{ color: theme.textSecondary, cursor: 'pointer', border: 'none', background: 'transparent' }}
+                  >
+                    {attendanceExpanded
+                      ? (t('topicNew.mentorCommentTab.dailyAttendance.hide') || '▲ Hide')
+                      : (t('topicNew.mentorCommentTab.dailyAttendance.show') || '▼ Show')}
+                  </button>
+                </div>
+
+                {attendanceExpanded && (
+                  <>
+                    {/* Date navigation */}
+                    <div className="flex items-center gap-2 mb-4 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date(attendanceDate); d.setDate(d.getDate() - 1)
+                          setAttendanceDate(d.toLocaleDateString('en-CA'))
+                        }}
+                        className="px-3 py-1.5 text-sm"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, cursor: 'pointer' }}
+                      >{t('topicNew.mentorCommentTab.dailyAttendance.yesterday') || '← Yesterday'}</button>
+
+                      <input
+                        type="date"
+                        value={attendanceDate}
+                        onChange={e => setAttendanceDate(e.target.value)}
+                        className="px-3 py-1.5 text-sm"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date(attendanceDate); d.setDate(d.getDate() + 1)
+                          setAttendanceDate(d.toLocaleDateString('en-CA'))
+                        }}
+                        className="px-3 py-1.5 text-sm"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, cursor: 'pointer' }}
+                      >{t('topicNew.mentorCommentTab.dailyAttendance.tomorrow') || 'Tomorrow →'}</button>
+
+                      <div className="flex gap-2 ml-auto">
+                        {/* Clear Data button */}
+                        <button
+                          type="button"
+                          onClick={clearAttendance}
+                          disabled={attendanceStudents.length === 0 || loadingAttendance || Object.keys(attendanceRecords).length === 0}
+                          className="px-3 py-1.5 text-sm font-medium"
+                          style={{
+                            border: `1px solid ${theme.border}`, borderRadius: '6px',
+                            background: theme.redBg, color: theme.redText, cursor: 'pointer',
+                            opacity: (attendanceStudents.length === 0 || Object.keys(attendanceRecords).length === 0) ? 0.4 : 1
+                          }}
+                        >
+                          {t('topicNew.mentorCommentTab.dailyAttendance.clearData') || 'Clear Date'}
+                        </button>
+
+                        {/* Mark All Present button */}
+                        <button
+                          type="button"
+                          onClick={markAllHadir}
+                          disabled={attendanceStudents.length === 0 || loadingAttendance}
+                          className="px-3 py-1.5 text-sm font-medium"
+                          style={{
+                            border: `1px solid ${theme.border}`, borderRadius: '6px',
+                            background: theme.greenBg, color: theme.greenText, cursor: 'pointer',
+                            opacity: attendanceStudents.length === 0 ? 0.5 : 1
+                          }}
+                        >
+                          {t('topicNew.mentorCommentTab.dailyAttendance.markAllPresent') || '✓ All Present'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Student attendance table */}
+                    {loadingAttendance ? (
+                      <div className="text-center py-6" style={{ color: theme.textSecondary }}>
+                        <FontAwesomeIcon icon={faSpinner} spin className="mr-2" />
+                        {t('topicNew.mentorCommentTab.dailyAttendance.loading') || 'Loading attendance data...'}
+                      </div>
+                    ) : attendanceStudents.length === 0 ? (
+                      <div className="text-center py-6 text-sm" style={{ color: theme.textSecondary }}>
+                        {t('topicNew.mentorCommentTab.dailyAttendance.noStudents') || 'No students in this class.'}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+                              <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
+                                {t('topicNew.mentorCommentTab.dailyAttendance.colNo') || '#'}
+                              </th>
+                              <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
+                                {t('topicNew.mentorCommentTab.dailyAttendance.colName') || 'Student Name'}
+                              </th>
+                              <th className="py-2 px-3 text-center text-xs font-semibold" style={{ color: theme.textSecondary }}>
+                                {t('topicNew.mentorCommentTab.dailyAttendance.colStatus') || 'Status'}
+                              </th>
+                              <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
+                                {t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'Note'}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {attendanceStudents.map((student, idx) => {
+                              const rec = attendanceRecords[student.detail_siswa_id]
+                              const currentStatus = rec?.status || ''
+                              const isSaving = savingAttendanceId === student.detail_siswa_id
+                              const statusOptions = [
+                                { value: 'hadir',        label: t('topicNew.mentorCommentTab.dailyAttendance.statusHadir')        || 'Present',     bg: '#dcfce7', color: '#16a34a' },
+                                { value: 'tidak_hadir',  label: t('topicNew.mentorCommentTab.dailyAttendance.statusTidakHadir')  || 'Absent',      bg: '#fee2e2', color: '#dc2626' },
+                                { value: 'ijin',         label: t('topicNew.mentorCommentTab.dailyAttendance.statusIjin')         || 'Excused',     bg: '#fef3c7', color: '#d97706' },
+                                { value: 'terlambat',    label: t('topicNew.mentorCommentTab.dailyAttendance.statusTerlambat')    || 'Late',        bg: '#e0e7ff', color: '#4338ca' },
+                                { value: 'pulang_cepat', label: t('topicNew.mentorCommentTab.dailyAttendance.statusPulangCepat') || 'Early Leave',  bg: '#f3e8ff', color: '#7c3aed' },
+                              ]
+                              return (
+                                <tr key={student.detail_siswa_id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                                  <td className="py-2.5 px-3 text-xs font-mono" style={{ color: theme.textSecondary }}>{idx + 1}</td>
+                                  <td className="py-2.5 px-3 font-medium" style={{ color: theme.textPrimary }}>
+                                    {student.nama}
+                                    {isSaving && <FontAwesomeIcon icon={faSpinner} spin className="ml-2 text-xs" style={{ color: theme.textSecondary }} />}
+                                  </td>
+                                  <td className="py-2 px-3">
+                                    <div className="flex flex-wrap gap-1 justify-center">
+                                      {statusOptions.map(opt => (
+                                        <button
+                                          key={opt.value}
+                                          type="button"
+                                          disabled={isSaving}
+                                          onClick={() => saveSingleAttendance(student.detail_siswa_id, opt.value, rec?.keterangan || '')}
+                                          className="px-2 py-0.5 text-xs font-medium rounded-full transition-all"
+                                          style={{
+                                            background: currentStatus === opt.value ? opt.bg : theme.subtleBg,
+                                            color: currentStatus === opt.value ? opt.color : theme.textSecondary,
+                                            border: `1px solid ${currentStatus === opt.value ? opt.color : theme.border}`,
+                                            fontWeight: currentStatus === opt.value ? 700 : 400,
+                                            cursor: isSaving ? 'not-allowed' : 'pointer',
+                                            opacity: isSaving ? 0.6 : 1,
+                                          }}
+                                        >{opt.label}</button>
+                                      ))}
+                                    </div>
+                                  </td>
+                                  <td className="py-2 px-3">
+                                    <input
+                                      type="text"
+                                      value={rec?.keterangan || ''}
+                                      placeholder={t('topicNew.mentorCommentTab.dailyAttendance.notePlaceholder') || 'Optional...'}
+                                      onChange={e => setAttendanceRecords(prev => ({
+                                        ...prev,
+                                        [student.detail_siswa_id]: { ...(prev[student.detail_siswa_id] || {}), keterangan: e.target.value }
+                                      }))}
+                                      onBlur={e => {
+                                        if (currentStatus) saveSingleAttendance(student.detail_siswa_id, currentStatus, e.target.value)
+                                      }}
+                                      className="w-full px-2 py-1 text-xs focus:outline-none"
+                                      style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textBody, minWidth: '100px' }}
+                                    />
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>

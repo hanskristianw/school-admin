@@ -154,54 +154,51 @@ export const emailTemplates = {
   attendanceLate: ({ userName, date, issues, baseUrl }) => {
     const typeLabel = (type) => {
       switch (type) {
-        case 'late':        return { icon: '🕐', label: 'Terlambat',          engLabel: 'Late Attendance',   color: '#d97706', bg: '#fef3c7', headerGrad: 'linear-gradient(135deg, #d97706, #f59e0b)' }
-        case 'leave_early': return { icon: '🚪', label: 'Pulang Lebih Awal',  engLabel: 'Early Departure',  color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
-        case 'absent':      return { icon: '🚫', label: 'Tidak Masuk',        engLabel: 'Absence',          color: '#6b21a8', bg: '#f3e8ff', headerGrad: 'linear-gradient(135deg, #6b21a8, #9333ea)' }
-        case 'no_checkin':  return { icon: '❌', label: 'Tidak Check-In',     engLabel: 'Missing Check-In', color: '#7c3aed', bg: '#ede9fe', headerGrad: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }
-        case 'no_checkout': return { icon: '⚠️', label: 'Tidak Check-Out',    engLabel: 'Missing Check-Out',color: '#ea580c', bg: '#ffedd5', headerGrad: 'linear-gradient(135deg, #ea580c, #f97316)' }
-        default:            return { icon: '❓', label: type,                  engLabel: type,               color: '#374151', bg: '#f3f4f6', headerGrad: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
+        case 'late':        return { icon: '🕐', label: 'Late Attendance',    engLabel: 'Late Attendance',    color: '#d97706', bg: '#fef3c7', headerGrad: 'linear-gradient(135deg, #d97706, #f59e0b)' }
+        case 'leave_early': return { icon: '🚪', label: 'Early Departure',    engLabel: 'Early Departure',    color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
+        case 'absent':      return { icon: '🚫', label: 'Absence',            engLabel: 'Absence',            color: '#6b21a8', bg: '#f3e8ff', headerGrad: 'linear-gradient(135deg, #6b21a8, #9333ea)' }
+        case 'no_checkin':  return { icon: '❌', label: 'Missing Check-In',   engLabel: 'Missing Check-In',   color: '#7c3aed', bg: '#ede9fe', headerGrad: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }
+        case 'no_checkout': return { icon: '⚠️', label: 'Missing Check-Out',  engLabel: 'Missing Check-Out',  color: '#ea580c', bg: '#ffedd5', headerGrad: 'linear-gradient(135deg, #ea580c, #f97316)' }
+        default:            return { icon: '❓', label: type,                  engLabel: type,                 color: '#374151', bg: '#f3f4f6', headerGrad: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
       }
     }
 
     const issueList = issues || []
     const primaryMeta = typeLabel(issueList[0]?.type || 'late')
 
-    // Subject: "Notice of [Violation Type]" — use English label
     const engLabels = issueList.map(i => typeLabel(i.type).engLabel)
     const subject = issueList.length === 1
       ? `Notice of ${engLabels[0]}`
       : `Notice of ${engLabels.join(' & ')}`
 
-    // Format duration helper
-    const formatDuration = (mins) => {
-      if (!mins && mins !== 0) return ''
-      const h = Math.floor(mins / 60)
-      const m = mins % 60
-      const parts = []
-      if (h > 0) parts.push(`${h} hour${h > 1 ? 's' : ''}`)
-      if (m > 0) parts.push(`${m} minute${m > 1 ? 's' : ''}`)
-      return parts.join(' ') || '0 minutes'
-    }
-
-    // Build one plain-text style sentence per issue (matching screenshot style)
+    // Build factual, neutral sentence per issue — violation label at the end
     const issueLines = issueList.map(issue => {
       const { label } = typeLabel(issue.type)
+      const highlight = (txt) => `<span style="background:#fef08a;padding:1px 5px;border-radius:3px;font-weight:600;">${txt}</span>`
+
       if (issue.type === 'late') {
-        return `On <strong>${date}</strong>, you were <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">late</span> by ${formatDuration(issue.minutesDiff)}.`
+        // Show actual check-in time + scheduled time, label at end
+        const actual = issue.actualTime || '—'
+        const scheduled = issue.scheduledTime || '—'
+        return `On <strong>${date}</strong>, your check-in time was recorded at <strong>${actual}</strong>. Your scheduled check-in time is at <strong>${scheduled}</strong>. ${highlight(label)}`
       } else if (issue.type === 'leave_early') {
-        return `On <strong>${date}</strong>, you were <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">leave early</span> by ${formatDuration(issue.minutesDiff)}.`
+        const actual = issue.actualTime || '—'
+        const scheduled = issue.scheduledTime || '—'
+        return `On <strong>${date}</strong>, your check-out time was recorded at <strong>${actual}</strong>. Your scheduled check-out time is at <strong>${scheduled}</strong>. ${highlight(label)}`
       } else if (issue.type === 'absent') {
-        return `On <strong>${date}</strong>, you were recorded as <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">absent</span> (no attendance recorded).`
+        return `On <strong>${date}</strong>, no attendance record was found for your account. ${highlight(label)}`
       } else if (issue.type === 'no_checkin') {
-        return `On <strong>${date}</strong>, there was <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">no check-in record</span> found. Scheduled check-in: ${issue.scheduledTime || '—'}.`
+        const scheduled = issue.scheduledTime || '—'
+        return `On <strong>${date}</strong>, there is no check-in record found. Your scheduled check-in time is at <strong>${scheduled}</strong>. ${highlight(label)}`
       } else if (issue.type === 'no_checkout') {
-        return `On <strong>${date}</strong>, there was <span style="background:#fef08a;padding:1px 4px;border-radius:3px;">no check-out record</span> found. Scheduled check-out: ${issue.scheduledTime || '—'}.`
+        const scheduled = issue.scheduledTime || '—'
+        return `On <strong>${date}</strong>, there is no check-out record found. Your scheduled check-out time is at <strong>${scheduled}</strong>. ${highlight(label)}`
       }
       return `On <strong>${date}</strong>, a <strong>${label}</strong> was recorded.`
     })
 
-    // Portal URL — hardcoded to production domain
-    const portalUrl = 'https://manageccs.online/data/attendance-excuses'
+    // Portal URL
+    const portalUrl = `${baseUrl || 'https://manageccs.online'}/data/attendance-form`
 
     const html = wrapHtml(`
       <div class="container">
@@ -211,12 +208,10 @@ export const emailTemplates = {
         </div>
         <div class="body">
           <p>Good Morning, <strong>${userName}</strong>.</p>
-          ${issueLines.map(l => `<p>${l}</p>`).join('')}
-          <p style="margin-top:16px;">
-            Please fill Form in CCS Portal
-            (<a href="${portalUrl}" style="color:#1d4ed8;">${portalUrl}</a>)
-            &gt;&gt; Absence List<br>
-            Thank you.
+          ${issueLines.map(l => `<p style="margin:10px 0;">${l}</p>`).join('')}
+          <p style="margin-top:20px;">
+            If you have a valid reason for the above, please complete the attendance excuse form in the CCS Portal:<br>
+            <a href="${portalUrl}" style="color:#1d4ed8;word-break:break-all;">${portalUrl}</a>
           </p>
           <p style="margin-top:20px;color:#444;">
             HCM Chung Chung Christian School
@@ -241,15 +236,16 @@ export const emailTemplates = {
    * @param {Array}  params.violations - Array of { userName, roleName, unitName, type, scheduledTime, actualTime, minutesDiff }
    */
   attendanceSummaryAdmin: ({ date, violations }) => {
-    const subject = `📋 Rekap Kehadiran ${date} — ${violations.length} Pelanggaran`
+    // date is already pre-formatted (e.g. "Tuesday, 14 July 2026") by the notify route
+    const subject = `📋 Daily Attendance Summary — ${date} — ${violations.length} violation(s)`
 
     const typeLabel = (type) => {
       switch (type) {
-        case 'late':        return '🕐 Terlambat'
-        case 'leave_early': return '🚪 Pulang Awal'
-        case 'absent':      return '🚫 Tidak Masuk'
-        case 'no_checkin':  return '❌ Tidak Check-In'
-        case 'no_checkout': return '⚠️ Tidak Check-Out'
+        case 'late':        return '🕐 Late'
+        case 'leave_early': return '🚪 Early Departure'
+        case 'absent':      return '🚫 Absent'
+        case 'no_checkin':  return '❌ Missing Check-In'
+        case 'no_checkout': return '⚠️ Missing Check-Out'
         default:            return type
       }
     }
@@ -258,7 +254,7 @@ export const emailTemplates = {
       const bgColor = i % 2 === 0 ? '#f9fafb' : '#ffffff'
       const detail = (v.type === 'absent' || v.type === 'no_checkin' || v.type === 'no_checkout')
         ? '—'
-        : `${v.actualTime} (${v.minutesDiff > 0 ? '+' : ''}${v.minutesDiff} mnt)`
+        : `${v.actualTime} (${v.minutesDiff > 0 ? '+' : ''}${v.minutesDiff} min)`
       return `
         <tr style="background:${bgColor}">
           <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0;">${v.userName}</td>
@@ -273,32 +269,32 @@ export const emailTemplates = {
     const html = wrapHtml(`
       <div class="container" style="max-width:720px;">
         <div class="header" style="background: linear-gradient(135deg, #1e40af, #3b82f6);">
-          <h1>📋 Rekap Kehadiran Harian</h1>
+          <h1>📋 Daily Attendance Summary</h1>
           <p>Chung Chung Christian School — ${date}</p>
         </div>
         <div class="body">
-          <p>Berikut adalah rekap pelanggaran kehadiran pada tanggal <strong>${date}</strong>:</p>
+          <p>The following attendance violations were recorded on <strong>${date}</strong>:</p>
           <div class="detail-box" style="padding:0;overflow:hidden;">
             <table style="width:100%;border-collapse:collapse;">
               <thead>
                 <tr style="background:#f0f9ff;">
-                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Nama</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Name</th>
                   <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Role</th>
                   <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Unit</th>
-                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Jenis</th>
-                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Seharusnya</th>
-                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Aktual</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Type</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Scheduled</th>
+                  <th style="padding:10px 12px;font-size:12px;text-align:left;color:#374151;border-bottom:2px solid #e5e7eb;">Actual</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
             </table>
           </div>
           <p style="font-size:13px;color:#666;margin-top:16px;">
-            Total: <strong>${violations.length} catatan</strong> dari mesin absensi hari ${date}.
+            Total: <strong>${violations.length} record(s)</strong> from the attendance machine on ${date}.
           </p>
         </div>
         <div class="footer">
-          Rekap ini dikirim otomatis setiap hari jam 00:01 WIB — Sistem Absensi CCS
+          This summary is sent automatically every day at 00:01 WIB — CCS Attendance System
         </div>
       </div>
     `)
