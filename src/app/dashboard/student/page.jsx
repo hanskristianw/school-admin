@@ -175,14 +175,6 @@ export default function StudentDashboard() {
       {/* Main Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-6 -mt-4">
         <div className="max-w-5xl mx-auto space-y-6">
-          {/* QR Scan Button */}
-          <Button 
-            onClick={() => router.push('/student/scan')} 
-            className="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold py-4 md:py-3 px-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-3 text-lg md:text-base"
-          >
-            <FontAwesomeIcon icon={faQrcode} className="text-2xl md:text-xl" />
-            <span>{t('student.qrScan') || 'QR Scan'}</span>
-          </Button>
 
           {/* Schedule Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">

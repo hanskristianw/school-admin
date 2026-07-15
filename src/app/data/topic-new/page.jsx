@@ -661,11 +661,37 @@ export default function TopicNewPage() {
       console.log('🔍 Fetching subjects for user:', userId, 'role:', role, 'isCurriculum:', isCurriculum)
       const isAdmin = (role?.toLowerCase() === 'admin') || isCurriculum
 
+      let subjectIds = []
+
+      if (!isAdmin) {
+        // 1. Subjects where user is global owner
+        const { data: ownedSubjects } = await supabase
+          .from('subject')
+          .select('subject_id')
+          .eq('subject_user_id', userId)
+        const ownedIds = (ownedSubjects || []).map(s => s.subject_id)
+
+        // 2. Subjects assigned to this teacher via detail_kelas override
+        const { data: overrideDetails } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_subject_id')
+          .eq('teacher_user_id', userId)
+        const overrideIds = (overrideDetails || []).map(d => d.detail_kelas_subject_id)
+
+        // Union of both
+        subjectIds = [...new Set([...ownedIds, ...overrideIds])]
+      }
+
       let query = supabase
         .from('subject')
         .select('subject_id, subject_name, subject_guide, custom_grade_boundaries')
       if (!isAdmin) {
-        query = query.eq('subject_user_id', userId)
+        if (subjectIds.length === 0) {
+          setSubjects([])
+          setLoading(false)
+          return
+        }
+        query = query.in('subject_id', subjectIds)
       }
       const { data, error } = await query.order('subject_name')
       
@@ -1014,12 +1040,36 @@ export default function TopicNewPage() {
     try {
       const isAdmin = (role?.toLowerCase() === 'admin') || isCurriculum
 
-      // Get subjects for user (or all subjects for admin)
+      let subjectIds = []
+
+      if (!isAdmin) {
+        // 1. Subjects where user is global owner
+        const { data: ownedSubjects } = await supabase
+          .from('subject')
+          .select('subject_id')
+          .eq('subject_user_id', userId)
+        const ownedIds = (ownedSubjects || []).map(s => s.subject_id)
+
+        // 2. detail_kelas where teacher is overridden to this user
+        const { data: overrideDetails } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_subject_id')
+          .eq('teacher_user_id', userId)
+        const overrideSubjectIds = (overrideDetails || []).map(d => d.detail_kelas_subject_id)
+
+        subjectIds = [...new Set([...ownedIds, ...overrideSubjectIds])]
+      }
+
+      // Get subjects
       let subjectQuery = supabase
         .from('subject')
         .select('subject_id, subject_name')
       if (!isAdmin) {
-        subjectQuery = subjectQuery.eq('subject_user_id', userId)
+        if (subjectIds.length === 0) {
+          setDetailKelasOptions([])
+          return
+        }
+        subjectQuery = subjectQuery.in('subject_id', subjectIds)
       }
       const { data: subjectsData, error: subjectsError } = await subjectQuery.order('subject_name')
       
@@ -1029,21 +1079,31 @@ export default function TopicNewPage() {
         return
       }
       
-      const subjectIds = subjectsData.map(s => s.subject_id)
+      const allSubjectIds = subjectsData.map(s => s.subject_id)
       
-      // Get detail_kelas
-      const { data: details, error: detailErr } = await supabase
+      // Get detail_kelas — but for non-admin, only rows where:
+      //   teacher_user_id = userId (override) OR (teacher_user_id IS NULL AND subject belongs to user)
+      let detailQuery = supabase
         .from('detail_kelas')
-        .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id')
-        .in('detail_kelas_subject_id', subjectIds)
+        .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id, teacher_user_id')
+        .in('detail_kelas_subject_id', allSubjectIds)
+      const { data: details, error: detailErr } = await detailQuery
       
       if (detailErr) throw detailErr
       if (!details || details.length === 0) {
         setDetailKelasOptions([])
         return
       }
+
+      // For non-admin: filter to only rows where this teacher is responsible
+      const filteredDetails = isAdmin ? details : details.filter(d => {
+        if (d.teacher_user_id) return d.teacher_user_id === userId
+        // No override — check if user owns the subject globally
+        const { data: ownedSubjects } = { data: null } // already computed above in subjectIds
+        return subjectIds.includes(d.detail_kelas_subject_id)
+      })
       
-      const kelasIds = Array.from(new Set(details.map(d => d.detail_kelas_kelas_id)))
+      const kelasIds = Array.from(new Set(filteredDetails.map(d => d.detail_kelas_kelas_id)))
       
       // Get kelas names
       const { data: kelasData, error: kelasErr } = await supabase
@@ -1056,7 +1116,7 @@ export default function TopicNewPage() {
       const kelasMap = new Map((kelasData || []).map(k => [k.kelas_id, k.kelas_nama]))
       const subjectMap = new Map((subjectsData || []).map(s => [s.subject_id, s.subject_name]))
       
-      const options = (details || []).map(d => ({
+      const options = filteredDetails.map(d => ({
         detail_kelas_id: d.detail_kelas_id,
         subject_id: d.detail_kelas_subject_id,
         subject_name: subjectMap.get(d.detail_kelas_subject_id) || 'Unknown Subject',

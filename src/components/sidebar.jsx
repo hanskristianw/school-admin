@@ -306,7 +306,7 @@ const Sidebar = memo(({ isOpen, setIsOpen }) => {
             const defaults = ['/dashboard', '/profile']
             const counselorExtra = isCounselor ? ['/data/consultation'] : []
             const teacherExtra = isTeacher ? ['/teacher', '/teacher/assessment_submission', '/room', '/room/booking'] : []
-            const studentExtra = isStudent ? ['/student', '/student/scan'] : []
+            const studentExtra = isStudent ? ['/student'] : []
             const merged = Array.from(new Set([
               ...transformedData.map(m => normalize(m.path)),
               ...defaults.map(normalize),

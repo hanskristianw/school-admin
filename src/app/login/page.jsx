@@ -183,7 +183,7 @@ function LoginContent() {
             const raw = (menusRes.menus || []).map(m => m.menu_path).filter(Boolean)
             const counselorExtra = user.isCounselor ? ['/data/consultation'] : []
             const teacherExtra = user.isTeacher ? ['/teacher', '/teacher/assessment_submission', '/teacher/nilai', '/room', '/room/booking'] : []
-            const studentExtra = user.isStudent ? ['/student', '/student/scan'] : []
+            const studentExtra = user.isStudent ? ['/student'] : []
             const merged = Array.from(new Set([
               ...raw.map(normalize),
               ...defaults.map(normalize),

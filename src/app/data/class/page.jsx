@@ -39,6 +39,7 @@ export default function ClassManagement() {
   const [selectedSubjectIds, setSelectedSubjectIds] = useState([]); // UI selection
   const [subjectMypYearMap, setSubjectMypYearMap] = useState({}); // { [subject_id]: { s1: myp_year, s2: myp_year } }
   const [detailKelasIdMap, setDetailKelasIdMap] = useState({}); // { [subject_id]: detail_kelas_id }
+  const [teacherOverrideMap, setTeacherOverrideMap] = useState({}); // { [subject_id]: teacher_user_id | null }
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [subjectsSaving, setSubjectsSaving] = useState(false);
   
@@ -251,6 +252,7 @@ export default function ClassManagement() {
     setAvailableSubjects([]);
     setAssignedSubjectIds([]);
     setSelectedSubjectIds([]);
+    setTeacherOverrideMap({});
     setSubjectsLoading(true);
 
     try {
@@ -266,7 +268,7 @@ export default function ClassManagement() {
       // Fetch existing assignments from detail_kelas
       const { data: details, error: detailError } = await supabase
         .from('detail_kelas')
-        .select('detail_kelas_id, detail_kelas_subject_id, myp_year_s1, myp_year_s2')
+        .select('detail_kelas_id, detail_kelas_subject_id, myp_year_s1, myp_year_s2, teacher_user_id')
         .eq('detail_kelas_kelas_id', kelas.kelas_id);
 
       if (detailError) throw new Error(detailError.message);
@@ -274,15 +276,18 @@ export default function ClassManagement() {
       const assignedIds = (details || []).map(d => d.detail_kelas_subject_id);
       const mypMap = {};
       const idMap = {};
+      const teacherMap = {};
       (details || []).forEach(d => {
         mypMap[d.detail_kelas_subject_id] = { s1: d.myp_year_s1 ?? 1, s2: d.myp_year_s2 ?? 1 };
         idMap[d.detail_kelas_subject_id] = d.detail_kelas_id;
+        teacherMap[d.detail_kelas_subject_id] = d.teacher_user_id ?? null;
       });
       setAvailableSubjects(subjectsData || []);
       setAssignedSubjectIds(assignedIds);
       setSelectedSubjectIds(assignedIds);
       setSubjectMypYearMap(mypMap);
       setDetailKelasIdMap(idMap);
+      setTeacherOverrideMap(teacherMap);
 
     } catch (err) {
   console.error('Error opening Manage Subjects:', err);
@@ -468,7 +473,8 @@ export default function ClassManagement() {
           detail_kelas_subject_id: subjectId,
           detail_kelas_kelas_id: selectedClassForSubjects.kelas_id,
           myp_year_s1: subjectMypYearMap[subjectId]?.s1 ?? 1,
-          myp_year_s2: subjectMypYearMap[subjectId]?.s2 ?? 1
+          myp_year_s2: subjectMypYearMap[subjectId]?.s2 ?? 1,
+          teacher_user_id: teacherOverrideMap[subjectId] || null
         }));
         const { error: insertErr } = await supabase
           .from('detail_kelas')
@@ -484,7 +490,8 @@ export default function ClassManagement() {
             .from('detail_kelas')
             .update({
               myp_year_s1: subjectMypYearMap[subjectId]?.s1 ?? 1,
-              myp_year_s2: subjectMypYearMap[subjectId]?.s2 ?? 1
+              myp_year_s2: subjectMypYearMap[subjectId]?.s2 ?? 1,
+              teacher_user_id: teacherOverrideMap[subjectId] || null
             })
             .eq('detail_kelas_id', detailKelasIdMap[subjectId]);
           if (updateErr) throw new Error(updateErr.message);
@@ -1122,18 +1129,38 @@ export default function ClassManagement() {
                 <div className="max-h-72 overflow-auto rounded-md p-3" style={{ border: `1px solid ${theme.border}` }}>
                   <ul className="space-y-2">
                     {availableSubjects.map(subj => (
-                      <li key={subj.subject_id} className="flex items-center gap-2">
-                        <input
-                          id={`subj-${subj.subject_id}`}
-                          type="checkbox"
-                          checked={selectedSubjectIds.includes(subj.subject_id)}
-                          onChange={() => toggleSubjectSelection(subj.subject_id)}
-                        />
-                        <label htmlFor={`subj-${subj.subject_id}`} className="cursor-pointer flex-1" style={{ color: theme.textBody }}>
-                          {subj.subject_name}
-                        </label>
+                      <li key={subj.subject_id} className="flex flex-col gap-1 pb-2" style={{ borderBottom: `1px solid ${theme.border}` }}>
+                        <div className="flex items-center gap-2">
+                          <input
+                            id={`subj-${subj.subject_id}`}
+                            type="checkbox"
+                            checked={selectedSubjectIds.includes(subj.subject_id)}
+                            onChange={() => toggleSubjectSelection(subj.subject_id)}
+                          />
+                          <label htmlFor={`subj-${subj.subject_id}`} className="cursor-pointer flex-1 font-medium" style={{ color: theme.textBody }}>
+                            {subj.subject_name}
+                          </label>
+                        </div>
                         {selectedSubjectIds.includes(subj.subject_id) && (
-                          <div className="flex flex-col gap-1">
+                          <div className="pl-6 flex flex-col gap-1">
+                            {/* Teacher override dropdown */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs w-16 shrink-0" style={{ color: theme.textSecondary }}>Teacher:</span>
+                              <select
+                                value={teacherOverrideMap[subj.subject_id] ?? ''}
+                                onChange={e => setTeacherOverrideMap(prev => ({ ...prev, [subj.subject_id]: e.target.value ? Number(e.target.value) : null }))}
+                                className="text-xs rounded px-1 py-0.5 flex-1"
+                                style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
+                              >
+                                <option value="">— use subject default —</option>
+                                {users.map(u => (
+                                  <option key={u.user_id} value={u.user_id}>
+                                    {u.user_nama_depan} {u.user_nama_belakang}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            {/* MYP year selectors */}
                             <div className="flex items-center gap-1">
                               <span className="text-xs w-5" style={{ color: theme.textSecondary }}>S1:</span>
                               {[1, 2, 3, 4, 5].map(yr => (
