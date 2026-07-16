@@ -187,6 +187,21 @@ export default function TimetablePage() {
     formDetailKelasId ? dkMap.get(parseInt(formDetailKelasId)) : null,
     [dkMap, formDetailKelasId]);
 
+  const selectedYear = useMemo(() =>
+    years.find(y => String(y.year_id) === String(filters.year)),
+    [years, filters.year]);
+
+  // ── Group exceptions by month (must be before early return) ──────────────
+  const exByMonth = useMemo(() => {
+    const groups = {};
+    exceptions.forEach(ex => {
+      const m = ex.exception_date?.slice(0, 7) || 'unknown';
+      if (!groups[m]) groups[m] = [];
+      groups[m].push(ex);
+    });
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [exceptions]);
+
   // ── Early loading return ──────────────────────────────────────────────────
   if (loading) return (
     <div className="flex justify-center items-center min-h-screen">
@@ -346,18 +361,7 @@ export default function TimetablePage() {
     finally { setSubmitting(false); }
   };
 
-  const selectedYear = years.find(y => String(y.year_id) === String(filters.year));
-
-  // ── Group exceptions by month ─────────────────────────────────────────────
-  const exByMonth = useMemo(() => {
-    const groups = {};
-    exceptions.forEach(ex => {
-      const m = ex.exception_date?.slice(0, 7) || 'unknown';
-      if (!groups[m]) groups[m] = [];
-      groups[m].push(ex);
-    });
-    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [exceptions]);
+  // selectedYear and exByMonth are now declared above the early return
 
   return (
     <div className="space-y-6">
