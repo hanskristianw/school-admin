@@ -5031,6 +5031,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             </div>
                           </div>
 
+                          <div className="space-y-3">
                             {/* Objectives */}
                             <div>
                               <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
