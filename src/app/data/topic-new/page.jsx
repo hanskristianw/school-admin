@@ -4912,46 +4912,37 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       </select>
                     </div>
 
-                    {/* 3. Subject — use subjects state directly (same as Overview), filter by wpKelas */}
+                    {/* 3. Subject — identical to Overview: show ALL subjects from subjects state, no kelas filter */}
                     <div>
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. Mata Pelajaran</label>
                       <select
                         value={wpSubject}
-                        disabled={!wpKelas}
                         onChange={e => { setWpSubject(e.target.value); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
                         className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: !wpKelas ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpKelas ? 0.6 : 1 }}
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
-                        <option value="">{!wpKelas ? 'Pilih kelas dulu' : 'Semua Mapel'}</option>
-                        {subjects
-                          .filter(s =>
-                            !wpKelas ||
-                            topics.some(t =>
-                              String(t.topic_kelas_id) === String(wpKelas) &&
-                              String(t.topic_subject_id) === String(s.subject_id)
-                            )
-                          )
-                          .map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)
-                        }
+                        <option value="">Semua Mapel</option>
+                        {subjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)}
                       </select>
                     </div>
 
-                    {/* 4. Topic/Unit */}
+                    {/* 4. Topic/Unit — filter uses parseInt() matching Overview's filteredTopics logic */}
                     <div>
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>4. Unit / Topik</label>
                       <select
                         value={selectedTopicForWeekly?.topic_id || ''}
-                        disabled={!wpSubject && !wpKelas}
                         onChange={e => handleTopicSelectionForWeekly(e.target.value)}
                         className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: (!wpSubject && !wpKelas) ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: (!wpSubject && !wpKelas) ? 0.6 : 1 }}
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
-                        <option value="">{(!wpSubject && !wpKelas) ? 'Pilih mapel dulu' : t('topicNew.fields.chooseTopic')}</option>
+                        <option value="">{t('topicNew.fields.chooseTopic')}</option>
                         {topics
-                          .filter(t =>
-                            (!wpKelas || String(t.topic_kelas_id) === String(wpKelas)) &&
-                            (!wpSubject || String(t.topic_subject_id) === String(wpSubject))
-                          )
+                          .filter(t => {
+                            const matchYear    = !wpYear    || (allKelasRaw.find(k => k.kelas_id === t.topic_kelas_id)?.kelas_year_id?.toString() === wpYear)
+                            const matchKelas   = !wpKelas   || t.topic_kelas_id   === parseInt(wpKelas)
+                            const matchSubject = !wpSubject || t.topic_subject_id === parseInt(wpSubject)
+                            return matchYear && matchKelas && matchSubject
+                          })
                           .sort((a, b) => (a.topic_urutan || 0) - (b.topic_urutan || 0) || (a.topic_nama || '').localeCompare(b.topic_nama || ''))
                           .map(topic => (
                             <option key={topic.topic_id} value={topic.topic_id}>
