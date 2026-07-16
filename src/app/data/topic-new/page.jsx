@@ -46,10 +46,12 @@ export default function TopicNewPage() {
   })
   const [userRole, setUserRole] = useState(null)
   const [userIsCurriculum, setUserIsCurriculum] = useState(false)
-  // isAdmin: full curriculum access on this page for admin role OR curriculum flag
-  const isAdmin = (userRole?.toLowerCase() === 'admin') || userIsCurriculum
+  // userIsAdmin: set from user_data.isAdmin (role.is_admin from DB) — covers any role name with is_admin=true
+  const [userIsAdmin, setUserIsAdmin] = useState(false)
+  // isAdmin: full access when role name is 'admin', OR is_admin flag is true in DB, OR curriculum/principal flag
+  const isAdmin = (userRole?.toLowerCase() === 'admin') || userIsAdmin || userIsCurriculum
   // Helper for functions that receive role as param (before state is set)
-  const isAdminLike = (r) => !!(r && r.toLowerCase() === 'admin') || userIsCurriculum
+  const isAdminLike = (r) => !!(r && r.toLowerCase() === 'admin') || userIsAdmin || userIsCurriculum
 
   
   // Data state
@@ -501,14 +503,17 @@ export default function TopicNewPage() {
       setUserRole(role)
     }
 
-    // Read isCurriculum / isPrincipal flags synchronously before calling fetch functions
+    // Read isCurriculum / isPrincipal / isAdmin flags synchronously before calling fetch functions
     let isCurriculum = false
+    let isAdminFlag = false
     if (userData) {
       try {
         const parsedCheck = JSON.parse(userData)
-        // Full subject access: admin, curriculum, or principal
+        // Full subject access: is_admin flag, curriculum, or principal
         isCurriculum = !!parsedCheck.isCurriculum || !!parsedCheck.isPrincipal
+        isAdminFlag = !!parsedCheck.isAdmin
         setUserIsCurriculum(isCurriculum)
+        setUserIsAdmin(isAdminFlag)
       } catch (e) {}
     }
 
@@ -520,8 +525,8 @@ export default function TopicNewPage() {
         const userId = parsed.userID || parsed.user_id || parsed.userId || parsed.id
         console.log('👤 User ID:', userId)
         if (userId) {
-          fetchSubjects(userId, role, isCurriculum)
-          fetchDetailKelasForAssessment(userId, role, isCurriculum)
+          fetchSubjects(userId, role, isCurriculum, isAdminFlag)
+          fetchDetailKelasForAssessment(userId, role, isCurriculum, isAdminFlag)
           fetchAllKelas() // Fetch all kelas for filter dropdown
         } else {
           console.warn('⚠️ No user ID found')
@@ -686,10 +691,10 @@ export default function TopicNewPage() {
   }
 
   // Fetch subjects for current user
-  const fetchSubjects = async (userId, role, isCurriculum = false) => {
+  const fetchSubjects = async (userId, role, isCurriculum = false, isAdminFlag = false) => {
     try {
-      console.log('🔍 Fetching subjects for user:', userId, 'role:', role, 'isCurriculum:', isCurriculum)
-      const isAdmin = (role?.toLowerCase() === 'admin') || isCurriculum
+      console.log('🔍 Fetching subjects for user:', userId, 'role:', role, 'isCurriculum:', isCurriculum, 'isAdmin:', isAdminFlag)
+      const isAdmin = (role?.toLowerCase() === 'admin') || isAdminFlag || isCurriculum
 
       let subjectIds = []
 
@@ -1067,9 +1072,9 @@ export default function TopicNewPage() {
   }
   
   // Fetch detail_kelas for assessment form
-  const fetchDetailKelasForAssessment = async (userId, role, isCurriculum = false) => {
+  const fetchDetailKelasForAssessment = async (userId, role, isCurriculum = false, isAdminFlag = false) => {
     try {
-      const isAdmin = (role?.toLowerCase() === 'admin') || isCurriculum
+      const isAdmin = (role?.toLowerCase() === 'admin') || isAdminFlag || isCurriculum
 
       let subjectIds = []
 
