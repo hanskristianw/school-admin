@@ -256,6 +256,10 @@ export default function TopicNewPage() {
   const [weeklyAiInput, setWeeklyAiInput] = useState({ assessmentDuration: '', specialRequests: '' })
   const [weeklyAiLoading, setWeeklyAiLoading] = useState(false)
   const [weeklyAiResults, setWeeklyAiResults] = useState(null)
+  // Weekly Plan cascade filter state (Year → Kelas → Subject → Topic)
+  const [wpYear, setWpYear] = useState('')
+  const [wpKelas, setWpKelas] = useState('')
+  const [wpSubject, setWpSubject] = useState('')
 
   // Comment AI Help state
   const [commentAiModalOpen, setCommentAiModalOpen] = useState(false)
@@ -4872,35 +4876,89 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <div className="mb-5">
                   <h2 className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>Weekly Plan</h2>
                   <p className="text-xs mb-4" style={{ color: theme.textSecondary }}>Break down your unit into weekly objectives, activities, and resources</p>
-                  
-                  {/* Topic Selection */}
-                  <div className="mb-5">
-                    <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                      Select Topic/Unit
-                    </label>
-                    <select
-                      value={selectedTopicForWeekly?.topic_id || ''}
-                      onChange={(e) => handleTopicSelectionForWeekly(e.target.value)}
-                      className="w-full md:w-1/2 px-3 py-2 text-xs focus:outline-none"
-                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                    >
-                      <option value="">{t('topicNew.fields.chooseTopic')}</option>
-                      {topics
-                        .slice()
-                        .sort((a, b) => {
-                          const subjectA = subjectMap.get(a.topic_subject_id) || ''
-                          const subjectB = subjectMap.get(b.topic_subject_id) || ''
-                          if (subjectA !== subjectB) return subjectA.localeCompare(subjectB)
-                          if ((a.topic_urutan || 0) !== (b.topic_urutan || 0)) return (a.topic_urutan || 0) - (b.topic_urutan || 0)
-                          return (a.topic_nama || '').localeCompare(b.topic_nama || '')
-                        })
-                        .map(topic => (
-                          <option key={topic.topic_id} value={topic.topic_id}>
-                            {subjectMap.get(topic.topic_subject_id) || 'N/A'} - Unit {topic.topic_urutan} - {topic.topic_nama}
-                          </option>
-                        ))
-                      }
-                    </select>
+
+                  {/* Cascade Filter: Year → Kelas → Subject → Topic */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4" style={{ background: theme.subtleBg, borderRadius: '8px', border: `1px solid ${theme.border}` }}>
+                    {/* 1. Tahun Ajaran */}
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. Tahun Ajaran</label>
+                      <select
+                        value={wpYear}
+                        onChange={e => { setWpYear(e.target.value); setWpKelas(''); setWpSubject(''); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
+                        className="w-full px-3 py-2 text-xs focus:outline-none"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                      >
+                        <option value="">Semua Tahun</option>
+                        {yearOptions.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
+                      </select>
+                    </div>
+
+                    {/* 2. Kelas */}
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. Kelas</label>
+                      <select
+                        value={wpKelas}
+                        disabled={!wpYear}
+                        onChange={e => { setWpKelas(e.target.value); setWpSubject(''); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
+                        className="w-full px-3 py-2 text-xs focus:outline-none"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: !wpYear ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpYear ? 0.6 : 1 }}
+                      >
+                        <option value="">{!wpYear ? 'Pilih tahun dulu' : 'Semua Kelas'}</option>
+                        {[...allKelasRaw]
+                          .filter(k => !wpYear || String(k.kelas_year_id) === String(wpYear))
+                          .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama, 'id'))
+                          .map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)
+                        }
+                      </select>
+                    </div>
+
+                    {/* 3. Subject */}
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. Mata Pelajaran</label>
+                      <select
+                        value={wpSubject}
+                        disabled={!wpKelas}
+                        onChange={e => { setWpSubject(e.target.value); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
+                        className="w-full px-3 py-2 text-xs focus:outline-none"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: !wpKelas ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpKelas ? 0.6 : 1 }}
+                      >
+                        <option value="">{!wpKelas ? 'Pilih kelas dulu' : 'Semua Mapel'}</option>
+                        {[...new Map(
+                          topics
+                            .filter(t => !wpKelas || String(t.topic_kelas_id) === String(wpKelas))
+                            .map(t => [t.topic_subject_id, subjectMap.get(t.topic_subject_id) || ''])
+                        ).entries()]
+                          .sort((a, b) => a[1].localeCompare(b[1], 'id'))
+                          .map(([sid, sname]) => <option key={sid} value={sid}>{sname}</option>)
+                        }
+                      </select>
+                    </div>
+
+                    {/* 4. Topic/Unit */}
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>4. Unit / Topik</label>
+                      <select
+                        value={selectedTopicForWeekly?.topic_id || ''}
+                        disabled={!wpSubject && !wpKelas}
+                        onChange={e => handleTopicSelectionForWeekly(e.target.value)}
+                        className="w-full px-3 py-2 text-xs focus:outline-none"
+                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: (!wpSubject && !wpKelas) ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: (!wpSubject && !wpKelas) ? 0.6 : 1 }}
+                      >
+                        <option value="">{(!wpSubject && !wpKelas) ? 'Pilih mapel dulu' : t('topicNew.fields.chooseTopic')}</option>
+                        {topics
+                          .filter(t =>
+                            (!wpKelas || String(t.topic_kelas_id) === String(wpKelas)) &&
+                            (!wpSubject || String(t.topic_subject_id) === String(wpSubject))
+                          )
+                          .sort((a, b) => (a.topic_urutan || 0) - (b.topic_urutan || 0) || (a.topic_nama || '').localeCompare(b.topic_nama || ''))
+                          .map(topic => (
+                            <option key={topic.topic_id} value={topic.topic_id}>
+                              Unit {topic.topic_urutan} — {topic.topic_nama}
+                            </option>
+                          ))
+                        }
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -6035,7 +6093,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               </span>
             </div>
             <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>
-              {t('topicNew.mentorCommentTab.dailyAttendance.subtitle') || 'Record daily class attendance for your homeroom class.'}
+              Catat kehadiran harian siswa di kelas Anda. Pilih tahun ajaran dan kelas untuk mulai mencatat.
             </p>
 
             {/* Filter row: Year → Kelas */}
