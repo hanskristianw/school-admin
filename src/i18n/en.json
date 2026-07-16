@@ -873,6 +873,16 @@
       "semester2": "Semester 2"
     },
     "weeklyPlanTab": {
+      "title": "Weekly Plan",
+      "subtitle": "Break down your unit into weekly objectives, activities, and resources",
+      "filterYear": "1. Academic Year",
+      "filterClass": "2. Class",
+      "filterSubject": "3. Subject",
+      "filterUnit": "4. Unit / Topic",
+      "allYears": "All Years",
+      "allClasses": "All Classes",
+      "allSubjects": "All Subjects",
+      "selectYearFirst": "Select year first",
       "week": "Week",
       "dateLabel": "Date of Use:",
       "objectives": "Learning Objectives",

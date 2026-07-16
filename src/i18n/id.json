@@ -873,6 +873,16 @@
       "semester2": "Semester 2"
     },
     "weeklyPlanTab": {
+      "title": "Rencana Mingguan",
+      "subtitle": "Uraikan unit Anda ke dalam tujuan, kegiatan, dan sumber daya per minggu",
+      "filterYear": "1. Tahun Ajaran",
+      "filterClass": "2. Kelas",
+      "filterSubject": "3. Mata Pelajaran",
+      "filterUnit": "4. Unit / Topik",
+      "allYears": "Semua Tahun",
+      "allClasses": "Semua Kelas",
+      "allSubjects": "Semua Mapel",
+      "selectYearFirst": "Pilih tahun dulu",
       "week": "Minggu",
       "dateLabel": "Tanggal Penggunaan:",
       "objectives": "Tujuan Pembelajaran",

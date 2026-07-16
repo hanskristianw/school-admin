@@ -4875,28 +4875,28 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             {activeSubMenu === 'weekly-plan' && (
               <div>
                 <div className="mb-5">
-                  <h2 className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>Weekly Plan</h2>
-                  <p className="text-xs mb-4" style={{ color: theme.textSecondary }}>Break down your unit into weekly objectives, activities, and resources</p>
+                  <h2 className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>{t('topicNew.weeklyPlanTab.title')}</h2>
+                  <p className="text-xs mb-4" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.subtitle')}</p>
 
                   {/* Cascade Filter: Year → Kelas → Subject → Topic */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4" style={{ background: theme.subtleBg, borderRadius: '8px', border: `1px solid ${theme.border}` }}>
                     {/* 1. Tahun Ajaran */}
                     <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. Tahun Ajaran</label>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterYear')}</label>
                       <select
                         value={wpYear}
                         onChange={e => { setWpYear(e.target.value); setWpKelas(''); setWpSubject(''); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
                         className="w-full px-3 py-2 text-xs focus:outline-none"
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
-                        <option value="">Semua Tahun</option>
+                        <option value="">{t('topicNew.weeklyPlanTab.allYears')}</option>
                         {yearOptions.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
                       </select>
                     </div>
 
                     {/* 2. Kelas — same source as Overview: allKelasRaw filtered by year */}
                     <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. Kelas</label>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterClass')}</label>
                       <select
                         value={wpKelas}
                         disabled={!wpYear}
@@ -4904,7 +4904,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         className="w-full px-3 py-2 text-xs focus:outline-none"
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: !wpYear ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpYear ? 0.6 : 1 }}
                       >
-                        <option value="">{!wpYear ? 'Pilih tahun dulu' : 'Semua Kelas'}</option>
+                        <option value="">{!wpYear ? t('topicNew.weeklyPlanTab.selectYearFirst') : t('topicNew.weeklyPlanTab.allClasses')}</option>
                         {[...allKelasRaw]
                           .filter(k => !wpYear || String(k.kelas_year_id) === String(wpYear))
                           .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama, 'id'))
@@ -4915,21 +4915,21 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                     {/* 3. Subject — identical to Overview: show ALL subjects from subjects state, no kelas filter */}
                     <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. Mata Pelajaran</label>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterSubject')}</label>
                       <select
                         value={wpSubject}
                         onChange={e => { setWpSubject(e.target.value); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
                         className="w-full px-3 py-2 text-xs focus:outline-none"
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
-                        <option value="">Semua Mapel</option>
+                        <option value="">{t('topicNew.weeklyPlanTab.allSubjects')}</option>
                         {subjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)}
                       </select>
                     </div>
 
                     {/* 4. Topic/Unit — filter uses parseInt() matching Overview's filteredTopics logic */}
                     <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>4. Unit / Topik</label>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterUnit')}</label>
                       <select
                         value={selectedTopicForWeekly?.topic_id || ''}
                         onChange={e => handleTopicSelectionForWeekly(e.target.value)}

@@ -872,6 +872,16 @@
       "semester2": "学期 2"
     },
     "weeklyPlanTab": {
+      "title": "周计划",
+      "subtitle": "将单元分解为每周的学习目标、活动和资源",
+      "filterYear": "1. 学年",
+      "filterClass": "2. 班级",
+      "filterSubject": "3. 科目",
+      "filterUnit": "4. 单元 / 主题",
+      "allYears": "所有学年",
+      "allClasses": "所有班级",
+      "allSubjects": "所有科目",
+      "selectYearFirst": "请先选择学年",
       "week": "第",
       "dateLabel": "使用日期：",
       "objectives": "学习目标",
