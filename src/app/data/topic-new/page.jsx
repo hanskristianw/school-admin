@@ -4912,7 +4912,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       </select>
                     </div>
 
-                    {/* 3. Subject */}
+                    {/* 3. Subject — use subjects state directly (same as Overview), filter by wpKelas */}
                     <div>
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. Mata Pelajaran</label>
                       <select
@@ -4923,13 +4923,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: !wpKelas ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpKelas ? 0.6 : 1 }}
                       >
                         <option value="">{!wpKelas ? 'Pilih kelas dulu' : 'Semua Mapel'}</option>
-                        {[...new Map(
-                          topics
-                            .filter(t => !wpKelas || String(t.topic_kelas_id) === String(wpKelas))
-                            .map(t => [t.topic_subject_id, subjectMap.get(t.topic_subject_id) || ''])
-                        ).entries()]
-                          .sort((a, b) => a[1].localeCompare(b[1], 'id'))
-                          .map(([sid, sname]) => <option key={sid} value={sid}>{sname}</option>)
+                        {subjects
+                          .filter(s =>
+                            !wpKelas ||
+                            topics.some(t =>
+                              String(t.topic_kelas_id) === String(wpKelas) &&
+                              String(t.topic_subject_id) === String(s.subject_id)
+                            )
+                          )
+                          .map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)
                         }
                       </select>
                     </div>
