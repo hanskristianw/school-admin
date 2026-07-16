@@ -2,6 +2,118 @@
 
 ## 📌 Changelog
 
+### 2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview
+
+#### Timetable Refactor (`/data/timetable`)
+- **Removed `timetable_user_id`**: Teacher is now derived from `detail_kelas.teacher_user_id`, eliminating redundancy.
+  ```sql
+  ALTER TABLE timetable DROP COLUMN IF EXISTS timetable_user_id;
+  ```
+- **Data flow**: `timetable.timetable_detail_kelas_id` → `detail_kelas` → kelas + subject + teacher (single source of truth).
+- **Timetable form cascade**: Tahun Ajaran → Kelas → Subject (from `detail_kelas`) → Day → Start/End time.
+- **Kelas dropdowns**: Always sorted by `kelas_nama` alphabetically, never by `kelas_id`.
+- **New tab — Exceptions**: `/data/timetable` has two tabs: **Schedule** and **Exceptions**.
+
+#### Timetable Exceptions (`timetable_exception`) — New Table
+-- Weekly Timetable (recurring default schedule)
+-- NOTE: timetable_user_id was DROPPED (see 2026-07-16 changelog).
+-- Teacher is derived from detail_kelas.teacher_user_id.
+timetable (
+  timetable_id              SERIAL PRIMARY KEY,
+  timetable_detail_kelas_id INTEGER NOT NULL REFERENCES detail_kelas(detail_kelas_id) ON DELETE CASCADE,
+  timetable_day             TEXT NOT NULL,   -- 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday'
+  timetable_time            TSRANGE NOT NULL -- [2000-01-01 HH:MM, 2000-01-01 HH:MM) — only time-of-day matters
+)
+
+-- Per-date schedule overrides
+timetable_exception (
+  exception_id       SERIAL PRIMARY KEY,
+  exception_date     DATE NOT NULL,
+  exception_label    TEXT NOT NULL,
+  exception_type     TEXT NOT NULL CHECK (exception_type IN ('holiday', 'event')),
+  start_time         TIME,             -- NULL = full-day holiday
+  end_time           TIME,             -- NULL = full-day holiday
+  affects_all_kelas  BOOLEAN DEFAULT true,
+  affected_kelas_ids INT[],
+  note               TEXT,
+  created_at         TIMESTAMPTZ DEFAULT NOW()
+);
+
+- **`holiday`**: Entire day cancelled for affected classes. Shows red "LIBUR" cell in Weekly Overview.
+- **`event`**: Overrides a specific time range (e.g. 08:00–10:00 for Kebaktian). Any timetable slot overlapping this range is replaced by the event cell.
+- **Scope**: `affects_all_kelas = true` → school-wide. Otherwise specify `affected_kelas_ids`.
+
+#### Weekly Plan Dates — `topic_weekly_plan.week_date`
+```sql
+ALTER TABLE topic_weekly_plan ADD COLUMN IF NOT EXISTS week_date DATE;
+```
+- **Meaning**: The date (any day within the target week) when this weekly plan will be used.
+- In `/data/topic-new` → Planning tab → weekly plan card, teacher sets **"Tanggal Penggunaan"** per week entry.
+- In Weekly Overview, plans are matched if `week_date >= monday AND week_date <= friday` of the selected week.
+
+#### Weekly Overview (`/data/weekly-overview`) — New Page
+Generates a printable weekly schedule table (like the physical Weekly Overview form):
+
+**Generate logic:**
+1. User selects Kelas + Week (any date; auto-snapped to Monday of that week).
+2. Fetch default timetable slots for the selected kelas.
+3. Apply `timetable_exception` for each day (Mon–Fri):
+   - `holiday` → entire day column shows a red "LIBUR" cell (rowspan over all time slots).
+   - `event` → slots overlapping the event time are replaced by an amber event cell.
+4. For non-overridden slots: look up `topic_weekly_plan` where `week_date ∈ [monday, friday]` and `topic.topic_kelas_id = kelas_id`.
+5. Slots with no matching weekly plan → show subject name only (content blank).
+6. Slots with no timetable entry → show "—".
+
+**Features:**
+- **Edit**: Click pencil icon on any cell to edit subject, learning goals, activity, resources.
+- **Save Draft**: Persists table state to `weekly_overview_draft` (JSONB). Reloaded on next generate.
+- **Reset**: Clears draft, re-generates from timetable + weekly plan data.
+- **Print**: `window.print()` with CSS `@media print` → clean PDF via browser.
+
+#### `weekly_overview_draft` Table — New
+```sql
+CREATE TABLE weekly_overview_draft (
+  draft_id    SERIAL PRIMARY KEY,
+  kelas_id    INT NOT NULL REFERENCES kelas(kelas_id) ON DELETE CASCADE,
+  week_date   DATE NOT NULL,       -- Monday of the selected week
+  draft_data  JSONB NOT NULL,      -- Full table: {cells, kelasNama, weekLabel}
+  created_by  INT,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(kelas_id, week_date)
+);
+```
+
+#### `topic_weekly_plan` — Complete Schema Reference
+```sql
+topic_weekly_plan (
+  id               SERIAL PRIMARY KEY,
+  topic_id         INTEGER NOT NULL REFERENCES topic(topic_id) ON DELETE CASCADE,
+  week_number      INTEGER NOT NULL,    -- 1, 2, 3... matches topic_duration
+  week_date        DATE,                -- Date (any day of week) when this plan is used
+  week_objectives  TEXT,               -- Learning goals
+  week_activities  TEXT,               -- Activities (UI recommends max 300 chars)
+  week_resources   TEXT,               -- Resources / materials
+  week_reflection  TEXT,               -- Teacher reflection (filled during/after teaching)
+  updated_at       TIMESTAMPTZ,
+  UNIQUE(topic_id, week_number)
+)
+```
+
+#### Full Data Flow: Timetable → Weekly Overview
+```
+kelas
+  └─ detail_kelas (kelas_id, subject_id, teacher_user_id)
+       ├─ timetable (detail_kelas_id, day, time)     ← default recurring schedule
+       │    + timetable_exception (date, type, time, scope)
+       │         ↕ (matched per day/date/kelas)
+       └─ topic (kelas_id, subject_id, duration, ...)
+            └─ topic_weekly_plan (topic_id, week_number, week_date, objectives, activities, resources)
+                  ↕ (week_date ∈ [monday, friday] of selected week)
+  ─────────────────────────────────────────────────────────────────────────
+  weekly_overview_draft (kelas_id, week_date, draft_data JSONB) → PDF
+```
+
 ### 2025-11-23
 - **IB MYP Assessment Grading System with Rubrics**:
   - **New Feature**: Complete strand-by-strand grading modal integrated into Assessment Management (`/data/topic-new`)
@@ -359,20 +471,53 @@ daftar_door_greeter (
   -- Recommended: alter table daftar_door_greeter add constraint uq_door_greeter_day unique (daftar_door_greeter_day);
 )
 
--- Weekly Timetable (recurring schedule)
+-- Weekly Timetable (recurring default schedule)
+-- ⚠️ timetable_user_id was DROPPED (2026-07-16). Teacher derived from detail_kelas.teacher_user_id.
 timetable (
-  timetable_id SERIAL PRIMARY KEY,
-  timetable_user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE, -- Teacher
+  timetable_id              SERIAL PRIMARY KEY,
   timetable_detail_kelas_id INTEGER NOT NULL REFERENCES detail_kelas(detail_kelas_id) ON DELETE CASCADE,
-  timetable_day TEXT NOT NULL,  -- 'Monday'..'Friday'
-  timetable_time TSRANGE NOT NULL -- Stored as [2000-01-01 HH:MM,2000-01-01 HH:MM)
-  -- Optional overlap constraint (requires btree_gist):
-  -- create extension if not exists btree_gist;
-  -- alter table timetable add constraint timetable_no_overlap exclude using gist (
-  --   timetable_user_id with =,
-  --   timetable_day with =,
-  --   timetable_time with &&
-  -- );
+  timetable_day             TEXT NOT NULL,    -- 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday'
+  timetable_time            TSRANGE NOT NULL  -- [2000-01-01 HH:MM, 2000-01-01 HH:MM) — only time matters
+)
+
+-- Per-date schedule overrides (added 2026-07-16)
+timetable_exception (
+  exception_id       SERIAL PRIMARY KEY,
+  exception_date     DATE NOT NULL,
+  exception_label    TEXT NOT NULL,           -- e.g. 'Libur Hari Raya', 'Kebaktian'
+  exception_type     TEXT NOT NULL CHECK (exception_type IN ('holiday', 'event')),
+  start_time         TIME,                    -- NULL = full-day (holiday)
+  end_time           TIME,                    -- NULL = full-day (holiday)
+  affects_all_kelas  BOOLEAN DEFAULT true,
+  affected_kelas_ids INT[],                   -- set when affects_all_kelas = false
+  note               TEXT,
+  created_at         TIMESTAMPTZ DEFAULT NOW()
+)
+
+-- Weekly plan per topic-week (topic_weekly_plan.week_date added 2026-07-16)
+topic_weekly_plan (
+  id               SERIAL PRIMARY KEY,
+  topic_id         INTEGER NOT NULL REFERENCES topic(topic_id) ON DELETE CASCADE,
+  week_number      INTEGER NOT NULL,          -- 1..topic_duration
+  week_date        DATE,                      -- any day within the week this plan is used
+  week_objectives  TEXT,
+  week_activities  TEXT,
+  week_resources   TEXT,
+  week_reflection  TEXT,
+  updated_at       TIMESTAMPTZ,
+  UNIQUE(topic_id, week_number)
+)
+
+-- Saved weekly overview drafts (added 2026-07-16)
+weekly_overview_draft (
+  draft_id    SERIAL PRIMARY KEY,
+  kelas_id    INT NOT NULL REFERENCES kelas(kelas_id) ON DELETE CASCADE,
+  week_date   DATE NOT NULL,                  -- Monday of the selected week
+  draft_data  JSONB NOT NULL,                 -- {cells, kelasNama, weekLabel}
+  created_by  INT,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(kelas_id, week_date)
 )
 ```
 
