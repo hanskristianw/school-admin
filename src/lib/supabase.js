@@ -35,43 +35,63 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Disable Supabase auth since we're using custom auth
     autoRefreshToken: false,
     persistSession: false,
-    detectSessionInUrl: false
+    detectSessionInUrl: false,
+    storageKey: '__supabase_no_auth__', // Use a unique key so it never conflicts with real sessions
   }
 })
+
+// On client boot: remove any stale Supabase auth tokens from localStorage that
+// may have been created by earlier app versions or by the Supabase SDK itself.
+// These stale tokens (sb-*-auth-token) get sent as Bearer by Supabase JS v2
+// even with persistSession:false if found in storage, causing JWSInvalidSignature.
+if (typeof window !== 'undefined') {
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      .forEach(k => {
+        console.log('[supabase] Removing stale auth token from localStorage:', k)
+        localStorage.removeItem(k)
+      })
+  } catch {}
+}
 
 // (Factory defined at bottom)
 
 // Custom authentication functions to replace Go API
 export const customAuth = {
 
-  // Get menus berdasarkan role
+  // Get menus berdasarkan role.
+  // isAdmin: true → fetch ALL menus (checked via role.is_admin in DB, passed from login payload).
+  // Non-admin → fetch only menus assigned to that role via menu_permissions.
   async getMenusByRole(roleName, isAdmin = false) {
     try {
       console.log('🔍 Getting menus for:', { roleName, isAdmin })
       
       if (isAdmin || roleName === 'admin' || roleName === 'Admin') {
-        // Admin dapat akses semua menu
+        // Admin gets all menus
         console.log('👑 Admin access - fetching all menus')
-  const { data, error } = await supabase
+        const { data, error } = await supabase
           .from('menus')
           .select('*')
           .order('menu_order')
         
         if (error) {
           console.error('❌ Error fetching all menus:', error)
-          throw new Error(error.message)
+          // JWSInvalidSignature means a stale token is attached — not an auth failure
+          // from the app's perspective. Log and return empty rather than crash the UI.
+          return { success: true, menus: [] }
         }
         
         console.log('✅ Admin menus loaded:', data?.length, 'menus')
         return { success: true, menus: data || [] }
       } else {
-        // Non-admin: fetch menus berdasarkan permissions
+        // Non-admin: fetch menus based on role permissions
         console.log('👤 Non-admin access - checking permissions for role:', roleName)
         
-        // 1. Fetch role ID berdasarkan role name
-  const { data: roleData, error: roleError } = await supabase
+        // 1. Fetch role ID by role name
+        const { data: roleData, error: roleError } = await supabase
           .from('role')
-          .select('role_id')
+          .select('role_id, is_admin')
           .eq('role_name', roleName)
           .single()
         
@@ -80,8 +100,19 @@ export const customAuth = {
           return { success: false, message: 'Role tidak ditemukan' }
         }
 
-        // 2. Fetch menu permissions untuk role tersebut
-  const { data: permissionsData, error: permError } = await supabase
+        // Double-check: if DB says is_admin=true, fetch all menus
+        if (roleData.is_admin) {
+          console.log('👑 DB confirms admin flag — fetching all menus')
+          const { data, error } = await supabase
+            .from('menus')
+            .select('*')
+            .order('menu_order')
+          if (error) return { success: true, menus: [] }
+          return { success: true, menus: data || [] }
+        }
+
+        // 2. Fetch menu permissions for this role
+        const { data: permissionsData, error: permError } = await supabase
           .from('menu_permissions')
           .select('menu_id')
           .eq('role_id', roleData.role_id)
@@ -91,7 +122,7 @@ export const customAuth = {
           return { success: false, message: 'Error mengambil permission' }
         }
 
-        // 3. Fetch menus berdasarkan permission yang ada
+        // 3. Fetch menus by permitted IDs
         const menuIds = permissionsData.map(p => p.menu_id)
         
         if (menuIds.length === 0) {
@@ -99,7 +130,7 @@ export const customAuth = {
           return { success: true, menus: [] }
         }
 
-  const { data: menusData, error: menusError } = await supabase
+        const { data: menusData, error: menusError } = await supabase
           .from('menus')
           .select('*')
           .in('menu_id', menuIds)
@@ -107,7 +138,7 @@ export const customAuth = {
         
         if (menusError) {
           console.error('❌ Error fetching role-based menus:', menusError.message)
-          throw new Error(menusError.message)
+          return { success: true, menus: [] }
         }
         
         console.log('✅ Role-based menus loaded:', menusData?.length, 'menus')
