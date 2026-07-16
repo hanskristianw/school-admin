@@ -10,14 +10,27 @@ import { Label } from '@/components/ui/label';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faEdit, faTrash, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faEdit, faTrash, faSpinner, faChalkboardTeacher } from '@fortawesome/free-solid-svg-icons';
 
 /*
-  Timetable CRUD for weekly recurring schedule blocks.
-  - Uses timetable_day (Monday-Friday) instead of concrete date; schedule repeats weekly.
-  - Stores time-of-day range in timetable_time using a fixed placeholder date (2000-01-01) to leverage tsrange.
-  - Overlap detection per (user, day) on time range.
-  - Year filter: filters kelas by kelas_year_id, then detail_kelas by matching kelas.
+  Timetable — connected to /data/class structure.
+
+  Data flow:
+    timetable.timetable_detail_kelas_id
+      → detail_kelas (detail_kelas_kelas_id, detail_kelas_subject_id, teacher_user_id)
+          → kelas (kelas_nama, kelas_year_id → year)
+          → subject (subject_name, subject_code)
+          → users (teacher name)
+
+  Schema (timetable table):
+    timetable_id              PK
+    timetable_detail_kelas_id FK → detail_kelas  (encodes class + subject + teacher)
+    timetable_day             text  (Monday–Friday)
+    timetable_time            tsrange  ([start, end))
+
+  NOTE: timetable_user_id was dropped. Teacher is derived from detail_kelas.teacher_user_id.
+
+  Overlap detection: per (timetable_detail_kelas_id, day) on time range.
 */
 
 const BASE_DATE = '2000-01-01';
@@ -41,7 +54,7 @@ const extractHM = (ts) => {
   if (!ts) return '';
   const parts = ts.split(' ');
   if (parts.length < 2) return '';
-  return parts[1].slice(0, 5); // HH:MM
+  return parts[1].slice(0, 5);
 };
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -50,23 +63,34 @@ export default function TimetablePage() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Data from DB
   const [rows, setRows] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [detailKelasAll, setDetailKelasAll] = useState([]); // all detail_kelas, enriched with kelas & subject info
-  const [subjects, setSubjects] = useState([]);
-  const [kelasList, setKelasList] = useState([]); // all kelas sorted by name
+  const [detailKelasAll, setDetailKelasAll] = useState([]); // enriched with kelas, subject, teacher info
+  const [kelasList, setKelasList] = useState([]);           // sorted by kelas_nama
   const [years, setYears] = useState([]);
-  const [filters, setFilters] = useState({ year: '', user: '', day: '', kelas: '' });
+
+  // Filters (view)
+  const [filters, setFilters] = useState({ year: '', kelas: '', day: '' });
+
+  // Form state
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [formData, setFormData] = useState({
-    timetable_user_id: '', subject_id: '', timetable_detail_kelas_id: '',
-    timetable_day: '', startTime: '', endTime: ''
-  });
+  const [formYear, setFormYear] = useState('');
+  const [formKelas, setFormKelas] = useState('');
+  const [formDetailKelasId, setFormDetailKelasId] = useState('');
+  const [formDay, setFormDay] = useState('');
+  const [formStart, setFormStart] = useState('');
+  const [formEnd, setFormEnd] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState({ open: false, row: null });
+
+  // Notifications
   const [notification, setNotification] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+
   const [viewMode, setViewMode] = useState('grid');
 
   const showNotification = (title, message, type = 'success') =>
@@ -77,131 +101,149 @@ export default function TimetablePage() {
   const loadAll = async () => {
     try {
       setLoading(true); setError('');
-      const [ttRes, usersRes, rolesRes, dkRes, subjRes, kelasRes, yearRes] = await Promise.all([
-        supabase.from('timetable').select('timetable_id, timetable_user_id, timetable_detail_kelas_id, timetable_day, timetable_time'),
-        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_role_id').eq('is_active', true),
-        supabase.from('role').select('role_id, is_teacher'),
-        supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id'),
-        supabase.from('subject').select('subject_id, subject_name, subject_code, subject_user_id'),
+      const [ttRes, dkRes, kelasRes, yearRes, subjRes, usersRes] = await Promise.all([
+        supabase.from('timetable').select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time'),
+        supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id, teacher_user_id'),
         supabase.from('kelas').select('kelas_id, kelas_nama, kelas_year_id').order('kelas_nama'),
         supabase.from('year').select('year_id, year_name').order('year_name', { ascending: false }),
+        supabase.from('subject').select('subject_id, subject_name, subject_code'),
+        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').eq('is_active', true),
       ]);
+
       if (ttRes.error) throw ttRes.error;
-      if (usersRes.error) throw usersRes.error;
-      if (rolesRes.error) throw rolesRes.error;
       if (dkRes.error) throw dkRes.error;
-      if (subjRes.error) throw subjRes.error;
       if (kelasRes.error) throw kelasRes.error;
       if (yearRes.error) throw yearRes.error;
-
-      const teacherRoleIds = new Set((rolesRes.data || []).filter(r => r.is_teacher).map(r => r.role_id));
-      const teacherUsers = (usersRes.data || [])
-        .filter(u => teacherRoleIds.has(u.user_role_id))
-        .sort((a, b) =>
-          (`${a.user_nama_depan} ${a.user_nama_belakang}`.trim())
-            .localeCompare(`${b.user_nama_depan} ${b.user_nama_belakang}`.trim(), 'id', { sensitivity: 'base' })
-        );
+      if (subjRes.error) throw subjRes.error;
+      if (usersRes.error) throw usersRes.error;
 
       const subjMap = new Map((subjRes.data || []).map(s => [s.subject_id, s]));
       const kelasMap = new Map((kelasRes.data || []).map(k => [k.kelas_id, k]));
+      const userMap = new Map((usersRes.data || []).map(u => [
+        u.user_id,
+        `${u.user_nama_depan} ${u.user_nama_belakang}`.trim()
+      ]));
 
       const dkEnriched = (dkRes.data || []).map(d => ({
         ...d,
-        subject_name: subjMap.get(d.detail_kelas_subject_id)?.subject_name || 'Subject',
+        subject_name: subjMap.get(d.detail_kelas_subject_id)?.subject_name || '',
         subject_code: subjMap.get(d.detail_kelas_subject_id)?.subject_code || '',
-        subject_user_id: subjMap.get(d.detail_kelas_subject_id)?.subject_user_id || null,
-        kelas_nama: kelasMap.get(d.detail_kelas_kelas_id)?.kelas_nama || 'Class',
+        kelas_nama: kelasMap.get(d.detail_kelas_kelas_id)?.kelas_nama || '',
         kelas_year_id: kelasMap.get(d.detail_kelas_kelas_id)?.kelas_year_id || null,
+        teacher_name: d.teacher_user_id ? (userMap.get(d.teacher_user_id) || '') : '',
       }));
 
       setRows(ttRes.data || []);
-      setUsers(teacherUsers);
       setDetailKelasAll(dkEnriched);
-      setSubjects(subjRes.data || []);
-      setKelasList(kelasRes.data || []); // already sorted by kelas_nama
+      setKelasList(kelasRes.data || []);
       setYears(yearRes.data || []);
     } catch (e) { setError(e.message); console.error(e); }
     finally { setLoading(false); }
   };
 
-  const userMap = useMemo(() =>
-    new Map(users.map(u => [u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim()])),
-    [users]
+  // ── Derived maps ──────────────────────────────────────────────────────────
+  const dkMap = useMemo(() =>
+    new Map(detailKelasAll.map(d => [d.detail_kelas_id, d])),
+    [detailKelasAll]
   );
 
-  // detail_kelas filtered by selected year (if any)
-  const detailKelas = useMemo(() => {
-    if (!filters.year) return detailKelasAll;
-    return detailKelasAll.filter(d => String(d.kelas_year_id) === String(filters.year));
-  }, [detailKelasAll, filters.year]);
-
-  // kelas filtered by selected year, sorted by name
-  const kelasFiltered = useMemo(() => {
+  // kelas filtered by view year filter
+  const kelasForViewFilter = useMemo(() => {
     if (!filters.year) return kelasList;
     return kelasList.filter(k => String(k.kelas_year_id) === String(filters.year));
   }, [kelasList, filters.year]);
 
-  const detailToKelasMap = useMemo(() =>
-    new Map(detailKelasAll.map(d => [d.detail_kelas_id, d.detail_kelas_kelas_id])),
-    [detailKelasAll]
-  );
-
-  const detailToYearMap = useMemo(() =>
-    new Map(detailKelasAll.map(d => [d.detail_kelas_id, d.kelas_year_id])),
-    [detailKelasAll]
-  );
-
+  // Filtered rows for display
   const filtered = useMemo(() => rows.filter(r => {
-    const condYear = !filters.year || String(detailToYearMap.get(r.timetable_detail_kelas_id)) === String(filters.year);
-    const condUser = !filters.user || r.timetable_user_id === parseInt(filters.user);
-    const condDay = !filters.day || r.timetable_day === filters.day;
-    const condKelas = !filters.kelas || detailToKelasMap.get(r.timetable_detail_kelas_id) === parseInt(filters.kelas);
-    return condYear && condUser && condDay && condKelas;
-  }), [rows, filters, detailToKelasMap, detailToYearMap]);
+    const dk = dkMap.get(r.timetable_detail_kelas_id);
+    if (!dk) return false;
+    if (filters.year && String(dk.kelas_year_id) !== String(filters.year)) return false;
+    if (filters.kelas && String(dk.detail_kelas_kelas_id) !== String(filters.kelas)) return false;
+    if (filters.day && r.timetable_day !== filters.day) return false;
+    return true;
+  }), [rows, filters, dkMap]);
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    const dayIdx = d => DAYS.indexOf(d);
+    const da = dayIdx(a.timetable_day);
+    const db = dayIdx(b.timetable_day);
+    if (da !== db) return da - db;
+    const { start: saRaw } = parseRange(a.timetable_time);
+    const { start: sbRaw } = parseRange(b.timetable_time);
+    return extractHM(saRaw).localeCompare(extractHM(sbRaw));
+  }), [filtered]);
+
+  // kelas options for form (filtered by formYear)
+  const formKelasOptions = useMemo(() => {
+    if (!formYear) return kelasList;
+    return kelasList.filter(k => String(k.kelas_year_id) === String(formYear));
+  }, [kelasList, formYear]);
+
+  // detail_kelas options for form (for selected kelas, sorted by subject name)
+  const formSubjectOptions = useMemo(() => {
+    if (!formKelas) return [];
+    return [...detailKelasAll.filter(d => String(d.detail_kelas_kelas_id) === String(formKelas))]
+      .sort((a, b) => (a.subject_name || '').localeCompare(b.subject_name || '', 'id'));
+  }, [detailKelasAll, formKelas]);
+
+  // Currently selected detail_kelas entry (for showing teacher info)
+  const selectedDk = useMemo(() =>
+    formDetailKelasId ? dkMap.get(parseInt(formDetailKelasId)) : null,
+    [dkMap, formDetailKelasId]
+  );
+
+  // ── Early loading return ──────────────────────────────────────────────────
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin h-16 w-16 border-b-2 border-gray-900 rounded-full" />
+    </div>
+  );
+
+  // ── Form helpers ──────────────────────────────────────────────────────────
+  const resetForm = () => {
+    setFormYear(''); setFormKelas(''); setFormDetailKelasId('');
+    setFormDay(''); setFormStart(''); setFormEnd('');
+    setFormErrors({});
+  };
 
   const openCreate = () => {
     setEditing(null);
-    setFormData({ timetable_user_id: '', subject_id: '', timetable_detail_kelas_id: '', timetable_day: '', startTime: '', endTime: '' });
-    setFormErrors({});
+    resetForm();
     setShowForm(true);
   };
 
   const openEdit = (row) => {
     const { start, end } = parseRange(row.timetable_time);
+    const dk = dkMap.get(row.timetable_detail_kelas_id);
     setEditing(row);
-    const dk = detailKelasAll.find(d => d.detail_kelas_id === row.timetable_detail_kelas_id);
-    const subjectId = dk ? dk.detail_kelas_subject_id : '';
-    setFormData({
-      timetable_user_id: String(row.timetable_user_id),
-      subject_id: subjectId ? String(subjectId) : '',
-      timetable_detail_kelas_id: row.timetable_detail_kelas_id ? String(row.timetable_detail_kelas_id) : '',
-      timetable_day: row.timetable_day || '',
-      startTime: extractHM(start),
-      endTime: extractHM(end),
-    });
+    setFormYear(dk ? String(dk.kelas_year_id || '') : '');
+    setFormKelas(dk ? String(dk.detail_kelas_kelas_id) : '');
+    setFormDetailKelasId(String(row.timetable_detail_kelas_id));
+    setFormDay(row.timetable_day || '');
+    setFormStart(extractHM(start));
+    setFormEnd(extractHM(end));
     setFormErrors({});
     setShowForm(true);
   };
 
   const validate = () => {
     const e = {};
-    if (!formData.timetable_user_id) e.user = 'User required';
-    if (!formData.subject_id) e.subject = 'Subject required';
-    if (!formData.timetable_detail_kelas_id) e.detail_kelas = 'Class required';
-    if (!formData.timetable_day) e.day = 'Day required';
-    if (!formData.startTime) e.startTime = 'Start time required';
-    if (!formData.endTime) e.endTime = 'End time required';
-    if (formData.startTime && formData.endTime && formData.startTime >= formData.endTime)
-      e.endTime = 'End must be after start';
-    if (formData.timetable_day && formData.startTime && formData.endTime) {
+    if (!formDetailKelasId) e.subject = 'Subject / class required';
+    if (!formDay) e.day = 'Day required';
+    if (!formStart) e.startTime = 'Start time required';
+    if (!formEnd) e.endTime = 'End time required';
+    if (formStart && formEnd && formStart >= formEnd) e.endTime = 'End must be after start';
+
+    // Overlap check: same detail_kelas_id on same day
+    if (formDetailKelasId && formDay && formStart && formEnd) {
       const dup = rows.find(r => {
         if (editing && r.timetable_id === editing.timetable_id) return false;
-        if (r.timetable_user_id !== parseInt(formData.timetable_user_id)) return false;
-        if (r.timetable_day !== formData.timetable_day) return false;
+        if (r.timetable_detail_kelas_id !== parseInt(formDetailKelasId)) return false;
+        if (r.timetable_day !== formDay) return false;
         const { start, end } = parseRange(r.timetable_time);
-        return !(formData.endTime <= extractHM(start) || formData.startTime >= extractHM(end));
+        return !(formEnd <= extractHM(start) || formStart >= extractHM(end));
       });
-      if (dup) e.overlap = 'Overlapping schedule for this user on this day';
+      if (dup) e.overlap = 'This class+subject already has an overlapping block on this day';
     }
     setFormErrors(e);
     return Object.keys(e).length === 0;
@@ -212,24 +254,22 @@ export default function TimetablePage() {
     if (!validate()) return;
     try {
       setSubmitting(true);
-      const rangeStr = formatRangeForInsert(formData.startTime, formData.endTime);
       const payload = {
-        timetable_user_id: parseInt(formData.timetable_user_id),
-        timetable_detail_kelas_id: parseInt(formData.timetable_detail_kelas_id),
-        timetable_day: formData.timetable_day,
-        timetable_time: rangeStr,
+        timetable_detail_kelas_id: parseInt(formDetailKelasId),
+        timetable_day: formDay,
+        timetable_time: formatRangeForInsert(formStart, formEnd),
       };
       if (editing) {
         const { data, error } = await supabase
           .from('timetable').update(payload).eq('timetable_id', editing.timetable_id).select();
         if (error) throw error;
         if (data?.[0]) setRows(prev => prev.map(r => r.timetable_id === editing.timetable_id ? data[0] : r));
-        showNotification('Success', 'Entry updated', 'success');
+        showNotification('Success', 'Block updated');
       } else {
         const { data, error } = await supabase.from('timetable').insert([payload]).select();
         if (error) throw error;
         if (data?.[0]) setRows(prev => [data[0], ...prev]);
-        showNotification('Success', 'Entry created', 'success');
+        showNotification('Success', 'Block created');
       }
       setShowForm(false);
     } catch (e) { console.error(e); showNotification('Error', 'Failed: ' + e.message, 'error'); }
@@ -243,56 +283,22 @@ export default function TimetablePage() {
       const { error } = await supabase.from('timetable').delete().eq('timetable_id', confirmDelete.row.timetable_id);
       if (error) throw error;
       setRows(prev => prev.filter(r => r.timetable_id !== confirmDelete.row.timetable_id));
-      showNotification('Success', 'Entry deleted', 'success');
+      showNotification('Success', 'Block deleted');
       setConfirmDelete({ open: false, row: null });
     } catch (e) { console.error(e); showNotification('Error', 'Delete failed: ' + e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
-  // Subjects available for the selected user in form
-  const formSubjectsForUser = useMemo(() => {
-    if (!formData.timetable_user_id) return [];
-    return subjects
-      .filter(s =>
-        String(s.subject_user_id) === formData.timetable_user_id &&
-        detailKelasAll.some(d => d.detail_kelas_subject_id === s.subject_id)
-      )
-      .sort((a, b) => (a.subject_name || '').localeCompare(b.subject_name || '', 'id'));
-  }, [subjects, formData.timetable_user_id, detailKelasAll]);
-
-  // detail_kelas for selected subject in form (sorted by kelas_nama)
-  const formDetailKelasForSubject = useMemo(() => {
-    if (!formData.subject_id) return [];
-    return [...detailKelasAll.filter(d => String(d.detail_kelas_subject_id) === formData.subject_id)]
-      .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', 'id'));
-  }, [detailKelasAll, formData.subject_id]);
-
-  // Sorted filtered rows
-  const sorted = useMemo(() => [...filtered].sort((a, b) => {
-    const dayIdx = d => DAYS.indexOf(d);
-    const da = dayIdx(a.timetable_day);
-    const db = dayIdx(b.timetable_day);
-    if (da !== db) return da - db;
-    const { start: saRaw } = parseRange(a.timetable_time);
-    const { start: sbRaw } = parseRange(b.timetable_time);
-    const sa = extractHM(saRaw);
-    const sb = extractHM(sbRaw);
-    if (sa !== sb) return sa.localeCompare(sb);
-    return (userMap.get(a.timetable_user_id) || '').localeCompare(userMap.get(b.timetable_user_id) || '');
-  }), [filtered, userMap]);
-
-  if (loading) return (
-    <div className="flex justify-center items-center min-h-screen">
-      <div className="animate-spin h-16 w-16 border-b-2 border-gray-900 rounded-full" />
-    </div>
-  );
+  // ── Render ────────────────────────────────────────────────────────────────
+  const selectedYear = years.find(y => String(y.year_id) === String(filters.year));
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Timetable</h1>
-          <p className="text-gray-600">Manage weekly class / lesson schedule (Monday–Friday)</p>
+          <p className="text-gray-600">Weekly lesson schedule — linked to class subject assignments</p>
         </div>
         <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
           <FontAwesomeIcon icon={faPlus} className="mr-2" />New Block
@@ -305,57 +311,36 @@ export default function TimetablePage() {
       <Card>
         <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Tahun Ajaran */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label className="block text-sm font-medium mb-1">Tahun Ajaran</Label>
-              <select
-                value={filters.year}
-                onChange={(e) => setFilters(prev => ({ ...prev, year: e.target.value, kelas: '' }))}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={filters.year}
+                onChange={e => setFilters(prev => ({ ...prev, year: e.target.value, kelas: '' }))}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">All Years</option>
                 {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
               </select>
             </div>
-            {/* User */}
             <div>
-              <Label className="block text-sm font-medium mb-1">User</Label>
-              <select
-                value={filters.user}
-                onChange={(e) => setFilters(prev => ({ ...prev, user: e.target.value }))}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All</option>
-                {users.map(u => <option key={u.user_id} value={u.user_id}>{u.user_nama_depan} {u.user_nama_belakang}</option>)}
+              <Label className="block text-sm font-medium mb-1">Class</Label>
+              <select value={filters.kelas}
+                onChange={e => setFilters(prev => ({ ...prev, kelas: e.target.value }))}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">All Classes</option>
+                {kelasForViewFilter.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
               </select>
             </div>
-            {/* Day */}
             <div>
               <Label className="block text-sm font-medium mb-1">Day</Label>
-              <select
-                value={filters.day}
-                onChange={(e) => setFilters(prev => ({ ...prev, day: e.target.value }))}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All</option>
+              <select value={filters.day}
+                onChange={e => setFilters(prev => ({ ...prev, day: e.target.value }))}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">All Days</option>
                 {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-            {/* Class (filtered by year) */}
-            <div>
-              <Label className="block text-sm font-medium mb-1">Class</Label>
-              <select
-                value={filters.kelas}
-                onChange={(e) => setFilters(prev => ({ ...prev, kelas: e.target.value }))}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All</option>
-                {kelasFiltered.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
-              </select>
-            </div>
             <div className="flex items-end">
-              <Button variant="outline" onClick={() => setFilters({ year: '', user: '', day: '', kelas: '' })}>Reset</Button>
+              <Button variant="outline" onClick={() => setFilters({ year: '', kelas: '', day: '' })}>Reset</Button>
             </div>
           </div>
         </CardContent>
@@ -367,13 +352,9 @@ export default function TimetablePage() {
           <div className="flex items-center justify-between">
             <CardTitle>
               Schedule
-              {filters.year && (
-                <span className="ml-2 text-sm font-normal text-gray-500">
-                  — {years.find(y => String(y.year_id) === String(filters.year))?.year_name}
-                </span>
-              )}
+              {selectedYear && <span className="ml-2 text-sm font-normal text-gray-500">— {selectedYear.year_name}</span>}
             </CardTitle>
-            <div className="inline-flex rounded-md shadow-sm border border-gray-200 overflow-hidden" role="group">
+            <div className="inline-flex rounded-md shadow-sm border border-gray-200 overflow-hidden">
               <button type="button" onClick={() => setViewMode('grid')}
                 className={`px-3 py-1 text-sm ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
                 Grid
@@ -387,15 +368,13 @@ export default function TimetablePage() {
         </CardHeader>
         <CardContent>
           {sorted.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {filters.year ? 'No schedule blocks for this academic year' : 'No schedule blocks'}
-            </div>
+            <div className="text-center py-8 text-gray-500">No schedule blocks{filters.year ? ' for this year' : ''}</div>
           ) : viewMode === 'table' ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['User', 'Class / Subject', 'Day', 'Start', 'End', 'Duration', 'Actions'].map(h => (
+                    {['Class', 'Subject', 'Teacher', 'Day', 'Start', 'End', 'Duration', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -405,19 +384,22 @@ export default function TimetablePage() {
                     const { start, end } = parseRange(r.timetable_time);
                     const startTime = extractHM(start);
                     const endTime = extractHM(end);
-                    const startDate = new Date(start.replace(' ', 'T'));
-                    const endDate = new Date(end.replace(' ', 'T'));
-                    const durationMin = (!isNaN(startDate) && !isNaN(endDate)) ? (endDate - startDate) / 60000 : '';
-                    const dk = detailKelasAll.find(d => d.detail_kelas_id === r.timetable_detail_kelas_id);
+                    const durationMin = (() => {
+                      const s = new Date(start.replace(' ', 'T'));
+                      const e2 = new Date(end.replace(' ', 'T'));
+                      return (!isNaN(s) && !isNaN(e2)) ? (e2 - s) / 60000 : '';
+                    })();
+                    const dk = dkMap.get(r.timetable_detail_kelas_id);
                     return (
                       <tr key={r.timetable_id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{userMap.get(r.timetable_user_id) || '-'}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{dk ? `${dk.kelas_nama} — ${dk.subject_code || dk.subject_name}` : '-'}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{r.timetable_day}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{startTime}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{endTime}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{durationMin !== '' ? `${durationMin} min` : '-'}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">
+                        <td className="px-4 py-2 text-sm text-gray-900 font-medium">{dk?.kelas_nama || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{dk?.subject_code || dk?.subject_name || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-600">{dk?.teacher_name || <span className="text-gray-400 italic">No teacher set</span>}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{r.timetable_day}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{startTime}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{endTime}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{durationMin !== '' ? `${durationMin} min` : '-'}</td>
+                        <td className="px-4 py-2 text-sm">
                           <div className="flex space-x-2">
                             <Button onClick={() => openEdit(r)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 text-sm">
                               <FontAwesomeIcon icon={faEdit} className="mr-1" />Edit
@@ -434,146 +416,179 @@ export default function TimetablePage() {
               </table>
             </div>
           ) : (
-            <div>
-              {(() => {
-                const daysToShow = filters.day ? [filters.day] : DAYS;
+            // Grid view
+            <div className={`grid grid-cols-1 md:grid-cols-${filters.day ? '1' : '5'} gap-4`}>
+              {(filters.day ? [filters.day] : DAYS).map(day => {
+                const items = sorted.filter(r => r.timetable_day === day);
                 return (
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    {daysToShow.map(day => {
-                      const items = sorted.filter(r => r.timetable_day === day);
-                      return (
-                        <div key={day} className="border rounded-md bg-white">
-                          <div className="px-3 py-2 border-b bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
-                            <span>{day}</span>
-                            <span className="text-xs text-gray-500">{items.length} item{items.length !== 1 ? 's' : ''}</span>
-                          </div>
-                          <div className="p-3 space-y-2 min-h-[4rem]">
-                            {items.length === 0 ? (
-                              <div className="text-sm text-gray-400">No items</div>
-                            ) : items.map(r => {
-                              const { start, end } = parseRange(r.timetable_time);
-                              const dk = detailKelasAll.find(d => d.detail_kelas_id === r.timetable_detail_kelas_id);
-                              return (
-                                <div key={r.timetable_id} className="border rounded-md bg-blue-50 p-2">
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                      <div className="text-sm font-semibold text-blue-900">{dk ? `${dk.kelas_nama} — ${dk.subject_code || dk.subject_name}` : '-'}</div>
-                                      <div className="text-xs text-blue-800">{extractHM(start)} – {extractHM(end)}</div>
-                                      <div className="text-xs text-gray-600">{userMap.get(r.timetable_user_id) || '-'}</div>
-                                    </div>
-                                    <div className="flex items-center space-x-1">
-                                      <Button onClick={() => openEdit(r)} className="!px-2 !py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs">
-                                        <FontAwesomeIcon icon={faEdit} />
-                                      </Button>
-                                      <Button onClick={() => setConfirmDelete({ open: true, row: r })} className="!px-2 !py-1 bg-red-600 hover:bg-red-700 text-white text-xs">
-                                        <FontAwesomeIcon icon={faTrash} />
-                                      </Button>
-                                    </div>
-                                  </div>
+                  <div key={day} className="border rounded-md bg-white">
+                    <div className="px-3 py-2 border-b bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
+                      <span>{day}</span>
+                      <span className="text-xs text-gray-500">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="p-3 space-y-2 min-h-[4rem]">
+                      {items.length === 0 ? (
+                        <div className="text-sm text-gray-400">No items</div>
+                      ) : items.map(r => {
+                        const { start, end } = parseRange(r.timetable_time);
+                        const dk = dkMap.get(r.timetable_detail_kelas_id);
+                        return (
+                          <div key={r.timetable_id} className="border rounded-md bg-blue-50 p-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-blue-900 truncate">
+                                  {dk?.kelas_nama || '-'} — {dk?.subject_code || dk?.subject_name || '-'}
                                 </div>
-                              );
-                            })}
+                                <div className="text-xs text-blue-700">{extractHM(start)} – {extractHM(end)}</div>
+                                {dk?.teacher_name && (
+                                  <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                    <FontAwesomeIcon icon={faChalkboardTeacher} className="text-gray-400" />
+                                    {dk.teacher_name}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-1 shrink-0">
+                                <Button onClick={() => openEdit(r)} className="!px-2 !py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs">
+                                  <FontAwesomeIcon icon={faEdit} />
+                                </Button>
+                                <Button onClick={() => setConfirmDelete({ open: true, row: r })} className="!px-2 !py-1 bg-red-600 hover:bg-red-700 text-white text-xs">
+                                  <FontAwesomeIcon icon={faTrash} />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 );
-              })()}
+              })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Create / Edit Form */}
-      <Modal isOpen={showForm} onClose={() => { setShowForm(false); setEditing(null); }} title={editing ? 'Edit Block' : 'New Block'}>
+      {/* ── Create / Edit Form ─────────────────────────────────────────────── */}
+      <Modal isOpen={showForm} onClose={() => { setShowForm(false); setEditing(null); }} title={editing ? 'Edit Schedule Block' : 'New Schedule Block'}>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* User */}
+
+            {/* Tahun Ajaran */}
             <div>
-              <Label htmlFor="timetable_user_id">User</Label>
-              <select
-                id="timetable_user_id"
-                value={formData.timetable_user_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, timetable_user_id: e.target.value, subject_id: '', timetable_detail_kelas_id: '' }))}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.user ? 'border-red-500' : 'border-gray-300'}`}
-              >
-                <option value="">Select User</option>
-                {users.map(u => <option key={u.user_id} value={u.user_id}>{u.user_nama_depan} {u.user_nama_belakang}</option>)}
+              <Label htmlFor="form_year">1. Tahun Ajaran</Label>
+              <select id="form_year" value={formYear}
+                onChange={e => { setFormYear(e.target.value); setFormKelas(''); setFormDetailKelasId(''); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Select Year</option>
+                {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
               </select>
-              {formErrors.user && <p className="text-red-500 text-sm mt-1">{formErrors.user}</p>}
             </div>
-            {/* Subject */}
-            <div>
-              <Label htmlFor="subject_id">Subject</Label>
-              <select
-                id="subject_id"
-                value={formData.subject_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, subject_id: e.target.value, timetable_detail_kelas_id: '' }))}
-                disabled={!formData.timetable_user_id}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.subject ? 'border-red-500' : 'border-gray-300'} ${!formData.timetable_user_id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              >
-                <option value="">{formData.timetable_user_id ? 'Select Subject' : 'Select User first'}</option>
-                {formSubjectsForUser.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_code || s.subject_name}</option>)}
-              </select>
-              {formErrors.subject && <p className="text-red-500 text-sm mt-1">{formErrors.subject}</p>}
-            </div>
+
             {/* Class */}
             <div>
-              <Label htmlFor="timetable_detail_kelas_id">Class</Label>
-              <select
-                id="timetable_detail_kelas_id"
-                value={formData.timetable_detail_kelas_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, timetable_detail_kelas_id: e.target.value }))}
-                disabled={!formData.subject_id}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.detail_kelas ? 'border-red-500' : 'border-gray-300'} ${!formData.subject_id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              >
-                <option value="">{formData.subject_id ? 'Select Class' : formData.timetable_user_id ? 'Select Subject first' : 'Select User first'}</option>
-                {formDetailKelasForSubject.map(d => <option key={d.detail_kelas_id} value={d.detail_kelas_id}>{d.kelas_nama}</option>)}
+              <Label htmlFor="form_kelas">2. Class</Label>
+              <select id="form_kelas" value={formKelas}
+                disabled={!formYear}
+                onChange={e => { setFormKelas(e.target.value); setFormDetailKelasId(''); }}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${!formYear ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
+                <option value="">{!formYear ? 'Select year first' : 'Select Class'}</option>
+                {formKelasOptions.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
               </select>
-              {formErrors.detail_kelas && <p className="text-red-500 text-sm mt-1">{formErrors.detail_kelas}</p>}
             </div>
+
+            {/* Subject (from detail_kelas for selected kelas) */}
+            <div className="md:col-span-2">
+              <Label htmlFor="form_dk">3. Subject</Label>
+              <select id="form_dk" value={formDetailKelasId}
+                disabled={!formKelas}
+                onChange={e => setFormDetailKelasId(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.subject ? 'border-red-500' : 'border-gray-300'} ${!formKelas ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
+                <option value="">{!formKelas ? 'Select class first' : `Select Subject (${formSubjectOptions.length} available)`}</option>
+                {formSubjectOptions.map(d => (
+                  <option key={d.detail_kelas_id} value={d.detail_kelas_id}>
+                    {d.subject_code ? `[${d.subject_code}] ` : ''}{d.subject_name}
+                    {d.teacher_name ? ` — ${d.teacher_name}` : ''}
+                  </option>
+                ))}
+              </select>
+              {formErrors.subject && <p className="text-red-500 text-sm mt-1">{formErrors.subject}</p>}
+
+              {/* Teacher info read-only */}
+              {selectedDk && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-100">
+                  <FontAwesomeIcon icon={faChalkboardTeacher} className="text-blue-400" />
+                  <span><strong>Teacher:</strong> {selectedDk.teacher_name || <em>Not assigned in class settings</em>}</span>
+                </div>
+              )}
+            </div>
+
             {/* Day */}
             <div>
-              <Label htmlFor="timetable_day">Day</Label>
-              <select
-                id="timetable_day"
-                value={formData.timetable_day}
-                onChange={(e) => setFormData(prev => ({ ...prev, timetable_day: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.day ? 'border-red-500' : 'border-gray-300'}`}
-              >
+              <Label htmlFor="form_day">4. Day</Label>
+              <select id="form_day" value={formDay}
+                onChange={e => setFormDay(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.day ? 'border-red-500' : 'border-gray-300'}`}>
                 <option value="">Select Day</option>
                 {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               {formErrors.day && <p className="text-red-500 text-sm mt-1">{formErrors.day}</p>}
             </div>
+
+            {/* Empty grid spacer */}
+            <div />
+
             {/* Start Time */}
             <div>
-              <Label htmlFor="startTime">Start Time</Label>
-              <Input type="time" id="startTime" value={formData.startTime} onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))} className={formErrors.startTime ? 'border-red-500' : ''} />
+              <Label htmlFor="form_start">5. Start Time</Label>
+              <Input type="time" id="form_start" value={formStart}
+                onChange={e => setFormStart(e.target.value)}
+                className={formErrors.startTime ? 'border-red-500' : ''} />
               {formErrors.startTime && <p className="text-red-500 text-sm mt-1">{formErrors.startTime}</p>}
             </div>
+
             {/* End Time */}
             <div>
-              <Label htmlFor="endTime">End Time</Label>
-              <Input type="time" id="endTime" value={formData.endTime} onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))} className={formErrors.endTime ? 'border-red-500' : ''} />
+              <Label htmlFor="form_end">6. End Time</Label>
+              <Input type="time" id="form_end" value={formEnd}
+                onChange={e => setFormEnd(e.target.value)}
+                className={formErrors.endTime ? 'border-red-500' : ''} />
               {formErrors.endTime && <p className="text-red-500 text-sm mt-1">{formErrors.endTime}</p>}
             </div>
           </div>
-          {formErrors.overlap && <div className="text-red-600 text-sm">{formErrors.overlap}</div>}
+
+          {formErrors.overlap && (
+            <div className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded">{formErrors.overlap}</div>
+          )}
+
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="bg-gray-500 hover:bg-gray-600 text-white">Cancel</Button>
             <Button type="submit" disabled={submitting} className="bg-blue-600 hover:bg-blue-700 text-white">
-              {submitting ? <><FontAwesomeIcon icon={faSpinner} spin className="mr-2" />Saving...</> : editing ? 'Save' : 'Create'}
+              {submitting ? <><FontAwesomeIcon icon={faSpinner} spin className="mr-2" />Saving...</> : editing ? 'Save Changes' : 'Create Block'}
             </Button>
           </div>
         </form>
       </Modal>
 
       {/* Confirm Delete */}
-      <Modal isOpen={confirmDelete.open} onClose={() => setConfirmDelete({ open: false, row: null })} title="Confirm Delete">
+      <Modal isOpen={confirmDelete.open} onClose={() => setConfirmDelete({ open: false, row: null })} title="Delete Schedule Block">
         <div className="space-y-4">
-          <p className="text-gray-700">Delete this schedule block?</p>
+          {confirmDelete.row && (() => {
+            const dk = dkMap.get(confirmDelete.row.timetable_detail_kelas_id);
+            return (
+              <div>
+                <p className="text-gray-700 mb-2">Delete this schedule block?</p>
+                <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-600 space-y-1">
+                  <div><strong>Class:</strong> {dk?.kelas_nama || '-'}</div>
+                  <div><strong>Subject:</strong> {dk?.subject_name || '-'}</div>
+                  <div><strong>Day:</strong> {confirmDelete.row.timetable_day}</div>
+                  <div><strong>Time:</strong> {(() => {
+                    const { start, end } = parseRange(confirmDelete.row.timetable_time);
+                    return `${extractHM(start)} – ${extractHM(end)}`;
+                  })()}</div>
+                </div>
+              </div>
+            );
+          })()}
           <div className="flex justify-end space-x-3 pt-2">
             <Button onClick={() => setConfirmDelete({ open: false, row: null })} className="bg-gray-500 hover:bg-gray-600 text-white">Cancel</Button>
             <Button onClick={onDelete} disabled={submitting} className="bg-red-600 hover:bg-red-700 text-white">
