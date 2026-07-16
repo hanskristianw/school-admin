@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { setAuthToken } from '@/lib/supabase'
 
 // Simple client-side access guard using menu_permissions
 // Logic:
@@ -16,6 +17,15 @@ export default function AccessGuard({ children }) {
 
   useEffect(() => {
     let mounted = true
+
+    // Restore Supabase auth token on every page load.
+    // setAuthToken is only called at login time, so after a refresh the
+    // Supabase singleton client loses its Authorization header.
+    // Without this, all RLS-protected queries fall back to the anon role
+    // and get blocked in production.
+    const jwt = typeof window !== 'undefined' ? localStorage.getItem('app_jwt') : null
+    if (jwt) setAuthToken(jwt)
+
     const check = async () => {
       try {
         // Basic auth presence check

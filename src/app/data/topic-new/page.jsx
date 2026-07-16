@@ -438,60 +438,48 @@ export default function TopicNewPage() {
 
   // Fetch kelas where logged-in user is wali kelas (or all kelas for admin)
   // When mentorYear changes, reload kelas options filtered by that year
+  // Uses /api/class/list (SERVICE_ROLE_KEY) to bypass RLS — anon client is blocked in production.
   useEffect(() => {
     if (!currentUserId) return
     const fetchWaliKelas = async () => {
       try {
         const adminRole = isAdminLike(userRole)
 
-        // For admin: always show Mentor tab regardless of query result
+        // For admin: show Mentor tab immediately before data arrives
         if (adminRole) setIsWaliKelas(true)
 
-        let query = supabase
-          .from('kelas')
-          .select('kelas_id, kelas_nama, kelas_year_id')
-          .order('kelas_nama')
-        if (!adminRole) {
-          query = query.eq('kelas_user_id', currentUserId)
+        // Always use the API route (supabaseAdmin / SERVICE_ROLE_KEY) — never the anon client.
+        // The anon client is blocked by RLS on the `kelas` table in production.
+        const params = new URLSearchParams()
+        if (!adminRole) params.set('user_id', String(currentUserId))
+        if (mentorYear) params.set('year_id', String(mentorYear))
+
+        const res = await fetch(`/api/class/list?${params}`)
+        if (!res.ok) {
+          console.warn('[fetchWaliKelas] API error:', res.status)
+          if (!adminRole) { setIsWaliKelas(false); setMentorKelasOptions([]) }
+          return
         }
-        if (mentorYear) {
-          query = query.eq('kelas_year_id', mentorYear)
-        }
-        const { data, error } = await query
-        if (error) {
-          // RLS may block anon client — fallback to API route for kelas list
-          console.warn('[fetchWaliKelas] Supabase client blocked, trying API fallback:', error.message)
-          const params = new URLSearchParams()
-          if (!adminRole) params.set('user_id', currentUserId)
-          if (mentorYear) params.set('year_id', mentorYear)
-          const res = await fetch(`/api/class/list?${params}`)
-          if (res.ok) {
-            const json = await res.json()
-            const fallbackData = json.data || []
-            if (adminRole || fallbackData.length > 0) {
-              setIsWaliKelas(true)
-              setMentorKelasOptions(fallbackData)
-            } else {
-              setIsWaliKelas(false)
-              setMentorKelasOptions([])
-            }
-          } else if (!adminRole) {
-            setIsWaliKelas(false)
-            setMentorKelasOptions([])
-          }
+
+        const json = await res.json()
+        const data = json.data || []
+
+        if (adminRole) {
+          // Admin always sees tab; populate dropdown with all classes
+          setMentorKelasOptions(data)
         } else {
-          if (!adminRole) {
-            setIsWaliKelas(data && data.length > 0)
-          }
-          setMentorKelasOptions(data || [])
+          // Regular user: show tab only if they are wali kelas for ≥1 class
+          setIsWaliKelas(data.length > 0)
+          setMentorKelasOptions(data)
         }
-        // Reset class & students when year changes
+
+        // Reset selection when year changes
         setMentorKelas('')
         setMentorSemester('')
         setMentorStudents([])
       } catch (err) {
-        console.error('Error fetching wali kelas:', err)
-        // Still show tab for admin even on unexpected errors
+        console.error('[fetchWaliKelas] Error:', err)
+        // Failsafe: admin always sees tab even on network error
         if (isAdminLike(userRole)) setIsWaliKelas(true)
       }
     }

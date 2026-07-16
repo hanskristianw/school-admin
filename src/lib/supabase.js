@@ -22,17 +22,40 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 export const setAuthToken = (token) => {
-  const headers = bearerHeaders(token)
+  if (!token) return
+  const authHeader = { Authorization: `Bearer ${token}` }
   try {
-    // Supabase JS v2 exposes a headers bag used for PostgREST calls.
-    // Mutating it makes new requests include the Authorization header.
-    supabase.headers = { ...(supabase.headers || {}), ...headers }
+    // Supabase JS v2: the PostgREST sub-client is at supabase.rest
+    // Setting headers here affects all .from() queries
+    if (supabase.rest?.headers) {
+      supabase.rest.headers = { ...supabase.rest.headers, ...authHeader }
+    }
+    // Also set on the top-level client for other sub-clients (storage, functions, etc.)
+    if (supabase.headers) {
+      supabase.headers = { ...(supabase.headers || {}), ...authHeader }
+    }
+    // Supabase JS v2 internal: realtime + postgrest use supabase.supabaseUrl + global headers
+    // The most reliable approach for @supabase/supabase-js v2 is to set on the function client
+    if (supabase.functions?.headers) {
+      supabase.functions.headers = { ...supabase.functions.headers, ...authHeader }
+    }
   } catch {}
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    // Pre-load JWT from localStorage so page refreshes don't lose auth.
+    // This runs once at module init (client-side only).
+    headers: (() => {
+      if (typeof window === 'undefined') return {}
+      try {
+        const jwt = localStorage.getItem('app_jwt')
+        return jwt ? { Authorization: `Bearer ${jwt}` } : {}
+      } catch { return {} }
+    })(),
+  },
   auth: {
-    // Disable Supabase auth since we're using custom auth
+    // Disable Supabase auth since we're using custom JWT auth
     autoRefreshToken: false,
     persistSession: false,
     detectSessionInUrl: false
