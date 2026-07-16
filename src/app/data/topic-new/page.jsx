@@ -1292,7 +1292,7 @@ export default function TopicNewPage() {
       
       setWeeklyPlanNotification({
         show: true,
-        message: 'Weekly plans saved successfully!',
+        message: t('topicNew.weeklyPlanTab.savedSuccess'),
         type: 'success'
       })
       
@@ -1306,7 +1306,7 @@ export default function TopicNewPage() {
       console.error('Error saving weekly plans:', err)
       setWeeklyPlanNotification({
         show: true,
-        message: 'Failed to save weekly plans',
+        message: t('topicNew.weeklyPlanTab.savedError'),
         type: 'error'
       })
     } finally {
@@ -1318,7 +1318,7 @@ export default function TopicNewPage() {
     if (!selectedTopicForWeekly) return
     
     const confirmed = confirm(
-      `Are you sure you want to delete all weekly plans for "${selectedTopicForWeekly.topic_nama}"? This action cannot be undone.`
+      t('topicNew.weeklyPlanTab.deleteConfirm').replace('{name}', selectedTopicForWeekly.topic_nama)
     )
     
     if (!confirmed) return
@@ -1336,7 +1336,7 @@ export default function TopicNewPage() {
       
       setWeeklyPlanNotification({
         show: true,
-        message: 'All weekly plans deleted successfully!',
+        message: t('topicNew.weeklyPlanTab.deletedSuccess'),
         type: 'success'
       })
       
@@ -1350,7 +1350,7 @@ export default function TopicNewPage() {
       console.error('Error deleting weekly plans:', err)
       setWeeklyPlanNotification({
         show: true,
-        message: 'Failed to delete weekly plans',
+        message: t('topicNew.weeklyPlanTab.deletedError'),
         type: 'error'
       })
     } finally {
@@ -4969,9 +4969,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         <div>
                           <h3 className="font-semibold text-sm mb-1" style={{ color: theme.textPrimary }}>{selectedTopicForWeekly.topic_nama}</h3>
                           <div className="text-xs" style={{ color: theme.textSecondary }}>
-                            <span>Duration: {selectedTopicForWeekly.topic_duration} weeks</span>
+                            <span>{t('topicNew.weeklyPlanTab.duration')}: {selectedTopicForWeekly.topic_duration} weeks</span>
                             <span className="mx-2">·</span>
-                            <span>Hours per week: {selectedTopicForWeekly.topic_hours_per_week || 'N/A'}</span>
+                            <span>{t('topicNew.weeklyPlanTab.hoursPerWeek')}: {selectedTopicForWeekly.topic_hours_per_week || t('topicNew.weeklyPlanTab.notAvailable')}</span>
                           </div>
                         </div>
                         <button
@@ -4983,7 +4983,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           }}
                         >
                           <FontAwesomeIcon icon={faLightbulb} />
-                          AI Help
+                          {t('topicNew.weeklyPlanTab.aiHelp')}
                         </button>
                       </div>
                     </div>
@@ -5009,10 +5009,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               <span className="flex items-center justify-center w-6 h-6 text-xs font-bold" style={{ background: theme.subtleBg, color: theme.textPrimary, borderRadius: '50%', border: `1px solid ${theme.border}` }}>
                                 {plan.week_number}
                               </span>
-                              Week {plan.week_number}
+                              {t('topicNew.weeklyPlanTab.week')} {plan.week_number}
                             </h3>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>Tanggal Penggunaan:</label>
+                              <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.dateLabel')}</label>
                               <input
                                 type="date"
                                 value={plan.week_date || ''}
@@ -5035,12 +5035,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             {/* Objectives */}
                             <div>
                               <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                Learning Objectives
+                                {t('topicNew.weeklyPlanTab.objectives')}
                               </label>
                               <textarea
                                 value={plan.week_objectives || ''}
                                 onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_objectives', e.target.value)}
-                                placeholder="What will students learn this week?"
+                                placeholder={t('topicNew.weeklyPlanTab.objectivesPlaceholder')}
                                 rows={3}
                                 className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
                                 style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
@@ -5050,12 +5050,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             {/* Activities */}
                             <div>
                               <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                Learning Activities (max 300 chars)
+                                {t('topicNew.weeklyPlanTab.activities')} (max 300 chars)
                               </label>
                               <textarea
                                 value={plan.week_activities || ''}
                                 onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_activities', e.target.value)}
-                                placeholder="What activities will students do?"
+                                placeholder={t('topicNew.weeklyPlanTab.activitiesPlaceholder')}
                                 rows={3}
                                 maxLength={300}
                                 className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
@@ -5069,12 +5069,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             {/* Resources */}
                             <div>
                               <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                Resources Needed
+                                {t('topicNew.weeklyPlanTab.resources')}
                               </label>
                               <textarea
                                 value={plan.week_resources || ''}
                                 onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_resources', e.target.value)}
-                                placeholder="What materials or resources are needed?"
+                                placeholder={t('topicNew.weeklyPlanTab.resourcesPlaceholder')}
                                 rows={2}
                                 className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
                                 style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
@@ -5084,12 +5084,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             {/* Reflection */}
                             <div>
                               <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                Reflection <span style={{ color: theme.textSecondary }}>(During Teaching)</span>
+                                {t('topicNew.weeklyPlanTab.reflection')} <span style={{ color: theme.textSecondary }}>({t('topicNew.weeklyPlanTab.reflectionDuring')})</span>
                               </label>
                               <textarea
                                 value={plan.week_reflection || ''}
                                 onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_reflection', e.target.value)}
-                                placeholder="How did this week go? What worked well? What needs adjustment?"
+                                placeholder={t('topicNew.weeklyPlanTab.reflectionPlaceholder')}
                                 rows={2}
                                 className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
                                 style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.subtleBg, color: theme.textBody }}
@@ -5109,7 +5109,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}
                       >
                         <FontAwesomeIcon icon={faTrash} />
-                        Delete All
+                        {t('topicNew.weeklyPlanTab.deleteAll')}
                       </button>
                       <button
                         onClick={saveWeeklyPlans}
@@ -5118,22 +5118,22 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}
                       >
                         {savingWeeklyPlans ? (
-                          <><FontAwesomeIcon icon={faSpinner} spin />Saving...</>
+                          <><FontAwesomeIcon icon={faSpinner} spin />{t('topicNew.weeklyPlanTab.saving')}</>
                         ) : (
-                          <><FontAwesomeIcon icon={faSave} />Save Weekly Plans</>
+                          <><FontAwesomeIcon icon={faSave} />{t('topicNew.weeklyPlanTab.save')}</>
                         )}
                       </button>
                     </div>
                   </div>
                 ) : selectedTopicForWeekly ? (
                   <div className="text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
-                    <p>No weekly plan data available for this topic.</p>
-                    <p className="mt-2">The trigger should auto-generate weeks based on topic_duration.</p>
+                    <p>{t('topicNew.weeklyPlanTab.noData')}</p>
+                    <p className="mt-2">{t('topicNew.weeklyPlanTab.noDataHint')}</p>
                   </div>
                 ) : (
                   <div className="text-center py-12" style={{ color: theme.textSecondary }}>
                     <FontAwesomeIcon icon={faClipboardList} className="text-4xl mb-3 opacity-30" />
-                    <p className="text-xs">Select a topic to view and edit weekly plans</p>
+                    <p className="text-xs">{t('topicNew.weeklyPlanTab.selectTopic')}</p>
                   </div>
                 )}
               </div>
