@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders } from '@fortawesome/free-solid-svg-icons'
 import { useTheme } from '@/lib/theme'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
@@ -4477,6 +4477,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     { id: 'assessment', label: t('topicNew.tabs.assessment'), icon: faClipboardCheck },
     { id: 'comment', label: t('topicNew.tabs.comment'), icon: faComments },
     ...(isWaliKelas ? [{ id: 'mentor', label: t('topicNew.tabs.mentorComment'), icon: faHouseUser }] : []),
+    ...(isWaliKelas ? [{ id: 'attendance', label: t('topicNew.tabs.dailyAttendance') || 'Daily Attendance', icon: faCalendarCheck }] : []),
     { id: 'community_project', label: 'Community Project', icon: faLightbulb },
     { id: 'report', label: t('topicNew.tabs.report'), icon: faChartBar }
   ]
@@ -6011,197 +6012,216 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       maxLength={600}
                       placeholder={t('topicNew.mentorCommentTab.commentPlaceholder')}
                       className="w-full px-3 py-2 text-sm focus:outline-none resize-y"
-                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                    />
-                    <p className="text-xs text-right mt-1" style={{ color: theme.textSecondary }}>{(student.comment_text || '').length}/600</p>
-                  </div>
-                ))}
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6            )}
+          </div>
+        )}
+
+        {/* ── DAILY ATTENDANCE TAB ─────────────────────────────────── */}
+        {activeTab === 'attendance' && isWaliKelas && (
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <FontAwesomeIcon icon={faCalendarCheck} style={{ color: theme.blueText }} />
+              <h2 className="text-base font-semibold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
+                {t('topicNew.tabs.dailyAttendance') || 'Daily Attendance'}
+              </h2>
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: theme.blueBg, color: theme.blueText }}>
+                {t('topicNew.mentorCommentTab.dailyAttendance.beta') || 'Beta'}
+              </span>
+            </div>
+            <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>
+              {t('topicNew.mentorCommentTab.dailyAttendance.subtitle') || 'Record daily class attendance for your homeroom class.'}
+            </p>
+
+            {/* Filter row: Year → Kelas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. Tahun Ajaran</label>
+                <select
+                  value={mentorYear}
+                  onChange={(e) => setMentorYear(e.target.value)}
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                >
+                  <option value="">Pilih Tahun Ajaran</option>
+                  {yearOptions.map(y => (
+                    <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                  ))}
+                </select>
               </div>
-            )}
-            {/* ─── DAILY ATTENDANCE SECTION ─────────────────────────── */}
-            {mentorKelas && (
-              <div className="mt-8" style={{ borderTop: `2px solid ${theme.border}`, paddingTop: '24px' }}>
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <FontAwesomeIcon icon={faClipboardList} style={{ color: theme.blueText }} />
-                    <h3 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
-                      {t('topicNew.mentorCommentTab.dailyAttendance.title') || 'Daily Attendance'}
-                    </h3>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: theme.blueBg, color: theme.blueText }}>
-                      {t('topicNew.mentorCommentTab.dailyAttendance.beta') || 'Beta'}
-                    </span>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. {t('topicNew.mentorCommentTab.classLabel')}</label>
+                <select
+                  value={mentorKelas}
+                  onChange={(e) => handleMentorKelasChange(e.target.value)}
+                  disabled={!mentorYear}
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: !mentorYear ? 0.5 : 1 }}
+                >
+                  <option value="">{!mentorYear ? 'Pilih tahun ajaran dulu' : t('topicNew.mentorCommentTab.selectClass')}</option>
+                  {mentorKelasOptions.map(k => (
+                    <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {!mentorKelas ? (
+              <div className="text-center py-12 text-sm" style={{ color: theme.textSecondary }}>
+                {t('topicNew.mentorCommentTab.dailyAttendance.selectClassFirst') || 'Select a class to view attendance.'}
+              </div>
+            ) : (
+              <div>
+                {/* Date navigation */}
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => setAttendanceExpanded(v => !v)}
-                    className="text-xs px-2 py-1"
-                    style={{ color: theme.textSecondary, cursor: 'pointer', border: 'none', background: 'transparent' }}
-                  >
-                    {attendanceExpanded
-                      ? (t('topicNew.mentorCommentTab.dailyAttendance.hide') || '▲ Hide')
-                      : (t('topicNew.mentorCommentTab.dailyAttendance.show') || '▼ Show')}
-                  </button>
+                    onClick={() => {
+                      const d = new Date(attendanceDate); d.setDate(d.getDate() - 1)
+                      setAttendanceDate(d.toLocaleDateString('en-CA'))
+                    }}
+                    className="px-3 py-1.5 text-sm"
+                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, cursor: 'pointer' }}
+                  >{t('topicNew.mentorCommentTab.dailyAttendance.yesterday') || '← Yesterday'}</button>
+
+                  <input
+                    type="date"
+                    value={attendanceDate}
+                    onChange={e => setAttendanceDate(e.target.value)}
+                    className="px-3 py-1.5 text-sm"
+                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(attendanceDate); d.setDate(d.getDate() + 1)
+                      setAttendanceDate(d.toLocaleDateString('en-CA'))
+                    }}
+                    className="px-3 py-1.5 text-sm"
+                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, cursor: 'pointer' }}
+                  >{t('topicNew.mentorCommentTab.dailyAttendance.tomorrow') || 'Tomorrow →'}</button>
+
+                  <div className="flex gap-2 ml-auto">
+                    <button
+                      type="button"
+                      onClick={clearAttendance}
+                      disabled={attendanceStudents.length === 0 || loadingAttendance || Object.keys(attendanceRecords).length === 0}
+                      className="px-3 py-1.5 text-sm font-medium"
+                      style={{
+                        border: `1px solid ${theme.border}`, borderRadius: '6px',
+                        background: theme.redBg, color: theme.redText, cursor: 'pointer',
+                        opacity: (attendanceStudents.length === 0 || Object.keys(attendanceRecords).length === 0) ? 0.4 : 1
+                      }}
+                    >
+                      {t('topicNew.mentorCommentTab.dailyAttendance.clearData') || 'Clear Date'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={markAllHadir}
+                      disabled={attendanceStudents.length === 0 || loadingAttendance}
+                      className="px-3 py-1.5 text-sm font-medium"
+                      style={{
+                        border: `1px solid ${theme.border}`, borderRadius: '6px',
+                        background: theme.greenBg, color: theme.greenText, cursor: 'pointer',
+                        opacity: attendanceStudents.length === 0 ? 0.5 : 1
+                      }}
+                    >
+                      {t('topicNew.mentorCommentTab.dailyAttendance.markAllPresent') || '✓ All Present'}
+                    </button>
+                  </div>
                 </div>
 
-                {attendanceExpanded && (
-                  <>
-                    {/* Date navigation */}
-                    <div className="flex items-center gap-2 mb-4 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const d = new Date(attendanceDate); d.setDate(d.getDate() - 1)
-                          setAttendanceDate(d.toLocaleDateString('en-CA'))
-                        }}
-                        className="px-3 py-1.5 text-sm"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, cursor: 'pointer' }}
-                      >{t('topicNew.mentorCommentTab.dailyAttendance.yesterday') || '← Yesterday'}</button>
-
-                      <input
-                        type="date"
-                        value={attendanceDate}
-                        onChange={e => setAttendanceDate(e.target.value)}
-                        className="px-3 py-1.5 text-sm"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const d = new Date(attendanceDate); d.setDate(d.getDate() + 1)
-                          setAttendanceDate(d.toLocaleDateString('en-CA'))
-                        }}
-                        className="px-3 py-1.5 text-sm"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, cursor: 'pointer' }}
-                      >{t('topicNew.mentorCommentTab.dailyAttendance.tomorrow') || 'Tomorrow →'}</button>
-
-                      <div className="flex gap-2 ml-auto">
-                        {/* Clear Data button */}
-                        <button
-                          type="button"
-                          onClick={clearAttendance}
-                          disabled={attendanceStudents.length === 0 || loadingAttendance || Object.keys(attendanceRecords).length === 0}
-                          className="px-3 py-1.5 text-sm font-medium"
-                          style={{
-                            border: `1px solid ${theme.border}`, borderRadius: '6px',
-                            background: theme.redBg, color: theme.redText, cursor: 'pointer',
-                            opacity: (attendanceStudents.length === 0 || Object.keys(attendanceRecords).length === 0) ? 0.4 : 1
-                          }}
-                        >
-                          {t('topicNew.mentorCommentTab.dailyAttendance.clearData') || 'Clear Date'}
-                        </button>
-
-                        {/* Mark All Present button */}
-                        <button
-                          type="button"
-                          onClick={markAllHadir}
-                          disabled={attendanceStudents.length === 0 || loadingAttendance}
-                          className="px-3 py-1.5 text-sm font-medium"
-                          style={{
-                            border: `1px solid ${theme.border}`, borderRadius: '6px',
-                            background: theme.greenBg, color: theme.greenText, cursor: 'pointer',
-                            opacity: attendanceStudents.length === 0 ? 0.5 : 1
-                          }}
-                        >
-                          {t('topicNew.mentorCommentTab.dailyAttendance.markAllPresent') || '✓ All Present'}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Student attendance table */}
-                    {loadingAttendance ? (
-                      <div className="text-center py-6" style={{ color: theme.textSecondary }}>
-                        <FontAwesomeIcon icon={faSpinner} spin className="mr-2" />
-                        {t('topicNew.mentorCommentTab.dailyAttendance.loading') || 'Loading attendance data...'}
-                      </div>
-                    ) : attendanceStudents.length === 0 ? (
-                      <div className="text-center py-6 text-sm" style={{ color: theme.textSecondary }}>
-                        {t('topicNew.mentorCommentTab.dailyAttendance.noStudents') || 'No students in this class.'}
-                      </div>
-                    ) : (
-                      <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
-                        <table className="min-w-full text-sm">
-                          <thead>
-                            <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-                              <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
-                                {t('topicNew.mentorCommentTab.dailyAttendance.colNo') || '#'}
-                              </th>
-                              <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
-                                {t('topicNew.mentorCommentTab.dailyAttendance.colName') || 'Student Name'}
-                              </th>
-                              <th className="py-2 px-3 text-center text-xs font-semibold" style={{ color: theme.textSecondary }}>
-                                {t('topicNew.mentorCommentTab.dailyAttendance.colStatus') || 'Status'}
-                              </th>
-                              <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
-                                {t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'Note'}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {attendanceStudents.map((student, idx) => {
-                              const rec = attendanceRecords[student.detail_siswa_id]
-                              const currentStatus = rec?.status || ''
-                              const isSaving = savingAttendanceId === student.detail_siswa_id
-                              const statusOptions = [
-                                { value: 'hadir',        label: t('topicNew.mentorCommentTab.dailyAttendance.statusHadir')        || 'Present',     bg: '#dcfce7', color: '#16a34a' },
-                                { value: 'tidak_hadir',  label: t('topicNew.mentorCommentTab.dailyAttendance.statusTidakHadir')  || 'Absent',      bg: '#fee2e2', color: '#dc2626' },
-                                { value: 'ijin',         label: t('topicNew.mentorCommentTab.dailyAttendance.statusIjin')         || 'Excused',     bg: '#fef3c7', color: '#d97706' },
-                                { value: 'terlambat',    label: t('topicNew.mentorCommentTab.dailyAttendance.statusTerlambat')    || 'Late',        bg: '#e0e7ff', color: '#4338ca' },
-                                { value: 'pulang_cepat', label: t('topicNew.mentorCommentTab.dailyAttendance.statusPulangCepat') || 'Early Leave',  bg: '#f3e8ff', color: '#7c3aed' },
-                              ]
-                              return (
-                                <tr key={student.detail_siswa_id} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                                  <td className="py-2.5 px-3 text-xs font-mono" style={{ color: theme.textSecondary }}>{idx + 1}</td>
-                                  <td className="py-2.5 px-3 font-medium" style={{ color: theme.textPrimary }}>
-                                    {student.nama}
-                                    {isSaving && <FontAwesomeIcon icon={faSpinner} spin className="ml-2 text-xs" style={{ color: theme.textSecondary }} />}
-                                  </td>
-                                  <td className="py-2 px-3">
-                                    <div className="flex flex-wrap gap-1 justify-center">
-                                      {statusOptions.map(opt => (
-                                        <button
-                                          key={opt.value}
-                                          type="button"
-                                          disabled={isSaving}
-                                          onClick={() => saveSingleAttendance(student.detail_siswa_id, opt.value, rec?.keterangan || '')}
-                                          className="px-2 py-0.5 text-xs font-medium rounded-full transition-all"
-                                          style={{
-                                            background: currentStatus === opt.value ? opt.bg : theme.subtleBg,
-                                            color: currentStatus === opt.value ? opt.color : theme.textSecondary,
-                                            border: `1px solid ${currentStatus === opt.value ? opt.color : theme.border}`,
-                                            fontWeight: currentStatus === opt.value ? 700 : 400,
-                                            cursor: isSaving ? 'not-allowed' : 'pointer',
-                                            opacity: isSaving ? 0.6 : 1,
-                                          }}
-                                        >{opt.label}</button>
-                                      ))}
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-3">
-                                    <input
-                                      type="text"
-                                      value={rec?.keterangan || ''}
-                                      placeholder={t('topicNew.mentorCommentTab.dailyAttendance.notePlaceholder') || 'Optional...'}
-                                      onChange={e => setAttendanceRecords(prev => ({
-                                        ...prev,
-                                        [student.detail_siswa_id]: { ...(prev[student.detail_siswa_id] || {}), keterangan: e.target.value }
-                                      }))}
-                                      onBlur={e => {
-                                        if (currentStatus) saveSingleAttendance(student.detail_siswa_id, currentStatus, e.target.value)
+                {/* Student attendance table */}
+                {loadingAttendance ? (
+                  <div className="text-center py-6" style={{ color: theme.textSecondary }}>
+                    <FontAwesomeIcon icon={faSpinner} spin className="mr-2" />
+                    {t('topicNew.mentorCommentTab.dailyAttendance.loading') || 'Loading attendance data...'}
+                  </div>
+                ) : attendanceStudents.length === 0 ? (
+                  <div className="text-center py-6 text-sm" style={{ color: theme.textSecondary }}>
+                    {t('topicNew.mentorCommentTab.dailyAttendance.noStudents') || 'No students in this class.'}
+                  </div>
+                ) : (
+                  <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+                          <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
+                            {t('topicNew.mentorCommentTab.dailyAttendance.colNo') || '#'}
+                          </th>
+                          <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
+                            {t('topicNew.mentorCommentTab.dailyAttendance.colName') || 'Student Name'}
+                          </th>
+                          <th className="py-2 px-3 text-center text-xs font-semibold" style={{ color: theme.textSecondary }}>
+                            {t('topicNew.mentorCommentTab.dailyAttendance.colStatus') || 'Status'}
+                          </th>
+                          <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
+                            {t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'Note'}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendanceStudents.map((student, idx) => {
+                          const rec = attendanceRecords[student.detail_siswa_id]
+                          const currentStatus = rec?.status || ''
+                          const isSaving = savingAttendanceId === student.detail_siswa_id
+                          const statusOptions = [
+                            { value: 'hadir',        label: t('topicNew.mentorCommentTab.dailyAttendance.statusHadir')        || 'Present',     bg: '#dcfce7', color: '#16a34a' },
+                            { value: 'tidak_hadir',  label: t('topicNew.mentorCommentTab.dailyAttendance.statusTidakHadir')  || 'Absent',      bg: '#fee2e2', color: '#dc2626' },
+                            { value: 'ijin',         label: t('topicNew.mentorCommentTab.dailyAttendance.statusIjin')         || 'Excused',     bg: '#fef3c7', color: '#d97706' },
+                            { value: 'terlambat',    label: t('topicNew.mentorCommentTab.dailyAttendance.statusTerlambat')    || 'Late',        bg: '#e0e7ff', color: '#4338ca' },
+                            { value: 'pulang_cepat', label: t('topicNew.mentorCommentTab.dailyAttendance.statusPulangCepat') || 'Early Leave',  bg: '#f3e8ff', color: '#7c3aed' },
+                          ]
+                          return (
+                            <tr key={student.detail_siswa_id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                              <td className="py-2.5 px-3 text-xs font-mono" style={{ color: theme.textSecondary }}>{idx + 1}</td>
+                              <td className="py-2.5 px-3 font-medium" style={{ color: theme.textPrimary }}>
+                                {student.nama}
+                                {isSaving && <FontAwesomeIcon icon={faSpinner} spin className="ml-2 text-xs" style={{ color: theme.textSecondary }} />}
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="flex flex-wrap gap-1 justify-center">
+                                  {statusOptions.map(opt => (
+                                    <button
+                                      key={opt.value}
+                                      type="button"
+                                      disabled={isSaving}
+                                      onClick={() => saveSingleAttendance(student.detail_siswa_id, opt.value, rec?.keterangan || '')}
+                                      className="px-2 py-0.5 text-xs font-medium rounded-full transition-all"
+                                      style={{
+                                        background: currentStatus === opt.value ? opt.bg : theme.subtleBg,
+                                        color: currentStatus === opt.value ? opt.color : theme.textSecondary,
+                                        border: `1px solid ${currentStatus === opt.value ? opt.color : theme.border}`,
+                                        fontWeight: currentStatus === opt.value ? 700 : 400,
+                                        cursor: isSaving ? 'not-allowed' : 'pointer',
+                                        opacity: isSaving ? 0.6 : 1,
                                       }}
-                                      className="w-full px-2 py-1 text-xs focus:outline-none"
-                                      style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textBody, minWidth: '100px' }}
-                                    />
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </>
+                                    >{opt.label}</button>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3">
+                                <input
+                                  type="text"
+                                  value={rec?.keterangan || ''}
+                                  placeholder={t('topicNew.mentorCommentTab.dailyAttendance.notePlaceholder') || 'Optional...'}
+                                  onChange={e => setAttendanceRecords(prev => ({
+                                    ...prev,
+                                    [student.detail_siswa_id]: { ...(prev[student.detail_siswa_id] || {}), keterangan: e.target.value }
+                                  }))}
+                                  onBlur={e => {
+                                    if (currentStatus) saveSingleAttendance(student.detail_siswa_id, currentStatus, e.target.value)
+                                  }}
+                                  className="w-full px-2 py-1 text-xs focus:outline-none"
+                                  style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textBody, minWidth: '100px' }}
+                                />
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
