@@ -1278,6 +1278,7 @@ export default function TopicNewPage() {
             id: plan.id || undefined,
             topic_id: selectedTopicForWeekly.topic_id,
             week_number: plan.week_number,
+            week_date: plan.week_date || null,
             week_objectives: plan.week_objectives || null,
             week_activities: plan.week_activities || null,
             week_resources: plan.week_resources || null,
@@ -5003,14 +5004,33 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {weeklyPlans.map((plan) => (
                         <div key={plan.week_number} style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '16px' }}>
-                          <h3 className="text-xs font-semibold mb-3 flex items-center gap-2" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
-                            <span className="flex items-center justify-center w-6 h-6 text-xs font-bold" style={{ background: theme.subtleBg, color: theme.textPrimary, borderRadius: '50%', border: `1px solid ${theme.border}` }}>
-                              {plan.week_number}
-                            </span>
-                            Week {plan.week_number}
-                          </h3>
-                          
-                          <div className="space-y-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-xs font-semibold flex items-center gap-2" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
+                              <span className="flex items-center justify-center w-6 h-6 text-xs font-bold" style={{ background: theme.subtleBg, color: theme.textPrimary, borderRadius: '50%', border: `1px solid ${theme.border}` }}>
+                                {plan.week_number}
+                              </span>
+                              Week {plan.week_number}
+                            </h3>
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>Tanggal Mulai (Senin):</label>
+                              <input
+                                type="date"
+                                value={plan.week_date || ''}
+                                onChange={e => {
+                                  // Snap to Monday of the selected date
+                                  const d = new Date(e.target.value)
+                                  const day = d.getDay()
+                                  const diff = day === 0 ? -6 : 1 - day
+                                  d.setDate(d.getDate() + diff)
+                                  const monday = d.toISOString().slice(0, 10)
+                                  handleWeeklyPlanChange(plan.week_number, 'week_date', monday)
+                                }}
+                                className="text-[10px] px-1.5 py-1 focus:outline-none"
+                                style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textBody }}
+                              />
+                            </div>
+                          </div>
+
                             {/* Objectives */}
                             <div>
                               <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
