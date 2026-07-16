@@ -249,26 +249,7 @@ export default function TimetablePage() {
     finally { setSubmitting(false); }
   };
 
-  if (loading) return (
-    <div className="flex justify-center items-center min-h-screen">
-      <div className="animate-spin h-16 w-16 border-b-2 border-gray-900 rounded-full" />
-    </div>
-  );
-
-  const sorted = [...filtered].sort((a, b) => {
-    const dayIdx = d => DAYS.indexOf(d);
-    const da = dayIdx(a.timetable_day);
-    const db = dayIdx(b.timetable_day);
-    if (da !== db) return da - db;
-    const { start: saRaw } = parseRange(a.timetable_time);
-    const { start: sbRaw } = parseRange(b.timetable_time);
-    const sa = extractHM(saRaw);
-    const sb = extractHM(sbRaw);
-    if (sa !== sb) return sa.localeCompare(sb);
-    return (userMap.get(a.timetable_user_id) || '').localeCompare(userMap.get(b.timetable_user_id) || '');
-  });
-
-  // Subjects available for the selected user in form (filtered by detailKelas for selected year)
+  // Subjects available for the selected user in form
   const formSubjectsForUser = useMemo(() => {
     if (!formData.timetable_user_id) return [];
     return subjects
@@ -285,6 +266,26 @@ export default function TimetablePage() {
     return [...detailKelasAll.filter(d => String(d.detail_kelas_subject_id) === formData.subject_id)]
       .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', 'id'));
   }, [detailKelasAll, formData.subject_id]);
+
+  // Sorted filtered rows
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    const dayIdx = d => DAYS.indexOf(d);
+    const da = dayIdx(a.timetable_day);
+    const db = dayIdx(b.timetable_day);
+    if (da !== db) return da - db;
+    const { start: saRaw } = parseRange(a.timetable_time);
+    const { start: sbRaw } = parseRange(b.timetable_time);
+    const sa = extractHM(saRaw);
+    const sb = extractHM(sbRaw);
+    if (sa !== sb) return sa.localeCompare(sb);
+    return (userMap.get(a.timetable_user_id) || '').localeCompare(userMap.get(b.timetable_user_id) || '');
+  }), [filtered, userMap]);
+
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin h-16 w-16 border-b-2 border-gray-900 rounded-full" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
