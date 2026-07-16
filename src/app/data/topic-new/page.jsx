@@ -5012,7 +5012,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               Week {plan.week_number}
                             </h3>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>Tanggal Mulai (Senin):</label>
+                              <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>Tanggal Penggunaan:</label>
                               <input
                                 type="date"
                                 value={plan.week_date || ''}

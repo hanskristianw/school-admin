@@ -154,7 +154,7 @@ export default function WeeklyOverviewPage() {
       };
 
       // 4. Fetch weekly plans for this kelas+week
-      // Look up topic_weekly_plan where week_date = monday AND topic.topic_kelas_id = kelasId
+      // Match any plan whose week_date falls within Monday–Friday of the selected week
       const { data: wpData } = await supabase
         .from('topic_weekly_plan')
         .select(`
@@ -162,12 +162,17 @@ export default function WeeklyOverviewPage() {
           week_objectives, week_activities, week_resources,
           topic:topic_id(topic_id, topic_kelas_id, topic_subject_id, topic_nama)
         `)
-        .eq('week_date', monday);
+        .gte('week_date', monday)
+        .lte('week_date', fridayStr);
 
       // Filter to this kelas
       const relevantWP = (wpData || []).filter(wp => wp.topic?.topic_kelas_id === kelasId);
-      // Map: subject_id -> weekly plan
-      const wpBySubject = new Map(relevantWP.map(wp => [wp.topic?.topic_subject_id, wp]));
+      // Map: subject_id -> weekly plan (if same subject has multiple plans in this week, take the latest)
+      const wpBySubject = new Map(
+        relevantWP
+          .sort((a, b) => (a.week_date || '').localeCompare(b.week_date || ''))
+          .map(wp => [wp.topic?.topic_subject_id, wp])
+      );
 
       // 5. Collect all unique time slots across all days (for row headers)
       const timeSlotSet = new Set();
