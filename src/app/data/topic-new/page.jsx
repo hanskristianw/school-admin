@@ -4893,7 +4893,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       </select>
                     </div>
 
-                    {/* 2. Kelas — only show classes that have topics for this user */}
+                    {/* 2. Kelas — same source as Overview: allKelasRaw filtered by year */}
                     <div>
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. Kelas</label>
                       <select
@@ -4904,17 +4904,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: !wpYear ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpYear ? 0.6 : 1 }}
                       >
                         <option value="">{!wpYear ? 'Pilih tahun dulu' : 'Semua Kelas'}</option>
-                        {/* Derive from topics (role-filtered) + filter by selected year */}
-                        {[...new Map(
-                          topics
-                            .filter(t => {
-                              const k = allKelasRaw.find(k => k.kelas_id === t.topic_kelas_id)
-                              return k && (!wpYear || String(k.kelas_year_id) === String(wpYear))
-                            })
-                            .map(t => [t.topic_kelas_id, kelasNameMap.get(t.topic_kelas_id) || ''])
-                        ).entries()]
-                          .sort((a, b) => a[1].localeCompare(b[1], 'id'))
-                          .map(([kid, kname]) => <option key={kid} value={kid}>{kname}</option>)
+                        {[...allKelasRaw]
+                          .filter(k => !wpYear || String(k.kelas_year_id) === String(wpYear))
+                          .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama, 'id'))
+                          .map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)
                         }
                       </select>
                     </div>
