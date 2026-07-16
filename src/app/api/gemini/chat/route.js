@@ -1,44 +1,49 @@
 import { NextResponse } from 'next/server'
+import { getVertexModel } from '@/lib/vertexClient'
 
+export const dynamic = 'force-dynamic'
+
+/**
+ * POST /api/gemini/chat
+ * Body: { message: string, history?: Array<{ role: 'user'|'model', text: string }>, context?: string }
+ * Returns: { text: string }
+ */
 export async function POST(req) {
   try {
-    const { model: modelFromBody, history, message, context } = await req.json()
+    const { history, message, context } = await req.json()
+
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Invalid message' }, { status: 400 })
     }
-    const apiKey = process.env.GEMINI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Server missing GEMINI_API_KEY' }, { status: 500 })
-    }
-    const model = (typeof modelFromBody === 'string' && modelFromBody.trim()) || process.env.GEMINI_MODEL || 'gemini-2.5-flash'
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
-    // Convert history to Gemini format: array of {role, parts:[{text}]}
+    const genModel = getVertexModel()
+
+    // Build contents from optional system context + conversation history + current message
     const contents = []
+
     if (context && typeof context === 'string' && context.trim()) {
-      contents.push({ role: 'user', parts: [{ text: `SYSTEM CONTEXT:\n${context}\n---\n` }] })
+      contents.push({ role: 'user',  parts: [{ text: `SYSTEM CONTEXT:\n${context}\n---\n` }] })
+      contents.push({ role: 'model', parts: [{ text: 'Understood. I will follow the system context above.' }] })
     }
+
     for (const m of Array.isArray(history) ? history : []) {
       if (m && typeof m.text === 'string') {
         contents.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] })
       }
     }
+
     contents.push({ role: 'user', parts: [{ text: message }] })
 
-    const body = { contents }
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
-    if (!resp.ok) {
-      const err = await resp.text()
-      return NextResponse.json({ error: 'Gemini error', detail: err }, { status: 502 })
-    }
-    const data = await resp.json()
-    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('\n') || ''
+    console.log('[Vertex AI /api/gemini/chat] Generating, turns:', contents.length)
+
+    const result = await genModel.generateContent({ contents })
+    const text   = result.response?.candidates?.[0]?.content?.parts?.map(p => p.text).join('\n') || ''
+
+    console.log('[Vertex AI /api/gemini/chat] Response length:', text.length)
+
     return NextResponse.json({ text })
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[Vertex AI /api/gemini/chat] Error:', e?.message || e)
+    return NextResponse.json({ error: e?.message || 'Vertex AI request failed' }, { status: 500 })
   }
 }

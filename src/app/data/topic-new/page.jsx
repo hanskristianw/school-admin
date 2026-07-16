@@ -444,6 +444,9 @@ export default function TopicNewPage() {
       try {
         const adminRole = isAdminLike(userRole)
 
+        // For admin: always show Mentor tab regardless of query result
+        if (adminRole) setIsWaliKelas(true)
+
         let query = supabase
           .from('kelas')
           .select('kelas_id, kelas_nama, kelas_year_id')
@@ -455,13 +458,32 @@ export default function TopicNewPage() {
           query = query.eq('kelas_year_id', mentorYear)
         }
         const { data, error } = await query
-        if (error) throw error
-        if (adminRole || (data && data.length > 0)) {
-          setIsWaliKelas(true)
-          setMentorKelasOptions(data || [])
+        if (error) {
+          // RLS may block anon client — fallback to API route for kelas list
+          console.warn('[fetchWaliKelas] Supabase client blocked, trying API fallback:', error.message)
+          const params = new URLSearchParams()
+          if (!adminRole) params.set('user_id', currentUserId)
+          if (mentorYear) params.set('year_id', mentorYear)
+          const res = await fetch(`/api/class/list?${params}`)
+          if (res.ok) {
+            const json = await res.json()
+            const fallbackData = json.data || []
+            if (adminRole || fallbackData.length > 0) {
+              setIsWaliKelas(true)
+              setMentorKelasOptions(fallbackData)
+            } else {
+              setIsWaliKelas(false)
+              setMentorKelasOptions([])
+            }
+          } else if (!adminRole) {
+            setIsWaliKelas(false)
+            setMentorKelasOptions([])
+          }
         } else {
-          setIsWaliKelas(false)
-          setMentorKelasOptions([])
+          if (!adminRole) {
+            setIsWaliKelas(data && data.length > 0)
+          }
+          setMentorKelasOptions(data || [])
         }
         // Reset class & students when year changes
         setMentorKelas('')
@@ -469,6 +491,8 @@ export default function TopicNewPage() {
         setMentorStudents([])
       } catch (err) {
         console.error('Error fetching wali kelas:', err)
+        // Still show tab for admin even on unexpected errors
+        if (isAdminLike(userRole)) setIsWaliKelas(true)
       }
     }
     fetchWaliKelas()
