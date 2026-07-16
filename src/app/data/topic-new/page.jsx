@@ -4582,7 +4582,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     {/* Year filter */}
                     <div className="flex-1 min-w-[140px]">
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                        Tahun Ajaran
+                        {t('topicNew.filters.year')}
                       </label>
                       <select
                         value={filters.year}
@@ -4595,7 +4595,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         className="w-full px-3 py-2 text-xs focus:outline-none"
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
-                        <option value="">Semua Tahun</option>
+                        <option value="">{t('topicNew.weeklyPlanTab.allYears')}</option>
                         {yearOptions.map(y => (
                           <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
                         ))}
