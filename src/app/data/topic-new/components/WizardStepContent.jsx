@@ -88,6 +88,8 @@ export default function WizardStepContent({
                 onChange={(e) => {
                   const subjectId = e.target.value
                   setSelectedTopic(prev => ({ ...prev, topic_subject_id: subjectId }))
+                  // Also fetch kelas + criteria for this subject (used in step 7)
+                  if (subjectId) fetchKelasForSubject(subjectId)
                 }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >

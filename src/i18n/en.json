@@ -764,6 +764,7 @@
       "reflection": "Reflection"
     },
     "filters": {
+      "year": "Academic Year",
       "subject": "Filter by Subject",
       "allSubjects": "All Subjects",
       "allClasses": "All Classes",

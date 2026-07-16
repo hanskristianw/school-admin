@@ -764,6 +764,7 @@
       "reflection": "Refleksi"
     },
     "filters": {
+      "year": "Tahun Ajaran",
       "subject": "Filter berdasarkan Mata Pelajaran",
       "allSubjects": "Semua Mata Pelajaran",
       "allClasses": "Semua Kelas",
