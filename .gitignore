@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Kredensial Google Cloud
+project-c16c7efe-fd40-417e-8ee-958a9fd10350.json
