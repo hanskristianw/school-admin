@@ -6012,7 +6012,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       maxLength={600}
                       placeholder={t('topicNew.mentorCommentTab.commentPlaceholder')}
                       className="w-full px-3 py-2 text-sm focus:outline-none resize-y"
-                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6            )}
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
+                    />
+                    <p className="text-xs text-right mt-1" style={{ color: theme.textSecondary }}>{(student.comment_text || '').length}/600</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
