@@ -5357,8 +5357,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   <option value="">{t('topicNew.filters.allClasses')}</option>
                   {(assessmentFilters.year
                     ? assessmentKelasOptions.filter(k => {
-                        const match = allKelas.find(ak => ak.kelas_id === k.kelas_id)
-                        return !match || String(match.kelas_year_id) === String(assessmentFilters.year)
+                        const match = allKelasRaw.find(ak => ak.kelas_id === k.kelas_id)
+                        return match && String(match.kelas_year_id) === String(assessmentFilters.year)
                       })
                     : assessmentKelasOptions
                   ).map(k => (
