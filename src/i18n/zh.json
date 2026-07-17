@@ -43,11 +43,11 @@
     "doorGreeterTitle": "迎宾值日",
     "doorGreeterToday": "您今天 ({day}) 负责迎宾，请提前到校。",
     "doorGreeterTomorrow": "您明天 ({day}) 负责迎宾，请做好准备提前到校。",
-  "doorGreeterTodayAndTomorrow": "您今天 ({today}) 和明天 ({tomorrow}) 都负责迎宾。",
-  "todaySchedule": "今日课程",
-  "noScheduleToday": "今天没有课程安排。",
-  "dayLabel": "星期",
-  "classLabel": "班级"
+    "doorGreeterTodayAndTomorrow": "您今天 ({today}) 和明天 ({tomorrow}) 都负责迎宾。",
+    "todaySchedule": "今日课程",
+    "noScheduleToday": "今天没有课程安排。",
+    "dayLabel": "星期",
+    "classLabel": "班级"
   },
   "dashboardType": {
     "dashboardTypeManagement": "仪表板类型管理",
@@ -94,12 +94,11 @@
     "Users": "用户",
     "Classes": "班级",
     "Subjects": "科目",
-  "Assessment Approval": "评估审核",
-  "Room Booking": "房间预订",
-  "Room Master": "房间管理",
-  "Student Admission": "学生报名"
-  }
-  ,
+    "Assessment Approval": "评估审核",
+    "Room Booking": "房间预订",
+    "Room Master": "房间管理",
+    "Student Admission": "学生报名"
+  },
   "nilai": {
     "title": "成绩录入",
     "year": "学年",
@@ -128,9 +127,8 @@
     "deleteErrorPrefix": "删除失败：",
     "imported": "导入完成",
     "importError": "导入 CSV 失败"
-  }
-  ,
-    "menu": "菜单",
+  },
+  "menu": "菜单",
   "student": {
     "qrScan": "二维码扫描",
     "scanHint": "提示：扫描时请允许位置和相机权限。"
@@ -154,8 +152,8 @@
     "noRole": "无角色",
     "email": "邮箱",
     "phone": "电话",
-  "birthDate": "出生日期",
-  "bio": "简介",
+    "birthDate": "出生日期",
+    "bio": "简介",
     "bioPlaceholder": "简单介绍下自己...",
     "address": "地址",
     "addressPlaceholder": "详细地址...",
@@ -178,8 +176,7 @@
       "emailInvalid": "请输入有效的邮箱地址",
       "saveFailed": "保存更改失败"
     }
-  }
-  ,
+  },
   "assessmentApproval": {
     "title": "评估审核",
     "subtitle": "审核评估",
@@ -200,25 +197,25 @@
     "thName": "评估名称",
     "thDate": "日期",
     "thSubject": "科目",
-  "thTopic": "主题",
+    "thTopic": "主题",
     "thTeacher": "教师",
     "thStatus": "状态",
     "thActions": "操作",
     "processed": "已处理",
     "approve": "批准",
     "reject": "拒绝",
-  "delete": "删除",
+    "delete": "删除",
     "confirmTitleApprove": "确认批准",
     "confirmTitleReject": "确认拒绝",
-  "confirmTitleDelete": "确认删除",
+    "confirmTitleDelete": "确认删除",
     "confirmQuestion": "您确定要{action} \"{name}\"?",
     "confirmActionApprove": "批准",
     "confirmActionReject": "拒绝",
-  "btnYesDelete": "是，删除",
+    "btnYesDelete": "是，删除",
     "labelName": "名称",
     "labelDate": "日期",
     "labelSubject": "科目",
-  "labelTopic": "主题",
+    "labelTopic": "主题",
     "labelTeacher": "教师",
     "labelNote": "备注",
     "btnCancel": "取消",
@@ -231,15 +228,15 @@
     "notifSuccessTitle": "成功",
     "notifApproved": "\"{name}\" 已批准",
     "notifRejected": "\"{name}\" 已拒绝",
-  "notifDeleted": "\"{name}\" 已删除",
-  "limitPerDayReached": "该日期该班级已批准 2 个评估。审批已取消。",
+    "notifDeleted": "\"{name}\" 已删除",
+    "limitPerDayReached": "该日期该班级已批准 2 个评估。审批已取消。",
     "warningAlreadyProcessedTitle": "警告",
     "warningAlreadyProcessed": "该评估已被处理",
     "unknownUser": "未知用户",
-    "unknownSubject": "未知科目"
-  ,"unknownTopic": "未知主题","noTopic": "无主题"
-  }
-  ,
+    "unknownSubject": "未知科目",
+    "unknownTopic": "未知主题",
+    "noTopic": "无主题"
+  },
   "teacherSubmission": {
     "title": "评估提交",
     "subtitle": "为您教授的科目提交评估",
@@ -291,7 +288,7 @@
     "notifErrorSubmit": "提交评估失败：",
     "notifWarnTitle": "日期无效",
     "unauth": "用户未认证",
-  "limitPerDayReachedSubmit": "在 {date}，班级 {class} 已安排 2 个评估。请选择其他日期。",
+    "limitPerDayReachedSubmit": "在 {date}，班级 {class} 已安排 2 个评估。请选择其他日期。",
     "topicLabel": "主题",
     "topicPlaceholder": "选择主题",
     "topicPlaceholderDisabled": "无可用主题",
@@ -306,8 +303,7 @@
       "dateTomorrow": "评估不能安排在明天（{date}）。请至少选择 2 天后的日期。",
       "dateTomorrowShort": "评估不能安排在明天（{date}）。至少需提前 2 天。"
     }
-  }
-  ,
+  },
   "topic": {
     "title": "单元（主题）管理",
     "subtitle": "为每个科目管理单元（主题）",
@@ -322,8 +318,8 @@
     "thOrder": "顺序",
     "thUnitTitle": "单元标题",
     "thSubject": "科目",
-  "thActions": "操作",
-  "thClass": "班级",
+    "thActions": "操作",
+    "thClass": "班级",
     "edit": "编辑",
     "delete": "删除",
     "editTitle": "编辑单元",
@@ -342,7 +338,7 @@
     "hoursPerWeekPlaceholder": "科目每周小时数",
     "cancel": "取消",
     "save": "保存",
-  "create": "创建",
+    "create": "创建",
     "processing": "处理中...",
     "btnYesDelete": "是，删除",
     "confirmTitleDelete": "确认删除",
@@ -362,8 +358,7 @@
       "orderRequired": "必须填写顺序",
       "orderMin": "顺序必须至少为 1"
     }
-  }
-  ,
+  },
   "classManagement": {
     "title": "班级管理",
     "addNew": "+ 新建班级",
@@ -429,8 +424,7 @@
     "invalidSelection": "选择无效，请确认班主任和学部正确。",
     "requiredFields": "所有字段均为必填。",
     "connectionError": "连接问题，请重试。",
-    "serverError": "服务器错误，请重试或联系管理员。"
-    ,
+    "serverError": "服务器错误，请重试或联系管理员。",
     "classCreated": "班级创建成功",
     "classUpdated": "班级更新成功",
     "deleted": "班级删除成功！",
@@ -442,8 +436,7 @@
       "unitRequired": "学部为必选",
       "yearRequired": "学年为必选"
     }
-  }
-  ,
+  },
   "doorGreeter": {
     "title": "门口迎宾排班",
     "subtitle": "管理每天的迎宾人员安排",
@@ -535,35 +528,33 @@
     "errorLoadStudents": "加载学生失败：",
     "errorLoadAttendance": "加载出勤失败：",
     "errorMark": "标记出勤失败：",
-  "errorUndo": "撤销失败：",
-  "pinFilters": "固定筛选",
-  "unpinFilters": "取消固定",
-  "startSession": "开始签到",
-  "closeSession": "结束签到",
-  "qrHint": "学生使用应用扫描此二维码，令牌约每10秒刷新。"
-  }
-  ,
+    "errorUndo": "撤销失败：",
+    "pinFilters": "固定筛选",
+    "unpinFilters": "取消固定",
+    "startSession": "开始签到",
+    "closeSession": "结束签到",
+    "qrHint": "学生使用应用扫描此二维码，令牌约每10秒刷新。"
+  },
   "studentScan": {
     "title": "签到扫描",
     "subtitle": "将相机对准课堂二维码。",
     "scanner": "二维码扫描器",
-  "processing": "正在确认签到...",
+    "processing": "正在确认签到...",
     "success": "签到成功。",
     "duplicate": "今天已签到。",
     "invalid": "二维码无效或会话已关闭。",
     "errorPrefix": "失败：",
     "last": "上次：",
-  "restart": "重新开始",
-  "locationRequired": "签到需要位置信息。请开启定位服务后重试。",
-  "tooFar": "您离学校太远了，请在校园范围内进行签到。",
-  "notAllowed": "您无权参加本次签到会话。",
-  "deviceMultiUser": "检测到该设备在短时间内用于多个账号，请联系老师。",
-  "successWithDeviceFlag": "提示：该设备似乎被多个账号使用，请联系老师确认。"
-  }
-  ,
+    "restart": "重新开始",
+    "locationRequired": "签到需要位置信息。请开启定位服务后重试。",
+    "tooFar": "您离学校太远了，请在校园范围内进行签到。",
+    "notAllowed": "您无权参加本次签到会话。",
+    "deviceMultiUser": "检测到该设备在短时间内用于多个账号，请联系老师。",
+    "successWithDeviceFlag": "提示：该设备似乎被多个账号使用，请联系老师确认。"
+  },
   "roomBooking": {
     "title": "房间预订",
-  "subtitle": "预订采用先到先得并自动批准；与已批准的预订不得重叠。",
+    "subtitle": "预订采用先到先得并自动批准；与已批准的预订不得重叠。",
     "formTitle": "预订表单",
     "fields": {
       "room": "房间",
@@ -620,8 +611,7 @@
     "errors": {
       "nameDuplicate": "房间名称已存在。"
     }
-  }
-  ,
+  },
   "schoolFee": {
     "title": "学费设置",
     "subtitle": "按单位与学年设置每月学费（可按月不同）和 UDP（一次性，可分期）。",
@@ -631,13 +621,16 @@
     "year": "学年",
     "selectYear": "选择学年",
     "load": "加载",
-    "tabs": { "school": "学费", "udp": "UDP" },
+    "tabs": {
+      "school": "学费",
+      "udp": "UDP"
+    },
     "school": {
       "default": "每月默认金额（IDR）",
       "placeholder": "（空=使用默认）",
       "applyDefault": "将默认应用到空值",
-  "save": "保存学费",
-  "total12": "12个月合计"
+      "save": "保存学费",
+      "total12": "12个月合计"
     },
     "udp": {
       "total": "UDP 总额（IDR）",
@@ -647,8 +640,8 @@
       "month": "月份",
       "amount": "金额（IDR）",
       "actions": "操作",
-  "selectMonth": "选择月份",
-  "totalPlan": "分期总额",
+      "selectMonth": "选择月份",
+      "totalPlan": "分期总额",
       "addRow": "新增分期行",
       "save": "保存 UDP",
       "empty": "尚无分期计划。",
@@ -670,17 +663,17 @@
     }
   },
   "attendanceForm": {
-    "pageTitle": "考勤说明表",
-    "pageSubtitle": "需要说明的考勤记录 — 点击",
-    "pageSubtitleAction": "提交",
-    "pageSubtitleSuffix": "填写说明表",
+    "pageTitle": "HCM Digital Form",
+    "pageSubtitle": "Please fill, submit the required document, and submit your HCM Digital form before every end of the month, thank you.",
+    "pageSubtitleAction": "",
+    "pageSubtitleSuffix": "",
     "summaryBanner": "您本月有",
     "summaryBannerMid": "条考勤记录",
     "summaryBannerSuffix": "尚未提交说明",
     "successBanner": "日期",
     "successBannerSuffix": "的说明已成功提交",
     "loading": "⏳ 加载考勤数据...",
-    "noIssues": "本月没有需要说明的考勤记录！",
+    "noIssues": "No HCM Digital Form needs to be filled and submitted this month",
     "btnSubmit": "✏️ 提交",
     "btnEdit": "✏️ 编辑",
     "statusPending": "等待审批人 1",
@@ -1050,24 +1043,24 @@
       "title": "社区项目",
       "description": "为每位学生填写 A、B、C、D 成绩、项目主题和教师评语。数据存储为年度评估（不按学期区分）。",
       "selectYear": "学年",
-      "selectYearPlaceholder": "\u2014 选择学年 \u2014",
+      "selectYearPlaceholder": "— 选择学年 —",
       "selectClass": "班级与科目",
-      "selectClassPlaceholder": "\u2014 选择班级/科目 \u2014",
+      "selectClassPlaceholder": "— 选择班级/科目 —",
       "selectYearFirst": "请先选择学年。",
       "noSubjects": "没有可用的社区项目科目。",
       "noSubjectsHint": "请确保在 /data/subject 中创建了启用社区项目开关的科目。",
       "noDetailKelas": "社区项目科目尚未分配到任何班级。",
       "noDetailKelasHint": "打开 /data/class，选择班级，然后添加社区项目科目。",
       "topic": "主题",
-      "topicPlaceholder": "项目主题标题\u2026",
+      "topicPlaceholder": "项目主题标题…",
       "comment": "评语",
-      "commentPlaceholder": "为该学生填写教师评语\u2026",
+      "commentPlaceholder": "为该学生填写教师评语…",
       "saveAll": "全部保存",
-      "saving": "保存中\u2026",
-      "saved": "已保存 \u2713",
+      "saving": "保存中…",
+      "saved": "已保存 ✓",
       "student": "学生姓名",
-      "loading": "正在加载社区项目数据\u2026",
-      "loadingStudents": "正在加载学生数据\u2026",
+      "loading": "正在加载社区项目数据…",
+      "loadingStudents": "正在加载学生数据…",
       "noStudents": "该班级暂无学生。",
       "noClassesForYear": "该学年没有班级。",
       "errorPrefix": "错误："

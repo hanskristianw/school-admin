@@ -43,11 +43,11 @@
     "doorGreeterTitle": "Tugas Door Greeter",
     "doorGreeterToday": "Anda bertugas sebagai Door Greeter hari ini ({day}). Harap datang lebih awal.",
     "doorGreeterTomorrow": "Anda bertugas sebagai Door Greeter besok ({day}). Siapkan diri untuk datang lebih awal.",
-  "doorGreeterTodayAndTomorrow": "Anda bertugas sebagai Door Greeter hari ini ({today}) dan besok ({tomorrow}).",
-  "todaySchedule": "Jadwal Hari Ini",
-  "noScheduleToday": "Tidak ada jadwal untuk hari ini.",
-  "dayLabel": "Hari",
-  "classLabel": "Kelas"
+    "doorGreeterTodayAndTomorrow": "Anda bertugas sebagai Door Greeter hari ini ({today}) dan besok ({tomorrow}).",
+    "todaySchedule": "Jadwal Hari Ini",
+    "noScheduleToday": "Tidak ada jadwal untuk hari ini.",
+    "dayLabel": "Hari",
+    "classLabel": "Kelas"
   },
   "dashboardType": {
     "dashboardTypeManagement": "Kelola Tipe Dashboard",
@@ -94,12 +94,11 @@
     "Users": "Pengguna",
     "Classes": "Kelas",
     "Subjects": "Mata Pelajaran",
-  "Assessment Approval": "Approval Assessment",
-  "Room Booking": "Peminjaman Ruangan",
-  "Room Master": "Master Ruangan",
-  "Student Admission": "Pendaftaran Siswa"
-  }
-  ,
+    "Assessment Approval": "Approval Assessment",
+    "Room Booking": "Peminjaman Ruangan",
+    "Room Master": "Master Ruangan",
+    "Student Admission": "Pendaftaran Siswa"
+  },
   "nilai": {
     "title": "Input Nilai",
     "year": "Tahun",
@@ -128,9 +127,8 @@
     "deleteErrorPrefix": "Gagal menghapus: ",
     "imported": "Impor selesai",
     "importError": "Gagal impor CSV"
-  }
-  ,
-    "menu": "Menu",
+  },
+  "menu": "Menu",
   "student": {
     "qrScan": "Pindai QR",
     "scanHint": "Tips: Izinkan akses lokasi dan kamera saat memindai."
@@ -178,8 +176,7 @@
       "emailInvalid": "Format email tidak valid",
       "saveFailed": "Gagal menyimpan perubahan"
     }
-  }
-  ,
+  },
   "teacherSubmission": {
     "title": "Assessment Submission",
     "subtitle": "Submit assessment untuk mata pelajaran yang Anda ajar",
@@ -192,7 +189,7 @@
     "toDate": "Sampai Tanggal",
     "allStatus": "Semua Status",
     "statusWaiting": "Menunggu Persetujuan",
-  "statusWaitingPrincipal": "Menunggu persetujuan kepala sekolah",
+    "statusWaitingPrincipal": "Menunggu persetujuan kepala sekolah",
     "statusApproved": "Disetujui",
     "statusRejected": "Ditolak",
     "myAssessments": "Assessment Saya ({count})",
@@ -231,7 +228,7 @@
     "notifErrorSubmit": "Gagal submit assessment: ",
     "notifWarnTitle": "Tanggal Tidak Valid",
     "unauth": "User tidak terautentikasi",
-  "limitPerDayReachedSubmit": "Pada tanggal {date}, kelas {class} sudah memiliki 2 assessment terjadwal. Silakan pilih tanggal lain.",
+    "limitPerDayReachedSubmit": "Pada tanggal {date}, kelas {class} sudah memiliki 2 assessment terjadwal. Silakan pilih tanggal lain.",
     "topicLabel": "Topik",
     "topicPlaceholder": "Pilih Topik",
     "topicPlaceholderDisabled": "Tidak ada topik",
@@ -246,8 +243,7 @@
       "dateTomorrow": "Assessment tidak boleh dijadwalkan besok ({date}). Silakan pilih tanggal minimal 2 hari ke depan.",
       "dateTomorrowShort": "Assessment tidak boleh dijadwalkan besok ({date}). Minimal 2 hari ke depan."
     }
-  }
-  ,
+  },
   "assessmentApproval": {
     "title": "Approval Assessment",
     "subtitle": "Kelola persetujuan assessment dari guru",
@@ -256,8 +252,8 @@
     "subject": "Mata Pelajaran",
     "teacher": "Pengajar",
     "allStatus": "Semua Status",
-  "allSubjects": "Semua Mata Pelajaran",
-  "allTeachers": "Semua Pengajar",
+    "allSubjects": "Semua Mata Pelajaran",
+    "allTeachers": "Semua Pengajar",
     "statusWaiting": "Menunggu Persetujuan",
     "statusWaitingPrincipal": "Menunggu persetujuan kepala sekolah",
     "statusApproved": "Disetujui",
@@ -268,25 +264,25 @@
     "thName": "Nama Assessment",
     "thDate": "Tanggal",
     "thSubject": "Mata Pelajaran",
-  "thTopic": "Topik",
+    "thTopic": "Topik",
     "thTeacher": "Pengajar",
     "thStatus": "Status",
     "thActions": "Aksi",
     "processed": "Sudah diproses",
     "approve": "Setujui",
     "reject": "Tolak",
-  "delete": "Hapus",
+    "delete": "Hapus",
     "confirmTitleApprove": "Konfirmasi Persetujuan",
     "confirmTitleReject": "Konfirmasi Penolakan",
-  "confirmTitleDelete": "Konfirmasi Penghapusan",
+    "confirmTitleDelete": "Konfirmasi Penghapusan",
     "confirmQuestion": "Apakah Anda yakin ingin {action} assessment \"{name}\"?",
     "confirmActionApprove": "menyetujui",
     "confirmActionReject": "menolak",
-  "btnYesDelete": "Ya, Hapus",
+    "btnYesDelete": "Ya, Hapus",
     "labelName": "Nama",
     "labelDate": "Tanggal",
     "labelSubject": "Mata Pelajaran",
-  "labelTopic": "Topik",
+    "labelTopic": "Topik",
     "labelTeacher": "Pengajar",
     "labelNote": "Keterangan",
     "btnCancel": "Batal",
@@ -299,15 +295,15 @@
     "notifSuccessTitle": "Berhasil",
     "notifApproved": "Assessment \"{name}\" berhasil disetujui",
     "notifRejected": "Assessment \"{name}\" berhasil ditolak",
-  "notifDeleted": "Assessment \"{name}\" berhasil dihapus",
-  "limitPerDayReached": "Pada tanggal tersebut sudah ada 2 assessment yang disetujui untuk kelas ini. Persetujuan dibatalkan.",
+    "notifDeleted": "Assessment \"{name}\" berhasil dihapus",
+    "limitPerDayReached": "Pada tanggal tersebut sudah ada 2 assessment yang disetujui untuk kelas ini. Persetujuan dibatalkan.",
     "warningAlreadyProcessedTitle": "Peringatan",
     "warningAlreadyProcessed": "Assessment ini sudah diproses sebelumnya",
     "unknownUser": "Pengguna Tidak Dikenal",
-    "unknownSubject": "Mata Pelajaran Tidak Dikenal"
-  ,"unknownTopic": "Topik Tidak Dikenal","noTopic": "Tanpa Topik"
-  }
-  ,
+    "unknownSubject": "Mata Pelajaran Tidak Dikenal",
+    "unknownTopic": "Topik Tidak Dikenal",
+    "noTopic": "Tanpa Topik"
+  },
   "topic": {
     "title": "Manajemen Unit (Topik)",
     "subtitle": "Kelola Unit (Topik) untuk setiap mata pelajaran",
@@ -322,24 +318,24 @@
     "thOrder": "Urutan",
     "thUnitTitle": "Unit Title",
     "thSubject": "Mata Pelajaran",
-  "thActions": "Aksi",
-  "thClass": "Kelas",
+    "thActions": "Aksi",
+    "thClass": "Kelas",
     "edit": "Edit",
     "delete": "Hapus",
     "editTitle": "Edit Unit",
     "createTitle": "Tambah Unit",
     "unitTitle": "Unit Title",
-  "selectSubject": "Pilih Mata Pelajaran",
-  "class": "Kelas",
-  "selectClass": "Pilih Kelas",
-  "classLoading": "Memuat kelas...",
-  "classNoneForSubject": "Tidak ada kelas untuk mata pelajaran ini.",
-  "order": "Urutan",
-  "orderPlaceholder": "Nomor urutan untuk mengurutkan topik",
-  "duration": "Total Durasi dalam Jam Pelajaran",
-  "durationPlaceholder": "Total jam pelajaran untuk unit ini",
-  "hoursPerWeek": "Jam Mata Pelajaran per Minggu",
-  "hoursPerWeekPlaceholder": "Jam mata pelajaran per minggu",
+    "selectSubject": "Pilih Mata Pelajaran",
+    "class": "Kelas",
+    "selectClass": "Pilih Kelas",
+    "classLoading": "Memuat kelas...",
+    "classNoneForSubject": "Tidak ada kelas untuk mata pelajaran ini.",
+    "order": "Urutan",
+    "orderPlaceholder": "Nomor urutan untuk mengurutkan topik",
+    "duration": "Total Durasi dalam Jam Pelajaran",
+    "durationPlaceholder": "Total jam pelajaran untuk unit ini",
+    "hoursPerWeek": "Jam Mata Pelajaran per Minggu",
+    "hoursPerWeekPlaceholder": "Jam mata pelajaran per minggu",
     "cancel": "Batal",
     "save": "Simpan",
     "create": "Buat",
@@ -363,8 +359,7 @@
       "orderRequired": "Urutan wajib diisi",
       "orderMin": "Urutan harus minimal 1"
     }
-  }
-  ,
+  },
   "classManagement": {
     "title": "Manajemen Kelas",
     "addNew": "+ Tambah Kelas",
@@ -430,8 +425,7 @@
     "invalidSelection": "Data yang dipilih tidak valid. Pastikan wali kelas dan unit sudah benar.",
     "requiredFields": "Semua field wajib diisi.",
     "connectionError": "Koneksi ke server bermasalah. Silakan coba lagi.",
-    "serverError": "Terjadi kesalahan di server. Silakan coba lagi atau hubungi administrator."
-    ,
+    "serverError": "Terjadi kesalahan di server. Silakan coba lagi atau hubungi administrator.",
     "classCreated": "Kelas baru berhasil ditambahkan!",
     "classUpdated": "Data kelas berhasil diupdate!",
     "deleted": "Kelas berhasil dihapus!",
@@ -443,8 +437,7 @@
       "unitRequired": "Unit wajib dipilih",
       "yearRequired": "Tahun ajaran wajib dipilih"
     }
-  }
-  ,
+  },
   "doorGreeter": {
     "title": "Jadwal Door Greeter",
     "subtitle": "Kelola petugas penyambut tiap hari",
@@ -536,35 +529,33 @@
     "errorLoadStudents": "Gagal memuat siswa: ",
     "errorLoadAttendance": "Gagal memuat presensi: ",
     "errorMark": "Gagal menandai presensi: ",
-  "errorUndo": "Gagal membatalkan: ",
-  "pinFilters": "Sematkan Filter",
-  "unpinFilters": "Lepas Sematan",
-  "startSession": "Mulai Sesi",
-  "closeSession": "Tutup Sesi",
-  "qrHint": "Siswa memindai QR ini dari aplikasi/halaman siswa. Token berganti tiap ~10 detik."
-  }
-  ,
+    "errorUndo": "Gagal membatalkan: ",
+    "pinFilters": "Sematkan Filter",
+    "unpinFilters": "Lepas Sematan",
+    "startSession": "Mulai Sesi",
+    "closeSession": "Tutup Sesi",
+    "qrHint": "Siswa memindai QR ini dari aplikasi/halaman siswa. Token berganti tiap ~10 detik."
+  },
   "studentScan": {
     "title": "Scan Presensi",
     "subtitle": "Arahkan kamera ke QR di kelas.",
     "scanner": "Pemindai QR",
-  "processing": "Mengonfirmasi presensi...",
+    "processing": "Mengonfirmasi presensi...",
     "success": "Presensi tercatat.",
     "duplicate": "Anda sudah presensi hari ini.",
     "invalid": "QR tidak valid atau sesi ditutup.",
     "errorPrefix": "Gagal: ",
     "last": "Terakhir:",
-  "restart": "Mulai Ulang",
-  "locationRequired": "Lokasi diperlukan untuk presensi. Aktifkan layanan lokasi lalu coba lagi.",
-  "tooFar": "Anda terlalu jauh dari sekolah. Harap berada di area sekolah untuk presensi.",
-  "notAllowed": "Anda tidak diizinkan melakukan presensi pada sesi ini.",
-  "deviceMultiUser": "Perangkat ini terdeteksi digunakan untuk beberapa akun dalam waktu singkat. Silakan konfirmasi dengan guru.",
-  "successWithDeviceFlag": "Catatan: Perangkat ini terdeteksi digunakan oleh beberapa akun. Silakan konfirmasi dengan guru."
-  }
-  ,
+    "restart": "Mulai Ulang",
+    "locationRequired": "Lokasi diperlukan untuk presensi. Aktifkan layanan lokasi lalu coba lagi.",
+    "tooFar": "Anda terlalu jauh dari sekolah. Harap berada di area sekolah untuk presensi.",
+    "notAllowed": "Anda tidak diizinkan melakukan presensi pada sesi ini.",
+    "deviceMultiUser": "Perangkat ini terdeteksi digunakan untuk beberapa akun dalam waktu singkat. Silakan konfirmasi dengan guru.",
+    "successWithDeviceFlag": "Catatan: Perangkat ini terdeteksi digunakan oleh beberapa akun. Silakan konfirmasi dengan guru."
+  },
   "roomBooking": {
     "title": "Peminjaman Ruangan",
-  "subtitle": "Peminjaman disetujui otomatis berdasarkan siapa cepat dia dapat; tidak boleh bertabrakan dengan booking yang sudah disetujui.",
+    "subtitle": "Peminjaman disetujui otomatis berdasarkan siapa cepat dia dapat; tidak boleh bertabrakan dengan booking yang sudah disetujui.",
     "formTitle": "Form Booking",
     "fields": {
       "room": "Ruangan",
@@ -621,8 +612,7 @@
     "errors": {
       "nameDuplicate": "Nama ruangan sudah ada."
     }
-  }
-  ,
+  },
   "schoolFee": {
     "title": "Pengaturan Biaya Sekolah",
     "subtitle": "Tentukan Uang Sekolah (bulanan, bisa berbeda per bulan) dan UDP (sekali, bisa dicicil) per Unit dan Tahun Ajaran.",
@@ -632,13 +622,16 @@
     "year": "Tahun Ajaran",
     "selectYear": "Pilih Tahun",
     "load": "Muat",
-    "tabs": { "school": "Uang Sekolah", "udp": "UDP" },
+    "tabs": {
+      "school": "Uang Sekolah",
+      "udp": "UDP"
+    },
     "school": {
       "default": "Default per Bulan (IDR)",
       "placeholder": "(kosong = pakai default)",
       "applyDefault": "Terapkan Default ke Kosong",
-  "save": "Simpan Uang Sekolah",
-  "total12": "Total 12 Bulan"
+      "save": "Simpan Uang Sekolah",
+      "total12": "Total 12 Bulan"
     },
     "udp": {
       "total": "Total UDP (IDR)",
@@ -648,8 +641,8 @@
       "month": "Bulan",
       "amount": "Nominal (IDR)",
       "actions": "Aksi",
-  "selectMonth": "Pilih Bulan",
-  "totalPlan": "Total Cicilan",
+      "selectMonth": "Pilih Bulan",
+      "totalPlan": "Total Cicilan",
       "addRow": "Tambah Baris Cicilan",
       "save": "Simpan UDP",
       "empty": "Belum ada rencana cicilan.",
@@ -671,17 +664,17 @@
     }
   },
   "attendanceForm": {
-    "pageTitle": "Surat Keterangan Absensi",
-    "pageSubtitle": "Catatan kehadiran yang memerlukan keterangan — klik",
-    "pageSubtitleAction": "Ajukan",
-    "pageSubtitleSuffix": "untuk mengisi surat keterangan",
+    "pageTitle": "HCM Digital Form",
+    "pageSubtitle": "Please fill, submit the required document, and submit your HCM Digital form before every end of the month, thank you.",
+    "pageSubtitleAction": "",
+    "pageSubtitleSuffix": "",
     "summaryBanner": "Anda memiliki",
     "summaryBannerMid": "catatan kehadiran",
     "summaryBannerSuffix": "yang belum ada surat keterangannya bulan ini",
     "successBanner": "Surat keterangan untuk tanggal",
     "successBannerSuffix": "berhasil diajukan",
     "loading": "⏳ Memuat data absensi...",
-    "noIssues": "Tidak ada catatan kehadiran yang perlu keterangan bulan ini!",
+    "noIssues": "No HCM Digital Form needs to be filled and submitted this month",
     "btnSubmit": "✏️ Ajukan",
     "btnEdit": "✏️ Edit",
     "statusPending": "Menunggu Approver 1",
@@ -1074,24 +1067,24 @@
       "title": "Community Project",
       "description": "Isi nilai A, B, C, D, topik proyek, dan komentar guru untuk setiap siswa. Data disimpan sebagai penilaian tahunan (tidak terikat semester).",
       "selectYear": "Tahun Ajaran",
-      "selectYearPlaceholder": "\u2014 Pilih Tahun Ajaran \u2014",
+      "selectYearPlaceholder": "— Pilih Tahun Ajaran —",
       "selectClass": "Kelas & Subject",
-      "selectClassPlaceholder": "\u2014 Pilih Kelas / Subject \u2014",
+      "selectClassPlaceholder": "— Pilih Kelas / Subject —",
       "selectYearFirst": "Pilih Tahun Ajaran terlebih dahulu.",
       "noSubjects": "Tidak ada subject Community Project yang tersedia.",
       "noSubjectsHint": "Pastikan subject sudah dibuat di /data/subject dengan toggle Community Project diaktifkan.",
       "noDetailKelas": "Subject Community Project belum ditugaskan ke kelas manapun.",
       "noDetailKelasHint": "Buka /data/class, pilih kelas, lalu tambahkan subject Community Project.",
       "topic": "Topik",
-      "topicPlaceholder": "Judul topik proyek\u2026",
+      "topicPlaceholder": "Judul topik proyek…",
       "comment": "Komentar",
-      "commentPlaceholder": "Komentar guru untuk siswa ini\u2026",
+      "commentPlaceholder": "Komentar guru untuk siswa ini…",
       "saveAll": "Simpan Semua",
-      "saving": "Menyimpan\u2026",
-      "saved": "Tersimpan \u2713",
+      "saving": "Menyimpan…",
+      "saved": "Tersimpan ✓",
       "student": "Nama Siswa",
-      "loading": "Memuat data Community Project\u2026",
-      "loadingStudents": "Memuat data siswa\u2026",
+      "loading": "Memuat data Community Project…",
+      "loadingStudents": "Memuat data siswa…",
       "noStudents": "Tidak ada siswa di kelas ini.",
       "noClassesForYear": "Tidak ada kelas untuk tahun ajaran ini.",
       "errorPrefix": "Error: "

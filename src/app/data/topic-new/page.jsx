@@ -4418,6 +4418,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     setIsAddMode(false)
     setCurrentStep(0)
     setSelectedTopic({ ...topic, topic_atl: topic.topic_atl || '' })
+    // Derive academic year from the topic's kelas so the Tahun Ajaran dropdown
+    // is pre-selected and the Kelas dropdown is enabled when editing.
+    const kelasEntry = allKelasRaw.find(k => String(k.kelas_id) === String(topic.topic_kelas_id))
+    const derivedYear = kelasEntry?.kelas_year_id ? String(kelasEntry.kelas_year_id) : ''
+    setWizardYear(derivedYear)
+    setAllKelas(derivedYear ? allKelasRaw.filter(k => String(k.kelas_year_id) === derivedYear) : allKelasRaw)
     await fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
     const { data: assessmentData, error: assessmentLoadError } = await supabase
       .from('assessment')

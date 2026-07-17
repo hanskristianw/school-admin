@@ -43,11 +43,11 @@
     "doorGreeterTitle": "Door Greeter Duty",
     "doorGreeterToday": "You are the Door Greeter today ({day}). Please arrive earlier to greet students.",
     "doorGreeterTomorrow": "You are the Door Greeter tomorrow ({day}). Prepare to arrive earlier.",
-  "doorGreeterTodayAndTomorrow": "You are the Door Greeter today ({today}) and tomorrow ({tomorrow}).",
-  "todaySchedule": "Today's Schedule",
-  "noScheduleToday": "No schedule for today.",
-  "dayLabel": "Day",
-  "classLabel": "Class"
+    "doorGreeterTodayAndTomorrow": "You are the Door Greeter today ({today}) and tomorrow ({tomorrow}).",
+    "todaySchedule": "Today's Schedule",
+    "noScheduleToday": "No schedule for today.",
+    "dayLabel": "Day",
+    "classLabel": "Class"
   },
   "dashboardType": {
     "dashboardTypeManagement": "Dashboard Type Management",
@@ -94,12 +94,11 @@
     "Users": "Users",
     "Classes": "Classes",
     "Subjects": "Subjects",
-  "Assessment Approval": "Assessment Approval",
-  "Room Booking": "Room Booking",
-  "Room Master": "Rooms",
-  "Student Admission": "Student Admission"
-  }
-  ,
+    "Assessment Approval": "Assessment Approval",
+    "Room Booking": "Room Booking",
+    "Room Master": "Rooms",
+    "Student Admission": "Student Admission"
+  },
   "nilai": {
     "title": "Grade Entry",
     "year": "Year",
@@ -128,9 +127,8 @@
     "deleteErrorPrefix": "Failed to delete: ",
     "imported": "Import finished",
     "importError": "Failed to import CSV"
-  }
-  ,
-    "menu": "Menu",
+  },
+  "menu": "Menu",
   "student": {
     "qrScan": "QR Scan",
     "scanHint": "Tip: Please allow location and camera access when scanning."
@@ -178,8 +176,7 @@
       "emailInvalid": "Please enter a valid email address",
       "saveFailed": "Failed to save changes"
     }
-  }
-  ,
+  },
   "teacherSubmission": {
     "title": "Assessment Submission",
     "subtitle": "Submit assessments for your subjects",
@@ -188,7 +185,7 @@
     "status": "Status",
     "subject": "Subject",
     "date": "Date",
-  "statusWaitingPrincipal": "Waiting for principal approval",
+    "statusWaitingPrincipal": "Waiting for principal approval",
     "fromDate": "From Date",
     "toDate": "To Date",
     "allStatus": "All Status",
@@ -231,7 +228,7 @@
     "notifErrorSubmit": "Failed to submit assessment: ",
     "notifWarnTitle": "Invalid Date",
     "unauth": "User not authenticated",
-  "limitPerDayReachedSubmit": "On {date}, class {class} already has 2 assessments scheduled. Please choose another date.",
+    "limitPerDayReachedSubmit": "On {date}, class {class} already has 2 assessments scheduled. Please choose another date.",
     "topicLabel": "Topic",
     "topicPlaceholder": "Select Topic",
     "topicPlaceholderDisabled": "No topics available",
@@ -246,8 +243,7 @@
       "dateTomorrow": "Assessment cannot be scheduled for tomorrow ({date}). Please pick a date at least 2 days ahead.",
       "dateTomorrowShort": "Assessment cannot be scheduled for tomorrow ({date}). Minimum 2 days ahead."
     }
-  }
-  ,
+  },
   "assessmentApproval": {
     "title": "Assessment Approval",
     "subtitle": "Manage teacher assessments for approval",
@@ -256,8 +252,8 @@
     "subject": "Subject",
     "teacher": "Teacher",
     "allStatus": "All Status",
-  "allSubjects": "All Subjects",
-  "allTeachers": "All Teachers",
+    "allSubjects": "All Subjects",
+    "allTeachers": "All Teachers",
     "statusWaiting": "Pending Approval",
     "statusWaitingPrincipal": "Waiting for principal approval",
     "statusApproved": "Approved",
@@ -268,25 +264,25 @@
     "thName": "Assessment Name",
     "thDate": "Date",
     "thSubject": "Subject",
-  "thTopic": "Topic",
+    "thTopic": "Topic",
     "thTeacher": "Teacher",
     "thStatus": "Status",
     "thActions": "Actions",
     "processed": "Already processed",
     "approve": "Approve",
     "reject": "Reject",
-  "delete": "Delete",
+    "delete": "Delete",
     "confirmTitleApprove": "Confirm Approval",
     "confirmTitleReject": "Confirm Rejection",
-  "confirmTitleDelete": "Confirm Deletion",
+    "confirmTitleDelete": "Confirm Deletion",
     "confirmQuestion": "Are you sure you want to {action} the assessment \"{name}\"?",
     "confirmActionApprove": "approve",
     "confirmActionReject": "reject",
-  "btnYesDelete": "Yes, Delete",
+    "btnYesDelete": "Yes, Delete",
     "labelName": "Name",
     "labelDate": "Date",
     "labelSubject": "Subject",
-  "labelTopic": "Topic",
+    "labelTopic": "Topic",
     "labelTeacher": "Teacher",
     "labelNote": "Notes",
     "btnCancel": "Cancel",
@@ -299,15 +295,15 @@
     "notifSuccessTitle": "Success",
     "notifApproved": "Assessment \"{name}\" approved successfully",
     "notifRejected": "Assessment \"{name}\" rejected successfully",
-  "notifDeleted": "Assessment \"{name}\" deleted successfully",
-  "limitPerDayReached": "There are already 2 approved assessments for this class on that date. Approval cancelled.",
+    "notifDeleted": "Assessment \"{name}\" deleted successfully",
+    "limitPerDayReached": "There are already 2 approved assessments for this class on that date. Approval cancelled.",
     "warningAlreadyProcessedTitle": "Warning",
     "warningAlreadyProcessed": "This assessment has already been processed",
     "unknownUser": "Unknown User",
-    "unknownSubject": "Unknown Subject"
-  ,"unknownTopic": "Unknown Topic","noTopic": "No Topic"
-  }
-  ,
+    "unknownSubject": "Unknown Subject",
+    "unknownTopic": "Unknown Topic",
+    "noTopic": "No Topic"
+  },
   "topic": {
     "title": "Unit (Topic) Management",
     "subtitle": "Manage Units (Topics) for each subject",
@@ -322,24 +318,24 @@
     "thOrder": "Order",
     "thUnitTitle": "Unit Title",
     "thSubject": "Subject",
-  "thActions": "Actions",
-  "thClass": "Class",
+    "thActions": "Actions",
+    "thClass": "Class",
     "edit": "Edit",
     "delete": "Delete",
     "editTitle": "Edit Unit",
     "createTitle": "Create Unit",
     "unitTitle": "Unit Title",
-  "selectSubject": "Select Subject",
-  "class": "Class",
-  "selectClass": "Select Class",
-  "classLoading": "Loading classes...",
-  "classNoneForSubject": "No classes available for this subject.",
-  "order": "Order",
-  "orderPlaceholder": "Order number to sort topics",
-  "duration": "Total Duration in Teaching Hours",
-  "durationPlaceholder": "Total teaching hours for this unit",
-  "hoursPerWeek": "Subject Hours per Week",
-  "hoursPerWeekPlaceholder": "Subject hours per week",
+    "selectSubject": "Select Subject",
+    "class": "Class",
+    "selectClass": "Select Class",
+    "classLoading": "Loading classes...",
+    "classNoneForSubject": "No classes available for this subject.",
+    "order": "Order",
+    "orderPlaceholder": "Order number to sort topics",
+    "duration": "Total Duration in Teaching Hours",
+    "durationPlaceholder": "Total teaching hours for this unit",
+    "hoursPerWeek": "Subject Hours per Week",
+    "hoursPerWeekPlaceholder": "Subject hours per week",
     "cancel": "Cancel",
     "save": "Save",
     "create": "Create",
@@ -363,8 +359,7 @@
       "orderRequired": "Order is required",
       "orderMin": "Order must be at least 1"
     }
-  }
-  ,
+  },
   "classManagement": {
     "title": "Class Management",
     "addNew": "+ Add Class",
@@ -430,8 +425,7 @@
     "invalidSelection": "Invalid selection. Please ensure homeroom teacher and unit are correct.",
     "requiredFields": "All fields are required.",
     "connectionError": "Connection issue. Please try again.",
-    "serverError": "Server error. Please try again or contact administrator."
-    ,
+    "serverError": "Server error. Please try again or contact administrator.",
     "classCreated": "Class created successfully",
     "classUpdated": "Class updated successfully",
     "deleted": "Class deleted successfully!",
@@ -443,8 +437,7 @@
       "unitRequired": "Unit is required",
       "yearRequired": "Academic year is required"
     }
-  }
-  ,
+  },
   "doorGreeter": {
     "title": "Door Greeter Schedule",
     "subtitle": "Manage door greeter assignments per day",
@@ -536,35 +529,33 @@
     "errorLoadStudents": "Failed to load students: ",
     "errorLoadAttendance": "Failed to load attendance: ",
     "errorMark": "Failed to mark attendance: ",
-  "errorUndo": "Failed to undo: ",
-  "pinFilters": "Pin Filters",
-  "unpinFilters": "Unpin Filters",
-  "startSession": "Start Session",
-  "closeSession": "Close Session",
-  "qrHint": "Students scan this QR in their app. Token rotates every ~10s."
-  }
-  ,
+    "errorUndo": "Failed to undo: ",
+    "pinFilters": "Pin Filters",
+    "unpinFilters": "Unpin Filters",
+    "startSession": "Start Session",
+    "closeSession": "Close Session",
+    "qrHint": "Students scan this QR in their app. Token rotates every ~10s."
+  },
   "studentScan": {
     "title": "Attendance Scan",
     "subtitle": "Point your camera at the classroom QR.",
     "scanner": "QR Scanner",
-  "processing": "Confirming attendance...",
+    "processing": "Confirming attendance...",
     "success": "Attendance recorded.",
     "duplicate": "You already checked in today.",
     "invalid": "Invalid QR or session closed.",
     "errorPrefix": "Failed: ",
     "last": "Last:",
-  "restart": "Restart",
-  "locationRequired": "Location is required to check in. Enable location services and try again.",
-  "tooFar": "You're too far from school. Please be within the campus area to check in.",
-  "notAllowed": "You are not allowed to check in for this session.",
-  "deviceMultiUser": "This device appears to be used by multiple accounts in a short time. Please check with the teacher.",
-  "successWithDeviceFlag": "Note: This device seems to be used by multiple accounts. Please check with the teacher."
-  }
-  ,
+    "restart": "Restart",
+    "locationRequired": "Location is required to check in. Enable location services and try again.",
+    "tooFar": "You're too far from school. Please be within the campus area to check in.",
+    "notAllowed": "You are not allowed to check in for this session.",
+    "deviceMultiUser": "This device appears to be used by multiple accounts in a short time. Please check with the teacher.",
+    "successWithDeviceFlag": "Note: This device seems to be used by multiple accounts. Please check with the teacher."
+  },
   "roomBooking": {
     "title": "Room Booking",
-  "subtitle": "Bookings are auto-approved on a first-come, first-served basis; overlaps with approved bookings are not allowed.",
+    "subtitle": "Bookings are auto-approved on a first-come, first-served basis; overlaps with approved bookings are not allowed.",
     "formTitle": "Booking Form",
     "fields": {
       "room": "Room",
@@ -621,8 +612,7 @@
     "errors": {
       "nameDuplicate": "Room name already exists."
     }
-  }
-  ,
+  },
   "schoolFee": {
     "title": "School Fee Settings",
     "subtitle": "Define Monthly School Fee (can vary by month) and UDP (one-time, can be in installments) per Unit and Academic Year.",
@@ -632,13 +622,16 @@
     "year": "Academic Year",
     "selectYear": "Select Year",
     "load": "Load",
-    "tabs": { "school": "School Fee", "udp": "UDP" },
+    "tabs": {
+      "school": "School Fee",
+      "udp": "UDP"
+    },
     "school": {
       "default": "Default per Month (IDR)",
       "placeholder": "(empty = use default)",
       "applyDefault": "Apply Default to Empty",
-  "save": "Save School Fee",
-  "total12": "Total 12 Months"
+      "save": "Save School Fee",
+      "total12": "Total 12 Months"
     },
     "udp": {
       "total": "UDP Total (IDR)",
@@ -648,8 +641,8 @@
       "month": "Month",
       "amount": "Amount (IDR)",
       "actions": "Actions",
-  "selectMonth": "Select Month",
-  "totalPlan": "Installments Total",
+      "selectMonth": "Select Month",
+      "totalPlan": "Installments Total",
       "addRow": "Add Installment Row",
       "save": "Save UDP",
       "empty": "No installment plan yet.",
@@ -671,17 +664,17 @@
     }
   },
   "attendanceForm": {
-    "pageTitle": "Attendance Excuse Form",
-    "pageSubtitle": "Attendance records that require an explanation — click",
-    "pageSubtitleAction": "Submit",
-    "pageSubtitleSuffix": "to fill in the excuse form",
+    "pageTitle": "HCM Digital Form",
+    "pageSubtitle": "Please fill, submit the required document, and submit your HCM Digital form before every end of the month, thank you.",
+    "pageSubtitleAction": "",
+    "pageSubtitleSuffix": "",
     "summaryBanner": "You have",
     "summaryBannerMid": "attendance records",
     "summaryBannerSuffix": "without an excuse this month",
     "successBanner": "Excuse for",
     "successBannerSuffix": "submitted successfully",
     "loading": "⏳ Loading attendance data...",
-    "noIssues": "No attendance records need an excuse this month!",
+    "noIssues": "No HCM Digital Form needs to be filled and submitted this month",
     "btnSubmit": "✏️ Submit",
     "btnEdit": "✏️ Edit",
     "statusPending": "Waiting Approver 1",
