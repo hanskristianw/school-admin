@@ -28,6 +28,19 @@ function timeToMinutes(timeStr) {
   return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10)
 }
 
+/**
+ * Convert time string "HH:MM" or "HH:MM:SS" to total seconds from midnight.
+ * Used for second-precision lateness calculation.
+ */
+function timeToSeconds(t) {
+  if (!t) return null
+  const parts = String(t).split(':')
+  const h = parseInt(parts[0], 10) || 0
+  const m = parseInt(parts[1], 10) || 0
+  const s = parseInt(parts[2], 10) || 0
+  return h * 3600 + m * 60 + s
+}
+
 // Helper: get WIB date string "YYYY-MM-DD" for yesterday
 function getYesterdayWIB() {
   const now = new Date()
@@ -72,12 +85,12 @@ function resolveIsCheckIn(scanTimeISO, expectedCheckIn, expectedCheckOut) {
   return scanMin <= midMin
 }
 
-// Convert ISO timestamp to WIB "HH:MM" string
+// Convert ISO timestamp to WIB "HH:MM:SS" string — includes seconds for accurate lateness detection.
 function wibTimeStr(isoStr) {
   if (!isoStr) return null
   const dt = new Date(isoStr)
   const wib = new Date(dt.getTime() + 7 * 60 * 60 * 1000)
-  return `${String(wib.getUTCHours()).padStart(2,'0')}:${String(wib.getUTCMinutes()).padStart(2,'0')}`
+  return `${String(wib.getUTCHours()).padStart(2,'0')}:${String(wib.getUTCMinutes()).padStart(2,'0')}:${String(wib.getUTCSeconds()).padStart(2,'0')}`
 }
 
 // Helper: sleep for ms milliseconds
@@ -353,9 +366,6 @@ async function handleNotify(request) {
         .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
         .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
 
-      const effInMins  = timeToMinutes(effIn)
-      const effOutMins = timeToMinutes(effOut)
-
       const noCheckIn  = checkins.length === 0
       const noCheckOut = checkouts.length === 0
 
@@ -371,9 +381,12 @@ async function handleNotify(request) {
         if (!noCheckIn) {
           if (!isPartTime) {
             const actualInStr  = wibTimeStr(checkins[0].scan_time)
-            const actualInMins = timeToMinutes(actualInStr)
-            const lateMins = actualInMins - effInMins - graceMinutes
-            if (lateMins > 0) {
+            const actualInSecs  = timeToSeconds(actualInStr)
+            const effInSecs     = timeToSeconds(effIn)
+            const graceSecs     = graceMinutes * 60
+            const lateSecs = actualInSecs - effInSecs - graceSecs
+            if (lateSecs > 0) {
+              const lateMins = Math.ceil(lateSecs / 60)
               issues.push({ type: 'late', scheduledTime: effIn.slice(0,5), actualTime: actualInStr, minutesDiff: lateMins })
             }
           }
@@ -385,10 +398,13 @@ async function handleNotify(request) {
         // ── C. Analisis Check-Out ─────────────────────────────────────────────
         if (!noCheckOut) {
           if (!isPartTime) {
-            const actualOutStr  = wibTimeStr(checkouts[checkouts.length - 1].scan_time)
-            const actualOutMins = timeToMinutes(actualOutStr)
-            const earlyMins = effOutMins - actualOutMins - graceMinutes
-            if (earlyMins > 0) {
+            const actualOutStr  = wibTimeStr(checkouts[checkouts.length - 1].scan_time) // "HH:MM:SS"
+            const actualOutSecs  = timeToSeconds(actualOutStr)
+            const effOutSecs     = timeToSeconds(effOut)
+            const graceSecs      = graceMinutes * 60
+            const earlySecs = effOutSecs - actualOutSecs - graceSecs
+            if (earlySecs > 0) {
+              const earlyMins = Math.ceil(earlySecs / 60)
               issues.push({ type: 'leave_early', scheduledTime: effOut.slice(0,5), actualTime: actualOutStr, minutesDiff: earlyMins })
             }
           }

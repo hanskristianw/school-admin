@@ -11,8 +11,21 @@ const DEFAULT_CHECK_OUT = '16:30'
 
 function timeToMinutes(t) {
   if (!t) return null
-  const [h, m] = String(t).split(':')
-  return parseInt(h, 10) * 60 + parseInt(m, 10)
+  const parts = String(t).split(':')
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10)
+}
+
+/**
+ * Convert time string "HH:MM" or "HH:MM:SS" to total seconds from midnight.
+ * Used for second-precision lateness calculation.
+ */
+function timeToSeconds(t) {
+  if (!t) return null
+  const parts = String(t).split(':')
+  const h = parseInt(parts[0], 10) || 0
+  const m = parseInt(parts[1], 10) || 0
+  const s = parseInt(parts[2], 10) || 0
+  return h * 3600 + m * 60 + s
 }
 
 function getDayNumber(dateStr) {
@@ -50,11 +63,12 @@ function resolveIsCheckIn(scanTimeISO, expectedCheckIn, expectedCheckOut) {
   return scanMin <= midMin // true = check-in, false = check-out
 }
 
+// Returns WIB time as "HH:MM:SS" — includes seconds for accurate lateness detection.
 function wibTimeStr(isoStr) {
   if (!isoStr) return null
   const dt = new Date(isoStr)
   const wib = new Date(dt.getTime() + 7 * 60 * 60 * 1000)
-  return `${String(wib.getUTCHours()).padStart(2,'0')}:${String(wib.getUTCMinutes()).padStart(2,'0')}`
+  return `${String(wib.getUTCHours()).padStart(2,'0')}:${String(wib.getUTCMinutes()).padStart(2,'0')}:${String(wib.getUTCSeconds()).padStart(2,'0')}`
 }
 
 function wibDateStr(isoStr) {
@@ -400,12 +414,18 @@ export async function GET(request) {
         } else {
           // ── Analisis Check-In ────────────────────────────────────────
           if (!noCheckIn) {
-            const timeStr = wibTimeStr(checkins[0].scan_time)
+            const timeStr = wibTimeStr(checkins[0].scan_time) // "HH:MM:SS"
             dayRecord.checkin_time = timeStr
             if (!isPartTime) {
-              const actualInMins = timeToMinutes(timeStr)
-              const lateMins = actualInMins - effInMins - grace
-              if (lateMins > 0) {
+              // Second-precision: effIn is "HH:MM", timeStr is "HH:MM:SS"
+              // grace is in minutes → convert to seconds for comparison
+              const actualInSecs = timeToSeconds(timeStr)
+              const effInSecs    = timeToSeconds(effIn)
+              const graceSecs    = grace * 60
+              const lateSecs = actualInSecs - effInSecs - graceSecs
+              if (lateSecs > 0) {
+                // Ceil to nearest minute: 1 second late = 1 minute recorded
+                const lateMins = Math.ceil(lateSecs / 60)
                 summary.late_count++
                 summary.late_minutes_total += lateMins
                 dayRecord.late_minutes = lateMins
@@ -418,12 +438,15 @@ export async function GET(request) {
 
           // ── Analisis Check-Out ───────────────────────────────────────
           if (!noCheckOut) {
-            const timeStr = wibTimeStr(checkouts[checkouts.length - 1].scan_time)
+            const timeStr = wibTimeStr(checkouts[checkouts.length - 1].scan_time) // "HH:MM:SS"
             dayRecord.checkout_time = timeStr
             if (!isPartTime) {
-              const actualOutMins = timeToMinutes(timeStr)
-              const earlyMins = effOutMins - actualOutMins - grace
-              if (earlyMins > 0) {
+              const actualOutSecs = timeToSeconds(timeStr)
+              const effOutSecs    = timeToSeconds(effOut)
+              const graceSecs     = grace * 60
+              const earlySecs = effOutSecs - actualOutSecs - graceSecs
+              if (earlySecs > 0) {
+                const earlyMins = Math.ceil(earlySecs / 60)
                 summary.leave_early_count++
                 summary.leave_early_minutes_total += earlyMins
                 dayRecord.leave_early_minutes = earlyMins

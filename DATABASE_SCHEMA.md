@@ -48,6 +48,7 @@ Defines the permissions and types of users in the system.
 | `is_student` | `BOOLEAN` | Default `false` |
 | `is_vendor` | `BOOLEAN` | Flag for vendor roles |
 | `is_part_time_staff`| `BOOLEAN` | Flag for part-time staff |
+| `work_days` | `VARCHAR` | CSV of work days (e.g. "1,2,3,4,5" for Mon-Fri) |
 
 #### `unit`
 Represents the school level, department or division the user belongs to.
@@ -385,5 +386,210 @@ erDiagram
     fpb_types {
         int fpb_type_id PK
         string type_name
+    }
+```
+
+---
+
+## 5. Attendance & Leave Management Domain (`/data/attendance-settings`)
+
+This domain handles the attendance settings, special days, holidays, notifications, and approver mappings.
+
+### 5.1 Tables
+
+#### `school_holidays`
+Stores global or role-specific school holidays.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `name` | `VARCHAR` | Name of the holiday |
+| `date_start` | `DATE` | Start date of the holiday |
+| `date_end` | `DATE` | End date of the holiday |
+| `role_id` | `INTEGER` | FK to `role(role_id)`. Null for global holiday. |
+| `date` | `DATE` | Backward compatibility |
+
+#### `special_day_rules`
+Stores custom attendance rules for specific dates (e.g., event days) affecting all, a role, or a single user.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `tanggal` | `DATE` | Date the rule applies to |
+| `scope_type` | `VARCHAR` | Scope: `all`, `role`, or `user` |
+| `role_id` | `INTEGER` | FK to `role(role_id)` (if scope_type is `role`) |
+| `user_id` | `INTEGER` | FK to `users(user_id)` (if scope_type is `user`) |
+| `is_work_day` | `BOOLEAN` | Indicates if this day requires attendance |
+| `custom_check_in` | `TIME` | Overrides default check-in time |
+| `custom_check_out`| `TIME` | Overrides default check-out time |
+| `keterangan` | `TEXT` | Notes |
+| `created_at` | `TIMESTAMP`| Record creation time |
+
+#### `attendances`
+Stores the raw machine scan logs. Note: Check-in vs check-out is determined dynamically via time midpoint, not `status_scan`.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `user_id` | `INTEGER` | FK to `users(user_id)` |
+| `scan_time` | `TIMESTAMPTZ`| When the user scanned |
+| `status_scan` | `VARCHAR` | Check-in or check-out (not fully reliable) |
+
+#### `attendance_excuses`
+Stores excuse forms (surat keterangan) for attendance anomalies (late, absent, etc).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `user_id` | `INTEGER` | FK to `users(user_id)` (The submitter) |
+| `excuse_type` | `VARCHAR` | `late`, `leave_early`, `absent`, `no_checkin`, `no_checkout` |
+| `attendance_date`| `DATE` | The date of the anomaly |
+| `late_minutes` | `INTEGER` | Minutes late (if applicable) |
+| `category` | `VARCHAR` | Reason category (e.g. sick, annual_leave) |
+| `other_reason` | `TEXT` | Additional explanation |
+| `attachment_url` | `TEXT` | URL to attached proof |
+| `status` | `VARCHAR` | `pending`, `approved_1`, `approved`, `rejected` |
+| `approver1_id` | `INTEGER` | FK to `users(user_id)` |
+| `approver2_id` | `INTEGER` | FK to `users(user_id)` |
+| `approver1_action`| `VARCHAR` | `approved` or `rejected` |
+| `approver1_note` | `TEXT` | Note from approver 1 |
+| `approver1_at` | `TIMESTAMP`| Action timestamp |
+| `approver2_action`| `VARCHAR` | `approved` or `rejected` |
+| `approver2_note` | `TEXT` | Note from approver 2 |
+| `approver2_at` | `TIMESTAMP`| Action timestamp |
+
+#### `user_position_history`
+Tracks the position title of a user over time for reporting.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `user_id` | `INTEGER` | FK to `users(user_id)` |
+| `position_title` | `VARCHAR` | Title of the position |
+| `start_date` | `DATE` | When the position started |
+| `end_date` | `DATE` | When the position ended (null if active) |
+
+#### `role_approvers`
+Maps roles to their specific approvers (used for leave/attendance requests).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `role_id` | `INTEGER` | Primary Key, FK to `role(role_id)` |
+| `approver1_id` | `INTEGER` | FK to `users(user_id)` (First approver) |
+| `approver2_id` | `INTEGER` | FK to `users(user_id)` (Second approver, optional) |
+
+#### `settings`
+Global configuration key-value store.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `key` | `VARCHAR` | Primary Key (e.g., `attendance_notif_admin_emails`) |
+| `value` | `TEXT` | Value of the setting |
+
+#### `attendance_notification_log`
+Tracks attendance violation emails sent to users.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `user_id` | `INTEGER` | FK to `users(user_id)` |
+| `notif_date` | `DATE` | Target date of the attendance issue |
+| `notif_type` | `VARCHAR` | E.g., `late`, `leave_early`, `no_checkin`, `no_checkout` |
+| `minutes_diff` | `INTEGER` | Minutes late or early |
+| `scheduled_time`| `TIME` | Expected time |
+| `actual_time` | `TIME` | Actual scan time |
+| `email_to` | `JSON/ARRAY`| Email recipient(s) |
+| `success` | `BOOLEAN` | True if sent successfully, null if skipped |
+| `sent_at` | `TIMESTAMP`| When the email was sent |
+
+#### `attendance_notify_run_log`
+Tracks the daily run of the cron job that processes attendance notifications.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `ran_at` | `TIMESTAMP`| Default to now() |
+| `target_date` | `DATE` | The date being processed (usually yesterday) |
+| `users_processed` | `INTEGER` | Number of users analyzed |
+| `violations_found`| `INTEGER` | Total issues found |
+| `emails_sent` | `INTEGER` | Total emails sent |
+| `emails_failed` | `INTEGER` | Total emails failed |
+| `admin_emails` | `JSON/ARRAY`| Admin email recipients |
+| `admin_email_ok`| `BOOLEAN` | Success status of admin summary |
+| `skipped_reason`| `TEXT` | Reason if skipping execution |
+| `error_message` | `TEXT` | Any error during run |
+
+### 5.2 ERD / Relationships (Attendance Domain)
+
+```mermaid
+erDiagram
+    role ||--o{ school_holidays : "has_holiday"
+    role ||--o{ special_day_rules : "has_rule"
+    users ||--o{ special_day_rules : "has_rule"
+    role ||--|{ role_approvers : "configured_by"
+    users ||--o{ role_approvers : "approver1"
+    users ||--o{ role_approvers : "approver2"
+    users ||--o{ attendance_notification_log : "receives_notif"
+    users ||--o{ attendances : "scans"
+    users ||--o{ attendance_excuses : "submits"
+    users ||--o{ user_position_history : "has_position"
+
+    school_holidays {
+        int id PK
+        string name
+        date date_start
+        date date_end
+        int role_id FK
+    }
+
+    special_day_rules {
+        int id PK
+        date tanggal
+        string scope_type
+        int role_id FK
+        int user_id FK
+    }
+
+    attendances {
+        int id PK
+        int user_id FK
+        timestamp scan_time
+        string status_scan
+    }
+
+    attendance_excuses {
+        int id PK
+        int user_id FK
+        string excuse_type
+        date attendance_date
+        string status
+        int approver1_id FK
+        int approver2_id FK
+    }
+
+    user_position_history {
+        int id PK
+        int user_id FK
+        string position_title
+        date start_date
+        date end_date
+    }
+
+    role_approvers {
+        int role_id PK
+        int approver1_id FK
+        int approver2_id FK
+    }
+
+    settings {
+        string key PK
+        text value
+    }
+
+    attendance_notification_log {
+        int id PK
+        int user_id FK
+        date notif_date
+        string notif_type
     }
 ```
