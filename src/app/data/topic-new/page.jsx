@@ -59,6 +59,8 @@ export default function TopicNewPage() {
   const [subjects, setSubjects] = useState([])
   const [allKelas, setAllKelas] = useState([]) // All available kelas (with kelas_year_id)
   const [allKelasRaw, setAllKelasRaw] = useState([]) // Full list, unfiltered by year
+  const [allowedKelasRaw, setAllowedKelasRaw] = useState([]) // Kelas user is allowed to teach (filtered by detail_kelas)
+  const [subjectsForSelectedKelas, setSubjectsForSelectedKelas] = useState([]) // Subjects available for the selected kelas
   const [yearOptions, setYearOptions] = useState([]) // All years for filter
   const [kelasLoading, setKelasLoading] = useState(false) // Loading state for kelas
   const [kelasNameMap, setKelasNameMap] = useState(new Map())
@@ -531,7 +533,7 @@ export default function TopicNewPage() {
         if (userId) {
           fetchSubjects(userId, role, isCurriculum, isAdminFlag)
           fetchDetailKelasForAssessment(userId, role, isCurriculum, isAdminFlag)
-          fetchAllKelas() // Fetch all kelas for filter dropdown
+          fetchAllKelas(userId, role, isCurriculum, isAdminFlag) // Fetch all kelas for filter dropdown
         } else {
           console.warn('⚠️ No user ID found')
           setLoading(false)
@@ -546,9 +548,15 @@ export default function TopicNewPage() {
     }
   }, [])
 
-  // Fetch all kelas for filter dropdown (includes kelas_year_id for year filtering)
-  const fetchAllKelas = async () => {
+  // Fetch all kelas for filter dropdown AND compute allowedKelasRaw (user-filtered).
+  // allowedKelasRaw contains only kelas where the logged-in user is a teacher:
+  //   - teacher_user_id = userId (explicit override in detail_kelas), OR
+  //   - teacher_user_id IS NULL and subject.subject_user_id = userId (default teacher)
+  //   - Excluded: teacher_user_id != null and teacher_user_id != userId (another teacher replaced them)
+  const fetchAllKelas = async (userId, role, isCurriculum = false, isAdminFlag = false) => {
     try {
+      const isAdminUser = (role?.toLowerCase() === 'admin') || isAdminFlag || isCurriculum
+
       const { data: kelasData, error: kelasError } = await supabase
         .from('kelas')
         .select('kelas_id, kelas_nama, kelas_year_id')
@@ -562,8 +570,10 @@ export default function TopicNewPage() {
       if (yearError) throw yearError
 
       setAllKelasRaw(kelasData || [])
-      setAllKelas(kelasData || [])
       setYearOptions(yearData || [])
+
+      // For the list/filter dropdown, still show all kelas
+      let filteredForDropdown = kelasData || []
 
       // Auto-select the year whose range contains today
       const today = new Date()
@@ -572,14 +582,123 @@ export default function TopicNewPage() {
         return new Date(y.start_date) <= today && today <= new Date(y.end_date)
       })
       if (current) {
-        const filtered = kelasData.filter(k => String(k.kelas_year_id) === String(current.year_id))
-        setAllKelas(filtered)
+        filteredForDropdown = kelasData.filter(k => String(k.kelas_year_id) === String(current.year_id))
+        setAllKelas(filteredForDropdown)
         setFilters(prev => ({ ...prev, year: String(current.year_id) }))
+      } else {
+        setAllKelas(kelasData || [])
+      }
+
+      // Compute allowedKelasRaw: kelas user is permitted to teach
+      if (isAdminUser) {
+        // Admin can create unit in any class
+        setAllowedKelasRaw(kelasData || [])
+      } else if (userId) {
+        // 1. Get all subjects owned by the user (global default teacher)
+        const { data: ownedSubjects } = await supabase
+          .from('subject')
+          .select('subject_id')
+          .eq('subject_user_id', userId)
+        const ownedSubjectIds = new Set((ownedSubjects || []).map(s => s.subject_id))
+
+        // 2. Get all detail_kelas rows relevant to user's subjects OR teacher override
+        const { data: allDetailKelas } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_kelas_id, detail_kelas_subject_id, teacher_user_id')
+
+        const allowedKelasIds = new Set()
+        for (const dk of (allDetailKelas || [])) {
+          if (dk.teacher_user_id) {
+            // Explicit override: only allowed if override is for this user
+            if (dk.teacher_user_id === userId) {
+              allowedKelasIds.add(dk.detail_kelas_kelas_id)
+            }
+          } else {
+            // No override: allowed if user owns the subject globally
+            if (ownedSubjectIds.has(dk.detail_kelas_subject_id)) {
+              allowedKelasIds.add(dk.detail_kelas_kelas_id)
+            }
+          }
+        }
+
+        const allowed = (kelasData || []).filter(k => allowedKelasIds.has(k.kelas_id))
+        setAllowedKelasRaw(allowed)
+        console.log('📚 Allowed kelas for wizard:', allowed.length, 'of', kelasData?.length)
+      } else {
+        setAllowedKelasRaw([])
       }
 
       console.log('📚 All kelas loaded for filter:', kelasData)
     } catch (err) {
       console.error('❌ Error fetching all kelas:', err)
+    }
+  }
+
+  // Fetch subjects that the current user teaches in the given kelas.
+  // Rules (same as the allowed-kelas logic but per-subject per-class):
+  //   - detail_kelas row for this kelas where teacher_user_id = userId (override), OR
+  //   - detail_kelas row for this kelas where teacher_user_id IS NULL and subject.subject_user_id = userId
+  const fetchSubjectsForKelas = async (kelasId) => {
+    if (!kelasId) {
+      setSubjectsForSelectedKelas([])
+      return
+    }
+    try {
+      const userData = localStorage.getItem('user_data')
+      const role = localStorage.getItem('user_role')
+      let userId = null
+      let isAdminUser = false
+      if (userData) {
+        const parsed = JSON.parse(userData)
+        userId = parsed.userID || parsed.user_id || parsed.userId || parsed.id
+        const isCurr = !!parsed.isCurriculum || !!parsed.isPrincipal
+        const isAdmF = !!parsed.isAdmin
+        isAdminUser = (role?.toLowerCase() === 'admin') || isAdmF || isCurr
+      }
+
+      // Get all detail_kelas rows for this kelas
+      const { data: detailRows, error: detailErr } = await supabase
+        .from('detail_kelas')
+        .select('detail_kelas_subject_id, teacher_user_id')
+        .eq('detail_kelas_kelas_id', kelasId)
+      if (detailErr) throw detailErr
+
+      let allowedSubjectIds
+      if (isAdminUser) {
+        allowedSubjectIds = (detailRows || []).map(d => d.detail_kelas_subject_id)
+      } else {
+        // Get subjects owned by user
+        const { data: ownedSubjects } = await supabase
+          .from('subject')
+          .select('subject_id')
+          .eq('subject_user_id', userId)
+        const ownedSubjectIds = new Set((ownedSubjects || []).map(s => s.subject_id))
+
+        allowedSubjectIds = (detailRows || [])
+          .filter(d => {
+            if (d.teacher_user_id) return d.teacher_user_id === userId
+            return ownedSubjectIds.has(d.detail_kelas_subject_id)
+          })
+          .map(d => d.detail_kelas_subject_id)
+      }
+
+      if (allowedSubjectIds.length === 0) {
+        setSubjectsForSelectedKelas([])
+        return
+      }
+
+      const { data: subjectData, error: subjectErr } = await supabase
+        .from('subject')
+        .select('subject_id, subject_name')
+        .in('subject_id', allowedSubjectIds)
+        .order('subject_name')
+      if (subjectErr) throw subjectErr
+
+      setSubjectsForSelectedKelas(subjectData || [])
+      console.log('📚 Subjects for kelas', kelasId, ':', subjectData?.length)
+    } catch (err) {
+      console.error('❌ Error fetching subjects for kelas:', err)
+      setSubjectsForSelectedKelas([])
     }
   }
 
@@ -3374,11 +3493,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     // Initialize wizard year from current filter; also pre-filter kelas
     const initYear = filters.year || ''
     setWizardYear(initYear)
+    // Use allowedKelasRaw (filtered to classes user teaches) — not allKelasRaw
     if (initYear) {
-      setAllKelas(allKelasRaw.filter(k => String(k.kelas_year_id) === String(initYear)))
+      setAllKelas(allowedKelasRaw.filter(k => String(k.kelas_year_id) === String(initYear)))
     } else {
       setAllKelas([]) // Reset kelas options
     }
+    setSubjectsForSelectedKelas([]) // Reset subject list
     setSelectedTopic({
       topic_nama: '',
       topic_subject_id: '', // Start with empty - user must select
@@ -4423,7 +4544,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     const kelasEntry = allKelasRaw.find(k => String(k.kelas_id) === String(topic.topic_kelas_id))
     const derivedYear = kelasEntry?.kelas_year_id ? String(kelasEntry.kelas_year_id) : ''
     setWizardYear(derivedYear)
-    setAllKelas(derivedYear ? allKelasRaw.filter(k => String(k.kelas_year_id) === derivedYear) : allKelasRaw)
+    // Use allowedKelasRaw for edit mode too (same filter rules as add mode)
+    setAllKelas(derivedYear ? allowedKelasRaw.filter(k => String(k.kelas_year_id) === derivedYear) : allowedKelasRaw)
+    // Load subjects allowed for the topic's specific kelas
+    if (topic.topic_kelas_id) {
+      fetchSubjectsForKelas(topic.topic_kelas_id)
+    } else {
+      setSubjectsForSelectedKelas([])
+    }
     await fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
     const { data: assessmentData, error: assessmentLoadError } = await supabase
       .from('assessment')
@@ -6722,16 +6850,25 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         setSelectedAtlSkills={setSelectedAtlSkills}
                         isStepCompleted={isStepCompleted}
                         fetchKelasForSubject={fetchKelasForSubject}
+                        fetchCriteriaForSubject={fetchCriteriaForSubject}
                         setAllKelas={setAllKelas}
                         fetchStrandsForCriteria={fetchStrandsForCriteria}
                         yearOptions={yearOptions}
-                        allKelasRaw={allKelasRaw}
+                        allKelasRaw={allowedKelasRaw}
                         wizardYear={wizardYear}
+                        subjectsForSelectedKelas={subjectsForSelectedKelas}
+                        onKelasChange={(kelasId) => {
+                          setSelectedTopic(prev => ({ ...prev, topic_kelas_id: kelasId, topic_subject_id: '' }))
+                          setSubjectsForSelectedKelas([])
+                          if (kelasId) fetchSubjectsForKelas(kelasId)
+                        }}
                         onWizardYearChange={(yr) => {
                           setWizardYear(yr)
-                          const filtered = yr ? allKelasRaw.filter(k => String(k.kelas_year_id) === String(yr)) : []
+                          // Use allowedKelasRaw so only user's permitted classes appear
+                          const filtered = yr ? allowedKelasRaw.filter(k => String(k.kelas_year_id) === String(yr)) : []
                           setAllKelas(filtered)
                           setSelectedTopic(prev => ({ ...prev, topic_kelas_id: '', topic_subject_id: '' }))
+                          setSubjectsForSelectedKelas([])
                         }}
                         t={t}
                       />

@@ -20,6 +20,7 @@ export default function WizardStepContent({
   loadingStrands,
   // lists
   subjects, allKelas, kelasLoading,
+  subjectsForSelectedKelas, // subjects filtered by selected kelas
   keyConcepts, globalContexts, globalContextExplorations, learnerProfiles,
   // flags
   isAddMode, topicAssessment,
@@ -31,9 +32,11 @@ export default function WizardStepContent({
   setSelectedStatements, setSelectedConceptualUnderstanding, setSelectedLearnerProfiles, setSelectedServiceLearning,
   setSelectedResources, setSelectedAtlSkills,
   // parent helpers
-  isStepCompleted, fetchKelasForSubject, setAllKelas, fetchStrandsForCriteria,
+  isStepCompleted, fetchKelasForSubject, fetchCriteriaForSubject, setAllKelas, fetchStrandsForCriteria,
   // year (academic year for wizard step 0)
   yearOptions, allKelasRaw, wizardYear, onWizardYearChange,
+  // kelas change handler (resets subject, loads subjects for kelas)
+  onKelasChange,
   // i18n
   t,
 }) {
@@ -59,14 +62,20 @@ export default function WizardStepContent({
                 ))}
               </select>
             </div>
-            {/* Kelas — filtered by year */}
+            {/* Kelas — filtered by year, must be selected before Subject */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 {t('topicNew.fields.class')} <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedTopic.topic_kelas_id || ''}
-                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_kelas_id: e.target.value }))}
+                onChange={(e) => {
+                  if (onKelasChange) {
+                    onKelasChange(e.target.value)
+                  } else {
+                    setSelectedTopic(prev => ({ ...prev, topic_kelas_id: e.target.value, topic_subject_id: '' }))
+                  }
+                }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={!wizardYear}
               >
@@ -78,7 +87,7 @@ export default function WizardStepContent({
                 ))}
               </select>
             </div>
-            {/* Subject */}
+            {/* Subject — disabled until Kelas is selected */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 {t('topicNew.fields.subject')} <span className="text-red-500">*</span>
@@ -88,13 +97,19 @@ export default function WizardStepContent({
                 onChange={(e) => {
                   const subjectId = e.target.value
                   setSelectedTopic(prev => ({ ...prev, topic_subject_id: subjectId }))
-                  // Also fetch kelas + criteria for this subject (used in step 7)
-                  if (subjectId) fetchKelasForSubject(subjectId)
+                  // Only fetch criteria for this subject (used in step 7).
+                  // Do NOT call fetchKelasForSubject — that would overwrite allKelas
+                  // and cause duplicate entries since we are now in kelas-first flow.
+                  if (subjectId && fetchCriteriaForSubject) fetchCriteriaForSubject(subjectId)
                 }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                disabled={!selectedTopic.topic_kelas_id}
               >
-                <option value="">{t('topicNew.fields.selectSubject')}</option>
-                {subjects.map(subject => (
+                <option value="">{!selectedTopic.topic_kelas_id ? 'Pilih kelas dulu' : t('topicNew.fields.selectSubject')}</option>
+                {(subjectsForSelectedKelas && subjectsForSelectedKelas.length > 0
+                  ? subjectsForSelectedKelas
+                  : []
+                ).map(subject => (
                   <option key={subject.subject_id} value={subject.subject_id}>
                     {subject.subject_name}
                   </option>
