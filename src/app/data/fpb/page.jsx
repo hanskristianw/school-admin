@@ -263,14 +263,84 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
         const allRegularDone = regularRows.length > 0 && regularRows.every(a => a.status === 'approved')
         const screeningJustDone = isScreeningAction
         if (screeningJustDone) {
-          // Screening passed → stay on same step, now regular approvers can act
-          // No step change needed; screener row is approved, regular rows still pending
+          // Screening passed → notify the step-1 approvers
+          ;(async () => {
+            try {
+              const { data: nextApprovals } = await supabase
+                .from('fpb_approvals')
+                .select('approver_user_id, step_name, users!fpb_approvals_approver_user_id_fkey(user_email, user_nama_depan, user_nama_belakang)')
+                .eq('fpb_id', fpbId).eq('step_order', 1).neq('approver_order', 0)
+              const { data: submitterRow } = await supabase
+                .from('users').select('user_nama_depan, user_nama_belakang').eq('user_id', fpb.submitted_by).single()
+              const submitterName = submitterRow
+                ? `${submitterRow.user_nama_depan || ''} ${submitterRow.user_nama_belakang || ''}`.trim() : 'Karyawan'
+              for (const ap of (nextApprovals || [])) {
+                const u = ap.users
+                if (!u?.user_email) continue
+                const approverName = `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()
+                await fetch('/api/email/fpb', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'fpbPendingApproval', to: u.user_email, approverName,
+                    fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+                    submitterName, division: fpb.division, grandTotal: fpb.grand_total,
+                    usageDate: fpb.usage_date, stepName: ap.step_name || 'Persetujuan',
+                  }),
+                })
+              }
+            } catch (e) { console.warn('[FPB Email] screening→step1:', e) }
+          })()
         } else if (allRegularDone) {
           const nextStepRow = approvals.find(a => a.step_order === fpb.current_step + 1 && a.approver_order !== 0)
           if (nextStepRow) {
             await supabase.from('fpb').update({ current_step: fpb.current_step + 1 }).eq('fpb_id', fpbId)
+            // Notify next step approvers
+            ;(async () => {
+              try {
+                const { data: nextApprovals } = await supabase
+                  .from('fpb_approvals')
+                  .select('approver_user_id, step_name, users!fpb_approvals_approver_user_id_fkey(user_email, user_nama_depan, user_nama_belakang)')
+                  .eq('fpb_id', fpbId).eq('step_order', fpb.current_step + 1)
+                const { data: submitterRow } = await supabase
+                  .from('users').select('user_nama_depan, user_nama_belakang').eq('user_id', fpb.submitted_by).single()
+                const submitterName = submitterRow
+                  ? `${submitterRow.user_nama_depan || ''} ${submitterRow.user_nama_belakang || ''}`.trim() : 'Karyawan'
+                for (const ap of (nextApprovals || [])) {
+                  const u = ap.users
+                  if (!u?.user_email) continue
+                  const approverName = `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim()
+                  await fetch('/api/email/fpb', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      type: 'fpbPendingApproval', to: u.user_email, approverName,
+                      fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+                      submitterName, division: fpb.division, grandTotal: fpb.grand_total,
+                      usageDate: fpb.usage_date, stepName: ap.step_name || 'Persetujuan',
+                    }),
+                  })
+                }
+              } catch (e) { console.warn('[FPB Email] next step:', e) }
+            })()
           } else {
             await supabase.from('fpb').update({ status: 'approved' }).eq('fpb_id', fpbId)
+            // Notify submitter — FPB fully approved
+            ;(async () => {
+              try {
+                const { data: submitterUser } = await supabase
+                  .from('users').select('user_email, user_nama_depan, user_nama_belakang')
+                  .eq('user_id', fpb.submitted_by).single()
+                if (!submitterUser?.user_email) return
+                const submitterName = `${submitterUser.user_nama_depan || ''} ${submitterUser.user_nama_belakang || ''}`.trim()
+                await fetch('/api/email/fpb', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'fpbApproved', to: submitterUser.user_email, submitterName,
+                    fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+                    grandTotal: fpb.grand_total,
+                  }),
+                })
+              } catch (e) { console.warn('[FPB Email] approved:', e) }
+            })()
           }
         }
       } else if (action === 'revision') {
@@ -284,8 +354,52 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
           .update({ status: 'revision' })
           .eq('approval_id', myPendingApproval.approval_id)
         await supabase.from('fpb').update({ status: 'revision', current_step: 1 }).eq('fpb_id', fpbId)
+        // Notify submitter — revision requested
+        ;(async () => {
+          try {
+            const { data: submitterUser } = await supabase
+              .from('users').select('user_email, user_nama_depan, user_nama_belakang')
+              .eq('user_id', fpb.submitted_by).single()
+            if (!submitterUser?.user_email) return
+            const submitterName = `${submitterUser.user_nama_depan || ''} ${submitterUser.user_nama_belakang || ''}`.trim()
+            const { data: actorUser } = await supabase
+              .from('users').select('user_nama_depan, user_nama_belakang').eq('user_id', userId).single()
+            const approverName = actorUser
+              ? `${actorUser.user_nama_depan || ''} ${actorUser.user_nama_belakang || ''}`.trim() : 'Approver'
+            await fetch('/api/email/fpb', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'fpbRevision', to: submitterUser.user_email, submitterName,
+                fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+                approverName, comment: comment.trim() || null,
+              }),
+            })
+          } catch (e) { console.warn('[FPB Email] revision:', e) }
+        })()
       } else if (action === 'reject') {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', fpbId)
+        // Notify submitter — FPB rejected
+        ;(async () => {
+          try {
+            const { data: submitterUser } = await supabase
+              .from('users').select('user_email, user_nama_depan, user_nama_belakang')
+              .eq('user_id', fpb.submitted_by).single()
+            if (!submitterUser?.user_email) return
+            const submitterName = `${submitterUser.user_nama_depan || ''} ${submitterUser.user_nama_belakang || ''}`.trim()
+            const { data: actorUser } = await supabase
+              .from('users').select('user_nama_depan, user_nama_belakang').eq('user_id', userId).single()
+            const approverName = actorUser
+              ? `${actorUser.user_nama_depan || ''} ${actorUser.user_nama_belakang || ''}`.trim() : 'Approver'
+            await fetch('/api/email/fpb', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'fpbRejected', to: submitterUser.user_email, submitterName,
+                fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+                approverName, comment: comment.trim() || null,
+              }),
+            })
+          } catch (e) { console.warn('[FPB Email] rejected:', e) }
+        })()
       }
       setShowActionModal(false); setAction(null); setComment('')
       await fetchData(userId)
@@ -1834,8 +1948,9 @@ export default function FpbListPage() {
       }
 
       // Tab 3: History
-      // For screener/budget roles: show ALL FPBs (pending + approved) regardless of their own action
-      // For regular approvers: show only FPBs fully approved where they took action
+      // For screener/budget roles: show ALL FPBs (pending + approved + rejected) regardless of their own action
+      // For regular approvers: show ALL FPBs where they took any action (approve/reject/revision)
+      //   so they can monitor the progress even if FPB is still waiting for other approvers
       if (isSOB) {
         const { data: allFpbs } = await supabase
           .from('fpb')
@@ -1844,16 +1959,19 @@ export default function FpbListPage() {
           .order('created_at', { ascending: false })
         setHistory((allFpbs || []).map(f => ({ ...f, my_step_name: null, my_action_at: f.created_at })))
       } else {
-        const { data: myApprovedRows } = await supabase
+        // Fetch all rows where this user took action (any non-pending status)
+        const { data: myActionedRows } = await supabase
           .from('fpb_approvals')
           .select('fpb_id, step_name, action_at, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, revision_count, created_at, procurement_status, fpb_types(type_name), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
           .eq('approver_user_id', uid)
-          .eq('status', 'approved')
-        const approvedFpbs = (myApprovedRows || [])
-          .filter(r => r.fpb?.status === 'approved')
+          .neq('status', 'pending')
+        // Include all actioned FPBs regardless of the FPB's final status (pending/approved/rejected)
+        // so approvers can monitor progress after their own action
+        const actionedFpbs = (myActionedRows || [])
+          .filter(r => r.fpb != null)
           .map(r => ({ ...r.fpb, my_step_name: r.step_name, my_action_at: r.action_at }))
         const histMap = new Map()
-        approvedFpbs.forEach(f => {
+        actionedFpbs.forEach(f => {
           const existing = histMap.get(f.fpb_id)
           if (!existing || new Date(f.my_action_at) > new Date(existing.my_action_at)) histMap.set(f.fpb_id, f)
         })

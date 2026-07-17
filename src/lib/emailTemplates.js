@@ -299,5 +299,155 @@ export const emailTemplates = {
       </div>
     `)
     return { subject, html }
-  }
+  },
+
+  // ─── FPB Templates ───────────────────────────────────────────────────────────
+
+  /**
+   * Email to approver: a new FPB is waiting for their action
+   * params: { approverName, fpbNumber, fpbType, submitterName, division, grandTotal, usageDate, stepName, appUrl }
+   */
+  fpbPendingApproval: ({ approverName, fpbNumber, fpbType, submitterName, division, grandTotal, usageDate, stepName, appUrl }) => {
+    const subject = `[Perlu Persetujuan] FPB ${fpbNumber} menunggu tindakan Anda`
+    const fmtCurrency = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0)
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+          <h1>📋 Menunggu Persetujuan Anda</h1>
+          <p>Formulir Permintaan Barang (FPB)</p>
+        </div>
+        <div class="body">
+          <p>Yth. <strong>${approverName}</strong>,</p>
+          <p>Terdapat FPB baru yang memerlukan tindakan Anda pada tahap <strong>${stepName}</strong>.</p>
+          <div class="detail-box review">
+            <div class="detail-row"><span class="detail-label">Nomor FPB</span><span class="detail-value">${fpbNumber}</span></div>
+            <div class="detail-row"><span class="detail-label">Tipe</span><span class="detail-value">${fpbType || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Pengaju</span><span class="detail-value">${submitterName}</span></div>
+            <div class="detail-row"><span class="detail-label">Divisi</span><span class="detail-value">${division || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Total</span><span class="detail-value">${fmtCurrency(grandTotal)}</span></div>
+            <div class="detail-row"><span class="detail-label">Tanggal Kebutuhan</span><span class="detail-value">${fmtDate(usageDate)}</span></div>
+          </div>
+          <p style="text-align:center;margin-top:20px;">
+            <a href="${appUrl || 'https://manageccs.online/data/fpb'}"
+              style="display:inline-block;padding:12px 28px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
+              Buka & Tinjau FPB
+            </a>
+          </p>
+        </div>
+        <div class="footer">Notifikasi otomatis — Sistem Administrasi CCS</div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  /**
+   * Email to submitter: their FPB has been fully approved
+   * params: { submitterName, fpbNumber, fpbType, grandTotal, appUrl }
+   */
+  fpbApproved: ({ submitterName, fpbNumber, fpbType, grandTotal, appUrl }) => {
+    const subject = `[Disetujui] FPB ${fpbNumber} telah disetujui sepenuhnya`
+    const fmtCurrency = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0)
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #059669, #0d9488);">
+          <h1>✅ FPB Disetujui</h1>
+          <p>Formulir Permintaan Barang (FPB)</p>
+        </div>
+        <div class="body">
+          <p>Yth. <strong>${submitterName}</strong>,</p>
+          <p>Selamat! FPB Anda telah <strong>disetujui sepenuhnya</strong> oleh semua approver.</p>
+          <div class="detail-box">
+            <div class="detail-row"><span class="detail-label">Nomor FPB</span><span class="detail-value">${fpbNumber}</span></div>
+            <div class="detail-row"><span class="detail-label">Tipe</span><span class="detail-value">${fpbType || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Total</span><span class="detail-value">${fmtCurrency(grandTotal)}</span></div>
+            <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge badge-success">Disetujui</span></span></div>
+          </div>
+          <p style="text-align:center;margin-top:20px;">
+            <a href="${appUrl || 'https://manageccs.online/data/fpb'}"
+              style="display:inline-block;padding:12px 28px;background:#059669;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
+              Lihat Detail FPB
+            </a>
+          </p>
+        </div>
+        <div class="footer">Notifikasi otomatis — Sistem Administrasi CCS</div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  /**
+   * Email to submitter: their FPB requires revision
+   * params: { submitterName, fpbNumber, fpbType, approverName, comment, appUrl }
+   */
+  fpbRevision: ({ submitterName, fpbNumber, fpbType, approverName, comment, appUrl }) => {
+    const subject = `[Perlu Revisi] FPB ${fpbNumber} dikembalikan untuk diperbaiki`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+          <h1>↩ FPB Perlu Direvisi</h1>
+          <p>Formulir Permintaan Barang (FPB)</p>
+        </div>
+        <div class="body">
+          <p>Yth. <strong>${submitterName}</strong>,</p>
+          <p>FPB Anda telah <strong>dikembalikan untuk revisi</strong> oleh approver. Silakan perbaiki dan ajukan kembali.</p>
+          <div class="detail-box review">
+            <div class="detail-row"><span class="detail-label">Nomor FPB</span><span class="detail-value">${fpbNumber}</span></div>
+            <div class="detail-row"><span class="detail-label">Tipe</span><span class="detail-value">${fpbType || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Dari Approver</span><span class="detail-value">${approverName}</span></div>
+          </div>
+          ${comment ? `
+          <div style="margin-top:12px;padding:12px 16px;background:#fef3c7;border-left:4px solid #d97706;border-radius:6px;font-size:13px;color:#92400e;">
+            <strong>Catatan Approver:</strong><br>${comment}
+          </div>` : ''}
+          <p style="text-align:center;margin-top:20px;">
+            <a href="${appUrl || 'https://manageccs.online/data/fpb'}"
+              style="display:inline-block;padding:12px 28px;background:#d97706;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
+              Buka & Perbaiki FPB
+            </a>
+          </p>
+        </div>
+        <div class="footer">Notifikasi otomatis — Sistem Administrasi CCS</div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  /**
+   * Email to submitter: their FPB has been rejected
+   * params: { submitterName, fpbNumber, fpbType, approverName, comment, appUrl }
+   */
+  fpbRejected: ({ submitterName, fpbNumber, fpbType, approverName, comment, appUrl }) => {
+    const subject = `[Ditolak] FPB ${fpbNumber} tidak dapat diproses`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #dc2626, #b91c1c);">
+          <h1>✕ FPB Ditolak</h1>
+          <p>Formulir Permintaan Barang (FPB)</p>
+        </div>
+        <div class="body">
+          <p>Yth. <strong>${submitterName}</strong>,</p>
+          <p>FPB Anda <strong>tidak dapat diproses</strong> karena ditolak oleh approver.</p>
+          <div class="detail-box rejected">
+            <div class="detail-row"><span class="detail-label">Nomor FPB</span><span class="detail-value">${fpbNumber}</span></div>
+            <div class="detail-row"><span class="detail-label">Tipe</span><span class="detail-value">${fpbType || '—'}</span></div>
+            <div class="detail-row"><span class="detail-label">Ditolak Oleh</span><span class="detail-value">${approverName}</span></div>
+            <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge badge-danger">Ditolak</span></span></div>
+          </div>
+          ${comment ? `
+          <div style="margin-top:12px;padding:12px 16px;background:#fef2f2;border-left:4px solid #dc2626;border-radius:6px;font-size:13px;color:#991b1b;">
+            <strong>Alasan Penolakan:</strong><br>${comment}
+          </div>` : ''}
+          <p style="text-align:center;margin-top:20px;">
+            <a href="${appUrl || 'https://manageccs.online/data/fpb'}"
+              style="display:inline-block;padding:12px 28px;background:#dc2626;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
+              Lihat Detail FPB
+            </a>
+          </p>
+        </div>
+        <div class="footer">Notifikasi otomatis — Sistem Administrasi CCS</div>
+      </div>
+    `)
+    return { subject, html }
+  },
 }

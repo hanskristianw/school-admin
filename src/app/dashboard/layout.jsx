@@ -22,7 +22,7 @@ export default function DashboardLayout({ children }) {
     <div style={{ background: theme.pageBg, minHeight: '100%' }}>
       <div className="flex h-full min-h-0" style={{ height: 'calc(100vh - 3rem)' }}>
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-        <main className="flex-1 min-h-0 p-4 transition-all duration-300 overflow-y-auto">
+        <main className="flex-1 min-h-0 transition-all duration-300 overflow-y-auto">
           <AccessGuard>
             {children}
           </AccessGuard>

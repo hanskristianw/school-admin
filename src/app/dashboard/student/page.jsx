@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faCalendar, faQrcode, faClock } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/lib/i18n'
+import GlobalActionCards from '@/components/GlobalActionCards'
 
 export default function StudentDashboard() {
   const router = useRouter()
@@ -171,6 +172,9 @@ export default function StudentDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Action Cards — FPB pending & keterlambatan belum diisi */}
+      <GlobalActionCards />
 
       {/* Main Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-6 -mt-4">

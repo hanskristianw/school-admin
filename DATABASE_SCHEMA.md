@@ -49,6 +49,20 @@ Defines the permissions and types of users in the system.
 | `is_vendor` | `BOOLEAN` | Flag for vendor roles |
 | `is_part_time_staff`| `BOOLEAN` | Flag for part-time staff |
 | `work_days` | `VARCHAR` | CSV of work days (e.g. "1,2,3,4,5" for Mon-Fri) |
+| `dashboard_type_id` | `INTEGER` | Foreign Key to `dashboard_type(dashboard_type_id)` |
+| `role_priority` | `INTEGER` | Priority for routing (higher number = higher priority) |
+
+#### `dashboard_type`
+Defines the dashboard routing layout and default landing page for different roles (e.g., student, teacher, purchasing).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `dashboard_type_id` | `SERIAL` | Primary Key |
+| `type_code` | `VARCHAR` | Short code (e.g., admin, teacher, student) |
+| `type_name` | `VARCHAR` | Display name of the dashboard type |
+| `type_description`| `TEXT` | Optional description |
+| `default_route` | `VARCHAR` | The default path to redirect to (e.g., `/dashboard/purchasing`) |
+| `is_active` | `BOOLEAN` | Whether this layout is active |
 
 #### `unit`
 Represents the school level, department or division the user belongs to.
@@ -64,14 +78,24 @@ Represents the school level, department or division the user belongs to.
 
 ```mermaid
 erDiagram
+    dashboard_type ||--o{ role : "configures_dashboard"
     role ||--o{ users : "assigns"
     unit ||--o{ users : "belongs_to"
     
+    dashboard_type {
+        int dashboard_type_id PK
+        string type_code
+        string type_name
+        string default_route
+    }
+
     role {
         int role_id PK
         string role_name
         boolean is_teacher
         boolean is_admin
+        int dashboard_type_id FK
+        int role_priority
     }
     
     unit {
@@ -340,11 +364,57 @@ Tracks the approval state for each required step of an FPB.
 | `comment` | `TEXT` | Approver's note |
 | `action_at` | `TIMESTAMP` | When the approval was actioned |
 
-#### `fpb_types` & `fpb_approval_steps`
-Configuration tables that define the types of FPB and the default approval routing steps for each type.
+#### `fpb_types`
+Defines the types of FPB available and their maximum limits.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `type_code` | `VARCHAR` | Short code (e.g., KCL, BSR) |
+| `type_name` | `VARCHAR` | Full name of the FPB type |
+| `max_amount` | `DECIMAL` | Maximum allowed grand total |
+| `is_active` | `BOOLEAN` | Whether this type is selectable |
+
+#### `fpb_approval_steps`
+Configuration table that defines the default approval routing steps for each FPB type.
 
 #### `fpb_role_approvers`
-Maps a specific role to up to 3 specific users who can act as approvers on behalf of that role.
+Maps a specific role to up to 3 specific users who act as approvers on behalf of that role.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `role_id` | `INTEGER` | FK to `role(role_id)`, UNIQUE |
+| `approver1_id`| `INTEGER` | FK to `users(user_id)` |
+| `approver2_id`| `INTEGER` | FK to `users(user_id)` |
+| `approver3_id`| `INTEGER` | FK to `users(user_id)` |
+
+#### `fpb_budget_roles`
+Defines which roles have the authority to edit budget fields on an FPB.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `role_id` | `INTEGER` | FK to `role(role_id)` |
+
+#### `fpb_screener`
+Defines the single role that acts as the initial screener (Step 0) for all FPBs.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `screener_role_id`| `INTEGER` | FK to `role(role_id)` |
+
+#### `fpb_revisions`
+Tracks the history of revision requests (when an approver sends the FPB back).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `fpb_id` | `INTEGER` | FK to `fpb(fpb_id)` |
+| `revision_number`| `INTEGER` | 1, 2, 3... |
+| `revised_by` | `INTEGER` | FK to `users(user_id)` |
+| `revision_note`| `TEXT` | Reason for revision |
 
 ### 4.2 ERD / Relationships (Purchasing Domain)
 
@@ -352,17 +422,25 @@ Maps a specific role to up to 3 specific users who can act as approvers on behal
 erDiagram
     users ||--o{ fpb : "submits"
     fpb_types ||--o{ fpb : "categorizes"
-    fpb ||--|{ fpb_items : "contains"
-    fpb ||--|{ fpb_approvals : "requires"
-    users ||--o{ fpb_approvals : "approves"
-    role ||--o{ fpb_approvals : "approves_as"
-    
+    fpb ||--o{ fpb_items : "contains"
+    fpb ||--o{ fpb_approvals : "requires"
+    fpb ||--o{ fpb_revisions : "undergoes"
+    fpb }o--|| fpb_types : "categorized_as"
+    users ||--o{ fpb : "submits"
+    role ||--|{ fpb_role_approvers : "has_approvers"
+    role ||--|{ fpb_budget_roles : "can_edit_budget"
+    role ||--o{ fpb_screener : "is_screener"
+
     fpb {
         int fpb_id PK
-        string fpb_number
+        int user_id FK
         int fpb_type_id FK
-        int submitted_by FK
         string status
+        decimal grand_total
+        decimal budget
+        decimal remaining_budget
+        int revision_count
+        int submitted_by FK
         int current_step
     }
     

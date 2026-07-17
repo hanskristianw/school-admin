@@ -140,6 +140,47 @@ export default function CreateFpbPage() {
       const { error: apErr } = await supabase.from('fpb_approvals').insert(approvalRows)
       if (apErr) throw apErr
 
+      // ── Notify first approver / screener — fire-and-forget ─────────
+      ;(async () => {
+        try {
+          const { data: submitterData } = await supabase
+            .from('users').select('user_nama_depan, user_nama_belakang')
+            .eq('user_id', uid).single()
+          const submitterName = submitterData
+            ? `${submitterData.user_nama_depan || ''} ${submitterData.user_nama_belakang || ''}`.trim()
+            : 'Karyawan'
+
+          // Find step with the lowest step_order (screener or first approver)
+          const firstStep = steps.reduce((min, s) => s.step_order < min.step_order ? s : min, steps[0])
+          if (!firstStep?.approver_user_id) return
+
+          const { data: approverUser } = await supabase
+            .from('users').select('user_email, user_nama_depan, user_nama_belakang')
+            .eq('user_id', firstStep.approver_user_id).single()
+          if (!approverUser?.user_email) return
+
+          const approverName = `${approverUser.user_nama_depan || ''} ${approverUser.user_nama_belakang || ''}`.trim()
+          await fetch('/api/email/fpb', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'fpbPendingApproval',
+              to: approverUser.user_email,
+              approverName,
+              fpbNumber,
+              fpbType: selType.type_name,
+              submitterName,
+              division,
+              grandTotal,
+              usageDate,
+              stepName: firstStep.step_name || 'Screening',
+            }),
+          })
+        } catch (emailErr) {
+          console.warn('[FPB Create] Gagal kirim email notifikasi:', emailErr)
+        }
+      })()
+
       router.push(`/data/fpb/${fpb.fpb_id}`)
     } catch (e) {
       console.error(e)

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from '@/lib/supabase'
+import GlobalActionCards from '@/components/GlobalActionCards'
 import {
   LayoutDashboard, BookOpen, GraduationCap, Users, UserPlus, ClipboardCheck,
   ClipboardList, FileText, MessageCircle, MessageSquare, CalendarDays, Calendar,
@@ -477,6 +478,9 @@ export default function TeacherDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Action Cards — FPB pending & keterlambatan belum diisi */}
+      <GlobalActionCards />
 
       {/* Main Content */}
       <div className="p-6 space-y-6">

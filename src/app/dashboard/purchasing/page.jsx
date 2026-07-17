@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBox, faClipboardList, faShoppingCart, faExclamationTriangle, faArrowUp, faArrowDown, faTruck, faChartLine, faTrophy, faUser, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import GlobalActionCards from '@/components/GlobalActionCards'
 
 export default function PurchasingDashboard() {
   const router = useRouter()
@@ -395,249 +396,18 @@ export default function PurchasingDashboard() {
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
                 📦 Purchasing Dashboard
               </h1>
-              <p className="text-sky-100">Selamat datang, {userData?.user_nama_depan} {userData?.user_nama_belakang} - Monitor stok, pembelian, dan supplier</p>
+              <p className="text-sky-100">Selamat datang, {userData?.user_nama_depan} {userData?.user_nama_belakang}</p>
             </div>
           </div>
 
-          {/* Month Selector */}
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl p-2">
-            <button
-              onClick={goToPreviousMonth}
-              className="px-3 py-2 hover:bg-white/20 rounded-lg transition-colors"
-              title="Previous Month"
-            >
-              <FontAwesomeIcon icon={faChevronLeft} className="text-white" />
-            </button>
-            <div className="px-4 py-2 bg-white/20 rounded-lg min-w-[160px] text-center">
-              <div className="text-white font-semibold">{formatMonthYear(selectedMonth)}</div>
-              <div className="text-sky-100 text-xs mt-0.5">
-                {isCurrentMonth() ? 'Current Month' : 'Historical Data'}
-              </div>
-            </div>
-            <button
-              onClick={goToNextMonth}
-              disabled={isCurrentMonth()}
-              className={`px-3 py-2 rounded-lg transition-colors ${
-                isCurrentMonth() 
-                  ? 'opacity-50 cursor-not-allowed' 
-                  : 'hover:bg-white/20'
-              }`}
-              title="Next Month"
-            >
-              <FontAwesomeIcon icon={faChevronRight} className="text-white" />
-            </button>
-          </div>
+
         </div>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {/* Total Stock Value */}
-        <Card className="bg-white/70 backdrop-blur-sm border-gray-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Stock Value</p>
-                <h3 className="text-2xl font-bold text-gray-800">{formatCurrency(metrics.totalStockValue)}</h3>
-                <div className="flex items-center gap-1 mt-2">
-                  <FontAwesomeIcon 
-                    icon={metrics.stockValueChange >= 0 ? faArrowUp : faArrowDown} 
-                    className={`text-xs ${metrics.stockValueChange >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                  />
-                  <span className={`text-xs ${metrics.stockValueChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {Math.abs(metrics.stockValueChange)}% vs last month
-                  </span>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <FontAwesomeIcon icon={faBox} className="text-blue-600 text-xl" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Action Cards — FPB pending & keterlambatan belum diisi */}
+      <GlobalActionCards />
 
-        {/* Pending Purchase Orders */}
-        <Card className="bg-white/70 backdrop-blur-sm border-gray-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-gray-600 mb-1">Pending POs</p>
-                <h3 className="text-2xl font-bold text-gray-800">{metrics.pendingPOCount}</h3>
-                <p className="text-xs text-gray-500 mt-2">Purchase Orders</p>
-                {metrics.pendingPOCount > 0 && (
-                  <Link href="/stock/uniform/add">
-                    <Button variant="outline" size="sm" className="mt-3 text-xs h-7">
-                      View Details
-                    </Button>
-                  </Link>
-                )}
-              </div>
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                <FontAwesomeIcon icon={faClipboardList} className="text-amber-600 text-xl" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* This Month Purchases */}
-        <Card className="bg-white/70 backdrop-blur-sm border-gray-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">{formatMonthYear(selectedMonth)}</p>
-                <h3 className="text-2xl font-bold text-gray-800">{formatCurrency(metrics.thisMonthPurchases)}</h3>
-                <p className="text-xs text-gray-500 mt-2">{metrics.thisMonthPOCount} purchase orders</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <FontAwesomeIcon icon={faShoppingCart} className="text-green-600 text-xl" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Top Suppliers */}
-        <Card className="bg-white/70 backdrop-blur-sm border-gray-200">
-          <CardHeader className="border-b border-gray-100">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FontAwesomeIcon icon={faTruck} className="text-blue-600" />
-              Top Suppliers - {formatMonthYear(selectedMonth)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5">
-            {topSuppliers.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No data available</p>
-            ) : (
-              <div className="space-y-3">
-                {topSuppliers.map((supplier, idx) => {
-                  const maxValue = topSuppliers[0]?.total_value || 1
-                  const percentage = (supplier.total_value / maxValue) * 100
-                  
-                  return (
-                    <div key={idx}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-700">{supplier.supplier_name}</span>
-                        <span className="text-sm font-semibold text-gray-800">{formatCurrency(supplier.total_value)}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Best Sellers */}
-        <Card className="bg-white/70 backdrop-blur-sm border-gray-200">
-          <CardHeader className="border-b border-gray-100">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FontAwesomeIcon icon={faTrophy} className="text-amber-600" />
-              Best Sellers - {formatMonthYear(selectedMonth)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5">
-            {bestSellers.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No sales data</p>
-            ) : (
-              <div className="space-y-2">
-                {bestSellers.slice(0, 5).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                        {idx + 1}
-                      </span>
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{item.uniform_name}</p>
-                        <p className="text-xs text-gray-500">{item.size_name}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-800">{item.total_qty} pcs</p>
-                      <p className="text-xs text-gray-500">{formatCurrency(item.total_revenue)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Stock Movements */}
-      <Card className="bg-white/70 backdrop-blur-sm border-gray-200 mb-6">
-        <CardHeader className="border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              🔄 Recent Stock Movements
-            </CardTitle>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Types</option>
-              <option value="purchase">Purchase</option>
-              <option value="sale">Sale</option>
-            </select>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Date</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Item</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Size</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Type</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-600">Qty</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Supplier</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredMovements.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                      No stock movements found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMovements.map((movement) => {
-                    const uniformName = movement.uniform?.uniform_name || '-'
-                    const sizeName = movement.size?.size_name || '-'
-                    const supplierName = movement.supplier?.supplier_name || '-'
-                    
-                    return (
-                      <tr key={movement.txn_id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-600">{formatDate(movement.created_at)}</td>
-                        <td className="px-4 py-3 font-medium text-gray-800">{uniformName}</td>
-                        <td className="px-4 py-3 text-gray-600">{sizeName}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getTxnTypeBadge(movement.txn_type)}`}>
-                            {getTxnTypeLabel(movement.txn_type)}
-                          </span>
-                        </td>
-                        <td className={`px-4 py-3 text-right font-semibold ${movement.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {movement.qty_delta >= 0 ? '+' : ''}{movement.qty_delta}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{supplierName}</td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Quick Actions - Floating Button */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3">
