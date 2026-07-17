@@ -9,9 +9,11 @@ import { faBox, faClipboardList, faShoppingCart, faExclamationTriangle, faArrowU
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import GlobalActionCards from '@/components/GlobalActionCards'
+import { useTheme } from '@/lib/theme'
 
 export default function PurchasingDashboard() {
   const router = useRouter()
+  const { theme } = useTheme()
   const [loading, setLoading] = useState(true)
   const [userData, setUserData] = useState(null)
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -322,7 +324,7 @@ export default function PurchasingDashboard() {
   }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       day: '2-digit',
       month: 'short',
       hour: '2-digit',
@@ -372,35 +374,50 @@ export default function PurchasingDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-cyan-50 p-4 md:p-6">
+    <div className="min-h-screen" style={{ background: theme.pageBg }}>
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-600 via-cyan-600 to-sky-500 rounded-3xl p-6 md:p-8 mb-6 shadow-2xl">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="px-6 py-7" style={{ background: theme.cardBg, borderBottom: `1px solid ${theme.border}` }}>
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {userData?.user_profile_picture ? (
-              <div className="relative">
-                <img 
-                  src={userData.user_profile_picture} 
-                  alt="Profile" 
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover ring-4 ring-white/30 shadow-xl"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white"></div>
-              </div>
+              <img
+                src={userData.user_profile_picture}
+                alt="Foto profil"
+                className="w-11 h-11 object-cover"
+                style={{ borderRadius: '8px', border: `1px solid ${theme.border}` }}
+                referrerPolicy="no-referrer"
+              />
             ) : (
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center ring-4 ring-white/30 shadow-xl">
-                <FontAwesomeIcon icon={faUser} className="text-2xl text-white" />
+              <div
+                className="w-11 h-11 flex items-center justify-center"
+                style={{ borderRadius: '8px', background: theme.subtleBg, border: `1px solid ${theme.border}` }}
+              >
+                <FontAwesomeIcon icon={faUser} style={{ fontSize: '20px', color: theme.textSecondary }} />
               </div>
             )}
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                📦 Purchasing Dashboard
+              <p
+                className="text-[11px] mb-0.5"
+                style={{ color: theme.textSecondary, letterSpacing: '0.07em', textTransform: 'uppercase' }}
+              >
+                Purchasing Overview
+              </p>
+              <h1
+                className="text-lg font-semibold"
+                style={{ color: theme.textPrimary, letterSpacing: '-0.02em' }}
+              >
+                {`${userData?.user_nama_depan || ''} ${userData?.user_nama_belakang || ''}`.trim() || '—'}
               </h1>
-              <p className="text-sky-100">Selamat datang, {userData?.user_nama_depan} {userData?.user_nama_belakang}</p>
             </div>
           </div>
-
-
+          <div className="flex items-center gap-3">
+            <p
+              className="hidden sm:block text-[11px]"
+              style={{ color: theme.textSecondary, fontFamily: "'SF Mono', 'JetBrains Mono', monospace" }}
+            >
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
         </div>
       </div>
 

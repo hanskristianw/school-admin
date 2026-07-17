@@ -145,10 +145,10 @@ export default function GlobalActionCards() {
               {fpbCount}
             </div>
             <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textPrimary, marginTop: '2px' }}>
-              FPB Menunggu Persetujuan
+              Pending FPB Approvals
             </div>
             <div style={{ fontSize: '11px', color: theme.textSecondary, marginTop: '1px' }}>
-              Klik untuk lihat & proses
+              Click to view & process
             </div>
           </div>
         </button>
@@ -191,10 +191,10 @@ export default function GlobalActionCards() {
               {attCount}
             </div>
             <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textPrimary, marginTop: '2px' }}>
-              Form Keterlambatan Belum Diisi
+              Pending HCM Form
             </div>
             <div style={{ fontSize: '11px', color: theme.textSecondary, marginTop: '1px' }}>
-              Klik untuk isi form keterangan
+              Click to fill out the form
             </div>
           </div>
         </button>

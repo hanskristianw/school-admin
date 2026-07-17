@@ -473,7 +473,7 @@ export default function TeacherDashboard() {
               className="hidden sm:block text-[11px]"
               style={{ color: theme.textSecondary, fontFamily: "'SF Mono', 'JetBrains Mono', monospace" }}
             >
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
         </div>
@@ -555,18 +555,18 @@ export default function TeacherDashboard() {
               >
                 <Calendar size={14} style={{ color: theme.textSecondary }} />
               </span>
-              Kalender Penilaian
+              Google Calendar
               <span className="hidden md:flex items-center gap-3" style={{ fontSize: '11px', color: theme.textSecondary }}>
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2" style={{ background: theme.blueText, borderRadius: '2px' }}></span>
-                  Penilaian
+                  Assessment
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2" style={{ background: theme.redText, borderRadius: '2px' }}></span>
                   Google Calendar
                 </span>                <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2" style={{ background: theme.redBg, borderRadius: '2px', border: `1px solid ${theme.border}` }}></span>
-                  Libur / Minggu
+                  Holiday / Sunday
                 </span>              </span>
             </h3>
             <div className="w-full md:w-auto overflow-x-auto -mx-1 px-1">
@@ -575,19 +575,19 @@ export default function TeacherDashboard() {
                   <ChevronLeft size={14} />
                 </Button>
                 <div className="text-xs sm:text-sm min-w-[100px] sm:min-w-[140px] text-center font-medium" style={{ color: theme.textPrimary }}>
-                  {calMonth.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
+                  {calMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </div>
                 <Button variant="outline" size="sm" onClick={nextMonth} className="rounded-lg h-8 w-8 p-0">
                   <ChevronRight size={14} />
                 </Button>
-                <Button variant="outline" size="sm" onClick={thisMonth} className="rounded-lg text-xs px-2 hidden sm:inline-flex">Bulan Ini</Button>
+                <Button variant="outline" size="sm" onClick={thisMonth} className="rounded-lg text-xs px-2 hidden sm:inline-flex">This Month</Button>
                 <select
                   className="rounded-lg px-2 py-1.5 text-xs sm:text-sm shrink-0 focus:outline-none max-w-[100px] sm:max-w-none"
                   style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
                   value={kelasFilter}
                   onChange={(e)=> setKelasFilter(e.target.value)}
                 >
-                  <option value="">Semua</option>
+                  <option value="">All</option>
                   {kelasOptions.map(k => (
                     <option key={k.id} value={k.id}>{k.nama}</option>
                   ))}
@@ -600,7 +600,7 @@ export default function TeacherDashboard() {
               <div className="p-2 sm:p-3 mb-2 sm:mb-3 rounded-lg sm:rounded-xl text-xs sm:text-sm" style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}` }}>{calError}</div>
             )}
             <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2 text-[9px] sm:text-[11px] md:text-xs font-medium mb-1 sm:mb-3">
-              {['S','S','R','K','J','S','M'].map((d, i) => (
+              {['M','T','W','T','F','S','S'].map((d, i) => (
                 <div
                   key={i}
                   className="text-center py-1 sm:py-2 rounded sm:rounded-lg"
