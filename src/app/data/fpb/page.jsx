@@ -15,10 +15,10 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_META = {
   draft:    { label: 'Draft',     color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
-  pending:  { label: 'Menunggu', color: '#d97706', bg: 'rgba(217,119,6,0.12)'   },
-  revision: { label: 'Revisi',   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)'  },
-  approved: { label: 'Disetujui',color: '#059669', bg: 'rgba(5,150,105,0.12)'   },
-  rejected: { label: 'Ditolak',  color: '#dc2626', bg: 'rgba(220,38,38,0.12)'   },
+  pending:  { label: 'Pending',   color: '#d97706', bg: 'rgba(217,119,6,0.12)'   },
+  revision: { label: 'Revision',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)'  },
+  approved: { label: 'Approved',  color: '#059669', bg: 'rgba(5,150,105,0.12)'   },
+  rejected: { label: 'Rejected',  color: '#dc2626', bg: 'rgba(220,38,38,0.12)'   },
 }
 const TYPE_ICONS = { small: faShoppingCart, large: faBoxOpen, repair: faTools }
 const fmt     = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0)
@@ -59,7 +59,7 @@ function ProgressSection({ screeningRow, approvals, fpb, screeningDone, theme })
         style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
       >
         <span style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary, flex: 1 }}>Progress</span>
-        <span style={{ fontSize: 11, color: theme.textSecondary }}>{doneSteps}/{totalSteps} selesai</span>
+        <span style={{ fontSize: 11, color: theme.textSecondary }}>{doneSteps}/{totalSteps} completed</span>
         <span style={{ fontSize: 12, color: theme.textSecondary, display: 'inline-block', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
       </button>
 
@@ -82,10 +82,10 @@ function ProgressSection({ screeningRow, approvals, fpb, screeningDone, theme })
                     {scDone ? '✓' : scRejected ? '✕' : '🔍'}
                   </div>
                   <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>Screening</span>
-                  {scActive   && <span style={{ fontSize: 10, color: '#d97706', fontWeight: 600, marginLeft: 'auto' }}>Menunggu Screener</span>}
-                  {scDone     && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Lolos</span>}
-                  {scRejected && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginLeft: 'auto' }}>Ditolak</span>}
-                  {scRevised  && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600, marginLeft: 'auto' }}>Revisi</span>}
+                  {scActive   && <span style={{ fontSize: 10, color: '#d97706', fontWeight: 600, marginLeft: 'auto' }}>Awaiting Screener</span>}
+                  {scDone     && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Passed</span>}
+                  {scRejected && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginLeft: 'auto' }}>Rejected</span>}
+                  {scRevised  && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600, marginLeft: 'auto' }}>Revision</span>}
                 </div>
                 <div style={{ marginLeft: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
@@ -120,9 +120,9 @@ function ProgressSection({ screeningRow, approvals, fpb, screeningDone, theme })
                       {allDone ? '✓' : stepOrder}
                     </div>
                     <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>{stepName}</span>
-                    {!screeningDone && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>Menunggu screening</span>}
-                    {isActive && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Aktif</span>}
-                    {allDone  && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Selesai</span>}
+                    {!screeningDone && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>Awaiting screening</span>}
+                    {isActive && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Active</span>}
+                    {allDone  && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Done</span>}
                   </div>
                   <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {stepRows.map(ap => {
@@ -244,7 +244,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const handleAction = async () => {
     if (!myPendingApproval) return
     if ((action === 'revision' || action === 'reject') && !comment.trim()) {
-      setError('Komentar wajib diisi untuk revisi / penolakan'); return
+      setError('Comment is required for revision / rejection'); return
     }
     setSaving(true); setError('')
     try {
@@ -284,7 +284,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                     type: 'fpbPendingApproval', to: u.user_email, approverName,
                     fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
                     submitterName, division: fpb.division, grandTotal: fpb.grand_total,
-                    usageDate: fpb.usage_date, stepName: ap.step_name || 'Persetujuan',
+                    usageDate: fpb.usage_date, stepName: ap.step_name || 'Approval',
                   }),
                 })
               }
@@ -315,7 +315,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                       type: 'fpbPendingApproval', to: u.user_email, approverName,
                       fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
                       submitterName, division: fpb.division, grandTotal: fpb.grand_total,
-                      usageDate: fpb.usage_date, stepName: ap.step_name || 'Persetujuan',
+                      usageDate: fpb.usage_date, stepName: ap.step_name || 'Approval',
                     }),
                   })
                 }
@@ -425,7 +425,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const handleSaveScreenerItems = async () => {
     if (!editItems.length) return
     const invalid = editItems.some(i => !i.item_name?.trim() || !i.unit_price || Number(i.unit_price) <= 0)
-    if (invalid) { setError('Semua nama barang dan harga satuan wajib diisi'); return }
+    if (invalid) { setError('All item names and unit prices are required'); return }
     setSavingItems(true); setError('')
     try {
       const newTotal = editItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0)
@@ -481,19 +481,19 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
 
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
-            {loading ? <span style={{ color: theme.textSecondary, fontSize: 14 }}>Memuat...</span> : (
+            {loading ? <span style={{ color: theme.textSecondary, fontSize: 14 }}>Loading...</span> : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 800, fontSize: 16, color: theme.textPrimary }}>{fpb?.fpb_number || '—'}</span>
                 <span style={{ fontSize: 11, color: theme.textSecondary }}>{fpb?.fpb_types?.type_name}</span>
                 {fpb && <StatusBadge status={fpb.status} />}
-                {fpb?.revision_count > 0 && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Revisi ke-{fpb.revision_count}</span>}
+                {fpb?.revision_count > 0 && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Revision #{fpb.revision_count}</span>}
               </div>
             )}
             <div style={{ display: 'flex', gap: 6 }}>
               {fpb && !loading && (
                 <button onClick={() => setPrintFpbId(fpbId)}
                   style={{ background: 'none', border: `1px solid ${theme.border}`, color: theme.textSecondary, cursor: 'pointer', padding: '4px 10px', fontSize: 13, borderRadius: 7, display: 'flex', alignItems: 'center', gap: 5 }}
-                  title="Cetak FPB">
+                  title="Print FPB">
                   <FontAwesomeIcon icon={faPrint} />
                 </button>
               )}
@@ -510,20 +510,20 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                 <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 24 }} />
               </div>
             ) : !fpb ? (
-              <div style={{ textAlign: 'center', padding: 40, color: '#dc2626' }}>FPB tidak ditemukan.</div>
+              <div style={{ textAlign: 'center', padding: 40, color: '#dc2626' }}>FPB not found.</div>
             ) : (
               <>
                 {/* Info bar — compact single row */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 20px', padding: '10px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.subtleBg, fontSize: 12 }}>
                   {[
-                    ['Pengaju', `${fpb.users?.user_nama_depan || ''} ${fpb.users?.user_nama_belakang || ''}`.trim()],
-                    ['Divisi', fpb.division || '—'],
-                    ['Tgl Dibuat', fmtDate(fpb.created_at)],
-                    ['Tgl Kebutuhan', fmtDate(fpb.usage_date)],
+                    ['Requester', `${fpb.users?.user_nama_depan || ''} ${fpb.users?.user_nama_belakang || ''}`.trim()],
+                    ['Division', fpb.division || '—'],
+                    ['Created', fmtDate(fpb.created_at)],
+                    ['Required Date', fmtDate(fpb.usage_date)],
                   ].map(([l, v]) => (
                     <span key={l}><span style={{ color: theme.textSecondary }}>{l}: </span><strong style={{ color: theme.textPrimary }}>{v}</strong></span>
                   ))}
-                  {fpb.note && <span style={{ width: '100%', marginTop: 2 }}><span style={{ color: theme.textSecondary }}>Catatan: </span><span style={{ color: theme.textPrimary }}>{fpb.note}</span></span>}
+                  {fpb.note && <span style={{ width: '100%', marginTop: 2 }}><span style={{ color: theme.textSecondary }}>Note: </span><span style={{ color: theme.textPrimary }}>{fpb.note}</span></span>}
                 </div>
 
                 {/* Items table — editable for screener during screening */}
@@ -533,24 +533,24 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: `1px solid ${screenerEditMode ? '#d97706' : theme.border}`, background: screenerEditMode ? 'rgba(245,158,11,0.05)' : theme.cardBg }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: screenerEditMode ? '#d97706' : theme.textSecondary }}>
-                          🔍 Tabel Barang
+                          🔍 Item List
                         </span>
-                        {screenerEditMode && <span style={{ fontSize: 11, color: '#d97706' }}>— Mode Edit Screener</span>}
+                        {screenerEditMode && <span style={{ fontSize: 11, color: '#d97706' }}>— Screener Edit Mode</span>}
                       </div>
                       {!screenerEditMode ? (
                         <button onClick={() => { setEditItems(items.map(i => ({ ...i, _id: crypto.randomUUID() }))); setScreenerEditMode(true) }}
                           style={{ fontSize: 11, padding: '4px 12px', borderRadius: 6, border: '1px solid #d97706', background: 'rgba(245,158,11,0.08)', color: '#d97706', cursor: 'pointer', fontWeight: 700 }}>
-                          ✏️ Edit Barang
+                          ✏️ Edit Items
                         </button>
                       ) : (
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button onClick={() => { setScreenerEditMode(false); setError('') }}
                             style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, cursor: 'pointer' }}>
-                            Batal
+                            Cancel
                           </button>
                           <button onClick={handleSaveScreenerItems} disabled={savingItems}
                             style={{ fontSize: 11, padding: '4px 12px', borderRadius: 6, border: 'none', background: savedItems ? '#059669' : savingItems ? '#e5e7eb' : '#d97706', color: savingItems ? '#9ca3af' : '#fff', cursor: savingItems ? 'not-allowed' : 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
-                            {savingItems ? '⏳ Menyimpan...' : savedItems ? '✓ Tersimpan!' : '💾 Simpan Perubahan'}
+                            {savingItems ? '⏳ Saving...' : savedItems ? '✓ Saved!' : '💾 Save Changes'}
                           </button>
                         </div>
                       )}
@@ -562,7 +562,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                     <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 620, width: '100%' }}>
                       <thead>
                         <tr style={{ background: 'rgba(245,158,11,0.06)' }}>
-                          {['#', 'Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal', 'Link', ''].map(h => (
+                          {['#', 'Item Name', 'Qty', 'Unit', 'Unit Price', 'Subtotal', 'Link', ''].map(h => (
                             <th key={h} style={{ padding: '7px 8px', textAlign: h === 'Nama Barang' || h === 'Link' ? 'left' : h === '#' || h === '' ? 'center' : 'right', color: '#b45309', fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -608,7 +608,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                           <td colSpan={8} style={{ padding: '6px 8px' }}>
                             <button onClick={() => setEditItems(prev => [...prev, { _id: crypto.randomUUID(), item_name: '', quantity: 1, unit: 'pcs', unit_price: '', seller_url: '' }])}
                               style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px dashed #d97706', background: 'rgba(245,158,11,0.06)', color: '#d97706', cursor: 'pointer', fontWeight: 600 }}>
-                              + Tambah Barang
+                              + Add Item
                             </button>
                             <span style={{ float: 'right', fontWeight: 800, fontSize: 13, color: '#6366f1', padding: '3px 8px' }}>
                               Total: {fmt(editItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0))}
@@ -622,14 +622,14 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                     <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 580, width: '100%' }}>
                       <thead>
                         <tr style={{ background: theme.subtleBg }}>
-                          {['#', 'Nama Barang', 'Qty', 'Sat', 'Harga', 'Subtotal', 'Link'].map(h => (
+                          {['#', 'Item Name', 'Qty', 'Unit', 'Price', 'Subtotal', 'Link'].map(h => (
                             <th key={h} style={{ padding: '7px 10px', textAlign: h === 'Nama Barang' || h === 'Link' ? 'left' : h === '#' ? 'center' : 'right', color: theme.textSecondary, fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {items.length === 0 ? (
-                          <tr><td colSpan={7} style={{ padding: '16px', textAlign: 'center', color: theme.textSecondary, fontStyle: 'italic', fontSize: 12 }}>Tidak ada barang</td></tr>
+                          <tr><td colSpan={7} style={{ padding: '16px', textAlign: 'center', color: theme.textSecondary, fontStyle: 'italic', fontSize: 12 }}>No items found</td></tr>
                         ) : items.map((it, i) => (
                           <tr key={it.item_id} style={{ borderTop: `1px solid ${theme.border}` }}>
                             <td style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary }}>{i + 1}</td>
@@ -660,7 +660,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                 {/* Screener edit audit note */}
                 {itemsEditedByName && (
                   <div style={{ padding: '7px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 11, color: '#92400e', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    ✏️ <strong>Tabel barang diperbarui oleh screener:</strong> {itemsEditedByName}
+                    ✏️ <strong>Item list updated by screener:</strong> {itemsEditedByName}
                     {itemsEditedAt && <span style={{ color: theme.textSecondary, marginLeft: 4 }}>— {fmtDt(itemsEditedAt)}</span>}
                   </div>
                 )}
@@ -673,7 +673,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                     {fpb.budget != null ? fpb.budget : <i>—</i>}
                   </span>
                   <span style={{ color: theme.textSecondary }}>·</span>
-                  <span style={{ fontSize: 11, color: theme.textSecondary }}>Sisa:</span>
+                  <span style={{ fontSize: 11, color: theme.textSecondary }}>Remaining:</span>
                   <span style={{ color: fpb.remaining_budget != null ? '#059669' : theme.textSecondary, fontWeight: 700 }}>
                     {fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : <i>—</i>}
                   </span>
@@ -688,13 +688,13 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                           style={{ padding: '5px 8px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, width: 140 }} />
                       </div>
                       <div>
-                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 3 }}>Sisa Budget (Rp)</div>
+                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 3 }}>Remaining Budget (Rp)</div>
                         <input type="number" min="0" value={remainingVal} onChange={e => setRemainingVal(e.target.value)}
                           style={{ padding: '5px 8px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, width: 140 }} />
                       </div>
-                      <button onClick={() => setEditBudget(false)} style={{ padding: '5px 12px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontSize: 12, cursor: 'pointer' }}>Batal</button>
+                      <button onClick={() => setEditBudget(false)} style={{ padding: '5px 12px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                       <button onClick={handleSaveBudget} disabled={savingBudget} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                        {savingBudget ? '…' : 'Simpan'}
+                        {savingBudget ? '…' : 'Save'}
                       </button>
                     </div>
                   )}
@@ -706,7 +706,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   if (revisionRequests.length === 0) return null
                   return (
                     <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(245,158,11,0.09)', border: '1.5px solid rgba(245,158,11,0.45)' }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>⚠ Permintaan Revisi dari Approver</div>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>⚠ Revision Request from Approver</div>
                       {revisionRequests.map(ap => (
                         <div key={ap.approval_id} style={{ fontSize: 12, marginBottom: revisionRequests.length > 1 ? 8 : 0 }}>
                           <span style={{ fontWeight: 600, color: '#92400e' }}>
@@ -723,7 +723,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                 {revisions.length > 0 && revisions[0].revision_note && (
                   <div style={{ padding: '9px 13px', borderRadius: 9, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.35)', fontSize: 12 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span style={{ fontWeight: 700, color: '#b45309' }}>📝 Revisi ke-{revisions[0].revision_number}</span>
+                      <span style={{ fontWeight: 700, color: '#b45309' }}>📝 Revision #{revisions[0].revision_number}</span>
                       <span style={{ color: '#92400e', fontSize: 11, marginLeft: 'auto' }}>
                         {`${revisions[0].users?.user_nama_depan || ''} ${revisions[0].users?.user_nama_belakang || ''}`.trim()}
                         {revisions[0].revised_at && ` · ${fmtDt(revisions[0].revised_at)}`}
@@ -745,15 +745,15 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                 {/* Action buttons — screener */}
                 {myScreeningPending && (
                   <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid #d97706', background: 'rgba(245,158,11,0.04)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, fontSize: 12, color: '#d97706', flex: 1 }}>🔍 Screening: giliran Anda untuk memverifikasi FPB ini</span>
+                    <span style={{ fontWeight: 700, fontSize: 12, color: '#d97706', flex: 1 }}>🔍 Screening: it's your turn to verify this FPB</span>
                     <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faCheck} />Loloskan
+                      <FontAwesomeIcon icon={faCheck} />Pass
                     </button>
                     <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faRotateLeft} />Revisi
+                      <FontAwesomeIcon icon={faRotateLeft} />Revision
                     </button>
                     <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faTimes} />Tolak
+                      <FontAwesomeIcon icon={faTimes} />Reject
                     </button>
                   </div>
                 )}
@@ -763,13 +763,13 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid #6366f1', background: 'rgba(99,102,241,0.04)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: 12, color: '#6366f1', flex: 1 }}>⚡ Step {fpb.current_step}: {myPendingApproval.step_name}</span>
                     <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faCheck} />Setujui
+                      <FontAwesomeIcon icon={faCheck} />Approve
                     </button>
                     <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faRotateLeft} />Revisi
+                      <FontAwesomeIcon icon={faRotateLeft} />Revision
                     </button>
                     <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faTimes} />Tolak
+                      <FontAwesomeIcon icon={faTimes} />Reject
                     </button>
                   </div>
                 )}
@@ -787,11 +787,11 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                         </div>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 12, color: fpb.procurement_status === 'ordered' ? '#059669' : theme.textPrimary }}>
-                            {fpb.procurement_status === 'ordered' ? '✅ Sudah Dipesan / Dana Diberikan' : '📦 Tandai Pemesanan / Pemberian Dana'}
+                            {fpb.procurement_status === 'ordered' ? '✅ Ordered / Funds Disbursed' : '📦 Mark as Ordered / Funds Disbursed'}
                           </div>
                           {fpb.procurement_status === 'ordered' && (
                             <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
-                              oleh <strong>{`${fpb.procurator?.user_nama_depan || ''} ${fpb.procurator?.user_nama_belakang || ''}`.trim() || 'Admin'}</strong>
+                              by <strong>{`${fpb.procurator?.user_nama_depan || ''} ${fpb.procurator?.user_nama_belakang || ''}`.trim() || 'Admin'}</strong>
                               {fpb.procurement_at && ` · ${fmtDt(fpb.procurement_at)}`}
                             </div>
                           )}
@@ -805,13 +805,13 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                       {fpb.procurement_status !== 'ordered' && (
                         <button onClick={() => setShowProcurementNote(v => !v)}
                           style={{ fontSize: 11, padding: '5px 14px', borderRadius: 7, border: '1px solid #059669', background: showProcurementNote ? '#059669' : 'rgba(5,150,105,0.08)', color: showProcurementNote ? '#fff' : '#059669', cursor: 'pointer', fontWeight: 700, transition: 'all 0.2s' }}>
-                          {showProcurementNote ? 'Tutup' : '📦 Tandai'}
+                          {showProcurementNote ? 'Close' : '📦 Mark'}
                         </button>
                       )}
                       {fpb.procurement_status === 'ordered' && (
                         <button onClick={() => handleToggleProcurement(false)} disabled={savingProcurement}
                           style={{ fontSize: 11, padding: '5px 14px', borderRadius: 7, border: '1px solid #dc2626', background: 'rgba(220,38,38,0.06)', color: '#dc2626', cursor: savingProcurement ? 'not-allowed' : 'pointer', fontWeight: 700 }}>
-                          {savingProcurement ? '⏳' : 'Batalkan'}
+                          {savingProcurement ? '⏳' : 'Cancel'}
                         </button>
                       )}
                     </div>
@@ -819,14 +819,14 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                     {showProcurementNote && fpb.procurement_status !== 'ordered' && (
                       <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, minWidth: 200 }}>
-                          <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Catatan (opsional)</label>
+                          <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Note (optional)</label>
                           <input value={procurementNote} onChange={e => setProcurementNote(e.target.value)}
-                            placeholder="mis: dana transfer ke toko X, tanggal..."
+                            placeholder="e.g. transfer to vendor X, date..."
                             style={{ width: '100%', padding: '6px 10px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, boxSizing: 'border-box' }} />
                         </div>
                         <button onClick={() => handleToggleProcurement(true)} disabled={savingProcurement}
                           style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: savingProcurement ? '#e5e7eb' : '#059669', color: savingProcurement ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 12, cursor: savingProcurement ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
-                          {savingProcurement ? '⏳ Menyimpan...' : '✅ Konfirmasi Pemesanan'}
+                          {savingProcurement ? '⏳ Saving...' : '✅ Confirm Order'}
                         </button>
                       </div>
                     )}
@@ -845,21 +845,21 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 14, width: '100%', maxWidth: 420, padding: 22, boxShadow: '0 12px 48px rgba(0,0,0,0.3)' }}>
             <div style={{ fontWeight: 800, fontSize: 15, color: theme.textPrimary, marginBottom: 14 }}>
-              {action === 'approved' ? '✅ Konfirmasi Persetujuan' : action === 'revision' ? '🔄 Konfirmasi Revisi' : '❌ Konfirmasi Penolakan'}
+              {action === 'approved' ? '✅ Confirm Approval' : action === 'revision' ? '🔄 Confirm Revision' : '❌ Confirm Rejection'}
             </div>
             <div style={{ padding: '9px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, marginBottom: 12, background: action === 'approved' ? 'rgba(5,150,105,0.08)' : action === 'revision' ? 'rgba(245,158,11,0.08)' : 'rgba(220,38,38,0.08)', color: action === 'approved' ? '#065f46' : action === 'revision' ? '#92400e' : '#991b1b', border: `1px solid ${action === 'approved' ? 'rgba(5,150,105,0.25)' : action === 'revision' ? 'rgba(245,158,11,0.25)' : 'rgba(220,38,38,0.25)'}` }}>
               {action === 'approved'
-                ? (myScreeningPending ? `Loloskan screening FPB ${fpb?.fpb_number} — FPB akan lanjut ke approver` : `Setujui FPB ${fpb?.fpb_number} — Step ${fpb?.current_step}`)
-                : action === 'revision' ? `Minta revisi FPB ${fpb?.fpb_number}. Pengaju akan diminta memperbaiki.`
-                : `Tolak FPB ${fpb?.fpb_number}. Tindakan tidak dapat dibatalkan.`}
+                ? (myScreeningPending ? `Pass screening for FPB ${fpb?.fpb_number} — FPB will proceed to approvers` : `Approve FPB ${fpb?.fpb_number} — Step ${fpb?.current_step}`)
+                : action === 'revision' ? `Request revision for FPB ${fpb?.fpb_number}. The requester will be asked to make corrections.`
+                : `Reject FPB ${fpb?.fpb_number}. This action cannot be undone.`}
             </div>
             {action !== 'approved' && (
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>
-                  {action === 'revision' ? 'Yang perlu direvisi *' : 'Alasan penolakan *'}
+                  {action === 'revision' ? 'What needs to be revised *' : 'Reason for rejection *'}
                 </label>
                 <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} autoFocus
-                  placeholder={action === 'revision' ? 'Jelaskan apa yang perlu direvisi...' : 'Jelaskan alasan penolakan...'}
+                  placeholder={action === 'revision' ? 'Explain what needs to be revised...' : 'Explain the reason for rejection...'}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
             )}
@@ -867,11 +867,11 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { if (!saving) { setShowActionModal(false); setAction(null); setComment(''); setError('') } }} disabled={saving}
                 style={{ padding: '8px 18px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                Batal
+                Cancel
               </button>
               <button onClick={handleAction} disabled={saving}
                 style={{ padding: '8px 22px', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 12, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? '#e5e7eb' : action === 'approved' ? '#059669' : action === 'revision' ? '#f59e0b' : '#dc2626', color: saving ? '#9ca3af' : '#fff' }}>
-                {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 5 }} />Memproses...</> : action === 'approved' ? 'Setujui' : action === 'revision' ? 'Minta Revisi' : 'Tolak'}
+                {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 5 }} />Processing...</> : action === 'approved' ? 'Approve' : action === 'revision' ? 'Request Revision' : 'Reject'}
               </button>
             </div>
           </div>
@@ -920,10 +920,10 @@ function buildPrintHtml(fpb, items, approvals) {
     const actorName = ap.approver_order === 0 && ap.approver_user_id
       ? ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim()
       : null
-    const dateStr = ap.status === 'approved' ? fmtD(ap.action_at) : ap.status === 'rejected' ? '(Ditolak)' : ap.status === 'revision' ? '(Revisi)' : '(Menunggu)'
+    const dateStr = ap.status === 'approved' ? fmtD(ap.action_at) : ap.status === 'rejected' ? '(Rejected)' : ap.status === 'revision' ? '(Revision)' : '(Pending)'
     return `<td style="border:1px solid #9ca3af;padding:8px;text-align:center;min-width:100px;${ap.approver_order === 0 ? 'background:#fffbeb;' : ''}">
       <div style="font-weight:600;color:${ap.status === 'approved' ? '#111827' : '#9ca3af'}">${name}</div>
-      ${actorName ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">oleh: ${actorName}</div>` : ''}
+      ${actorName ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">by: ${actorName}</div>` : ''}
       <div style="font-size:11px;margin-top:4px;color:${ap.status === 'approved' ? '#374151' : '#d1d5db'}">${dateStr}</div>
     </td>`
   }
@@ -958,7 +958,7 @@ function buildPrintHtml(fpb, items, approvals) {
         </td>
         <td style="vertical-align:middle;padding-left:14px">
           <div style="font-weight:800;font-size:16px">Chung Chung Christian School</div>
-          <div style="font-weight:700;font-size:14px;margin-top:3px">FPB (Form Permohonan Barang)</div>
+          <div style="font-weight:700;font-size:14px;margin-top:3px">FPB (Purchase Request Form)</div>
         </td>
       </tr>
     </table>
@@ -976,8 +976,8 @@ function buildPrintHtml(fpb, items, approvals) {
           <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:center;font-weight:700">No</th>
           <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:left;font-weight:700">Item</th>
           <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Qty</th>
-          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Sat</th>
-          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Harga</th>
+          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Unit</th>
+          <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Price</th>
           <th style="border:1px solid #9ca3af;padding:6px 8px;text-align:right;font-weight:700">Subtotal</th>
         </tr>
       </thead>
@@ -1060,11 +1060,11 @@ function PrintFpbModal({ fpbId, onClose }) {
       <div style={{ position: 'fixed', top: 16, right: 24, display: 'flex', gap: 8, zIndex: 2001 }}>
         <button onClick={handlePrint} disabled={loading || !fpb}
           style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: loading ? '#a5b4fc' : '#6366f1', color: '#fff', fontWeight: 700, fontSize: 13, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <FontAwesomeIcon icon={faPrint} /> {loading ? 'Memuat...' : 'Cetak'}
+          <FontAwesomeIcon icon={faPrint} /> {loading ? 'Loading...' : 'Print'}
         </button>
         <button onClick={onClose}
           style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-          Tutup
+          Close
         </button>
       </div>
 
@@ -1073,7 +1073,7 @@ function PrintFpbModal({ fpbId, onClose }) {
         {loading ? (
           <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}><FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 28 }} /></div>
         ) : !fpb ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#dc2626' }}>FPB tidak ditemukan.</div>
+          <div style={{ textAlign: 'center', padding: 60, color: '#dc2626' }}>FPB not found.</div>
         ) : (
           <>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
@@ -1086,7 +1086,7 @@ function PrintFpbModal({ fpbId, onClose }) {
                 </td>
                 <td style={{ verticalAlign: 'middle', paddingLeft: 14 }}>
                   <div style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>Chung Chung Christian School</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', marginTop: 3 }}>FPB (Form Permohonan Barang)</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', marginTop: 3 }}>FPB (Purchase Request Form)</div>
                 </td>
               </tr></tbody></table>
               <hr style={{ border: 'none', borderTop: '2px solid #111827', marginBottom: 14 }} />
@@ -1099,7 +1099,7 @@ function PrintFpbModal({ fpbId, onClose }) {
               </tbody></table>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 16 }}>
                 <thead><tr style={{ background: '#f3f4f6' }}>
-                  {['No','Item','Qty','Sat','Harga','Subtotal'].map((h, i) => (
+                  {['No','Item','Qty','Unit','Price','Subtotal'].map((h, i) => (
                     <th key={h} style={{ border: '1px solid #9ca3af', padding: '6px 8px', textAlign: i === 0 ? 'center' : i === 1 ? 'left' : 'right', fontWeight: 700 }}>{h}</th>
                   ))}
                 </tr></thead>
@@ -1148,7 +1148,7 @@ function PrintFpbModal({ fpbId, onClose }) {
                       <td key={ap.approval_id} style={{ border: '1px solid #9ca3af', padding: '8px', textAlign: 'center', minWidth: 100 }}>
                         <div style={{ fontWeight: 600, color: ap.status === 'approved' ? '#111827' : '#9ca3af' }}>{name}</div>
                         <div style={{ fontSize: 11, marginTop: 4, color: ap.status === 'approved' ? '#374151' : '#d1d5db' }}>
-                          {ap.status === 'approved' ? fmtDatePrint(ap.action_at) : ap.status === 'rejected' ? '(Ditolak)' : ap.status === 'revision' ? '(Revisi)' : '(Menunggu)'}
+                          {ap.status === 'approved' ? fmtDatePrint(ap.action_at) : ap.status === 'rejected' ? '(Rejected)' : ap.status === 'revision' ? '(Revision)' : '(Pending)'}
                         </div>
                       </td>
                     )
@@ -1163,10 +1163,10 @@ function PrintFpbModal({ fpbId, onClose }) {
 
       {!loading && pendingApprovers.length > 0 && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#fffbeb', border: '1.5px solid #f59e0b', borderRadius: 12, padding: '12px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', maxWidth: 300, zIndex: 2001 }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>Belum selesai disetujui</div>
+          <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>Approval Incomplete</div>
           {pendingApprovers.map(ap => (
             <div key={ap.approval_id} style={{ fontSize: 11, color: '#374151', marginBottom: 2 }}>
-              - {((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim()} ({ap.status === 'revision' ? 'Diminta Revisi' : 'Menunggu Approval'})
+              - {((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim()} ({ap.status === 'revision' ? 'Revision Requested' : 'Pending Approval'})
             </div>
           ))}
         </div>
@@ -1232,11 +1232,11 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
   const handleSave = async () => {
     setError('')
     // Validate
-    if (!usageDate) { setError('Tanggal kebutuhan wajib diisi'); return }
-    if (editItems.length === 0) { setError('Minimal 1 barang harus ada'); return }
+    if (!usageDate) { setError('Required date is required'); return }
+    if (editItems.length === 0) { setError('At least 1 item is required'); return }
     for (const it of editItems) {
-      if (!it.item_name.trim()) { setError('Nama barang tidak boleh kosong'); return }
-      if (!Number(it.quantity) || Number(it.quantity) <= 0) { setError('Qty harus > 0'); return }
+      if (!it.item_name.trim()) { setError('Item name cannot be empty'); return }
+      if (!Number(it.quantity) || Number(it.quantity) <= 0) { setError('Qty must be > 0'); return }
     }
     setSaving(true)
     try {
@@ -1291,7 +1291,7 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
               ✏️ Edit FPB {fpb?.fpb_number}
             </div>
             <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-              {fpb?.status === 'revision' ? '🔄 FPB perlu direvisi — ubah data lalu submit ulang' : 'Edit data FPB'}
+              {fpb?.status === 'revision' ? '🔄 FPB needs revision — update and resubmit' : 'Edit FPB data'}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: 6, fontSize: 18 }}>
@@ -1304,29 +1304,29 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
           {loading ? (
             <div style={{ textAlign: 'center', padding: 48 }}>
               <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 28, color: theme.textSecondary }} />
-              <p style={{ marginTop: 12, color: theme.textSecondary }}>Memuat data...</p>
+              <p style={{ marginTop: 12, color: theme.textSecondary }}>Loading data...</p>
             </div>
           ) : (
             <>
               {/* Revision comment banner (if revision status) */}
               {fpb?.status === 'revision' && revisions.length > 0 && revisions[0].revision_note === null && revisions.find(r => r.revision_note) && (
                 <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1.5px solid rgba(245,158,11,0.4)' }}>
-                  <div style={{ fontWeight: 700, color: '#b45309', fontSize: 13, marginBottom: 4 }}>📝 Komentar Approver</div>
+                  <div style={{ fontWeight: 700, color: '#b45309', fontSize: 13, marginBottom: 4 }}>📝 Approver Comment</div>
                   <p style={{ margin: 0, fontSize: 13, color: '#78350f' }}>{revisions.find(r => r.revision_note)?.revision_note}</p>
                 </div>
               )}
 
               {/* Informasi Umum */}
               <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary, marginBottom: 14 }}>Informasi Umum</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary, marginBottom: 14 }}>General Information</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Tanggal Kebutuhan *</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Required Date *</label>
                     <input type="date" value={usageDate} onChange={e => setUsageDate(e.target.value)} style={inp} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Catatan (opsional)</label>
-                    <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Catatan tambahan..." style={inp} />
+                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Note (optional)</label>
+                    <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Additional notes..." style={inp} />
                   </div>
                 </div>
               </div>
@@ -1334,12 +1334,12 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
               {/* Daftar Barang — editable */}
               <div style={{ borderRadius: 12, border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>Daftar Barang</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>Item List</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontSize: 12, color: '#6366f1', fontWeight: 700 }}>Total: {fmt(grandTotal)}</span>
                     <button onClick={() => setEditItems(prev => [...prev, { _id: crypto.randomUUID(), item_name: '', quantity: '1', unit: 'pcs', unit_price: '', seller_url: '' }])}
                       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                      <FontAwesomeIcon icon={faPlus} /> Tambah Barang
+                      <FontAwesomeIcon icon={faPlus} /> Add Item
                     </button>
                   </div>
                 </div>
@@ -1356,7 +1356,7 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
                     </colgroup>
                     <thead>
                       <tr style={{ background: theme.subtleBg }}>
-                        {['Nama Barang *', 'Qty *', 'Satuan', 'Harga Satuan (Rp)', 'Subtotal', 'Link Referensi', ''].map(h => (
+                        {['Item Name *', 'Qty *', 'Unit', 'Unit Price (Rp)', 'Subtotal', 'Reference Link', ''].map(h => (
                           <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>{h}</th>
                         ))}
                       </tr>
@@ -1366,7 +1366,7 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
                         <tr key={item._id} style={{ borderBottom: `1px solid ${theme.border}` }}>
                           <td style={{ padding: '6px 8px' }}>
                             <input value={item.item_name} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, item_name: e.target.value } : x))}
-                              placeholder="Nama barang..."
+                              placeholder="Item name..."
                               style={{ ...inp, padding: '5px 8px', border: `1px solid ${!item.item_name ? '#fca5a5' : theme.border}` }} />
                           </td>
                           <td style={{ padding: '6px 6px' }}>
@@ -1416,10 +1416,10 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
               {/* Revision note (only if status = revision) */}
               {fpb?.status === 'revision' && (
                 <div style={{ padding: '16px 18px', borderRadius: 12, border: '1.5px solid #f59e0b', background: 'rgba(245,158,11,0.04)' }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#f59e0b', marginBottom: 8 }}>🔄 Catatan Revisi (opsional)</div>
-                  <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>Jelaskan apa yang Anda ubah pada revisi ini.</p>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#f59e0b', marginBottom: 8 }}>🔄 Revision Note (optional)</div>
+                  <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>Describe what you changed in this revision.</p>
                   <textarea value={revNote} onChange={e => setRevNote(e.target.value)} rows={2}
-                    placeholder="Apa yang Anda ubah..."
+                    placeholder="What did you change..."
                     style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }} />
                 </div>
               )}
@@ -1433,11 +1433,11 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
         {!loading && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 24px', borderTop: `1px solid ${theme.border}`, flexShrink: 0, background: theme.cardBg }}>
             <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-              Batal
+              Cancel
             </button>
             <button onClick={handleSave} disabled={saving}
               style={{ padding: '10px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? '#e5e7eb' : fpb?.status === 'revision' ? '#f59e0b' : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: saving ? '#9ca3af' : '#fff' }}>
-              {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Menyimpan...</> : fpb?.status === 'revision' ? '📤 Simpan & Submit Ulang' : '💾 Simpan Perubahan'}
+              {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Saving...</> : fpb?.status === 'revision' ? '📤 Save & Resubmit' : '💾 Save Changes'}
             </button>
           </div>
         )}
@@ -1468,20 +1468,20 @@ function DeleteConfirmModal({ fpb, onClose, theme, onSuccess }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 16, width: '100%', maxWidth: 440, padding: 28, boxShadow: '0 12px 48px rgba(0,0,0,0.3)' }}>
         <div style={{ fontSize: 40, textAlign: 'center', marginBottom: 16 }}>🗑️</div>
-        <div style={{ fontWeight: 800, fontSize: 17, color: theme.textPrimary, textAlign: 'center', marginBottom: 8 }}>Hapus FPB?</div>
+        <div style={{ fontWeight: 800, fontSize: 17, color: theme.textPrimary, textAlign: 'center', marginBottom: 8 }}>Delete FPB?</div>
         <p style={{ fontSize: 13, color: theme.textSecondary, textAlign: 'center', marginBottom: 18, lineHeight: 1.6 }}>
-          Anda akan menghapus <strong style={{ color: theme.textPrimary }}>{fpb.fpb_number}</strong>.<br />
-          Tindakan ini <strong style={{ color: '#dc2626' }}>tidak dapat dibatalkan</strong>.
+          You are about to delete <strong style={{ color: theme.textPrimary }}>{fpb.fpb_number}</strong>.<br />
+          This action <strong style={{ color: '#dc2626' }}>cannot be undone</strong>.
         </p>
         {error && <p style={{ color: '#dc2626', fontSize: 12, marginBottom: 12, textAlign: 'center' }}>⚠ {error}</p>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
           <button onClick={onClose} disabled={deleting}
             style={{ padding: '10px 24px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-            Batal
+            Cancel
           </button>
           <button onClick={handleDelete} disabled={deleting}
             style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: deleting ? '#e5e7eb' : '#dc2626', color: deleting ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 13, cursor: deleting ? 'not-allowed' : 'pointer' }}>
-            {deleting ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Menghapus...</> : '🗑 Ya, Hapus'}
+            {deleting ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Deleting...</> : '🗑 Yes, Delete'}
           </button>
         </div>
       </div>
@@ -1544,9 +1544,9 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
 
   const validate = () => {
     const e = {}
-    if (!usageDate) e.usageDate = 'Tanggal kebutuhan wajib diisi'
-    if (items.some(i => !i.item_name.trim())) e.items = 'Semua nama barang wajib diisi'
-    if (items.some(i => !i.unit_price || Number(i.unit_price) <= 0)) e.items = 'Semua harga satuan wajib diisi'
+    if (!usageDate) e.usageDate = 'Required date is required'
+    if (items.some(i => !i.item_name.trim())) e.items = 'All item names are required'
+    if (items.some(i => !i.unit_price || Number(i.unit_price) <= 0)) e.items = 'All unit prices are required'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -1556,7 +1556,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
     setSaving(true)
     try {
       const uid = parseInt(localStorage.getItem('kr_id'))
-      if (!uid) throw new Error('Tidak terautentikasi')
+      if (!uid) throw new Error('Not authenticated')
       const now   = new Date()
       const year  = now.getFullYear()
       const month = now.getMonth() + 1
@@ -1567,19 +1567,19 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
       // Get submitter's role
       const { data: submitter } = await supabase.from('users')
         .select('user_role_id').eq('user_id', uid).single()
-      if (!submitter?.user_role_id) throw new Error('Jabatan (role) Anda belum dikonfigurasi. Hubungi administrator.')
+      if (!submitter?.user_role_id) throw new Error('Your role is not configured. Please contact the administrator.')
 
       // Get approvers for submitter's role
       const { data: ra } = await supabase.from('fpb_role_approvers')
         .select('*').eq('role_id', submitter.user_role_id).single()
-      if (!ra?.approver1_id) throw new Error('Approver untuk jabatan Anda belum dikonfigurasi. Hubungi administrator untuk mengatur di Pengaturan FPB.')
+      if (!ra?.approver1_id) throw new Error('Approver for your role is not configured. Please contact the administrator to set up approvers in FPB Settings.')
 
       // Build approval rows — 1 per approver, sequential order
       const approverIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
       const approvalRows = approverIds.map((approverId, idx) => ({
         fpb_id:           null,
         step_order:       1,
-        step_name:        'Persetujuan',
+        step_name:        'Approval',
         approver_user_id: approverId,
         approver_role_id: submitter.user_role_id,
         approver_order:   idx + 1,
@@ -1625,7 +1625,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         if (fpbErr.code === '23505') { attempt++; continue }
         throw fpbErr
       }
-      if (!fpb) throw new Error('Gagal membuat nomor FPB unik. Silakan coba lagi.')
+      if (!fpb) throw new Error('Failed to generate a unique FPB number. Please try again.')
 
       const { error: itemErr } = await supabase.from('fpb_items').insert(
         items.map(i => ({ fpb_id: fpb.fpb_id, item_name: i.item_name.trim(), quantity: Number(i.quantity), unit: i.unit, unit_price: Number(i.unit_price), seller_url: i.seller_url?.trim() || null }))
@@ -1640,7 +1640,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
       setDone({ fpb_id: fpb.fpb_id, fpb_number: fpbNumber })
       onSuccess()
     } catch (e) {
-      setErrors({ submit: e.message || 'Gagal menyimpan FPB' })
+      setErrors({ submit: e.message || 'Failed to save FPB' })
     } finally { setSaving(false) }
   }
 
@@ -1652,9 +1652,9 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 17, color: theme.textPrimary }}>
-              {done ? 'FPB Berhasil Diajukan' : step === 1 ? 'Buat FPB Baru' : `Buat FPB — ${selType?.type_name}`}
+              {done ? 'FPB Submitted Successfully' : step === 1 ? 'Create New FPB' : `Create FPB — ${selType?.type_name}`}
             </div>
-            {!done && <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 3 }}>{step === 1 ? 'Pilih jenis formulir pembelian' : selType?.description}</div>}
+            {!done && <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 3 }}>{step === 1 ? 'Select the type of purchase form' : selType?.description}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {!done && (
@@ -1676,16 +1676,16 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
               <div style={{ fontSize: 32, flexShrink: 0, lineHeight: 1 }}>🔒</div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 15, color: '#92400e', marginBottom: 6 }}>
-                  Pengajuan FPB belum dapat diproses
+                  FPB request cannot be processed yet
                 </div>
                 <p style={{ fontSize: 13, color: '#78350f', margin: '0 0 10px', lineHeight: 1.6 }}>
                   {approverStatus === 'no_role'
-                    ? 'Jabatan (role) Anda belum dikonfigurasi di sistem. Hubungi administrator untuk mengatur jabatan akun Anda.'
-                    : `Approver untuk jabatan ${userRoleName ? `"${userRoleName}"` : 'Anda'} belum diatur oleh administrator. Pengajuan FPB tidak dapat diproses sampai administrator mengkonfigurasi approver di menu Pengaturan FPB.`
+                    ? 'Your role has not been configured in the system. Please contact the administrator to set up your account role.'
+                    : `The approver for role ${userRoleName ? `"${userRoleName}"` : 'your position'} has not been set by the administrator. FPB requests cannot be processed until the administrator configures approvers in FPB Settings.`
                   }
                 </p>
                 <div style={{ fontSize: 12, color: '#92400e', fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.15)', display: 'inline-block' }}>
-                  ⚙️ Admin: buka <strong>Pengaturan → Approval FPB</strong> untuk mengkonfigurasi approver
+                  ⚙️ Admin: go to <strong>Settings → FPB Approval</strong> to configure approvers
                 </div>
               </div>
             </div>
@@ -1695,10 +1695,10 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
               <div style={{ fontWeight: 800, fontSize: 18, color: theme.textPrimary, marginBottom: 8 }}>{done.fpb_number}</div>
-              <div style={{ fontSize: 14, color: theme.textSecondary, marginBottom: 28 }}>FPB berhasil diajukan dan menunggu proses approval.</div>
+              <div style={{ fontSize: 14, color: theme.textSecondary, marginBottom: 28 }}>FPB submitted successfully and is awaiting approval.</div>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                <button onClick={onClose} style={{ padding: '10px 24px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Tutup</button>
-                <a href={`/data/fpb/${done.fpb_id}`} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', textDecoration: 'none' }}>Lihat Detail FPB →</a>
+                <button onClick={onClose} style={{ padding: '10px 24px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Close</button>
+                <a href={`/data/fpb/${done.fpb_id}`} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', textDecoration: 'none' }}>View FPB Details →</a>
               </div>
             </div>
           )}
@@ -1713,7 +1713,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
                   <div style={{ fontSize: 26, marginBottom: 10, color: '#6366f1' }}><FontAwesomeIcon icon={TYPE_ICONS[t.type_code] || faShoppingCart} /></div>
                   <div style={{ fontWeight: 800, fontSize: 14, color: theme.textPrimary, marginBottom: 5 }}>{t.type_name}</div>
                   <div style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 1.5 }}>{t.description}</div>
-                  {t.max_amount && <div style={{ marginTop: 10, padding: '3px 9px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontSize: 11, fontWeight: 700, width: 'fit-content' }}>Maks {fmt(t.max_amount)}</div>}
+                  {t.max_amount && <div style={{ marginTop: 10, padding: '3px 9px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontSize: 11, fontWeight: 700, width: 'fit-content' }}>Max {fmt(t.max_amount)}</div>}
                 </button>
               ))}
             </div>
@@ -1721,14 +1721,14 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
           {!done && step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary, marginBottom: 14 }}>Informasi Umum</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary, marginBottom: 14 }}>General Information</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Divisi / Unit</label>
-                    <div style={{ ...inputStyle, background: theme.subtleBg, color: theme.textSecondary }}>{division || <span style={{ fontStyle: 'italic' }}>Unit tidak ditemukan</span>}</div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Division / Unit</label>
+                    <div style={{ ...inputStyle, background: theme.subtleBg, color: theme.textSecondary }}>{division || <span style={{ fontStyle: 'italic' }}>Unit not found</span>}</div>
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Tanggal Kebutuhan <span style={{ color: '#dc2626' }}>*</span></label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Required Date <span style={{ color: '#dc2626' }}>*</span></label>
                     <input type="date" value={usageDate} onChange={e => setUsageDate(e.target.value)} style={inputStyle} min={new Date().toISOString().slice(0, 10)} />
                     {errors.usageDate && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{errors.usageDate}</p>}
                   </div>
@@ -1736,9 +1736,9 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
               </div>
               <div style={{ borderRadius: 12, border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary }}>Daftar Barang</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary }}>Item List</div>
                   <button onClick={addItem} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                    <FontAwesomeIcon icon={faPlus} /> Tambah Barang
+                    <FontAwesomeIcon icon={faPlus} /> Add Item
                   </button>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
@@ -1754,7 +1754,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
                     </colgroup>
                     <thead>
                       <tr style={{ background: theme.subtleBg }}>
-                        {['Nama Barang', 'Qty', 'Satuan', 'Harga Satuan', 'Subtotal', 'Link Referensi', ''].map(h => (
+                        {['Item Name', 'Qty', 'Unit', 'Unit Price', 'Subtotal', 'Reference Link', ''].map(h => (
                           <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden' }}>{h}</th>
                         ))}
                       </tr>
@@ -1763,7 +1763,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
                       {items.map(item => (
                         <tr key={item._id} style={{ borderBottom: `1px solid ${theme.border}` }}>
                           <td style={{ padding: '7px 8px' }}>
-                            <input value={item.item_name} onChange={e => updateItem(item._id, 'item_name', e.target.value)} placeholder="Nama barang..." style={{ ...inputStyle, padding: '5px 8px', width: '100%' }} />
+                            <input value={item.item_name} onChange={e => updateItem(item._id, 'item_name', e.target.value)} placeholder="Item name..." style={{ ...inputStyle, padding: '5px 8px', width: '100%' }} />
                           </td>
                           <td style={{ padding: '7px 6px' }}>
                             <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item._id, 'quantity', e.target.value)} style={{ ...inputStyle, padding: '5px 6px', textAlign: 'center', width: '100%', minWidth: 44 }} />
@@ -1804,10 +1804,10 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
                 </div>
                 {errors.items && <p style={{ padding: '6px 14px', color: '#dc2626', fontSize: 12 }}>{errors.items}</p>}
               </div>
-              {exceeds && <div style={{ padding: '11px 15px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13, fontWeight: 600 }}>⚠ Grand total melebihi batas maksimum {fmt(selType?.max_amount)} untuk tipe FPB ini.</div>}
+              {exceeds && <div style={{ padding: '11px 15px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13, fontWeight: 600 }}>⚠ Grand total exceeds the maximum limit of {fmt(selType?.max_amount)} for this FPB type.</div>}
               <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary, marginBottom: 10 }}>Catatan (Opsional)</div>
-                <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Tambahkan catatan atau keterangan tambahan..." style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
+                <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary, marginBottom: 10 }}>Note (Optional)</div>
+                <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Add notes or additional information..." style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
               </div>
               {errors.submit && <div style={{ padding: '11px 15px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>⚠ {errors.submit}</div>}
             </div>
@@ -1816,10 +1816,10 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         {!done && step === 2 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 24px', borderTop: `1px solid ${theme.border}`, flexShrink: 0, background: theme.cardBg }}>
             <button onClick={() => setStep(1)} style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-              <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: 6 }} />Kembali
+              <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: 6 }} />Back
             </button>
             <button onClick={handleSubmit} disabled={saving || exceeds} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, background: saving || exceeds ? theme.subtleBg : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: saving || exceeds ? theme.textSecondary : '#fff', cursor: saving || exceeds ? 'not-allowed' : 'pointer', boxShadow: saving || exceeds ? 'none' : '0 2px 12px rgba(99,102,241,0.35)' }}>
-              {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Menyimpan...</> : '📤 Submit FPB'}
+              {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Saving...</> : '📤 Submit FPB'}
             </button>
           </div>
         )}
@@ -1879,72 +1879,95 @@ export default function FpbListPage() {
       setCanExport(isSOB)
       setIsScreenerOrBudget(isSOB)
 
-      // Step 1a: My regular pending approval rows (by user_id)
+      // Step 1a: ALL my regular approval rows (any status, to get full picture)
       const { data: myApprovals } = await supabase
         .from('fpb_approvals')
-        .select('approval_id, fpb_id, step_order, step_name, approver_order, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
-        .eq('approver_user_id', uid).eq('status', 'pending')
+        .select('approval_id, fpb_id, step_order, step_name, approver_order, status, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
+        .eq('approver_user_id', uid)
 
-      // Step 1b: Screening rows pending for my role (role-based screener, approver_order=0)
+      // Step 1b: Screening rows for my role (role-based screener, approver_order=0)
       const { data: myScreeningApprovals } = myRoleId ? await supabase
         .from('fpb_approvals')
-        .select('approval_id, fpb_id, step_order, step_name, approver_order, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
-        .eq('approver_role_id', myRoleId).eq('approver_order', 0).eq('status', 'pending')
+        .select('approval_id, fpb_id, step_order, step_name, approver_order, status, fpb(fpb_id, fpb_number, status, grand_total, usage_date, division, current_step, fpb_types(type_name), submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang))')
+        .eq('approver_role_id', myRoleId).eq('approver_order', 0)
         : { data: [] }
 
-      // Combine and deduplicate by fpb_id (screener rows take priority if duplicate)
+      // Combine all my approval rows
       const allMyApprovals = [...(myApprovals || []), ...(myScreeningApprovals || [])]
 
-      // Filter: only FPBs at the correct current step with status pending
-      const candidates = allMyApprovals.filter(
-        a => a.fpb?.current_step === a.step_order && a.fpb?.status === 'pending'
+      // Only show FPBs that are still "pending" (active, not yet fully resolved)
+      const activeCandidates = allMyApprovals.filter(
+        a => a.fpb?.status === 'pending'
       )
 
-      if (!candidates.length) {
+      if (!activeCandidates.length) {
         setPending([])
       } else {
-        // Step 2: Fetch ALL approvals for those FPBs (need approval_id + status of each row in the step)
-        const fpbIds = [...new Set(candidates.map(c => c.fpb_id))]
+        // Fetch ALL approvals for those FPBs to determine ordering
+        const fpbIds = [...new Set(activeCandidates.map(c => c.fpb_id))]
         const { data: allStepApprovals } = await supabase
           .from('fpb_approvals')
           .select('approval_id, fpb_id, step_order, approver_order, status')
           .in('fpb_id', fpbIds)
 
-        // Step 3: Sequential check — screener (order=0) has no blockers; regular approvers blocked by screener
-        const pending = candidates
-          .filter(a => {
-            const allInStep = (allStepApprovals || []).filter(
-              ap => ap.fpb_id === a.fpb_id && ap.step_order === a.step_order
-            )
-            // Screener (order=0) is always first — no blockers
-            if (a.approver_order === 0) return true
-            // Regular approvers: check if screener (order=0) has approved first
-            const screenerRow = allInStep.find(ap => ap.approver_order === 0)
-            if (screenerRow && screenerRow.status !== 'approved') return false // screening not done yet
-            // Then check sequential order among regular approvers
-            const regularInStep = allInStep.filter(ap => ap.approver_order !== 0)
-            const hasOrder = regularInStep.every(ap => ap.approver_order != null)
-            let myPos, blockers
-            if (hasOrder) {
-              myPos = a.approver_order ?? 1
-              blockers = regularInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
-            } else {
-              const sorted = [...regularInStep].sort((x, y) => x.approval_id - y.approval_id)
-              myPos = sorted.findIndex(ap => ap.approval_id === a.approval_id)
-              if (myPos <= 0) return true
-              blockers = sorted.slice(0, myPos).filter(ap => ap.status !== 'approved')
-            }
-            return blockers.length === 0
-          })
-          .map(a => ({ ...a.fpb, my_step: a.step_order, my_step_name: a.step_name }))
+        // Determine for each candidate: is it truly their turn (can act) or just viewable?
+        const pendingWithWaiting = activeCandidates.map(a => {
+          // If my own approval row is already actioned (not pending), skip
+          if (a.status !== 'pending') return null
 
-        const seen = new Set()
-        const uniquePending = pending.filter(f => {
-          if (seen.has(f.fpb_id)) return false
-          seen.add(f.fpb_id)
-          return true
-        })
-        setPending(uniquePending)
+          const allInStep = (allStepApprovals || []).filter(
+            ap => ap.fpb_id === a.fpb_id && ap.step_order === a.step_order
+          )
+
+          let isMyTurn = false
+
+          // Screener (order=0) is always first — no blockers
+          if (a.approver_order === 0) {
+            isMyTurn = a.fpb?.current_step === a.step_order
+          } else {
+            // Check if it's the current step
+            if (a.fpb?.current_step !== a.step_order) {
+              isMyTurn = false
+            } else {
+              // Regular approvers: check if screener (order=0) has approved first
+              const screenerRow = allInStep.find(ap => ap.approver_order === 0)
+              if (screenerRow && screenerRow.status !== 'approved') {
+                isMyTurn = false
+              } else {
+                // Then check sequential order among regular approvers
+                const regularInStep = allInStep.filter(ap => ap.approver_order !== 0)
+                const hasOrder = regularInStep.every(ap => ap.approver_order != null)
+                let blockers
+                if (hasOrder) {
+                  const myPos = a.approver_order ?? 1
+                  blockers = regularInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
+                } else {
+                  const sorted = [...regularInStep].sort((x, y) => x.approval_id - y.approval_id)
+                  const myPos = sorted.findIndex(ap => ap.approval_id === a.approval_id)
+                  blockers = myPos > 0 ? sorted.slice(0, myPos).filter(ap => ap.status !== 'approved') : []
+                }
+                isMyTurn = blockers.length === 0
+              }
+            }
+          }
+
+          return {
+            ...a.fpb,
+            my_step: a.step_order,
+            my_step_name: a.step_name,
+            is_waiting: !isMyTurn, // true = visible but not yet actionable
+          }
+        }).filter(Boolean)
+
+        // Deduplicate by fpb_id — prefer actionable (is_waiting=false) entries
+        const seen = new Map()
+        for (const f of pendingWithWaiting) {
+          const existing = seen.get(f.fpb_id)
+          if (!existing || (existing.is_waiting && !f.is_waiting)) {
+            seen.set(f.fpb_id, f)
+          }
+        }
+        setPending([...seen.values()])
       }
 
       // Tab 3: History
@@ -1986,8 +2009,8 @@ export default function FpbListPage() {
     if (uid) fetchAll(uid)
   }
 
-  const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
-  const STATUS_LABEL = { pending: 'Menunggu Approval', approved: 'Disetujui', rejected: 'Ditolak', revision: 'Revisi', draft: 'Draft' }
+  const MONTHS_ID = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  const STATUS_LABEL = { pending: 'Pending Approval', approved: 'Approved', rejected: 'Rejected', revision: 'Revision', draft: 'Draft' }
 
   const handleExport = async () => {
     setExportLoading(true); setExportError('')
@@ -2004,7 +2027,7 @@ export default function FpbListPage() {
         .lt('created_at', endDate)
         .order('fpb_number', { ascending: true })
       if (fpbErr) throw fpbErr
-      if (!fpbs?.length) { setExportError('Tidak ada data FPB untuk bulan ini'); setExportLoading(false); return }
+      if (!fpbs?.length) { setExportError('No FPB data for this month'); setExportLoading(false); return }
 
       // Fetch all items for those FPBs
       const fpbIds = fpbs.map(f => f.fpb_id)
@@ -2040,7 +2063,7 @@ export default function FpbListPage() {
       }
 
       const monthLabel = MONTHS_ID[exportMonth - 1]
-      const HEADERS = ['No', 'No FPB', 'Created By', 'Divisi', 'Item Name', 'Qty', 'Unit', 'Price', 'Total', 'Status', 'Budget', 'Remaining Budget']
+      const HEADERS = ['No', 'No FPB', 'Created By', 'Division', 'Item Name', 'Qty', 'Unit', 'Price', 'Total', 'Status', 'Budget', 'Remaining Budget']
       const NCOLS = HEADERS.length
 
       // Use ExcelJS for full styling support
@@ -2120,14 +2143,14 @@ export default function FpbListPage() {
       a.href = url; a.download = `FPB_${monthLabel}_${exportYear}.xlsx`
       document.body.appendChild(a); a.click()
       document.body.removeChild(a); URL.revokeObjectURL(url)
-    } catch (e) { setExportError(e.message || 'Gagal export') }
+    } catch (e) { setExportError(e.message || 'Export failed') }
     finally { setExportLoading(false) }
   }
 
   const tabs = [
-    { key: 'mine',    label: 'Pengajuan Saya',         icon: faClipboardList, count: myFpbs.length },
-    { key: 'pending', label: 'Menunggu Approval Saya', icon: faClock,         count: pendingFpbs.length },
-    { key: 'history', label: 'History Approval',       icon: faCheckDouble,   count: historyFpbs.length },
+    { key: 'mine',    label: 'My Requests',           icon: faClipboardList, count: myFpbs.length },
+    { key: 'pending', label: 'Awaiting My Approval',  icon: faClock,         count: pendingFpbs.length },
+    { key: 'history', label: 'Approval History',      icon: faCheckDouble,   count: historyFpbs.length },
     ...(canExport ? [{ key: 'export', label: 'Export Excel', icon: faFileExcel }] : []),
   ]
 
@@ -2145,7 +2168,11 @@ export default function FpbListPage() {
         <td style={{ padding: '12px 14px', fontSize: 13, color: theme.textSecondary }}>{f.division || '—'}</td>
         {isPending && (
           <td style={{ padding: '12px 14px', fontSize: 13 }}>
-            {f.my_step_name === 'Screening'
+            {f.is_waiting ? (
+              <span style={{ color: '#6b7280', fontWeight: 600, background: 'rgba(107,114,128,0.10)', border: '1px solid rgba(107,114,128,0.25)', padding: '2px 8px', borderRadius: 99, fontSize: 11 }}>
+                ⏳ Waiting for Turn
+              </span>
+            ) : f.my_step_name === 'Screening'
               ? <span style={{ color: '#d97706', fontWeight: 700, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', padding: '2px 8px', borderRadius: 99, fontSize: 11 }}>🔍 Screening</span>
               : <><span style={{ color: '#6366f1', fontWeight: 600 }}>Step {f.my_step}</span>
                   <div style={{ fontSize: 11, color: theme.textSecondary }}>{f.my_step_name}</div></>
@@ -2169,11 +2196,11 @@ export default function FpbListPage() {
         </td>
         <td style={{ padding: '12px 14px' }}>
           {f.procurement_status === 'ordered'
-            ? <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#065f46', background: 'rgba(5,150,105,0.12)', whiteSpace: 'nowrap' }}>📦 Dipesan</span>
+            ? <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#065f46', background: 'rgba(5,150,105,0.12)', whiteSpace: 'nowrap' }}>📦 Ordered</span>
             : <span style={{ color: theme.textSecondary, fontSize: 12 }}>—</span>}
         </td>
         {!isPending && !isHistory && (
-          <td style={{ padding: '12px 14px', fontSize: 11, color: theme.textSecondary }}>{f.revision_count > 0 ? `Revisi ke-${f.revision_count}` : ''}</td>
+          <td style={{ padding: '12px 14px', fontSize: 11, color: theme.textSecondary }}>{f.revision_count > 0 ? `Revision #${f.revision_count}` : ''}</td>
         )}
         {isHistory && (
           <td style={{ padding: '12px 14px', fontSize: 11, color: '#059669', fontWeight: 600 }}>
@@ -2184,28 +2211,28 @@ export default function FpbListPage() {
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
             <button onClick={e => { e.stopPropagation(); setPrintListId(f.fpb_id) }}
               style={{ padding: '5px 11px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
-              title="Cetak FPB">
+              title="Print FPB">
               <FontAwesomeIcon icon={faPrint} />
             </button>
-            {/* Lihat */}
+            {/* View */}
             <button onClick={e => { e.stopPropagation(); setViewFpbId(f.fpb_id) }}
               style={{ padding: '5px 11px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-              <FontAwesomeIcon icon={faEye} />Lihat
+              <FontAwesomeIcon icon={faEye} />View
             </button>
             {/* Edit — only in 'mine' tab */}
             {!isPending && !isHistory && (
               <button onClick={e => { e.stopPropagation(); if (canEdit) setEditFpbId(f.fpb_id) }}
-                title={!canEdit ? 'Hanya bisa diedit saat berstatus Revisi' : 'Edit FPB ini'}
+                title={!canEdit ? 'Can only be edited when status is Revision' : 'Edit this FPB'}
                 style={{ padding: '5px 11px', borderRadius: 7, border: `1px solid ${canEdit ? '#f59e0b' : theme.border}`, background: canEdit ? 'rgba(245,158,11,0.08)' : theme.subtleBg, color: canEdit ? '#b45309' : theme.textSecondary, fontSize: 12, cursor: canEdit ? 'pointer' : 'not-allowed', opacity: canEdit ? 1 : 0.45, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                 <FontAwesomeIcon icon={faPen} />Edit
               </button>
             )}
-            {/* Hapus — only in 'mine' tab */}
+            {/* Delete — only in 'mine' tab */}
             {!isPending && !isHistory && (
               <button onClick={e => { e.stopPropagation(); if (canDelete) setDeleteFpb(f) }}
-                title={!canDelete ? 'FPB yang sudah diproses approver tidak dapat dihapus' : 'Hapus FPB ini'}
+                title={!canDelete ? 'FPBs already processed by approver cannot be deleted' : 'Delete this FPB'}
                 style={{ padding: '5px 11px', borderRadius: 7, border: `1px solid ${canDelete ? '#dc2626' : theme.border}`, background: canDelete ? 'rgba(220,38,38,0.07)' : theme.subtleBg, color: canDelete ? '#dc2626' : theme.textSecondary, fontSize: 12, cursor: canDelete ? 'pointer' : 'not-allowed', opacity: canDelete ? 1 : 0.45, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-                <FontAwesomeIcon icon={faTrash} />Hapus
+                <FontAwesomeIcon icon={faTrash} />Delete
               </button>
             )}
           </div>
@@ -2233,22 +2260,22 @@ export default function FpbListPage() {
     <div style={{ padding: '28px 32px', background: theme.pageBg, minHeight: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>📋 Formulir Pembelian Barang</h1>
-          <p style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>Kelola pengajuan pembelian barang dan approval workflow</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>📋 Purchase Request Form</h1>
+          <p style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>Manage purchase requests and approval workflow</p>
         </div>
         <button onClick={() => setShowCreate(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 12px rgba(99,102,241,0.35)' }}>
-          <FontAwesomeIcon icon={faPlus} />Buat FPB Baru
+          <FontAwesomeIcon icon={faPlus} />Create New FPB
         </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'Total Pengajuan',   value: myFpbs.length,                                      color: '#6366f1' },
-          { label: 'Menunggu Approval', value: myFpbs.filter(f => f.status === 'pending').length,  color: '#d97706' },
-          { label: 'Perlu Direvisi',    value: myFpbs.filter(f => f.status === 'revision').length, color: '#f59e0b' },
-          { label: 'Disetujui',         value: myFpbs.filter(f => f.status === 'approved').length, color: '#059669' },
-          { label: 'Menunggu Saya',     value: pendingFpbs.length,                                 color: '#8b5cf6' },
+          { label: 'Total Requests',   value: myFpbs.length,                                      color: '#6366f1' },
+          { label: 'Awaiting Approval', value: myFpbs.filter(f => f.status === 'pending').length,  color: '#d97706' },
+          { label: 'Needs Revision',    value: myFpbs.filter(f => f.status === 'revision').length, color: '#f59e0b' },
+          { label: 'Approved',          value: myFpbs.filter(f => f.status === 'approved').length, color: '#059669' },
+          { label: 'Waiting for Me',    value: pendingFpbs.length,                                 color: '#8b5cf6' },
         ].map(c => (
           <Card key={c.label} style={{ background: theme.cardBg, borderColor: theme.border }}>
             <CardContent className="pt-4 pb-3">
@@ -2277,17 +2304,17 @@ export default function FpbListPage() {
             <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 520 }}>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 16, color: theme.textPrimary, marginBottom: 6 }}>
-                  📊 Export Data FPB ke Excel
+                  📊 Export FPB Data to Excel
                 </div>
                 <div style={{ fontSize: 13, color: theme.textSecondary }}>
-                  Export semua FPB beserta detail barang untuk bulan yang dipilih. Setiap barang tampil dalam satu baris.
+                  Export all FPBs with item details for the selected month. Each item appears as a separate row.
                 </div>
               </div>
 
               {/* Month & Year picker */}
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Bulan</label>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Month</label>
                   <select value={exportMonth} onChange={e => setExportMonth(Number(e.target.value))}
                     style={{ padding: '9px 14px', borderRadius: 9, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer', minWidth: 140 }}>
                     {MONTHS_ID.map((m, i) => (
@@ -2296,7 +2323,7 @@ export default function FpbListPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Tahun</label>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Year</label>
                   <select value={exportYear} onChange={e => setExportYear(Number(e.target.value))}
                     style={{ padding: '9px 14px', borderRadius: 9, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer', minWidth: 100 }}>
                     {[2024, 2025, 2026, 2027, 2028].map(y => (
@@ -2307,7 +2334,7 @@ export default function FpbListPage() {
                 <button onClick={handleExport} disabled={exportLoading}
                   style={{ padding: '9px 22px', borderRadius: 9, border: 'none', background: exportLoading ? '#e5e7eb' : 'linear-gradient(135deg,#059669,#10b981)', color: exportLoading ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 13, cursor: exportLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: exportLoading ? 'none' : '0 2px 10px rgba(5,150,105,0.3)', whiteSpace: 'nowrap' }}>
                   <FontAwesomeIcon icon={exportLoading ? faSpinner : faFileExcel} spin={exportLoading} />
-                  {exportLoading ? 'Mengunduh...' : `Download Excel — ${MONTHS_ID[exportMonth - 1]} ${exportYear}`}
+                  {exportLoading ? 'Downloading...' : `Download Excel — ${MONTHS_ID[exportMonth - 1]} ${exportYear}`}
                 </button>
               </div>
 
@@ -2319,14 +2346,14 @@ export default function FpbListPage() {
 
               {/* Column preview */}
               <div style={{ padding: '12px 16px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, marginBottom: 8 }}>KOLOM YANG DIEKSPOR</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, marginBottom: 8 }}>EXPORTED COLUMNS</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px' }}>
                   {['No', 'No FPB', 'Created By', 'Divisi', 'Item Name', 'Qty', 'Unit', 'Price', 'Total', 'Status', 'Budget', 'Remaining Budget'].map(c => (
                     <span key={c} style={{ padding: '3px 9px', borderRadius: 6, background: theme.cardBg, border: `1px solid ${theme.border}`, fontSize: 11, color: theme.textPrimary }}>{c}</span>
                   ))}
                 </div>
                 <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 10 }}>
-                  * Setiap barang dalam satu FPB tampil sebagai baris terpisah
+                  * Each item in an FPB appears as a separate row
                 </div>
               </div>
             </div>
@@ -2339,18 +2366,18 @@ export default function FpbListPage() {
               <input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Cari nomor FPB, divisi, pengaju..."
+                placeholder="Search FPB number, division, requester..."
                 style={{ width: '100%', padding: '7px 10px 7px 32px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
               style={{ padding: '7px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer' }}>
-              <option value="">Semua Status</option>
-              <option value="pending">Menunggu</option>
-              <option value="revision">Revisi</option>
-              <option value="approved">Disetujui</option>
-              <option value="rejected">Ditolak</option>
-              <option value="ordered">📦 Dipesan</option>
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="revision">Revision</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="ordered">📦 Ordered</option>
             </select>
             {(searchQuery || filterStatus) && (
               <button onClick={() => { setSearchQuery(''); setFilterStatus('') }}
@@ -2363,19 +2390,19 @@ export default function FpbListPage() {
           {loading ? (
             <div style={{ padding: 40, textAlign: 'center', color: theme.textSecondary }}>
               <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 24 }} />
-              <p style={{ marginTop: 10 }}>Memuat data...</p>
+              <p style={{ marginTop: 10 }}>Loading data...</p>
             </div>
           ) : filteredList.length === 0 ? (
             <div style={{ padding: 60, textAlign: 'center' }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>{searchQuery || filterStatus ? '🔍' : '📋'}</div>
               <p style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 15, marginBottom: 6 }}>
-                {searchQuery || filterStatus ? 'Tidak ada FPB yang cocok dengan filter'
-                  : tab === 'mine' ? 'Belum ada FPB yang diajukan' : tab === 'pending' ? 'Tidak ada FPB yang menunggu approval Anda' : 'Belum ada FPB yang Anda setujui'}
+                {searchQuery || filterStatus ? 'No FPBs match the current filter'
+                  : tab === 'mine' ? 'No requests submitted yet' : tab === 'pending' ? 'No FPBs awaiting your approval' : 'No FPBs in your approval history'}
               </p>
               {!(searchQuery || filterStatus) && tab === 'mine' && (
                 <button onClick={() => setShowCreate(true)}
                   style={{ marginTop: 16, padding: '9px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                  <FontAwesomeIcon icon={faPlus} style={{ marginRight: 6 }} />Buat FPB Baru
+                  <FontAwesomeIcon icon={faPlus} style={{ marginRight: 6 }} />Create New FPB
                 </button>
               )}
             </div>
@@ -2384,17 +2411,17 @@ export default function FpbListPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: theme.subtleBg, borderBottom: `2px solid ${theme.border}` }}>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Nomor FPB</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Divisi</th>
-                    {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Step Saya</th>}
-                    {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Pengaju</th>}
-                    {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Pengaju</th>}
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>FPB Number</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Division</th>
+                    {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>My Step</th>}
+                    {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Requester</th>}
+                    {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Requester</th>}
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Grand Total</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Tgl Kebutuhan</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Required Date</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Status</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Pemesanan</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Order</th>
                     {tab === 'mine' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}></th>}
-                    {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Tgl Disetujui</th>}
+                    {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Approved At</th>}
                     <th style={{ padding: '10px 14px' }}></th>
                   </tr>
                 </thead>
