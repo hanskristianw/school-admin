@@ -70,6 +70,10 @@ export default function SubjectManagement() {
     description: '' 
   });
   
+  // Copy Criteria States
+  const [copySourceSubjectId, setCopySourceSubjectId] = useState('');
+  const [isCopying, setIsCopying] = useState(false);
+  
   // Notification modal states
   const [notification, setNotification] = useState({
     isOpen: false,
@@ -685,9 +689,35 @@ export default function SubjectManagement() {
   };
 
   const handleDeleteCriteria = async (criterion) => {
-    if (!confirm(`Hapus criterion ${criterion.code}? Semua strands terkait juga akan terhapus.`)) return;
+    if (!confirm(`Hapus criterion ${criterion.code}? Semua strands dan rubrics terkait juga akan terhapus.`)) return;
 
     try {
+      // Must delete child records first due to FK constraints (no ON DELETE CASCADE in DB):
+      // rubrics → strands → criteria
+
+      // 1. Get all strand IDs for this criterion
+      const criterionStrands = strands.filter(s => s.criterion_id === criterion.criterion_id);
+      const strandIds = criterionStrands.map(s => s.strand_id);
+
+      // 2. Delete rubrics for those strands first
+      if (strandIds.length > 0) {
+        const { error: rubErr } = await supabase
+          .from('rubrics')
+          .delete()
+          .in('strand_id', strandIds);
+        if (rubErr) throw rubErr;
+      }
+
+      // 3. Delete strands for this criterion
+      if (strandIds.length > 0) {
+        const { error: strandErr } = await supabase
+          .from('strands')
+          .delete()
+          .eq('criterion_id', criterion.criterion_id);
+        if (strandErr) throw strandErr;
+      }
+
+      // 4. Now safe to delete the criterion itself
       const { error } = await supabase
         .from('criteria')
         .delete()
@@ -870,6 +900,129 @@ export default function SubjectManagement() {
       showNotification('Success', 'Rubric deleted!', 'success');
     } catch (err) {
       showNotification('Error', 'Gagal menghapus rubric: ' + err.message, 'error');
+    }
+  };
+
+  const handleCopyCriteria = async (sourceId, targetId) => {
+    if (!sourceId || !targetId) return;
+    try {
+      setIsCopying(true);
+      
+      // 1. Fetch source criteria
+      const { data: sourceCriteria, error: errC } = await supabase
+        .from('criteria')
+        .select('*')
+        .eq('subject_id', sourceId);
+      if (errC) throw errC;
+      
+      if (!sourceCriteria || sourceCriteria.length === 0) {
+        showNotification('Error', 'Subject sumber tidak memiliki criteria.', 'error');
+        setIsCopying(false);
+        return;
+      }
+      
+      const sourceCriteriaIds = sourceCriteria.map(c => c.criterion_id);
+      
+      // 2. Fetch source strands
+      const { data: sourceStrands, error: errS } = await supabase
+        .from('strands')
+        .select('*')
+        .in('criterion_id', sourceCriteriaIds);
+      if (errS) throw errS;
+        
+      const sourceStrandIds = sourceStrands && sourceStrands.length > 0 ? sourceStrands.map(s => s.strand_id) : [];
+      
+      // 3. Fetch source rubrics
+      let sourceRubrics = [];
+      if (sourceStrandIds.length > 0) {
+        const { data: sr, error: errR } = await supabase
+          .from('rubrics')
+          .select('*')
+          .in('strand_id', sourceStrandIds);
+        if (errR) throw errR;
+        sourceRubrics = sr || [];
+      }
+      
+      // 4. Smart Merge Process
+      for (const oldCrit of sourceCriteria) {
+        // Find if target already has this criterion (by code)
+        let targetCrit = criteria.find(c => c.code === oldCrit.code);
+        
+        if (!targetCrit) {
+          // Insert new criterion
+          const { data: newCrit, error: insCritErr } = await supabase
+            .from('criteria')
+            .insert([{ 
+              subject_id: targetId, 
+              code: oldCrit.code, 
+              name: oldCrit.name 
+            }])
+            .select()
+            .single();
+          if (insCritErr) throw insCritErr;
+          targetCrit = newCrit;
+        }
+        
+        const myOldStrands = sourceStrands ? sourceStrands.filter(s => s.criterion_id === oldCrit.criterion_id) : [];
+        if (myOldStrands.length > 0) {
+          // Find target strands for this criterion
+          const existingTargetStrands = strands.filter(s => s.criterion_id === targetCrit.criterion_id);
+          
+          for (const oldStrand of myOldStrands) {
+            let targetStrand = existingTargetStrands.find(s => s.year_level === oldStrand.year_level && s.label === oldStrand.label);
+            
+            if (!targetStrand) {
+              const { data: newStrand, error: insStrandErr } = await supabase
+                .from('strands')
+                .insert([{
+                  criterion_id: targetCrit.criterion_id,
+                  year_level: oldStrand.year_level,
+                  label: oldStrand.label,
+                  content: oldStrand.content
+                }])
+                .select()
+                .single();
+              if (insStrandErr) throw insStrandErr;
+              targetStrand = newStrand;
+            }
+            
+            // Now handle rubrics
+            const myOldRubrics = sourceRubrics.filter(r => r.strand_id === oldStrand.strand_id);
+            if (myOldRubrics.length > 0) {
+              // Find existing rubrics for this target strand
+              const existingTargetRubrics = rubrics.filter(r => r.strand_id === targetStrand.strand_id);
+              
+              let rubricsToInsert = [];
+              for (const oldRub of myOldRubrics) {
+                const targetRubric = existingTargetRubrics.find(r => r.band_label === oldRub.band_label);
+                if (!targetRubric) {
+                  rubricsToInsert.push({
+                    strand_id: targetStrand.strand_id,
+                    band_label: oldRub.band_label,
+                    min_score: oldRub.min_score,
+                    max_score: oldRub.max_score,
+                    description: oldRub.description
+                  });
+                }
+              }
+              
+              if (rubricsToInsert.length > 0) {
+                const { error: insRubErr } = await supabase.from('rubrics').insert(rubricsToInsert);
+                if (insRubErr) throw insRubErr;
+              }
+            }
+          }
+        }
+      }
+      
+      await fetchCriteria(targetId);
+      showNotification('Success', 'Sinkronisasi kriteria berhasil!', 'success');
+      setCopySourceSubjectId('');
+    } catch (err) {
+      console.error(err);
+      showNotification('Error', 'Gagal menyalin criteria: ' + err.message, 'error');
+    } finally {
+      setIsCopying(false);
     }
   };
 
@@ -1425,12 +1578,39 @@ export default function SubjectManagement() {
 
           {loadingCriteria ? (
             <div className="text-center py-8" style={{ color: theme.textSecondary }}>Loading...</div>
-          ) : criteria.length === 0 ? (
-            <div className="text-center py-8" style={{ color: theme.textSecondary }}>
-              Belum ada criteria. Tambahkan criterion pertama (A, B, C, D)
-            </div>
           ) : (
             <div className="space-y-6">
+              {/* Copy / Sync UI */}
+              <div className="p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center gap-3 text-left" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: theme.textPrimary }}>Sync / Copy dari subject lain:</span>
+                <div className="flex gap-2 flex-1">
+                  <select 
+                    value={copySourceSubjectId} 
+                    onChange={(e) => setCopySourceSubjectId(e.target.value)}
+                    className="border rounded px-3 py-2 flex-1 text-sm outline-none"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textBody }}
+                  >
+                    <option value="">-- Pilih Subject Sumber --</option>
+                    {subjects.filter(s => s.subject_id !== selectedSubject?.subject_id).map(s => (
+                      <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
+                    ))}
+                  </select>
+                  <Button 
+                    onClick={() => handleCopyCriteria(copySourceSubjectId, selectedSubject?.subject_id)}
+                    disabled={!copySourceSubjectId || isCopying}
+                    style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
+                  >
+                    {isCopying ? 'Syncing...' : 'Sync / Copy'}
+                  </Button>
+                </div>
+              </div>
+
+              {criteria.length === 0 ? (
+                <div className="text-center py-8" style={{ color: theme.textSecondary }}>
+                  Belum ada criteria. Tambahkan criterion pertama (A, B, C, D) atau copy dari subject lain.
+                </div>
+              ) : (
+                <div className="space-y-6">
               {criteria.map((criterion) => {
                 const criterionStrands = getStrandsForCriterion(criterion.criterion_id);
                 return (
@@ -1607,6 +1787,8 @@ export default function SubjectManagement() {
               })}
             </div>
           )}
+          </div>
+        )}
         </div>
       </Modal>
 

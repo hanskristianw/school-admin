@@ -1,4 +1,4 @@
-# Database Schema & Relationships
+﻿# Database Schema & Relationships
 
 ## 1. User Management Domain (`/data/user`)
 
@@ -227,11 +227,27 @@ erDiagram
 
 ---
 
-## 3. Curriculum & Topics Domain (`/data/topic-new`)
+## 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`)
 
-This domain manages the academic curriculum, focusing on subjects and their detailed topics (IB MYP Unit Planners).
+This domain manages the academic curriculum, focusing on subjects, MYP criteria, rubrics, and detailed topics (IB MYP Unit Planners).
+
+> [!CAUTION]
+> **No ON DELETE CASCADE.** Foreign key constraints in this domain are **NOT** configured with `ON DELETE CASCADE`. This means the application code **MUST manually delete child records first** before deleting a parent record. The required deletion order is:
+> 1. `rubrics` (delete first, FK to `strands`)
+> 2. `strands` (delete second, FK to `criteria`)
+> 3. `criteria` (delete third, FK to `subject`)
+>
+> Skipping this order will result in: `violates foreign key constraint "strands_criterion_id_fkey"` or similar errors from Supabase/Postgres.
 
 ### 3.1 Tables
+
+#### `subject_group`
+Categorizes subjects into standard MYP Groups (e.g., Language Acquisition, Sciences).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `name` | `VARCHAR` | Name of the group |
 
 #### `subject`
 Represents the subjects taught in the school.
@@ -244,7 +260,61 @@ Represents the subjects taught in the school.
 | `subject_unit_id` | `INTEGER` | FK to `unit(unit_id)` |
 | `subject_code` | `VARCHAR(30)` | Short code (e.g., MATH7A) |
 | `subject_guide` | `TEXT` | URL to subject guide (Google Drive/PDF) |
-| `grading_method` | `VARCHAR(20)` | IB MYP grading calculation method ('highest', 'average', 'median', 'mode'). Default 'highest' |
+| `subject_icon` | `TEXT` | URL or class name of the icon |
+| `grading_method` | `VARCHAR(20)` | IB MYP grading method: `'highest'`, `'average'`, `'median'`, `'mode'`. Default `'highest'` |
+| `core_subject` | `BOOLEAN` | Is this a core subject? |
+| `is_community_project` | `BOOLEAN` | Is this a community project? |
+| `print_order` | `INTEGER` | Order on printouts/reports |
+| `include_in_print` | `BOOLEAN` | Whether to include in report cards |
+| `subject_group_id` | `INTEGER` | FK to `subject_group(id)` |
+| `custom_grade_boundaries` | `TEXT/JSON` | Custom grade boundaries configuration |
+
+#### `criteria`
+Stores IB MYP Assessment Criteria for a subject (e.g., Criterion A, B, C, D).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `criterion_id` | `SERIAL` | Primary Key |
+| `subject_id` | `INTEGER` | FK to `subject(subject_id)` |
+| `code` | `VARCHAR` | Letter code, e.g. A, B, C, D |
+| `name` | `VARCHAR` | Full name, e.g. Knowing and understanding |
+
+#### `strands`
+Stores the detailed strands for each criterion across different MYP years.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `strand_id` | `SERIAL` | Primary Key |
+| `criterion_id` | `INTEGER` | FK to `criteria(criterion_id)` â€” **no ON DELETE CASCADE** |
+| `year_level` | `INTEGER` | MYP Year (1, 3, 5) |
+| `label` | `VARCHAR` | Strand identifier (i, ii, iii) |
+| `content` | `TEXT` | The strand description |
+
+#### `rubrics`
+Stores the grading rubrics/achievement levels for each strand.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `rubric_id` | `SERIAL` | Primary Key |
+| `strand_id` | `INTEGER` | FK to `strands(strand_id)` â€” **no ON DELETE CASCADE** |
+| `band_label` | `VARCHAR` | Level band (e.g., "1-2", "3-4") |
+| `min_score` | `INTEGER` | Minimum score for this band |
+| `max_score` | `INTEGER` | Maximum score for this band |
+| `description` | `TEXT` | Description of achievement at this level |
+
+#### `criterion_descriptors`
+Stores MYP year-level task-specific descriptors by subject group and semester.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `subject_group_id` | `INTEGER` | FK to `subject_group(id)` |
+| `myp_year` | `INTEGER` | MYP Year (e.g., 1, 3, 5) |
+| `semester` | `INTEGER` | Semester 1 or 2 |
+| `criterion` | `VARCHAR` | A, B, C, or D |
+| `band_min` | `INTEGER` | Minimum score bound |
+| `band_max` | `INTEGER` | Maximum score bound |
+| `descriptor` | `TEXT` | The general descriptor text |
 
 #### `topic`
 Represents an IB MYP Unit Planner / Topic. Contains extensive fields for IB MYP planning.
@@ -254,7 +324,7 @@ Represents an IB MYP Unit Planner / Topic. Contains extensive fields for IB MYP 
 | `topic_id` | `SERIAL` | Primary Key |
 | `topic_nama` | `VARCHAR(100)` | Unit Title / Topic Name |
 | `topic_subject_id` | `INTEGER` | FK to `subject(subject_id)` |
-| `topic_kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` (Binds topic to a specific class) |
+| `topic_kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` |
 | `topic_year` | `VARCHAR` | Academic year context |
 | `topic_urutan` | `INTEGER` | Ordering / Sequence of the topic |
 | `topic_duration` | `INTEGER` | Duration in weeks |
@@ -266,13 +336,13 @@ Represents an IB MYP Unit Planner / Topic. Contains extensive fields for IB MYP 
 | `topic_key_concept` | `TEXT` | IB Key Concept |
 | `topic_related_concept` | `TEXT` | IB Related Concepts |
 | `topic_statement` | `TEXT` | Statement of Inquiry |
-| `topic_conceptual_understanding`| `TEXT` | Conceptual Understanding |
+| `topic_conceptual_understanding` | `TEXT` | Conceptual Understanding |
 | `topic_learner_profile` | `TEXT` | Learner Profile Attributes |
 | `topic_service_learning` | `TEXT` | Service as action / Service learning |
 | `topic_atl` | `TEXT` | Approaches to Learning (ATL) skills |
 | `topic_learning_process` | `TEXT` | Learning Process description |
-| `topic_formative_assessment`| `TEXT` | Formative assessments |
-| `topic_summative_assessment`| `TEXT` | Summative assessments |
+| `topic_formative_assessment` | `TEXT` | Formative assessments |
+| `topic_summative_assessment` | `TEXT` | Summative assessments |
 | `topic_relationship_summative_assessment_statement_of_inquiry` | `TEXT` | Relationship description |
 | `topic_reflection_prior` | `TEXT` | Reflection prior to teaching |
 | `topic_reflection_after` | `TEXT` | Reflection after teaching |
@@ -281,19 +351,65 @@ Represents an IB MYP Unit Planner / Topic. Contains extensive fields for IB MYP 
 
 ```mermaid
 erDiagram
+    subject_group ||--o{ subject : "groups"
+    subject_group ||--o{ criterion_descriptors : "has"
     subject ||--o{ topic : "has_topics"
+    subject ||--o{ criteria : "has"
+    criteria ||--o{ strands : "has (no cascade)"
+    strands ||--o{ rubrics : "has (no cascade)"
     kelas ||--o{ topic : "taught_in"
     users ||--o{ subject : "coordinates"
     unit ||--o{ subject : "belongs_to"
-    
+
+    subject_group {
+        int id PK
+        string name
+    }
+
     subject {
         int subject_id PK
         string subject_name
         string subject_code
         int subject_user_id FK
         int subject_unit_id FK
+        int subject_group_id FK
     }
-    
+
+    criteria {
+        int criterion_id PK
+        int subject_id FK
+        string code
+        string name
+    }
+
+    strands {
+        int strand_id PK
+        int criterion_id FK
+        int year_level
+        string label
+        string content
+    }
+
+    rubrics {
+        int rubric_id PK
+        int strand_id FK
+        string band_label
+        int min_score
+        int max_score
+        string description
+    }
+
+    criterion_descriptors {
+        int id PK
+        int subject_group_id FK
+        int myp_year
+        int semester
+        string criterion
+        int band_min
+        int band_max
+        string descriptor
+    }
+
     topic {
         int topic_id PK
         string topic_nama
@@ -302,11 +418,11 @@ erDiagram
         string topic_year
         int topic_duration
     }
-    
+
     kelas {
         int kelas_id PK
     }
-    
+
     users {
         int user_id PK
     }
@@ -314,7 +430,7 @@ erDiagram
 
 ---
 
-## 4. Purchasing & Budgeting Domain (`/data/fpb`)
+## 4. Purchasing & Budgeting Domain (/data/fpb)
 
 This domain handles the 'Form Pengajuan Barang' (FPB) or Purchase Request system, tracking requests, line items, and multi-step approvals.
 
@@ -671,3 +787,4 @@ erDiagram
         string notif_type
     }
 ```
+
