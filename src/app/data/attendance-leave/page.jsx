@@ -28,7 +28,7 @@ function fullName(u) {
 // ── Leave Type Modal ───────────────────────────────────────────────────────────
 function LeaveTypeModal({ item, onClose, onSaved, theme }) {
   const [form, setForm] = useState(item
-    ? { ...item, max_days: item.max_days ?? '', issue_types: item.issue_types || ['absent'] }
+    ? { ...item, max_days: item.max_days ?? '', issue_types: item.issue_types || ['absent'], upload_label: item.upload_label ?? '' }
     : { ...EMPTY_TYPE_FORM })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')

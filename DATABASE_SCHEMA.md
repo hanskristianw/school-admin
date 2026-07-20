@@ -585,9 +585,9 @@ erDiagram
 
 ---
 
-## 5. Attendance & Leave Management Domain (`/data/attendance-settings`)
+## 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)
 
-This domain handles the attendance settings, special days, holidays, notifications, and approver mappings.
+This domain handles the attendance settings, special days, holidays, notifications, leave types, quotas, and approver mappings.
 
 ### 5.1 Tables
 
@@ -710,8 +710,34 @@ Tracks the daily run of the cron job that processes attendance notifications.
 | `emails_failed` | `INTEGER` | Total emails failed |
 | `admin_emails` | `JSON/ARRAY`| Admin email recipients |
 | `admin_email_ok`| `BOOLEAN` | Success status of admin summary |
-| `skipped_reason`| `TEXT` | Reason if skipping execution |
 | `error_message` | `TEXT` | Any error during run |
+
+#### `leave_types`
+Master data for leave/excuse types (sick, annual leave, etc.), defining rules for each type.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `code` | `VARCHAR(50)`| Unique, code identifier (e.g., `annual_leave`) |
+| `name_id` | `TEXT` | Indonesian name |
+| `name_en` | `TEXT` | English name |
+| `issue_types` | `TEXT[]` | Contexts (e.g., `{late, absent}`) |
+| `max_days` | `INTEGER` | Max days allowed, NULL if unlimited |
+| `requires_upload`| `BOOLEAN` | If true, user must upload a file (e.g., doctor's note) |
+| `deduct_quota` | `BOOLEAN` | If true, deducts from `leave_quotas` |
+| `is_paid` | `BOOLEAN` | Paid vs unpaid leave |
+
+#### `leave_quotas`
+Tracks the annual leave balance for users for specific leave types.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `user_id` | `INTEGER` | FK to `users(user_id)` ON DELETE CASCADE |
+| `leave_type_code`| `VARCHAR(50)`| FK to `leave_types(code)` |
+| `year` | `INTEGER` | The year this quota applies to |
+| `total_days` | `INTEGER` | Total allocation for the year |
+| `used_days` | `INTEGER` | Days already consumed |
 
 ### 5.2 ERD / Relationships (Attendance Domain)
 
@@ -727,6 +753,8 @@ erDiagram
     users ||--o{ attendances : "scans"
     users ||--o{ attendance_excuses : "submits"
     users ||--o{ user_position_history : "has_position"
+    users ||--o{ leave_quotas : "has_quota"
+    leave_types ||--o{ leave_quotas : "defines"
 
     school_holidays {
         int id PK
@@ -785,6 +813,22 @@ erDiagram
         int user_id FK
         date notif_date
         string notif_type
+    }
+
+    leave_types {
+        int id PK
+        string code UK
+        boolean requires_upload
+        boolean deduct_quota
+    }
+
+    leave_quotas {
+        int id PK
+        int user_id FK
+        string leave_type_code FK
+        int year
+        int total_days
+        int used_days
     }
 ```
 
