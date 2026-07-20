@@ -49,7 +49,8 @@ import {
   faFileMedical,
   faTrophy,
   faFileInvoice,
-  faFileInvoiceDollar
+  faFileInvoiceDollar,
+  faLandmark
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -180,6 +181,8 @@ const iconMap = {
   , 'faScrewdriverWrench': require('@fortawesome/free-solid-svg-icons').faScrewdriverWrench
   , 'fas fa-box-open': require('@fortawesome/free-solid-svg-icons').faBoxOpen
   , 'faBoxOpen': require('@fortawesome/free-solid-svg-icons').faBoxOpen
+  , 'fas fa-landmark': faLandmark
+  , 'faLandmark': faLandmark
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

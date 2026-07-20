@@ -1,4 +1,4 @@
-﻿# Database Schema & Relationships
+# Database Schema & Relationships
 
 ## 1. User Management Domain (`/data/user`)
 
@@ -785,6 +785,137 @@ erDiagram
         int user_id FK
         date notif_date
         string notif_type
+    }
+```
+
+---
+
+## 6. Assessment & Grading Domain (`/data/topic-new` / Reports)
+
+This domain handles the IB MYP grading system, storing the grades given by teachers to students based on assessments and criteria strands.
+
+### 6.1 Tables
+
+#### `assessment_grades`
+Stores the final summarized grades for a student per assessment, including criterion grades (A-D) and the final MYP grade.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `grade_id` | `BIGSERIAL` | Primary Key |
+| `assessment_id` | `INTEGER` | FK to `assessment(assessment_id)` ON DELETE CASCADE |
+| `detail_siswa_id` | `INTEGER` | FK to `detail_siswa(detail_siswa_id)` ON DELETE CASCADE |
+| `criterion_a_grade` | `SMALLINT` | 0-8 scale (Highest strand grade for Criterion A) |
+| `criterion_b_grade` | `SMALLINT` | 0-8 scale (Highest strand grade for Criterion B) |
+| `criterion_c_grade` | `SMALLINT` | 0-8 scale (Highest strand grade for Criterion C) |
+| `criterion_d_grade` | `SMALLINT` | 0-8 scale (Highest strand grade for Criterion D) |
+| `final_grade` | `SMALLINT` | 1-7 scale (Based on sum of criteria A-D) |
+| `comments` | `TEXT` | Teacher's comments |
+| `created_by_user_id` | `INTEGER` | FK to `users(user_id)` |
+| `updated_by_user_id` | `INTEGER` | FK to `users(user_id)` |
+
+> [!NOTE]
+> **Calculation Rules:**
+> - **Criterion Grade:** Uses "best-fit" approach, calculated as the **highest** strand grade within that criterion (`Math.max(...strand_grades)`).
+> - **Final Grade:** Sum of all 4 criteria (max 32). Converted to 1-7 scale: 1-5 (1), 6-9 (2), 10-14 (3), 15-18 (4), 19-23 (5), 24-27 (6), 28-32 (7).
+
+#### `assessment_grade_strands`
+Stores the detailed score (0-8) for each specific strand (i, ii, iii, iv) for a student in an assessment.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `grade_strand_id` | `BIGSERIAL` | Primary Key |
+| `grade_id` | `BIGINT` | FK to `assessment_grades(grade_id)` ON DELETE CASCADE |
+| `strand_id` | `BIGINT` | FK to `strands(strand_id)` ON DELETE CASCADE |
+| `strand_grade` | `SMALLINT` | Grade for this specific strand (0-8 scale) |
+| `notes` | `TEXT` | Additional notes for this strand |
+
+### 6.2 ERD / Relationships (Assessment & Grading)
+
+```mermaid
+erDiagram
+    assessment ||--o{ assessment_grades : "has_grades"
+    detail_siswa ||--o{ assessment_grades : "receives"
+    assessment_grades ||--o{ assessment_grade_strands : "contains_strand_details"
+    strands ||--o{ assessment_grade_strands : "graded_in"
+
+    assessment_grades {
+        bigint grade_id PK
+        int assessment_id FK
+        int detail_siswa_id FK
+        smallint criterion_a_grade
+        smallint criterion_b_grade
+        smallint criterion_c_grade
+        smallint criterion_d_grade
+        smallint final_grade
+    }
+
+    assessment_grade_strands {
+        bigint grade_strand_id PK
+        bigint grade_id FK
+        bigint strand_id FK
+        smallint strand_grade
+    }
+```
+
+---
+
+## 7. Menu & Role Permissions Domain (`/data/menu_management`)
+
+This domain handles the dynamic sidebar menus and dashboard cards, as well as the role-based access control (RBAC) linking which roles can access which menus.
+
+### 7.1 Tables
+
+#### `menus`
+Stores the hierarchical structure of the application menus.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `menu_id` | `SERIAL` | Primary Key |
+| `menu_name` | `VARCHAR` | Display name of the menu |
+| `menu_path` | `VARCHAR` | URL path for navigation (e.g., `/data/class`) |
+| `menu_icon` | `VARCHAR` | FontAwesome icon class (e.g., `fas fa-table`) |
+| `menu_order` | `INTEGER` | Sorting order for display |
+| `menu_parent_id` | `INTEGER` | FK to `menus(menu_id)` for submenus (nullable) |
+| `menu_show_dashboard`| `BOOLEAN` | If true, this menu also appears as a card on the dashboard |
+
+#### `menu_permissions`
+Junction table that maps which roles have access to which menus.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `menu_id` | `INTEGER` | FK to `menus(menu_id)` |
+| `role_id` | `INTEGER` | FK to `role(role_id)` |
+| `(menu_id, role_id)` | `PK/UNIQUE`| Composite Constraint |
+
+> [!NOTE]
+> Admins (users where `role.is_admin` is true) implicitly have access to all menus regardless of entries in the `menu_permissions` table.
+
+### 7.2 ERD / Relationships (Menu Domain)
+
+```mermaid
+erDiagram
+    menus ||--o{ menus : "parent_of"
+    menus ||--o{ menu_permissions : "has_permission"
+    role ||--o{ menu_permissions : "granted_to"
+
+    menus {
+        int menu_id PK
+        string menu_name
+        string menu_path
+        string menu_icon
+        int menu_order
+        int menu_parent_id FK
+        boolean menu_show_dashboard
+    }
+
+    menu_permissions {
+        int menu_id FK
+        int role_id FK
+    }
+
+    role {
+        int role_id PK
+        boolean is_admin
     }
 ```
 
