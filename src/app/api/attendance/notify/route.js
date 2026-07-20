@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/mailer'
 import { emailTemplates } from '@/lib/emailTemplates'
+import { sendGoogleChatMessage } from '@/lib/googleChat'
 
 // Prevent Next.js from statically caching this route
 export const dynamic = 'force-dynamic'
@@ -453,6 +454,24 @@ async function handleNotify(request) {
           await sendEmailRateLimited({ to: user.user_email, subject, html })
           userEmailSuccess = true
           emailsSent++
+
+          // -- Send Google Chat Notification --
+          let chatText = `Hi *${userName}*,\n\nThe system has recorded an attendance anomaly on *${targetDateLabel}*:\n`;
+          newIssues.forEach(issue => {
+            if (issue.type === 'absent') chatText += `- *Absent* (No explanation provided)\n`;
+            if (issue.type === 'late') chatText += `- *Late check-in* by ${issue.minutesDiff} minutes (Schedule: ${issue.scheduledTime}, Actual: ${issue.actualTime})\n`;
+            if (issue.type === 'leave_early') chatText += `- *Early check-out* by ${issue.minutesDiff} minutes (Schedule: ${issue.scheduledTime}, Actual: ${issue.actualTime})\n`;
+            if (issue.type === 'no_checkin') chatText += `- *Missed check-in* (Schedule: ${issue.scheduledTime})\n`;
+            if (issue.type === 'no_checkout') chatText += `- *Missed check-out* (Schedule: ${issue.scheduledTime})\n`;
+          });
+          chatText += `\nPlease check ${baseUrl} for details. You may ignore this message if you have an approved leave.`;
+
+          try {
+            await sendGoogleChatMessage(user.user_email, chatText);
+            console.log(`[AttendanceNotif] Chat sent to ${user.user_email}`);
+          } catch (chatErr) {
+            console.error(`[AttendanceNotif] Chat failed for ${user.user_email}:`, chatErr.message);
+          }
         } catch (emailErr) {
           console.error(`[AttendanceNotif] Failed to email ${user.user_email}:`, emailErr.message)
         }
