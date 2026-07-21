@@ -53,13 +53,13 @@ function getYesterdayWIB() {
   return wibNow.toISOString().slice(0, 10) // YYYY-MM-DD
 }
 
-// Helper: format date to Indonesian locale
-function formatDateID(dateStr) {
-  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-                  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+// Helper: format date to English locale
+function formatDateEN(dateStr) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December']
   const d = new Date(dateStr + 'T00:00:00Z')
-  return `${days[d.getUTCDay()]}, ${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+  return `${days[d.getUTCDay()]}, ${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
 }
 
 // Helper: get day number (1=Mon...7=Sun) from date string
@@ -189,7 +189,7 @@ async function handleNotify(request) {
     // ─── 2. Determine target date (yesterday WIB) ─────────────────────────────
     const targetDate = getYesterdayWIB()
     const targetDayNum = getDayNumber(targetDate)
-    const targetDateLabel = formatDateID(targetDate)
+    const targetDateLabel = formatDateEN(targetDate)
 
     console.log(`[AttendanceNotif] Processing date: ${targetDate} (day ${targetDayNum})`)
 
@@ -456,7 +456,7 @@ async function handleNotify(request) {
           emailsSent++
 
           // -- Send Google Chat Notification --
-          let chatText = `Hi *${userName}*,\n\nThe system has recorded an attendance anomaly on *${targetDateLabel}*:\n`;
+          let chatText = `Hi *${userName}*,\n\nThe system has recorded the following on *${targetDateLabel}*:\n`;
           newIssues.forEach(issue => {
             if (issue.type === 'absent') chatText += `- *Absent* (No explanation provided)\n`;
             if (issue.type === 'late') chatText += `- *Late check-in* by ${issue.minutesDiff} minutes (Schedule: ${issue.scheduledTime}, Actual: ${issue.actualTime})\n`;
@@ -464,7 +464,7 @@ async function handleNotify(request) {
             if (issue.type === 'no_checkin') chatText += `- *Missed check-in* (Schedule: ${issue.scheduledTime})\n`;
             if (issue.type === 'no_checkout') chatText += `- *Missed check-out* (Schedule: ${issue.scheduledTime})\n`;
           });
-          chatText += `\nPlease check ${baseUrl} for details. You may ignore this message if you have an approved leave.`;
+          chatText += `\nPlease check ${baseUrl} for details.`;
 
           try {
             await sendGoogleChatMessage(user.user_email, chatText);

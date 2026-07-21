@@ -681,7 +681,7 @@ Global configuration key-value store.
 | `value` | `TEXT` | Value of the setting |
 
 #### `attendance_notification_log`
-Tracks attendance violation emails sent to users.
+Tracks attendance violation emails and Google Chat DMs sent to users.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
@@ -694,10 +694,10 @@ Tracks attendance violation emails sent to users.
 | `actual_time` | `TIME` | Actual scan time |
 | `email_to` | `JSON/ARRAY`| Email recipient(s) |
 | `success` | `BOOLEAN` | True if sent successfully, null if skipped |
-| `sent_at` | `TIMESTAMP`| When the email was sent |
+| `sent_at` | `TIMESTAMP`| When the notification was sent |
 
 #### `attendance_notify_run_log`
-Tracks the daily run of the cron job that processes attendance notifications.
+Tracks the daily run of the cron job that processes attendance emails and Google Chat DMs.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
@@ -706,8 +706,8 @@ Tracks the daily run of the cron job that processes attendance notifications.
 | `target_date` | `DATE` | The date being processed (usually yesterday) |
 | `users_processed` | `INTEGER` | Number of users analyzed |
 | `violations_found`| `INTEGER` | Total issues found |
-| `emails_sent` | `INTEGER` | Total emails sent |
-| `emails_failed` | `INTEGER` | Total emails failed |
+| `emails_sent` | `INTEGER` | Total notifications (Email/Chat) sent |
+| `emails_failed` | `INTEGER` | Total notifications failed |
 | `admin_emails` | `JSON/ARRAY`| Admin email recipients |
 | `admin_email_ok`| `BOOLEAN` | Success status of admin summary |
 | `error_message` | `TEXT` | Any error during run |

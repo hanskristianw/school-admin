@@ -2,7 +2,7 @@ import { sendGoogleChatMessage } from './src/lib/googleChat.js';
 
 async function run() {
   // Ganti email di bawah ini dengan email guru siapa pun yang ingin Anda tes!
-  const targetEmail = 'merry.inggarwati@ccs.sch.id';
+  const targetEmail = 'hans@ccs.sch.id';
 
   console.log(`Attempting to send test DM to: ${targetEmail}`);
 
