@@ -372,7 +372,6 @@ export default function FpbDetailPage() {
                             )
                           })()}
                         </div>
-                        </div>
                       </div>
                     </div>
                   )
