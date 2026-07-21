@@ -71,19 +71,17 @@ export default function RoomBookingPage() {
     return err?.message || resolveText('roomBooking.errors.generic', 'Something went wrong. Please try again.')
   }
 
-  const user = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('user_data') || 'null') } catch { return null }
-  }, [])
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
-    const u = user
-    if (!u) { router.replace('/login'); return }
-    if (u.isAdmin || u.isTeacher) {
+    try {
+      const u = JSON.parse(localStorage.getItem('user_data') || 'null')
+      setUser(u)
       setChecked(true)
-    } else {
-      router.replace('/dashboard?forbidden=1')
+    } catch {
+      setChecked(true)
     }
-  }, [router, user])
+  }, [])
 
   const loadRooms = async () => {
     const { data } = await supabase.from('room').select('*').order('room_name')

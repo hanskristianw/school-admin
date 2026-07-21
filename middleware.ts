@@ -1,12 +1,12 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
-// /settings and /data are handled by AccessGuard client-side (same pattern as /data/user, /data/class)
-// Middleware only guards /teacher, /student, /room which have server-side session requirements
+// /settings, /data, and /room are handled by AccessGuard client-side (same pattern as /data/user, /data/class)
+// Middleware only guards /teacher and /student which have server-side session requirements
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  const protectedPrefixes = ['/teacher', '/student', '/room']
+  const protectedPrefixes = ['/teacher', '/student']
   const isProtected = protectedPrefixes.some(p => pathname === p || pathname.startsWith(p + '/'))
   if (!isProtected) return NextResponse.next()
 
@@ -49,5 +49,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/teacher/:path*', '/student/:path*', '/room/:path*']
+  matcher: ['/teacher/:path*', '/student/:path*']
 }

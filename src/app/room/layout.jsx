@@ -17,15 +17,7 @@ export default function RoomLayout({ children }) {
       router.replace('/login')
       return
     }
-    // Optional: restrict to teacher/admin at layout level too
-    try {
-      const raw = localStorage.getItem('user_data')
-      const user = raw ? JSON.parse(raw) : null
-      const ok = !!user?.isAdmin || !!user?.isTeacher
-      if (!ok) router.replace('/dashboard?forbidden=1')
-    } catch {
-      router.replace('/dashboard?forbidden=1')
-    }
+    // Security is now fully handled by <AccessGuard>
   }, [router])
 
   return (
