@@ -149,7 +149,8 @@ export default function FpbDetailPage() {
         // else: wait for other approvers in same step
       } else if (action === 'revision') {
         await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null }).eq('fpb_id', id)
-        await supabase.from('fpb').update({ status: 'revision', current_step: 1 }).eq('fpb_id', id)
+        const screenerExists = approvals.some(a => a.approver_order === 0)
+        await supabase.from('fpb').update({ status: 'revision', current_step: screenerExists ? 0 : 1 }).eq('fpb_id', id)
       } else if (action === 'reject') {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', id)
         // Mark the rejector's own approval record so progress shows who rejected
@@ -174,9 +175,10 @@ export default function FpbDetailPage() {
         fpb_id: id, revision_number: revNum, revised_by: userId,
         snapshot: { fpb, items }, revision_note: comment || null
       })
-      // Reset all approvals, set status pending step 1
+      // Reset all approvals, set status pending — go back to screener if present
       await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null }).eq('fpb_id', id)
-      await supabase.from('fpb').update({ status: 'pending', current_step: 1, revision_count: (fpb.revision_count || 0) + 1 }).eq('fpb_id', id)
+      const screenerExists = approvals.some(a => a.approver_order === 0)
+      await supabase.from('fpb').update({ status: 'pending', current_step: screenerExists ? 0 : 1, revision_count: (fpb.revision_count || 0) + 1 }).eq('fpb_id', id)
       setComment(''); fetchData(userId)
     } catch (e) { setError(e.message) }
     finally { setSaving(false) }

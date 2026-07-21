@@ -318,7 +318,9 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
         const allRegularDone = regularRows.length > 0 && regularRows.every(a => a.status === 'approved')
         const screeningJustDone = isScreeningAction
         if (screeningJustDone) {
-          // Screening passed → notify the step-1 approvers
+          // Screening passed → advance current_step from 0 → 1 so Approver 1 becomes active
+          await supabase.from('fpb').update({ current_step: 1 }).eq('fpb_id', fpbId)
+          // Notify the step-1 approvers
           ;(async () => {
             try {
               const { data: nextApprovals } = await supabase
@@ -1637,11 +1639,11 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         .select('*').eq('role_id', submitter.user_role_id).single()
       if (!ra?.approver1_id) throw new Error('Approver for your role is not configured. Please contact the administrator to set up approvers in FPB Settings.')
 
-      // Build approval rows — 1 per approver, sequential order
+      // Build approval rows — 1 per approver, each gets their own sequential step_order
       const approverIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
       const approvalRows = approverIds.map((approverId, idx) => ({
         fpb_id:           null,
-        step_order:       1,
+        step_order:       idx + 1,   // Step 1, 2, 3 per approver
         step_name:        'Approval',
         approver_user_id: approverId,
         approver_role_id: submitter.user_role_id,
@@ -1649,12 +1651,12 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         status:           'pending',
       }))
 
-      // Fetch global screener role (if any)
+      // Fetch global screener role (if any) — screener gets step_order=0
       const { data: sc } = await supabase.from('fpb_screener').select('screener_role_id').limit(1).maybeSingle()
       if (sc?.screener_role_id) {
         approvalRows.unshift({
           fpb_id:           null,
-          step_order:       1,
+          step_order:       0,         // Screener is step 0 (before approvers)
           step_name:        'Screening',
           approver_user_id: null,
           approver_role_id: sc.screener_role_id,
@@ -1678,9 +1680,10 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         }, 0)
         fpbNumber = `${String(maxSeq + 1 + attempt).padStart(2, '0')}/YPMS/FPB/${roman}/${year}`
 
+        const initialStep = approvalRows.some(r => r.approver_order === 0) ? 0 : 1
         const { data: inserted, error: fpbErr } = await supabase.from('fpb').insert({
           fpb_number: fpbNumber, fpb_type_id: selType.fpb_type_id, division, submitted_by: uid,
-          grand_total: grandTotal, note, usage_date: usageDate, status: 'pending', current_step: 1,
+          grand_total: grandTotal, note, usage_date: usageDate, status: 'pending', current_step: initialStep,
         }).select().single()
 
         if (!fpbErr) { fpb = inserted; break }
@@ -2016,7 +2019,7 @@ export default function FpbListPage() {
 
           return {
             ...a.fpb,
-            my_step: a.step_order,
+            my_step: a.approver_order,  // 0=Screener, 1/2/3=Approver N
             my_step_name: a.step_name,
             is_waiting: !isMyTurn, // true = visible but not yet actionable
           }
