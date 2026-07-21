@@ -2235,11 +2235,11 @@ export default function FpbListPage() {
         {isPending && (
           <td style={{ padding: '12px 14px', fontSize: 13 }}>
             {f.is_waiting ? (
-              <span style={{ color: '#6b7280', fontWeight: 600, background: 'rgba(107,114,128,0.10)', border: '1px solid rgba(107,114,128,0.25)', padding: '2px 8px', borderRadius: 99, fontSize: 11 }}>
+              <span style={{ color: '#6b7280', fontWeight: 600, background: 'rgba(107,114,128,0.10)', border: '1px solid rgba(107,114,128,0.25)', padding: '2px 8px', borderRadius: 99, fontSize: 11, whiteSpace: 'nowrap' }}>
                 ⏳ Waiting for Turn
               </span>
             ) : f.my_step_name === 'Screening'
-              ? <span style={{ color: '#d97706', fontWeight: 700, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', padding: '2px 8px', borderRadius: 99, fontSize: 11 }}>🔍 Screening</span>
+              ? <span style={{ color: '#d97706', fontWeight: 700, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', padding: '2px 8px', borderRadius: 99, fontSize: 11, whiteSpace: 'nowrap' }}>🔍 Screening</span>
               : <><span style={{ color: '#6366f1', fontWeight: 600 }}>Step {f.my_step}</span>
                   <div style={{ fontSize: 11, color: theme.textSecondary }}>{f.my_step_name}</div></>
             }
@@ -2323,19 +2323,19 @@ export default function FpbListPage() {
   })
 
   return (
-    <div style={{ padding: '28px 32px', background: theme.pageBg, minHeight: '100vh' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+    <div className="p-4 md:p-8 min-h-screen" style={{ background: theme.pageBg }}>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-6 gap-4">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>📋 Purchase Request Form</h1>
           <p style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>Manage purchase requests and approval workflow</p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 12px rgba(99,102,241,0.35)' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 12px rgba(99,102,241,0.35)', width: 'fit-content' }}>
           <FontAwesomeIcon icon={faPlus} />Create New FPB
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12, marginBottom: 24 }}>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         {[
           { label: 'Total Requests',   value: myFpbs.length,                                      color: '#6366f1' },
           { label: 'Awaiting Approval', value: myFpbs.filter(f => f.status === 'pending').length,  color: '#d97706' },
@@ -2352,10 +2352,11 @@ export default function FpbListPage() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 10, background: theme.subtleBg, border: `1px solid ${theme.border}`, width: 'fit-content', marginBottom: 20 }}>
+      <div className="flex gap-1 p-1 rounded-lg w-full sm:w-fit overflow-x-auto mb-5 no-scrollbar" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 7, border: 'none', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s', background: tab === t.key ? theme.cardBg : 'transparent', color: tab === t.key ? theme.textPrimary : theme.textSecondary, boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-md font-semibold text-xs md:text-sm transition-all"
+            style={{ border: 'none', cursor: 'pointer', background: tab === t.key ? theme.cardBg : 'transparent', color: tab === t.key ? theme.textPrimary : theme.textSecondary, boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
             <FontAwesomeIcon icon={t.icon} />
             {t.label}
             {t.count > 0 && <span style={{ padding: '1px 7px', borderRadius: 99, fontSize: 10, fontWeight: 800, background: tab === t.key ? '#6366f1' : theme.subtleBg, color: tab === t.key ? '#fff' : theme.textSecondary }}>{t.count}</span>}
@@ -2426,32 +2427,37 @@ export default function FpbListPage() {
           ) : (
           <>
           {/* Search & Filter bar */}
-          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.border}`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <div className="flex flex-col sm:flex-row gap-3 items-center p-3 md:p-4" style={{ borderBottom: `1px solid ${theme.border}` }}>
+            <div className="relative w-full sm:flex-1">
               <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: theme.textSecondary, fontSize: 13, pointerEvents: 'none' }}>🔍</span>
               <input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search FPB number, division, requester..."
-                style={{ width: '100%', padding: '7px 10px 7px 32px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
+                className="w-full px-3 py-2 pl-8 rounded-lg text-xs md:text-sm outline-none"
+                style={{ border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary }}
               />
             </div>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-              style={{ padding: '7px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer' }}>
-              <option value="">All Status</option>
+            <div className="flex w-full sm:w-auto gap-2 items-center">
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+                className="flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs md:text-sm outline-none cursor-pointer"
+                style={{ border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary }}>
+                <option value="">All Status</option>
               <option value="pending">Pending</option>
               <option value="revision">Revision</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
               <option value="ordered">📦 Ordered</option>
             </select>
-            {(searchQuery || filterStatus) && (
-              <button onClick={() => { setSearchQuery(''); setFilterStatus('') }}
-                style={{ padding: '7px 12px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                ✕ Reset
-              </button>
-            )}
-            <span style={{ fontSize: 11, color: theme.textSecondary, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{filteredList.length} FPB</span>
+              {(searchQuery || filterStatus) && (
+                <button onClick={() => { setSearchQuery(''); setFilterStatus('') }}
+                  className="px-3 py-2 rounded-lg text-xs md:text-sm whitespace-nowrap cursor-pointer"
+                  style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary }}>
+                  ✕ Reset
+                </button>
+              )}
+              <span className="text-xs md:text-sm whitespace-nowrap ml-auto" style={{ color: theme.textSecondary }}>{filteredList.length} FPB</span>
+            </div>
           </div>
           {loading ? (
             <div style={{ padding: 40, textAlign: 'center', color: theme.textSecondary }}>
