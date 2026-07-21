@@ -142,8 +142,37 @@ export default function FpbDetailPage() {
           const nextStepRow = approvals.find(a => a.step_order === fpb.current_step + 1)
           if (nextStepRow) {
             await supabase.from('fpb').update({ current_step: fpb.current_step + 1 }).eq('fpb_id', id)
+            // Notify next step approvers
+            const nextApprovals = approvals.filter(a => a.step_order === fpb.current_step + 1)
+            for (const ap of nextApprovals) {
+              const u = ap.users
+              if (u?.user_email) {
+                await fetch('/api/email/fpb', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'fpbPendingApproval', to: u.user_email,
+                    approverName: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim(),
+                    fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+                    submitterName, division: fpb.division, grandTotal: fpb.grand_total,
+                    usageDate: fpb.usage_date, stepName: ap.step_name || 'Approval',
+                  })
+                })
+              }
+            }
           } else {
             await supabase.from('fpb').update({ status: 'approved' }).eq('fpb_id', id)
+            // Notify submitter FPB approved
+            const { data: submitterUser } = await supabase.from('users').select('user_email').eq('user_id', fpb.submitted_by).single()
+            if (submitterUser?.user_email) {
+              await fetch('/api/email/fpb', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'fpbApproved', to: submitterUser.user_email,
+                  submitterName, fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+                  grandTotal: fpb.grand_total,
+                })
+              })
+            }
           }
         }
         // else: wait for other approvers in same step
@@ -151,12 +180,38 @@ export default function FpbDetailPage() {
         await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null }).eq('fpb_id', id)
         const screenerExists = approvals.some(a => a.approver_order === 0)
         await supabase.from('fpb').update({ status: 'revision', current_step: screenerExists ? 0 : 1 }).eq('fpb_id', id)
+        
+        // Notify submitter revision
+        const { data: submitterUser } = await supabase.from('users').select('user_email').eq('user_id', fpb.submitted_by).single()
+        if (submitterUser?.user_email) {
+          await fetch('/api/email/fpb', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'fpbRevision', to: submitterUser.user_email,
+              submitterName, fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+              approverName: 'Approver', comment: comment.trim()
+            })
+          })
+        }
       } else if (action === 'reject') {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', id)
         // Mark the rejector's own approval record so progress shows who rejected
         await supabase.from('fpb_approvals')
           .update({ status: 'rejected', comment: comment.trim() || null, action_at: new Date().toISOString() })
           .eq('fpb_id', id).eq('approver_user_id', userId)
+
+        // Notify submitter rejected
+        const { data: submitterUser } = await supabase.from('users').select('user_email').eq('user_id', fpb.submitted_by).single()
+        if (submitterUser?.user_email) {
+          await fetch('/api/email/fpb', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'fpbRejected', to: submitterUser.user_email,
+              submitterName, fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+              approverName: 'Approver', comment: comment.trim()
+            })
+          })
+        }
       }
 
       setShowModal(false); setAction(null); setComment(''); fetchData(userId)
@@ -179,6 +234,25 @@ export default function FpbDetailPage() {
       await supabase.from('fpb_approvals').update({ status: 'pending', comment: null, action_at: null }).eq('fpb_id', id)
       const screenerExists = approvals.some(a => a.approver_order === 0)
       await supabase.from('fpb').update({ status: 'pending', current_step: screenerExists ? 0 : 1, revision_count: (fpb.revision_count || 0) + 1 }).eq('fpb_id', id)
+      
+      // Notify first approvers (step_order 0 or 1 depending on screener)
+      const firstStepApprovals = approvals.filter(a => a.step_order === (screenerExists ? 0 : 1))
+      for (const ap of firstStepApprovals) {
+        const u = ap.users
+        if (u?.user_email) {
+          await fetch('/api/email/fpb', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'fpbPendingApproval', to: u.user_email,
+              approverName: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim(),
+              fpbNumber: fpb.fpb_number, fpbType: fpb.fpb_types?.type_name,
+              submitterName, division: fpb.division, grandTotal: fpb.grand_total,
+              usageDate: fpb.usage_date, stepName: ap.step_name || 'Approval',
+            })
+          })
+        }
+      }
+
       setComment(''); fetchData(userId)
     } catch (e) { setError(e.message) }
     finally { setSaving(false) }
