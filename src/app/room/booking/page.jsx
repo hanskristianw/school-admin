@@ -39,6 +39,21 @@ export default function RoomBookingPage() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date())
   const [showModal, setShowModal] = useState(false)
   const [draft, setDraft] = useState({ roomId: '', date: '', start: '08:00', end: '09:00', purpose: '' })
+  
+  // Admin blocking state
+  const [roomBlocks, setRoomBlocks] = useState([])
+  const [showBlockModal, setShowBlockModal] = useState(false)
+  const [blockDraft, setBlockDraft] = useState({ 
+    roomId: '', 
+    type: 'recurring', // 'recurring' | 'specific'
+    dayOfWeek: 1, 
+    specificDate: '', 
+    recurringFrom: '',
+    recurringUntil: '',
+    start: '07:00', 
+    end: '15:00', 
+    reason: '' 
+  })
 
   const resolveText = (key, fallback) => {
     const value = t(key)
@@ -103,10 +118,24 @@ export default function RoomBookingPage() {
     setBookings(normalized)
   }
 
+  const loadBlocks = async () => {
+    // We wrap this in try-catch without strict failure because table might not exist immediately for the user during rollout
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('room_blocks')
+        .select('*, room:room_id(room_name)')
+        .order('id', { ascending: false })
+      if (!fetchError && data) {
+        setRoomBlocks(data)
+      }
+    } catch (e) {}
+  }
+
   useEffect(() => {
     if (checked) {
       loadRooms()
       loadBookings()
+      loadBlocks()
     }
   }, [checked])
 
@@ -133,6 +162,24 @@ export default function RoomBookingPage() {
     map.forEach(list => list.sort((a, b) => (a.startDate?.getTime() || 0) - (b.startDate?.getTime() || 0)))
     return map
   }, [filteredBookings])
+
+  const blocksForCurrentRoom = useMemo(() => {
+    if (!roomId) return []
+    return roomBlocks.filter(b => b.room_id === Number(roomId))
+  }, [roomBlocks, roomId])
+
+  const getBlocksForDate = (dateStr) => {
+    const targetDate = new Date(dateStr)
+    const dayOfWeek = targetDate.getDay()
+    return blocksForCurrentRoom.filter(block => {
+      if (block.day_of_week !== null && block.day_of_week === dayOfWeek) {
+        if (block.recurring_from && dateStr < block.recurring_from) return false
+        if (block.recurring_until && dateStr > block.recurring_until) return false
+        return true
+      }
+      return block.specific_date === dateStr
+    })
+  }
 
   const upcomingBookings = useMemo(() => {
     return [...filteredBookings]
@@ -177,6 +224,44 @@ export default function RoomBookingPage() {
     if (!(selStart < selEnd)) {
       return resolveText('roomBooking.errors.invalidTime', 'Please choose a valid start and end time.')
     }
+
+    // 1. Check against Admin Blocks
+    const targetDate = new Date(dateStr)
+    const dayOfWeek = targetDate.getDay() // 0-6
+    
+    const parseTime = (tStr) => {
+      const [h, m] = (tStr || '00:00').split(':')
+      return parseInt(h, 10) * 100 + parseInt(m, 10)
+    }
+    const tStart = parseTime(startTime)
+    const tEnd = parseTime(endTime)
+
+    const blockConflict = roomBlocks.find(block => {
+      if (block.room_id !== room) return false
+      
+      let matchesDate = false
+      if (block.day_of_week !== null && block.day_of_week === dayOfWeek) {
+        matchesDate = true
+        if (block.recurring_from && dateStr < block.recurring_from) {
+          matchesDate = false
+        }
+        if (block.recurring_until && dateStr > block.recurring_until) {
+          matchesDate = false
+        }
+      }
+      if (block.specific_date === dateStr) matchesDate = true
+      if (!matchesDate) return false
+      
+      const bStart = parseTime(block.start_time.substring(0, 5))
+      const bEnd = parseTime(block.end_time.substring(0, 5))
+      return (bStart < tEnd && tStart < bEnd)
+    })
+
+    if (blockConflict) {
+      return `This room is blocked: ${blockConflict.reason || 'Admin block'}`
+    }
+
+    // 2. Check against other approved bookings
     return filteredBookings.some(bk => {
       if (bk.room_id !== room || bk.status !== 'approved' || !bk.startDate || !bk.endDate) return false
       const a = bk.startDate.getTime()
@@ -254,6 +339,50 @@ export default function RoomBookingPage() {
     }
   }
 
+  const handleCreateBlock = async () => {
+    if (!blockDraft.roomId) return setFormError('Please select a room')
+    if (blockDraft.type === 'specific' && !blockDraft.specificDate) return setFormError('Please select a date')
+    setLoading(true)
+    setFormError('')
+    const payload = {
+      room_id: parseInt(blockDraft.roomId),
+      start_time: blockDraft.start + ':00',
+      end_time: blockDraft.end + ':00',
+      reason: blockDraft.reason
+    }
+    if (blockDraft.type === 'recurring') {
+      payload.day_of_week = parseInt(blockDraft.dayOfWeek)
+      payload.specific_date = null
+      payload.recurring_from = blockDraft.recurringFrom || null
+      payload.recurring_until = blockDraft.recurringUntil || null
+    } else {
+      payload.day_of_week = null
+      payload.specific_date = blockDraft.specificDate
+      payload.recurring_from = null
+      payload.recurring_until = null
+    }
+
+    try {
+      const { error: insErr } = await supabase.from('room_blocks').insert([payload])
+      if (insErr) throw insErr
+      setShowBlockModal(false)
+      loadBlocks()
+    } catch(err) {
+      setFormError(friendlyError(err))
+    }
+    setLoading(false)
+  }
+
+  const handleDeleteBlock = async (id) => {
+    if (!confirm('Are you sure you want to remove this block?')) return
+    setLoading(true)
+    try {
+      await supabase.from('room_blocks').delete().eq('id', id)
+      loadBlocks()
+    } catch(e) {}
+    setLoading(false)
+  }
+
   if (!checked) return null
 
   const monthLabel = currentMonth.toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'zh' ? 'zh-CN' : 'id-ID', {
@@ -310,6 +439,7 @@ export default function RoomBookingPage() {
               const isCurrentMonth = day.getMonth() === currentMonth.getMonth()
               const isToday = dateKey === todayKey
               const dayBookings = bookingsByDate.get(dateKey) || []
+              const dayBlocks = getBlocksForDate(dateKey)
               return (
                 <button
                   key={dateKey + day.getTime()}
@@ -322,7 +452,16 @@ export default function RoomBookingPage() {
                     {isToday && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{resolveText('roomBooking.todayBadge', 'Today')}</span>}
                   </div>
                   <div className="mt-2 space-y-1">
-                    {dayBookings.slice(0, 3).map(bk => (
+                    {dayBlocks.map(block => (
+                      <div
+                        key={`block-${block.id}`}
+                        className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] leading-tight text-red-700"
+                      >
+                        <div className="font-semibold">{block.start_time.substring(0, 5)} - {block.end_time.substring(0, 5)}</div>
+                        <div className="truncate font-bold">Blocked: {block.reason || 'Admin'}</div>
+                      </div>
+                    ))}
+                    {dayBookings.slice(0, Math.max(0, 3 - dayBlocks.length)).map(bk => (
                       <div
                         key={bk.booking_id}
                         className={`rounded border px-2 py-1 text-[11px] leading-tight ${bk.status === 'approved' ? 'border-green-200 bg-green-50 text-green-700' : bk.status === 'pending' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-gray-200 bg-gray-50 text-gray-600'}`}
@@ -331,8 +470,8 @@ export default function RoomBookingPage() {
                         <div className="truncate">{bk.purpose || resolveText('roomBooking.fields.purposePlaceholder', 'Meeting / Activity')}</div>
                       </div>
                     ))}
-                    {dayBookings.length > 3 && (
-                      <div className="text-[11px] text-gray-500">+{dayBookings.length - 3} {resolveText('roomBooking.moreLabel', 'more')}</div>
+                    {(dayBookings.length + dayBlocks.length) > 3 && (
+                      <div className="text-[11px] text-gray-500">+{dayBookings.length + dayBlocks.length - 3} {resolveText('roomBooking.moreLabel', 'more')}</div>
                     )}
                   </div>
                 </button>
@@ -378,6 +517,41 @@ export default function RoomBookingPage() {
           </div>
         </CardContent>
       </Card>
+
+      {user?.isAdmin && (
+        <Card className="border-red-200">
+          <CardHeader className="bg-red-50 pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-red-800">Admin: Room Blocks</CardTitle>
+              <Button size="sm" variant="destructive" onClick={() => setShowBlockModal(true)}>Add Block</Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {roomBlocks.length === 0 && <div className="text-sm text-gray-500">No active blocks.</div>}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {roomBlocks.map(b => (
+                <div key={b.id} className="border border-red-200 rounded p-3 bg-white relative">
+                  <div className="font-semibold">{b.room?.room_name || `Room ${b.room_id}`}</div>
+                  <div className="text-sm text-gray-600">
+                    {b.day_of_week !== null 
+                      ? `Every ${weekDayLabels[b.day_of_week]}` +
+                        (b.recurring_from ? ` from ${b.recurring_from}` : '') +
+                        (b.recurring_until ? ` until ${b.recurring_until}` : '')
+                      : b.specific_date}
+                  </div>
+                  <div className="text-sm text-gray-600 font-mono">
+                    {b.start_time.substring(0, 5)} - {b.end_time.substring(0, 5)}
+                  </div>
+                  {b.reason && <div className="text-xs text-gray-500 mt-1">{b.reason}</div>}
+                  <button onClick={() => handleDeleteBlock(b.id)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Modal
         isOpen={showModal}
@@ -442,6 +616,114 @@ export default function RoomBookingPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>{resolveText('common.cancel', 'Cancel')}</Button>
             <Button onClick={handleCreateBooking} disabled={loading}>{t('roomBooking.submit')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showBlockModal}
+        onClose={() => setShowBlockModal(false)}
+        title="Create Room Block"
+        size="md"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm text-gray-600">Room</label>
+            <select
+              className="mt-1 w-full rounded border px-3 py-2"
+              value={blockDraft.roomId}
+              onChange={(e) => setBlockDraft(prev => ({ ...prev, roomId: e.target.value }))}
+            >
+              <option value="">Select Room</option>
+              {rooms.map(r => (
+                <option key={r.room_id} value={r.room_id}>{r.room_name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm text-gray-600">Block Type</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-1">
+                <input type="radio" checked={blockDraft.type === 'recurring'} onChange={() => setBlockDraft(prev => ({...prev, type: 'recurring'}))} /> Recurring Day
+              </label>
+              <label className="flex items-center gap-1">
+                <input type="radio" checked={blockDraft.type === 'specific'} onChange={() => setBlockDraft(prev => ({...prev, type: 'specific'}))} /> Specific Date
+              </label>
+            </div>
+          </div>
+          
+          {blockDraft.type === 'recurring' ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label className="text-sm text-gray-600">Day of Week</label>
+                <select
+                  className="mt-1 w-full rounded border px-3 py-2"
+                  value={blockDraft.dayOfWeek}
+                  onChange={(e) => setBlockDraft(prev => ({ ...prev, dayOfWeek: e.target.value }))}
+                >
+                  {weekDayLabels.map((lbl, idx) => (
+                    <option key={idx} value={idx}>{lbl}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-gray-600">From Date (Optional)</label>
+                <Input
+                  type="date"
+                  value={blockDraft.recurringFrom}
+                  onChange={(e) => setBlockDraft(prev => ({ ...prev, recurringFrom: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-600">Until Date (Optional)</label>
+                <Input
+                  type="date"
+                  value={blockDraft.recurringUntil}
+                  onChange={(e) => setBlockDraft(prev => ({ ...prev, recurringUntil: e.target.value }))}
+                />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-sm text-gray-600">Specific Date</label>
+              <Input
+                type="date"
+                value={blockDraft.specificDate}
+                onChange={(e) => setBlockDraft(prev => ({ ...prev, specificDate: e.target.value }))}
+              />
+            </div>
+          )}
+          
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-sm text-gray-600">Start Time</label>
+              <Input
+                type="time"
+                value={blockDraft.start}
+                onChange={(e) => setBlockDraft(prev => ({ ...prev, start: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-600">End Time</label>
+              <Input
+                type="time"
+                value={blockDraft.end}
+                onChange={(e) => setBlockDraft(prev => ({ ...prev, end: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm text-gray-600">Reason</label>
+            <Input
+              value={blockDraft.reason}
+              onChange={(e) => setBlockDraft(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder="e.g. Maintenance, Assembly"
+            />
+          </div>
+          {formError && <div className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{formError}</div>}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setShowBlockModal(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleCreateBlock} disabled={loading}>Create Block</Button>
           </div>
         </div>
       </Modal>

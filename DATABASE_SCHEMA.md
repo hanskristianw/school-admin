@@ -1,6 +1,6 @@
 # Database Schema & Relationships
 
-## 1. User Management Domain (`/data/user`)
+## 1. User & Role Management Domain (`/data/user`, `/data/role_management`)
 
 This domain handles the core users of the system, their roles, and organizational units. It is centered around the `users` table.
 
@@ -46,8 +46,12 @@ Defines the permissions and types of users in the system.
 | `is_admin` | `BOOLEAN` | Default `false` |
 | `is_principal` | `BOOLEAN` | Default `false` |
 | `is_student` | `BOOLEAN` | Default `false` |
+| `is_counselor` | `BOOLEAN` | Flag for counselor roles |
+| `is_curriculum` | `BOOLEAN` | Flag for curriculum roles |
+| `is_nurse` | `BOOLEAN` | Flag for nurse/clinic roles |
 | `is_vendor` | `BOOLEAN` | Flag for vendor roles |
 | `is_part_time_staff`| `BOOLEAN` | Flag for part-time staff |
+| `can_void_transactions`| `BOOLEAN`| Flag granting permission to void/cancel transactions |
 | `work_days` | `VARCHAR` | CSV of work days (e.g. "1,2,3,4,5" for Mon-Fri) |
 | `dashboard_type_id` | `INTEGER` | Foreign Key to `dashboard_type(dashboard_type_id)` |
 | `role_priority` | `INTEGER` | Priority for routing (higher number = higher priority) |
@@ -94,6 +98,10 @@ erDiagram
         string role_name
         boolean is_teacher
         boolean is_admin
+        boolean is_counselor
+        boolean is_curriculum
+        boolean is_nurse
+        boolean can_void_transactions
         int dashboard_type_id FK
         int role_priority
     }
@@ -969,3 +977,93 @@ erDiagram
     }
 ```
 
+---
+
+## 8. Room & Booking Management Domain (`/data/room`, `/room/booking`)
+
+This domain manages the physical rooms within the school and allows staff to reserve time slots for these rooms, ensuring there are no overlapping bookings.
+
+### 8.1 Tables
+
+#### `room`
+Stores the master data for physical rooms or facilities available for booking.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `room_id` | `SERIAL` | Primary Key |
+| `room_name` | `VARCHAR(100)` | Name of the room (Unique) |
+| `created_at` | `TIMESTAMP` | Record creation time |
+| `updated_at` | `TIMESTAMP` | Record update time |
+
+#### `room_booking`
+Records reservations for rooms by users.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `booking_id` | `SERIAL` | Primary Key |
+| `room_id` | `INTEGER` | FK to `room(room_id)` |
+| `requested_by_user_id`| `INTEGER` | FK to `users(user_id)` |
+| `booking_time` | `TSTZRANGE` | PostgreSQL timestamp range indicating the start and end of the booking slot |
+| `purpose` | `TEXT` | The purpose or reason for the booking |
+| `status` | `VARCHAR` | Current status (e.g., `approved`, `cancelled`) |
+| `created_at` | `TIMESTAMP` | When the booking was created |
+
+#### `room_blocks`
+Records administrative blocks to prevent room bookings on specific dates or recurring days.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `room_id` | `INTEGER` | FK to `room(room_id)` |
+| `day_of_week` | `INTEGER` | 0=Sun, 1=Mon...6=Sat (NULL if specific date) |
+| `specific_date` | `DATE` | Specific date for the block (NULL if recurring day) |
+| `recurring_from`| `DATE` | For recurring blocks, they only apply starting from this date (Optional) |
+| `recurring_until`| `DATE` | For recurring blocks, they stop applying after this date (Optional) |
+| `start_time` | `TIME` | Start time of the block |
+| `end_time` | `TIME` | End time of the block |
+| `reason` | `TEXT` | Reason for the block (e.g. Maintenance) |
+
+> [!NOTE]
+> **Overlap Prevention:** The `room_booking.booking_time` column uses a PostgreSQL `TSTZRANGE` type. Overlaps are prevented by checking existing bookings with an `approved` status, as well as checking against `room_blocks` (both specific dates and recurring days).
+
+### 8.2 ERD / Relationships (Room Booking)
+
+```mermaid
+erDiagram
+    room ||--o{ room_booking : "has_bookings"
+    room ||--o{ room_blocks : "has_blocks"
+    users ||--o{ room_booking : "books"
+
+    room {
+        int room_id PK
+        string room_name
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    room_blocks {
+        int id PK
+        int room_id FK
+        int day_of_week
+        date specific_date
+        date recurring_from
+        date recurring_until
+        time start_time
+        time end_time
+        text reason
+    }
+
+    room_booking {
+        int booking_id PK
+        int room_id FK
+        int requested_by_user_id FK
+        tstzrange booking_time
+        string purpose
+        string status
+        timestamp created_at
+    }
+
+    users {
+        int user_id PK
+    }
+```
