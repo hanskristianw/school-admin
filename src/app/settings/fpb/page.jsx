@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFileInvoiceDollar, faSave, faSpinner, faCheck,
   faUsers, faUserTie, faShield, faWallet, faSearch,
+  faPen, faWrench, faTimes, faRotateLeft,
 } from '@fortawesome/free-solid-svg-icons'
 
 const userName = (u) => u ? `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim() : '—'
@@ -36,6 +37,109 @@ export default function FpbSettingsPage() {
   const [pendingFpbCount, setPendingFpbCount] = useState(null)
   const [applyingPending, setApplyingPending] = useState(false)
   const [appliedPending, setAppliedPending]   = useState(false)
+
+  // ─── FPB Repair Tool ───────────────────────────────────────────
+  const [repairSearch, setRepairSearch] = useState('')
+  const [repairList, setRepairList]     = useState([])   // all non-draft FPBs for list
+  const [repairFpb, setRepairFpb]       = useState(null) // selected FPB full data
+  const [repairApprovals, setRepairApprovals] = useState([])
+  const [repairLoading, setRepairLoading]     = useState(false)
+  const [repairSaving, setRepairSaving]       = useState(false)
+  const [repairSaved, setRepairSaved]         = useState(false)
+  const [repairError, setRepairError]         = useState('')
+  const [repairFpbStatus, setRepairFpbStatus] = useState('')
+  const [repairCurrentStep, setRepairCurrentStep] = useState(1)
+  const [repairApproverEdits, setRepairApproverEdits] = useState({}) // { approval_id: { approver_user_id, status } }
+
+  const loadRepairList = useCallback(async () => {
+    setRepairLoading(true)
+    const { data } = await supabase
+      .from('fpb')
+      .select('fpb_id, fpb_number, status, submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)')
+      .neq('status', 'draft')
+      .order('created_at', { ascending: false })
+    setRepairList(data || [])
+    setRepairLoading(false)
+  }, [])
+
+  useEffect(() => { loadRepairList() }, [loadRepairList])
+
+  const loadRepairFpb = async (fpbId) => {
+    setRepairLoading(true)
+    setRepairError('')
+    setRepairSaved(false)
+    try {
+      const { data: f } = await supabase
+        .from('fpb')
+        .select('fpb_id, fpb_number, status, current_step, submitted_by, users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang)')
+        .eq('fpb_id', fpbId).single()
+      setRepairFpb(f)
+      setRepairFpbStatus(f.status)
+      setRepairCurrentStep(f.current_step ?? 1)
+
+      const { data: aps } = await supabase
+        .from('fpb_approvals')
+        .select('*, users!fpb_approvals_approver_user_id_fkey(user_nama_depan, user_nama_belakang), role!fpb_approvals_approver_role_id_fkey(role_name)')
+        .eq('fpb_id', fpbId)
+        .order('step_order').order('approver_order')
+      setRepairApprovals(aps || [])
+
+      // init edits from current values
+      const edits = {}
+      for (const ap of aps || []) {
+        edits[ap.approval_id] = {
+          approver_user_id: ap.approver_user_id ? String(ap.approver_user_id) : '',
+          status: ap.status,
+          step_order: ap.step_order,
+        }
+      }
+      setRepairApproverEdits(edits)
+    } catch (e) { setRepairError(e.message) }
+    finally { setRepairLoading(false) }
+  }
+
+  const handleRepairSave = async () => {
+    if (!repairFpb) return
+    setRepairSaving(true)
+    setRepairError('')
+    try {
+      // Save each approval row
+      for (const ap of repairApprovals) {
+        const edit = repairApproverEdits[ap.approval_id]
+        if (!edit) continue
+        const update = {
+          approver_user_id: edit.approver_user_id ? parseInt(edit.approver_user_id) : null,
+          status: edit.status,
+          step_order: edit.step_order,
+          // Clear action_at if resetting to pending
+          ...(edit.status === 'pending' && ap.status !== 'pending' ? { action_at: null, comment: null } : {}),
+        }
+        await supabase.from('fpb_approvals').update(update).eq('approval_id', ap.approval_id)
+      }
+      // Save FPB status and/or current_step
+      const fpbUpdate = {}
+      if (repairFpbStatus !== repairFpb.status) fpbUpdate.status = repairFpbStatus
+      if (repairCurrentStep !== repairFpb.current_step) fpbUpdate.current_step = repairCurrentStep
+      if (Object.keys(fpbUpdate).length > 0) {
+        await supabase.from('fpb').update(fpbUpdate).eq('fpb_id', repairFpb.fpb_id)
+      }
+      setRepairSaved(true)
+      setTimeout(() => setRepairSaved(false), 4000)
+      // Reload
+      await loadRepairFpb(repairFpb.fpb_id)
+      await loadRepairList()
+    } catch (e) { setRepairError(e.message) }
+    finally { setRepairSaving(false) }
+  }
+
+  const filteredRepairList = repairList.filter(f => {
+    const q = repairSearch.toLowerCase()
+    if (!q) return true
+    return (f.fpb_number || '').toLowerCase().includes(q) ||
+      (`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`).toLowerCase().includes(q)
+  })
+
+  // ─── end FPB Repair Tool ────────────────────────────────────────
 
   useEffect(() => {
     Promise.all([
@@ -413,6 +517,190 @@ export default function FpbSettingsPage() {
           </div>
         )}
       </div>
+
+      {/* FPB Repair Tool */}
+      <Card style={{ background: theme.cardBg, marginTop: 24, borderColor: 'rgba(220,38,38,0.4)' }}>
+        <CardHeader className="pb-3">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 99, background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
+              <FontAwesomeIcon icon={faWrench} />
+            </div>
+            <div>
+              <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>🔧 FPB Repair Tool</CardTitle>
+              <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                Edit approver, status, atau reset approval untuk FPB yang sudah dibuat. Gunakan dengan hati-hati.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, alignItems: 'start' }}>
+            {/* Left: FPB list */}
+            <div>
+              <div style={{ position: 'relative', marginBottom: 10 }}>
+                <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: theme.textSecondary, fontSize: 12, pointerEvents: 'none' }} />
+                <input
+                  value={repairSearch}
+                  onChange={e => setRepairSearch(e.target.value)}
+                  placeholder="Cari nomor FPB / pengaju..."
+                  style={{ ...inputStyle, paddingLeft: 30, fontSize: 12 }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 420, overflowY: 'auto' }}>
+                {repairLoading && !repairFpb && (
+                  <div style={{ padding: 20, textAlign: 'center', color: theme.textSecondary }}>
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                  </div>
+                )}
+                {filteredRepairList.map(f => {
+                  const isSelected = repairFpb?.fpb_id === f.fpb_id
+                  const statusColor = f.status === 'approved' ? '#059669' : f.status === 'rejected' ? '#dc2626' : f.status === 'pending' ? '#d97706' : f.status === 'revision' ? '#f59e0b' : '#6b7280'
+                  return (
+                    <button key={f.fpb_id} onClick={() => loadRepairFpb(f.fpb_id)}
+                      style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 9, cursor: 'pointer', border: `2px solid ${isSelected ? '#dc2626' : theme.border}`, background: isSelected ? 'rgba(220,38,38,0.06)' : theme.cardBg, transition: 'all 0.15s' }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>{f.fpb_number || f.fpb_id}</div>
+                      <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 1 }}>
+                        {`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`.trim()}
+                      </div>
+                      <div style={{ marginTop: 4 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: statusColor, background: `${statusColor}18`, padding: '1px 7px', borderRadius: 99 }}>{f.status}</span>
+                      </div>
+                    </button>
+                  )
+                })}
+                {filteredRepairList.length === 0 && !repairLoading && (
+                  <div style={{ padding: 20, textAlign: 'center', color: theme.textSecondary, fontSize: 12 }}>Tidak ada FPB ditemukan</div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Edit panel */}
+            {repairFpb ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: theme.textPrimary }}>{repairFpb.fpb_number}</div>
+                    <div style={{ fontSize: 12, color: theme.textSecondary }}>
+                      Pengaju: {`${repairFpb.users?.user_nama_depan || ''} ${repairFpb.users?.user_nama_belakang || ''}`.trim()}
+                      {' · '}Current step: {repairFpb.current_step}
+                    </div>
+                  </div>
+                  {/* FPB status editor */}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexShrink: 0 }}>
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>STATUS FPB</label>
+                      <select value={repairFpbStatus} onChange={e => setRepairFpbStatus(e.target.value)}
+                        style={{ ...inputStyle, fontSize: 12, width: 'auto', padding: '6px 10px' }}>
+                        {['pending', 'approved', 'rejected', 'revision'].map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>CURRENT STEP</label>
+                      <select value={repairCurrentStep} onChange={e => setRepairCurrentStep(parseInt(e.target.value))}
+                        style={{ ...inputStyle, fontSize: 12, width: 'auto', padding: '6px 10px', borderColor: '#6366f1' }}>
+                        {[...new Set(repairApprovals.map(ap => ap.step_order))].sort((a,b) => a-b).map(step => (
+                          <option key={step} value={step}>Step {step}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Approval rows */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {repairApprovals.length === 0 && (
+                    <div style={{ padding: 20, textAlign: 'center', color: theme.textSecondary, fontSize: 12 }}>Tidak ada baris approval</div>
+                  )}
+                  {repairApprovals.map(ap => {
+                    const edit = repairApproverEdits[ap.approval_id] || {}
+                    const orderLabel = ap.approver_order === 0 ? 'Screener' : `Approver ${ap.approver_order}`
+                    const statusColor = edit.status === 'approved' ? '#059669' : edit.status === 'rejected' ? '#dc2626' : edit.status === 'revision' ? '#f59e0b' : '#6b7280'
+                    return (
+                      <div key={ap.approval_id} style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.subtleBg + '44' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, whiteSpace: 'nowrap' }}>Step</span>
+                            <input
+                              type="number" min={0} max={99}
+                              value={edit.step_order ?? ap.step_order}
+                              onChange={e => setRepairApproverEdits(prev => ({ ...prev, [ap.approval_id]: { ...prev[ap.approval_id], step_order: parseInt(e.target.value) || 0 } }))}
+                              style={{ width: 52, padding: '2px 6px', borderRadius: 6, border: `1px solid ${(edit.step_order ?? ap.step_order) !== ap.step_order ? '#f59e0b' : '#6366f1'}`, background: (edit.step_order ?? ap.step_order) !== ap.step_order ? 'rgba(245,158,11,0.08)' : 'rgba(99,102,241,0.07)', color: '#6366f1', fontWeight: 800, fontSize: 12, outline: 'none', textAlign: 'center' }}
+                            />
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary }}>{ap.step_name}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706' }}>{orderLabel}</span>
+                          {ap.role?.role_name && (
+                            <span style={{ fontSize: 10, color: theme.textSecondary, fontStyle: 'italic' }}>role: {ap.role.role_name}</span>
+                          )}
+                          {(edit.step_order ?? ap.step_order) !== ap.step_order && (
+                            <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, background: 'rgba(245,158,11,0.12)', padding: '1px 7px', borderRadius: 99 }}>⚠ changed</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
+                          <div>
+                            <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>APPROVER USER</label>
+                            <select
+                              value={edit.approver_user_id || ''}
+                              onChange={e => setRepairApproverEdits(prev => ({ ...prev, [ap.approval_id]: { ...prev[ap.approval_id], approver_user_id: e.target.value } }))}
+                              style={{ ...inputStyle, fontSize: 12 }}>
+                              <option value="">— (null / role-based) —</option>
+                              {users.map(u => (
+                                <option key={u.user_id} value={String(u.user_id)}>{userName(u)}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>STATUS</label>
+                            <select
+                              value={edit.status || 'pending'}
+                              onChange={e => setRepairApproverEdits(prev => ({ ...prev, [ap.approval_id]: { ...prev[ap.approval_id], status: e.target.value } }))}
+                              style={{ ...inputStyle, fontSize: 12, width: 'auto', padding: '6px 10px', borderColor: statusColor }}>
+                              {['pending', 'approved', 'revision', 'rejected'].map(s => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {ap.comment && (
+                          <div style={{ marginTop: 8, fontSize: 11, color: theme.textSecondary, fontStyle: 'italic' }}>Komentar: {ap.comment}</div>
+                        )}
+                        {ap.action_at && (
+                          <div style={{ marginTop: 4, fontSize: 11, color: theme.textSecondary }}>Diproses: {new Date(ap.action_at).toLocaleString('id-ID')}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {repairError && (
+                  <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>⚠ {repairError}</div>
+                )}
+                {repairSaved && (
+                  <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.3)', color: '#059669', fontSize: 13, fontWeight: 600 }}>✓ Perubahan berhasil disimpan.</div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                  <button onClick={() => { setRepairFpb(null); setRepairApprovals([]); setRepairApproverEdits({}) }}
+                    style={{ padding: '9px 18px', borderRadius: 9, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                    <FontAwesomeIcon icon={faTimes} style={{ marginRight: 6 }} />Tutup
+                  </button>
+                  <Button onClick={handleRepairSave} disabled={repairSaving}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: repairSaved ? '#059669' : repairSaving ? theme.subtleBg : 'linear-gradient(135deg,#dc2626,#f87171)', color: repairSaving ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: repairSaving ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+                    {repairSaving ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : repairSaved ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Perubahan</>}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '60px 20px', textAlign: 'center', color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faPen} style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }} />
+                <p style={{ fontSize: 13 }}>Pilih FPB di kiri untuk mengedit approval chain-nya</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Budget Roles Card */}
       <Card style={{ background: theme.cardBg, borderColor: theme.border, marginTop: 24 }}>

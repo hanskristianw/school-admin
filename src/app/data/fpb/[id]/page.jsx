@@ -37,6 +37,7 @@ export default function FpbDetailPage() {
   const [revisions, setRevisions] = useState([])
   const [loading, setLoading]   = useState(true)
   const [userId, setUserId]     = useState(null)
+  const [myRoleId, setMyRoleId] = useState(null)
   // action modal: 'approved' | 'revision' | 'reject' | null
   const [action, setAction]     = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -58,6 +59,9 @@ export default function FpbDetailPage() {
         .eq('fpb_id', id).single()
       setFpb(f)
 
+      const { data: userRow } = await supabase.from('users').select('user_role_id').eq('user_id', uid).single()
+      setMyRoleId(userRow?.user_role_id || null)
+
       const { data: it } = await supabase.from('fpb_items').select('*').eq('fpb_id', id).order('created_at')
       setItems(it || [])
 
@@ -75,10 +79,43 @@ export default function FpbDetailPage() {
     finally { setLoading(false) }
   }
 
-  // AND logic: find MY pending approval in current step
-  const myPendingApproval = approvals.find(
-    a => a.approver_user_id === userId && a.status === 'pending' && a.step_order === fpb?.current_step
-  )
+  // AND logic: find MY pending approval in current step considering blockers
+  const myPendingApproval = (() => {
+    if (!fpb) return null
+    const allInStep = approvals.filter(a => a.step_order === fpb.current_step)
+    
+    // Find if I have a pending row in this step
+    const mine = allInStep.find(a => 
+      a.status === 'pending' && (
+        (a.approver_order === 0 && a.approver_role_id === myRoleId) || // I am the screener
+        (a.approver_order !== 0 && a.approver_user_id === userId) // I am a regular approver
+      )
+    )
+    if (!mine) return null
+
+    // Screener has no blockers
+    if (mine.approver_order === 0) return mine
+
+    // Regular approvers: check if screener has approved first
+    const screenerRow = allInStep.find(ap => ap.approver_order === 0)
+    if (screenerRow && screenerRow.status !== 'approved') return null
+
+    // Check sequential order among regular approvers
+    const regularInStep = allInStep.filter(ap => ap.approver_order !== 0)
+    const hasOrder = regularInStep.every(ap => ap.approver_order != null)
+    let blockers
+    if (hasOrder) {
+      const myPos = mine.approver_order ?? 1
+      blockers = regularInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
+    } else {
+      const sorted = [...regularInStep].sort((x, y) => x.approval_id - y.approval_id)
+      const myPos = sorted.findIndex(ap => ap.approval_id === mine.approval_id)
+      blockers = myPos > 0 ? sorted.slice(0, myPos).filter(ap => ap.status !== 'approved') : []
+    }
+    
+    return blockers.length === 0 ? mine : null
+  })()
+  
   const currentStepApprovals = approvals.filter(a => a.step_order === fpb?.current_step)
   const isSubmitter = fpb?.submitted_by === userId
   const canRevise   = isSubmitter && fpb?.status === 'revision'

@@ -36,15 +36,87 @@ export default function GlobalActionCards() {
   useEffect(() => {
     if (!userId) return
     setFpbLoading(true)
-    supabase
-      .from('fpb_approvals')
-      .select('approval_id', { count: 'exact', head: true })
-      .eq('approver_user_id', userId)
-      .eq('status', 'pending')
-      .then(({ count, error }) => {
-        if (!error) setFpbCount(count ?? 0)
-      })
-      .finally(() => setFpbLoading(false))
+
+    const fetchFpbCount = async () => {
+      try {
+        const { data: userRow } = await supabase.from('users').select('user_role_id').eq('user_id', userId).single()
+        const myRoleId = userRow?.user_role_id
+
+        const { data: myApprovals } = await supabase
+          .from('fpb_approvals')
+          .select('approval_id, fpb_id, step_order, approver_order, status, fpb(status, current_step)')
+          .eq('approver_user_id', userId)
+
+        let myScreeningApprovals = []
+        if (myRoleId) {
+          const { data: scrData } = await supabase
+            .from('fpb_approvals')
+            .select('approval_id, fpb_id, step_order, approver_order, status, fpb(status, current_step)')
+            .eq('approver_role_id', myRoleId)
+            .eq('approver_order', 0)
+          myScreeningApprovals = scrData || []
+        }
+
+        const allMyApprovals = [...(myApprovals || []), ...myScreeningApprovals]
+        const activeCandidates = allMyApprovals.filter(a => a.fpb?.status === 'pending' && a.status === 'pending')
+
+        if (activeCandidates.length === 0) {
+          setFpbCount(0)
+          return
+        }
+
+        const fpbIds = activeCandidates.map(a => a.fpb_id)
+        const { data: allStepApprovals } = await supabase
+          .from('fpb_approvals')
+          .select('fpb_id, step_order, approver_order, status, approval_id')
+          .in('fpb_id', fpbIds)
+
+        let actionableCount = 0
+        const seen = new Set()
+
+        for (const a of activeCandidates) {
+          if (seen.has(a.fpb_id)) continue
+
+          const allInStep = (allStepApprovals || []).filter(ap => ap.fpb_id === a.fpb_id && ap.step_order === a.step_order)
+          let isMyTurn = false
+
+          if (a.approver_order === 0) {
+            isMyTurn = a.fpb?.current_step === a.step_order
+          } else {
+            if (a.fpb?.current_step === a.step_order) {
+              const screenerRow = allInStep.find(ap => ap.approver_order === 0)
+              if (!screenerRow || screenerRow.status === 'approved') {
+                const regularInStep = allInStep.filter(ap => ap.approver_order !== 0)
+                const hasOrder = regularInStep.every(ap => ap.approver_order != null)
+                let blockers
+                if (hasOrder) {
+                  const myPos = a.approver_order ?? 1
+                  blockers = regularInStep.filter(ap => (ap.approver_order ?? 1) < myPos && ap.status !== 'approved')
+                } else {
+                  const sorted = [...regularInStep].sort((x, y) => x.approval_id - y.approval_id)
+                  const myPos = sorted.findIndex(ap => ap.approval_id === a.approval_id)
+                  blockers = myPos > 0 ? sorted.slice(0, myPos).filter(ap => ap.status !== 'approved') : []
+                }
+                isMyTurn = blockers.length === 0
+              }
+            }
+          }
+
+          if (isMyTurn) {
+            actionableCount++
+            seen.add(a.fpb_id)
+          }
+        }
+        setFpbCount(actionableCount)
+      } catch (e) {
+        console.error('Error counting FPB:', e)
+        setFpbCount(0)
+      } finally {
+        setFpbLoading(false)
+      }
+    }
+
+    fetchFpbCount()
   }, [userId])
 
   // ── Card 2: Count attendance issues without excuse form this month ────────
