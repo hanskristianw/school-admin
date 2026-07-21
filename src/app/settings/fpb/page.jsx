@@ -33,6 +33,9 @@ export default function FpbSettingsPage() {
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState('')
+  const [pendingFpbCount, setPendingFpbCount] = useState(null)
+  const [applyingPending, setApplyingPending] = useState(false)
+  const [appliedPending, setAppliedPending]   = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -98,8 +101,46 @@ export default function FpbSettingsPage() {
       })
       setRoleApprovers(map)
       setSaved(true); setTimeout(() => setSaved(false), 3000)
+
+      // Check how many pending FPBs have approver rows for this role that are still pending
+      const newIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean).map(Number)
+      const { count } = await supabase
+        .from('fpb_approvals')
+        .select('approval_id', { count: 'exact', head: true })
+        .eq('approver_role_id', selRole.role_id)
+        .eq('status', 'pending')
+        .eq('approver_order', 1) // only check first approver slot to count unique FPBs
+      setPendingFpbCount(count || 0)
     } catch (e) { setError(e.message) }
     finally { setSaving(false) }
+  }
+
+  // Re-sync approver_user_id on all pending fpb_approvals for this role
+  const handleApplyPending = async () => {
+    if (!selRole) return
+    setApplyingPending(true)
+    setError('')
+    try {
+      const ra = roleApprovers[selRole.role_id] || {}
+      const slots = [
+        { order: 1, uid: ra.approver1_id ? parseInt(ra.approver1_id) : null },
+        { order: 2, uid: ra.approver2_id ? parseInt(ra.approver2_id) : null },
+        { order: 3, uid: ra.approver3_id ? parseInt(ra.approver3_id) : null },
+      ].filter(s => s.uid)
+
+      for (const slot of slots) {
+        await supabase
+          .from('fpb_approvals')
+          .update({ approver_user_id: slot.uid })
+          .eq('approver_role_id', selRole.role_id)
+          .eq('approver_order', slot.order)
+          .eq('status', 'pending')
+      }
+      setAppliedPending(true)
+      setPendingFpbCount(0)
+      setTimeout(() => setAppliedPending(false), 4000)
+    } catch (e) { setError(e.message) }
+    finally { setApplyingPending(false) }
   }
 
   const handleSaveScreener = async () => {
@@ -342,6 +383,27 @@ export default function FpbSettingsPage() {
                     {saving ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : saved ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Konfigurasi</>}
                   </Button>
                 </div>
+
+                {/* Banner: apply new config to pending FPBs */}
+                {pendingFpbCount !== null && pendingFpbCount > 0 && (
+                  <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.35)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#b45309' }}>⚠ Ada {pendingFpbCount} FPB pending dengan approver lama</div>
+                      <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 3 }}>
+                        FPB yang sudah dibuat masih menggunakan konfigurasi approver sebelumnya. Klik tombol di samping untuk memperbarui.
+                      </div>
+                    </div>
+                    <Button onClick={handleApplyPending} disabled={applyingPending}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: appliedPending ? '#059669' : applyingPending ? theme.subtleBg : 'linear-gradient(135deg,#d97706,#f59e0b)', color: applyingPending ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: applyingPending ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
+                      {applyingPending ? <><FontAwesomeIcon icon={faSpinner} spin />Menerapkan...</> : appliedPending ? <><FontAwesomeIcon icon={faCheck} />Diterapkan!</> : <>Apply ke FPB Pending</>}
+                    </Button>
+                  </div>
+                )}
+                {pendingFpbCount === 0 && appliedPending && (
+                  <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.3)', fontSize: 13, color: '#059669', fontWeight: 600 }}>
+                    ✓ Semua FPB pending sudah menggunakan approver baru.
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

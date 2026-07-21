@@ -115,6 +115,10 @@ export default function FpbDetailPage() {
         await supabase.from('fpb').update({ status: 'revision', current_step: 1 }).eq('fpb_id', id)
       } else if (action === 'reject') {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', id)
+        // Mark the rejector's own approval record so progress shows who rejected
+        await supabase.from('fpb_approvals')
+          .update({ status: 'rejected', comment: comment.trim() || null, action_at: new Date().toISOString() })
+          .eq('fpb_id', id).eq('approver_user_id', userId)
       }
 
       setShowModal(false); setAction(null); setComment(''); fetchData(userId)
@@ -265,7 +269,7 @@ export default function FpbDetailPage() {
               {(() => {
                 const stepOrders = [...new Set(approvals.map(a => a.step_order))].sort((a,b)=>a-b)
                 return stepOrders.map((stepOrder, stepIdx) => {
-                  const stepRows    = approvals.filter(a => a.step_order === stepOrder)
+                  const stepRows    = approvals.filter(a => a.step_order === stepOrder).sort((a, b) => (a.approver_order ?? 0) - (b.approver_order ?? 0))
                   const stepName    = stepRows[0]?.step_name || `Step ${stepOrder}`
                   const isActive    = stepOrder === fpb.current_step && fpb.status === 'pending'
                   const allDone     = stepRows.every(a => a.status === 'approved')
@@ -291,30 +295,83 @@ export default function FpbDetailPage() {
                           {anyRejected && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:99, background:'rgba(220,38,38,0.12)', color:'#dc2626', fontWeight:700 }}>Ditolak</span>}
                         </div>
                         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                          {stepRows.map(ap => {
-                            const approverName = `${ap.users?.user_nama_depan||''} ${ap.users?.user_nama_belakang||''}`.trim()
-                            const isPending  = ap.status === 'pending'
-                            const isDone     = ap.status === 'approved'
-                            const isRev      = ap.status === 'revision'
-                            const isRej      = ap.status === 'rejected'
+                          {(() => {
+                            // Screener (approver_order=0) → role-based, group when pending
+                            // Regular approvers (approver_order>0) → specific user, always show individually
+                            const screenerRows = stepRows.filter(ap => ap.approver_order === 0)
+                            const regularRows  = stepRows.filter(ap => ap.approver_order !== 0)
+
+                            const screenerPendingGroups = {}
+                            screenerRows.filter(ap => ap.status === 'pending').forEach(ap => {
+                              const key = ap.approver_role_id ?? 'unknown'
+                              if (!screenerPendingGroups[key]) screenerPendingGroups[key] = { role: ap.role, count: 0 }
+                              screenerPendingGroups[key].count++
+                            })
+                            const screenerActed = screenerRows.filter(ap => ap.status !== 'pending')
+
                             return (
-                              <div key={ap.approval_id} style={{ padding:'8px 12px', borderRadius:8, background:theme.subtleBg+'55', border:`1px solid ${theme.border}`, fontSize:13 }}>
-                                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                                  <strong style={{ color:theme.textPrimary }}>{approverName || 'User'}</strong>
-                                  {isPending && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(99,102,241,0.1)', color:'#6366f1', fontWeight:700 }}>Menunggu</span>}
-                                  {isDone    && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(5,150,105,0.12)', color:'#059669', fontWeight:700 }}>✓ Disetujui</span>}
-                                  {isRev     && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontWeight:700 }}>↩ Revisi</span>}
-                                  {isRej     && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(220,38,38,0.12)', color:'#dc2626', fontWeight:700 }}>✕ Ditolak</span>}
-                                  {ap.action_at && <span style={{ fontSize:11, color:theme.textSecondary, marginLeft:'auto' }}>{fmtDt(ap.action_at)}</span>}
-                                </div>
-                                {ap.comment && (
-                                  <div style={{ marginTop:6, padding:'6px 10px', borderRadius:7, background:isRev?'rgba(245,158,11,0.08)':isRej?'rgba(220,38,38,0.08)':'rgba(5,150,105,0.08)', fontSize:12, color:theme.textPrimary, borderLeft:`3px solid ${isRev?'#f59e0b':isRej?'#dc2626':'#059669'}` }}>
-                                    {ap.comment}
+                              <>
+                                {/* Screener pending: show role name */}
+                                {Object.entries(screenerPendingGroups).map(([key, group]) => (
+                                  <div key={`sc-pg-${key}`} style={{ padding:'8px 12px', borderRadius:8, background:theme.subtleBg+'55', border:`1px solid ${theme.border}`, fontSize:13 }}>
+                                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                      <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(99,102,241,0.1)', color:'#6366f1', fontWeight:700 }}>Menunggu</span>
+                                      <span style={{ color:theme.textSecondary }}>{group.role?.role_name || 'Screener'}</span>
+                                    </div>
                                   </div>
-                                )}
-                              </div>
+                                ))}
+                                {/* Screener acted: show actual person */}
+                                {screenerActed.map(ap => {
+                                  const approverName = `${ap.users?.user_nama_depan||''} ${ap.users?.user_nama_belakang||''}`.trim() || ap.role?.role_name || 'Screener'
+                                  const isDone = ap.status === 'approved'
+                                  const isRev  = ap.status === 'revision'
+                                  const isRej  = ap.status === 'rejected'
+                                  return (
+                                    <div key={ap.approval_id} style={{ padding:'8px 12px', borderRadius:8, background:theme.subtleBg+'55', border:`1px solid ${theme.border}`, fontSize:13 }}>
+                                      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                                        <strong style={{ color:theme.textPrimary }}>{approverName}</strong>
+                                        {isDone && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(5,150,105,0.12)', color:'#059669', fontWeight:700 }}>✓ Disetujui</span>}
+                                        {isRev  && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontWeight:700 }}>↩ Revisi</span>}
+                                        {isRej  && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(220,38,38,0.12)', color:'#dc2626', fontWeight:700 }}>✕ Ditolak</span>}
+                                        {ap.action_at && <span style={{ fontSize:11, color:theme.textSecondary, marginLeft:'auto' }}>{fmtDt(ap.action_at)}</span>}
+                                      </div>
+                                      {ap.comment && (
+                                        <div style={{ marginTop:6, padding:'6px 10px', borderRadius:7, background:isRev?'rgba(245,158,11,0.08)':isRej?'rgba(220,38,38,0.08)':'rgba(5,150,105,0.08)', fontSize:12, color:theme.textPrimary, borderLeft:`3px solid ${isRev?'#f59e0b':isRej?'#dc2626':'#059669'}` }}>
+                                          {ap.comment}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                                {/* Regular approvers: always show by name (specific user) */}
+                                {regularRows.map(ap => {
+                                  const approverName = `${ap.users?.user_nama_depan||''} ${ap.users?.user_nama_belakang||''}`.trim() || 'User'
+                                  const isPending = ap.status === 'pending'
+                                  const isDone    = ap.status === 'approved'
+                                  const isRev     = ap.status === 'revision'
+                                  const isRej     = ap.status === 'rejected'
+                                  return (
+                                    <div key={ap.approval_id} style={{ padding:'8px 12px', borderRadius:8, background:theme.subtleBg+'55', border:`1px solid ${theme.border}`, fontSize:13 }}>
+                                      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                                        <strong style={{ color:theme.textPrimary }}>{approverName}</strong>
+                                        {isPending && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(99,102,241,0.1)', color:'#6366f1', fontWeight:700 }}>Menunggu</span>}
+                                        {isDone    && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(5,150,105,0.12)', color:'#059669', fontWeight:700 }}>✓ Disetujui</span>}
+                                        {isRev     && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontWeight:700 }}>↩ Revisi</span>}
+                                        {isRej     && <span style={{ fontSize:11, padding:'1px 7px', borderRadius:99, background:'rgba(220,38,38,0.12)', color:'#dc2626', fontWeight:700 }}>✕ Ditolak</span>}
+                                        {ap.action_at && <span style={{ fontSize:11, color:theme.textSecondary, marginLeft:'auto' }}>{fmtDt(ap.action_at)}</span>}
+                                      </div>
+                                      {ap.comment && (
+                                        <div style={{ marginTop:6, padding:'6px 10px', borderRadius:7, background:isRev?'rgba(245,158,11,0.08)':isRej?'rgba(220,38,38,0.08)':'rgba(5,150,105,0.08)', fontSize:12, color:theme.textPrimary, borderLeft:`3px solid ${isRev?'#f59e0b':isRej?'#dc2626':'#059669'}` }}>
+                                          {ap.comment}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </>
                             )
-                          })}
+                          })()}
+                        </div>
                         </div>
                       </div>
                     </div>

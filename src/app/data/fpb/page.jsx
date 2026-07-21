@@ -108,40 +108,95 @@ function ProgressSection({ screeningRow, approvals, fpb, screeningDone, theme })
             const regularApprovals = approvals.filter(a => a.approver_order !== 0)
             const steps = []; const seen = new Set()
             regularApprovals.forEach(ap => { if (!seen.has(ap.step_order)) { seen.add(ap.step_order); steps.push(ap.step_order) } })
+            steps.sort((a, b) => a - b)
             return steps.map(stepOrder => {
-              const stepRows = regularApprovals.filter(a => a.step_order === stepOrder)
-              const stepName = stepRows[0]?.step_name || `Step ${stepOrder}`
-              const isActive = stepOrder === fpb.current_step && fpb.status === 'pending' && screeningDone
-              const allDone  = stepRows.every(a => a.status === 'approved')
+              const stepRows   = regularApprovals.filter(a => a.step_order === stepOrder).sort((a, b) => (a.approver_order ?? 0) - (b.approver_order ?? 0))
+              const stepName   = stepRows[0]?.step_name || `Step ${stepOrder}`
+              const isActive   = stepOrder === fpb.current_step && fpb.status === 'pending' && screeningDone
+              const allDone    = stepRows.every(a => a.status === 'approved')
+              const anyRejected = stepRows.some(a => a.status === 'rejected')
+              const anyRevision = stepRows.some(a => a.status === 'revision')
+              const dotBg    = allDone ? '#059669' : anyRejected ? '#dc2626' : anyRevision ? '#f59e0b' : isActive ? '#6366f1' : theme.subtleBg
+              const dotBorder= allDone ? '#059669' : anyRejected ? '#dc2626' : anyRevision ? '#f59e0b' : isActive ? '#6366f1' : theme.border
               return (
                 <div key={stepOrder}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', marginBottom: 2 }}>
-                    <div style={{ width: 18, height: 18, borderRadius: 99, background: allDone ? '#059669' : isActive ? '#6366f1' : theme.subtleBg, border: `2px solid ${allDone ? '#059669' : isActive ? '#6366f1' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
-                      {allDone ? '✓' : stepOrder}
+                    <div style={{ width: 18, height: 18, borderRadius: 99, background: dotBg, border: `2px solid ${dotBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                      {allDone ? '✓' : anyRejected ? '✕' : anyRevision ? '↩' : stepOrder}
                     </div>
                     <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>{stepName}</span>
-                    {!screeningDone && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>Awaiting screening</span>}
-                    {isActive && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Active</span>}
-                    {allDone  && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Done</span>}
+                    {!screeningDone && !anyRejected && !anyRevision && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>Awaiting screening</span>}
+                    {isActive      && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Active</span>}
+                    {allDone       && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Done</span>}
+                    {anyRejected   && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginLeft: 'auto' }}>Rejected</span>}
+                    {anyRevision && !allDone && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600, marginLeft: 'auto' }}>Revision</span>}
                   </div>
                   <div style={{ marginLeft: 24, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {stepRows.map(ap => {
-                      const name = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim() || 'User'
+                    {(() => {
+                      // Screener (approver_order=0) is role-based → group when pending
+                      // Regular approvers (approver_order>0) are specific users → always show individually
+                      const screenerRows = stepRows.filter(ap => ap.approver_order === 0)
+                      const regularRows  = stepRows.filter(ap => ap.approver_order !== 0)
+
+                      // Screener: group pending by role, show individual when acted
+                      const screenerPendingGroups = {}
+                      screenerRows.filter(ap => ap.status === 'pending').forEach(ap => {
+                        const key = ap.approver_role_id ?? 'unknown'
+                        if (!screenerPendingGroups[key]) screenerPendingGroups[key] = { role: ap.role, count: 0 }
+                        screenerPendingGroups[key].count++
+                      })
+                      const screenerActed = screenerRows.filter(ap => ap.status !== 'pending')
+
                       return (
-                        <div key={ap.approval_id}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
-                            <span style={{ fontSize: 13 }}>{statusIcon(ap.status)}</span>
-                            <span style={{ color: theme.textPrimary }}>{name}</span>
-                            {ap.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(ap.action_at)}</span>}
-                          </div>
-                          {ap.comment && (
-                            <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${ap.status === 'revision' ? '#f59e0b' : ap.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
-                              {ap.comment}
+                        <>
+                          {/* Screener pending: show role */}
+                          {Object.entries(screenerPendingGroups).map(([key, group]) => (
+                            <div key={`sc-pg-${key}`} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
+                              <span style={{ fontSize: 13, color: '#6366f1' }}>…</span>
+                              <span style={{ color: theme.textSecondary }}>{group.role?.role_name || 'Awaiting'}</span>
                             </div>
-                          )}
-                        </div>
+                          ))}
+                          {/* Screener acted: show actual person */}
+                          {screenerActed.map(ap => {
+                            const name = `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim() || ap.role?.role_name || 'Screener'
+                            return (
+                              <div key={ap.approval_id}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
+                                  <span style={{ fontSize: 13 }}>{statusIcon(ap.status)}</span>
+                                  <span style={{ color: theme.textPrimary }}>{name}</span>
+                                  {ap.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(ap.action_at)}</span>}
+                                </div>
+                                {ap.comment && (
+                                  <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${ap.status === 'revision' ? '#f59e0b' : ap.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
+                                    {ap.comment}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                          {/* Regular approvers: always show individual (specific user assigned) */}
+                          {regularRows.map(ap => {
+                            const name = ap.status === 'pending'
+                              ? `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim() || 'User'
+                              : `${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim() || 'User'
+                            return (
+                              <div key={ap.approval_id}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
+                                  <span style={{ fontSize: 13 }}>{statusIcon(ap.status)}</span>
+                                  <span style={{ color: theme.textPrimary }}>{name}</span>
+                                  {ap.action_at && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>{fmtDt(ap.action_at)}</span>}
+                                </div>
+                                {ap.comment && (
+                                  <div style={{ marginLeft: 20, fontSize: 11, color: theme.textSecondary, padding: '2px 6px', borderLeft: `2px solid ${ap.status === 'revision' ? '#f59e0b' : ap.status === 'rejected' ? '#dc2626' : '#059669'}`, marginBottom: 2 }}>
+                                    {ap.comment}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </>
                       )
-                    })}
+                    })()}
                   </div>
                 </div>
               )
@@ -378,6 +433,11 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
         })()
       } else if (action === 'reject') {
         await supabase.from('fpb').update({ status: 'rejected' }).eq('fpb_id', fpbId)
+        // Mark the rejector's own approval record so progress shows who rejected
+        // Use approval_id (not approver_user_id) to handle screener whose user_id may have just been written
+        await supabase.from('fpb_approvals')
+          .update({ status: 'rejected', comment: comment.trim() || null, action_at: new Date().toISOString(), approver_user_id: userId })
+          .eq('approval_id', myPendingApproval.approval_id)
         // Notify submitter — FPB rejected
         ;(async () => {
           try {
@@ -914,16 +974,15 @@ function buildPrintHtml(fpb, items, approvals) {
   ].join('')
 
   const buildCell = (ap, label) => {
-    const name = ap.approver_order === 0
-      ? (ap.role?.role_name || 'Screener')
-      : ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
-    const actorName = ap.approver_order === 0 && ap.approver_user_id
-      ? ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim()
-      : null
+    // Pending → show role name. Acted → show actual person who acted.
+    const isPending = ap.status === 'pending'
+    const roleName  = ap.role?.role_name || (ap.approver_order === 0 ? 'Screener' : 'Approver')
+    const userName  = ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
+    const displayName = isPending ? roleName : userName
     const dateStr = ap.status === 'approved' ? fmtD(ap.action_at) : ap.status === 'rejected' ? '(Rejected)' : ap.status === 'revision' ? '(Revision)' : '(Pending)'
     return `<td style="border:1px solid #9ca3af;padding:8px;text-align:center;min-width:100px;${ap.approver_order === 0 ? 'background:#fffbeb;' : ''}">
-      <div style="font-weight:600;color:${ap.status === 'approved' ? '#111827' : '#9ca3af'}">${name}</div>
-      ${actorName ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">by: ${actorName}</div>` : ''}
+      <div style="font-weight:600;color:${isPending ? '#9ca3af' : '#111827'}">${displayName}</div>
+      ${!isPending && ap.approver_order === 0 ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">(Screener)</div>` : ''}
       <div style="font-size:11px;margin-top:4px;color:${ap.status === 'approved' ? '#374151' : '#d1d5db'}">${dateStr}</div>
     </td>`
   }
@@ -1143,10 +1202,14 @@ function PrintFpbModal({ fpbId, onClose }) {
                     <div style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>{fmtDatePrint(fpb.created_at)}</div>
                   </td>
                   {approvals.map(ap => {
-                    const name = ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
+                    // Pending → role name. Acted → actual person who acted.
+                    const isPending   = ap.status === 'pending'
+                    const roleName    = ap.role?.role_name || (ap.approver_order === 0 ? 'Screener' : 'Approver')
+                    const userName    = ((ap.users?.user_nama_depan || '') + ' ' + (ap.users?.user_nama_belakang || '')).trim() || '-'
+                    const displayName = isPending ? roleName : userName
                     return (
                       <td key={ap.approval_id} style={{ border: '1px solid #9ca3af', padding: '8px', textAlign: 'center', minWidth: 100 }}>
-                        <div style={{ fontWeight: 600, color: ap.status === 'approved' ? '#111827' : '#9ca3af' }}>{name}</div>
+                        <div style={{ fontWeight: 600, color: isPending ? '#9ca3af' : '#111827' }}>{displayName}</div>
                         <div style={{ fontSize: 11, marginTop: 4, color: ap.status === 'approved' ? '#374151' : '#d1d5db' }}>
                           {ap.status === 'approved' ? fmtDatePrint(ap.action_at) : ap.status === 'rejected' ? '(Rejected)' : ap.status === 'revision' ? '(Revision)' : '(Pending)'}
                         </div>

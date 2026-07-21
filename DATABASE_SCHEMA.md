@@ -466,19 +466,25 @@ The line items requested within an FPB.
 | `unit_price` | `DECIMAL` | Estimated price per unit |
 
 #### `fpb_approvals`
-Tracks the approval state for each required step of an FPB.
+Tracks the approval state for each required step of an FPB. Each row represents one approver slot within a step.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
-| `approval_id` | `SERIAL` | Primary Key |
-| `fpb_id` | `INTEGER` | FK to `fpb(fpb_id)` |
-| `step_order` | `INTEGER` | Sequence of approval (1, 2, 3...) |
-| `step_name` | `VARCHAR` | Name of the step (e.g. Principal Approval) |
-| `approver_user_id`| `INTEGER` | FK to `users(user_id)` |
-| `approver_role_id`| `INTEGER` | FK to `role(role_id)` (Role-based approver) |
-| `status` | `VARCHAR` | `pending`, `approved`, `rejected` |
-| `comment` | `TEXT` | Approver's note |
-| `action_at` | `TIMESTAMP` | When the approval was actioned |
+| `approval_id` | `UUID` | Primary Key |
+| `fpb_id` | `UUID` | FK to `fpb(fpb_id)` |
+| `step_order` | `INTEGER` | Step sequence number (1, 2, 3...) |
+| `step_name` | `VARCHAR` | Display name of the step (e.g. "Principal Approval") |
+| `approver_order` | `INTEGER` | **Order within a step.** `0` = Screener (role-based, processed first). `1`, `2`, `3` = Regular approvers in display order. |
+| `approver_user_id`| `INTEGER` | FK to `users(user_id)`. The specific user who took action. For screener rows (`approver_order=0`), this is `null` initially and populated when the screener actually acts. |
+| `approver_role_id`| `INTEGER` | FK to `role(role_id)`. The role authorized to act on this row. |
+| `status` | `VARCHAR` | `pending`, `approved`, `revision`, `rejected` |
+| `comment` | `TEXT` | Approver's note (required for `revision` and `rejected`) |
+| `action_at` | `TIMESTAMP` | When the approval action was taken |
+
+> [!NOTE]
+> **Screener row** (`approver_order = 0`): This row is role-based — `approver_user_id` starts as `null`. When the screener takes action, their `user_id` is written to `approver_user_id` so the audit trail shows who specifically performed the screening/rejection.
+>
+> **No database migration needed** for this behavior — both `approver_order` and `approver_user_id` columns already exist.
 
 #### `fpb_types`
 Defines the types of FPB available and their maximum limits.

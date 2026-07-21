@@ -1,6 +1,27 @@
 import { NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/mailer'
 import { emailTemplates } from '@/lib/emailTemplates'
+import { sendGoogleChatMessage } from '@/lib/googleChat'
+
+function buildGoogleChatMessage(type, params) {
+  const { fpbNumber, fpbType, appUrl } = params;
+  const fmtCurrency = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
+  const link = appUrl || 'https://manageccs.online/data/fpb';
+  
+  if (type === 'fpbPendingApproval') {
+    return `Hi *${params.approverName}*,\n\nA new Purchase Request Form (FPB) requires your action at the *${params.stepName}* stage.\n\n*FPB Number:* ${fpbNumber}\n*Type:* ${fpbType || '-'}\n*Requested By:* ${params.submitterName}\n*Division:* ${params.division || '-'}\n*Total Amount:* ${fmtCurrency(params.grandTotal)}\n\nPlease review it here: ${link}`;
+  }
+  if (type === 'fpbApproved') {
+    return `Hi *${params.submitterName}*,\n\nCongratulations! Your FPB *${fpbNumber}* (${fpbType || '-'}) with a total amount of ${fmtCurrency(params.grandTotal)} has been fully *APPROVED*.\n\nView details here: ${link}`;
+  }
+  if (type === 'fpbRevision') {
+    return `Hi *${params.submitterName}*,\n\nYour FPB *${fpbNumber}* (${fpbType || '-'}) has been returned for *REVISION* by ${params.approverName}.\n\n*Approver's Note:*\n${params.comment || '-'}\n\nPlease update and resubmit here: ${link}`;
+  }
+  if (type === 'fpbRejected') {
+    return `Hi *${params.submitterName}*,\n\nYour FPB *${fpbNumber}* (${fpbType || '-'}) has been *REJECTED* by ${params.approverName} and cannot be processed.\n\n*Reason for Rejection:*\n${params.comment || '-'}\n\nView details here: ${link}`;
+  }
+  return null;
+}
 
 /**
  * POST /api/email/fpb
@@ -51,9 +72,21 @@ export async function POST(request) {
 
     const result = await sendEmail({ to, subject, html })
 
+    // -- Send Google Chat Notification --
+    try {
+      const chatText = buildGoogleChatMessage(type, params)
+      if (chatText) {
+        await sendGoogleChatMessage(to, chatText)
+        console.log(`[FPB Chat] Sent to ${to}`)
+      }
+    } catch (chatErr) {
+      console.error(`[FPB Chat] Failed to send chat to ${to}:`, chatErr.message)
+      // Do not throw; we still want to report the email as successful
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Email FPB terkirim',
+      message: 'Email & Chat FPB terkirim',
       detail: result
     })
   } catch (error) {
