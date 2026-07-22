@@ -1065,8 +1065,8 @@
     "semantic_hash": "ed62be15a684e4722d48de789ed2e4ba"
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1784703386.0985842,
-    "ast_hash": "234eb6cf2daaa0ae1f677bcc08debb82",
+    "mtime": 1784707330.0506318,
+    "ast_hash": "3c94452b5bc7eef73712917d38cd6e44",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -1610,8 +1610,8 @@
     "semantic_hash": "1400ad750525254a16e6e63bc24fe29f"
   },
   "src/app/data/weekly-overview/page.jsx": {
-    "mtime": 1784703394.2095292,
-    "ast_hash": "039aa1ec90a67d3b2c25e4c0de306ca7",
+    "mtime": 1784706784.5854719,
+    "ast_hash": "b556dc0f547d0011b2dc3b49a92c5dca",
     "semantic_hash": ""
   },
   "src/lib/vertexClient.js": {

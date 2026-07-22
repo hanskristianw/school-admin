@@ -434,9 +434,40 @@ export default function TopicNewPage() {
       )
 
       const relevantWP = (wpRes.data || []).filter(wp => wp.topic?.topic_kelas_id === kelasId)
-      const wpBySubject = new Map(
-        relevantWP.sort((a, b) => (a.week_date || '').localeCompare(b.week_date || '')).map(wp => [wp.topic?.topic_subject_id, wp])
-      )
+      const wpByDateAndSubject = new Map()
+      const wpBySubject = new Map()
+
+      relevantWP.forEach(wp => {
+        if (wp.topic?.topic_subject_id) {
+          const subjId = wp.topic.topic_subject_id
+          wpBySubject.set(subjId, wp)
+
+          if (wp.week_objectives && wp.week_objectives.trim().startsWith('[')) {
+            try {
+              const sessionList = JSON.parse(wp.week_objectives)
+              if (Array.isArray(sessionList)) {
+                sessionList.forEach(s => {
+                  if (s.week_date) {
+                    wpByDateAndSubject.set(`${s.week_date}|${subjId}`, {
+                      ...wp,
+                      week_date: s.week_date,
+                      week_objectives: s.week_objectives,
+                      week_activities: s.week_activities,
+                      week_resources: s.week_resources,
+                      week_reflection: s.week_reflection,
+                    })
+                  }
+                })
+                return
+              }
+            } catch (e) {}
+          }
+
+          if (wp.week_date) {
+            wpByDateAndSubject.set(`${wp.week_date}|${subjId}`, wp)
+          }
+        }
+      })
 
       const timeToMin = (tStr) => {
         if (!tStr) return 0
@@ -556,12 +587,12 @@ export default function TopicNewPage() {
             const dk = dkMap.get(matchSlot.timetable_detail_kelas_id)
             const subjectId = dk?.detail_kelas_subject_id
             const subjectName = subjMap.get(subjectId) || '-'
-            const wp = subjectId ? wpBySubject.get(subjectId) : null
+            const dateMatchWp = subjectId ? wpByDateAndSubject.get(`${dateStr}|${subjectId}`) : null
             return {
               subject: subjectName,
-              objectives: wp?.week_objectives || '',
-              activities: wp?.week_activities || '',
-              resources: wp?.week_resources || '',
+              objectives: dateMatchWp?.week_objectives || '',
+              activities: dateMatchWp?.week_activities || '',
+              resources: dateMatchWp?.week_resources || '',
             }
           })
 
@@ -1722,9 +1753,42 @@ export default function TopicNewPage() {
   }
   
   // Weekly Plan Functions
+  const [deletedWeeklyPlanIds, setDeletedWeeklyPlanIds] = useState([])
+
+  const unpackWeeklyPlanRows = (rows) => {
+    const unpacked = [];
+    (rows || []).forEach(row => {
+      if (row.week_objectives && row.week_objectives.trim().startsWith('[')) {
+        try {
+          const parsed = JSON.parse(row.week_objectives)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            parsed.forEach((item, idx) => {
+              unpacked.push({
+                id: row.id,
+                topic_id: row.topic_id,
+                week_number: row.week_number,
+                _sessionIndex: idx,
+                _tempId: `sess_${row.id}_${idx}`,
+                week_date: item.week_date !== undefined ? item.week_date : (idx === 0 ? (row.week_date || '') : ''),
+                week_objectives: item.week_objectives || '',
+                week_activities: item.week_activities || '',
+                week_resources: item.week_resources || '',
+                week_reflection: item.week_reflection || '',
+              })
+            })
+            return
+          }
+        } catch (e) {}
+      }
+      unpacked.push(row)
+    })
+    return unpacked
+  }
+
   const fetchWeeklyPlans = async (topicId) => {
     try {
       setLoadingWeeklyPlans(true)
+      setDeletedWeeklyPlanIds([])
       const { data, error } = await supabase
         .from('topic_weekly_plan')
         .select('*')
@@ -1732,7 +1796,7 @@ export default function TopicNewPage() {
         .order('week_number')
       
       if (error) throw error
-      setWeeklyPlans(data || [])
+      setWeeklyPlans(unpackWeeklyPlanRows(data))
     } catch (err) {
       console.error('Error fetching weekly plans:', err)
       setWeeklyPlans([])
@@ -1741,13 +1805,41 @@ export default function TopicNewPage() {
     }
   }
   
-  const handleWeeklyPlanChange = (weekNumber, field, value) => {
+  const handleWeeklyPlanChange = (targetPlan, field, value) => {
     setWeeklyPlans(prev => 
-      prev.map(plan => 
-        plan.week_number === weekNumber 
-          ? { ...plan, [field]: value }
-          : plan
-      )
+      prev.map(plan => {
+        const isMatch = (plan.id && targetPlan.id && plan._sessionIndex !== undefined)
+          ? (plan.id === targetPlan.id && plan._sessionIndex === targetPlan._sessionIndex)
+          : (plan.id ? plan.id === targetPlan.id : plan._tempId === targetPlan._tempId)
+        return isMatch ? { ...plan, [field]: value } : plan
+      })
+    )
+  }
+
+  const handleAddSessionToWeek = (weekNumber) => {
+    setWeeklyPlans(prev => [
+      ...prev,
+      {
+        _tempId: `temp_${Date.now()}_${Math.random()}`,
+        topic_id: selectedTopicForWeekly?.topic_id,
+        week_number: weekNumber,
+        week_date: '',
+        week_objectives: '',
+        week_activities: '',
+        week_resources: '',
+        week_reflection: '',
+      }
+    ])
+  }
+
+  const handleRemoveSession = (planToRemove) => {
+    setWeeklyPlans(prev =>
+      prev.filter(plan => {
+        if (plan.id && planToRemove.id && plan._sessionIndex !== undefined) {
+          return !(plan.id === planToRemove.id && plan._sessionIndex === planToRemove._sessionIndex)
+        }
+        return plan.id ? plan.id !== planToRemove.id : plan._tempId !== planToRemove._tempId
+      })
     )
   }
   
@@ -1756,26 +1848,59 @@ export default function TopicNewPage() {
     
     try {
       setSavingWeeklyPlans(true)
-      
-      // Upsert all weekly plans
-      const { error } = await supabase
-        .from('topic_weekly_plan')
-        .upsert(
-          weeklyPlans.map(plan => ({
-            id: plan.id || undefined,
+
+      const duration = selectedTopicForWeekly.topic_duration || 5
+      const rowsToUpsert = []
+
+      for (let w = 1; w <= duration; w++) {
+        const weekSessions = weeklyPlans.filter(p => p.week_number === w)
+        if (weekSessions.length === 0) continue
+
+        if (weekSessions.length === 1) {
+          const s = weekSessions[0]
+          rowsToUpsert.push({
+            id: s.id || undefined,
             topic_id: selectedTopicForWeekly.topic_id,
-            week_number: plan.week_number,
-            week_date: plan.week_date || null,
-            week_objectives: plan.week_objectives || null,
-            week_activities: plan.week_activities || null,
-            week_resources: plan.week_resources || null,
-            week_reflection: plan.week_reflection || null,
+            week_number: w,
+            week_date: s.week_date || null,
+            week_objectives: s.week_objectives || null,
+            week_activities: s.week_activities || null,
+            week_resources: s.week_resources || null,
+            week_reflection: s.week_reflection || null,
             updated_at: new Date().toISOString()
-          })),
-          { onConflict: 'topic_id,week_number' }
-        )
-      
-      if (error) throw error
+          })
+        } else {
+          const sessionList = weekSessions.map(s => ({
+            week_date: s.week_date || '',
+            week_objectives: s.week_objectives || '',
+            week_activities: s.week_activities || '',
+            week_resources: s.week_resources || '',
+            week_reflection: s.week_reflection || '',
+          }))
+          const firstId = weekSessions.find(s => s.id)?.id
+          const firstDate = weekSessions.find(s => s.week_date)?.week_date || null
+
+          rowsToUpsert.push({
+            id: firstId || undefined,
+            topic_id: selectedTopicForWeekly.topic_id,
+            week_number: w,
+            week_date: firstDate,
+            week_objectives: JSON.stringify(sessionList),
+            week_activities: weekSessions[0]?.week_activities || null,
+            week_resources: weekSessions[0]?.week_resources || null,
+            week_reflection: weekSessions[0]?.week_reflection || null,
+            updated_at: new Date().toISOString()
+          })
+        }
+      }
+
+      if (rowsToUpsert.length > 0) {
+        const { error } = await supabase
+          .from('topic_weekly_plan')
+          .upsert(rowsToUpsert, { onConflict: 'topic_id,week_number' })
+
+        if (error) throw error
+      }
       
       setWeeklyPlanNotification({
         show: true,
@@ -1783,7 +1908,6 @@ export default function TopicNewPage() {
         type: 'success'
       })
       
-      // Refresh data
       await fetchWeeklyPlans(selectedTopicForWeekly.topic_id)
       
       setTimeout(() => {
@@ -1890,10 +2014,10 @@ export default function TopicNewPage() {
         
         if (insertError) throw insertError
         
-        setWeeklyPlans(insertedPlans || newPlans)
+        setWeeklyPlans(unpackWeeklyPlanRows(insertedPlans || newPlans))
       } else {
-        // Plans exist, load them
-        setWeeklyPlans(existingPlans || [])
+        // Plans exist, load them and unpack JSON multi-sessions
+        setWeeklyPlans(unpackWeeklyPlanRows(existingPlans))
       }
     } catch (err) {
       console.error('Error handling weekly plan selection:', err)
@@ -5515,102 +5639,135 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                     {/* Weekly Plan Forms */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {weeklyPlans.map((plan) => (
-                        <div key={plan.week_number} style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '16px' }}>
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-xs font-semibold flex items-center gap-2" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
-                              <span className="flex items-center justify-center w-6 h-6 text-xs font-bold" style={{ background: theme.subtleBg, color: theme.textPrimary, borderRadius: '50%', border: `1px solid ${theme.border}` }}>
-                                {plan.week_number}
-                              </span>
-                              {t('topicNew.weeklyPlanTab.week')} {plan.week_number}
-                            </h3>
-                            <div className="flex items-center gap-1.5">
-                              <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.dateLabel')}</label>
-                              <input
-                                type="date"
-                                value={plan.week_date || ''}
-                                onChange={e => {
-                                  // Snap to Monday of the selected date
-                                  const d = new Date(e.target.value)
-                                  const day = d.getDay()
-                                  const diff = day === 0 ? -6 : 1 - day
-                                  d.setDate(d.getDate() + diff)
-                                  const monday = d.toISOString().slice(0, 10)
-                                  handleWeeklyPlanChange(plan.week_number, 'week_date', monday)
-                                }}
-                                className="text-[10px] px-1.5 py-1 focus:outline-none"
-                                style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textBody }}
-                              />
-                            </div>
-                          </div>
+                      {Array.from({ length: selectedTopicForWeekly?.topic_duration || 5 }).map((_, wIdx) => {
+                        const weekNum = wIdx + 1
+                        const weekSessions = weeklyPlans.filter(p => p.week_number === weekNum)
+                        const sessionsToRender = weekSessions.length > 0 ? weekSessions : [{
+                          _tempId: `default_${weekNum}`,
+                          topic_id: selectedTopicForWeekly?.topic_id,
+                          week_number: weekNum,
+                          week_date: '',
+                          week_objectives: '',
+                          week_activities: '',
+                          week_resources: '',
+                          week_reflection: ''
+                        }]
 
-                          <div className="space-y-3">
-                            {/* Objectives */}
-                            <div>
-                              <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                {t('topicNew.weeklyPlanTab.objectives')}
-                              </label>
-                              <textarea
-                                value={plan.week_objectives || ''}
-                                onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_objectives', e.target.value)}
-                                placeholder={t('topicNew.weeklyPlanTab.objectivesPlaceholder')}
-                                rows={3}
-                                className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
-                                style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                              />
+                        return (
+                          <div key={weekNum} className="space-y-3 p-4 border rounded-xl" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                            <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: theme.border }}>
+                              <h3 className="text-xs font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                                <span className="flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full" style={{ background: theme.subtleBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }}>
+                                  {weekNum}
+                                </span>
+                                {t('topicNew.weeklyPlanTab.week')} {weekNum}
+                              </h3>
+                              <button
+                                type="button"
+                                onClick={() => handleAddSessionToWeek(weekNum)}
+                                className="text-[11px] font-medium px-2 py-1 rounded flex items-center gap-1.5 hover:opacity-80 border"
+                                style={{ background: theme.subtleBg, color: theme.textPrimary, borderColor: theme.border }}
+                              >
+                                <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
+                                Add Teaching Session
+                              </button>
                             </div>
 
-                            {/* Activities */}
-                            <div>
-                              <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                {t('topicNew.weeklyPlanTab.activities')} (max 300 chars)
-                              </label>
-                              <textarea
-                                value={plan.week_activities || ''}
-                                onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_activities', e.target.value)}
-                                placeholder={t('topicNew.weeklyPlanTab.activitiesPlaceholder')}
-                                rows={3}
-                                maxLength={300}
-                                className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
-                                style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                              />
-                              <div className="text-[10px] mt-1 text-right" style={{ color: theme.textSecondary }}>
-                                {(plan.week_activities || '').length}/300
+                            {sessionsToRender.map((plan, sIdx) => (
+                              <div key={plan._tempId || (plan.id ? `${plan.id}_${sIdx}` : sIdx)} className="p-3 rounded-lg space-y-2.5 border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-semibold" style={{ color: theme.textPrimary }}>
+                                    {sessionsToRender.length > 1 ? `Session ${sIdx + 1}` : 'Main Teaching Session'}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
+                                      <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.dateLabel')}</label>
+                                      <input
+                                        type="date"
+                                        value={plan.week_date || ''}
+                                        onChange={e => handleWeeklyPlanChange(plan, 'week_date', e.target.value)}
+                                        className="text-[10px] px-1.5 py-0.5 focus:outline-none rounded border"
+                                        style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                      />
+                                    </div>
+                                    {sessionsToRender.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveSession(plan)}
+                                        title="Remove Session"
+                                        className="text-red-500 hover:text-red-700 px-1 text-xs"
+                                      >
+                                        <FontAwesomeIcon icon={faTrash} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Objectives */}
+                                <div>
+                                  <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.objectives')}
+                                  </label>
+                                  <textarea
+                                    value={plan.week_objectives || ''}
+                                    onChange={(e) => handleWeeklyPlanChange(plan, 'week_objectives', e.target.value)}
+                                    placeholder={t('topicNew.weeklyPlanTab.objectivesPlaceholder')}
+                                    rows={2}
+                                    className="w-full px-2 py-1 text-xs focus:outline-none resize-none rounded border"
+                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                  />
+                                </div>
+
+                                {/* Activities */}
+                                <div>
+                                  <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.activities')} (max 300 chars)
+                                  </label>
+                                  <textarea
+                                    value={plan.week_activities || ''}
+                                    onChange={(e) => handleWeeklyPlanChange(plan, 'week_activities', e.target.value)}
+                                    placeholder={t('topicNew.weeklyPlanTab.activitiesPlaceholder')}
+                                    rows={2}
+                                    maxLength={300}
+                                    className="w-full px-2 py-1 text-xs focus:outline-none resize-none rounded border"
+                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                  />
+                                </div>
+
+                                {/* Resources */}
+                                <div>
+                                  <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.resources')}
+                                  </label>
+                                  <textarea
+                                    value={plan.week_resources || ''}
+                                    onChange={(e) => handleWeeklyPlanChange(plan, 'week_resources', e.target.value)}
+                                    placeholder={t('topicNew.weeklyPlanTab.resourcesPlaceholder')}
+                                    rows={1}
+                                    className="w-full px-2 py-1 text-xs focus:outline-none resize-none rounded border"
+                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                  />
+                                </div>
+
+                                {/* Reflection */}
+                                <div>
+                                  <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.reflection')} <span style={{ color: theme.textSecondary }}>({t('topicNew.weeklyPlanTab.reflectionDuring')})</span>
+                                  </label>
+                                  <textarea
+                                    value={plan.week_reflection || ''}
+                                    onChange={(e) => handleWeeklyPlanChange(plan, 'week_reflection', e.target.value)}
+                                    placeholder={t('topicNew.weeklyPlanTab.reflectionPlaceholder')}
+                                    rows={1}
+                                    className="w-full px-2 py-1 text-xs focus:outline-none resize-none rounded border"
+                                    style={{ borderColor: theme.border, background: theme.subtleBg, color: theme.textBody }}
+                                  />
+                                </div>
                               </div>
-                            </div>
-
-                            {/* Resources */}
-                            <div>
-                              <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                {t('topicNew.weeklyPlanTab.resources')}
-                              </label>
-                              <textarea
-                                value={plan.week_resources || ''}
-                                onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_resources', e.target.value)}
-                                placeholder={t('topicNew.weeklyPlanTab.resourcesPlaceholder')}
-                                rows={2}
-                                className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
-                                style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                              />
-                            </div>
-
-                            {/* Reflection */}
-                            <div>
-                              <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                {t('topicNew.weeklyPlanTab.reflection')} <span style={{ color: theme.textSecondary }}>({t('topicNew.weeklyPlanTab.reflectionDuring')})</span>
-                              </label>
-                              <textarea
-                                value={plan.week_reflection || ''}
-                                onChange={(e) => handleWeeklyPlanChange(plan.week_number, 'week_reflection', e.target.value)}
-                                placeholder={t('topicNew.weeklyPlanTab.reflectionPlaceholder')}
-                                rows={2}
-                                className="w-full px-2 py-1.5 text-xs focus:outline-none resize-none"
-                                style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.subtleBg, color: theme.textBody }}
-                              />
-                            </div>
+                            ))}
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
 
                     {/* Action Buttons */}

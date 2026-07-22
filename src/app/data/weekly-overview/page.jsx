@@ -172,12 +172,40 @@ export default function WeeklyOverviewPage() {
 
       // Filter to this kelas
       const relevantWP = (wpData || []).filter(wp => wp.topic?.topic_kelas_id === kelasId);
-      // Map: subject_id -> weekly plan (if same subject has multiple plans in this week, take the latest)
-      const wpBySubject = new Map(
-        relevantWP
-          .sort((a, b) => (a.week_date || '').localeCompare(b.week_date || ''))
-          .map(wp => [wp.topic?.topic_subject_id, wp])
-      );
+      const wpByDateAndSubject = new Map();
+      const wpBySubject = new Map();
+
+      relevantWP.forEach(wp => {
+        if (wp.topic?.topic_subject_id) {
+          const subjId = wp.topic.topic_subject_id;
+          wpBySubject.set(subjId, wp);
+
+          if (wp.week_objectives && wp.week_objectives.trim().startsWith('[')) {
+            try {
+              const sessionList = JSON.parse(wp.week_objectives);
+              if (Array.isArray(sessionList)) {
+                sessionList.forEach(s => {
+                  if (s.week_date) {
+                    wpByDateAndSubject.set(`${s.week_date}|${subjId}`, {
+                      ...wp,
+                      week_date: s.week_date,
+                      week_objectives: s.week_objectives,
+                      week_activities: s.week_activities,
+                      week_resources: s.week_resources,
+                      week_reflection: s.week_reflection,
+                    });
+                  }
+                });
+                return;
+              }
+            } catch (e) {}
+          }
+
+          if (wp.week_date) {
+            wpByDateAndSubject.set(`${wp.week_date}|${subjId}`, wp);
+          }
+        }
+      });
 
       // 5. Parse slots & collect atomic time boundaries
       const timeToMin = (tStr) => {
@@ -312,12 +340,13 @@ export default function WeeklyOverviewPage() {
             const dk = dkMap.get(matchSlot.timetable_detail_kelas_id);
             const subjectId = dk?.detail_kelas_subject_id;
             const subjectName = subjMap.get(subjectId) || '-';
-            const wp = subjectId ? wpBySubject.get(subjectId) : null;
+            const dStr = dayDate(day);
+            const dateMatchWp = subjectId ? wpByDateAndSubject.get(`${dStr}|${subjectId}`) : null;
             return {
               subject: subjectName,
-              objectives: wp?.week_objectives || '',
-              activities: wp?.week_activities || '',
-              resources: wp?.week_resources || '',
+              objectives: dateMatchWp?.week_objectives || '',
+              activities: dateMatchWp?.week_activities || '',
+              resources: dateMatchWp?.week_resources || '',
             };
           });
 
