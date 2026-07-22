@@ -146,18 +146,44 @@ export default function UnitManagement() {
       const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+      const isTokenExpired = (t) => {
+        if (!t) return true;
+        try {
+          const payload = JSON.parse(atob(t.split('.')[1]));
+          return payload && payload.exp ? payload.exp * 1000 < Date.now() : false;
+        } catch {
+          return true;
+        }
+      };
+
+      const authToken = (tok && !isTokenExpired(tok)) ? tok : supabaseAnon;
+
       // Use native fetch so Authorization header is guaranteed to be sent
       const uploadUrl = `${supabaseUrl}/storage/v1/object/${STORAGE_BUCKET}/${path}`;
-      const res = await fetch(uploadUrl, {
+      let res = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
-          'Authorization': tok ? `Bearer ${tok}` : `Bearer ${supabaseAnon}`,
+          'Authorization': `Bearer ${authToken}`,
           'apikey': supabaseAnon,
           'Content-Type': 'image/png',
           'x-upsert': 'true',
         },
         body: blob,
       });
+
+      // Retry with anon key if 401 Unauthorized occurs due to expired JWT
+      if (res.status === 401 && authToken !== supabaseAnon) {
+        res = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseAnon}`,
+            'apikey': supabaseAnon,
+            'Content-Type': 'image/png',
+            'x-upsert': 'true',
+          },
+          body: blob,
+        });
+      }
 
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));

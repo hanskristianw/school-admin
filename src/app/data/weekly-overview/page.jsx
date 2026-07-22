@@ -411,6 +411,25 @@ export default function WeeklyOverviewPage() {
     if (!overviewCells) return;
     setExportingDocx(true);
     try {
+      let reportSettings = null;
+      if (selectedKelas) {
+        const targetK = kelasList.find(k => String(k.kelas_id) === String(selectedKelas));
+        const unId = targetK?.kelas_unit_id || targetK?.unit_id;
+        const yrId = targetK?.kelas_year_id;
+        const { data: rsList } = await supabase
+          .from('report_settings')
+          .select('principal_name, principal_title, signature_principal_url, stamp_url, unit_id, year_id');
+        const matchedRs = (rsList || []).find(r => (unId ? r.unit_id === unId : true) && (yrId ? r.year_id === yrId : true)) || (rsList && rsList[0]);
+        if (matchedRs) {
+          reportSettings = {
+            principalName: matchedRs.principal_name,
+            principalTitle: matchedRs.principal_title,
+            signatureUrl: matchedRs.signature_principal_url,
+            stampUrl: matchedRs.stamp_url,
+          };
+        }
+      }
+
       const res = await fetch('/api/weekly-overview-docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -420,6 +439,7 @@ export default function WeeklyOverviewPage() {
           timeSlots: overviewCells.timeSlots,
           days: DAYS,
           cells: overviewCells.cells,
+          reportSettings,
         }),
       });
       if (!res.ok) {

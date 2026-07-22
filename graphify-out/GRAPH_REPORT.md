@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-07-22)
 
 ## Corpus Check
-- 321 files · ~421,940 words
+- 321 files · ~423,443 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1529 nodes · 1554 edges · 298 communities (194 shown, 104 thin omitted)
+- 1535 nodes · 1564 edges · 299 communities (195 shown, 104 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `94f17f29`
+- Built from commit: `e2a7fe72`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -214,6 +214,7 @@
 - google-auth-library
 - googleapis
 - @googleapis/chat
+- react-hook-form
 
 ## God Nodes (most connected - your core abstractions)
 1. `🚀 Supabase Connection Fixed!` - 18 edges
@@ -242,7 +243,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (298 total, 104 thin omitted)
+## Communities (299 total, 104 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.13
@@ -310,7 +311,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, html5-qrcode, jszip, dependencies, bcryptjs, html5-qrcode, jszip, @radix-ui/react-select (+3 more)
+Nodes (11): bcryptjs, clsx, googleapis, dependencies, bcryptjs, clsx, googleapis, pngjs (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -561,8 +562,8 @@ Cohesion: 0.25
 Nodes (7): API & Server Routes, Architecture, Data & Business Rules, Development Workflow, Frontend Patterns, School Admin AI Guide, Tips for New Changes
 
 ### Community 268 - "1.1 Tables"
-Cohesion: 0.25
-Nodes (8): 1.1 Tables, 1.2 ERD / Relationships (User Domain), 1.3 Tables referencing `users`, 1. User & Role Management Domain (`/data/user`, `/data/role_management`), `dashboard_type`, `role`, `unit`, `users`
+Cohesion: 0.22
+Nodes (9): 1.1 Tables, 1.2 ERD / Relationships (User & Unit Domain), 1.3 Tables referencing `users`, 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`), `dashboard_type`, `report_settings`, `role`, `unit` (+1 more)
 
 ### Community 269 - "🎓 **IB MYP Assessment Grading System**"
 Cohesion: 0.25
@@ -624,22 +625,26 @@ Nodes (3): GlobalActionCards(), monthEnd(), monthStart()
 Cohesion: 0.67
 Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure**
 
+### Community 285 - "route.js"
+Cohesion: 0.67
+Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(), getImageDimensions(), POST()
+
 ## Knowledge Gaps
-- **643 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+638 more)
+- **645 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+640 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **104 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 130`, `Module 131`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `Module 156`, `browser-image-compression`, `docx`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `Module 125`, `Module 126`, `Module 127`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 130`, `Module 131`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `Module 156`, `browser-image-compression`, `docx`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `Module 125`, `Module 126`, `Module 127`?**
   _High betweenness centrality (0.007) - this node is a cross-community bridge._
 - **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🚀 **Setup & Deployment**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `📌 Changelog`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _643 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _645 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.12685560053981107 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

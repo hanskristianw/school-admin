@@ -405,13 +405,14 @@ export default function TopicNewPage() {
       const targetKelas = allKelasRaw.find(k => k.kelas_id === kelasId)
       const kelasNama = targetKelas?.kelas_nama || 'Class'
 
-      const [ttRes, dkRes, subjRes, exRes, wpRes, draftRes] = await Promise.all([
+      const [ttRes, dkRes, subjRes, exRes, wpRes, draftRes, rsRes] = await Promise.all([
         supabase.from('timetable').select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time, custom_label, kelas_id, custom_color'),
         supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id').eq('detail_kelas_kelas_id', kelasId),
         supabase.from('subject').select('subject_id, subject_name'),
         supabase.from('timetable_exception').select('*').gte('exception_date', monday).lte('exception_date', friday),
         supabase.from('topic_weekly_plan').select('id, topic_id, week_number, week_date, week_objectives, week_activities, week_resources, topic:topic_id(topic_id, topic_kelas_id, topic_subject_id)').gte('week_date', monday).lte('week_date', friday),
         supabase.from('weekly_overview_draft').select('draft_data').eq('kelas_id', kelasId).eq('week_date', monday).maybeSingle(),
+        supabase.from('report_settings').select('principal_name, principal_title, signature_principal_url, stamp_url, unit_id, year_id'),
       ])
 
       const dkData = dkRes.data || []
@@ -579,6 +580,21 @@ export default function TopicNewPage() {
 
       const finalCells = draftRes.data ? draftRes.data.draft_data.cells : cells
 
+      const yearId = targetKelas?.kelas_year_id || (woDocxYearId ? parseInt(woDocxYearId) : null)
+      const unitId = targetKelas?.kelas_unit_id || targetKelas?.unit_id
+
+      let reportSettings = null
+      const rsList = rsRes.data || []
+      const matchedRs = rsList.find(r => (unitId ? r.unit_id === unitId : true) && (yearId ? r.year_id === yearId : true)) || rsList[0]
+      if (matchedRs) {
+        reportSettings = {
+          principalName: matchedRs.principal_name,
+          principalTitle: matchedRs.principal_title,
+          signatureUrl: matchedRs.signature_principal_url,
+          stampUrl: matchedRs.stamp_url,
+        }
+      }
+
       const res = await fetch('/api/weekly-overview-docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -588,6 +604,7 @@ export default function TopicNewPage() {
           timeSlots,
           days,
           cells: finalCells,
+          reportSettings,
         }),
       })
 

@@ -1,8 +1,8 @@
 # Database Schema & Relationships
 
-## 1. User & Role Management Domain (`/data/user`, `/data/role_management`)
+## 1. User, Role & Unit Management Domain (`/data/user`, `/data/role_management`, `/settings/unit`)
 
-This domain handles the core users of the system, their roles, and organizational units. It is centered around the `users` table.
+This domain handles the core users of the system, their roles, organizational units, and unit-level report card configurations. It is centered around `users`, `unit`, and `report_settings`.
 
 ### 1.1 Tables
 
@@ -77,14 +77,37 @@ Represents the school level, department or division the user belongs to.
 | `unit_name` | `VARCHAR(100)`| Name (e.g. Primary, Secondary, Management) |
 | `is_school` | `BOOLEAN` | `true` for school unit, `false` for management |
 
+#### `report_settings`
+Configures per-unit and per-academic-year report card metadata (principal details, signatures, stamps, semester greetings, and report dates) managed via `/settings/unit` and consumed by student report card PDF generation.
 
-### 1.2 ERD / Relationships (User Domain)
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `unit_id` | `INTEGER` | Foreign Key to `unit(unit_id)` ON DELETE CASCADE |
+| `year_id` | `INTEGER` | Foreign Key to `year(year_id)` ON DELETE CASCADE |
+| `principal_name` | `VARCHAR` | Full name of the principal for this unit and academic year |
+| `principal_title` | `VARCHAR` | Official title of the principal (e.g. "Kepala Sekolah", "Principal") |
+| `report_greeting_s1` | `TEXT` | Report card greeting / remarks text for Semester 1 |
+| `report_greeting_s2` | `TEXT` | Report card greeting / remarks text for Semester 2 |
+| `report_date_s1` | `DATE` | Official report issuance date for Semester 1 |
+| `report_date_s2` | `DATE` | Official report issuance date for Semester 2 |
+| `signature_principal_url` | `TEXT` | Public URL to uploaded principal signature PNG image (Storage bucket: `report-assets`) |
+| `stamp_url` | `TEXT` | Public URL to uploaded school stamp/seal PNG image (Storage bucket: `report-assets`) |
+| `(unit_id, year_id)` | `UNIQUE` | Unique constraint per unit and academic year |
+
+> [!NOTE]
+> **Report Assets Storage:** Signature and stamp images uploaded via `/settings/unit` are stored in the `report-assets` Supabase storage bucket under the path `{unit_id}/{year_id}/{signature_principal|stamp}.png`.
+
+
+### 1.2 ERD / Relationships (User & Unit Domain)
 
 ```mermaid
 erDiagram
     dashboard_type ||--o{ role : "configures_dashboard"
     role ||--o{ users : "assigns"
     unit ||--o{ users : "belongs_to"
+    unit ||--o{ report_settings : "has_report_settings"
+    year ||--o{ report_settings : "applies_to_year"
     
     dashboard_type {
         int dashboard_type_id PK
@@ -110,6 +133,20 @@ erDiagram
         int unit_id PK
         string unit_name
         boolean is_school
+    }
+
+    report_settings {
+        int id PK
+        int unit_id FK
+        int year_id FK
+        string principal_name
+        string principal_title
+        text report_greeting_s1
+        text report_greeting_s2
+        date report_date_s1
+        date report_date_s2
+        string signature_principal_url
+        string stamp_url
     }
     
     users {

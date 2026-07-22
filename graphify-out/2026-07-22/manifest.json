@@ -660,8 +660,8 @@
     "semantic_hash": "655ff4969401f85d067a205512767404"
   },
   "package.json": {
-    "mtime": 1784619495.2181852,
-    "ast_hash": "e28b1392d2e8ca0aa7ccfda4532b0e61",
+    "mtime": 1784703981.3937376,
+    "ast_hash": "ec29e0dde59a78703789f7e73e2de20c",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -1065,8 +1065,8 @@
     "semantic_hash": "ed62be15a684e4722d48de789ed2e4ba"
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1784695707.6448166,
-    "ast_hash": "e104668ca7d59a9ea49fe771a932b3ec",
+    "mtime": 1784703386.0985842,
+    "ast_hash": "234eb6cf2daaa0ae1f677bcc08debb82",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -1185,9 +1185,9 @@
     "semantic_hash": "7740a4efe77a0cce2615ca1685ee47ae"
   },
   "src/app/settings/unit/page.jsx": {
-    "mtime": 1784179362.456733,
-    "ast_hash": "ab5d6c31d841b530204e62ff45be7a10",
-    "semantic_hash": "ab5d6c31d841b530204e62ff45be7a10"
+    "mtime": 1784701540.6865146,
+    "ast_hash": "66a917661d688b7e042c3b70dec13cc1",
+    "semantic_hash": ""
   },
   "src/app/stock/layout.jsx": {
     "mtime": 1784179362.456733,
@@ -1610,8 +1610,8 @@
     "semantic_hash": "1400ad750525254a16e6e63bc24fe29f"
   },
   "src/app/data/weekly-overview/page.jsx": {
-    "mtime": 1784695296.939176,
-    "ast_hash": "9b10c7e427ac47e584ce743b5fd37b77",
+    "mtime": 1784703394.2095292,
+    "ast_hash": "039aa1ec90a67d3b2c25e4c0de306ca7",
     "semantic_hash": ""
   },
   "src/lib/vertexClient.js": {
@@ -1630,8 +1630,8 @@
     "semantic_hash": ""
   },
   "src/app/api/weekly-overview-docx/route.js": {
-    "mtime": 1784696279.8019469,
-    "ast_hash": "0700a7122cb1b12195f180072b68819e",
+    "mtime": 1784704135.524094,
+    "ast_hash": "d9a2e45fc242b5192b510ac357af0836",
     "semantic_hash": ""
   },
   "src/components/GlobalActionCards.jsx": {
@@ -1660,8 +1660,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1784694619.921598,
-    "ast_hash": "5a7f887e69f761025b0e8248ff5c70dd",
+    "mtime": 1784701177.7482467,
+    "ast_hash": "e1069c40b3c9e5d3f52f06a7972c3929",
     "semantic_hash": ""
   },
   "banner-220.png": {
