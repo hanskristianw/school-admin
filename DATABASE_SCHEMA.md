@@ -128,7 +128,7 @@ Many tables in the system reference `users` for ownership, assignment or action 
 - **Academic Setup:** `kelas` (`kelas_user_id` as Wali Kelas)
 - **Subjects:** `subject` (`subject_user_id` as Teacher)
 - **Assessments:** `assessment` (`assessment_user_id` as Teacher)
-- **Timetable:** `timetable` (`timetable_user_id`)
+- **Timetable:** `detail_kelas` (`teacher_user_id`), `weekly_overview_draft` (`created_by`) *(Note: `timetable.timetable_user_id` was dropped in favor of single source of truth in `detail_kelas`)*
 - **Greeter:** `daftar_door_greeter` (`daftar_door_greeter_user_id`)
 - **Attendance:** `attendance`, `attendance_scan_log`
 - **Leave/Quota:** `leave_quotas` (`user_id`), `leave_requests` (`user_id`)
@@ -1067,3 +1067,125 @@ erDiagram
         int user_id PK
     }
 ```
+
+---
+
+## 9. Timetable & Schedule Management Domain (`/data/timetable`, `/data/weekly-overview`)
+
+This domain handles weekly recurring lesson schedules, schedule exceptions (holidays, special events), topic weekly plans, and weekly overview drafts.
+
+### 9.1 Tables
+
+#### `timetable`
+Stores the weekly recurring lesson and custom label schedules (e.g., BREAK, Morning Devotion).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `timetable_id` | `SERIAL` | Primary Key |
+| `timetable_detail_kelas_id` | `INTEGER` | Nullable. Foreign Key to `detail_kelas(detail_kelas_id)` |
+| `timetable_day` | `TEXT` | Day of week (`Monday`..`Friday`) |
+| `timetable_time` | `TSRANGE` | Time range of the block |
+| `custom_label` | `VARCHAR(255)` | Optional custom label (e.g., `BREAK`, `Morning Devotion`, `Assembly`) |
+| `custom_color` | `VARCHAR(50)` | Optional cell fill color in hex (e.g., `FEF08A`, `DCFCE7`, `F3E8FF`) |
+| `kelas_id` | `INTEGER` | Foreign Key to `kelas(kelas_id)` ON DELETE CASCADE (used for custom slots) |
+
+> [!NOTE]
+> `timetable_user_id` column existed previously but was dropped during migration (`timetable_user_id` dropped). Teacher is derived dynamically from `detail_kelas.teacher_user_id` (single source of truth).
+
+#### `timetable_exception`
+Stores per-date schedule overrides such as school holidays or special events (e.g., Kebaktian, sports day).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `exception_id` | `SERIAL` | Primary Key |
+| `exception_date` | `DATE` | The specific date for the exception |
+| `exception_label` | `TEXT` | Label/Name (e.g., "Libur Hari Raya", "Kebaktian") |
+| `exception_type` | `TEXT` | Exception type: `'holiday'` (full-day) or `'event'` (time range override) |
+| `start_time` | `TIME` | Optional start time (for `'event'` type) |
+| `end_time` | `TIME` | Optional end time (for `'event'` type) |
+| `affects_all_kelas` | `BOOLEAN` | Default `true`. If `false`, applies only to specified `affected_kelas_ids` |
+| `affected_kelas_ids` | `INT[]` | Array of `kelas_id` affected when `affects_all_kelas` is `false` |
+| `note` | `TEXT` | Optional notes |
+| `created_at` | `TIMESTAMPTZ` | Default `now()` |
+
+#### `topic_weekly_plan`
+Stores the weekly breakdown of unit plans/topics for a specific week number and date range.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `topic_id` | `INTEGER` | Foreign Key to `topic(topic_id)` ON DELETE CASCADE |
+| `week_number` | `INTEGER` | Week sequence number (1..topic_duration) |
+| `week_date` | `DATE` | Any date within the week this plan applies to |
+| `week_objectives` | `TEXT` | Weekly learning objectives |
+| `week_activities` | `TEXT` | Weekly learning activities |
+| `week_resources` | `TEXT` | Weekly learning resources |
+| `week_reflection` | `TEXT` | Weekly reflection |
+| `updated_at` | `TIMESTAMPTZ` | Last update timestamp |
+| `(topic_id, week_number)` | `UNIQUE` | Unique constraint per topic and week number |
+
+#### `weekly_overview_draft`
+Stores saved drafts of the Weekly Overview grid per class and week date.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `draft_id` | `SERIAL` | Primary Key |
+| `kelas_id` | `INTEGER` | Foreign Key to `kelas(kelas_id)` ON DELETE CASCADE |
+| `week_date` | `DATE` | Monday of the selected week |
+| `draft_data` | `JSONB` | Serialized overview grid state (`{cells, kelasNama, weekLabel}`) |
+| `created_by` | `INTEGER` | Foreign Key to `users(user_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation time |
+| `updated_at` | `TIMESTAMPTZ` | Record update time |
+| `(kelas_id, week_date)` | `UNIQUE` | Unique constraint per class and week date |
+
+### 9.2 ERD / Relationships (Timetable & Schedule Domain)
+
+```mermaid
+erDiagram
+    detail_kelas ||--o{ timetable : "scheduled_in"
+    kelas ||--o{ timetable_exception : "affected_by (optional)"
+    topic ||--o{ topic_weekly_plan : "has_weekly_plans"
+    kelas ||--o{ weekly_overview_draft : "has_drafts"
+    users ||--o{ weekly_overview_draft : "created_by"
+
+    detail_kelas {
+        int detail_kelas_id PK
+        int detail_kelas_subject_id FK
+        int detail_kelas_kelas_id FK
+        int teacher_user_id FK
+    }
+
+    timetable {
+        int timetable_id PK
+        int timetable_detail_kelas_id FK
+        string timetable_day
+        tsrange timetable_time
+    }
+
+    timetable_exception {
+        int exception_id PK
+        date exception_date
+        string exception_label
+        string exception_type
+        time start_time
+        time end_time
+        boolean affects_all_kelas
+        int_array affected_kelas_ids
+    }
+
+    topic_weekly_plan {
+        int id PK
+        int topic_id FK
+        int week_number
+        date week_date
+        text week_objectives
+    }
+
+    weekly_overview_draft {
+        int draft_id PK
+        int kelas_id FK
+        date week_date
+        jsonb draft_data
+    }
+```
+

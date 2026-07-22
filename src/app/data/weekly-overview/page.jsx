@@ -5,14 +5,19 @@ import { supabase } from '@/lib/supabase';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSpinner, faTableCellsLarge, faPrint, faFloppyDisk,
-  faPencil, faCheck, faXmark, faBan, faCalendarAlt, faRotateLeft
+  faPencil, faCheck, faXmark, faBan, faCalendarAlt, faRotateLeft, faFileWord
 } from '@fortawesome/free-solid-svg-icons';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const DAY_ID = { Monday: 'Senin', Tuesday: 'Selasa', Wednesday: 'Rabu', Thursday: 'Kamis', Friday: 'Jumat' };
 
-// Convert a Date to YYYY-MM-DD
-const toISO = (d) => d.toISOString().slice(0, 10);
+// Convert a Date to local YYYY-MM-DD string without UTC offset shift
+const toISO = (d) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 // Get Monday of the week containing date d
 const getMonday = (dateStr) => {
@@ -110,7 +115,7 @@ export default function WeeklyOverviewPage() {
       // 1. Fetch timetable for this kelas
       const { data: ttData } = await supabase
         .from('timetable')
-        .select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time')
+        .select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time, custom_label, kelas_id, custom_color')
         .order('timetable_time');
 
       const { data: dkData } = await supabase
@@ -122,7 +127,7 @@ export default function WeeklyOverviewPage() {
       const dkMap = new Map((dkData || []).map(d => [d.detail_kelas_id, d]));
 
       // Filter timetable slots for this kelas
-      const slots = (ttData || []).filter(r => dkIds.has(r.timetable_detail_kelas_id));
+      const slots = (ttData || []).filter(r => dkIds.has(r.timetable_detail_kelas_id) || r.kelas_id === kelasId);
 
       // 2. Fetch subjects
       const subjectIds = [...new Set((dkData || []).map(d => d.detail_kelas_subject_id))];
@@ -174,14 +179,47 @@ export default function WeeklyOverviewPage() {
           .map(wp => [wp.topic?.topic_subject_id, wp])
       );
 
-      // 5. Collect all unique time slots across all days (for row headers)
-      const timeSlotSet = new Set();
-      slots.forEach(r => {
+      // 5. Parse slots & collect atomic time boundaries
+      const timeToMin = (tStr) => {
+        if (!tStr) return 0;
+        const parts = tStr.split(':');
+        return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+      };
+
+      const minToTime = (m) => {
+        const hh = String(Math.floor(m / 60)).padStart(2, '0');
+        const mm = String(m % 60).padStart(2, '0');
+        return `${hh}:${mm}`;
+      };
+
+      const parsedSlots = slots.map(r => {
         const { start, end } = parseRange(r.timetable_time);
-        const s = extractHM(start), e = extractHM(end);
-        if (s && e) timeSlotSet.add(`${s}|${e}`);
+        const sStr = extractHM(start), eStr = extractHM(end);
+        return {
+          ...r,
+          startStr: sStr,
+          endStr: eStr,
+          minStart: timeToMin(sStr),
+          minEnd: timeToMin(eStr),
+        };
+      }).filter(r => r.minStart < r.minEnd);
+
+      const pointSet = new Set();
+      parsedSlots.forEach(r => {
+        pointSet.add(r.minStart);
+        pointSet.add(r.minEnd);
       });
-      const timeSlots = [...timeSlotSet].sort((a, b) => a.localeCompare(b));
+      const points = Array.from(pointSet).sort((a, b) => a - b);
+
+      const timeSlots = [];
+      for (let i = 0; i < points.length - 1; i++) {
+        const pStart = points[i];
+        const pEnd = points[i + 1];
+        const hasOverlap = parsedSlots.some(r => r.minStart < pEnd && r.minEnd > pStart);
+        if (hasOverlap) {
+          timeSlots.push(`${minToTime(pStart)}|${minToTime(pEnd)}`);
+        }
+      }
 
       // 6. Build cell map
       const cells = {};
@@ -195,37 +233,32 @@ export default function WeeklyOverviewPage() {
         );
 
         if (holidayEx) {
-          // Mark entire day as holiday — one special cell
           cells[`${day}|HOLIDAY`] = {
             type: 'holiday',
             label: holidayEx.exception_label,
             note: holidayEx.note || '',
           };
-          return;
         }
+      });
 
-        timeSlots.forEach(slotKey => {
-          const [slotStart, slotEnd] = slotKey.split('|');
+      timeSlots.forEach((slotKey, slotIdx) => {
+        const [slotStart, slotEnd] = slotKey.split('|');
+        const slotMinStart = timeToMin(slotStart);
+        const slotMinEnd = timeToMin(slotEnd);
+
+        DAYS.forEach(day => {
+          const date = dayDate(day);
+
+          if (cells[`${day}|HOLIDAY`]) return;
+
           const cellKey = `${day}|${slotKey}`;
 
-          // Check if there's a timetable slot for this day+time for this kelas
-          const matchSlot = slots.find(r => {
-            if (r.timetable_day !== day) return false;
-            const { start, end } = parseRange(r.timetable_time);
-            return extractHM(start) === slotStart && extractHM(end) === slotEnd;
-          });
-
-          if (!matchSlot) {
-            cells[cellKey] = { type: 'empty' };
-            return;
-          }
-
-          // Check for event exception overlapping this time slot
+          // Check for event exception overlapping this atomic slot
           const eventEx = relevantEx.find(ex =>
             ex.exception_date === date &&
             ex.exception_type === 'event' &&
             ex.start_time && ex.end_time &&
-            overlaps(slotStart, slotEnd, ex.start_time.slice(0, 5), ex.end_time.slice(0, 5))
+            (slotMinStart < timeToMin(ex.end_time.slice(0, 5)) && slotMinEnd > timeToMin(ex.start_time.slice(0, 5)))
           );
 
           if (eventEx) {
@@ -237,18 +270,66 @@ export default function WeeklyOverviewPage() {
             return;
           }
 
-          // Normal slot — fill with weekly plan data
-          const dk = dkMap.get(matchSlot.timetable_detail_kelas_id);
-          const subjectId = dk?.detail_kelas_subject_id;
-          const subjectName = subjMap.get(subjectId) || '-';
-          const wp = subjectId ? wpBySubject.get(subjectId) : null;
+          // Matching timetable slots for this day overlapping [slotMinStart, slotMinEnd]
+          const matching = parsedSlots.filter(r =>
+            r.timetable_day === day &&
+            r.minStart < slotMinEnd && r.minEnd > slotMinStart
+          );
+
+          if (matching.length === 0) {
+            cells[cellKey] = { type: 'empty' };
+            return;
+          }
+
+          const earliestStart = Math.min(...matching.map(r => r.minStart));
+
+          if (earliestStart < slotMinStart) {
+            cells[cellKey] = { type: 'covered' };
+            return;
+          }
+
+          const latestEnd = Math.max(...matching.map(r => r.minEnd));
+          let rowSpan = 0;
+          for (let k = slotIdx; k < timeSlots.length; k++) {
+            const [kStart] = timeSlots[k].split('|');
+            if (timeToMin(kStart) < latestEnd) {
+              rowSpan++;
+            } else {
+              break;
+            }
+          }
+
+          const items = matching.map(matchSlot => {
+            if (matchSlot.custom_label) {
+              return {
+                subject: matchSlot.custom_label,
+                customColor: matchSlot.custom_color || 'F3E8FF',
+                objectives: '',
+                activities: '',
+                resources: '',
+              };
+            }
+            const dk = dkMap.get(matchSlot.timetable_detail_kelas_id);
+            const subjectId = dk?.detail_kelas_subject_id;
+            const subjectName = subjMap.get(subjectId) || '-';
+            const wp = subjectId ? wpBySubject.get(subjectId) : null;
+            return {
+              subject: subjectName,
+              objectives: wp?.week_objectives || '',
+              activities: wp?.week_activities || '',
+              resources: wp?.week_resources || '',
+            };
+          });
 
           cells[cellKey] = {
             type: 'normal',
-            subject: subjectName,
-            objectives: wp?.week_objectives || '',
-            activities: wp?.week_activities || '',
-            resources: wp?.week_resources || '',
+            subject: items[0].subject,
+            customColor: items[0].customColor || null,
+            objectives: items[0].objectives,
+            activities: items[0].activities,
+            resources: items[0].resources,
+            items,
+            rowSpan: rowSpan > 1 ? rowSpan : 1,
           };
         });
       });
@@ -322,8 +403,45 @@ export default function WeeklyOverviewPage() {
     finally { setSaving(false); }
   };
 
-  // ── Print ──────────────────────────────────────────────────────────────────
+  // ── Print & DOCX Export ───────────────────────────────────────────────────
   const handlePrint = () => window.print();
+
+  const [exportingDocx, setExportingDocx] = useState(false);
+  const handleExportDocx = async () => {
+    if (!overviewCells) return;
+    setExportingDocx(true);
+    try {
+      const res = await fetch('/api/weekly-overview-docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kelasNama: overviewCells.kelasNama,
+          weekLabel: overviewCells.weekLabel,
+          timeSlots: overviewCells.timeSlots,
+          days: DAYS,
+          cells: overviewCells.cells,
+        }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.details || errJson.error || 'Failed to generate DOCX');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Weekly_Overview_${(overviewCells.kelasNama || '').replace(/[^a-zA-Z0-9]/g, '_')}_${(overviewCells.weekLabel || '').replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showToast('DOCX berhasil di-export');
+    } catch (e) {
+      showToast('Gagal export DOCX: ' + e.message);
+    } finally {
+      setExportingDocx(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex justify-center items-center min-h-[60vh]">
@@ -341,6 +459,7 @@ export default function WeeklyOverviewPage() {
       {/* ── Print styles ──────────────────────────────────────────────────── */}
       <style>{`
         @media print {
+          @page { size: landscape; margin: 10mm; }
           body * { visibility: hidden; }
           #weekly-overview-print, #weekly-overview-print * { visibility: visible; }
           #weekly-overview-print { position: fixed; inset: 0; padding: 20px; }
@@ -375,6 +494,11 @@ export default function WeeklyOverviewPage() {
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50">
                 {saving ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faFloppyDisk} />}
                 {draftLoaded ? 'Update Draft' : 'Save Draft'}
+              </button>
+              <button onClick={handleExportDocx} disabled={exportingDocx}
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-700 hover:bg-blue-800 text-white rounded-lg disabled:opacity-50">
+                {exportingDocx ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faFileWord} />}
+                Export DOCX
               </button>
               <button onClick={handlePrint}
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg">
@@ -546,6 +670,10 @@ export default function WeeklyOverviewPage() {
                             return <td key={day} className="border border-gray-300 px-2 py-2 text-gray-300">—</td>;
                           }
 
+                          if (cell.type === 'covered') {
+                            return null;
+                          }
+
                           if (cell.type === 'event') {
                             return (
                               <td key={day} className="border border-gray-300 px-3 py-2 event-cell" style={{ background: '#fef3c7' }}>
@@ -556,8 +684,11 @@ export default function WeeklyOverviewPage() {
                           }
 
                           // Normal cell
+                          const cellItems = cell.items && cell.items.length > 0 ? cell.items : [cell];
+                          const cellBg = cell.customColor ? `#${cell.customColor}` : undefined;
+
                           return (
-                            <td key={day} className="border border-gray-300 px-3 py-2 group relative">
+                            <td key={day} rowSpan={cell.rowSpan || 1} style={{ backgroundColor: cellBg }} className="border border-gray-300 px-3 py-2 group relative align-top">
                               {/* Edit button */}
                               <button
                                 onClick={() => startEdit(cellKey)}
@@ -566,25 +697,31 @@ export default function WeeklyOverviewPage() {
                                 <FontAwesomeIcon icon={faPencil} className="text-[10px]" />
                               </button>
 
-                              <div className="font-bold text-gray-900 mb-1.5">{cell.subject}</div>
-                              {cell.objectives && (
-                                <div className="mb-1">
-                                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Learning Goals:</span>
-                                  <div className="text-gray-700 text-[11px] leading-tight whitespace-pre-line">{cell.objectives}</div>
-                                </div>
-                              )}
-                              {cell.activities && (
-                                <div className="mb-1">
-                                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Activity:</span>
-                                  <div className="text-gray-700 text-[11px] leading-tight whitespace-pre-line">{cell.activities}</div>
-                                </div>
-                              )}
-                              {cell.resources !== undefined && (
-                                <div>
-                                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Resource:</span>
-                                  <div className="text-gray-700 text-[11px] leading-tight">{cell.resources || '-'}</div>
-                                </div>
-                              )}
+                              <div className="space-y-3">
+                                {cellItems.map((item, itemIdx) => (
+                                  <div key={itemIdx} className={itemIdx > 0 ? "pt-2 border-t border-gray-200" : ""}>
+                                    <div className="font-bold text-gray-900 mb-1.5">{item.subject}</div>
+                                    {item.objectives && (
+                                      <div className="mb-1">
+                                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Learning Goals:</span>
+                                        <div className="text-gray-700 text-[11px] leading-tight whitespace-pre-line">{item.objectives}</div>
+                                      </div>
+                                    )}
+                                    {item.activities && (
+                                      <div className="mb-1">
+                                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Activity:</span>
+                                        <div className="text-gray-700 text-[11px] leading-tight whitespace-pre-line">{item.activities}</div>
+                                      </div>
+                                    )}
+                                    {item.resources !== undefined && item.resources !== '' && (
+                                      <div>
+                                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Resource:</span>
+                                        <div className="text-gray-700 text-[11px] leading-tight">{item.resources || '-'}</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             </td>
                           );
                         })}

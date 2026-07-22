@@ -64,6 +64,10 @@ export default function TimetablePage() {
   // Form state (schedule)
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [formBlockType, setFormBlockType] = useState('subject'); // 'subject' | 'custom'
+  const [formCustomLabel, setFormCustomLabel] = useState('');
+  const [formCustomColor, setFormCustomColor] = useState('F3E8FF'); // hex without #
+  const [formDays, setFormDays] = useState(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
   const [formYear, setFormYear] = useState('');
   const [formKelas, setFormKelas] = useState('');
   const [formDetailKelasId, setFormDetailKelasId] = useState('');
@@ -104,7 +108,7 @@ export default function TimetablePage() {
     try {
       setLoading(true); setError('');
       const [ttRes, dkRes, kelasRes, yearRes, subjRes, usersRes] = await Promise.all([
-        supabase.from('timetable').select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time'),
+        supabase.from('timetable').select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time, custom_label, kelas_id, custom_color'),
         supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id, teacher_user_id'),
         supabase.from('kelas').select('kelas_id, kelas_nama, kelas_year_id').order('kelas_nama'),
         supabase.from('year').select('year_id, year_name').order('year_name', { ascending: false }),
@@ -129,6 +133,13 @@ export default function TimetablePage() {
       setDetailKelasAll(dkEnriched);
       setKelasList(kelasRes.data || []);
       setYears(yearRes.data || []);
+
+      if (yearRes.data && yearRes.data.length > 0) {
+        const defaultYear = String(yearRes.data[0].year_id);
+        const availableKelas = (kelasRes.data || []).filter(k => String(k.kelas_year_id) === defaultYear);
+        const defaultKelas = availableKelas.length > 0 ? String(availableKelas[0].kelas_id) : '';
+        setFilters({ year: defaultYear, kelas: defaultKelas, day: '' });
+      }
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   };
 
@@ -149,19 +160,35 @@ export default function TimetablePage() {
 
   // ── Derived maps ─────────────────────────────────────────────────────────
   const dkMap = useMemo(() => new Map(detailKelasAll.map(d => [d.detail_kelas_id, d])), [detailKelasAll]);
+  const kelasMap = useMemo(() => new Map(kelasList.map(k => [k.kelas_id, k])), [kelasList]);
+
   const kelasForViewFilter = useMemo(() => {
     if (!filters.year) return kelasList;
     return kelasList.filter(k => String(k.kelas_year_id) === String(filters.year));
   }, [kelasList, filters.year]);
 
   const filtered = useMemo(() => rows.filter(r => {
-    const dk = dkMap.get(r.timetable_detail_kelas_id);
-    if (!dk) return false;
-    if (filters.year && String(dk.kelas_year_id) !== String(filters.year)) return false;
-    if (filters.kelas && String(dk.detail_kelas_kelas_id) !== String(filters.kelas)) return false;
+    let rowKelasId = null;
+    let rowYearId = null;
+
+    if (r.timetable_detail_kelas_id) {
+      const dk = dkMap.get(r.timetable_detail_kelas_id);
+      if (dk) {
+        rowKelasId = dk.detail_kelas_kelas_id;
+        rowYearId = dk.kelas_year_id;
+      }
+    } else if (r.kelas_id) {
+      rowKelasId = r.kelas_id;
+      const k = kelasMap.get(r.kelas_id);
+      if (k) rowYearId = k.kelas_year_id;
+    }
+
+    if (!rowKelasId) return false;
+    if (!filters.year || String(rowYearId) !== String(filters.year)) return false;
+    if (!filters.kelas || String(rowKelasId) !== String(filters.kelas)) return false;
     if (filters.day && r.timetable_day !== filters.day) return false;
     return true;
-  }), [rows, filters, dkMap]);
+  }), [rows, filters, dkMap, kelasMap]);
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
     const dayIdx = d => DAYS.indexOf(d);
@@ -211,38 +238,49 @@ export default function TimetablePage() {
 
   // ── Schedule form helpers ─────────────────────────────────────────────────
   const resetForm = () => {
+    setFormBlockType('subject'); setFormCustomLabel(''); setFormCustomColor('F3E8FF');
     setFormYear(''); setFormKelas(''); setFormDetailKelasId('');
-    setFormDay(''); setFormStart(''); setFormEnd(''); setFormErrors({});
+    setFormDay(''); setFormDays(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+    setFormStart(''); setFormEnd(''); setFormErrors({});
   };
   const openCreate = () => { setEditing(null); resetForm(); setShowForm(true); };
   const openEdit = (row) => {
     const { start, end } = parseRange(row.timetable_time);
     const dk = dkMap.get(row.timetable_detail_kelas_id);
+    const kId = row.kelas_id || (dk ? dk.detail_kelas_kelas_id : null);
+    const kObj = kId ? kelasMap.get(kId) : null;
     setEditing(row);
-    setFormYear(dk ? String(dk.kelas_year_id || '') : '');
-    setFormKelas(dk ? String(dk.detail_kelas_kelas_id) : '');
-    setFormDetailKelasId(String(row.timetable_detail_kelas_id));
+
+    if (row.custom_label) {
+      setFormBlockType('custom');
+      setFormCustomLabel(row.custom_label);
+      setFormCustomColor(row.custom_color || 'F3E8FF');
+      setFormDetailKelasId('');
+    } else {
+      setFormBlockType('subject');
+      setFormCustomLabel('');
+      setFormCustomColor('F3E8FF');
+      setFormDetailKelasId(row.timetable_detail_kelas_id ? String(row.timetable_detail_kelas_id) : '');
+    }
+
+    setFormYear(kObj ? String(kObj.kelas_year_id) : (dk ? String(dk.kelas_year_id || '') : ''));
+    setFormKelas(kId ? String(kId) : '');
     setFormDay(row.timetable_day || '');
+    setFormDays([row.timetable_day || 'Monday']);
     setFormStart(extractHM(start)); setFormEnd(extractHM(end));
     setFormErrors({}); setShowForm(true);
   };
   const validate = () => {
     const e = {};
-    if (!formDetailKelasId) e.subject = 'Subject / class required';
-    if (!formDay) e.day = 'Day required';
+    if (formBlockType === 'subject' && !formDetailKelasId) e.subject = 'Subject class required';
+    if (formBlockType === 'custom' && !formCustomLabel.trim()) e.customLabel = 'Custom label required';
+    if (formBlockType === 'custom' && !formKelas) e.kelas = 'Class required';
+    if (formBlockType === 'subject' && !formDay) e.day = 'Day required';
+    if (formBlockType === 'custom' && !editing && formDays.length === 0) e.day = 'Select at least one day';
+    if (formBlockType === 'custom' && editing && !formDay) e.day = 'Day required';
     if (!formStart) e.startTime = 'Start time required';
     if (!formEnd) e.endTime = 'End time required';
     if (formStart && formEnd && formStart >= formEnd) e.endTime = 'End must be after start';
-    if (formDetailKelasId && formDay && formStart && formEnd) {
-      const dup = rows.find(r => {
-        if (editing && r.timetable_id === editing.timetable_id) return false;
-        if (r.timetable_detail_kelas_id !== parseInt(formDetailKelasId)) return false;
-        if (r.timetable_day !== formDay) return false;
-        const { start, end } = parseRange(r.timetable_time);
-        return !(formEnd <= extractHM(start) || formStart >= extractHM(end));
-      });
-      if (dup) e.overlap = 'This class+subject already has an overlapping block on this day';
-    }
     setFormErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -251,21 +289,42 @@ export default function TimetablePage() {
     if (!validate()) return;
     try {
       setSubmitting(true);
-      const payload = {
-        timetable_detail_kelas_id: parseInt(formDetailKelasId),
-        timetable_day: formDay,
-        timetable_time: formatRangeForInsert(formStart, formEnd),
-      };
-      if (editing) {
-        const { data, error } = await supabase.from('timetable').update(payload).eq('timetable_id', editing.timetable_id).select();
+
+      if (formBlockType === 'custom' && !editing) {
+        // Insert multiple rows for selected days
+        const payloads = formDays.map(day => ({
+          timetable_detail_kelas_id: null,
+          custom_label: formCustomLabel.trim(),
+          custom_color: formCustomColor || 'F3E8FF',
+          kelas_id: parseInt(formKelas),
+          timetable_day: day,
+          timetable_time: formatRangeForInsert(formStart, formEnd),
+        }));
+
+        const { data, error } = await supabase.from('timetable').insert(payloads).select();
         if (error) throw error;
-        if (data?.[0]) setRows(prev => prev.map(r => r.timetable_id === editing.timetable_id ? data[0] : r));
-        showNotification('Success', 'Block updated');
+        if (data) setRows(prev => [...data, ...prev]);
+        showNotification('Success', `Created ${payloads.length} custom blocks`);
       } else {
-        const { data, error } = await supabase.from('timetable').insert([payload]).select();
-        if (error) throw error;
-        if (data?.[0]) setRows(prev => [data[0], ...prev]);
-        showNotification('Success', 'Block created');
+        const payload = {
+          timetable_detail_kelas_id: formBlockType === 'subject' ? parseInt(formDetailKelasId) : null,
+          custom_label: formBlockType === 'custom' ? formCustomLabel.trim() : null,
+          custom_color: formBlockType === 'custom' ? (formCustomColor || 'F3E8FF') : null,
+          kelas_id: formBlockType === 'custom' ? parseInt(formKelas) : null,
+          timetable_day: formDay,
+          timetable_time: formatRangeForInsert(formStart, formEnd),
+        };
+        if (editing) {
+          const { data, error } = await supabase.from('timetable').update(payload).eq('timetable_id', editing.timetable_id).select();
+          if (error) throw error;
+          if (data?.[0]) setRows(prev => prev.map(r => r.timetable_id === editing.timetable_id ? data[0] : r));
+          showNotification('Success', 'Block updated');
+        } else {
+          const { data, error } = await supabase.from('timetable').insert([payload]).select();
+          if (error) throw error;
+          if (data?.[0]) setRows(prev => [data[0], ...prev]);
+          showNotification('Success', 'Block created');
+        }
       }
       setShowForm(false);
     } catch (e) { showNotification('Error', 'Failed: ' + e.message, 'error'); }
@@ -416,18 +475,24 @@ export default function TimetablePage() {
               <div>
                 <Label className="block text-sm font-medium mb-1">Tahun Ajaran</Label>
                 <select value={filters.year}
-                  onChange={e => setFilters(prev => ({ ...prev, year: e.target.value, kelas: '' }))}
+                  onChange={e => {
+                    const yr = e.target.value;
+                    const availableKelas = kelasList.filter(k => String(k.kelas_year_id) === String(yr));
+                    const defaultKl = availableKelas.length > 0 ? String(availableKelas[0].kelas_id) : '';
+                    setFilters(prev => ({ ...prev, year: yr, kelas: defaultKl }));
+                  }}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">All Years</option>
+                  <option value="">-- Select Year --</option>
                   {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
                 </select>
               </div>
               <div>
                 <Label className="block text-sm font-medium mb-1">Class</Label>
                 <select value={filters.kelas}
+                  disabled={!filters.year}
                   onChange={e => setFilters(prev => ({ ...prev, kelas: e.target.value }))}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">All Classes</option>
+                  <option value="">-- Select Class --</option>
                   {kelasForViewFilter.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
                 </select>
               </div>
@@ -441,7 +506,16 @@ export default function TimetablePage() {
                 </select>
               </div>
               <div className="flex items-end">
-                <Button variant="outline" onClick={() => setFilters({ year: '', kelas: '', day: '' })}>Reset</Button>
+                <Button variant="outline" onClick={() => {
+                  if (years.length > 0) {
+                    const defaultYear = String(years[0].year_id);
+                    const availableKelas = kelasList.filter(k => String(k.kelas_year_id) === defaultYear);
+                    const defaultKelas = availableKelas.length > 0 ? String(availableKelas[0].kelas_id) : '';
+                    setFilters({ year: defaultYear, kelas: defaultKelas, day: '' });
+                  } else {
+                    setFilters({ year: '', kelas: '', day: '' });
+                  }
+                }}>Reset</Button>
               </div>
             </div>
           </CardContent>
@@ -468,8 +542,10 @@ export default function TimetablePage() {
             </div>
           </CardHeader>
           <CardContent>
-            {sorted.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No schedule blocks{filters.year ? ' for this year' : ''}</div>
+            {!filters.year || !filters.kelas ? (
+              <div className="text-center py-12 text-gray-500 font-medium">Please select Year and Class to view the timetable schedule.</div>
+            ) : sorted.length === 0 ? (
+              <div className="text-center py-12 text-gray-500 font-medium">No schedule blocks found for the selected class.</div>
             ) : viewMode === 'table' ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -489,11 +565,29 @@ export default function TimetablePage() {
                         return (!isNaN(s) && !isNaN(e2)) ? (e2 - s) / 60000 : '';
                       })();
                       const dk = dkMap.get(r.timetable_detail_kelas_id);
+                      const rowKelasNama = r.custom_label
+                        ? (kelasMap.get(r.kelas_id)?.kelas_nama || '-')
+                        : (dk?.kelas_nama || '-');
+
                       return (
                         <tr key={r.timetable_id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm text-gray-900 font-medium">{dk?.kelas_nama || '-'}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{dk?.subject_code || dk?.subject_name || '-'}</td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{dk?.teacher_name || <span className="text-gray-400 italic">No teacher set</span>}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 font-medium">{rowKelasNama}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            {r.custom_label ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                ☕ {r.custom_label}
+                              </span>
+                            ) : (
+                              dk?.subject_code || dk?.subject_name || '-'
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-600">
+                            {r.custom_label ? (
+                              <span className="text-gray-400 italic">Custom Event</span>
+                            ) : (
+                              dk?.teacher_name || <span className="text-gray-400 italic">No teacher set</span>
+                            )}
+                          </td>
                           <td className="px-4 py-2 text-sm text-gray-900">{r.timetable_day}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">{startTime}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">{endTime}</td>
@@ -530,15 +624,26 @@ export default function TimetablePage() {
                         ) : items.map(r => {
                           const { start, end } = parseRange(r.timetable_time);
                           const dk = dkMap.get(r.timetable_detail_kelas_id);
+                          const rowKelasNama = r.custom_label
+                            ? (kelasMap.get(r.kelas_id)?.kelas_nama || '-')
+                            : (dk?.kelas_nama || '-');
+
+                          const customBg = r.custom_color ? `#${r.custom_color}` : '#F3E8FF';
+                          const customBorder = r.custom_color ? `#${r.custom_color}` : '#E9D5FF';
+
                           return (
-                            <div key={r.timetable_id} className="border rounded-md bg-blue-50 p-2">
+                            <div key={r.timetable_id} style={{ backgroundColor: r.custom_label ? customBg : undefined }} className={`border rounded-md p-2 ${r.custom_label ? 'border-purple-300 shadow-xs' : 'bg-blue-50 border-blue-200'}`}>
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                  <div className="text-sm font-semibold text-blue-900 truncate">
-                                    {dk?.kelas_nama || '-'} — {dk?.subject_code || dk?.subject_name || '-'}
+                                  <div className={`text-sm font-semibold truncate ${r.custom_label ? 'text-gray-900' : 'text-blue-900'}`}>
+                                    {r.custom_label ? (
+                                      <span>☕ {r.custom_label} ({rowKelasNama})</span>
+                                    ) : (
+                                      <span>{rowKelasNama} — {dk?.subject_code || dk?.subject_name || '-'}</span>
+                                    )}
                                   </div>
-                                  <div className="text-xs text-blue-700">{extractHM(start)} – {extractHM(end)}</div>
-                                  {dk?.teacher_name && (
+                                  <div className={`text-xs ${r.custom_label ? 'text-purple-700' : 'text-blue-700'}`}>{extractHM(start)} – {extractHM(end)}</div>
+                                  {!r.custom_label && dk?.teacher_name && (
                                     <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                                       <FontAwesomeIcon icon={faChalkboardTeacher} className="text-gray-400" />
                                       {dk.teacher_name}
@@ -653,67 +758,224 @@ export default function TimetablePage() {
       {/* ── Schedule Block Form Modal ──────────────────────────────────────── */}
       <Modal isOpen={showForm} onClose={() => { setShowForm(false); setEditing(null); }} title={editing ? 'Edit Schedule Block' : 'New Schedule Block'}>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="form_year">1. Tahun Ajaran</Label>
-              <select id="form_year" value={formYear}
-                onChange={e => { setFormYear(e.target.value); setFormKelas(''); setFormDetailKelasId(''); }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Select Year</option>
-                {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="form_kelas">2. Class</Label>
-              <select id="form_kelas" value={formKelas} disabled={!formYear}
-                onChange={e => { setFormKelas(e.target.value); setFormDetailKelasId(''); }}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${!formYear ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
-                <option value="">{!formYear ? 'Select year first' : 'Select Class'}</option>
-                {formKelasOptions.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="form_dk">3. Subject</Label>
-              <select id="form_dk" value={formDetailKelasId} disabled={!formKelas}
-                onChange={e => setFormDetailKelasId(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.subject ? 'border-red-500' : 'border-gray-300'} ${!formKelas ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
-                <option value="">{!formKelas ? 'Select class first' : `Select Subject (${formSubjectOptions.length} available)`}</option>
-                {formSubjectOptions.map(d => (
-                  <option key={d.detail_kelas_id} value={d.detail_kelas_id}>
-                    {d.subject_code ? `[${d.subject_code}] ` : ''}{d.subject_name}
-                    {d.teacher_name ? ` — ${d.teacher_name}` : ''}
-                  </option>
-                ))}
-              </select>
-              {formErrors.subject && <p className="text-red-500 text-sm mt-1">{formErrors.subject}</p>}
-              {selectedDk && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-100">
-                  <FontAwesomeIcon icon={faChalkboardTeacher} className="text-blue-400" />
-                  <span><strong>Teacher:</strong> {selectedDk.teacher_name || <em>Not assigned</em>}</span>
-                </div>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="form_day">4. Day</Label>
-              <select id="form_day" value={formDay} onChange={e => setFormDay(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.day ? 'border-red-500' : 'border-gray-300'}`}>
-                <option value="">Select Day</option>
-                {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-              {formErrors.day && <p className="text-red-500 text-sm mt-1">{formErrors.day}</p>}
-            </div>
-            <div />
-            <div>
-              <Label htmlFor="form_start">5. Start Time</Label>
-              <Input type="time" id="form_start" value={formStart} onChange={e => setFormStart(e.target.value)} className={formErrors.startTime ? 'border-red-500' : ''} />
-              {formErrors.startTime && <p className="text-red-500 text-sm mt-1">{formErrors.startTime}</p>}
-            </div>
-            <div>
-              <Label htmlFor="form_end">6. End Time</Label>
-              <Input type="time" id="form_end" value={formEnd} onChange={e => setFormEnd(e.target.value)} className={formErrors.endTime ? 'border-red-500' : ''} />
-              {formErrors.endTime && <p className="text-red-500 text-sm mt-1">{formErrors.endTime}</p>}
-            </div>
+          {/* Type Segment Selector */}
+          <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-lg">
+            <button
+              type="button"
+              onClick={() => { setFormBlockType('subject'); setFormErrors({}); }}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${formBlockType === 'subject' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
+            >
+              📚 Class Subject
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFormBlockType('custom'); setFormErrors({}); }}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${formBlockType === 'custom' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600'}`}
+            >
+              ☕ Custom Label (BREAK / Devotion)
+            </button>
           </div>
+
+          {formBlockType === 'custom' ? (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="custom_label">Custom Label Name *</Label>
+                <Input
+                  id="custom_label"
+                  value={formCustomLabel}
+                  onChange={e => setFormCustomLabel(e.target.value)}
+                  placeholder="e.g. BREAK, Morning Devotion, Assembly"
+                  className={formErrors.customLabel ? 'border-red-500' : ''}
+                />
+                {formErrors.customLabel && <p className="text-red-500 text-sm mt-1">{formErrors.customLabel}</p>}
+                
+                {/* Quick Presets */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {['BREAK', 'Morning Devotion', 'Lunch Break', 'Assembly', 'Homeroom Time'].map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setFormCustomLabel(preset)}
+                      className="px-2.5 py-1 text-[11px] bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium rounded-full border border-purple-200 transition-colors"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Color Swatches */}
+              <div>
+                <Label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  Cell Fill Color (Export & Web View)
+                </Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { label: 'Yellow', hex: 'FEF08A', bg: '#FEF08A', text: '#854D0E' },
+                    { label: 'Green', hex: 'DCFCE7', bg: '#DCFCE7', text: '#166534' },
+                    { label: 'Blue', hex: 'E0F2FE', bg: '#E0F2FE', text: '#075985' },
+                    { label: 'Purple', hex: 'F3E8FF', bg: '#F3E8FF', text: '#6B21A8' },
+                    { label: 'Red', hex: 'FEE2E2', bg: '#FEE2E2', text: '#991B1B' },
+                    { label: 'Gray', hex: 'F3F4F6', bg: '#F3F4F6', text: '#374151' },
+                  ].map(c => {
+                    const isSelected = formCustomColor === c.hex;
+                    return (
+                      <button
+                        key={c.hex}
+                        type="button"
+                        onClick={() => setFormCustomColor(c.hex)}
+                        style={{ backgroundColor: c.bg, color: c.text }}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all flex items-center gap-1 ${isSelected ? 'ring-2 ring-purple-600 ring-offset-1 border-purple-500 shadow-sm scale-105' : 'border-gray-300 hover:opacity-90'}`}
+                      >
+                        {isSelected && <span>✓</span>}
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="form_year_c">1. Tahun Ajaran *</Label>
+                  <select id="form_year_c" value={formYear}
+                    onChange={e => { setFormYear(e.target.value); setFormKelas(''); }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Select Year</option>
+                    {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="form_kelas_c">2. Class *</Label>
+                  <select id="form_kelas_c" value={formKelas} disabled={!formYear}
+                    onChange={e => setFormKelas(e.target.value)}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${!formYear ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
+                    <option value="">{!formYear ? 'Select year first' : 'Select Class'}</option>
+                    {formKelasOptions.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
+                  </select>
+                  {formErrors.kelas && <p className="text-red-500 text-sm mt-1">{formErrors.kelas}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label>3. Days / Hari *</Label>
+                    {!editing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (formDays.length === DAYS.length) setFormDays([]);
+                          else setFormDays([...DAYS]);
+                        }}
+                        className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+                      >
+                        {formDays.length === DAYS.length ? 'Deselect All' : 'Select All Weekdays'}
+                      </button>
+                    )}
+                  </div>
+                  {editing ? (
+                    <select value={formDay} onChange={e => setFormDay(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                      {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-md">
+                      {DAYS.map(d => {
+                        const checked = formDays.includes(d);
+                        return (
+                          <label
+                            key={d}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-all border ${checked ? 'bg-purple-100 text-purple-800 border-purple-300 font-semibold' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={e => {
+                                if (e.target.checked) setFormDays([...formDays, d]);
+                                else setFormDays(formDays.filter(day => day !== d));
+                              }}
+                              className="rounded text-purple-600 focus:ring-purple-500 h-3.5 w-3.5"
+                            />
+                            {d}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {formErrors.day && <p className="text-red-500 text-sm mt-1">{formErrors.day}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="form_start">4. Start Time *</Label>
+                  <Input type="time" id="form_start" value={formStart} onChange={e => setFormStart(e.target.value)} className={formErrors.startTime ? 'border-red-500' : ''} />
+                  {formErrors.startTime && <p className="text-red-500 text-sm mt-1">{formErrors.startTime}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="form_end">5. End Time *</Label>
+                  <Input type="time" id="form_end" value={formEnd} onChange={e => setFormEnd(e.target.value)} className={formErrors.endTime ? 'border-red-500' : ''} />
+                  {formErrors.endTime && <p className="text-red-500 text-sm mt-1">{formErrors.endTime}</p>}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="form_year">1. Tahun Ajaran</Label>
+                <select id="form_year" value={formYear}
+                  onChange={e => { setFormYear(e.target.value); setFormKelas(''); setFormDetailKelasId(''); }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Select Year</option>
+                  {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="form_kelas">2. Class</Label>
+                <select id="form_kelas" value={formKelas} disabled={!formYear}
+                  onChange={e => { setFormKelas(e.target.value); setFormDetailKelasId(''); }}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${!formYear ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
+                  <option value="">{!formYear ? 'Select year first' : 'Select Class'}</option>
+                  {formKelasOptions.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="form_dk">3. Subject</Label>
+                <select id="form_dk" value={formDetailKelasId} disabled={!formKelas}
+                  onChange={e => setFormDetailKelasId(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.subject ? 'border-red-500' : 'border-gray-300'} ${!formKelas ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
+                  <option value="">{!formKelas ? 'Select class first' : `Select Subject (${formSubjectOptions.length} available)`}</option>
+                  {formSubjectOptions.map(d => (
+                    <option key={d.detail_kelas_id} value={d.detail_kelas_id}>
+                      {d.subject_code ? `[${d.subject_code}] ` : ''}{d.subject_name}
+                      {d.teacher_name ? ` — ${d.teacher_name}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.subject && <p className="text-red-500 text-sm mt-1">{formErrors.subject}</p>}
+                {selectedDk && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-100">
+                    <FontAwesomeIcon icon={faChalkboardTeacher} className="text-blue-400" />
+                    <span><strong>Teacher:</strong> {selectedDk.teacher_name || <em>Not assigned</em>}</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="form_day">4. Day</Label>
+                <select id="form_day" value={formDay} onChange={e => setFormDay(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.day ? 'border-red-500' : 'border-gray-300'}`}>
+                  <option value="">Select Day</option>
+                  {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                {formErrors.day && <p className="text-red-500 text-sm mt-1">{formErrors.day}</p>}
+              </div>
+              <div />
+              <div>
+                <Label htmlFor="form_start">5. Start Time</Label>
+                <Input type="time" id="form_start" value={formStart} onChange={e => setFormStart(e.target.value)} className={formErrors.startTime ? 'border-red-500' : ''} />
+                {formErrors.startTime && <p className="text-red-500 text-sm mt-1">{formErrors.startTime}</p>}
+              </div>
+              <div>
+                <Label htmlFor="form_end">6. End Time</Label>
+                <Input type="time" id="form_end" value={formEnd} onChange={e => setFormEnd(e.target.value)} className={formErrors.endTime ? 'border-red-500' : ''} />
+                {formErrors.endTime && <p className="text-red-500 text-sm mt-1">{formErrors.endTime}</p>}
+              </div>
+            </div>
+          )}
           {formErrors.overlap && <div className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded">{formErrors.overlap}</div>}
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="bg-gray-500 hover:bg-gray-600 text-white">Cancel</Button>

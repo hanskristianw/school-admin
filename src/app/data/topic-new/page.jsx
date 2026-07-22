@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -262,6 +262,357 @@ export default function TopicNewPage() {
   const [wpYear, setWpYear] = useState('')
   const [wpKelas, setWpKelas] = useState('')
   const [wpSubject, setWpSubject] = useState('')
+
+  // Weekly Overview DOCX Modal State
+  const [woDocxModalOpen, setWoDocxModalOpen] = useState(false)
+  const [woDocxYearId, setWoDocxYearId] = useState('')
+  const [woDocxKelasId, setWoDocxKelasId] = useState('')
+  const [woDocxMonth, setWoDocxMonth] = useState('')
+  const [woDocxDate, setWoDocxDate] = useState('')
+  const [woDocxLoading, setWoDocxLoading] = useState(false)
+  const [woDocxError, setWoDocxError] = useState('')
+
+  const getWeeksForMonth = (year, monthIdx) => {
+    const weeks = []
+    let d = new Date(year, monthIdx, 1)
+    const day = d.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    d.setDate(d.getDate() + diff)
+
+    let weekNum = 1
+    while (true) {
+      const fri = new Date(d)
+      fri.setDate(d.getDate() + 4)
+
+      if (d.getMonth() !== monthIdx && fri.getMonth() !== monthIdx && d > new Date(year, monthIdx, 15)) {
+        break
+      }
+
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      const mondayStr = `${yyyy}-${mm}-${dd}`
+
+      const monFmt = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+      const friFmt = fri.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+
+      weeks.push({
+        weekNum: weekNum++,
+        mondayDate: mondayStr,
+        label: `Week ${weekNum - 1} (${monFmt} – ${friFmt})`,
+      })
+
+      d.setDate(d.getDate() + 7)
+    }
+    return weeks
+  }
+
+  const woDocxMonthOptions = useMemo(() => {
+    let startYear = new Date().getFullYear()
+    if (woDocxYearId) {
+      const yr = yearOptions.find(y => String(y.year_id) === String(woDocxYearId))
+      if (yr?.year_name) {
+        const m = yr.year_name.match(/(\d{4})/)
+        if (m) startYear = parseInt(m[1])
+      }
+    }
+    const months = []
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(startYear, 6 + i, 1) // Month 6 = July
+      const val = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`
+      const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+      months.push({ val, label, year: d.getFullYear(), monthIdx: d.getMonth() })
+    }
+    return months
+  }, [woDocxYearId, yearOptions])
+
+  const woDocxWeekOptions = useMemo(() => {
+    if (!woDocxMonth) return []
+    const [yStr, mStr] = woDocxMonth.split('-')
+    return getWeeksForMonth(parseInt(yStr), parseInt(mStr))
+  }, [woDocxMonth])
+
+  useEffect(() => {
+    if (woDocxModalOpen && yearOptions.length > 0 && !woDocxYearId) {
+      setWoDocxYearId(String(yearOptions[0].year_id))
+    }
+  }, [woDocxModalOpen, yearOptions, woDocxYearId])
+
+  useEffect(() => {
+    if (woDocxModalOpen && allKelasRaw.length > 0) {
+      const filtered = woDocxYearId
+        ? allKelasRaw.filter(k => String(k.kelas_year_id) === String(woDocxYearId))
+        : allKelasRaw
+
+      const uid = parseInt(localStorage.getItem('kr_id') || '0')
+      const myWaliKelas = filtered.find(k => k.kelas_user_id === uid)
+      if (myWaliKelas) {
+        setWoDocxKelasId(String(myWaliKelas.kelas_id))
+      } else if (filtered.length > 0) {
+        setWoDocxKelasId(String(filtered[0].kelas_id))
+      } else {
+        setWoDocxKelasId('')
+      }
+    }
+  }, [woDocxModalOpen, woDocxYearId, allKelasRaw])
+
+  useEffect(() => {
+    if (woDocxModalOpen && woDocxMonthOptions.length > 0 && !woDocxMonth) {
+      const now = new Date()
+      const currentVal = `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}`
+      const match = woDocxMonthOptions.find(m => m.val === currentVal)
+      setWoDocxMonth(match ? match.val : woDocxMonthOptions[0].val)
+    }
+  }, [woDocxModalOpen, woDocxMonthOptions, woDocxMonth])
+
+  useEffect(() => {
+    if (woDocxWeekOptions.length > 0) {
+      const exists = woDocxWeekOptions.some(w => w.mondayDate === woDocxDate)
+      if (!exists) {
+        setWoDocxDate(woDocxWeekOptions[0].mondayDate)
+      }
+    }
+  }, [woDocxWeekOptions, woDocxDate])
+
+  const handleDownloadWoDocx = async () => {
+    if (!woDocxKelasId || !woDocxDate) {
+      setWoDocxError('Please select class and week date')
+      return
+    }
+    setWoDocxLoading(true)
+    setWoDocxError('')
+    try {
+      const formatLocalDate = (dateObj) => {
+        const yyyy = dateObj.getFullYear()
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0')
+        const dd = String(dateObj.getDate()).padStart(2, '0')
+        return `${yyyy}-${mm}-${dd}`
+      }
+
+      const kelasId = parseInt(woDocxKelasId)
+      const d = new Date(woDocxDate + 'T00:00:00')
+      const dayIdx = d.getDay()
+      const diff = dayIdx === 0 ? -6 : 1 - dayIdx
+      d.setDate(d.getDate() + diff)
+      const monday = formatLocalDate(d)
+      const fridayObj = new Date(d); fridayObj.setDate(d.getDate() + 4)
+      const friday = formatLocalDate(fridayObj)
+
+      const monD = d.toLocaleDateString('en-GB', { day: 'numeric' })
+      const friD = fridayObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      const weekLabel = `${monD} - ${friD}`
+
+      const targetKelas = allKelasRaw.find(k => k.kelas_id === kelasId)
+      const kelasNama = targetKelas?.kelas_nama || 'Class'
+
+      const [ttRes, dkRes, subjRes, exRes, wpRes, draftRes] = await Promise.all([
+        supabase.from('timetable').select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time, custom_label, kelas_id, custom_color'),
+        supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id').eq('detail_kelas_kelas_id', kelasId),
+        supabase.from('subject').select('subject_id, subject_name'),
+        supabase.from('timetable_exception').select('*').gte('exception_date', monday).lte('exception_date', friday),
+        supabase.from('topic_weekly_plan').select('id, topic_id, week_number, week_date, week_objectives, week_activities, week_resources, topic:topic_id(topic_id, topic_kelas_id, topic_subject_id)').gte('week_date', monday).lte('week_date', friday),
+        supabase.from('weekly_overview_draft').select('draft_data').eq('kelas_id', kelasId).eq('week_date', monday).maybeSingle(),
+      ])
+
+      const dkData = dkRes.data || []
+      const dkIds = new Set(dkData.map(d => d.detail_kelas_id))
+      const dkMap = new Map(dkData.map(d => [d.detail_kelas_id, d]))
+      const subjMap = new Map((subjRes.data || []).map(s => [s.subject_id, s.subject_name]))
+      const slots = (ttRes.data || []).filter(r => dkIds.has(r.timetable_detail_kelas_id) || r.kelas_id === kelasId)
+
+      const parseRangeTime = (pgRange) => {
+        if (!pgRange) return { start: '', end: '' }
+        const m = pgRange.match(/^[\[(](.*),(.*)[)\]]$/)
+        if (!m) return { start: '', end: '' }
+        const clean = (raw) => raw.trim().replace(/^"|"$/g, '').slice(11, 16)
+        return { start: clean(m[1]), end: clean(m[2]) }
+      }
+
+      const relevantEx = (exRes.data || []).filter(ex =>
+        ex.affects_all_kelas || (ex.affected_kelas_ids && ex.affected_kelas_ids.includes(kelasId))
+      )
+
+      const relevantWP = (wpRes.data || []).filter(wp => wp.topic?.topic_kelas_id === kelasId)
+      const wpBySubject = new Map(
+        relevantWP.sort((a, b) => (a.week_date || '').localeCompare(b.week_date || '')).map(wp => [wp.topic?.topic_subject_id, wp])
+      )
+
+      const timeToMin = (tStr) => {
+        if (!tStr) return 0
+        const parts = tStr.split(':')
+        return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0)
+      }
+
+      const minToTime = (m) => {
+        const hh = String(Math.floor(m / 60)).padStart(2, '0')
+        const mm = String(m % 60).padStart(2, '0')
+        return `${hh}:${mm}`
+      }
+
+      const parsedSlots = slots.map(r => {
+        const { start, end } = parseRangeTime(r.timetable_time)
+        return {
+          ...r,
+          startStr: start,
+          endStr: end,
+          minStart: timeToMin(start),
+          minEnd: timeToMin(end),
+        }
+      }).filter(r => r.minStart < r.minEnd)
+
+      const pointSet = new Set()
+      parsedSlots.forEach(r => {
+        pointSet.add(r.minStart)
+        pointSet.add(r.minEnd)
+      })
+      const points = Array.from(pointSet).sort((a, b) => a - b)
+
+      const timeSlots = []
+      for (let i = 0; i < points.length - 1; i++) {
+        const pStart = points[i]
+        const pEnd = points[i + 1]
+        const hasOverlap = parsedSlots.some(r => r.minStart < pEnd && r.minEnd > pStart)
+        if (hasOverlap) {
+          timeSlots.push(`${minToTime(pStart)}|${minToTime(pEnd)}`)
+        }
+      }
+
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+      const cells = {}
+
+      days.forEach((dayName, idx) => {
+        const currD = new Date(d); currD.setDate(currD.getDate() + idx)
+        const dateStr = formatLocalDate(currD)
+
+        const holidayEx = relevantEx.find(ex => ex.exception_date === dateStr && ex.exception_type === 'holiday')
+        if (holidayEx) {
+          cells[`${dayName}|HOLIDAY`] = { type: 'holiday', label: holidayEx.exception_label }
+        }
+      })
+
+      timeSlots.forEach((slotKey, slotIdx) => {
+        const [slotStart, slotEnd] = slotKey.split('|')
+        const slotMinStart = timeToMin(slotStart)
+        const slotMinEnd = timeToMin(slotEnd)
+
+        days.forEach((dayName, idx) => {
+          const currD = new Date(d); currD.setDate(currD.getDate() + idx)
+          const dateStr = formatLocalDate(currD)
+
+          if (cells[`${dayName}|HOLIDAY`]) return
+
+          const cellKey = `${dayName}|${slotKey}`
+
+          const eventEx = relevantEx.find(ex =>
+            ex.exception_date === dateStr && ex.exception_type === 'event' &&
+            ex.start_time && ex.end_time &&
+            (slotMinStart < timeToMin(ex.end_time.slice(0, 5)) && slotMinEnd > timeToMin(ex.start_time.slice(0, 5)))
+          )
+
+          if (eventEx) {
+            cells[cellKey] = { type: 'event', label: eventEx.exception_label }
+            return
+          }
+
+          const matching = parsedSlots.filter(r =>
+            r.timetable_day === dayName &&
+            r.minStart < slotMinEnd && r.minEnd > slotMinStart
+          )
+
+          if (matching.length === 0) {
+            cells[cellKey] = { type: 'empty' }
+            return
+          }
+
+          const earliestStart = Math.min(...matching.map(r => r.minStart))
+
+          if (earliestStart < slotMinStart) {
+            cells[cellKey] = { type: 'covered' }
+            return
+          }
+
+          const latestEnd = Math.max(...matching.map(r => r.minEnd))
+          let rowSpan = 0
+          for (let k = slotIdx; k < timeSlots.length; k++) {
+            const [kStart] = timeSlots[k].split('|')
+            if (timeToMin(kStart) < latestEnd) {
+              rowSpan++
+            } else {
+              break
+            }
+          }
+
+          const items = matching.map(matchSlot => {
+            if (matchSlot.custom_label) {
+              return {
+                subject: matchSlot.custom_label,
+                customColor: matchSlot.custom_color || 'F3E8FF',
+                objectives: '',
+                activities: '',
+                resources: '',
+              }
+            }
+            const dk = dkMap.get(matchSlot.timetable_detail_kelas_id)
+            const subjectId = dk?.detail_kelas_subject_id
+            const subjectName = subjMap.get(subjectId) || '-'
+            const wp = subjectId ? wpBySubject.get(subjectId) : null
+            return {
+              subject: subjectName,
+              objectives: wp?.week_objectives || '',
+              activities: wp?.week_activities || '',
+              resources: wp?.week_resources || '',
+            }
+          })
+
+          cells[cellKey] = {
+            type: 'normal',
+            subject: items[0].subject,
+            customColor: items[0].customColor || null,
+            objectives: items[0].objectives,
+            activities: items[0].activities,
+            resources: items[0].resources,
+            items,
+            rowSpan: rowSpan > 1 ? rowSpan : 1,
+          }
+        })
+      })
+
+      const finalCells = draftRes.data ? draftRes.data.draft_data.cells : cells
+
+      const res = await fetch('/api/weekly-overview-docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kelasNama,
+          weekLabel,
+          timeSlots,
+          days,
+          cells: finalCells,
+        }),
+      })
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.details || errJson.error || 'Failed to generate DOCX')
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Weekly_Overview_${kelasNama.replace(/[^a-zA-Z0-9]/g, '_')}_${weekLabel.replace(/[^a-zA-Z0-9]/g, '_')}.docx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+
+      setWoDocxModalOpen(false)
+    } catch (err) {
+      setWoDocxError(err.message || 'Failed to export DOCX')
+    } finally {
+      setWoDocxLoading(false)
+    }
+  }
 
   // Comment AI Help state
   const [commentAiModalOpen, setCommentAiModalOpen] = useState(false)
@@ -4624,9 +4975,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   return (
     <div className="p-6" style={{ background: theme.pageBg, minHeight: '100%' }}>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif", letterSpacing: '-0.01em' }}>Topic Management</h1>
-        <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>Manage your IB unit planner topics</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif", letterSpacing: '-0.01em' }}>Topic Management</h1>
+          <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>Manage your IB unit planner topics</p>
+        </div>
+        <div>
+          <button
+            onClick={() => setWoDocxModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all"
+          >
+            <FontAwesomeIcon icon={faFileWord} />
+            Weekly Overview (DOCX)
+          </button>
+        </div>
       </div>
 
       {/* Tab Navigation */}
@@ -8880,6 +9242,131 @@ ${refineOriginal}`
           </div>
         </div>
       )}
+
+      {/* Weekly Overview DOCX Export Modal */}
+      <Modal
+        isOpen={woDocxModalOpen}
+        onClose={() => !woDocxLoading && setWoDocxModalOpen(false)}
+        title="Export Weekly Overview (DOCX)"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-gray-600">
+            Generate and download Microsoft Word (.docx) Weekly Overview for parents, compiling all subjects for the selected class and week.
+          </p>
+
+          {woDocxError && (
+            <div className="p-3 text-xs bg-red-50 border border-red-200 text-red-700 rounded-md">
+              {woDocxError}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Academic Year / Tahun Ajaran
+            </label>
+            <select
+              value={woDocxYearId}
+              onChange={e => {
+                setWoDocxYearId(e.target.value)
+              }}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Academic Years</option>
+              {yearOptions.map(y => (
+                <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Class / Kelas <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={woDocxKelasId}
+              onChange={e => setWoDocxKelasId(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Class</option>
+              {allKelasRaw
+                .filter(k => !woDocxYearId || String(k.kelas_year_id) === String(woDocxYearId))
+                .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama, 'id'))
+                .map(k => {
+                  const yr = yearOptions.find(y => String(y.year_id) === String(k.kelas_year_id))
+                  const yearSuffix = !woDocxYearId && yr ? ` (${yr.year_name})` : ''
+                  const isWali = k.kelas_user_id === parseInt(localStorage.getItem('kr_id') || '0')
+                  return (
+                    <option key={k.kelas_id} value={k.kelas_id}>
+                      {k.kelas_nama}{yearSuffix} {isWali ? '(Homeroom)' : ''}
+                    </option>
+                  )
+                })}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Month / Bulan <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={woDocxMonth}
+                onChange={e => setWoDocxMonth(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {woDocxMonthOptions.map(m => (
+                  <option key={m.val} value={m.val}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Week / Minggu <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={woDocxDate}
+                onChange={e => setWoDocxDate(e.target.value)}
+                disabled={woDocxWeekOptions.length === 0}
+                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {woDocxWeekOptions.map(w => (
+                  <option key={w.mondayDate} value={w.mondayDate}>
+                    {w.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <button
+              onClick={() => setWoDocxModalOpen(false)}
+              disabled={woDocxLoading}
+              className="px-4 py-2 text-xs border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDownloadWoDocx}
+              disabled={woDocxLoading}
+              className="px-4 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 font-medium"
+            >
+              {woDocxLoading ? (
+                <>
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                  Generating DOCX...
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faFileWord} />
+                  Download DOCX
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
