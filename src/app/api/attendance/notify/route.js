@@ -442,8 +442,8 @@ async function handleNotify(request) {
         console.log(`[AttendanceNotif] ${userName}: no email configured, violation logged only`)
       } else {
         try {
-          const baseUrl = process.env.NEXTAUTH_URL
-            || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+            || process.env.NEXTAUTH_URL
             || 'https://manageccs.online'
           const { subject, html } = emailTemplates.attendanceLate({
             userName,

@@ -171,28 +171,32 @@ export const emailTemplates = {
       ? `Notice of ${engLabels[0]}`
       : `Notice of ${engLabels.join(' & ')}`
 
-    // Build factual, neutral sentence per issue — violation label at the end
+    // Build badges to place at the top of the body
+    const badgesHtml = issueList.map(issue => {
+      const { label } = typeLabel(issue.type)
+      return `<span style="background:#fef08a;padding:4px 10px;border-radius:4px;font-weight:600;font-size:13px;display:inline-block;margin-right:6px;">${label}</span>`
+    }).join(' ')
+
+    // Build factual, neutral sentence per issue
     const issueLines = issueList.map(issue => {
       const { label } = typeLabel(issue.type)
-      const highlight = (txt) => `<span style="background:#fef08a;padding:1px 5px;border-radius:3px;font-weight:600;">${txt}</span>`
 
       if (issue.type === 'late') {
-        // Show actual check-in time + scheduled time, label at end
         const actual = issue.actualTime || '—'
         const scheduled = issue.scheduledTime || '—'
-        return `On <strong>${date}</strong>, your check-in time was recorded at <strong>${actual}</strong>. Your scheduled check-in time is at <strong>${scheduled}</strong>. ${highlight(label)}`
+        return `On <strong>${date}</strong>, your check-in time was recorded at <strong>${actual}</strong>. Your scheduled check-in time is at <strong>${scheduled}</strong>.`
       } else if (issue.type === 'leave_early') {
         const actual = issue.actualTime || '—'
         const scheduled = issue.scheduledTime || '—'
-        return `On <strong>${date}</strong>, your check-out time was recorded at <strong>${actual}</strong>. Your scheduled check-out time is at <strong>${scheduled}</strong>. ${highlight(label)}`
+        return `On <strong>${date}</strong>, your check-out time was recorded at <strong>${actual}</strong>. Your scheduled check-out time is at <strong>${scheduled}</strong>.`
       } else if (issue.type === 'absent') {
-        return `On <strong>${date}</strong>, no attendance record was found for your account. ${highlight(label)}`
+        return `On <strong>${date}</strong>, no attendance record was found for your account.`
       } else if (issue.type === 'no_checkin') {
         const scheduled = issue.scheduledTime || '—'
-        return `On <strong>${date}</strong>, there is no check-in record found. Your scheduled check-in time is at <strong>${scheduled}</strong>. ${highlight(label)}`
+        return `On <strong>${date}</strong>, there is no check-in record found. Your scheduled check-in time is at <strong>${scheduled}</strong>.`
       } else if (issue.type === 'no_checkout') {
         const scheduled = issue.scheduledTime || '—'
-        return `On <strong>${date}</strong>, there is no check-out record found. Your scheduled check-out time is at <strong>${scheduled}</strong>. ${highlight(label)}`
+        return `On <strong>${date}</strong>, there is no check-out record found. Your scheduled check-out time is at <strong>${scheduled}</strong>.`
       }
       return `On <strong>${date}</strong>, a <strong>${label}</strong> was recorded.`
     })
@@ -207,10 +211,11 @@ export const emailTemplates = {
           <p>Chung Chung Christian School</p>
         </div>
         <div class="body">
+          <div style="margin-bottom: 14px;">${badgesHtml}</div>
           <p>Good Morning, <strong>${userName}</strong>.</p>
           ${issueLines.map(l => `<p style="margin:10px 0;">${l}</p>`).join('')}
           <p style="margin-top:20px;">
-            If you have a valid reason for the above, please complete the attendance excuse form in the CCS Portal:<br>
+            Please complete the attendance excuse form in the CCS Portal:<br>
             <a href="${portalUrl}" style="color:#1d4ed8;word-break:break-all;">${portalUrl}</a>
           </p>
           <p style="margin-top:20px;color:#444;">
