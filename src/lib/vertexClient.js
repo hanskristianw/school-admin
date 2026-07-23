@@ -12,17 +12,19 @@
  */
 
 import { VertexAI } from '@google-cloud/vertexai'
+import fs from 'fs'
+import path from 'path'
 
 let _genModel = null
 
 export function getVertexModel() {
-  // Allow creating a fresh model per request in case env vars change (e.g. during testing)
-  // For production use the cached singleton.
   if (_genModel) return _genModel
 
-  const project  = process.env.GCP_PROJECT_ID || '213755729408'
+  const saFilePath = path.join(process.cwd(), 'project-c16c7efe-fd40-417e-8ee-a95d10636d04.json')
+
+  let project  = process.env.GCP_PROJECT_ID || '213755729408'
   const location = process.env.GCP_LOCATION   || 'us-central1'
-  const modelId  = process.env.GEMINI_MODEL   || 'gemini-2.5-flash'
+  const modelId  = process.env.GEMINI_MODEL   || 'gemini-2.5-flash-lite'
 
   /** @type {import('@google-cloud/vertexai').VertexInit} */
   const vertexInit = { project, location }
@@ -32,8 +34,7 @@ export function getVertexModel() {
   if (credsJson) {
     try {
       const credentials = JSON.parse(credsJson)
-      // googleAuthOptions is forwarded to google-auth-library's GoogleAuth constructor.
-      // Pass `credentials` (the parsed SA object) so no file I/O is needed.
+      if (credentials.project_id) vertexInit.project = credentials.project_id
       vertexInit.googleAuthOptions = {
         credentials,
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
@@ -41,6 +42,18 @@ export function getVertexModel() {
       console.log('[vertexClient] Using inline JSON credentials for:', credentials.client_email)
     } catch (e) {
       console.error('[vertexClient] Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', e.message)
+    }
+  } else if (fs.existsSync(saFilePath)) {
+    try {
+      const credentials = JSON.parse(fs.readFileSync(saFilePath, 'utf8'))
+      if (credentials.project_id) vertexInit.project = credentials.project_id
+      vertexInit.googleAuthOptions = {
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      }
+      console.log('[vertexClient] Using local SA key file:', saFilePath, '| project:', vertexInit.project)
+    } catch (e) {
+      console.error('[vertexClient] Failed to read SA key file:', e.message)
     }
   } else {
     // ── Local: ADC reads GOOGLE_APPLICATION_CREDENTIALS file path automatically ─

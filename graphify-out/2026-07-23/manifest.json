@@ -725,8 +725,8 @@
     "semantic_hash": "315962553f5c31c876de509490acaf08"
   },
   "src/app/api/attendance/notify/route.js": {
-    "mtime": 1784598157.1865766,
-    "ast_hash": "220f9d964e5e906fecedb80eee08e7fb",
+    "mtime": 1784778024.715446,
+    "ast_hash": "3e4897da9b41e8ba51cbae8c192397a5",
     "semantic_hash": ""
   },
   "src/app/api/attendance/notify/test-email/route.js": {
@@ -1360,8 +1360,8 @@
     "semantic_hash": "22510ae1f6144ebbb887b0a9c12551da"
   },
   "src/lib/emailTemplates.js": {
-    "mtime": 1784600750.614867,
-    "ast_hash": "4b30b708117c7f93ad0e5cca4c8eb0e8",
+    "mtime": 1784778024.7216344,
+    "ast_hash": "f66f3846de24efc1ebd7bfdee516f531",
     "semantic_hash": ""
   },
   "src/lib/i18n.js": {
@@ -1615,9 +1615,9 @@
     "semantic_hash": ""
   },
   "src/lib/vertexClient.js": {
-    "mtime": 1784251688.0560997,
-    "ast_hash": "656fd61eaee3a9d0238868bc32999614",
-    "semantic_hash": "656fd61eaee3a9d0238868bc32999614"
+    "mtime": 1784779807.9171364,
+    "ast_hash": "757e5fef615efe40ef20ac4ba53693d2",
+    "semantic_hash": ""
   },
   "src/app/api/attendance/test-chat/route.js": {
     "mtime": 1784529159.0978956,
@@ -1660,8 +1660,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1784701177.7482467,
-    "ast_hash": "e1069c40b3c9e5d3f52f06a7972c3929",
+    "mtime": 1784777593.0957067,
+    "ast_hash": "c814a2dad156af097dd4f63016204fbc",
     "semantic_hash": ""
   },
   "banner-220.png": {

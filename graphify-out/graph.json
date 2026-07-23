@@ -2790,8 +2790,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_react_fontawesome",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -2801,8 +2801,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "fortawesome_react_fontawesome",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "browser-image-compression"
     },
     {
@@ -10223,7 +10223,7 @@
       "label": "getVertexModel()",
       "file_type": "code",
       "source_file": "src/lib/vertexClient.js",
-      "source_location": "L18",
+      "source_location": "L20",
       "_origin": "ast",
       "id": "src_lib_vertexclient_getvertexmodel",
       "community": 228,
@@ -28004,7 +28004,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/lib/vertexClient.js",
-      "source_location": "L18",
+      "source_location": "L20",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_lib_vertexclient",
@@ -34358,5 +34358,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a8459499c80372f67a50eccbfa50c63239f0cc0a"
+  "built_at_commit": "078fb81e6f645ed883d042eaa53643a2853658bb"
 }
