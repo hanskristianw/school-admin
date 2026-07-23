@@ -173,6 +173,18 @@ const iconMap = {
   , 'faCalendarCheck': faCalendarCheck
   , 'fas fa-ticket': require('@fortawesome/free-solid-svg-icons').faTicket
   , 'faTicket': require('@fortawesome/free-solid-svg-icons').faTicket
+  , 'fas fa-ticket-simple': require('@fortawesome/free-solid-svg-icons').faTicketSimple
+  , 'faTicketSimple': require('@fortawesome/free-solid-svg-icons').faTicketSimple
+  , 'fas fa-car': require('@fortawesome/free-solid-svg-icons').faCar
+  , 'faCar': require('@fortawesome/free-solid-svg-icons').faCar
+  , 'fas fa-bus': require('@fortawesome/free-solid-svg-icons').faBus
+  , 'faBus': require('@fortawesome/free-solid-svg-icons').faBus
+  , 'fas fa-car-side': require('@fortawesome/free-solid-svg-icons').faCarSide
+  , 'faCarSide': require('@fortawesome/free-solid-svg-icons').faCarSide
+  , 'fas fa-hotel': require('@fortawesome/free-solid-svg-icons').faHotel
+  , 'faHotel': require('@fortawesome/free-solid-svg-icons').faHotel
+  , 'fas fa-door-closed': require('@fortawesome/free-solid-svg-icons').faDoorClosed
+  , 'faDoorClosed': require('@fortawesome/free-solid-svg-icons').faDoorClosed
   , 'fas fa-tools': require('@fortawesome/free-solid-svg-icons').faTools
   , 'faTools': require('@fortawesome/free-solid-svg-icons').faTools
   , 'fas fa-wrench': require('@fortawesome/free-solid-svg-icons').faWrench

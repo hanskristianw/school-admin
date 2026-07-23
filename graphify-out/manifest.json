@@ -1275,8 +1275,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1784519299.2244112,
-    "ast_hash": "ccc6c47785ba29964745f1f59bf366d8",
+    "mtime": 1784793338.8915272,
+    "ast_hash": "d6054db137b52fb5098b5fe83764ebf0",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {

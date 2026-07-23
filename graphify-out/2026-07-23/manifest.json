@@ -1615,8 +1615,8 @@
     "semantic_hash": ""
   },
   "src/lib/vertexClient.js": {
-    "mtime": 1784779807.9171364,
-    "ast_hash": "757e5fef615efe40ef20ac4ba53693d2",
+    "mtime": 1784779996.7391877,
+    "ast_hash": "ff37812a76e06169eff2a515f2eaba20",
     "semantic_hash": ""
   },
   "src/app/api/attendance/test-chat/route.js": {
