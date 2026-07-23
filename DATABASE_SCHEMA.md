@@ -50,7 +50,8 @@ Defines the permissions and types of users in the system.
 | `is_curriculum` | `BOOLEAN` | Flag for curriculum roles |
 | `is_nurse` | `BOOLEAN` | Flag for nurse/clinic roles |
 | `is_vendor` | `BOOLEAN` | Flag for vendor roles |
-| `is_part_time_staff`| `BOOLEAN` | Flag for part-time staff |
+| `is_part_time_staff`| `BOOLEAN` | Flag for part-time staff (bypasses all attendance checks 100%) |
+| `is_flexible_hours` | `BOOLEAN` | Flag for flexible work hours (requires check-in/out on work days, but 0 lateness/early departure penalty) |
 | `can_void_transactions`| `BOOLEAN`| Flag granting permission to void/cancel transactions |
 | `work_days` | `VARCHAR` | CSV of work days (e.g. "1,2,3,4,5" for Mon-Fri) |
 | `dashboard_type_id` | `INTEGER` | Foreign Key to `dashboard_type(dashboard_type_id)` |

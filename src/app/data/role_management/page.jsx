@@ -31,7 +31,8 @@ export default function RoleManagementPage() {
     is_nurse: false,
     can_void_transactions: false,
     is_vendor: false,
-    is_part_time_staff: false
+    is_part_time_staff: false,
+    is_flexible_hours: false
   })
 
   const isAdmin = useMemo(() => {
@@ -58,7 +59,7 @@ export default function RoleManagementPage() {
         // Fetch roles with dashboard_type info
         const { data, error } = await supabase
           .from('role')
-          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff')
+          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours')
           .order('role_priority', { ascending: false })
           .order('role_name')
         if (error) throw new Error(error.message)
@@ -77,7 +78,7 @@ export default function RoleManagementPage() {
   }, [roles, search])
 
   const openNew = () => {
-    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, is_curriculum: false, is_nurse: false, can_void_transactions: false, is_vendor: false, is_part_time_staff: false })
+    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, is_curriculum: false, is_nurse: false, can_void_transactions: false, is_vendor: false, is_part_time_staff: false, is_flexible_hours: false })
     setShowEdit(true)
   }
   const openEdit = (r) => {
@@ -95,7 +96,8 @@ export default function RoleManagementPage() {
       is_nurse: !!r.is_nurse,
       can_void_transactions: !!r.can_void_transactions,
       is_vendor: !!r.is_vendor,
-      is_part_time_staff: !!r.is_part_time_staff
+      is_part_time_staff: !!r.is_part_time_staff,
+      is_flexible_hours: !!r.is_flexible_hours
     })
     setShowEdit(true)
   }
@@ -125,7 +127,8 @@ export default function RoleManagementPage() {
         is_nurse: !!form.is_nurse,
         can_void_transactions: !!form.can_void_transactions,
         is_vendor: !!form.is_vendor,
-        is_part_time_staff: !!form.is_part_time_staff
+        is_part_time_staff: !!form.is_part_time_staff,
+        is_flexible_hours: !!form.is_flexible_hours
       }
       if (form.role_id) {
         const { error } = await supabase.from('role').update(payload).eq('role_id', form.role_id)
@@ -134,7 +137,7 @@ export default function RoleManagementPage() {
         const { error } = await supabase.from('role').insert([payload])
         if (error) throw new Error(error.message)
       }
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff').order('role_priority', { ascending: false }).order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours').order('role_priority', { ascending: false }).order('role_name')
       if (rErr) throw new Error(rErr.message)
       setRoles(data || [])
       setShowEdit(false)
@@ -309,9 +312,16 @@ export default function RoleManagementPage() {
             <div className="mt-3">
               <label className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg" style={{ background: form.is_part_time_staff ? '#eef2ff' : '#f9fafb', border: `1px solid ${form.is_part_time_staff ? '#6366f1' : '#e5e7eb'}` }}>
                 <input type="checkbox" checked={form.is_part_time_staff} onChange={e=>setForm(p=>({...p,is_part_time_staff:e.target.checked}))} />
-                <span className={form.is_part_time_staff ? 'text-indigo-700 font-semibold' : ''}>🕐 Part-time Staff (hanya catat kehadiran)</span>
+                <span className={form.is_part_time_staff ? 'text-indigo-700 font-semibold' : ''}>🕐 Part-time Staff (bebas absen total)</span>
               </label>
-              <p className="text-xs text-gray-500 mt-1">Tidak ada keterlambatan, pulang awal, atau absen — hanya mencatat waktu datang dan pulang</p>
+              <p className="text-xs text-gray-500 mt-1">Bebas 100% — tidak dihitung terlambat, pulang awal, maupun alpa</p>
+            </div>
+            <div className="mt-3">
+              <label className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg" style={{ background: form.is_flexible_hours ? '#ecfdf5' : '#f9fafb', border: `1px solid ${form.is_flexible_hours ? '#10b981' : '#e5e7eb'}` }}>
+                <input type="checkbox" checked={form.is_flexible_hours} onChange={e=>setForm(p=>({...p,is_flexible_hours:e.target.checked}))} />
+                <span className={form.is_flexible_hours ? 'text-emerald-700 font-semibold' : ''}>⏰ Jam Kerja Fleksibel (Bebas Jam, Wajib Absen Masuk & Pulang)</span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1">Wajib scan masuk & pulang pada hari kerja (dianggap Alpa jika tidak scan), namun bebas dari denda/hitung terlambat & pulang awal</p>
             </div>
           </div>
           <div className="border-t pt-3">

@@ -189,7 +189,7 @@ export async function GET(request) {
         user_id, user_nama_depan, user_nama_belakang,
         user_unit_id, user_role_id, user_pin,
         expected_check_in, expected_check_out, join_date,
-        role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff)
+        role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
@@ -299,6 +299,7 @@ export async function GET(request) {
     for (const user of users) {
       const workDays = (user.role?.work_days || '1,2,3,4,5').split(',').map(Number)
       const isPartTime = !!user.role?.is_part_time_staff
+      const isFlexible = !!user.role?.is_flexible_hours
       const expectedIn  = user.expected_check_in  || DEFAULT_CHECK_IN
       const expectedOut = user.expected_check_out || DEFAULT_CHECK_OUT
       const expectedInMins  = timeToMinutes(expectedIn)
@@ -313,6 +314,7 @@ export async function GET(request) {
         role_name:  user.role?.role_name || '—',
         is_vendor:  !!user.role?.is_vendor,
         is_part_time_staff: !!user.role?.is_part_time_staff,
+        is_flexible_hours:  !!user.role?.is_flexible_hours,
         position:   positionMap[user.user_id]?.position_title || '',
         expected_check_in:  expectedIn.slice(0, 5),
         expected_check_out: expectedOut.slice(0, 5),
@@ -416,7 +418,7 @@ export async function GET(request) {
           if (!noCheckIn) {
             const timeStr = wibTimeStr(checkins[0].scan_time) // "HH:MM:SS"
             dayRecord.checkin_time = timeStr
-            if (!isPartTime) {
+            if (!isPartTime && !isFlexible) {
               // Second-precision: effIn is "HH:MM", timeStr is "HH:MM:SS"
               // grace is in minutes → convert to seconds for comparison
               const actualInSecs = timeToSeconds(timeStr)
@@ -440,7 +442,7 @@ export async function GET(request) {
           if (!noCheckOut) {
             const timeStr = wibTimeStr(checkouts[checkouts.length - 1].scan_time) // "HH:MM:SS"
             dayRecord.checkout_time = timeStr
-            if (!isPartTime) {
+            if (!isPartTime && !isFlexible) {
               const actualOutSecs = timeToSeconds(timeStr)
               const effOutSecs    = timeToSeconds(effOut)
               const graceSecs     = grace * 60

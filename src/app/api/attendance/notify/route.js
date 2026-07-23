@@ -254,7 +254,7 @@ async function handleNotify(request) {
         user_pin,
         expected_check_in,
         expected_check_out,
-        role:user_role_id (role_name, work_days, is_part_time_staff)
+        role:user_role_id (role_name, work_days, is_part_time_staff, is_flexible_hours)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
@@ -334,6 +334,7 @@ async function handleNotify(request) {
       const userName    = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
       const workDays    = (user.role?.work_days || '1,2,3,4,5').split(',').map(Number)
       const isPartTime  = !!user.role?.is_part_time_staff
+      const isFlexible  = !!user.role?.is_flexible_hours
 
       // ── Resolve special rule for this user/date ──
       const specialRule = resolveSpecialRule(user.user_role_id, user.user_id)
@@ -380,7 +381,7 @@ async function handleNotify(request) {
       } else {
         // ── B. Analisis Check-In ──────────────────────────────────────────────
         if (!noCheckIn) {
-          if (!isPartTime) {
+          if (!isPartTime && !isFlexible) {
             const actualInStr  = wibTimeStr(checkins[0].scan_time)
             const actualInSecs  = timeToSeconds(actualInStr)
             const effInSecs     = timeToSeconds(effIn)
@@ -398,7 +399,7 @@ async function handleNotify(request) {
 
         // ── C. Analisis Check-Out ─────────────────────────────────────────────
         if (!noCheckOut) {
-          if (!isPartTime) {
+          if (!isPartTime && !isFlexible) {
             const actualOutStr  = wibTimeStr(checkouts[checkouts.length - 1].scan_time) // "HH:MM:SS"
             const actualOutSecs  = timeToSeconds(actualOutStr)
             const effOutSecs     = timeToSeconds(effOut)
