@@ -679,6 +679,8 @@ Stores the raw machine scan logs. Note: Check-in vs check-out is determined dyna
 | `user_id` | `INTEGER` | FK to `users(user_id)` |
 | `scan_time` | `TIMESTAMPTZ`| When the user scanned |
 | `status_scan` | `VARCHAR` | Check-in or check-out (not fully reliable) |
+| `raw_payload` | `JSONB` | Full JSON payload received from the attendance machine / webhook |
+| `created_at` | `TIMESTAMPTZ`| Record creation timestamp |
 
 #### `attendance_excuses`
 Stores excuse forms (surat keterangan) for attendance anomalies (late, absent, etc).
@@ -828,6 +830,8 @@ erDiagram
         int user_id FK
         timestamp scan_time
         string status_scan
+        jsonb raw_payload
+        timestamp created_at
     }
 
     attendance_excuses {
