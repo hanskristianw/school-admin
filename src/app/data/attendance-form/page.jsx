@@ -482,6 +482,7 @@ export default function AttendanceFormPage() {
   const [deleteExcuse, setDeleteExcuse] = useState(null)
   const [successDate, setSuccessDate] = useState(null)
   const [leaveTypes, setLeaveTypes]   = useState([])
+  const [isFlexibleRole, setIsFlexibleRole] = useState(false)
 
   // i18n-driven configs (computed inside render so they react to language changes)
   const STATUS_CONFIG = {
@@ -513,6 +514,24 @@ export default function AttendanceFormPage() {
     if (!uid) return
     setLoading(true)
     try {
+      // Check if logged in user's role is flexible hours, part-time staff, or vendor
+      const { data: userRow } = await supabase.from('users').select('user_role_id').eq('user_id', uid).single()
+      if (userRow?.user_role_id) {
+        const { data: roleRow } = await supabase
+          .from('role')
+          .select('is_flexible_hours, is_part_time_staff, is_vendor')
+          .eq('role_id', userRow.user_role_id)
+          .single()
+
+        if (roleRow?.is_flexible_hours || roleRow?.is_part_time_staff || roleRow?.is_vendor) {
+          setIsFlexibleRole(true)
+          setIssueRows([])
+          setLoading(false)
+          return
+        }
+      }
+
+      setIsFlexibleRole(false)
       const start = monthStart(ym)
       const today     = new Date()
       const yesterday = new Date(today)
@@ -602,6 +621,18 @@ export default function AttendanceFormPage() {
       {loading ? (
         <div className="py-16 text-center text-sm" style={{ color: theme.textSecondary }}>
           {t('attendanceForm.loading')}
+        </div>
+      ) : isFlexibleRole ? (
+        <div className="p-6 text-center rounded-2xl border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 space-y-2">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-xl mx-auto">
+            ⏰
+          </div>
+          <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
+            Flexible Working Hours
+          </h3>
+          <p className="text-xs text-emerald-700 dark:text-emerald-400 max-w-sm mx-auto">
+            Your role is exempt from HCM forms.
+          </p>
         </div>
       ) : issueRows.length === 0 ? (
         <div className="py-16 text-center" style={{ color: theme.textSecondary }}>

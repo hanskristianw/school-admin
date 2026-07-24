@@ -154,6 +154,9 @@ export default function AttendanceCheckPage() {
       const combinedIssues = []
       if (rJson.success && rJson.data) {
         for (const user of rJson.data) {
+          // Skip users with flexible working hours, part-time staff, or vendor roles
+          if (user.is_flexible_hours || user.is_part_time_staff || user.is_vendor) continue
+
           for (const day of user.daily || []) {
             if (['holiday', 'dayoff', 'off'].includes(day.status)) continue
 

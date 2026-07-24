@@ -109,7 +109,8 @@ export default function AttendanceReportPage() {
   }, [dateStart, dateEnd, graceMin])
 
   // ── Derived Data ───────────────────────────────────────────────────────────
-  const allRows = report?.data || []
+  // Exclude vendor roles from attendance report table
+  const allRows = (report?.data || []).filter(r => !r.is_vendor)
 
   // Build tab list: All + each unit that has at least 1 user
   const unitTabs = [

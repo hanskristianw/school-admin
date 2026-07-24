@@ -226,29 +226,44 @@ export default function GlobalActionCards() {
     if (!userId) return
     setAttLoading(true)
 
-    const today = new Date()
-    const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-    // Only up to yesterday
-    const yesterday = new Date(today)
-    yesterday.setDate(today.getDate() - 1)
-    const yStr = yesterday.toISOString().slice(0, 10)
-    const start = monthStart(ym)
-    const end   = yStr < monthEnd(ym) ? yStr : monthEnd(ym)
+    const checkRoleAndFetch = async () => {
+      try {
+        // Check if user's role has is_flexible_hours, is_part_time_staff, or is_vendor flag
+        const { data: userRow } = await supabase.from('users').select('user_role_id').eq('user_id', userId).single()
+        if (userRow?.user_role_id) {
+          const { data: roleRow } = await supabase
+            .from('role')
+            .select('is_flexible_hours, is_part_time_staff, is_vendor')
+            .eq('role_id', userRow.user_role_id)
+            .single()
 
-    Promise.all([
-      fetch(`/api/attendance/report?user_id=${userId}&start=${start}&end=${end}`),
-      fetch(`/api/attendance/excuses?user_id=${userId}&start=${start}&end=${end}`),
-    ])
-      .then(async ([rRes, eRes]) => {
+          if (roleRow?.is_flexible_hours || roleRow?.is_part_time_staff || roleRow?.is_vendor) {
+            setAttCount(0)
+            setAttLoading(false)
+            return
+          }
+        }
+
+        const today = new Date()
+        const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+        const yesterday = new Date(today)
+        yesterday.setDate(today.getDate() - 1)
+        const yStr = yesterday.toISOString().slice(0, 10)
+        const start = monthStart(ym)
+        const end   = yStr < monthEnd(ym) ? yStr : monthEnd(ym)
+
+        const [rRes, eRes] = await Promise.all([
+          fetch(`/api/attendance/report?user_id=${userId}&start=${start}&end=${end}`),
+          fetch(`/api/attendance/excuses?user_id=${userId}&start=${start}&end=${end}`),
+        ])
+
         const rJson = await rRes.json()
         const eJson = await eRes.json()
 
-        // Dates that already have a submitted excuse
         const excusedDates = new Set(
           (eJson.success ? eJson.data || [] : []).map(e => e.attendance_date)
         )
 
-        // Count issue rows without an excuse yet
         let count = 0
         if (rJson.success) {
           for (const user of rJson.data || []) {
@@ -262,9 +277,15 @@ export default function GlobalActionCards() {
           }
         }
         setAttCount(count)
-      })
-      .catch(() => setAttCount(null))
-      .finally(() => setAttLoading(false))
+      } catch (err) {
+        console.error('Error fetching attendance issues for action card:', err)
+        setAttCount(0)
+      } finally {
+        setAttLoading(false)
+      }
+    }
+
+    checkRoleAndFetch()
   }, [userId])
 
   // ── Card 4: Fetch Duty & Devotion Schedule for this user ─────────────────
