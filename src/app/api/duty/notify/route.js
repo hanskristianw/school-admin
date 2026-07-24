@@ -9,25 +9,37 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// Helper: Get current WIB (Asia/Jakarta) date string (YYYY-MM-DD) & time string (HH:MM)
+// Helper: Get current WIB (Asia/Jakarta, GMT+7) date string (YYYY-MM-DD) & time string (HH:MM)
 function getWibDateTime() {
   const now = new Date()
-  const wibStr = now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })
-  const wibDate = new Date(wibStr)
 
-  const year  = wibDate.getFullYear()
-  const month = String(wibDate.getMonth() + 1).padStart(2, '0')
-  const day   = String(wibDate.getDate()).padStart(2, '0')
-  const hours = String(wibDate.getHours()).padStart(2, '0')
-  const mins  = String(wibDate.getMinutes()).padStart(2, '0')
+  // Use Intl.DateTimeFormat with Asia/Jakarta (GMT+7) explicitly
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
 
-  return {
-    dateStr: `${year}-${month}-${day}`,
-    timeStr: `${hours}:${mins}`,
-    hours: wibDate.getHours(),
-    mins: wibDate.getMinutes(),
-    totalMins: wibDate.getHours() * 60 + wibDate.getMinutes()
-  }
+  const parts = formatter.formatToParts(now)
+  const partMap = {}
+  parts.forEach(p => { partMap[p.type] = p.value })
+
+  const year  = partMap.year
+  const month = partMap.month
+  const day   = partMap.day
+  const hours = parseInt(partMap.hour, 10)
+  const mins  = parseInt(partMap.minute, 10)
+
+  const dateStr = `${year}-${month}-${day}`
+  const timeStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+  const totalMins = hours * 60 + mins
+
+  return { dateStr, timeStr, hours, mins, totalMins }
 }
 
 export async function GET(req) {
@@ -64,88 +76,88 @@ async function handleDutyNotification(req) {
       })
     }
 
-    // 2. Define duty slots, scheduled start times, and window checks (10 minutes before)
+    // 2. Define duty slots, scheduled start times, and window checks (1 hour / 60 minutes before)
     // Times in minutes from midnight:
-    // Devotion: 07:20 (440m) -> 10m before is 07:10 (430m)
-    // Morning Greeter: 07:30 (450m) -> 10m before is 07:20 (440m)
-    // Break Duty: 09:45 (585m) -> 10m before is 09:35 (575m)
-    // Lunch Duty: 12:00 (720m) -> 10m before is 11:50 (710m)
+    // Devotion: 07:20 (440m) -> 1h before is 06:20 (380m)
+    // Morning Greeter: 07:30 (450m) -> 1h before is 06:30 (390m)
+    // Break Duty: 09:45 (585m) -> 1h before is 08:45 (525m)
+    // Lunch Duty: 12:00 (720m) -> 1h before is 11:00 (660m)
     const dutyConfigs = [
       {
         key: 'devotion_leader_user_id',
         title: 'Morning Devotion Leader',
         timeLabel: '07:20 AM',
-        targetMins: 430, // 07:10 AM
+        targetMins: 380, // 06:20 AM (1 hour before)
         type: 'devotion'
       },
       {
         key: 'greeter_1st_floor_user_id',
         title: 'Morning Door Greeter (1st Floor)',
         timeLabel: '07:30 AM – 08:00 AM',
-        targetMins: 440, // 07:20 AM
+        targetMins: 390, // 06:30 AM (1 hour before)
         type: 'greeter'
       },
       {
         key: 'greeter_2nd_floor_user_id',
         title: 'Morning Door Greeter (2nd Floor)',
         timeLabel: '07:30 AM – 08:00 AM',
-        targetMins: 440, // 07:20 AM
+        targetMins: 390, // 06:30 AM (1 hour before)
         type: 'greeter'
       },
       {
         key: 'break_canteen_user_id',
         title: 'Break Duty (Canteen)',
         timeLabel: '09:45 AM – 10:15 AM',
-        targetMins: 575, // 09:35 AM
+        targetMins: 525, // 08:45 AM (1 hour before)
         type: 'break'
       },
       {
         key: 'break_pe_field_user_id',
         title: 'Break Duty (PE Field)',
         timeLabel: '09:45 AM – 10:15 AM',
-        targetMins: 575, // 09:35 AM
+        targetMins: 525, // 08:45 AM (1 hour before)
         type: 'break'
       },
       {
         key: 'break_2nd_floor_user_id',
         title: 'Break Duty (2nd Floor)',
         timeLabel: '09:45 AM – 10:15 AM',
-        targetMins: 575, // 09:35 AM
+        targetMins: 525, // 08:45 AM (1 hour before)
         type: 'break'
       },
       {
         key: 'break_3rd_floor_user_id',
         title: 'Break Duty (3rd Floor)',
         timeLabel: '09:45 AM – 10:15 AM',
-        targetMins: 575, // 09:35 AM
+        targetMins: 525, // 08:45 AM (1 hour before)
         type: 'break'
       },
       {
         key: 'lunch_canteen_user_id',
         title: 'Lunch Duty (Canteen)',
         timeLabel: '12:00 PM – 12:30 PM',
-        targetMins: 710, // 11:50 AM
+        targetMins: 660, // 11:00 AM (1 hour before)
         type: 'lunch'
       },
       {
         key: 'lunch_pe_field_user_id',
         title: 'Lunch Duty (PE Field)',
         timeLabel: '12:00 PM – 12:30 PM',
-        targetMins: 710, // 11:50 AM
+        targetMins: 660, // 11:00 AM (1 hour before)
         type: 'lunch'
       },
       {
         key: 'lunch_2nd_floor_user_id',
         title: 'Lunch Duty (2nd Floor)',
         timeLabel: '12:00 PM – 12:30 PM',
-        targetMins: 710, // 11:50 AM
+        targetMins: 660, // 11:00 AM (1 hour before)
         type: 'lunch'
       },
       {
         key: 'lunch_3rd_floor_user_id',
         title: 'Lunch Duty (3rd Floor)',
         timeLabel: '12:00 PM – 12:30 PM',
-        targetMins: 710, // 11:50 AM
+        targetMins: 660, // 11:00 AM (1 hour before)
         type: 'lunch'
       }
     ]
@@ -176,7 +188,7 @@ async function handleDutyNotification(req) {
 
     const notifiedResults = []
 
-    // 4. Evaluate each duty slot and send Google Chat notification 10 minutes before
+    // 4. Evaluate each duty slot and send Google Chat notification 1 hour before
     for (const cfg of dutyConfigs) {
       const userId = schedule[cfg.key]
       if (!userId) continue
@@ -184,7 +196,7 @@ async function handleDutyNotification(req) {
       const user = userMap.get(userId)
       if (!user || !user.user_email) continue
 
-      // Check if current time is within 10-minute reminder window (targetMins ± 5 mins) or force_all
+      // Check if current time is within 1-hour reminder window (targetMins ± 5 mins) or force_all
       const diffMins = Math.abs(wib.totalMins - cfg.targetMins)
       const isInWindow = diffMins <= 5
 
@@ -199,17 +211,17 @@ async function handleDutyNotification(req) {
         const teacherPrayed = schedule.teacher_to_be_prayed || '—'
         const studentPrayed = schedule.student_to_be_prayed || '—'
 
-        messageText = `🔔 *REMINDER: Morning Devotion Duty (in 10 minutes)*\n\n` +
+        messageText = `🔔 *REMINDER: Morning Devotion Duty (in 1 hour)*\n\n` +
           `Hello *${name}*,\n` +
           `You are scheduled as the *Devotion Leader* today at *${cfg.timeLabel}*.\n\n` +
-          `🙏 *Prayer Subjects for Today:*\n` +
+          `🙏 *Prayer Subjects:*\n` +
           `• *Teacher to Pray For:* ${teacherPrayed}\n` +
           `• *Student to Pray For:* ${studentPrayed}\n\n` +
           `Please prepare and be ready at the devotion area. Thank you!`
       } else {
-        messageText = `🔔 *REMINDER: ${cfg.title} (in 10 minutes)*\n\n` +
+        messageText = `🔔 *REMINDER: ${cfg.title} (in 1 hour)*\n\n` +
           `Hello *${name}*,\n` +
-          `Your duty assignment for *${cfg.title}* starts in 10 minutes at *${cfg.timeLabel}*.\n\n` +
+          `Your duty assignment for *${cfg.title}* starts in 1 hour at *${cfg.timeLabel}*.\n\n` +
           `Please be ready at your assigned location. Thank you for your service!`
       }
 

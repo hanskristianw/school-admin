@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-07-24)
 
 ## Corpus Check
-- 321 files · ~428,027 words
+- 322 files · ~428,961 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1542 nodes · 1574 edges · 300 communities (197 shown, 103 thin omitted)
+- 1548 nodes · 1582 edges · 300 communities (197 shown, 103 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
@@ -479,8 +479,8 @@ Cohesion: 0.83
 Nodes (3): getCroppedBlob(), ImageCropUploader(), loadImage()
 
 ### Community 125 - "Module 125"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+Cohesion: 0.53
+Nodes (5): GET(), getWibDateTime(), handleDutyNotification(), POST(), supabaseAdmin
 
 ### Community 137 - "Module 137"
 Cohesion: 0.06
@@ -527,8 +527,8 @@ Cohesion: 0.10
 Nodes (19): Database Schema, Features, Format Examples, Frontend Implementation, Function: `generatePONumber()`, Future Enhancements, Integration Points, Manual Reset Procedure (+11 more)
 
 ### Community 257 - "🎯 **System Modules & Features**"
-Cohesion: 0.14
-Nodes (14): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **4. User Profile System** (+6 more)
+Cohesion: 0.12
+Nodes (17): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **3. Assessment System** (+9 more)
 
 ### Community 258 - "MYP Year Level Implementation"
 Cohesion: 0.13
@@ -559,8 +559,8 @@ Cohesion: 0.20
 Nodes (10): 4.1 Tables, `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items`, `fpb_revisions`, `fpb_role_approvers` (+2 more)
 
 ### Community 265 - "School Admin System - Complete Documentation"
-Cohesion: 0.18
-Nodes (10): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Business Rules:**, **Key Environment:**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation (+2 more)
+Cohesion: 0.20
+Nodes (9): Attendance (QR) Tables, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table, **Key Business Rules:**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation (+1 more)
 
 ### Community 266 - "Protocol: Premium Utilitarian Minimalism UI Architect"
 Cohesion: 0.20
@@ -635,11 +635,11 @@ Cohesion: 0.67
 Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(), getImageDimensions(), POST()
 
 ### Community 299 - "**3. Assessment System**"
-Cohesion: 0.67
-Nodes (3): **3. Assessment System**, **Admin Workflow**:, **Teacher Workflow**:
+Cohesion: 0.40
+Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ## Knowledge Gaps
-- **647 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+642 more)
+- **648 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+643 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **103 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -647,16 +647,16 @@ Nodes (3): **3. Assessment System**, **Admin Workflow**:, **Teacher Workflow**:
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 130`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `🚀 **Setup & Deployment**`, `Module 152`, `Module 153`, `Module 154`, `Module 156`, `Module 155`, `browser-image-compression`, `docx`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `Module 126`, `Module 127`?**
-  _High betweenness centrality (0.007) - this node is a cross-community bridge._
+  _High betweenness centrality (0.009) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
-- **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `Module 125`, `📌 Changelog`?**
-  _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _647 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _648 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.12685560053981107 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Should `RLS & Migration Scripts` be split into smaller, more focused modules?**
   _Cohesion score 0.12380952380952381 - nodes in this community are weakly interconnected._
+- **Should `Component Aliases & UI Library` be split into smaller, more focused modules?**
+  _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._
