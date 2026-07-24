@@ -1231,3 +1231,81 @@ erDiagram
     }
 ```
 
+---
+
+## 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`)
+
+This domain handles the daily teacher duty roster, morning devotion leaders, prayer subjects (teachers & students to be prayed for), morning door greeters, and break/lunch duty assignments scoped per academic year (`year_id`).
+
+### 10.1 Tables
+
+#### `duty_schedules`
+Stores the daily duty roster and devotion schedule for each academic date within an academic year.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `year_id` | `INTEGER` | Foreign Key to `year(year_id)` ON DELETE CASCADE |
+| `duty_date` | `DATE` | Specific date for the duty schedule |
+| `devotion_leader_user_id` | `INTEGER` | FK to `users(user_id)` (Devotion Leader) |
+| `teacher_to_be_prayed` | `VARCHAR(255)` | Plain text for Teacher(s) to Be Prayed For |
+| `student_to_be_prayed` | `VARCHAR(255)` | Plain text for Student(s) to Be Prayed For |
+| `greeter_1st_floor_user_id` | `INTEGER` | FK to `users(user_id)` (Morning Greeter 1st Floor, 07:30–08:00) |
+| `greeter_2nd_floor_user_id` | `INTEGER` | FK to `users(user_id)` (Morning Greeter 2nd Floor, 07:30–08:00) |
+| `break_canteen_user_id` | `INTEGER` | FK to `users(user_id)` (Break Duty Canteen, 09:45–10:15) |
+| `break_pe_field_user_id` | `INTEGER` | FK to `users(user_id)` (Break Duty PE Field, 09:45–10:15) |
+| `break_2nd_floor_user_id` | `INTEGER` | FK to `users(user_id)` (Break Duty 2nd Floor, 09:45–10:15) |
+| `break_3rd_floor_user_id` | `INTEGER` | FK to `users(user_id)` (Break Duty 3rd Floor, 09:45–10:15) |
+| `lunch_canteen_user_id` | `INTEGER` | FK to `users(user_id)` (Lunch Duty Canteen) |
+| `lunch_pe_field_user_id` | `INTEGER` | FK to `users(user_id)` (Lunch Duty PE Field) |
+| `lunch_2nd_floor_user_id` | `INTEGER` | FK to `users(user_id)` (Lunch Duty 2nd Floor) |
+| `lunch_3rd_floor_user_id` | `INTEGER` | FK to `users(user_id)` (Lunch Duty 3rd Floor) |
+| `note` | `TEXT` | Optional notes |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `(year_id, duty_date)` | `UNIQUE` | Unique constraint per academic year and duty date |
+
+> [!NOTE]
+> **Legacy Table:** Previously, door greeter assignments were stored in `daftar_door_greeter` (which only stored user_id and day_of_week without date or academic year context). `duty_schedules` replaces/upgrades `daftar_door_greeter` to support date-specific schedules, academic year filtering, devotion leaders, prayer subjects, and multiple duty slots.
+
+### 10.2 ERD / Relationships (Duty & Devotion Schedule Domain)
+
+```mermaid
+erDiagram
+    year ||--o{ duty_schedules : "applies_to_year"
+    users ||--o{ duty_schedules : "devotion_leader"
+    users ||--o{ duty_schedules : "greeter_1st"
+    users ||--o{ duty_schedules : "greeter_2nd"
+    users ||--o{ duty_schedules : "break_duty"
+    users ||--o{ duty_schedules : "lunch_duty"
+
+    year {
+        int year_id PK
+        string year_name
+    }
+
+    users {
+        int user_id PK
+        string user_nama_depan
+        string user_nama_belakang
+    }
+
+    duty_schedules {
+        int id PK
+        int year_id FK
+        date duty_date
+        int devotion_leader_user_id FK
+        string teacher_to_be_prayed
+        string student_to_be_prayed
+        int greeter_1st_floor_user_id FK
+        int greeter_2nd_floor_user_id FK
+        int break_canteen_user_id FK
+        int break_pe_field_user_id FK
+        int break_2nd_floor_user_id FK
+        int break_3rd_floor_user_id FK
+        int lunch_canteen_user_id FK
+        int lunch_pe_field_user_id FK
+    }
+```
+
+

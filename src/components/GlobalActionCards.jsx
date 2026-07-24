@@ -1,15 +1,52 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faChevronLeft, faChevronRight, faCalendarCheck, faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function monthStart(ym) { return `${ym}-01` }
 function monthEnd(ym) {
   const [y, m] = ym.split('-').map(Number)
   return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
+}
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+function formatDutyDateLabel(dateStr) {
+  if (!dateStr) return ''
+  const dt = new Date(dateStr + 'T00:00:00Z')
+  if (isNaN(dt.getTime())) return dateStr
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const isToday = dateStr === todayStr
+  
+  const dayName = DAY_NAMES[dt.getUTCDay()]
+  const dayNum = String(dt.getUTCDate()).padStart(2, '0')
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const monthName = monthNames[dt.getUTCMonth()]
+  
+  const dateFormatted = `${dayName}, ${dayNum} ${monthName}`
+  return isToday ? `Today (${dateFormatted})` : dateFormatted
+}
+
+function resolveUserDuties(row, uId) {
+  if (!row || !uId) return []
+  const duties = []
+  if (row.devotion_leader_user_id === uId) duties.push({ type: 'devotion', label: 'Devotion Leader', icon: '📖' })
+  if (row.greeter_1st_floor_user_id === uId) duties.push({ type: 'greeter', label: 'Morning Greeter (1st Fl)', icon: '🚪' })
+  if (row.greeter_2nd_floor_user_id === uId) duties.push({ type: 'greeter', label: 'Morning Greeter (2nd Fl)', icon: '🚪' })
+  if (row.break_canteen_user_id === uId) duties.push({ type: 'break', label: 'Break Duty (Canteen)', icon: '🍿' })
+  if (row.break_pe_field_user_id === uId) duties.push({ type: 'break', label: 'Break Duty (PE Field)', icon: '⚽' })
+  if (row.break_2nd_floor_user_id === uId) duties.push({ type: 'break', label: 'Break Duty (2nd Fl)', icon: '🏢' })
+  if (row.break_3rd_floor_user_id === uId) duties.push({ type: 'break', label: 'Break Duty (3rd Fl)', icon: '🏢' })
+  if (row.lunch_canteen_user_id === uId) duties.push({ type: 'lunch', label: 'Lunch Duty (Canteen)', icon: '🍱' })
+  if (row.lunch_pe_field_user_id === uId) duties.push({ type: 'lunch', label: 'Lunch Duty (PE Field)', icon: '⚽' })
+  if (row.lunch_2nd_floor_user_id === uId) duties.push({ type: 'lunch', label: 'Lunch Duty (2nd Fl)', icon: '🏢' })
+  if (row.lunch_3rd_floor_user_id === uId) duties.push({ type: 'lunch', label: 'Lunch Duty (3rd Fl)', icon: '🏢' })
+  return duties
 }
 
 export default function GlobalActionCards() {
@@ -25,6 +62,11 @@ export default function GlobalActionCards() {
   // Card 2: Attendance excuses not yet filed
   const [attCount, setAttCount]       = useState(null)
   const [attLoading, setAttLoading]   = useState(false)
+
+  // Card 3: Duty & Devotion Schedule (duty_schedules)
+  const [dutySchedules, setDutySchedules] = useState([])
+  const [dutyIndex, setDutyIndex]         = useState(0)
+  const [dutyLoading, setDutyLoading]     = useState(false)
 
   // ── Get current user id ───────────────────────────────────────────────────
   useEffect(() => {
@@ -165,11 +207,54 @@ export default function GlobalActionCards() {
       .finally(() => setAttLoading(false))
   }, [userId])
 
-  // ── Render nothing if both cards have zero / not loaded ───────────────────
-  const showFpb = !fpbLoading && fpbCount !== null && fpbCount > 0
-  const showAtt = !attLoading && attCount !== null && attCount > 0
+  // ── Card 3: Fetch Duty & Devotion Schedule for this user ─────────────────
+  useEffect(() => {
+    if (!userId) return
+    setDutyLoading(true)
 
-  if (!showFpb && !showAtt) return null
+    const fetchDutySchedules = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('duty_schedules')
+          .select('*')
+          .or(`devotion_leader_user_id.eq.${userId},greeter_1st_floor_user_id.eq.${userId},greeter_2nd_floor_user_id.eq.${userId},break_canteen_user_id.eq.${userId},break_pe_field_user_id.eq.${userId},break_2nd_floor_user_id.eq.${userId},break_3rd_floor_user_id.eq.${userId},lunch_canteen_user_id.eq.${userId},lunch_pe_field_user_id.eq.${userId},lunch_2nd_floor_user_id.eq.${userId},lunch_3rd_floor_user_id.eq.${userId}`)
+          .order('duty_date', { ascending: true })
+
+        if (error) throw error
+
+        const list = data || []
+        setDutySchedules(list)
+
+        // Default to Today's date or nearest upcoming date (duty_date >= todayStr)
+        const todayStr = new Date().toISOString().slice(0, 10)
+        let defaultIdx = list.findIndex(r => r.duty_date === todayStr)
+        if (defaultIdx === -1) {
+          defaultIdx = list.findIndex(r => r.duty_date >= todayStr)
+        }
+        if (defaultIdx === -1 && list.length > 0) {
+          defaultIdx = list.length - 1 // Fallback to last recorded
+        }
+        setDutyIndex(Math.max(0, defaultIdx))
+      } catch (e) {
+        // Table might not exist yet or error
+        setDutySchedules([])
+      } finally {
+        setDutyLoading(false)
+      }
+    }
+
+    fetchDutySchedules()
+  }, [userId])
+
+  // ── Active Duty Row & User Duties ─────────────────────────────────────────
+  const currentDutyRow = dutySchedules[dutyIndex] || null
+  const currentDuties  = useMemo(() => resolveUserDuties(currentDutyRow, userId), [currentDutyRow, userId])
+
+  const showFpb  = !fpbLoading && fpbCount !== null && fpbCount > 0
+  const showAtt  = !attLoading && attCount !== null && attCount > 0
+  const showDuty = !dutyLoading && dutySchedules.length > 0
+
+  if (!showFpb && !showAtt && !showDuty) return null
 
   return (
     <div
@@ -194,7 +279,7 @@ export default function GlobalActionCards() {
             background: theme.cardBg,
             cursor: 'pointer',
             textAlign: 'left',
-            minWidth: '220px',
+            minWidth: '240px',
             flex: '1',
             maxWidth: '400px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -240,7 +325,7 @@ export default function GlobalActionCards() {
             background: theme.cardBg,
             cursor: 'pointer',
             textAlign: 'left',
-            minWidth: '220px',
+            minWidth: '240px',
             flex: '1',
             maxWidth: '400px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -270,6 +355,130 @@ export default function GlobalActionCards() {
             </div>
           </div>
         </button>
+      )}
+
+      {/* ── Card 3: Duty & Devotion Schedule (MD & Duty) ────────────────── */}
+      {showDuty && currentDutyRow && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justify: 'space-between',
+            padding: '14px 18px',
+            borderRadius: '14px',
+            border: `1.5px solid ${theme.border}`,
+            background: theme.cardBg,
+            minWidth: '280px',
+            flex: '1',
+            maxWidth: '420px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            transition: 'box-shadow 0.18s, transform 0.18s',
+          }}
+        >
+          {/* Top Header: Badge Icon & Prev/Next Controls */}
+          <div style={{ display: 'flex', items: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, fontSize: '18px', color: '#fff'
+              }}>
+                📖
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textPrimary, lineHeight: 1.2 }}>
+                  Duty & Devotion
+                </div>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#10b981', marginTop: '2px' }}>
+                  {formatDutyDateLabel(currentDutyRow.duty_date)}
+                </div>
+              </div>
+            </div>
+
+            {/* Prev / Next Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); setDutyIndex(i => Math.max(0, i - 1)) }}
+                disabled={dutyIndex === 0}
+                style={{
+                  padding: '4px 8px', borderRadius: '6px', fontSize: '11px',
+                  border: `1px solid ${theme.border}`, background: theme.inputBg,
+                  color: dutyIndex === 0 ? theme.textSecondary : theme.textPrimary,
+                  opacity: dutyIndex === 0 ? 0.4 : 1, cursor: dutyIndex === 0 ? 'default' : 'pointer'
+                }}
+                title="Previous duty schedule date"
+              >
+                <FontAwesomeIcon icon={faChevronLeft} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setDutyIndex(i => Math.min(dutySchedules.length - 1, i + 1)) }}
+                disabled={dutyIndex >= dutySchedules.length - 1}
+                style={{
+                  padding: '4px 8px', borderRadius: '6px', fontSize: '11px',
+                  border: `1px solid ${theme.border}`, background: theme.inputBg,
+                  color: dutyIndex >= dutySchedules.length - 1 ? theme.textSecondary : theme.textPrimary,
+                  opacity: dutyIndex >= dutySchedules.length - 1 ? 0.4 : 1, cursor: dutyIndex >= dutySchedules.length - 1 ? 'default' : 'pointer'
+                }}
+                title="Next duty schedule date"
+              >
+                <FontAwesomeIcon icon={faChevronRight} />
+              </button>
+            </div>
+          </div>
+
+          {/* Body: Duties list chips */}
+          <div style={{ margin: '4px 0 6px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {currentDuties.length > 0 ? (
+              currentDuties.map((d, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px',
+                    background: d.type === 'devotion' ? '#dbeafe' : d.type === 'greeter' ? '#dcfce7' : d.type === 'break' ? '#fef3c7' : '#e0e7ff',
+                    color: d.type === 'devotion' ? '#1e40af' : d.type === 'greeter' ? '#166534' : d.type === 'break' ? '#92400e' : '#3730a3',
+                    border: `1px solid ${d.type === 'devotion' ? '#bfdbfe' : d.type === 'greeter' ? '#bbf7d0' : d.type === 'break' ? '#fde68a' : '#c7d2fe'}`
+                  }}
+                >
+                  {d.icon} {d.label}
+                </span>
+              ))
+            ) : (
+              <span style={{ fontSize: '11px', color: theme.textSecondary, fontStyle: 'italic' }}>
+                No duty assignments on this date
+              </span>
+            )}
+          </div>
+
+          {/* Prayer Subjects Box (If Devotion Leader) */}
+          {currentDutyRow.devotion_leader_user_id === userId && (
+            <div style={{
+              margin: '4px 0 8px', padding: '8px 10px', borderRadius: '8px',
+              background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: '11px'
+            }}>
+              <div style={{ fontWeight: '700', color: '#0369a1', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span>🙏</span> Prayer Subjects:
+              </div>
+              <div style={{ color: '#0f172a', marginBottom: '2px' }}>
+                <span style={{ fontWeight: '600', color: '#475569' }}>Teacher: </span>
+                {currentDutyRow.teacher_to_be_prayed || '—'}
+              </div>
+              <div style={{ color: '#0f172a' }}>
+                <span style={{ fontWeight: '600', color: '#475569' }}>Student: </span>
+                {currentDutyRow.student_to_be_prayed || '—'}
+              </div>
+            </div>
+          )}
+
+          {/* Footer schedule counter */}
+
+          {/* Footer schedule counter */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${theme.border}`, paddingTop: '8px', marginTop: '2px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '500', color: theme.textSecondary }}>
+              Schedule {dutyIndex + 1} of {dutySchedules.length}
+            </span>
+          </div>
+        </div>
       )}
     </div>
   )
