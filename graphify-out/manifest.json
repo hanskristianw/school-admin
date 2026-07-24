@@ -1275,8 +1275,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1784793338.8915272,
-    "ast_hash": "d6054db137b52fb5098b5fe83764ebf0",
+    "mtime": 1784880324.5921917,
+    "ast_hash": "4f214ff2c5b09fc2f866df89b0b99c5e",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {
@@ -1635,8 +1635,8 @@
     "semantic_hash": ""
   },
   "src/components/GlobalActionCards.jsx": {
-    "mtime": 1784865395.3787827,
-    "ast_hash": "253eb1e362bf3eefbbc2d5d1f8b4bdaf",
+    "mtime": 1784881325.40748,
+    "ast_hash": "4875f31ffb1f04725d474119004389ff",
     "semantic_hash": ""
   },
   "src/lib/googleChat.js": {
@@ -1695,13 +1695,18 @@
     "semantic_hash": ""
   },
   "src/app/data/attendance-check/page.jsx": {
-    "mtime": 1784877856.5644505,
-    "ast_hash": "68f7a65f3581c074f7de6852e0da95bc",
+    "mtime": 1784880341.040807,
+    "ast_hash": "e123a3bde863a50f4c7ad1834fec667e",
     "semantic_hash": ""
   },
   ".github/workflows/duty-cron.yml": {
     "mtime": 1784879580.3423417,
     "ast_hash": "260f85d801bfcc2330d3a25e861fa96e",
+    "semantic_hash": ""
+  },
+  ".agents/AGENTS.md": {
+    "mtime": 1784880390.2611394,
+    "ast_hash": "e39c4cfc9581bd3078dd6e09f3723720",
     "semantic_hash": ""
   }
 }

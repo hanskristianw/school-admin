@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-07-24)
 
 ## Corpus Check
-- 325 files · ~434,391 words
+- 326 files · ~434,848 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1565 nodes · 1603 edges · 303 communities (199 shown, 104 thin omitted)
+- 1568 nodes · 1605 edges · 304 communities (199 shown, 105 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8ba242a9`
+- Built from commit: `97b5a3f2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -219,6 +219,7 @@
 - class-variance-authority
 - driver.js
 - @fortawesome/react-fontawesome
+- Project Agent Rules
 
 ## God Nodes (most connected - your core abstractions)
 1. `🚀 Supabase Connection Fixed!` - 18 edges
@@ -247,7 +248,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (303 total, 104 thin omitted)
+## Communities (304 total, 105 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.13
@@ -315,7 +316,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): clsx, @google-cloud/vertexai, googleapis, dependencies, clsx, @google-cloud/vertexai, googleapis, pngjs (+3 more)
+Nodes (11): bcryptjs, clsx, googleapis, dependencies, bcryptjs, clsx, googleapis, pngjs (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -650,9 +651,9 @@ Cohesion: 0.40
 Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ## Knowledge Gaps
-- **654 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+649 more)
+- **655 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+650 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **104 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -664,7 +665,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `**3. Assessment System**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `📌 Changelog`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _654 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _655 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.12685560053981107 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

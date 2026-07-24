@@ -2812,8 +2812,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "package_dependencies_google_cloud_vertexai",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 301,
+      "community_name": "driver.js",
       "norm_label": "@google-cloud/vertexai"
     },
     {
@@ -2823,8 +2823,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "google_cloud_vertexai",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 301,
+      "community_name": "driver.js",
       "norm_label": "@google-cloud/vertexai"
     },
     {
@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 301,
-      "community_name": "driver.js",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 301,
-      "community_name": "driver.js",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -9442,7 +9442,7 @@
       "label": "Sidebar",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L200",
+      "source_location": "L204",
       "_origin": "ast",
       "id": "src_components_sidebar_sidebar",
       "community": 89,
@@ -10757,6 +10757,39 @@
       "community": 22,
       "community_name": "Module 22",
       "norm_label": "crons"
+    },
+    {
+      "label": "AGENTS.md",
+      "file_type": "document",
+      "source_file": ".agents/AGENTS.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "agents_agents",
+      "community": 303,
+      "community_name": "Project Agent Rules",
+      "norm_label": "agents.md"
+    },
+    {
+      "label": "Project Agent Rules",
+      "file_type": "document",
+      "source_file": ".agents/AGENTS.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "agents_agents_project_agent_rules",
+      "community": 303,
+      "community_name": "Project Agent Rules",
+      "norm_label": "project agent rules"
+    },
+    {
+      "label": "Git Push Rule",
+      "file_type": "document",
+      "source_file": ".agents/AGENTS.md",
+      "source_location": "L3",
+      "_origin": "ast",
+      "id": "agents_agents_git_push_rule",
+      "community": 303,
+      "community_name": "Project Agent Rules",
+      "norm_label": "git push rule"
     },
     {
       "label": "graphify.md",
@@ -27233,7 +27266,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L208",
+      "source_location": "L235",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -27245,7 +27278,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L209",
+      "source_location": "L236",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -27257,7 +27290,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L427",
+      "source_location": "L501",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -27269,7 +27302,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L284",
+      "source_location": "L311",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -27557,7 +27590,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L200",
+      "source_location": "L204",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -28948,6 +28981,28 @@
       "_origin": "ast",
       "source": "vercel_functions_src_app_api_duty_notify_route_js",
       "target": "vercel_src_app_api_duty_notify_route_js_maxduration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".agents/AGENTS.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "agents_agents",
+      "target": "agents_agents_project_agent_rules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".agents/AGENTS.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "agents_agents_project_agent_rules",
+      "target": "agents_agents_git_push_rule",
       "confidence_score": 1.0
     },
     {
@@ -35130,5 +35185,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "8ba242a959e5c3b606a1e8d6f4544036342f4f2f"
+  "built_at_commit": "97b5a3f243a316e2728640a53357273a460fef8c"
 }

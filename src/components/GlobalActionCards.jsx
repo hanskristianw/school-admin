@@ -60,11 +60,15 @@ export default function GlobalActionCards() {
   const [fpbCount, setFpbCount]       = useState(null)
   const [fpbLoading, setFpbLoading]   = useState(false)
 
-  // Card 2: Attendance excuses not yet filed
+  // Card 2: Attendance Excuse Approvals pending for THIS user (as L1 or L2 approver)
+  const [attApprovalCount, setAttApprovalCount]     = useState(null)
+  const [attApprovalLoading, setAttApprovalLoading] = useState(false)
+
+  // Card 3: Attendance excuses not yet filed by THIS user
   const [attCount, setAttCount]       = useState(null)
   const [attLoading, setAttLoading]   = useState(false)
 
-  // Card 3: Duty & Devotion Schedule (duty_schedules)
+  // Card 4: Duty & Devotion Schedule (duty_schedules)
   const [dutySchedules, setDutySchedules] = useState([])
   const [dutyIndex, setDutyIndex]         = useState(0)
   const [dutyLoading, setDutyLoading]     = useState(false)
@@ -194,7 +198,30 @@ export default function GlobalActionCards() {
     fetchFpbCount()
   }, [userId])
 
-  // ── Card 2: Count attendance issues without excuse form this month ────────
+  // ── Card 2: Count pending Attendance Excuse Approvals for THIS user (L1 or L2) ─
+  useEffect(() => {
+    if (!userId) return
+    setAttApprovalLoading(true)
+
+    fetch(`/api/attendance/excuses?approver_id=${userId}`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          const pendingItems = json.data.filter(e => {
+            if (e.approver1_id === userId && e.status === 'pending') return true
+            if (e.approver2_id === userId && e.status === 'approved_1') return true
+            return false
+          })
+          setAttApprovalCount(pendingItems.length)
+        } else {
+          setAttApprovalCount(0)
+        }
+      })
+      .catch(() => setAttApprovalCount(0))
+      .finally(() => setAttApprovalLoading(false))
+  }, [userId])
+
+  // ── Card 3: Count attendance issues without excuse form this month for THIS user ──
   useEffect(() => {
     if (!userId) return
     setAttLoading(true)
@@ -240,7 +267,7 @@ export default function GlobalActionCards() {
       .finally(() => setAttLoading(false))
   }, [userId])
 
-  // ── Card 3: Fetch Duty & Devotion Schedule for this user ─────────────────
+  // ── Card 4: Fetch Duty & Devotion Schedule for this user ─────────────────
   useEffect(() => {
     if (!userId) return
     setDutyLoading(true)
@@ -283,11 +310,12 @@ export default function GlobalActionCards() {
   const currentDutyRow = dutySchedules[dutyIndex] || null
   const currentDuties  = useMemo(() => resolveUserDuties(currentDutyRow, userId, dutyTimeMap), [currentDutyRow, userId, dutyTimeMap])
 
-  const showFpb  = !fpbLoading && fpbCount !== null && fpbCount > 0
-  const showAtt  = !attLoading && attCount !== null && attCount > 0
-  const showDuty = !dutyLoading && dutySchedules.length > 0
+  const showFpb         = !fpbLoading && fpbCount !== null && fpbCount > 0
+  const showAttApproval = !attApprovalLoading && attApprovalCount !== null && attApprovalCount > 0
+  const showAtt         = !attLoading && attCount !== null && attCount > 0
+  const showDuty        = !dutyLoading && dutySchedules.length > 0
 
-  if (!showFpb && !showAtt && !showDuty) return null
+  if (!showFpb && !showAttApproval && !showAtt && !showDuty) return null
 
   return (
     <div
@@ -344,6 +372,52 @@ export default function GlobalActionCards() {
         </button>
       )}
 
+      {/* ── Pending Attendance Approvals Card (L1 / L2 Approvers) ───────── */}
+      {showAttApproval && (
+        <button
+          onClick={() => router.push('/data/attendance-approvals')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            padding: '14px 20px',
+            borderRadius: '14px',
+            border: `1.5px solid ${theme.border}`,
+            background: theme.cardBg,
+            cursor: 'pointer',
+            textAlign: 'left',
+            minWidth: '240px',
+            flex: '1',
+            maxWidth: '400px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            transition: 'box-shadow 0.18s, transform 0.18s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'translateY(0)' }}
+        >
+          {/* Icon badge */}
+          <div style={{
+            width: '44px', height: '44px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, fontSize: '20px',
+          }}>
+            🛡️
+          </div>
+          <div>
+            <div style={{ fontSize: '22px', fontWeight: '700', lineHeight: 1, color: '#7c3aed' }}>
+              {attApprovalCount}
+            </div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textPrimary, marginTop: '2px' }}>
+              Pending Attendance Approvals
+            </div>
+            <div style={{ fontSize: '11px', color: theme.textSecondary, marginTop: '1px' }}>
+              Click to review & approve
+            </div>
+          </div>
+        </button>
+      )}
+
       {/* ── Attendance Excuse Required Card ──────────────────────────────── */}
       {showAtt && (
         <button
@@ -390,7 +464,7 @@ export default function GlobalActionCards() {
         </button>
       )}
 
-      {/* ── Card 3: Duty & Devotion Schedule (MD & Duty) ────────────────── */}
+      {/* ── Card 4: Duty & Devotion Schedule (MD & Duty) ────────────────── */}
       {showDuty && currentDutyRow && (
         <div
           style={{
@@ -409,7 +483,7 @@ export default function GlobalActionCards() {
           }}
         >
           {/* Top Header: Badge Icon & Prev/Next Controls */}
-          <div style={{ display: 'flex', items: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
                 width: '36px', height: '36px', borderRadius: '10px',
@@ -502,8 +576,6 @@ export default function GlobalActionCards() {
               </div>
             </div>
           )}
-
-          {/* Footer schedule counter */}
 
           {/* Footer schedule counter */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${theme.border}`, paddingTop: '8px', marginTop: '2px' }}>
