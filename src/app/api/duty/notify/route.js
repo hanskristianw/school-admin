@@ -118,6 +118,7 @@ async function handleDutyNotification(req) {
         title: 'Morning Devotion Leader',
         timeLabel: timeSettings.devotion.start,
         targetMins: timeSettings.devotion.startMins - timeSettings.devotion.reminderMins,
+        reminderMins: timeSettings.devotion.reminderMins,
         type: 'devotion'
       },
       {
@@ -125,6 +126,7 @@ async function handleDutyNotification(req) {
         title: 'Morning Door Greeter (1st Floor)',
         timeLabel: `${timeSettings.greeter.start} – ${timeSettings.greeter.end}`,
         targetMins: timeSettings.greeter.startMins - timeSettings.greeter.reminderMins,
+        reminderMins: timeSettings.greeter.reminderMins,
         type: 'greeter'
       },
       {
@@ -132,6 +134,7 @@ async function handleDutyNotification(req) {
         title: 'Morning Door Greeter (2nd Floor)',
         timeLabel: `${timeSettings.greeter.start} – ${timeSettings.greeter.end}`,
         targetMins: timeSettings.greeter.startMins - timeSettings.greeter.reminderMins,
+        reminderMins: timeSettings.greeter.reminderMins,
         type: 'greeter'
       },
       {
@@ -139,6 +142,7 @@ async function handleDutyNotification(req) {
         title: 'Break Duty (Canteen)',
         timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
         targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
+        reminderMins: timeSettings.break.reminderMins,
         type: 'break'
       },
       {
@@ -146,6 +150,7 @@ async function handleDutyNotification(req) {
         title: 'Break Duty (PE Field)',
         timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
         targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
+        reminderMins: timeSettings.break.reminderMins,
         type: 'break'
       },
       {
@@ -153,6 +158,7 @@ async function handleDutyNotification(req) {
         title: 'Break Duty (2nd Floor)',
         timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
         targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
+        reminderMins: timeSettings.break.reminderMins,
         type: 'break'
       },
       {
@@ -160,6 +166,7 @@ async function handleDutyNotification(req) {
         title: 'Break Duty (3rd Floor)',
         timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
         targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
+        reminderMins: timeSettings.break.reminderMins,
         type: 'break'
       },
       {
@@ -167,6 +174,7 @@ async function handleDutyNotification(req) {
         title: 'Lunch Duty (Canteen)',
         timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
         targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
+        reminderMins: timeSettings.lunch.reminderMins,
         type: 'lunch'
       },
       {
@@ -174,6 +182,7 @@ async function handleDutyNotification(req) {
         title: 'Lunch Duty (PE Field)',
         timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
         targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
+        reminderMins: timeSettings.lunch.reminderMins,
         type: 'lunch'
       },
       {
@@ -181,6 +190,7 @@ async function handleDutyNotification(req) {
         title: 'Lunch Duty (2nd Floor)',
         timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
         targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
+        reminderMins: timeSettings.lunch.reminderMins,
         type: 'lunch'
       },
       {
@@ -188,6 +198,7 @@ async function handleDutyNotification(req) {
         title: 'Lunch Duty (3rd Floor)',
         timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
         targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
+        reminderMins: timeSettings.lunch.reminderMins,
         type: 'lunch'
       }
     ]
@@ -241,12 +252,15 @@ async function handleDutyNotification(req) {
 
       const name = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
 
+      const remMins = cfg.reminderMins || 60
+      const remLabel = remMins === 60 ? 'in 1 hour' : (remMins >= 60 ? `in ${Math.floor(remMins / 60)} hour(s)` : `in ${remMins} mins`)
+
       let messageText = ''
       if (cfg.type === 'devotion') {
         const teacherPrayed = schedule.teacher_to_be_prayed || '—'
         const studentPrayed = schedule.student_to_be_prayed || '—'
 
-        messageText = `🔔 *REMINDER: Morning Devotion Duty (in 1 hour)*\n\n` +
+        messageText = `🔔 *REMINDER: Morning Devotion Duty (${remLabel})*\n\n` +
           `Hello *${name}*,\n` +
           `You are scheduled as the *Devotion Leader* today at *${cfg.timeLabel}*.\n\n` +
           `🙏 *Prayer Subjects:*\n` +
@@ -254,9 +268,9 @@ async function handleDutyNotification(req) {
           `• *Student to Pray For:* ${studentPrayed}\n\n` +
           `Please prepare and be ready at the devotion area. Thank you!`
       } else {
-        messageText = `🔔 *REMINDER: ${cfg.title} (in 1 hour)*\n\n` +
+        messageText = `🔔 *REMINDER: ${cfg.title} (${remLabel})*\n\n` +
           `Hello *${name}*,\n` +
-          `Your duty assignment for *${cfg.title}* starts in 1 hour at *${cfg.timeLabel}*.\n\n` +
+          `Your duty assignment for *${cfg.title}* starts ${remLabel} at *${cfg.timeLabel}*.\n\n` +
           `Please be ready at your assigned location. Thank you for your service!`
       }
 
