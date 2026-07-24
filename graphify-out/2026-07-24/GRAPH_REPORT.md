@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-07-24)
 
 ## Corpus Check
-- 322 files · ~428,961 words
+- 322 files · ~429,921 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1548 nodes · 1582 edges · 300 communities (197 shown, 103 thin omitted)
+- 1549 nodes · 1583 edges · 301 communities (198 shown, 103 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `425ec9c2`
+- Built from commit: `4445f9db`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -216,6 +216,7 @@
 - @googleapis/chat
 - react-hook-form
 - **3. Assessment System**
+- class-variance-authority
 
 ## God Nodes (most connected - your core abstractions)
 1. `🚀 Supabase Connection Fixed!` - 18 edges
@@ -244,7 +245,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (300 total, 103 thin omitted)
+## Communities (301 total, 103 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.13
@@ -543,16 +544,16 @@ Cohesion: 0.14
 Nodes (13): Active/Current Migrations, Core Attendance System, Database Migrations, 🚀 How to Run Migrations, ⚠️ Important Notes, 📋 Migration Checklist, Other Systems (Unrelated to Attendance), 🔄 Recent Changes (October 2025) (+5 more)
 
 ### Community 261 - "5.1 Tables"
-Cohesion: 0.17
-Nodes (12): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas`, `leave_types`, `role_approvers` (+4 more)
+Cohesion: 0.14
+Nodes (14): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas` (+6 more)
 
 ### Community 262 - "sendGoogleChatMessage"
 Cohesion: 0.33
 Nodes (8): getCredentials(), getPrivateKey(), getUserIdByEmail(), sendGoogleChatMessage(), run(), run(), buildGoogleChatMessage(), run()
 
 ### Community 263 - "3.1 Tables"
-Cohesion: 0.20
-Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject` (+2 more)
+Cohesion: 0.25
+Nodes (8): 3.1 Tables, `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject`, `subject_group`, `topic`
 
 ### Community 264 - "4.1 Tables"
 Cohesion: 0.20
@@ -587,8 +588,8 @@ Cohesion: 0.29
 Nodes (7): 9.1 Tables, 9.2 ERD / Relationships (Timetable & Schedule Domain), 9. Timetable & Schedule Management Domain (`/data/timetable`, `/data/weekly-overview`), `timetable`, `timetable_exception`, `topic_weekly_plan`, `weekly_overview_draft`
 
 ### Community 272 - "Database Schema & Relationships"
-Cohesion: 0.20
-Nodes (9): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), Database Schema & Relationships (+1 more)
+Cohesion: 0.33
+Nodes (5): 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), Database Schema & Relationships
 
 ### Community 273 - "8.1 Tables"
 Cohesion: 0.33
@@ -634,24 +635,28 @@ Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure*
 Cohesion: 0.67
 Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(), getImageDimensions(), POST()
 
+### Community 289 - "docx"
+Cohesion: 0.40
+Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
+
 ### Community 299 - "**3. Assessment System**"
 Cohesion: 0.40
 Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ## Knowledge Gaps
-- **648 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+643 more)
+- **649 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+644 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **103 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 130`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `🚀 **Setup & Deployment**`, `Module 152`, `Module 153`, `Module 154`, `Module 156`, `Module 155`, `browser-image-compression`, `docx`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `Module 126`, `Module 127`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 130`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `🚀 **Setup & Deployment**`, `Module 152`, `Module 153`, `Module 154`, `Module 156`, `Module 155`, `browser-image-compression`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `class-variance-authority`, `Module 126`, `Module 127`?**
   _High betweenness centrality (0.009) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _648 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _649 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.12685560053981107 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

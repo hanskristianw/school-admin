@@ -7,7 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCalendarDays, faPlus, faTrash, faSave,
   faFileExcel, faPrint, faRotate, faWandMagicSparkles,
-  faCheck, faExclamationTriangle, faCopy, faSearch
+  faCheck, faExclamationTriangle, faCopy, faSearch, faGear, faClock
 } from '@fortawesome/free-solid-svg-icons'
 
 // List of days helper
@@ -62,13 +62,66 @@ export default function DutySchedulePage() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [newDate, setNewDate]           = useState(new Date().toISOString().slice(0, 10))
 
+  // Duty Time & Reminder Settings Modal
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [dutySettings, setDutySettings] = useState({
+    devotion: { startTime: '07:30', endTime: '08:00', reminderMins: 60 },
+    greeter:  { startTime: '07:30', endTime: '08:00', reminderMins: 60 },
+    break:    { startTime: '09:45', endTime: '10:15', reminderMins: 60 },
+    lunch:    { startTime: '12:30', endTime: '13:00', reminderMins: 60 }
+  })
+  const [savingSettings, setSavingSettings] = useState(false)
+
   const showNotification = (message, type = 'success') => {
     setNotif({ show: true, message, type })
     setTimeout(() => setNotif({ show: false, message: '', type: 'success' }), 4000)
   }
 
+  const fetchDutySettings = async () => {
+    try {
+      const { data, error } = await supabase.from('duty_settings').select('*')
+      if (error || !data) return
+      if (data.length > 0) {
+        const newSt = { ...dutySettings }
+        data.forEach(item => {
+          if (newSt[item.slot_key]) {
+            newSt[item.slot_key] = {
+              startTime: item.start_time ? String(item.start_time).slice(0, 5) : newSt[item.slot_key].startTime,
+              endTime: item.end_time ? String(item.end_time).slice(0, 5) : newSt[item.slot_key].endTime,
+              reminderMins: item.reminder_minutes_before ?? 60
+            }
+          }
+        })
+        setDutySettings(newSt)
+      }
+    } catch (_) {}
+  }
+
+  const handleSaveDutySettings = async () => {
+    setSavingSettings(true)
+    try {
+      const rowsToUpsert = [
+        { slot_key: 'devotion', slot_name: 'Morning Devotion Leader', start_time: dutySettings.devotion.startTime + ':00', end_time: dutySettings.devotion.endTime ? dutySettings.devotion.endTime + ':00' : null, reminder_minutes_before: parseInt(dutySettings.devotion.reminderMins, 10) },
+        { slot_key: 'greeter',  slot_name: 'Morning Door Greeter',    start_time: dutySettings.greeter.startTime + ':00',  end_time: dutySettings.greeter.endTime ? dutySettings.greeter.endTime + ':00' : null,   reminder_minutes_before: parseInt(dutySettings.greeter.reminderMins, 10) },
+        { slot_key: 'break',    slot_name: 'Break Duty',              start_time: dutySettings.break.startTime + ':00',    end_time: dutySettings.break.endTime ? dutySettings.break.endTime + ':00' : null,       reminder_minutes_before: parseInt(dutySettings.break.reminderMins, 10) },
+        { slot_key: 'lunch',    slot_name: 'Lunch Duty',              start_time: dutySettings.lunch.startTime + ':00',    end_time: dutySettings.lunch.endTime ? dutySettings.lunch.endTime + ':00' : null,       reminder_minutes_before: parseInt(dutySettings.lunch.reminderMins, 10) }
+      ]
+
+      const { error } = await supabase.from('duty_settings').upsert(rowsToUpsert, { onConflict: 'slot_key' })
+      if (error) throw error
+
+      showNotification('Duty time settings saved successfully!', 'success')
+      setSettingsModalOpen(false)
+    } catch (e) {
+      showNotification('Failed to save duty settings: ' + e.message, 'error')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
   // ── 1. Fetch initial metadata (Years & Teachers) ───────────────────────────
   useEffect(() => {
+    fetchDutySettings()
     const fetchMeta = async () => {
       try {
         setLoading(true)
@@ -445,6 +498,14 @@ export default function DutySchedulePage() {
             style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
           >
             <FontAwesomeIcon icon={faPlus} /> Add Date
+          </button>
+
+          <button
+            onClick={() => setSettingsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium"
+            style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+          >
+            <FontAwesomeIcon icon={faGear} className="text-amber-500" /> Duty Settings
           </button>
 
           <button
@@ -915,6 +976,99 @@ export default function DutySchedulePage() {
               >
                 <FontAwesomeIcon icon={genLoading ? faRotate : faWandMagicSparkles} spin={genLoading} />
                 {genLoading ? 'Processing...' : 'Generate Dates'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Duty Time & Reminder Settings */}
+      {settingsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
+              <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                <FontAwesomeIcon icon={faGear} className="text-amber-500" />
+                Duty Time & Google Chat Settings
+              </h3>
+              <button
+                onClick={() => setSettingsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs" style={{ color: theme.textSecondary }}>
+              Configure operational hours and Google Chat reminder timing for each duty assignment slot.
+            </p>
+
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {[
+                { key: 'devotion', title: '📖 Morning Devotion Leader' },
+                { key: 'greeter',  title: '🚪 Morning Door Greeter' },
+                { key: 'break',    title: '🍿 Break Duty' },
+                { key: 'lunch',    title: '🍱 Lunch Duty' },
+              ].map(slot => (
+                <div key={slot.key} className="p-3.5 rounded-lg border space-y-3" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+                  <div className="text-xs font-bold" style={{ color: theme.textPrimary }}>
+                    {slot.title}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[11px] font-medium block mb-1" style={{ color: theme.textSecondary }}>Start Time</label>
+                      <input
+                        type="time"
+                        value={dutySettings[slot.key]?.startTime || '07:30'}
+                        onChange={e => setDutySettings(st => ({ ...st, [slot.key]: { ...st[slot.key], startTime: e.target.value } }))}
+                        className="w-full text-xs px-2 py-1.5 rounded border"
+                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium block mb-1" style={{ color: theme.textSecondary }}>End Time</label>
+                      <input
+                        type="time"
+                        value={dutySettings[slot.key]?.endTime || '08:00'}
+                        onChange={e => setDutySettings(st => ({ ...st, [slot.key]: { ...st[slot.key], endTime: e.target.value } }))}
+                        className="w-full text-xs px-2 py-1.5 rounded border"
+                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium block mb-1" style={{ color: theme.textSecondary }}>Chat Reminder</label>
+                      <select
+                        value={dutySettings[slot.key]?.reminderMins ?? 60}
+                        onChange={e => setDutySettings(st => ({ ...st, [slot.key]: { ...st[slot.key], reminderMins: parseInt(e.target.value, 10) } }))}
+                        className="w-full text-xs px-2 py-1.5 rounded border"
+                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                      >
+                        <option value={15}>15 mins before</option>
+                        <option value={30}>30 mins before</option>
+                        <option value={60}>1 hour before</option>
+                        <option value={120}>2 hours before</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
+              <button
+                onClick={() => setSettingsModalOpen(false)}
+                className="px-4 py-2 text-xs font-medium rounded-lg"
+                style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveDutySettings}
+                disabled={savingSettings}
+                className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5"
+              >
+                <FontAwesomeIcon icon={savingSettings ? faRotate : faSave} spin={savingSettings} />
+                {savingSettings ? 'Saving...' : 'Save Duty Settings'}
               </button>
             </div>
           </div>

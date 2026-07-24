@@ -32,20 +32,21 @@ function formatDutyDateLabel(dateStr) {
   return isToday ? `Today (${dateFormatted})` : dateFormatted
 }
 
-function resolveUserDuties(row, uId) {
+function resolveUserDuties(row, uId, timeMap) {
   if (!row || !uId) return []
+  const tm = timeMap || { devotion: '07:30–08:00', greeter: '07:30–08:00', break: '09:45–10:15', lunch: '12:30–13:00' }
   const duties = []
-  if (row.devotion_leader_user_id === uId) duties.push({ type: 'devotion', label: 'Devotion Leader', icon: '📖' })
-  if (row.greeter_1st_floor_user_id === uId) duties.push({ type: 'greeter', label: 'Morning Greeter (1st Fl)', icon: '🚪' })
-  if (row.greeter_2nd_floor_user_id === uId) duties.push({ type: 'greeter', label: 'Morning Greeter (2nd Fl)', icon: '🚪' })
-  if (row.break_canteen_user_id === uId) duties.push({ type: 'break', label: 'Break Duty (Canteen)', icon: '🍿' })
-  if (row.break_pe_field_user_id === uId) duties.push({ type: 'break', label: 'Break Duty (PE Field)', icon: '⚽' })
-  if (row.break_2nd_floor_user_id === uId) duties.push({ type: 'break', label: 'Break Duty (2nd Fl)', icon: '🏢' })
-  if (row.break_3rd_floor_user_id === uId) duties.push({ type: 'break', label: 'Break Duty (3rd Fl)', icon: '🏢' })
-  if (row.lunch_canteen_user_id === uId) duties.push({ type: 'lunch', label: 'Lunch Duty (Canteen)', icon: '🍱' })
-  if (row.lunch_pe_field_user_id === uId) duties.push({ type: 'lunch', label: 'Lunch Duty (PE Field)', icon: '⚽' })
-  if (row.lunch_2nd_floor_user_id === uId) duties.push({ type: 'lunch', label: 'Lunch Duty (2nd Fl)', icon: '🏢' })
-  if (row.lunch_3rd_floor_user_id === uId) duties.push({ type: 'lunch', label: 'Lunch Duty (3rd Fl)', icon: '🏢' })
+  if (row.devotion_leader_user_id === uId) duties.push({ type: 'devotion', label: `Devotion Leader (${tm.devotion})`, icon: '📖' })
+  if (row.greeter_1st_floor_user_id === uId) duties.push({ type: 'greeter', label: `Morning Greeter 1st Fl (${tm.greeter})`, icon: '🚪' })
+  if (row.greeter_2nd_floor_user_id === uId) duties.push({ type: 'greeter', label: `Morning Greeter 2nd Fl (${tm.greeter})`, icon: '🚪' })
+  if (row.break_canteen_user_id === uId) duties.push({ type: 'break', label: `Break Duty (Canteen) (${tm.break})`, icon: '🍿' })
+  if (row.break_pe_field_user_id === uId) duties.push({ type: 'break', label: `Break Duty (PE Field) (${tm.break})`, icon: '⚽' })
+  if (row.break_2nd_floor_user_id === uId) duties.push({ type: 'break', label: `Break Duty (2nd Fl) (${tm.break})`, icon: '🏢' })
+  if (row.break_3rd_floor_user_id === uId) duties.push({ type: 'break', label: `Break Duty (3rd Fl) (${tm.break})`, icon: '🏢' })
+  if (row.lunch_canteen_user_id === uId) duties.push({ type: 'lunch', label: `Lunch Duty (Canteen) (${tm.lunch})`, icon: '🍱' })
+  if (row.lunch_pe_field_user_id === uId) duties.push({ type: 'lunch', label: `Lunch Duty (PE Field) (${tm.lunch})`, icon: '⚽' })
+  if (row.lunch_2nd_floor_user_id === uId) duties.push({ type: 'lunch', label: `Lunch Duty (2nd Fl) (${tm.lunch})`, icon: '🏢' })
+  if (row.lunch_3rd_floor_user_id === uId) duties.push({ type: 'lunch', label: `Lunch Duty (3rd Fl) (${tm.lunch})`, icon: '🏢' })
   return duties
 }
 
@@ -67,6 +68,38 @@ export default function GlobalActionCards() {
   const [dutySchedules, setDutySchedules] = useState([])
   const [dutyIndex, setDutyIndex]         = useState(0)
   const [dutyLoading, setDutyLoading]     = useState(false)
+  const [dutyTimeMap, setDutyTimeMap]     = useState({
+    devotion: '07:30–08:00',
+    greeter:  '07:30–08:00',
+    break:    '09:45–10:15',
+    lunch:    '12:30–13:00'
+  })
+
+  // ── Fetch dynamic duty_settings from database ──────────────────────────────
+  useEffect(() => {
+    const fetchTimeSettings = async () => {
+      try {
+        const { data } = await supabase.from('duty_settings').select('*')
+        if (data && data.length > 0) {
+          const newMap = {
+            devotion: '07:30–08:00',
+            greeter:  '07:30–08:00',
+            break:    '09:45–10:15',
+            lunch:    '12:30–13:00'
+          }
+          data.forEach(item => {
+            if (item.slot_key && item.start_time) {
+              const st = String(item.start_time).slice(0, 5)
+              const et = item.end_time ? String(item.end_time).slice(0, 5) : ''
+              newMap[item.slot_key] = et ? `${st}–${et}` : st
+            }
+          })
+          setDutyTimeMap(newMap)
+        }
+      } catch (_) {}
+    }
+    fetchTimeSettings()
+  }, [])
 
   // ── Get current user id ───────────────────────────────────────────────────
   useEffect(() => {
@@ -248,7 +281,7 @@ export default function GlobalActionCards() {
 
   // ── Active Duty Row & User Duties ─────────────────────────────────────────
   const currentDutyRow = dutySchedules[dutyIndex] || null
-  const currentDuties  = useMemo(() => resolveUserDuties(currentDutyRow, userId), [currentDutyRow, userId])
+  const currentDuties  = useMemo(() => resolveUserDuties(currentDutyRow, userId, dutyTimeMap), [currentDutyRow, userId, dutyTimeMap])
 
   const showFpb  = !fpbLoading && fpbCount !== null && fpbCount > 0
   const showAtt  = !attLoading && attCount !== null && attCount > 0

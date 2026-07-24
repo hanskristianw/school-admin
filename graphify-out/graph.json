@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 289,
-      "community_name": "docx",
+      "community": 127,
+      "community_name": "Module 127",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 289,
-      "community_name": "docx",
+      "community": 127,
+      "community_name": "Module 127",
       "norm_label": "bcryptjs"
     },
     {
@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 127,
-      "community_name": "Module 127",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "driver.js"
     },
     {
@@ -3131,8 +3131,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 127,
-      "community_name": "Module 127",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "driver.js"
     },
     {
@@ -9057,7 +9057,7 @@
       "label": "GlobalActionCards()",
       "file_type": "code",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L52",
+      "source_location": "L53",
       "_origin": "ast",
       "id": "src_components_globalactioncards_globalactioncards",
       "community": 282,
@@ -11194,8 +11194,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "database_schema_3_curriculum_topics_domain_data_topic_new_data_subject_data_subject_group",
-      "community": 263,
-      "community_name": "3.1 Tables",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
       "norm_label": "3. curriculum & topics domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`)"
     },
     {
@@ -11293,8 +11293,8 @@
       "source_location": "L396",
       "_origin": "ast",
       "id": "database_schema_3_2_erd_relationships_curriculum_domain",
-      "community": 263,
-      "community_name": "3.1 Tables",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
       "norm_label": "3.2 erd / relationships (curriculum domain)"
     },
     {
@@ -11436,8 +11436,8 @@
       "source_location": "L640",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11579,8 +11579,8 @@
       "source_location": "L796",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -11843,8 +11843,8 @@
       "source_location": "L1236",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -11854,8 +11854,8 @@
       "source_location": "L1240",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "10.1 tables"
     },
     {
@@ -11865,19 +11865,30 @@
       "source_location": "L1242",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "`duty_schedules`"
+    },
+    {
+      "label": "`duty_settings`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1271",
+      "_origin": "ast",
+      "id": "database_schema_duty_settings",
+      "community": 289,
+      "community_name": "docx",
+      "norm_label": "`duty_settings`"
     },
     {
       "label": "10.2 ERD / Relationships (Duty & Devotion Schedule Domain)",
       "file_type": "document",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1271",
+      "source_location": "L1285",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -24013,7 +24024,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/door_greeter/page.jsx",
-      "source_location": "L166",
+      "source_location": "L219",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_door_greeter_page_dutyschedulepage",
@@ -26796,7 +26807,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L52",
+      "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards",
@@ -26841,7 +26852,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L175",
+      "source_location": "L208",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -26853,7 +26864,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L176",
+      "source_location": "L209",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -26865,7 +26876,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L394",
+      "source_location": "L427",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -26877,7 +26888,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L251",
+      "source_location": "L284",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -29750,7 +29761,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1271",
+      "source_location": "L1285",
       "weight": 1.0,
       "_origin": "ast",
       "source": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
@@ -29766,6 +29777,17 @@
       "_origin": "ast",
       "source": "database_schema_10_1_tables",
       "target": "database_schema_duty_schedules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1271",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_10_1_tables",
+      "target": "database_schema_duty_settings",
       "confidence_score": 1.0
     },
     {
@@ -34705,5 +34727,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a9ffea8ce8b05363507ce31be91bb9b6fa49f189"
+  "built_at_commit": "4445f9dba9057f4fb8955b097a760c97b8db7597"
 }

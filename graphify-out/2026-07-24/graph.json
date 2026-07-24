@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 289,
-      "community_name": "docx",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 289,
-      "community_name": "docx",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "class-variance-authority"
     },
     {
@@ -5130,7 +5130,7 @@
       "label": "GET()",
       "file_type": "code",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L33",
+      "source_location": "L45",
       "_origin": "ast",
       "id": "src_app_api_duty_notify_route_get",
       "community": 125,
@@ -5141,7 +5141,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L37",
+      "source_location": "L49",
       "_origin": "ast",
       "id": "src_app_api_duty_notify_route_post",
       "community": 125,
@@ -5152,7 +5152,7 @@
       "label": "handleDutyNotification()",
       "file_type": "code",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L41",
+      "source_location": "L53",
       "_origin": "ast",
       "id": "src_app_api_duty_notify_route_handledutynotification",
       "community": 125,
@@ -11194,8 +11194,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "database_schema_3_curriculum_topics_domain_data_topic_new_data_subject_data_subject_group",
-      "community": 263,
-      "community_name": "3.1 Tables",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
       "norm_label": "3. curriculum & topics domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`)"
     },
     {
@@ -11293,8 +11293,8 @@
       "source_location": "L396",
       "_origin": "ast",
       "id": "database_schema_3_2_erd_relationships_curriculum_domain",
-      "community": 263,
-      "community_name": "3.1 Tables",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
       "norm_label": "3.2 erd / relationships (curriculum domain)"
     },
     {
@@ -11436,8 +11436,8 @@
       "source_location": "L640",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11579,8 +11579,8 @@
       "source_location": "L796",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -11843,8 +11843,8 @@
       "source_location": "L1236",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -11854,8 +11854,8 @@
       "source_location": "L1240",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "10.1 tables"
     },
     {
@@ -11865,19 +11865,30 @@
       "source_location": "L1242",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "`duty_schedules`"
+    },
+    {
+      "label": "`duty_settings`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1271",
+      "_origin": "ast",
+      "id": "database_schema_duty_settings",
+      "community": 289,
+      "community_name": "docx",
+      "norm_label": "`duty_settings`"
     },
     {
       "label": "10.2 ERD / Relationships (Duty & Devotion Schedule Domain)",
       "file_type": "document",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1271",
+      "source_location": "L1285",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -22138,7 +22149,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L33",
+      "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_duty_notify_route",
@@ -22160,7 +22171,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L41",
+      "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_duty_notify_route",
@@ -22171,7 +22182,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L37",
+      "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_duty_notify_route",
@@ -22194,7 +22205,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L47",
+      "source_location": "L59",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_duty_notify_route_handledutynotification",
@@ -22206,7 +22217,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L34",
+      "source_location": "L46",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_duty_notify_route_get",
@@ -22218,7 +22229,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/duty/notify/route.js",
-      "source_location": "L38",
+      "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_duty_notify_route_post",
@@ -24013,7 +24024,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/door_greeter/page.jsx",
-      "source_location": "L166",
+      "source_location": "L219",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_door_greeter_page_dutyschedulepage",
@@ -29750,7 +29761,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1271",
+      "source_location": "L1285",
       "weight": 1.0,
       "_origin": "ast",
       "source": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
@@ -29766,6 +29777,17 @@
       "_origin": "ast",
       "source": "database_schema_10_1_tables",
       "target": "database_schema_duty_schedules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1271",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_10_1_tables",
+      "target": "database_schema_duty_settings",
       "confidence_score": 1.0
     },
     {
@@ -34705,5 +34727,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "425ec9c2559259e3594f5b59c4f57f5b7f56012f"
+  "built_at_commit": "4445f9dba9057f4fb8955b097a760c97b8db7597"
 }

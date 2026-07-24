@@ -76,88 +76,118 @@ async function handleDutyNotification(req) {
       })
     }
 
-    // 2. Define duty slots, scheduled start times, and window checks (1 hour / 60 minutes before)
-    // Times in minutes from midnight:
-    // Devotion: 07:20 (440m) -> 1h before is 06:20 (380m)
-    // Morning Greeter: 07:30 (450m) -> 1h before is 06:30 (390m)
-    // Break Duty: 09:45 (585m) -> 1h before is 08:45 (525m)
-    // Lunch Duty: 12:00 (720m) -> 1h before is 11:00 (660m)
+    // 2. Fetch dynamic duty_settings from database if available (with fallback defaults)
+    let timeSettings = {
+      devotion: { start: '07:30 AM', end: '', startMins: 450, reminderMins: 60 },
+      greeter:  { start: '07:30 AM', end: '08:00 AM', startMins: 450, reminderMins: 60 },
+      break:    { start: '09:45 AM', end: '10:15 AM', startMins: 585, reminderMins: 60 },
+      lunch:    { start: '12:30 PM', end: '01:00 PM', startMins: 750, reminderMins: 60 },
+    }
+
+    try {
+      const { data: dbSettings } = await supabaseAdmin.from('duty_settings').select('*')
+      if (dbSettings && dbSettings.length > 0) {
+        for (const s of dbSettings) {
+          if (!s.slot_key || !s.start_time) continue
+          const [h, m] = String(s.start_time).split(':').map(Number)
+          const sMins = h * 60 + m
+          const remMins = s.reminder_minutes_before ?? 60
+          
+          let formatTimeStr = `${String(h % 12 || 12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
+          let formatEndStr = ''
+          if (s.end_time) {
+            const [eh, em] = String(s.end_time).split(':').map(Number)
+            formatEndStr = `${String(eh % 12 || 12).padStart(2, '0')}:${String(em).padStart(2, '0')} ${eh >= 12 ? 'PM' : 'AM'}`
+          }
+
+          timeSettings[s.slot_key] = {
+            start: formatTimeStr,
+            end: formatEndStr,
+            startMins: sMins,
+            reminderMins: remMins
+          }
+        }
+      }
+    } catch (_) {
+      // Use fallback defaults if table doesn't exist
+    }
+
     const dutyConfigs = [
       {
         key: 'devotion_leader_user_id',
         title: 'Morning Devotion Leader',
-        timeLabel: '07:20 AM',
-        targetMins: 380, // 06:20 AM (1 hour before)
+        timeLabel: timeSettings.devotion.start,
+        targetMins: timeSettings.devotion.startMins - timeSettings.devotion.reminderMins,
         type: 'devotion'
       },
       {
         key: 'greeter_1st_floor_user_id',
         title: 'Morning Door Greeter (1st Floor)',
-        timeLabel: '07:30 AM – 08:00 AM',
-        targetMins: 390, // 06:30 AM (1 hour before)
+        timeLabel: `${timeSettings.greeter.start} – ${timeSettings.greeter.end}`,
+        targetMins: timeSettings.greeter.startMins - timeSettings.greeter.reminderMins,
         type: 'greeter'
       },
       {
         key: 'greeter_2nd_floor_user_id',
         title: 'Morning Door Greeter (2nd Floor)',
-        timeLabel: '07:30 AM – 08:00 AM',
-        targetMins: 390, // 06:30 AM (1 hour before)
+        timeLabel: `${timeSettings.greeter.start} – ${timeSettings.greeter.end}`,
+        targetMins: timeSettings.greeter.startMins - timeSettings.greeter.reminderMins,
         type: 'greeter'
       },
       {
         key: 'break_canteen_user_id',
         title: 'Break Duty (Canteen)',
-        timeLabel: '09:45 AM – 10:15 AM',
-        targetMins: 525, // 08:45 AM (1 hour before)
+        timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
+        targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
         type: 'break'
       },
       {
         key: 'break_pe_field_user_id',
         title: 'Break Duty (PE Field)',
-        timeLabel: '09:45 AM – 10:15 AM',
-        targetMins: 525, // 08:45 AM (1 hour before)
+        timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
+        targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
         type: 'break'
       },
       {
         key: 'break_2nd_floor_user_id',
         title: 'Break Duty (2nd Floor)',
-        timeLabel: '09:45 AM – 10:15 AM',
-        targetMins: 525, // 08:45 AM (1 hour before)
+        timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
+        targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
         type: 'break'
       },
       {
         key: 'break_3rd_floor_user_id',
         title: 'Break Duty (3rd Floor)',
-        timeLabel: '09:45 AM – 10:15 AM',
-        targetMins: 525, // 08:45 AM (1 hour before)
+        timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
+        targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
         type: 'break'
       },
       {
         key: 'lunch_canteen_user_id',
         title: 'Lunch Duty (Canteen)',
-        timeLabel: '12:00 PM – 12:30 PM',
-        targetMins: 660, // 11:00 AM (1 hour before)
+        timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
+        targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
         type: 'lunch'
       },
       {
         key: 'lunch_pe_field_user_id',
         title: 'Lunch Duty (PE Field)',
-        timeLabel: '12:00 PM – 12:30 PM',
-        targetMins: 660, // 11:00 AM (1 hour before)
+        timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
+        targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
         type: 'lunch'
       },
       {
         key: 'lunch_2nd_floor_user_id',
         title: 'Lunch Duty (2nd Floor)',
-        timeLabel: '12:00 PM – 12:30 PM',
-        targetMins: 660, // 11:00 AM (1 hour before)
+        timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
+        targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
         type: 'lunch'
       },
       {
         key: 'lunch_3rd_floor_user_id',
         title: 'Lunch Duty (3rd Floor)',
-        timeLabel: '12:00 PM – 12:30 PM',
-        targetMins: 660, // 11:00 AM (1 hour before)
+        timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
+        targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
         type: 'lunch'
       }
     ]

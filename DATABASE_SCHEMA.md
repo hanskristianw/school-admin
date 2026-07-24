@@ -1268,6 +1268,20 @@ Stores the daily duty roster and devotion schedule for each academic date within
 > [!NOTE]
 > **Legacy Table:** Previously, door greeter assignments were stored in `daftar_door_greeter` (which only stored user_id and day_of_week without date or academic year context). `duty_schedules` replaces/upgrades `daftar_door_greeter` to support date-specific schedules, academic year filtering, devotion leaders, prayer subjects, and multiple duty slots.
 
+#### `duty_settings`
+Master configuration table for duty times and Google Chat reminder offsets. Allows dynamic configuration of duty slot operational hours.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `slot_key` | `VARCHAR(50)` | Short code (`devotion`, `greeter`, `break`, `lunch`), UNIQUE |
+| `slot_name` | `VARCHAR(100)` | Display name (e.g. "Morning Devotion Leader", "Lunch Duty") |
+| `start_time` | `TIME` | Scheduled start time (e.g. `07:30:00`, `09:45:00`, `12:30:00`) |
+| `end_time` | `TIME` | Scheduled end time (e.g. `08:00:00`, `10:15:00`, `13:00:00`) |
+| `reminder_minutes_before` | `INTEGER` | Google Chat reminder offset in minutes (Default: 60 minutes = 1 hour) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
 ### 10.2 ERD / Relationships (Duty & Devotion Schedule Domain)
 
 ```mermaid
