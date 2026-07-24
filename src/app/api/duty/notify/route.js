@@ -218,6 +218,8 @@ async function handleDutyNotification(req) {
 
     const notifiedResults = []
 
+    const testEmail  = searchParams.get('test_email') || (searchParams.get('test') === 'true' ? 'hans@ccs.sch.id' : null)
+
     // 4. Evaluate each duty slot and send Google Chat notification 1 hour before
     for (const cfg of dutyConfigs) {
       const userId = schedule[cfg.key]
@@ -230,9 +232,12 @@ async function handleDutyNotification(req) {
       const diffMins = Math.abs(wib.totalMins - cfg.targetMins)
       const isInWindow = diffMins <= 5
 
-      if (!isInWindow && !forceAll) {
+      if (!isInWindow && !forceAll && !testEmail) {
         continue
       }
+
+      // If testing mode is active, strictly send test notifications to hans@ccs.sch.id ONLY
+      const recipientEmail = testEmail || user.user_email
 
       const name = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
 
@@ -256,8 +261,8 @@ async function handleDutyNotification(req) {
       }
 
       try {
-        console.log(`[DutyNotify] Sending Google Chat message to ${user.user_email} for ${cfg.title}`)
-        await sendGoogleChatMessage(user.user_email, messageText)
+        console.log(`[DutyNotify] Sending Google Chat message to ${recipientEmail} for ${cfg.title}`)
+        await sendGoogleChatMessage(recipientEmail, messageText)
         notifiedResults.push({
           user_id: user.user_id,
           user_email: user.user_email,

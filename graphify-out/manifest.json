@@ -1410,9 +1410,9 @@
     "semantic_hash": "6c7648a1e1be4cb78c51bcfd48108030"
   },
   "vercel.json": {
-    "mtime": 1784179362.4719255,
-    "ast_hash": "aa06f609fe9a7629d6013f598b691316",
-    "semantic_hash": "aa06f609fe9a7629d6013f598b691316"
+    "mtime": 1784870751.554863,
+    "ast_hash": "a1fd77f6d1ce43dbb1b70c6f6b98a4bd",
+    "semantic_hash": ""
   },
   ".agents/rules/graphify.md": {
     "mtime": 1784179362.2932868,
@@ -1680,8 +1680,18 @@
     "semantic_hash": ""
   },
   "src/app/api/duty/notify/route.js": {
-    "mtime": 1784864972.5484283,
-    "ast_hash": "ccea357ca85d741b790a373e3684d094",
+    "mtime": 1784870767.8713734,
+    "ast_hash": "d5d4033833df15218c652efc64277b9d",
+    "semantic_hash": ""
+  },
+  "scratch/testDutyEndpoint.js": {
+    "mtime": 1784870544.6277218,
+    "ast_hash": "bf4235d515d614b74148f9a81a0a56c5",
+    "semantic_hash": ""
+  },
+  "scratch/testDutyNotificationTrigger.js": {
+    "mtime": 1784870553.942354,
+    "ast_hash": "93f0cf5610961ecfd24b6f5efcd753b6",
     "semantic_hash": ""
   }
 }

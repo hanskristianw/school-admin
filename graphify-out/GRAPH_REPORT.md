@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-07-24)
 
 ## Corpus Check
-- 322 files · ~430,052 words
+- 324 files · ~430,337 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1549 nodes · 1583 edges · 301 communities (198 shown, 103 thin omitted)
+- 1557 nodes · 1592 edges · 302 communities (198 shown, 104 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4445f9db`
+- Built from commit: `dae8d41b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -217,6 +217,7 @@
 - react-hook-form
 - **3. Assessment System**
 - class-variance-authority
+- driver.js
 
 ## God Nodes (most connected - your core abstractions)
 1. `🚀 Supabase Connection Fixed!` - 18 edges
@@ -239,13 +240,13 @@
   src/app/data/topic/page.jsx → package.json
 - `generateClassReportZIP()` --references--> `jszip`  [EXTRACTED]
   src/app/data/topic-new/lib/pdfGenerators.js → package.json
-- `run()` --calls--> `sendGoogleChatMessage()`  [EXTRACTED]
-  temp.js → src/lib/googleChat.js
+- `testTrigger()` --calls--> `sendGoogleChatMessage()`  [EXTRACTED]
+  scratch/testDutyNotificationTrigger.js → src/lib/googleChat.js
 
 ## Import Cycles
 - None detected.
 
-## Communities (301 total, 103 thin omitted)
+## Communities (302 total, 104 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.13
@@ -313,7 +314,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): clsx, driver.js, googleapis, dependencies, clsx, driver.js, googleapis, pngjs (+3 more)
+Nodes (11): clsx, @fortawesome/react-fontawesome, googleapis, dependencies, clsx, @fortawesome/react-fontawesome, googleapis, pngjs (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -328,8 +329,8 @@ Cohesion: 0.29
 Nodes (3): Select, SelectItem, cn()
 
 ### Community 22 - "Module 22"
-Cohesion: 0.29
-Nodes (6): crons, functions, src/app/api/assessment-pdf/route.js, src/app/api/attendance/notify/route.js, maxDuration, maxDuration
+Cohesion: 0.22
+Nodes (8): crons, functions, src/app/api/assessment-pdf/route.js, src/app/api/attendance/notify/route.js, src/app/api/duty/notify/route.js, maxDuration, maxDuration, maxDuration
 
 ### Community 23 - "Module 23"
 Cohesion: 0.29
@@ -544,16 +545,16 @@ Cohesion: 0.14
 Nodes (13): Active/Current Migrations, Core Attendance System, Database Migrations, 🚀 How to Run Migrations, ⚠️ Important Notes, 📋 Migration Checklist, Other Systems (Unrelated to Attendance), 🔄 Recent Changes (October 2025) (+5 more)
 
 ### Community 261 - "5.1 Tables"
-Cohesion: 0.14
-Nodes (14): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas` (+6 more)
+Cohesion: 0.17
+Nodes (12): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas`, `leave_types`, `role_approvers` (+4 more)
 
 ### Community 262 - "sendGoogleChatMessage"
-Cohesion: 0.33
-Nodes (8): getCredentials(), getPrivateKey(), getUserIdByEmail(), sendGoogleChatMessage(), run(), run(), buildGoogleChatMessage(), run()
+Cohesion: 0.26
+Nodes (10): supabaseAdmin, testTrigger(), getCredentials(), getPrivateKey(), getUserIdByEmail(), sendGoogleChatMessage(), run(), run() (+2 more)
 
 ### Community 263 - "3.1 Tables"
-Cohesion: 0.25
-Nodes (8): 3.1 Tables, `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject`, `subject_group`, `topic`
+Cohesion: 0.20
+Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject` (+2 more)
 
 ### Community 264 - "4.1 Tables"
 Cohesion: 0.20
@@ -589,7 +590,7 @@ Nodes (7): 9.1 Tables, 9.2 ERD / Relationships (Timetable & Schedule Domain), 9.
 
 ### Community 272 - "Database Schema & Relationships"
 Cohesion: 0.33
-Nodes (5): 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), Database Schema & Relationships
+Nodes (5): 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), Database Schema & Relationships
 
 ### Community 273 - "8.1 Tables"
 Cohesion: 0.33
@@ -644,24 +645,24 @@ Cohesion: 0.40
 Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ## Knowledge Gaps
-- **649 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+644 more)
+- **652 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+647 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **103 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **104 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 130`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `🚀 **Setup & Deployment**`, `Module 152`, `Module 153`, `Module 154`, `Module 156`, `Module 155`, `browser-image-compression`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `class-variance-authority`, `Module 126`, `Module 127`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 130`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `🚀 **Setup & Deployment**`, `Module 152`, `Module 153`, `Module 154`, `Module 156`, `Module 155`, `browser-image-compression`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `class-variance-authority`, `driver.js`, `Module 127`?**
   _High betweenness centrality (0.009) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
+  _High betweenness centrality (0.004) - this node is a cross-community bridge._
+- **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `**3. Assessment System**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `📌 Changelog`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _649 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _652 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.12685560053981107 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Should `RLS & Migration Scripts` be split into smaller, more focused modules?**
   _Cohesion score 0.12380952380952381 - nodes in this community are weakly interconnected._
-- **Should `Component Aliases & UI Library` be split into smaller, more focused modules?**
-  _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._

@@ -2790,8 +2790,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_react_fontawesome",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -2801,8 +2801,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "fortawesome_react_fontawesome",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 301,
+      "community_name": "driver.js",
       "norm_label": "driver.js"
     },
     {
@@ -3131,8 +3131,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 301,
+      "community_name": "driver.js",
       "norm_label": "driver.js"
     },
     {
@@ -3827,6 +3827,72 @@
       "community": 157,
       "community_name": "Module 157",
       "norm_label": "config"
+    },
+    {
+      "label": "testDutyEndpoint.js",
+      "file_type": "code",
+      "source_file": "scratch/testDutyEndpoint.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scratch_testdutyendpoint",
+      "community": 126,
+      "community_name": "Module 126",
+      "norm_label": "testdutyendpoint.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "scratch/testDutyEndpoint.js",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "scratch_testdutyendpoint_supabaseadmin",
+      "community": 126,
+      "community_name": "Module 126",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "test()",
+      "file_type": "code",
+      "source_file": "scratch/testDutyEndpoint.js",
+      "source_location": "L10",
+      "_origin": "ast",
+      "id": "scratch_testdutyendpoint_test",
+      "community": 126,
+      "community_name": "Module 126",
+      "norm_label": "test()"
+    },
+    {
+      "label": "testDutyNotificationTrigger.js",
+      "file_type": "code",
+      "source_file": "scratch/testDutyNotificationTrigger.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scratch_testdutynotificationtrigger",
+      "community": 262,
+      "community_name": "sendGoogleChatMessage",
+      "norm_label": "testdutynotificationtrigger.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "scratch/testDutyNotificationTrigger.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "scratch_testdutynotificationtrigger_supabaseadmin",
+      "community": 262,
+      "community_name": "sendGoogleChatMessage",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "testTrigger()",
+      "file_type": "code",
+      "source_file": "scratch/testDutyNotificationTrigger.js",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "scratch_testdutynotificationtrigger_testtrigger",
+      "community": 262,
+      "community_name": "sendGoogleChatMessage",
+      "norm_label": "testtrigger()"
     },
     {
       "label": "layout.jsx",
@@ -10511,7 +10577,7 @@
       "source_file": "vercel.json",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_json",
+      "id": "vercel",
       "community": 22,
       "community_name": "Module 22",
       "norm_label": "vercel.json"
@@ -10522,7 +10588,7 @@
       "source_file": "vercel.json",
       "source_location": "L2",
       "_origin": "ast",
-      "id": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions",
+      "id": "vercel_functions",
       "community": 22,
       "community_name": "Module 22",
       "norm_label": "functions"
@@ -10533,7 +10599,7 @@
       "source_file": "vercel.json",
       "source_location": "L3",
       "_origin": "ast",
-      "id": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions_src_app_api_assessment_pdf_route_js",
+      "id": "vercel_functions_src_app_api_assessment_pdf_route_js",
       "community": 22,
       "community_name": "Module 22",
       "norm_label": "src/app/api/assessment-pdf/route.js"
@@ -10544,7 +10610,7 @@
       "source_file": "vercel.json",
       "source_location": "L4",
       "_origin": "ast",
-      "id": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_src_app_api_assessment_pdf_route_js_maxduration",
+      "id": "vercel_src_app_api_assessment_pdf_route_js_maxduration",
       "community": 22,
       "community_name": "Module 22",
       "norm_label": "maxduration"
@@ -10555,7 +10621,7 @@
       "source_file": "vercel.json",
       "source_location": "L6",
       "_origin": "ast",
-      "id": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions_src_app_api_attendance_notify_route_js",
+      "id": "vercel_functions_src_app_api_attendance_notify_route_js",
       "community": 22,
       "community_name": "Module 22",
       "norm_label": "src/app/api/attendance/notify/route.js"
@@ -10566,7 +10632,29 @@
       "source_file": "vercel.json",
       "source_location": "L7",
       "_origin": "ast",
-      "id": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_src_app_api_attendance_notify_route_js_maxduration",
+      "id": "vercel_src_app_api_attendance_notify_route_js_maxduration",
+      "community": 22,
+      "community_name": "Module 22",
+      "norm_label": "maxduration"
+    },
+    {
+      "label": "src/app/api/duty/notify/route.js",
+      "file_type": "code",
+      "source_file": "vercel.json",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "vercel_functions_src_app_api_duty_notify_route_js",
+      "community": 22,
+      "community_name": "Module 22",
+      "norm_label": "src/app/api/duty/notify/route.js"
+    },
+    {
+      "label": "maxDuration",
+      "file_type": "code",
+      "source_file": "vercel.json",
+      "source_location": "L10",
+      "_origin": "ast",
+      "id": "vercel_src_app_api_duty_notify_route_js_maxduration",
       "community": 22,
       "community_name": "Module 22",
       "norm_label": "maxduration"
@@ -10575,9 +10663,9 @@
       "label": "crons",
       "file_type": "code",
       "source_file": "vercel.json",
-      "source_location": "L10",
+      "source_location": "L13",
       "_origin": "ast",
-      "id": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_crons",
+      "id": "vercel_crons",
       "community": 22,
       "community_name": "Module 22",
       "norm_label": "crons"
@@ -11194,8 +11282,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "database_schema_3_curriculum_topics_domain_data_topic_new_data_subject_data_subject_group",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 263,
+      "community_name": "3.1 Tables",
       "norm_label": "3. curriculum & topics domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`)"
     },
     {
@@ -11293,8 +11381,8 @@
       "source_location": "L396",
       "_origin": "ast",
       "id": "database_schema_3_2_erd_relationships_curriculum_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 263,
+      "community_name": "3.1 Tables",
       "norm_label": "3.2 erd / relationships (curriculum domain)"
     },
     {
@@ -11436,8 +11524,8 @@
       "source_location": "L640",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 261,
-      "community_name": "5.1 Tables",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11579,8 +11667,8 @@
       "source_location": "L796",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 261,
-      "community_name": "5.1 Tables",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -20830,6 +20918,86 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "scratch/testDutyEndpoint.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scratch_testdutyendpoint",
+      "target": "scratch_testdutyendpoint_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scratch/testDutyEndpoint.js",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scratch_testdutyendpoint",
+      "target": "scratch_testdutyendpoint_test",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scratch/testDutyNotificationTrigger.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scratch_testdutynotificationtrigger",
+      "target": "scratch_testdutynotificationtrigger_supabaseadmin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scratch/testDutyNotificationTrigger.js",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scratch_testdutynotificationtrigger",
+      "target": "scratch_testdutynotificationtrigger_testtrigger",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "scratch/testDutyNotificationTrigger.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scratch_testdutynotificationtrigger",
+      "target": "src_lib_googlechat",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "scratch/testDutyNotificationTrigger.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scratch_testdutynotificationtrigger",
+      "target": "src_lib_googlechat_sendgooglechatmessage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "scratch/testDutyNotificationTrigger.js",
+      "source_location": "L46",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "scratch_testdutynotificationtrigger_testtrigger",
+      "target": "src_lib_googlechat_sendgooglechatmessage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/admission/layout.jsx",
       "source_location": "L5",
       "weight": 1.0,
@@ -28485,11 +28653,11 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "vercel.json",
-      "source_location": "L10",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_json",
-      "target": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_crons",
+      "source": "vercel",
+      "target": "vercel_crons",
       "confidence_score": 1.0
     },
     {
@@ -28499,8 +28667,8 @@
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_json",
-      "target": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions",
+      "source": "vercel",
+      "target": "vercel_functions",
       "confidence_score": 1.0
     },
     {
@@ -28510,8 +28678,8 @@
       "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions",
-      "target": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions_src_app_api_assessment_pdf_route_js",
+      "source": "vercel_functions",
+      "target": "vercel_functions_src_app_api_assessment_pdf_route_js",
       "confidence_score": 1.0
     },
     {
@@ -28521,8 +28689,19 @@
       "source_location": "L6",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions",
-      "target": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions_src_app_api_attendance_notify_route_js",
+      "source": "vercel_functions",
+      "target": "vercel_functions_src_app_api_attendance_notify_route_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "vercel.json",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "vercel_functions",
+      "target": "vercel_functions_src_app_api_duty_notify_route_js",
       "confidence_score": 1.0
     },
     {
@@ -28532,8 +28711,8 @@
       "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions_src_app_api_assessment_pdf_route_js",
-      "target": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_src_app_api_assessment_pdf_route_js_maxduration",
+      "source": "vercel_functions_src_app_api_assessment_pdf_route_js",
+      "target": "vercel_src_app_api_assessment_pdf_route_js_maxduration",
       "confidence_score": 1.0
     },
     {
@@ -28543,8 +28722,19 @@
       "source_location": "L7",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_functions_src_app_api_attendance_notify_route_js",
-      "target": "c_users_ccs_laptop2627_5_documents_github_school_admin_vercel_src_app_api_attendance_notify_route_js_maxduration",
+      "source": "vercel_functions_src_app_api_attendance_notify_route_js",
+      "target": "vercel_src_app_api_attendance_notify_route_js_maxduration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "vercel.json",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "vercel_functions_src_app_api_duty_notify_route_js",
+      "target": "vercel_src_app_api_duty_notify_route_js_maxduration",
       "confidence_score": 1.0
     },
     {
@@ -34727,5 +34917,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4445f9dba9057f4fb8955b097a760c97b8db7597"
+  "built_at_commit": "dae8d41b2df568b0658be6b9745a5af34f470466"
 }
