@@ -1,0 +1,17 @@
+name: School Duty Notification Cron
+
+on:
+  schedule:
+    # Runs every 10 minutes between 00:00 UTC and 07:00 UTC (07:00 AM - 02:00 PM WIB), Monday to Friday
+    - cron: '*/10 0-7 * * 1-5'
+  workflow_dispatch: # Allows manual trigger anytime from GitHub Actions tab
+
+jobs:
+  ping-duty-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Duty Notification Endpoint
+        run: |
+          echo "Triggering Duty Notification API..."
+          curl -s -f -X GET "https://school-admin-nine.vercel.app/api/duty/notify" || true
+          echo "Done."
