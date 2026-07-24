@@ -910,9 +910,9 @@
     "semantic_hash": "778eb7a29e60d435f61d8f9e73383331"
   },
   "src/app/data/attendance-approvals/page.jsx": {
-    "mtime": 1784179362.4270854,
-    "ast_hash": "c4be49cb4d6e3e8faeb942b3052bb18d",
-    "semantic_hash": "c4be49cb4d6e3e8faeb942b3052bb18d"
+    "mtime": 1784874960.448073,
+    "ast_hash": "b1c43f29875cd9196b7235f4671001aa",
+    "semantic_hash": ""
   },
   "src/app/data/attendance-excuses/create/page.jsx": {
     "mtime": 1784179362.4270854,
@@ -1692,6 +1692,11 @@
   "scratch/testDutyNotificationTrigger.js": {
     "mtime": 1784870553.942354,
     "ast_hash": "93f0cf5610961ecfd24b6f5efcd753b6",
+    "semantic_hash": ""
+  },
+  "src/app/data/attendance-check/page.jsx": {
+    "mtime": 1784877856.5644505,
+    "ast_hash": "68f7a65f3581c074f7de6852e0da95bc",
     "semantic_hash": ""
   }
 }

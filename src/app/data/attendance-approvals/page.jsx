@@ -163,7 +163,7 @@ export default function AttendanceApprovalsPage() {
   return (
     <div className="p-4 md:p-6 space-y-5" style={{ color: theme.textBody }}>
       {/* Header */}
-      <div>
+      <div className="border-b pb-4" style={{ borderColor: theme.border }}>
         <h1 className="text-xl font-semibold" style={{ color: theme.textPrimary }}>
           ✅ Approval Surat Keterangan
         </h1>
