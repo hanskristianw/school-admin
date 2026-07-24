@@ -10,7 +10,7 @@ import {
   faPaperPlane, faFileExcel, faSync, faFilter, faUserCheck,
   faTimesCircle, faArrowRight, faCalendarAlt, faBell, faTasks,
   faChevronDown, faChevronRight, faUser, faCommentDots, faTimes,
-  faPaperclip, faExternalLinkAlt
+  faPaperclip, faExternalLinkAlt, faShieldAlt
 } from '@fortawesome/free-solid-svg-icons'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -577,7 +577,7 @@ export default function AttendanceCheckPage() {
           </span>
         </div>
         <h1 className="text-2xl font-bold flex items-center gap-2.5" style={{ color: theme.textPrimary }}>
-          <FontAwesomeIcon icon={faUserCheck} className="text-purple-600" />
+          <FontAwesomeIcon icon={faShieldAlt} className="text-purple-600" />
           HCM Form Checker
         </h1>
       </div>

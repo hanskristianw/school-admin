@@ -56,7 +56,7 @@ import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
 import { faBell } from "@fortawesome/free-solid-svg-icons"
 import { faChartBar } from "@fortawesome/free-solid-svg-icons"
-import { faFileSignature } from "@fortawesome/free-solid-svg-icons"
+import { faFileSignature, faShieldAlt, faUserCheck } from "@fortawesome/free-solid-svg-icons"
 import { faCheckDouble } from "@fortawesome/free-solid-svg-icons"
 import { faListCheck, faCalendarCheck } from "@fortawesome/free-solid-svg-icons"
 
@@ -158,6 +158,10 @@ const iconMap = {
   , 'fas fa-fingerprint': require('@fortawesome/free-solid-svg-icons').faFingerprint
   , 'faFingerprint': require('@fortawesome/free-solid-svg-icons').faFingerprint
   , 'fas fa-clock': require('@fortawesome/free-solid-svg-icons').faClock
+  , 'fas fa-shield-alt': faShieldAlt
+  , 'faShieldAlt': faShieldAlt
+  , 'fas fa-user-check': faUserCheck
+  , 'faUserCheck': faUserCheck
   , 'faClock': require('@fortawesome/free-solid-svg-icons').faClock
   , 'fas fa-bell': faBell
   , 'faBell': faBell
