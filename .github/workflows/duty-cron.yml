@@ -13,5 +13,5 @@ jobs:
       - name: Trigger Duty Notification Endpoint
         run: |
           echo "Triggering Duty Notification API..."
-          curl -s -f -X GET "https://school-admin-nine.vercel.app/api/duty/notify" || true
+          curl -s -f -X GET "https://manageccs.online/api/duty/notify" || true
           echo "Done."
