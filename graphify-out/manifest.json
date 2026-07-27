@@ -910,8 +910,8 @@
     "semantic_hash": "778eb7a29e60d435f61d8f9e73383331"
   },
   "src/app/data/attendance-approvals/page.jsx": {
-    "mtime": 1784874960.448073,
-    "ast_hash": "b1c43f29875cd9196b7235f4671001aa",
+    "mtime": 1785130273.519019,
+    "ast_hash": "8f4f1c4d7d5cc7d248af7ab5c3c0de5f",
     "semantic_hash": ""
   },
   "src/app/data/attendance-excuses/create/page.jsx": {
@@ -1635,8 +1635,8 @@
     "semantic_hash": ""
   },
   "src/components/GlobalActionCards.jsx": {
-    "mtime": 1785122492.1488419,
-    "ast_hash": "299969ad2c8f568b8abcba7a69814626",
+    "mtime": 1785130288.056579,
+    "ast_hash": "2adbb8bca29b5454a9ba1ada40939b8d",
     "semantic_hash": ""
   },
   "src/lib/googleChat.js": {

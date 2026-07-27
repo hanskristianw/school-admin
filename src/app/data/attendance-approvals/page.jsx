@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/theme'
 
@@ -35,18 +35,18 @@ const CATEGORY_LABEL = {
 }
 
 const TYPE_LABEL = {
-  late:        'Terlambat',
-  leave_early: 'Pulang Awal',
-  absent:      'Tidak Masuk',
-  no_checkin:  'Tidak Check-In',
-  no_checkout: 'Tidak Check-Out',
+  late:        'Late',
+  leave_early: 'Leave Early',
+  absent:      'Absent',
+  no_checkin:  'No Check-In',
+  no_checkout: 'No Check-Out',
 }
 
 function fmtMins(m) {
   if (!m) return null
   const h = Math.floor(m / 60)
   const min = m % 60
-  return h > 0 ? `${h}j ${min}m` : `${min} menit`
+  return h > 0 ? `${h}h ${min}m` : `${min} mins`
 }
 
 export default function AttendanceApprovalsPage() {
@@ -55,6 +55,8 @@ export default function AttendanceApprovalsPage() {
 
   const [userId, setUserId]         = useState(null)
   const [tab, setTab]               = useState('pending') // pending | done
+  const currentMonthKey = new Date().toISOString().slice(0, 7)
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey) // default to current month YYYY-MM
   const [excuses, setExcuses]       = useState([])
   const [loading, setLoading]       = useState(true)
   const [actionId, setActionId]     = useState(null)  // excuse id being acted on
@@ -99,6 +101,63 @@ export default function AttendanceApprovalsPage() {
 
   const displayed = tab === 'pending' ? pendingItems : doneItems
 
+  // Extract available months for filter dropdown (always include current month)
+  const availableMonths = useMemo(() => {
+    const set = new Set()
+    const nowKey = new Date().toISOString().slice(0, 7)
+    set.add(nowKey)
+
+    for (const e of excuses) {
+      const dStr = e.attendance_date || e.created_at || ''
+      if (dStr && dStr.length >= 7) {
+        set.add(dStr.slice(0, 7))
+      }
+    }
+    const sorted = Array.from(set).sort((a, b) => b.localeCompare(a))
+    return sorted.map(key => {
+      const [y, m] = key.split('-')
+      const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1)
+      const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      return { key, label: key === nowKey ? `${label} (This Month)` : label }
+    })
+  }, [excuses])
+
+  // Filter items by selected month
+  const filteredItems = useMemo(() => {
+    if (selectedMonth === 'all') return displayed
+    return displayed.filter(e => {
+      const dStr = e.attendance_date || e.created_at || ''
+      return dStr.startsWith(selectedMonth)
+    })
+  }, [displayed, selectedMonth])
+
+  // Group filtered items by Month (YYYY-MM)
+  const groupedItems = useMemo(() => {
+    const groups = {}
+    for (const item of filteredItems) {
+      const dStr = item.attendance_date || item.created_at || ''
+      const key = dStr && dStr.length >= 7 ? dStr.slice(0, 7) : 'other'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(item)
+    }
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a))
+
+    return sortedKeys.map(key => {
+      let title = 'Other'
+      if (key !== 'other' && key.length === 7) {
+        const [y, m] = key.split('-')
+        const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1)
+        title = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      }
+      return {
+        key,
+        title,
+        items: groups[key]
+      }
+    })
+  }, [filteredItems])
+
   const handleAction = async (excuseId, action) => {
     setActionId(excuseId)
     setMsg('')
@@ -114,7 +173,7 @@ export default function AttendanceApprovalsPage() {
       })
       const json = await res.json()
       if (!json.success) throw new Error(json.message)
-      setMsg(`✅ Berhasil ${action === 'approved' ? 'menyetujui' : 'menolak'} pengajuan`)
+      setMsg(`✅ Successfully ${action === 'approved' ? 'approved' : 'rejected'} submission`)
       fetchExcuses()
       setTimeout(() => setMsg(''), 3000)
     } catch (err) {
@@ -125,13 +184,13 @@ export default function AttendanceApprovalsPage() {
   }
 
   const handleDelete = async (excuseId) => {
-    if (!confirm('Hapus pengajuan ini? Tindakan ini tidak bisa dibatalkan.')) return
+    if (!confirm('Delete this submission? This action cannot be undone.')) return
     setDeletingId(excuseId); setMsg('')
     try {
       const res = await fetch(`/api/attendance/excuses/${excuseId}`, { method: 'DELETE' })
       const json = await res.json()
       if (!json.success) throw new Error(json.message)
-      setMsg('✅ Pengajuan berhasil dihapus')
+      setMsg('✅ Submission successfully deleted')
       fetchExcuses()
       setTimeout(() => setMsg(''), 3000)
     } catch (err) {
@@ -165,10 +224,10 @@ export default function AttendanceApprovalsPage() {
       {/* Header */}
       <div className="border-b pb-4" style={{ borderColor: theme.border }}>
         <h1 className="text-xl font-semibold" style={{ color: theme.textPrimary }}>
-          ✅ Approval Surat Keterangan
+          ✅ HCM Approval
         </h1>
         <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>
-          Pengajuan surat keterangan dari karyawan di unit Anda
+          Absence & Attendance Excuse Submissions from Employees in Your Unit
         </p>
       </div>
 
@@ -180,184 +239,229 @@ export default function AttendanceApprovalsPage() {
         }}>{msg}</div>
       )}
 
-      {/* Tabs */}
-      <div style={{ borderBottom: `1px solid ${theme.border}`, display: 'flex' }}>
-        <button style={tabStyle('pending')} onClick={() => setTab('pending')}>
-          ⏳ Menunggu Saya
-          {pendingItems.length > 0 && (
-            <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs"
-              style={{ background: '#ef4444', color: '#fff' }}>
-              {pendingItems.length}
-            </span>
-          )}
-        </button>
-        <button style={tabStyle('done')} onClick={() => setTab('done')}>
-          📋 Sudah Diproses
-        </button>
+      {/* Tabs & Month Filter */}
+      <div className="flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: `1px solid ${theme.border}` }}>
+        <div style={{ display: 'flex' }}>
+          <button style={tabStyle('pending')} onClick={() => setTab('pending')}>
+            ⏳ Pending My Action
+            {pendingItems.length > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs"
+                style={{ background: '#ef4444', color: '#fff' }}>
+                {pendingItems.length}
+              </span>
+            )}
+          </button>
+          <button style={tabStyle('done')} onClick={() => setTab('done')}>
+            📋 Processed History
+          </button>
+        </div>
+
+        {/* Month Filter Dropdown */}
+        {availableMonths.length > 0 && (
+          <div className="flex items-center gap-2 pb-2 pr-1">
+            <span className="text-xs font-semibold" style={{ color: theme.textSecondary }}>Month Filter:</span>
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className="text-xs px-3 py-1.5 rounded-lg font-medium border cursor-pointer"
+              style={{ background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+            >
+              <option value="all">All Months</option>
+              {availableMonths.map(m => (
+                <option key={m.key} value={m.key}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* List */}
       {loading ? (
-        <div className="py-16 text-center text-sm" style={{ color: theme.textSecondary }}>Memuat...</div>
-      ) : displayed.length === 0 ? (
+        <div className="py-16 text-center text-sm" style={{ color: theme.textSecondary }}>Loading...</div>
+      ) : filteredItems.length === 0 ? (
         <div className="py-16 text-center" style={{ color: theme.textSecondary }}>
           <div className="text-4xl mb-3">{tab === 'pending' ? '🎉' : '📭'}</div>
           <p className="text-sm">
-            {tab === 'pending' ? 'Tidak ada pengajuan yang perlu diproses' : 'Belum ada riwayat approval'}
+            {tab === 'pending' ? 'No pending submissions to process' : 'No approval history recorded'}
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {displayed.map(e => {
-            const isMyApprover1 = e.approver1_id === userId
-            const isMyApprover2 = e.approver2_id === userId
-            const myStep = isMyApprover1 ? 1 : 2
-            const myAction = myStep === 1 ? e.approver1_action : e.approver2_action
-            const myNote   = myStep === 1 ? e.approver1_note : e.approver2_note
-            const isPending = (myStep === 1 && e.status === 'pending') || (myStep === 2 && e.status === 'approved_1')
-
-            const submitterName = `${e.submitter?.user_nama_depan || ''} ${e.submitter?.user_nama_belakang || ''}`.trim()
-            const unitId        = e.submitter?.user_unit_id || '—'
-
-            return (
-              <div key={e.id} className="rounded-xl p-5 space-y-3"
-                style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-
-                {/* Top: submitter info */}
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div>
-                    <div className="font-semibold text-sm" style={{ color: theme.textPrimary }}>
-                      {submitterName}
-                    </div>
-                    <div className="text-xs mt-0.5 flex gap-2" style={{ color: theme.textSecondary }}>
-                      <span>Unit {unitId}</span>
-                      <span>·</span>
-                      <span>{TYPE_LABEL[e.excuse_type] || e.excuse_type}</span>
-                      <span>·</span>
-                      <span>{e.attendance_date}</span>
-                      {e.late_minutes > 0 && (
-                        <>
-                          <span>·</span>
-                          <span className="font-medium" style={{ color: '#92400e' }}>
-                            +{fmtMins(e.late_minutes)}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {/* Step badge */}
-                  <div className="text-xs px-2.5 py-1 rounded-full font-medium"
-                    style={{
-                      background: isPending ? '#dbeafe' : myAction === 'approved' ? '#dcfce7' : '#fee2e2',
-                      color:      isPending ? '#1e40af' : myAction === 'approved' ? '#166534' : '#991b1b',
-                    }}>
-                    {isPending
-                      ? `Approver ${myStep} — Menunggu Anda`
-                      : myAction === 'approved'
-                        ? `Approver ${myStep} — Disetujui`
-                        : `Approver ${myStep} — Ditolak`}
-                  </div>
+        <div className="space-y-6">
+          {groupedItems.map(group => (
+            <div key={group.key} className="space-y-3">
+              {/* Month Header Banner */}
+              <div className="flex items-center gap-3 pt-1">
+                <div
+                  className="px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm"
+                  style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                >
+                  <span>📅</span>
+                  <span className="capitalize">{group.title}</span>
+                  <span
+                    className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold"
+                    style={{ background: theme.blueText || '#2563eb', color: '#fff' }}
+                  >
+                    {group.items.length}
+                  </span>
                 </div>
-
-                {/* Alasan */}
-                <div className="text-sm p-3 rounded-lg" style={{ background: theme.subtleBg }}>
-                  <div className="text-xs mb-1" style={{ color: theme.textSecondary }}>Alasan:</div>
-                  <div style={{ color: theme.textBody }}>
-                    {CATEGORY_LABEL[e.category] || e.category}
-                    {e.other_reason && <span className="ml-1" style={{ color: theme.textSecondary }}>— {e.other_reason}</span>}
-                  </div>
-                </div>
-
-                {/* Approval trail */}
-                <div className="flex items-center gap-2 text-xs flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <span style={{ color: theme.textSecondary }}>A1:</span>
-                    <span style={{ color: e.approver1_action === 'approved' ? '#166534' : e.approver1_action === 'rejected' ? '#991b1b' : theme.textSecondary }}>
-                      {e.approver1?.user_nama_depan || '—'}
-                      {e.approver1_action === 'approved' && ' ✓'}
-                      {e.approver1_action === 'rejected' && ' ✗'}
-                    </span>
-                  </div>
-                  {e.approver2_id && (
-                    <>
-                      <span style={{ color: theme.border }}>→</span>
-                      <div className="flex items-center gap-1">
-                        <span style={{ color: theme.textSecondary }}>A2:</span>
-                        <span style={{ color: e.approver2_action === 'approved' ? '#166534' : e.approver2_action === 'rejected' ? '#991b1b' : theme.textSecondary }}>
-                          {e.approver2?.user_nama_depan || '—'}
-                          {e.approver2_action === 'approved' && ' ✓'}
-                          {e.approver2_action === 'rejected' && ' ✗'}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  {!e.approver2_id && (
-                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#f3f4f6', color: '#6b7280' }}>
-                      1 Approver
-                    </span>
-                  )}
-                </div>
-
-                {/* Action panel (only if pending for me) */}
-                {isPending && (
-                  <div className="space-y-2 pt-1 border-t" style={{ borderColor: theme.border }}>
-                    <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>
-                      Catatan (opsional)
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Tambahkan catatan jika perlu..."
-                      value={noteMap[e.id] || ''}
-                      onChange={ev => setNoteMap(prev => ({ ...prev, [e.id]: ev.target.value }))}
-                      style={{ ...inputStyle, resize: 'none' }}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleAction(e.id, 'approved')}
-                        disabled={actionId === e.id || deletingId === e.id}
-                        className="flex-1 py-2 rounded-lg text-sm font-semibold"
-                        style={{ background: '#16a34a', color: '#fff', opacity: actionId === e.id ? 0.6 : 1 }}
-                      >
-                        ✅ Setujui
-                      </button>
-                      <button
-                        onClick={() => handleAction(e.id, 'rejected')}
-                        disabled={actionId === e.id || deletingId === e.id}
-                        className="flex-1 py-2 rounded-lg text-sm font-semibold"
-                        style={{ background: '#dc2626', color: '#fff', opacity: actionId === e.id ? 0.6 : 1 }}
-                      >
-                        ❌ Tolak
-                      </button>
-                      {/* Hapus — hanya tersedia jika masih pending (belum ada approver yang bertindak) */}
-                      {e.status === 'pending' && (
-                        <button
-                          onClick={() => handleDelete(e.id)}
-                          disabled={actionId === e.id || deletingId === e.id}
-                          className="px-3 py-2 rounded-lg text-sm font-semibold"
-                          style={{
-                            background: theme.subtleBg,
-                            color: '#dc2626',
-                            border: '1px solid #dc2626',
-                            opacity: deletingId === e.id ? 0.6 : 1,
-                          }}
-                          title="Hapus pengajuan"
-                        >
-                          {deletingId === e.id ? '...' : '🗑️'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* If already processed — show my note */}
-                {!isPending && myNote && (
-                  <div className="text-xs p-2 rounded-lg" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                    Catatan Anda: {myNote}
-                  </div>
-                )}
+                <div className="flex-1 h-[1px]" style={{ background: theme.border }} />
               </div>
-            )
-          })}
+
+              {/* Group Items */}
+              <div className="space-y-4">
+                {group.items.map(e => {
+                  const isMyApprover1 = e.approver1_id === userId
+                  const isMyApprover2 = e.approver2_id === userId
+                  const myStep = isMyApprover1 ? 1 : 2
+                  const myAction = myStep === 1 ? e.approver1_action : e.approver2_action
+                  const myNote   = myStep === 1 ? e.approver1_note : e.approver2_note
+                  const isPending = (myStep === 1 && e.status === 'pending') || (myStep === 2 && e.status === 'approved_1')
+
+                  const submitterName = `${e.submitter?.user_nama_depan || ''} ${e.submitter?.user_nama_belakang || ''}`.trim()
+                  const unitId        = e.submitter?.user_unit_id || '—'
+
+                  return (
+                    <div key={e.id} className="rounded-xl p-5 space-y-3"
+                      style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
+
+                      {/* Top: submitter info */}
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <div className="font-semibold text-sm" style={{ color: theme.textPrimary }}>
+                            {submitterName}
+                          </div>
+                          <div className="text-xs mt-0.5 flex gap-2" style={{ color: theme.textSecondary }}>
+                            <span>Unit {unitId}</span>
+                            <span>·</span>
+                            <span>{TYPE_LABEL[e.excuse_type] || e.excuse_type}</span>
+                            <span>·</span>
+                            <span>{e.attendance_date}</span>
+                            {e.late_minutes > 0 && (
+                              <>
+                                <span>·</span>
+                                <span className="font-medium" style={{ color: '#92400e' }}>
+                                  +{fmtMins(e.late_minutes)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {/* Step badge */}
+                        <div className="text-xs px-2.5 py-1 rounded-full font-medium"
+                          style={{
+                            background: isPending ? '#dbeafe' : myAction === 'approved' ? '#dcfce7' : '#fee2e2',
+                            color:      isPending ? '#1e40af' : myAction === 'approved' ? '#166534' : '#991b1b',
+                          }}>
+                          {isPending
+                            ? `Approver ${myStep} — Awaiting Your Action`
+                            : myAction === 'approved'
+                              ? `Approver ${myStep} — Approved`
+                              : `Approver ${myStep} — Rejected`}
+                        </div>
+                      </div>
+
+                      {/* Alasan */}
+                      <div className="text-sm p-3 rounded-lg" style={{ background: theme.subtleBg }}>
+                        <div className="text-xs mb-1" style={{ color: theme.textSecondary }}>Reason:</div>
+                        <div style={{ color: theme.textBody }}>
+                          {CATEGORY_LABEL[e.category] || e.category}
+                          {e.other_reason && <span className="ml-1" style={{ color: theme.textSecondary }}>— {e.other_reason}</span>}
+                        </div>
+                      </div>
+
+                      {/* Approval trail */}
+                      <div className="flex items-center gap-2 text-xs flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <span style={{ color: theme.textSecondary }}>A1:</span>
+                          <span style={{ color: e.approver1_action === 'approved' ? '#166534' : e.approver1_action === 'rejected' ? '#991b1b' : theme.textSecondary }}>
+                            {e.approver1?.user_nama_depan || '—'}
+                            {e.approver1_action === 'approved' && ' ✓'}
+                            {e.approver1_action === 'rejected' && ' ✗'}
+                          </span>
+                        </div>
+                        {e.approver2_id && (
+                          <>
+                            <span style={{ color: theme.border }}>→</span>
+                            <div className="flex items-center gap-1">
+                              <span style={{ color: theme.textSecondary }}>A2:</span>
+                              <span style={{ color: e.approver2_action === 'approved' ? '#166534' : e.approver2_action === 'rejected' ? '#991b1b' : theme.textSecondary }}>
+                                {e.approver2?.user_nama_depan || '—'}
+                                {e.approver2_action === 'approved' && ' ✓'}
+                                {e.approver2_action === 'rejected' && ' ✗'}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                        {!e.approver2_id && (
+                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#f3f4f6', color: '#6b7280' }}>
+                            1 Approver
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Action panel (only if pending for me) */}
+                      {isPending && (
+                        <div className="space-y-2 pt-1 border-t" style={{ borderColor: theme.border }}>
+                          <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>
+                            Note (optional)
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="Add a note if necessary..."
+                            value={noteMap[e.id] || ''}
+                            onChange={ev => setNoteMap(prev => ({ ...prev, [e.id]: ev.target.value }))}
+                            style={{ ...inputStyle, resize: 'none' }}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAction(e.id, 'approved')}
+                              disabled={actionId === e.id || deletingId === e.id}
+                              className="flex-1 py-2 rounded-lg text-sm font-semibold"
+                              style={{ background: '#16a34a', color: '#fff', opacity: actionId === e.id ? 0.6 : 1 }}
+                            >
+                              ✅ Approve
+                            </button>
+                            <button
+                              onClick={() => handleAction(e.id, 'rejected')}
+                              disabled={actionId === e.id || deletingId === e.id}
+                              className="flex-1 py-2 rounded-lg text-sm font-semibold"
+                              style={{ background: '#dc2626', color: '#fff', opacity: actionId === e.id ? 0.6 : 1 }}
+                            >
+                              ❌ Reject
+                            </button>
+                            {/* Hapus — hanya tersedia jika masih pending (belum ada approver yang bertindak) */}
+                            {e.status === 'pending' && (
+                              <button
+                                onClick={() => handleDelete(e.id)}
+                                disabled={actionId === e.id || deletingId === e.id}
+                                className="px-3 py-2 rounded-lg text-sm font-semibold"
+                                style={{
+                                  background: theme.subtleBg,
+                                  color: '#dc2626',
+                                  border: '1px solid #dc2626',
+                                  opacity: deletingId === e.id ? 0.6 : 1,
+                                }}
+                                title="Delete submission"
+                              >
+                                {deletingId === e.id ? '...' : '🗑️'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* If already processed — show my note */}
+                      {!isPending && myNote && (
+                        <div className="text-xs p-2 rounded-lg" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+                          Your Note: {myNote}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

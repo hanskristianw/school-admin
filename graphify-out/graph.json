@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 130,
+      "community_name": "Module 130",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 130,
+      "community_name": "Module 130",
       "norm_label": "bcryptjs"
     },
     {
@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 130,
-      "community_name": "Module 130",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 130,
-      "community_name": "Module 130",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -23458,7 +23458,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-approvals/page.jsx",
-      "source_location": "L242",
+      "source_location": "L343",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_approvals_page_attendanceapprovalspage",
@@ -35537,5 +35537,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5a408580cfdf9eb20650632ec6c30be1c4bce908"
+  "built_at_commit": "26bd9f1091bb205bf5bcb44b78bca286c5509452"
 }

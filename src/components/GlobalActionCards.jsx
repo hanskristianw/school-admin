@@ -430,7 +430,7 @@ export default function GlobalActionCards() {
               {attApprovalCount}
             </div>
             <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textPrimary, marginTop: '2px' }}>
-              Pending Attendance Approvals
+              Pending HCM Approvals
             </div>
             <div style={{ fontSize: '11px', color: theme.textSecondary, marginTop: '1px' }}>
               Click to review & approve
