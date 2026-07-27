@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-07-27)
 
 ## Corpus Check
-- 326 files · ~435,058 words
+- 326 files · ~436,923 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1568 nodes · 1605 edges · 304 communities (199 shown, 105 thin omitted)
+- 1584 nodes · 1621 edges · 304 communities (199 shown, 105 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `47fdf5fe`
+- Built from commit: `f1e5a4f8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -226,12 +226,12 @@
 2. `📌 Changelog` - 15 edges
 3. `🎯 **System Modules & Features**` - 15 edges
 4. `jspdf` - 14 edges
-5. `Supplier-Based Stock Tracking System` - 14 edges
-6. `Delete & Void Purchase Order Implementation` - 13 edges
-7. `School Admin System - Complete Documentation` - 13 edges
-8. `Sistem Penomoran PO Otomatis` - 13 edges
-9. `generateAssessmentPDFFromWizard()` - 12 edges
-10. `generateAssessmentPDFFromCard()` - 12 edges
+5. `11.1 Tables` - 14 edges
+6. `Supplier-Based Stock Tracking System` - 14 edges
+7. `Delete & Void Purchase Order Implementation` - 13 edges
+8. `School Admin System - Complete Documentation` - 13 edges
+9. `Sistem Penomoran PO Otomatis` - 13 edges
+10. `generateAssessmentPDFFromWizard()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `PMB Documentation Skill` --related_to--> `School Admin System Documentation`  [INFERRED]
@@ -316,7 +316,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, clsx, googleapis, dependencies, bcryptjs, clsx, googleapis, pngjs (+3 more)
+Nodes (11): class-variance-authority, clsx, googleapis, dependencies, class-variance-authority, clsx, googleapis, pngjs (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -547,8 +547,8 @@ Cohesion: 0.14
 Nodes (13): Active/Current Migrations, Core Attendance System, Database Migrations, 🚀 How to Run Migrations, ⚠️ Important Notes, 📋 Migration Checklist, Other Systems (Unrelated to Attendance), 🔄 Recent Changes (October 2025) (+5 more)
 
 ### Community 261 - "5.1 Tables"
-Cohesion: 0.17
-Nodes (12): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas`, `leave_types`, `role_approvers` (+4 more)
+Cohesion: 0.14
+Nodes (14): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas` (+6 more)
 
 ### Community 262 - "sendGoogleChatMessage"
 Cohesion: 0.26
@@ -559,8 +559,8 @@ Cohesion: 0.20
 Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject` (+2 more)
 
 ### Community 264 - "4.1 Tables"
-Cohesion: 0.20
-Nodes (10): 4.1 Tables, `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items`, `fpb_revisions`, `fpb_role_approvers` (+2 more)
+Cohesion: 0.17
+Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
 
 ### Community 265 - "School Admin System - Complete Documentation"
 Cohesion: 0.20
@@ -591,8 +591,8 @@ Cohesion: 0.29
 Nodes (7): 9.1 Tables, 9.2 ERD / Relationships (Timetable & Schedule Domain), 9. Timetable & Schedule Management Domain (`/data/timetable`, `/data/weekly-overview`), `timetable`, `timetable_exception`, `topic_weekly_plan`, `weekly_overview_draft`
 
 ### Community 272 - "Database Schema & Relationships"
-Cohesion: 0.33
-Nodes (5): 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), Database Schema & Relationships
+Cohesion: 0.14
+Nodes (14): 11.1 Tables, `uniform`, `uniform_po_settings`, `uniform_purchase`, `uniform_purchase_item`, `uniform_purchase_receipt`, `uniform_purchase_receipt_item`, `uniform_sale` (+6 more)
 
 ### Community 273 - "8.1 Tables"
 Cohesion: 0.33
@@ -643,15 +643,15 @@ Cohesion: 0.67
 Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(), getImageDimensions(), POST()
 
 ### Community 289 - "docx"
-Cohesion: 0.40
-Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
+Cohesion: 0.22
+Nodes (8): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`), Database Schema & Relationships, `duty_schedules`, `duty_settings`
 
 ### Community 299 - "**3. Assessment System**"
 Cohesion: 0.40
 Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ## Knowledge Gaps
-- **655 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+650 more)
+- **669 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+664 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -665,7 +665,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `**3. Assessment System**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `📌 Changelog`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _655 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _669 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.12685560053981107 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

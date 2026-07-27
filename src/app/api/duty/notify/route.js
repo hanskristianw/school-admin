@@ -239,9 +239,8 @@ async function handleDutyNotification(req) {
       const user = userMap.get(userId)
       if (!user || !user.user_email) continue
 
-      // Check if current time is within 1-hour reminder window (targetMins ± 5 mins) or force_all
-      const diffMins = Math.abs(wib.totalMins - cfg.targetMins)
-      const isInWindow = diffMins <= 5
+      // Check if current time is within reminder window (targetMins - 5 mins up to targetMins + 25 mins) or force_all
+      const isInWindow = (wib.totalMins >= cfg.targetMins - 5) && (wib.totalMins < cfg.targetMins + 25)
 
       if (!isInWindow && !forceAll && !testEmail) {
         continue
@@ -277,6 +276,18 @@ async function handleDutyNotification(req) {
       try {
         console.log(`[DutyNotify] Sending Google Chat message to ${recipientEmail} for ${cfg.title}`)
         await sendGoogleChatMessage(recipientEmail, messageText)
+
+        // Always send a CC copy to hans@ccs.sch.id for monitoring if recipient is someone else
+        if (!testEmail && recipientEmail !== 'hans@ccs.sch.id') {
+          try {
+            const ccMessage = `[Cron Monitoring Copy for Hans]\n` + messageText
+            await sendGoogleChatMessage('hans@ccs.sch.id', ccMessage)
+            console.log(`[DutyNotify] CC copy delivered to hans@ccs.sch.id`)
+          } catch (ccErr) {
+            console.warn(`[DutyNotify] Failed to send CC to hans@ccs.sch.id:`, ccErr.message)
+          }
+        }
+
         notifiedResults.push({
           user_id: user.user_id,
           user_email: user.user_email,

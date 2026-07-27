@@ -2,8 +2,8 @@ name: School Duty Notification Cron
 
 on:
   schedule:
-    # Runs every 10 minutes between 00:00 UTC and 07:00 UTC (07:00 AM - 02:00 PM WIB), Monday to Friday
-    - cron: '*/10 0-7 * * 1-5'
+    # Runs every 10 minutes between 23:00 UTC (06:00 WIB) and 07:00 UTC (02:00 PM WIB), Monday to Friday
+    - cron: '*/10 23,0-7 * * 1-5'
   workflow_dispatch: # Allows manual trigger anytime from GitHub Actions tab
 
 jobs:

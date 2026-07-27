@@ -1322,4 +1322,295 @@ erDiagram
     }
 ```
 
+## 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)
+
+This domain manages uniform catalog master data (`/data/uniform`), size master data (`/data/uniform-size`), pricing/HPP variants (`uniform_variant`), unit assignments (`uniform_unit`), supplier procurement (PO & Goods Receipts under `/stock/uniform/*`), student sales transactions (`/sales/uniform`), and multi-supplier inventory stock ledger.
+
+### 11.1 Tables
+
+#### `uniform`
+Master table for uniform items catalog.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `uniform_id` | `SERIAL` | Primary Key |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` (Legacy column, replaced by `uniform_unit` junction table) |
+| `uniform_code` | `VARCHAR` | Unique uniform item code (e.g. `COR`, `KOR`) |
+| `uniform_name` | `VARCHAR` | Full name of the uniform |
+| `gender` | `VARCHAR` | Target gender (`unisex`, `male`, `female`) |
+| `notes` | `TEXT` | Additional notes or specifications |
+| `image_url` | `TEXT` | URL to uniform image asset |
+| `is_active` | `BOOLEAN` | Active state flag (Default: `true`) |
+| `is_universal` | `BOOLEAN` | Whether uniform applies to all units (`true` = universal, `false` = unit specific) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `uniform_size`
+Master table for uniform sizes.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `size_id` | `SERIAL` | Primary Key |
+| `size_name` | `VARCHAR` | Size label (e.g. `S`, `M`, `L`, `XL`, `1`, `2`) |
+| `display_order` | `INTEGER` | Order position for UI sorting |
+| `is_active` | `BOOLEAN` | Active state flag (Default: `true`) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `uniform_unit`
+Junction table mapping uniforms to specific school units (for non-universal uniforms).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `uniform_id` | `INTEGER` | Foreign Key to `uniform(uniform_id)` |
+| `unit_id` | `INTEGER` | Foreign Key to `unit(unit_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+
+#### `uniform_variant`
+Defines price and cost (HPP) for each uniform + size combination.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `variant_id` | `SERIAL` | Primary Key |
+| `uniform_id` | `INTEGER` | FK to `uniform(uniform_id)` |
+| `size_id` | `INTEGER` | FK to `uniform_size(size_id)` |
+| `hpp` | `DECIMAL` | Cost price (Harga Pokok Penjualan) |
+| `price` | `DECIMAL` | Retail selling price |
+| `sku` | `VARCHAR` | Stock Keeping Unit code |
+| `barcode` | `VARCHAR` | Barcode identifier |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `uniform_supplier`
+Master table for uniform manufacturers / vendors.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `supplier_id` | `SERIAL` | Primary Key |
+| `supplier_code` | `VARCHAR` | Vendor code (e.g. `001`) |
+| `supplier_name` | `VARCHAR` | Full vendor/company name |
+| `contact_person` | `VARCHAR` | Contact person name |
+| `phone` | `VARCHAR` | Phone number |
+| `email` | `VARCHAR` | Email address |
+| `address` | `TEXT` | Street address |
+| `city` | `VARCHAR` | City |
+| `province` | `VARCHAR` | Province |
+| `postal_code` | `VARCHAR` | Postal code |
+| `notes` | `TEXT` | Additional notes |
+| `is_active` | `BOOLEAN` | Active state flag (Default: `true`) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `uniform_sale`
+Header table for student uniform sales transactions (`/sales/uniform`).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `sale_id` | `SERIAL` | Primary Key |
+| `user_id` | `INTEGER` | FK to `users(user_id)` (Student recipient) |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` |
+| `sale_date` | `TIMESTAMPTZ` | Transaction timestamp |
+| `status` | `VARCHAR` | Status: `pending`, `paid`, `voided` |
+| `payment_method` | `VARCHAR` | Payment method: `cash`, `transfer`, `free` |
+| `receipt_url` | `TEXT` | URL to transfer receipt proof image |
+| `total_amount` | `DECIMAL` | Total sale price amount |
+| `total_cost` | `DECIMAL` | Total HPP cost amount |
+| `pickup_date` | `DATE` | Date when uniform was picked up |
+| `processed_by` | `INTEGER` | FK to `users(user_id)` (Staff who recorded sale) |
+| `is_voided` | `BOOLEAN` | Whether transaction was voided |
+| `voided_at` | `TIMESTAMPTZ` | When transaction was voided |
+| `voided_by` | `INTEGER` | FK to `users(user_id)` (Staff who voided) |
+| `void_reason` | `TEXT` | Reason for voiding |
+| `notes` | `TEXT` | Additional notes |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `uniform_sale_item`
+Line items within a uniform sale transaction.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `item_id` | `SERIAL` | Primary Key |
+| `sale_id` | `INTEGER` | FK to `uniform_sale(sale_id)` |
+| `uniform_id` | `INTEGER` | FK to `uniform(uniform_id)` |
+| `size_id` | `INTEGER` | FK to `uniform_size(size_id)` |
+| `qty` | `INTEGER` | Quantity sold |
+| `unit_price` | `DECIMAL` | Price per unit at time of sale |
+| `unit_hpp` | `DECIMAL` | HPP cost per unit at time of sale |
+| `subtotal` | `DECIMAL` | Line item total amount (`qty * unit_price`) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+
+#### `uniform_stock_txn`
+Inventory ledger recording stock movements across suppliers.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `txn_id` | `SERIAL` | Primary Key |
+| `uniform_id` | `INTEGER` | FK to `uniform(uniform_id)` |
+| `size_id` | `INTEGER` | FK to `uniform_size(size_id)` |
+| `supplier_id` | `INTEGER` | FK to `uniform_supplier(supplier_id)` (Null = initial/legacy stock) |
+| `qty_delta` | `INTEGER` | Quantity change (+ for in, - for out) |
+| `txn_type` | `VARCHAR` | Movement type: `init`, `purchase_in`, `sale`, `adj_in`, `adj_out`, `void` |
+| `ref_table` | `VARCHAR` | Reference table (`uniform_sale`, `uniform_purchase_receipt`, `manual`) |
+| `ref_id` | `INTEGER` | Primary key of reference record |
+| `notes` | `TEXT` | Movement justification or note |
+| `created_by` | `INTEGER` | FK to `users(user_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+
+#### `uniform_purchase`
+Header table for Purchase Orders (PO) to suppliers (`/stock/uniform/po`).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `purchase_id` | `SERIAL` | Primary Key |
+| `po_number` | `VARCHAR` | Unique PO number (e.g. `PO/CCS/III/26/0001`) |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` |
+| `supplier_id` | `INTEGER` | FK to `uniform_supplier(supplier_id)` |
+| `purchase_date` | `DATE` | Order date |
+| `invoice_no` | `VARCHAR` | Supplier invoice / reference number |
+| `status` | `VARCHAR` | Status: `draft`, `submitted`, `approved`, `posted` |
+| `notes` | `TEXT` | Order notes |
+| `created_by` | `INTEGER` | FK to `users(user_id)` |
+| `is_voided` | `BOOLEAN` | Void flag |
+| `voided_at` | `TIMESTAMPTZ` | Void timestamp |
+| `voided_by` | `INTEGER` | FK to `users(user_id)` |
+| `void_reason` | `TEXT` | Reason for voiding |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `uniform_purchase_item`
+Line items in a Purchase Order.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `item_id` | `SERIAL` | Primary Key |
+| `purchase_id` | `INTEGER` | FK to `uniform_purchase(purchase_id)` |
+| `uniform_id` | `INTEGER` | FK to `uniform(uniform_id)` |
+| `size_id` | `INTEGER` | FK to `uniform_size(size_id)` |
+| `qty` | `INTEGER` | Quantity ordered |
+| `unit_cost` | `DECIMAL` | Unit purchase cost |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+
+#### `uniform_purchase_receipt`
+Header table for Goods Receipts against a PO (`/stock/uniform/receipt`).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `receipt_id` | `SERIAL` | Primary Key |
+| `purchase_id` | `INTEGER` | FK to `uniform_purchase(purchase_id)` |
+| `receipt_date` | `DATE` | Date goods were received |
+| `received_by` | `INTEGER` | FK to `users(user_id)` |
+| `notes` | `TEXT` | Receipt notes |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+
+#### `uniform_purchase_receipt_item`
+Line items in a Goods Receipt.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `receipt_item_id` | `SERIAL` | Primary Key |
+| `receipt_id` | `INTEGER` | FK to `uniform_purchase_receipt(receipt_id)` |
+| `purchase_item_id` | `INTEGER` | FK to `uniform_purchase_item(item_id)` |
+| `qty_received` | `INTEGER` | Quantity accepted |
+| `qty_rejected` | `INTEGER` | Quantity rejected/damaged |
+| `reject_reason` | `TEXT` | Reason for rejection |
+| `unit_cost` | `DECIMAL` | Unit cost price |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+
+#### `uniform_po_settings`
+Configuration table for PO numbering sequences.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `prefix` | `VARCHAR` | PO Prefix (e.g. `PO/CCS`) |
+| `last_sequence` | `INTEGER` | Counter for PO sequence number |
+| `last_reset_date` | `DATE` | Date sequence was last reset |
+| `notes` | `TEXT` | Setup notes |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+### 11.2 ERD / Relationships (Uniform & Stock Domain)
+
+```mermaid
+erDiagram
+    uniform ||--o{ uniform_variant : "has_sizes"
+    uniform_size ||--o{ uniform_variant : "variant_size"
+    uniform ||--o{ uniform_unit : "unit_mapping"
+    unit ||--o{ uniform_unit : "for_unit"
+
+    users ||--o{ uniform_sale : "student_recipient"
+    users ||--o{ uniform_sale : "processed_by_staff"
+    unit ||--o{ uniform_sale : "student_unit"
+    uniform_sale ||--o{ uniform_sale_item : "contains_items"
+    uniform ||--o{ uniform_sale_item : "item_uniform"
+    uniform_size ||--o{ uniform_sale_item : "item_size"
+
+    uniform_supplier ||--o{ uniform_purchase : "supplied_by"
+    uniform_purchase ||--o{ uniform_purchase_item : "contains_po_items"
+    uniform_purchase ||--o{ uniform_purchase_receipt : "received_via"
+    uniform_purchase_receipt ||--o{ uniform_purchase_receipt_item : "receipt_items"
+
+    uniform ||--o{ uniform_stock_txn : "stock_movement"
+    uniform_size ||--o{ uniform_stock_txn : "stock_size"
+    uniform_supplier ||--o{ uniform_stock_txn : "supplier_origin"
+
+    uniform {
+        int uniform_id PK
+        string uniform_code
+        string uniform_name
+        boolean is_universal
+    }
+
+    uniform_size {
+        int size_id PK
+        string size_name
+        int display_order
+    }
+
+    uniform_variant {
+        int variant_id PK
+        int uniform_id FK
+        int size_id FK
+        decimal hpp
+        decimal price
+    }
+
+    uniform_supplier {
+        int supplier_id PK
+        string supplier_code
+        string supplier_name
+    }
+
+    uniform_sale {
+        int sale_id PK
+        int user_id FK
+        int unit_id FK
+        string status
+        string payment_method
+        decimal total_amount
+        date pickup_date
+    }
+
+    uniform_sale_item {
+        int item_id PK
+        int sale_id FK
+        int uniform_id FK
+        int size_id FK
+        int qty
+        decimal unit_price
+    }
+
+    uniform_stock_txn {
+        int txn_id PK
+        int uniform_id FK
+        int size_id FK
+        int supplier_id FK
+        int qty_delta
+        string txn_type
+        string ref_table
+    }
+```
+
 

@@ -11205,8 +11205,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "database_schema.md"
     },
     {
@@ -11216,8 +11216,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema_database_schema_relationships",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "database schema & relationships"
     },
     {
@@ -11513,8 +11513,8 @@
       "source_location": "L479",
       "_origin": "ast",
       "id": "database_schema_4_purchasing_budgeting_domain_data_fpb",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 264,
+      "community_name": "4.1 Tables",
       "norm_label": "4. purchasing & budgeting domain (/data/fpb)"
     },
     {
@@ -11634,8 +11634,8 @@
       "source_location": "L587",
       "_origin": "ast",
       "id": "database_schema_4_2_erd_relationships_purchasing_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 264,
+      "community_name": "4.1 Tables",
       "norm_label": "4.2 erd / relationships (purchasing domain)"
     },
     {
@@ -11645,8 +11645,8 @@
       "source_location": "L640",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11788,8 +11788,8 @@
       "source_location": "L796",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -12099,6 +12099,182 @@
       "community": 289,
       "community_name": "docx",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
+    },
+    {
+      "label": "11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1325",
+      "_origin": "ast",
+      "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
+      "community": 289,
+      "community_name": "docx",
+      "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)"
+    },
+    {
+      "label": "11.1 Tables",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1329",
+      "_origin": "ast",
+      "id": "database_schema_11_1_tables",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "11.1 tables"
+    },
+    {
+      "label": "`uniform`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1331",
+      "_origin": "ast",
+      "id": "database_schema_uniform",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform`"
+    },
+    {
+      "label": "`uniform_size`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1348",
+      "_origin": "ast",
+      "id": "database_schema_uniform_size",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_size`"
+    },
+    {
+      "label": "`uniform_unit`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1360",
+      "_origin": "ast",
+      "id": "database_schema_uniform_unit",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_unit`"
+    },
+    {
+      "label": "`uniform_variant`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1369",
+      "_origin": "ast",
+      "id": "database_schema_uniform_variant",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_variant`"
+    },
+    {
+      "label": "`uniform_supplier`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1384",
+      "_origin": "ast",
+      "id": "database_schema_uniform_supplier",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_supplier`"
+    },
+    {
+      "label": "`uniform_sale`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1404",
+      "_origin": "ast",
+      "id": "database_schema_uniform_sale",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_sale`"
+    },
+    {
+      "label": "`uniform_sale_item`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1428",
+      "_origin": "ast",
+      "id": "database_schema_uniform_sale_item",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_sale_item`"
+    },
+    {
+      "label": "`uniform_stock_txn`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1443",
+      "_origin": "ast",
+      "id": "database_schema_uniform_stock_txn",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_stock_txn`"
+    },
+    {
+      "label": "`uniform_purchase`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1460",
+      "_origin": "ast",
+      "id": "database_schema_uniform_purchase",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_purchase`"
+    },
+    {
+      "label": "`uniform_purchase_item`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1481",
+      "_origin": "ast",
+      "id": "database_schema_uniform_purchase_item",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_purchase_item`"
+    },
+    {
+      "label": "`uniform_purchase_receipt`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1495",
+      "_origin": "ast",
+      "id": "database_schema_uniform_purchase_receipt",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_purchase_receipt`"
+    },
+    {
+      "label": "`uniform_purchase_receipt_item`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1507",
+      "_origin": "ast",
+      "id": "database_schema_uniform_purchase_receipt_item",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_purchase_receipt_item`"
+    },
+    {
+      "label": "`uniform_po_settings`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1521",
+      "_origin": "ast",
+      "id": "database_schema_uniform_po_settings",
+      "community": 272,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "`uniform_po_settings`"
+    },
+    {
+      "label": "11.2 ERD / Relationships (Uniform & Stock Domain)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1534",
+      "_origin": "ast",
+      "id": "database_schema_11_2_erd_relationships_uniform_stock_domain",
+      "community": 289,
+      "community_name": "docx",
+      "norm_label": "11.2 erd / relationships (uniform & stock domain)"
     },
     {
       "label": "DELETE_VOID_IMPLEMENTATION.md",
@@ -29383,6 +29559,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1325",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_database_schema_relationships",
+      "target": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
@@ -30246,6 +30433,171 @@
       "_origin": "ast",
       "source": "database_schema_10_1_tables",
       "target": "database_schema_duty_settings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1329",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
+      "target": "database_schema_11_1_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1534",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
+      "target": "database_schema_11_2_erd_relationships_uniform_stock_domain",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1331",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1521",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_po_settings",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1460",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_purchase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1481",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_purchase_item",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1495",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_purchase_receipt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1507",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_purchase_receipt_item",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1404",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_sale",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1428",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_sale_item",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1348",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_size",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1443",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_stock_txn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1384",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_supplier",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1360",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_unit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1369",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_1_tables",
+      "target": "database_schema_uniform_variant",
       "confidence_score": 1.0
     },
     {
@@ -35185,5 +35537,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "47fdf5fec34984a98b928f9261c719de4ba34879"
+  "built_at_commit": "f1e5a4f84420b2bb529ed38640310a2622230770"
 }
