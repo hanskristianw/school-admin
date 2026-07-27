@@ -2768,8 +2768,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_free_solid_svg_icons",
-      "community": 130,
-      "community_name": "Module 130",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2779,8 +2779,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "fortawesome_free_solid_svg_icons",
-      "community": 130,
-      "community_name": "Module 130",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 300,
-      "community_name": "class-variance-authority",
+      "community": 130,
+      "community_name": "Module 130",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 300,
-      "community_name": "class-variance-authority",
+      "community": 130,
+      "community_name": "Module 130",
       "norm_label": "browser-image-compression"
     },
     {
@@ -24614,7 +24614,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/door_greeter/page.jsx",
-      "source_location": "L219",
+      "source_location": "L265",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_door_greeter_page_dutyschedulepage",
@@ -35537,5 +35537,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "f1e5a4f84420b2bb529ed38640310a2622230770"
+  "built_at_commit": "5a408580cfdf9eb20650632ec6c30be1c4bce908"
 }

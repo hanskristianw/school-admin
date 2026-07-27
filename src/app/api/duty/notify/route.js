@@ -61,14 +61,13 @@ async function handleDutyNotification(req) {
 
     console.log(`[DutyNotify] Checking duty notifications for ${todayStr} at ${wib.timeStr} WIB`)
 
-    // 1. Query today's duty schedule
-    const { data: schedule, error: schedErr } = await supabaseAdmin
+    // 1. Query today's duty schedules (across all units)
+    const { data: schedules, error: schedErr } = await supabaseAdmin
       .from('duty_schedules')
       .select('*')
       .eq('duty_date', todayStr)
-      .single()
 
-    if (schedErr || !schedule) {
+    if (schedErr || !schedules || schedules.length === 0) {
       return NextResponse.json({
         success: true,
         message: `No duty schedule found for date ${todayStr}`,
@@ -203,11 +202,9 @@ async function handleDutyNotification(req) {
       }
     ]
 
-    // 3. Collect assigned user IDs to fetch emails
+    // 3. Collect assigned user IDs across ALL schedules for today
     const assignedUserIds = [...new Set(
-      dutyConfigs
-        .map(c => schedule[c.key])
-        .filter(id => id && typeof id === 'number')
+      schedules.flatMap(sch => dutyConfigs.map(c => sch[c.key])).filter(id => id && typeof id === 'number')
     )]
 
     if (assignedUserIds.length === 0) {
@@ -226,38 +223,35 @@ async function handleDutyNotification(req) {
     if (userErr) throw userErr
 
     const userMap = new Map((users || []).map(u => [u.user_id, u]))
-
     const notifiedResults = []
-
     const testEmail  = searchParams.get('test_email') || (searchParams.get('test') === 'true' ? 'hans@ccs.sch.id' : null)
 
-    // 4. Evaluate each duty slot and send Google Chat notification 1 hour before
-    for (const cfg of dutyConfigs) {
-      const userId = schedule[cfg.key]
-      if (!userId) continue
+    // 4. Evaluate each schedule (per unit) and each duty slot
+    for (const schedule of schedules) {
+      for (const cfg of dutyConfigs) {
+        const userId = schedule[cfg.key]
+        if (!userId) continue
 
-      const user = userMap.get(userId)
-      if (!user || !user.user_email) continue
+        const user = userMap.get(userId)
+        if (!user || !user.user_email) continue
 
-      // Check if current time is within reminder window (targetMins - 5 mins up to targetMins + 25 mins) or force_all
-      const isInWindow = (wib.totalMins >= cfg.targetMins - 5) && (wib.totalMins < cfg.targetMins + 25)
+        // Check if current time is within reminder window (targetMins - 5 mins up to targetMins + 25 mins) or force_all
+        const isInWindow = (wib.totalMins >= cfg.targetMins - 5) && (wib.totalMins < cfg.targetMins + 25)
 
-      if (!isInWindow && !forceAll && !testEmail) {
-        continue
-      }
+        if (!isInWindow && !forceAll && !testEmail) {
+          continue
+        }
 
-      // If testing mode is active, strictly send test notifications to hans@ccs.sch.id ONLY
-      const recipientEmail = testEmail || user.user_email
+        // If testing mode is active, strictly send test notifications to hans@ccs.sch.id ONLY
+        const recipientEmail = testEmail || user.user_email
+        const name = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
+        const remMins = cfg.reminderMins || 60
+        const remLabel = remMins === 60 ? 'in 1 hour' : (remMins >= 60 ? `in ${Math.floor(remMins / 60)} hour(s)` : `in ${remMins} mins`)
 
-      const name = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
-
-      const remMins = cfg.reminderMins || 60
-      const remLabel = remMins === 60 ? 'in 1 hour' : (remMins >= 60 ? `in ${Math.floor(remMins / 60)} hour(s)` : `in ${remMins} mins`)
-
-      let messageText = ''
-      if (cfg.type === 'devotion') {
-        const teacherPrayed = schedule.teacher_to_be_prayed || '—'
-        const studentPrayed = schedule.student_to_be_prayed || '—'
+        let messageText = ''
+        if (cfg.type === 'devotion') {
+          const teacherPrayed = schedule.teacher_to_be_prayed || '—'
+          const studentPrayed = schedule.student_to_be_prayed || '—'
 
         messageText = `🔔 *REMINDER: Morning Devotion Duty (${remLabel})*\n\n` +
           `Hello *${name}*,\n` +
@@ -305,6 +299,7 @@ async function handleDutyNotification(req) {
         })
       }
     }
+  }
 
     return NextResponse.json({
       success: true,

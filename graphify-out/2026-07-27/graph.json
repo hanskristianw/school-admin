@@ -2768,8 +2768,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_free_solid_svg_icons",
-      "community": 130,
-      "community_name": "Module 130",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2779,8 +2779,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "fortawesome_free_solid_svg_icons",
-      "community": 130,
-      "community_name": "Module 130",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 290,
-      "community_name": "dotenv",
+      "community": 130,
+      "community_name": "Module 130",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 290,
-      "community_name": "dotenv",
+      "community": 130,
+      "community_name": "Module 130",
       "norm_label": "bcryptjs"
     },
     {
@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 300,
-      "community_name": "class-variance-authority",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 300,
-      "community_name": "class-variance-authority",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 290,
+      "community_name": "dotenv",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 290,
+      "community_name": "dotenv",
       "norm_label": "class-variance-authority"
     },
     {
@@ -12101,15 +12101,15 @@
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
-      "label": "11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`)",
+      "label": "11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)",
       "file_type": "document",
       "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L1325",
       "_origin": "ast",
-      "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform",
+      "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
       "community": 289,
       "community_name": "docx",
-      "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/*`)"
+      "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)"
     },
     {
       "label": "11.1 Tables",
@@ -24614,7 +24614,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/door_greeter/page.jsx",
-      "source_location": "L219",
+      "source_location": "L249",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_door_greeter_page_dutyschedulepage",
@@ -29563,7 +29563,7 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "database_schema_database_schema_relationships",
-      "target": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform",
+      "target": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
       "confidence_score": 1.0
     },
     {
@@ -30442,7 +30442,7 @@
       "source_location": "L1329",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform",
+      "source": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
       "target": "database_schema_11_1_tables",
       "confidence_score": 1.0
     },
@@ -30453,7 +30453,7 @@
       "source_location": "L1534",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform",
+      "source": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
       "target": "database_schema_11_2_erd_relationships_uniform_stock_domain",
       "confidence_score": 1.0
     },
@@ -35537,5 +35537,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "f1e5a4f84420b2bb529ed38640310a2622230770"
+  "built_at_commit": "5a408580cfdf9eb20650632ec6c30be1c4bce908"
 }

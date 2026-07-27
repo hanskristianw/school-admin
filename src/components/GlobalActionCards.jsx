@@ -297,7 +297,7 @@ export default function GlobalActionCards() {
       try {
         const { data, error } = await supabase
           .from('duty_schedules')
-          .select('*')
+          .select('*, unit(unit_id, unit_name)')
           .or(`devotion_leader_user_id.eq.${userId},greeter_1st_floor_user_id.eq.${userId},greeter_2nd_floor_user_id.eq.${userId},break_canteen_user_id.eq.${userId},break_pe_field_user_id.eq.${userId},break_2nd_floor_user_id.eq.${userId},break_3rd_floor_user_id.eq.${userId},lunch_canteen_user_id.eq.${userId},lunch_pe_field_user_id.eq.${userId},lunch_2nd_floor_user_id.eq.${userId},lunch_3rd_floor_user_id.eq.${userId}`)
           .order('duty_date', { ascending: true })
 
@@ -518,8 +518,11 @@ export default function GlobalActionCards() {
                 <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textPrimary, lineHeight: 1.2 }}>
                   Duty & Devotion
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#10b981', marginTop: '2px' }}>
-                  {formatDutyDateLabel(currentDutyRow.duty_date)}
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#10b981', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <span>{formatDutyDateLabel(currentDutyRow.duty_date)}</span>
+                  <span style={{ padding: '1px 7px', borderRadius: '4px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#047857', fontWeight: 700, fontSize: '10px' }}>
+                    🏫 {currentDutyRow.unit?.unit_name || 'MYP'}
+                  </span>
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-07-27)
 
 ## Corpus Check
-- 326 files · ~436,923 words
+- 326 files · ~437,414 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f1e5a4f8`
+- Built from commit: `5a408580`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -316,7 +316,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): class-variance-authority, clsx, googleapis, dependencies, class-variance-authority, clsx, googleapis, pngjs (+3 more)
+Nodes (11): browser-image-compression, clsx, googleapis, dependencies, browser-image-compression, clsx, googleapis, pngjs (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -644,7 +644,7 @@ Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(),
 
 ### Community 289 - "docx"
 Cohesion: 0.22
-Nodes (8): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`), Database Schema & Relationships, `duty_schedules`, `duty_settings`
+Nodes (8): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`), Database Schema & Relationships, `duty_schedules`, `duty_settings`
 
 ### Community 299 - "**3. Assessment System**"
 Cohesion: 0.40
@@ -658,7 +658,7 @@ Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 132`, `Module 130`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `Module 156`, `browser-image-compression`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `class-variance-authority`, `driver.js`, `@fortawesome/react-fontawesome`, `Module 127`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 130`, `Module 131`, `Module 132`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `Module 156`, `browser-image-compression`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `class-variance-authority`, `driver.js`, `@fortawesome/react-fontawesome`, `Module 127`?**
   _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._

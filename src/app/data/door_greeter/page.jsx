@@ -39,6 +39,9 @@ export default function DutySchedulePage() {
   const [copiedSql, setCopiedSql]       = useState(false)
   const [years, setYears]               = useState([])
   const [selectedYearId, setSelectedYearId] = useState('')
+  const [schoolUnits, setSchoolUnits]   = useState([])
+  const [selectedUnitId, setSelectedUnitId] = useState('')
+  const [roles, setRoles]               = useState([])
   const [teachers, setTeachers]         = useState([])
   
   // Date filters
@@ -119,20 +122,32 @@ export default function DutySchedulePage() {
     }
   }
 
-  // ── 1. Fetch initial metadata (Years & Teachers) ───────────────────────────
+  // ── 1. Fetch initial metadata (Years, School Units, Roles & Users) ───────────
   useEffect(() => {
     fetchDutySettings()
     const fetchMeta = async () => {
       try {
         setLoading(true)
-        const [yRes, tRes] = await Promise.all([
+        const [yRes, tRes, uRes, rRes] = await Promise.all([
           supabase.from('year').select('year_id, year_name, start_date, end_date').order('start_date', { ascending: false }),
-          supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').eq('is_active', true).order('user_nama_depan')
+          supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_unit_id, user_role_id').eq('is_active', true).order('user_nama_depan'),
+          supabase.from('unit').select('unit_id, unit_name, is_school').order('unit_name'),
+          supabase.from('role').select('role_id, role_name')
         ])
 
         if (yRes.data && yRes.data.length > 0) {
           setYears(yRes.data)
           setSelectedYearId(String(yRes.data[0].year_id))
+        }
+
+        if (uRes.data && uRes.data.length > 0) {
+          setSchoolUnits(uRes.data)
+          const mypUnit = uRes.data.find(u => Number(u.unit_id) === 2)
+          setSelectedUnitId(String(mypUnit ? mypUnit.unit_id : uRes.data[0].unit_id))
+        }
+
+        if (rRes.data) {
+          setRoles(rRes.data)
         }
 
         if (tRes.data) {
@@ -203,28 +218,61 @@ export default function DutySchedulePage() {
     }
   }, [selectedYearId, filterMonth, fetchSchedules])
 
-  // ── Teacher Map for quick lookup ───────────────────────────────────────────
+  // ── User Map for quick lookup with Unit & Role Badges ─────────────────────────
   const teacherOptions = useMemo(() => {
-    return teachers.map(t => ({
-      id: t.user_id,
-      name: `${t.user_nama_depan || ''} ${t.user_nama_belakang || ''}`.trim()
-    }))
-  }, [teachers])
+    const unitMap = new Map((schoolUnits || []).map(u => [u.unit_id, u.unit_name]))
+    const roleMap = new Map((roles || []).map(r => [r.role_id, r.role_name]))
 
-  // Filtered rows for UI search
+    return (teachers || []).map(t => {
+      const uName = unitMap.get(t.user_unit_id)
+      const rName = roleMap.get(t.user_role_id)
+      const isCurrentUnit = String(t.user_unit_id) === String(selectedUnitId)
+      const nameStr = `${t.user_nama_depan || ''} ${t.user_nama_belakang || ''}`.trim()
+
+      let infoStr = ''
+      if (uName && rName) infoStr = ` (${uName} · ${rName})`
+      else if (uName) infoStr = ` (${uName})`
+      else if (rName) infoStr = ` (${rName})`
+
+      return {
+        id: t.user_id,
+        name: `${isCurrentUnit ? '⭐ ' : ''}${nameStr}${infoStr}`,
+        unit_id: t.user_unit_id,
+        role_id: t.user_role_id,
+        isCurrentUnit
+      }
+    }).sort((a, b) => (b.isCurrentUnit ? 1 : 0) - (a.isCurrentUnit ? 1 : 0))
+  }, [teachers, schoolUnits, roles, selectedUnitId])
+
+  // Filtered rows for active Unit Tab & UI search
   const filteredRows = useMemo(() => {
-    if (!searchQuery.trim()) return rows
-    const q = searchQuery.toLowerCase().trim()
-    return rows.filter(r => {
-      const { formatted, dayName } = formatDateLabel(r.duty_date)
-      const fields = [
-        formatted, dayName,
-        r.teacher_to_be_prayed, r.student_to_be_prayed, r.note
-      ].map(v => (v || '').toLowerCase())
+    let result = rows
 
-      return fields.some(f => f.includes(q))
-    })
-  }, [rows, searchQuery])
+    if (selectedUnitId) {
+      result = result.filter(r => {
+        if (r.unit_id !== undefined && r.unit_id !== null) {
+          return String(r.unit_id) === String(selectedUnitId)
+        }
+        // Legacy rows without unit_id: assign to unit_id = 2 (MYP) as default
+        const defaultUnit = schoolUnits.find(u => Number(u.unit_id) === 2)?.unit_id || schoolUnits[0]?.unit_id
+        return !defaultUnit || String(selectedUnitId) === String(defaultUnit)
+      })
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      result = result.filter(r => {
+        const { formatted, dayName } = formatDateLabel(r.duty_date)
+        const fields = [
+          formatted, dayName,
+          r.teacher_to_be_prayed, r.student_to_be_prayed, r.note
+        ].map(v => (v || '').toLowerCase())
+
+        return fields.some(f => f.includes(q))
+      })
+    }
+    return result
+  }, [rows, selectedUnitId, schoolUnits, searchQuery])
 
   // ── Cell Change Handler ────────────────────────────────────────────────────
   const handleCellChange = (rowId, field, value) => {
@@ -245,16 +293,28 @@ export default function DutySchedulePage() {
     setSaving(true)
     try {
       const rowsToSave = rows.filter(r => editedRowIds.has(r.id))
-      const updates = rowsToSave.map(r => {
+      const unitIdNum = selectedUnitId ? parseInt(selectedUnitId, 10) : null
+      const updates = rowsToSave.map(async r => {
         const { id, ...data } = r
-        // Ensure year_id is set
+        // Ensure year_id and unit_id are set
         data.year_id = parseInt(selectedYearId, 10)
+        data.unit_id = unitIdNum
         data.updated_at = new Date().toISOString()
         
         if (typeof id === 'number' && id > 0) {
-          return supabase.from('duty_schedules').update(data).eq('id', id)
+          let res = await supabase.from('duty_schedules').update(data).eq('id', id)
+          if (res.error && (res.error.code === '42703' || res.error.message?.includes('unit_id'))) {
+            delete data.unit_id
+            res = await supabase.from('duty_schedules').update(data).eq('id', id)
+          }
+          return res
         } else {
-          return supabase.from('duty_schedules').insert([data])
+          let res = await supabase.from('duty_schedules').insert([data])
+          if (res.error && (res.error.code === '42703' || res.error.message?.includes('unit_id'))) {
+            delete data.unit_id
+            res = await supabase.from('duty_schedules').insert([data])
+          }
+          return res
         }
       })
 
@@ -291,7 +351,8 @@ export default function DutySchedulePage() {
   const handleAddSingleDate = async () => {
     if (!newDate) return
     const yearId = parseInt(selectedYearId, 10)
-    const exists = rows.some(r => r.duty_date === newDate)
+    const unitIdNum = selectedUnitId ? parseInt(selectedUnitId, 10) : null
+    const exists = rows.some(r => r.duty_date === newDate && (!r.unit_id || r.unit_id === unitIdNum))
     if (exists) {
       showNotification(`Date ${newDate} already exists in the table.`, 'warning')
       return
@@ -300,6 +361,7 @@ export default function DutySchedulePage() {
     try {
       const newObj = {
         year_id: yearId,
+        unit_id: unitIdNum,
         duty_date: newDate,
         devotion_leader_user_id: null,
         teacher_to_be_prayed: '',
@@ -316,7 +378,13 @@ export default function DutySchedulePage() {
         lunch_3rd_floor_user_id: null,
       }
 
-      const { data, error } = await supabase.from('duty_schedules').insert([newObj]).select()
+      let { data, error } = await supabase.from('duty_schedules').insert([newObj]).select()
+      if (error && (error.code === '42703' || error.message?.includes('unit_id'))) {
+        delete newObj.unit_id
+        const retry = await supabase.from('duty_schedules').insert([newObj]).select()
+        data = retry.data
+        error = retry.error
+      }
       if (error) throw error
 
       setAddModalOpen(false)
@@ -341,12 +409,13 @@ export default function DutySchedulePage() {
     setGenLoading(true)
     try {
       const yearId = parseInt(selectedYearId, 10)
+      const unitIdNum = selectedUnitId ? parseInt(selectedUnitId, 10) : null
       const datesToInsert = []
       
       let curr = new Date(genStartDate + 'T00:00:00Z')
       const end = new Date(genEndDate + 'T00:00:00Z')
 
-      const existingDates = new Set(rows.map(r => r.duty_date))
+      const existingDates = new Set(rows.filter(r => !r.unit_id || r.unit_id === unitIdNum).map(r => r.duty_date))
 
       while (curr <= end) {
         const dateStr = curr.toISOString().slice(0, 10)
@@ -356,6 +425,7 @@ export default function DutySchedulePage() {
         if (!existingDates.has(dateStr) && (!genExcludeWeekends || !isWeekend)) {
           datesToInsert.push({
             year_id: yearId,
+            unit_id: unitIdNum,
             duty_date: dateStr,
           })
         }
@@ -366,7 +436,12 @@ export default function DutySchedulePage() {
       if (datesToInsert.length === 0) {
         showNotification('No new dates to add (all dates in range already exist).', 'info')
       } else {
-        const { error } = await supabase.from('duty_schedules').insert(datesToInsert)
+        let { error } = await supabase.from('duty_schedules').insert(datesToInsert)
+        if (error && (error.code === '42703' || error.message?.includes('unit_id'))) {
+          const fallbackDates = datesToInsert.map(({ unit_id, ...rest }) => rest)
+          const retry = await supabase.from('duty_schedules').insert(fallbackDates)
+          error = retry.error
+        }
         if (error) throw error
 
         showNotification(`Successfully added ${datesToInsert.length} new dates to the schedule!`, 'success')
@@ -424,28 +499,12 @@ export default function DutySchedulePage() {
     document.body.removeChild(link)
   }
 
-  const ddlSql = `CREATE TABLE IF NOT EXISTS duty_schedules (
-  id SERIAL PRIMARY KEY,
-  year_id INTEGER NOT NULL REFERENCES year(year_id) ON DELETE CASCADE,
-  duty_date DATE NOT NULL,
-  devotion_leader_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  teacher_to_be_prayed VARCHAR(255),
-  student_to_be_prayed VARCHAR(255),
-  greeter_1st_floor_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  greeter_2nd_floor_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  break_canteen_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  break_pe_field_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  break_2nd_floor_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  break_3rd_floor_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  lunch_canteen_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  lunch_pe_field_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  lunch_2nd_floor_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  lunch_3rd_floor_user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
-  note TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT duty_schedules_year_date_unique UNIQUE (year_id, duty_date)
-);`
+  const ddlSql = `-- 1. Add unit_id column
+ALTER TABLE duty_schedules ADD COLUMN IF NOT EXISTS unit_id INTEGER REFERENCES unit(unit_id);
+
+-- 2. Drop old single-unit unique constraint & add multi-unit unique constraint
+ALTER TABLE duty_schedules DROP CONSTRAINT IF EXISTS duty_schedules_year_date_unique;
+ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique UNIQUE (unit_id, year_id, duty_date);`
 
   const copyDdlSql = () => {
     navigator.clipboard.writeText(ddlSql)
@@ -553,6 +612,31 @@ export default function DutySchedulePage() {
               {copiedSql ? 'Copied!' : 'Copy SQL'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Unit Tabs */}
+      {schoolUnits.length > 0 && (
+        <div className="flex items-center gap-2 p-1.5 rounded-xl border overflow-x-auto" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+          <span className="text-xs font-bold uppercase tracking-wider px-3" style={{ color: theme.textSecondary }}>Unit:</span>
+          {schoolUnits.map(u => {
+            const active = String(u.unit_id) === String(selectedUnitId)
+            return (
+              <button
+                key={u.unit_id}
+                onClick={() => setSelectedUnitId(String(u.unit_id))}
+                className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all flex items-center gap-2 ${
+                  active
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'hover:opacity-80'
+                }`}
+                style={!active ? { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` } : {}}
+              >
+                <span>🏫</span>
+                <span>{u.unit_name} Schedule</span>
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -703,7 +787,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded font-medium border cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -740,7 +824,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -753,7 +837,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -766,7 +850,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -779,7 +863,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -792,7 +876,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -805,7 +889,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -818,7 +902,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -831,7 +915,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -844,7 +928,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>
@@ -857,7 +941,7 @@ export default function DutySchedulePage() {
                           className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
                           style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                         >
-                          <option value="">— Select Teacher —</option>
+                          <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                       </td>

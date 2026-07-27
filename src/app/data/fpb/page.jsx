@@ -126,8 +126,8 @@ function ProgressSection({ screeningRow, approvals, fpb, screeningDone, theme })
                     </div>
                     <span style={{ fontWeight: 600, fontSize: 12, color: theme.textPrimary }}>{stepName}</span>
                     {!screeningDone && !anyRejected && !anyRevision && <span style={{ fontSize: 10, color: theme.textSecondary, marginLeft: 'auto' }}>Awaiting screening</span>}
-                    {isActive      && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Active</span>}
                     {allDone       && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginLeft: 'auto' }}>Done</span>}
+                    {isActive && !allDone && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 600, marginLeft: 'auto' }}>Active</span>}
                     {anyRejected   && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginLeft: 'auto' }}>Rejected</span>}
                     {anyRevision && !allDone && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600, marginLeft: 'auto' }}>Revision</span>}
                   </div>
