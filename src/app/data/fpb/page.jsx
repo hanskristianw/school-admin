@@ -1601,7 +1601,8 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
   }, [])
 
   const grandTotal = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0)
-  const exceeds    = selType?.max_amount && grandTotal > selType.max_amount
+  // Temporarily bypassed for today as requested by user
+  const exceeds    = false
 
   const updateItem = (id, field, val) => setItems(prev => prev.map(i => i._id === id ? { ...i, [field]: val } : i))
   const addItem    = () => setItems(prev => [...prev, emptyItem()])
@@ -1736,7 +1737,13 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
           </div>
         </div>
         <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
-          {/* ── Approver not configured warning ── */}
+          {/* English Notice Banner for Temporary Price Limit Unlock */}
+          {!done && (
+            <div style={{ margin: '0 0 16px', padding: '10px 14px', borderRadius: 10, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', color: '#4338ca', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>ℹ️</span>
+              <span><strong>Notice:</strong> Price limit restriction for FPB requests is temporarily unlocked for today only.</span>
+            </div>
+          )}
           {(approverStatus === 'no_role' || approverStatus === 'no_approver') && (
             <div style={{ margin: '0 0 20px', padding: '20px 22px', borderRadius: 14, background: 'rgba(251,191,36,0.08)', border: '2px solid rgba(251,191,36,0.5)', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
               <div style={{ fontSize: 32, flexShrink: 0, lineHeight: 1 }}>🔒</div>
@@ -1771,7 +1778,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
 
           {!done && step === 1 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 14 }}>
-              {types.filter(t => t.type_code !== 'large' && t.type_code !== 'repair').map(t => (
+              {types.map(t => (
                 <button key={t.fpb_type_id} onClick={() => { setSelType(t); setStep(2) }}
                   style={{ textAlign: 'left', padding: 20, borderRadius: 14, border: `2px solid ${theme.border}`, background: theme.cardBg, cursor: 'pointer', transition: 'all 0.18s' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,102,241,0.2)' }}

@@ -62,7 +62,8 @@ export default function CreateFpbPage() {
   }, [])
 
   const grandTotal = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0)
-  const exceeds    = selType?.max_amount && grandTotal > selType.max_amount
+  // Temporarily bypassed for today as requested by user
+  const exceeds    = false
 
   // ── Item helpers ──────────────────────────────────────────────────
   const updateItem = (id, field, val) =>
@@ -200,10 +201,15 @@ export default function CreateFpbPage() {
       </button>
 
       <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, marginBottom: 6 }}>Buat FPB Baru</h1>
-      <p style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 32 }}>Pilih jenis formulir pembelian yang sesuai dengan kebutuhan Anda</p>
+      <p style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 16 }}>Pilih jenis formulir pembelian yang sesuai dengan kebutuhan Anda</p>
+
+      {/* Notice Banner */}
+      <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e', fontSize: 12, fontWeight: 600, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>ℹ️</span> <span><strong>Notice:</strong> Price limit restriction for FPB requests is temporarily unlocked for today only.</span>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16 }}>
-        {types.filter(t => t.type_code !== 'large' && t.type_code !== 'repair').map(t => (
+        {types.map(t => (
           <button key={t.fpb_type_id} onClick={() => { setSelType(t); setStep(2) }}
             style={{ textAlign: 'left', padding: 24, borderRadius: 14, border: `2px solid ${theme.border}`,
               background: theme.cardBg, cursor: 'pointer', transition: 'all 0.18s' }}
