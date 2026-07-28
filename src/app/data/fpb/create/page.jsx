@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft, faPlus, faTrash, faSpinner, faShoppingCart, faTools, faBoxOpen } from '@fortawesome/free-solid-svg-icons'
 
-const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0)
+const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0)
 
 const TYPE_ICONS = { small: faShoppingCart, large: faBoxOpen, repair: faTools }
 
@@ -33,9 +33,16 @@ export default function CreateFpbPage() {
   const [errors, setErrors]       = useState({})
 
   useEffect(() => {
-    // Load FPB types
+    // Load active FPB types
     supabase.from('fpb_types').select('*').eq('is_active', true).order('created_at')
-      .then(({ data }) => setTypes(data || []))
+      .then(({ data }) => {
+        const list = data || []
+        setTypes(list)
+        if (list.length === 1) {
+          setSelType(list[0])
+          setStep(2)
+        }
+      })
 
     // Auto-load current user's unit (2-step to avoid FK name dependency)
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -62,8 +69,7 @@ export default function CreateFpbPage() {
   }, [])
 
   const grandTotal = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0)
-  // Temporarily bypassed for today as requested by user
-  const exceeds    = false
+  const exceeds    = selType?.max_amount ? grandTotal > selType.max_amount : false
 
   // ── Item helpers ──────────────────────────────────────────────────
   const updateItem = (id, field, val) =>
@@ -74,10 +80,10 @@ export default function CreateFpbPage() {
   // ── Validation ────────────────────────────────────────────────────
   const validate = () => {
     const e = {}
-    if (!usageDate) e.usageDate = 'Tanggal kebutuhan wajib diisi'
-    if (items.some(i => !i.item_name.trim())) e.items = 'Semua nama barang wajib diisi'
-    if (items.some(i => !i.unit_price || Number(i.unit_price) <= 0)) e.items = 'Semua harga satuan wajib diisi'
-    if (exceeds) e.total = `Grand total melebihi batas Rp ${selType.max_amount.toLocaleString('id-ID')}`
+    if (!usageDate) e.usageDate = 'Required date of usage is mandatory'
+    if (items.some(i => !i.item_name.trim())) e.items = 'All item names are required'
+    if (items.some(i => !i.unit_price || Number(i.unit_price) <= 0)) e.items = 'All unit prices must be greater than 0'
+    if (exceeds) e.total = `Grand total exceeds maximum limit of Rp ${selType.max_amount.toLocaleString('en-US')}`
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -88,7 +94,7 @@ export default function CreateFpbPage() {
     setSaving(true)
     try {
       const uid = parseInt(localStorage.getItem('kr_id'))
-      if (!uid) throw new Error('Tidak terautentikasi')
+      if (!uid) throw new Error('Unauthenticated')
 
       // Generate FPB number
       const year = new Date().getFullYear()
@@ -103,7 +109,7 @@ export default function CreateFpbPage() {
         .eq('fpb_type_id', selType.fpb_type_id)
         .order('step_order')
 
-      if (!steps?.length) throw new Error('Belum ada konfigurasi approval untuk tipe FPB ini. Hubungi administrator.')
+      if (!steps?.length) throw new Error('No approval configuration found for this FPB type. Please contact administrator.')
 
       // Insert FPB header
       const { data: fpb, error: fpbErr } = await supabase.from('fpb').insert({
@@ -149,7 +155,7 @@ export default function CreateFpbPage() {
             .eq('user_id', uid).single()
           const submitterName = submitterData
             ? `${submitterData.user_nama_depan || ''} ${submitterData.user_nama_belakang || ''}`.trim()
-            : 'Karyawan'
+            : 'Employee'
 
           // Find step with the lowest step_order (screener or first approver)
           const firstStep = steps.reduce((min, s) => s.step_order < min.step_order ? s : min, steps[0])
@@ -178,14 +184,14 @@ export default function CreateFpbPage() {
             }),
           })
         } catch (emailErr) {
-          console.warn('[FPB Create] Gagal kirim email notifikasi:', emailErr)
+          console.warn('[FPB Create] Failed to send email notification:', emailErr)
         }
       })()
 
       router.push(`/data/fpb/${fpb.fpb_id}`)
     } catch (e) {
       console.error(e)
-      setErrors({ submit: e.message || 'Gagal menyimpan FPB' })
+      setErrors({ submit: e.message || 'Failed to save FPB' })
     } finally {
       setSaving(false)
     }
@@ -197,16 +203,11 @@ export default function CreateFpbPage() {
       <button onClick={() => router.push('/data/fpb')}
         style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, background: 'none',
           border: 'none', color: theme.textSecondary, cursor: 'pointer', fontSize: 13 }}>
-        <FontAwesomeIcon icon={faArrowLeft} />Kembali ke Daftar FPB
+        <FontAwesomeIcon icon={faArrowLeft} />Back to FPB List
       </button>
 
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, marginBottom: 6 }}>Buat FPB Baru</h1>
-      <p style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 16 }}>Pilih jenis formulir pembelian yang sesuai dengan kebutuhan Anda</p>
-
-      {/* Notice Banner */}
-      <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e', fontSize: 12, fontWeight: 600, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span>ℹ️</span> <span><strong>Notice:</strong> Price limit restriction for FPB requests is temporarily unlocked for today only.</span>
-      </div>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, marginBottom: 6 }}>Create New FPB</h1>
+      <p style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 24 }}>Item Purchase Requisition Form (Maximum Rp 600,000)</p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16 }}>
         {types.map(t => (
@@ -223,7 +224,7 @@ export default function CreateFpbPage() {
             {t.max_amount && (
               <div style={{ marginTop: 12, padding: '4px 10px', borderRadius: 99, background: 'rgba(99,102,241,0.1)',
                 color: '#6366f1', fontSize: 11, fontWeight: 700, width: 'fit-content' }}>
-                Maks {fmt(t.max_amount)}
+                Max {fmt(t.max_amount)}
               </div>
             )}
           </button>
@@ -245,31 +246,31 @@ export default function CreateFpbPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, fontSize: 12, color: theme.textSecondary }}>
         <button onClick={() => router.push('/data/fpb')} style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: 12 }}>FPB</button>
         <span>/</span>
-        <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: 12 }}>Pilih Tipe</button>
+        <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: 12 }}>Select Type</button>
         <span>/</span>
         <span>{selType?.type_name}</span>
       </div>
 
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, marginBottom: 4 }}>Buat FPB — {selType?.type_name}</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, marginBottom: 4 }}>Create FPB — {selType?.type_name}</h1>
       <p style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 28 }}>{selType?.description}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Division & Usage Date */}
         <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-          <CardHeader className="pb-3"><CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>Informasi Umum</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>General Information</CardTitle></CardHeader>
           <CardContent>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Divisi / Unit</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Division / Unit</label>
                 <div style={{ ...inputStyle, background: theme.subtleBg, display: 'flex', alignItems: 'center', gap: 8, color: division ? theme.textPrimary : theme.textSecondary }}>
                   {division
                     ? <><span style={{ fontSize: 14 }}>🏢</span> {division}</>
-                    : <span style={{ fontStyle: 'italic' }}>Unit tidak ditemukan — hubungi admin</span>}
+                    : <span style={{ fontStyle: 'italic' }}>Unit not found — contact admin</span>}
                 </div>
-                <p style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>Otomatis dari profil Anda</p>
+                <p style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4 }}>Auto-filled from your profile</p>
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Tanggal Kebutuhan *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Required Date *</label>
                 <input type="date" value={usageDate} onChange={e => setUsageDate(e.target.value)} style={inputStyle} />
                 {errors.usageDate && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{errors.usageDate}</p>}
               </div>
@@ -281,11 +282,11 @@ export default function CreateFpbPage() {
         <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
           <CardHeader className="pb-3">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>Daftar Barang</CardTitle>
+              <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>Item List</CardTitle>
               <button onClick={addItem}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8,
                   border: 'none', background: '#6366f1', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                <FontAwesomeIcon icon={faPlus} />Tambah Item
+                <FontAwesomeIcon icon={faPlus} />Add Item
               </button>
             </div>
           </CardHeader>
@@ -294,10 +295,10 @@ export default function CreateFpbPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-                    <th style={{ padding: '8px 12px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Nama Barang</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Item Name</th>
                     <th style={{ padding: '8px 12px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 80 }}>Qty</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 90 }}>Satuan</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 140 }}>Harga Satuan</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 90 }}>Unit</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'right', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 140 }}>Unit Price</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 140 }}>Subtotal</th>
                     <th style={{ width: 44 }}></th>
                   </tr>
@@ -307,7 +308,7 @@ export default function CreateFpbPage() {
                     <tr key={item._id} style={{ borderBottom: `1px solid ${theme.border}` }}>
                       <td style={{ padding: '8px 12px' }}>
                         <input value={item.item_name} onChange={e => updateItem(item._id, 'item_name', e.target.value)}
-                          placeholder="Nama barang..." style={{ ...inputStyle, padding: '6px 10px' }} />
+                          placeholder="Item name..." style={{ ...inputStyle, padding: '6px 10px' }} />
                       </td>
                       <td style={{ padding: '8px 12px' }}>
                         <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item._id, 'quantity', e.target.value)}
@@ -353,16 +354,16 @@ export default function CreateFpbPage() {
         {exceeds && (
           <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5',
             color: '#dc2626', fontSize: 13, fontWeight: 600 }}>
-            ⚠ Grand total melebihi batas maksimum {fmt(selType?.max_amount)} untuk tipe FPB ini.
+            ⚠ Grand total exceeds the maximum limit of {fmt(selType?.max_amount)} for this FPB type.
           </div>
         )}
 
         {/* Note */}
         <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-          <CardHeader className="pb-3"><CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>Catatan (Opsional)</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>Notes (Optional)</CardTitle></CardHeader>
           <CardContent>
             <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
-              placeholder="Tambahkan catatan atau keterangan tambahan..."
+              placeholder="Add any additional notes or details..."
               style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
           </CardContent>
         </Card>
@@ -378,7 +379,7 @@ export default function CreateFpbPage() {
           <button onClick={() => setStep(1)}
             style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${theme.border}`,
               background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-            <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: 6 }} />Kembali
+            <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: 6 }} />Back
           </button>
           <button onClick={handleSubmit} disabled={saving || exceeds}
             style={{ padding: '10px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13,
@@ -386,7 +387,7 @@ export default function CreateFpbPage() {
               color: saving || exceeds ? theme.textSecondary : '#fff',
               cursor: saving || exceeds ? 'not-allowed' : 'pointer',
               boxShadow: saving || exceeds ? 'none' : '0 2px 12px rgba(99,102,241,0.35)' }}>
-            {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Menyimpan...</> : '📤 Submit FPB'}
+            {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Saving...</> : '📤 Submit FPB'}
           </button>
         </div>
       </div>

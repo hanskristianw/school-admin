@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 130,
-      "community_name": "Module 130",
+      "community": 127,
+      "community_name": "browser-image-compression",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 130,
-      "community_name": "Module 130",
+      "community": 127,
+      "community_name": "browser-image-compression",
       "norm_label": "bcryptjs"
     },
     {
@@ -7352,7 +7352,7 @@
       "label": "FpbListPage()",
       "file_type": "code",
       "source_file": "src/app/data/fpb/page.jsx",
-      "source_location": "L1906",
+      "source_location": "L1899",
       "_origin": "ast",
       "id": "src_app_data_fpb_page_fpblistpage",
       "community": 4,
@@ -24829,7 +24829,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/fpb/create/page.jsx",
-      "source_location": "L226",
+      "source_location": "L227",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_fpb_create_page_createfpbpage",
@@ -24951,7 +24951,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/fpb/page.jsx",
-      "source_location": "L1906",
+      "source_location": "L1899",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_fpb_page",
@@ -25040,7 +25040,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/fpb/page.jsx",
-      "source_location": "L1789",
+      "source_location": "L1782",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_fpb_page_createfpbmodal",
@@ -25064,7 +25064,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/fpb/page.jsx",
-      "source_location": "L2265",
+      "source_location": "L2258",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_fpb_page_fpblistpage",
@@ -25100,7 +25100,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/fpb/page.jsx",
-      "source_location": "L2266",
+      "source_location": "L2259",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_fpb_page_fpblistpage",
@@ -25124,7 +25124,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/fpb/page.jsx",
-      "source_location": "L2280",
+      "source_location": "L2273",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_fpb_page_fpblistpage",
@@ -35537,5 +35537,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ce2feefc482bb5f2444dd48e90bccf3c2794e1fa"
+  "built_at_commit": "397477ab55aee0d16a5f6ba13d6c299a95290c3f"
 }

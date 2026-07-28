@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-07-28)
 
 ## Corpus Check
-- 326 files · ~437,871 words
+- 326 files · ~437,787 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ce2feefc`
+- Built from commit: `397477ab`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -136,9 +136,9 @@
 - Module 124
 - Module 125
 - Module 126
+- browser-image-compression
 - Module 128
 - Module 129
-- Module 130
 - Module 131
 - Module 132
 - Module 133
@@ -658,7 +658,7 @@ Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 130`, `Module 131`, `Module 132`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `React UI Components`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `Module 156`, `browser-image-compression`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `class-variance-authority`, `driver.js`, `@fortawesome/react-fontawesome`, `@fortawesome/free-solid-svg-icons`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `Module 149`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `Module 156`, `browser-image-compression`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `class-variance-authority`, `driver.js`, `@fortawesome/react-fontawesome`, `@fortawesome/free-solid-svg-icons`, `browser-image-compression`?**
   _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._

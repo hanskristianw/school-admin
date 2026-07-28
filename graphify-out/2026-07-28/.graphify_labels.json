@@ -126,10 +126,9 @@
   "124": "Module 124",
   "125": "Module 125",
   "126": "Module 126",
-  "127": "Module 127",
+  "127": "browser-image-compression",
   "128": "Module 128",
   "129": "Module 129",
-  "130": "Module 130",
   "131": "Module 131",
   "132": "Module 132",
   "133": "Module 133",
@@ -303,7 +302,5 @@
   "301": "driver.js",
   "302": "@fortawesome/react-fontawesome",
   "303": "Project Agent Rules",
-  "304": "@fortawesome/free-solid-svg-icons",
-  "305": "test_check_today_schedule.mjs",
-  "306": "test_live_api_trigger.mjs"
+  "304": "@fortawesome/free-solid-svg-icons"
 }
