@@ -1575,7 +1575,14 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
 
     // Load FPB types
     supabase.from('fpb_types').select('*').eq('is_active', true).order('created_at')
-      .then(({ data }) => setTypes(data || []))
+      .then(({ data }) => {
+        const list = data || []
+        setTypes(list)
+        if (list.length === 1) {
+          setSelType(list[0])
+          setStep(2)
+        }
+      })
 
     if (uid) {
       // Load user info: unit + role
@@ -1601,8 +1608,8 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
   }, [])
 
   const grandTotal = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0)
-  // Temporarily bypassed for today as requested by user
-  const exceeds    = false
+  const maxAmount  = selType?.max_amount || 600000
+  const exceeds    = grandTotal > maxAmount
 
   const updateItem = (id, field, val) => setItems(prev => prev.map(i => i._id === id ? { ...i, [field]: val } : i))
   const addItem    = () => setItems(prev => [...prev, emptyItem()])
@@ -1613,6 +1620,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
     if (!usageDate) e.usageDate = 'Required date is required'
     if (items.some(i => !i.item_name.trim())) e.items = 'All item names are required'
     if (items.some(i => !i.unit_price || Number(i.unit_price) <= 0)) e.items = 'All unit prices are required'
+    if (exceeds) e.items = `Grand total exceeds the maximum limit of ${fmt(maxAmount)}`
     setErrors(e)
     return Object.keys(e).length === 0
   }
