@@ -10660,116 +10660,6 @@
       "norm_label": "run()"
     },
     {
-      "label": "test_check_today_schedule.mjs",
-      "file_type": "code",
-      "source_file": "test_check_today_schedule.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "test_check_today_schedule",
-      "community": 305,
-      "community_name": "test_check_today_schedule.mjs",
-      "norm_label": "test_check_today_schedule.mjs"
-    },
-    {
-      "label": "checkTodayDutySchedule()",
-      "file_type": "code",
-      "source_file": "test_check_today_schedule.mjs",
-      "source_location": "L4",
-      "_origin": "ast",
-      "id": "test_check_today_schedule_checktodaydutyschedule",
-      "community": 305,
-      "community_name": "test_check_today_schedule.mjs",
-      "norm_label": "checktodaydutyschedule()"
-    },
-    {
-      "label": "test_greeter_teachers.mjs",
-      "file_type": "code",
-      "source_file": "test_greeter_teachers.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "test_greeter_teachers",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "test_greeter_teachers.mjs"
-    },
-    {
-      "label": "envPath",
-      "file_type": "code",
-      "source_file": "test_greeter_teachers.mjs",
-      "source_location": "L5",
-      "_origin": "ast",
-      "id": "test_greeter_teachers_envpath",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "envpath"
-    },
-    {
-      "label": "testGreeterTeachers()",
-      "file_type": "code",
-      "source_file": "test_greeter_teachers.mjs",
-      "source_location": "L16",
-      "_origin": "ast",
-      "id": "test_greeter_teachers_testgreeterteachers",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "testgreeterteachers()"
-    },
-    {
-      "label": "test_live_api_trigger.mjs",
-      "file_type": "code",
-      "source_file": "test_live_api_trigger.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "test_live_api_trigger",
-      "community": 306,
-      "community_name": "test_live_api_trigger.mjs",
-      "norm_label": "test_live_api_trigger.mjs"
-    },
-    {
-      "label": "testProductionNotifyEndpoint()",
-      "file_type": "code",
-      "source_file": "test_live_api_trigger.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "test_live_api_trigger_testproductionnotifyendpoint",
-      "community": 306,
-      "community_name": "test_live_api_trigger.mjs",
-      "norm_label": "testproductionnotifyendpoint()"
-    },
-    {
-      "label": "test_live_duty_send.mjs",
-      "file_type": "code",
-      "source_file": "test_live_duty_send.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "test_live_duty_send",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "test_live_duty_send.mjs"
-    },
-    {
-      "label": "envPath",
-      "file_type": "code",
-      "source_file": "test_live_duty_send.mjs",
-      "source_location": "L5",
-      "_origin": "ast",
-      "id": "test_live_duty_send_envpath",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "envpath"
-    },
-    {
-      "label": "testDutyLive()",
-      "file_type": "code",
-      "source_file": "test_live_duty_send.mjs",
-      "source_location": "L16",
-      "_origin": "ast",
-      "id": "test_live_duty_send_testdutylive",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "testdutylive()"
-    },
-    {
       "label": "vercel.json",
       "file_type": "code",
       "source_file": "vercel.json",
@@ -11315,8 +11205,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema",
-      "community": 127,
-      "community_name": "Module 127",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "database_schema.md"
     },
     {
@@ -11326,8 +11216,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema_database_schema_relationships",
-      "community": 127,
-      "community_name": "Module 127",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "database schema & relationships"
     },
     {
@@ -11623,8 +11513,8 @@
       "source_location": "L479",
       "_origin": "ast",
       "id": "database_schema_4_purchasing_budgeting_domain_data_fpb",
-      "community": 127,
-      "community_name": "Module 127",
+      "community": 264,
+      "community_name": "4.1 Tables",
       "norm_label": "4. purchasing & budgeting domain (/data/fpb)"
     },
     {
@@ -11744,8 +11634,8 @@
       "source_location": "L587",
       "_origin": "ast",
       "id": "database_schema_4_2_erd_relationships_purchasing_domain",
-      "community": 127,
-      "community_name": "Module 127",
+      "community": 264,
+      "community_name": "4.1 Tables",
       "norm_label": "4.2 erd / relationships (purchasing domain)"
     },
     {
@@ -11755,8 +11645,8 @@
       "source_location": "L640",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 127,
-      "community_name": "Module 127",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11898,8 +11788,8 @@
       "source_location": "L796",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 127,
-      "community_name": "Module 127",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -12217,8 +12107,8 @@
       "source_location": "L1325",
       "_origin": "ast",
       "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)"
     },
     {
@@ -12382,8 +12272,8 @@
       "source_location": "L1534",
       "_origin": "ast",
       "id": "database_schema_11_2_erd_relationships_uniform_stock_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 289,
+      "community_name": "docx",
       "norm_label": "11.2 erd / relationships (uniform & stock domain)"
     },
     {
@@ -28530,30 +28420,6 @@
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "test_greeter_teachers.mjs",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_greeter_teachers",
-      "target": "src_lib_googlechat",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "test_live_duty_send.mjs",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_live_duty_send",
-      "target": "src_lib_googlechat",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "testChat.js",
       "source_location": "L1",
       "weight": 1.0,
@@ -28643,54 +28509,6 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "temp_run",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "test_greeter_teachers.mjs",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_greeter_teachers",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "test_greeter_teachers.mjs",
-      "source_location": "L22",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_greeter_teachers_testgreeterteachers",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "test_live_duty_send.mjs",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_live_duty_send",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "test_live_duty_send.mjs",
-      "source_location": "L25",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_live_duty_send_testdutylive",
       "target": "src_lib_googlechat_sendgooglechatmessage",
       "confidence_score": 1.0
     },
@@ -29251,72 +29069,6 @@
       "_origin": "ast",
       "source": "testfpbchat_run",
       "target": "testfpbchat_buildgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "test_check_today_schedule.mjs",
-      "source_location": "L4",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_check_today_schedule",
-      "target": "test_check_today_schedule_checktodaydutyschedule",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "test_greeter_teachers.mjs",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_greeter_teachers",
-      "target": "test_greeter_teachers_envpath",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "test_greeter_teachers.mjs",
-      "source_location": "L16",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_greeter_teachers",
-      "target": "test_greeter_teachers_testgreeterteachers",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "test_live_api_trigger.mjs",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_live_api_trigger",
-      "target": "test_live_api_trigger_testproductionnotifyendpoint",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "test_live_duty_send.mjs",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_live_duty_send",
-      "target": "test_live_duty_send_envpath",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "test_live_duty_send.mjs",
-      "source_location": "L16",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "test_live_duty_send",
-      "target": "test_live_duty_send_testdutylive",
       "confidence_score": 1.0
     },
     {
@@ -35785,5 +35537,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "d89226410a8879ddfedf60afc43d18ed627acf10"
+  "built_at_commit": "ce2feefc482bb5f2444dd48e90bccf3c2794e1fa"
 }
