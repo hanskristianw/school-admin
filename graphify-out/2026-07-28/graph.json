@@ -2768,8 +2768,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_free_solid_svg_icons",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2779,8 +2779,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "fortawesome_free_solid_svg_icons",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 300,
+      "community_name": "class-variance-authority",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 300,
-      "community_name": "class-variance-authority",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "driver.js"
     },
     {
@@ -3131,8 +3131,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 300,
-      "community_name": "class-variance-authority",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "driver.js"
     },
     {
@@ -8614,6 +8614,28 @@
       "norm_label": "login()"
     },
     {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/logout/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_logout_page",
+      "community": 304,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "LogoutPage()",
+      "file_type": "code",
+      "source_file": "src/app/logout/page.jsx",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_logout_page_logoutpage",
+      "community": 304,
+      "community_name": "page.jsx",
+      "norm_label": "logoutpage()"
+    },
+    {
       "label": "page.js",
       "file_type": "code",
       "source_file": "src/app/page.js",
@@ -11205,8 +11227,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema",
-      "community": 289,
-      "community_name": "docx",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "database_schema.md"
     },
     {
@@ -11216,8 +11238,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema_database_schema_relationships",
-      "community": 289,
-      "community_name": "docx",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "database schema & relationships"
     },
     {
@@ -11645,8 +11667,8 @@
       "source_location": "L640",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 261,
-      "community_name": "5.1 Tables",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11788,8 +11810,8 @@
       "source_location": "L796",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 261,
-      "community_name": "5.1 Tables",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -12107,8 +12129,8 @@
       "source_location": "L1325",
       "_origin": "ast",
       "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
-      "community": 289,
-      "community_name": "docx",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)"
     },
     {
@@ -12272,8 +12294,8 @@
       "source_location": "L1534",
       "_origin": "ast",
       "id": "database_schema_11_2_erd_relationships_uniform_stock_domain",
-      "community": 289,
-      "community_name": "docx",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "11.2 erd / relationships (uniform & stock domain)"
     },
     {
@@ -26987,6 +27009,17 @@
       "_origin": "ast",
       "source": "src_app_login_page",
       "target": "src_app_login_page_logincontent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/logout/page.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_logout_page",
+      "target": "src_app_logout_page_logoutpage",
       "confidence_score": 1.0
     },
     {

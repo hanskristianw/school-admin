@@ -360,7 +360,7 @@ export default function AttendanceApprovalsPage() {
                         </div>
                       </div>
 
-                      {/* Alasan */}
+                      {/* Reason */}
                       <div className="text-sm p-3 rounded-lg" style={{ background: theme.subtleBg }}>
                         <div className="text-xs mb-1" style={{ color: theme.textSecondary }}>Reason:</div>
                         <div style={{ color: theme.textBody }}>
@@ -368,6 +368,29 @@ export default function AttendanceApprovalsPage() {
                           {e.other_reason && <span className="ml-1" style={{ color: theme.textSecondary }}>— {e.other_reason}</span>}
                         </div>
                       </div>
+
+                      {/* Attachment File Preview / Link */}
+                      {e.attachment_url && (
+                        <div className="text-xs p-2.5 rounded-lg border flex items-center justify-between gap-2"
+                          style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <span className="text-base flex-shrink-0">📎</span>
+                            <span className="font-medium truncate" style={{ color: theme.textPrimary }}>
+                              Attachment File
+                            </span>
+                          </div>
+                          <a
+                            href={e.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all hover:opacity-90 flex-shrink-0 shadow-sm"
+                            style={{ background: '#2563eb', color: '#ffffff' }}
+                          >
+                            <span>View / Download</span>
+                            <span>↗</span>
+                          </a>
+                        </div>
+                      )}
 
                       {/* Approval trail */}
                       <div className="flex items-center gap-2 text-xs flex-wrap">
