@@ -302,5 +302,8 @@
   "300": "class-variance-authority",
   "301": "driver.js",
   "302": "@fortawesome/react-fontawesome",
-  "303": "Project Agent Rules"
+  "303": "Project Agent Rules",
+  "304": "@fortawesome/free-solid-svg-icons",
+  "305": "test_check_today_schedule.mjs",
+  "306": "test_live_api_trigger.mjs"
 }
