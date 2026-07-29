@@ -79,8 +79,8 @@ async function handleDutyNotification(req) {
     let timeSettings = {
       devotion: { start: '07:30 AM', end: '', startMins: 450, reminderMins: 60 },
       greeter:  { start: '07:30 AM', end: '08:00 AM', startMins: 450, reminderMins: 60 },
-      break:    { start: '09:45 AM', end: '10:15 AM', startMins: 585, reminderMins: 60 },
-      lunch:    { start: '12:30 PM', end: '01:00 PM', startMins: 750, reminderMins: 60 },
+      break:    { start: '09:45 AM', end: '10:15 AM', startMins: 585, reminderMins: 15 },
+      lunch:    { start: '12:30 PM', end: '01:00 PM', startMins: 750, reminderMins: 15 },
     }
 
     try {
@@ -108,7 +108,7 @@ async function handleDutyNotification(req) {
         }
       }
     } catch (_) {
-      // Use fallback defaults if table doesn't exist
+      // Use fallback defaults if table query fails
     }
 
     const dutyConfigs = [
@@ -116,6 +116,7 @@ async function handleDutyNotification(req) {
         key: 'devotion_leader_user_id',
         title: 'Morning Devotion Leader',
         timeLabel: timeSettings.devotion.start,
+        startMins: timeSettings.devotion.startMins,
         targetMins: timeSettings.devotion.startMins - timeSettings.devotion.reminderMins,
         reminderMins: timeSettings.devotion.reminderMins,
         type: 'devotion'
@@ -124,6 +125,7 @@ async function handleDutyNotification(req) {
         key: 'greeter_1st_floor_user_id',
         title: 'Morning Door Greeter (1st Floor)',
         timeLabel: `${timeSettings.greeter.start} – ${timeSettings.greeter.end}`,
+        startMins: timeSettings.greeter.startMins,
         targetMins: timeSettings.greeter.startMins - timeSettings.greeter.reminderMins,
         reminderMins: timeSettings.greeter.reminderMins,
         type: 'greeter'
@@ -132,6 +134,7 @@ async function handleDutyNotification(req) {
         key: 'greeter_2nd_floor_user_id',
         title: 'Morning Door Greeter (2nd Floor)',
         timeLabel: `${timeSettings.greeter.start} – ${timeSettings.greeter.end}`,
+        startMins: timeSettings.greeter.startMins,
         targetMins: timeSettings.greeter.startMins - timeSettings.greeter.reminderMins,
         reminderMins: timeSettings.greeter.reminderMins,
         type: 'greeter'
@@ -140,6 +143,7 @@ async function handleDutyNotification(req) {
         key: 'break_canteen_user_id',
         title: 'Break Duty (Canteen)',
         timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
+        startMins: timeSettings.break.startMins,
         targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
         reminderMins: timeSettings.break.reminderMins,
         type: 'break'
@@ -148,6 +152,7 @@ async function handleDutyNotification(req) {
         key: 'break_pe_field_user_id',
         title: 'Break Duty (PE Field)',
         timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
+        startMins: timeSettings.break.startMins,
         targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
         reminderMins: timeSettings.break.reminderMins,
         type: 'break'
@@ -156,6 +161,7 @@ async function handleDutyNotification(req) {
         key: 'break_2nd_floor_user_id',
         title: 'Break Duty (2nd Floor)',
         timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
+        startMins: timeSettings.break.startMins,
         targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
         reminderMins: timeSettings.break.reminderMins,
         type: 'break'
@@ -164,6 +170,7 @@ async function handleDutyNotification(req) {
         key: 'break_3rd_floor_user_id',
         title: 'Break Duty (3rd Floor)',
         timeLabel: `${timeSettings.break.start} – ${timeSettings.break.end}`,
+        startMins: timeSettings.break.startMins,
         targetMins: timeSettings.break.startMins - timeSettings.break.reminderMins,
         reminderMins: timeSettings.break.reminderMins,
         type: 'break'
@@ -172,6 +179,7 @@ async function handleDutyNotification(req) {
         key: 'lunch_canteen_user_id',
         title: 'Lunch Duty (Canteen)',
         timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
+        startMins: timeSettings.lunch.startMins,
         targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
         reminderMins: timeSettings.lunch.reminderMins,
         type: 'lunch'
@@ -180,6 +188,7 @@ async function handleDutyNotification(req) {
         key: 'lunch_pe_field_user_id',
         title: 'Lunch Duty (PE Field)',
         timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
+        startMins: timeSettings.lunch.startMins,
         targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
         reminderMins: timeSettings.lunch.reminderMins,
         type: 'lunch'
@@ -188,6 +197,7 @@ async function handleDutyNotification(req) {
         key: 'lunch_2nd_floor_user_id',
         title: 'Lunch Duty (2nd Floor)',
         timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
+        startMins: timeSettings.lunch.startMins,
         targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
         reminderMins: timeSettings.lunch.reminderMins,
         type: 'lunch'
@@ -196,6 +206,7 @@ async function handleDutyNotification(req) {
         key: 'lunch_3rd_floor_user_id',
         title: 'Lunch Duty (3rd Floor)',
         timeLabel: `${timeSettings.lunch.start} – ${timeSettings.lunch.end}`,
+        startMins: timeSettings.lunch.startMins,
         targetMins: timeSettings.lunch.startMins - timeSettings.lunch.reminderMins,
         reminderMins: timeSettings.lunch.reminderMins,
         type: 'lunch'
@@ -235,71 +246,104 @@ async function handleDutyNotification(req) {
         const user = userMap.get(userId)
         if (!user || !user.user_email) continue
 
-        // Check if current time is within reminder window (targetMins - 5 mins up to targetMins + 25 mins) or force_all
+        // Check if current time is within reminder window (targetMins - 5 mins up to targetMins + 25 mins) or forceAll
         const isInWindow = (wib.totalMins >= cfg.targetMins - 5) && (wib.totalMins < cfg.targetMins + 25)
 
         if (!isInWindow && !forceAll && !testEmail) {
           continue
         }
 
+        // DEDUPLICATION CHECK: Check if this duty notification has already been sent to this user today
+        const notifTypeKey = `duty:${cfg.key}`
+        const { data: alreadySent } = await supabaseAdmin
+          .from('attendance_notification_log')
+          .select('id')
+          .eq('notif_date', todayStr)
+          .eq('notif_type', notifTypeKey)
+          .eq('user_id', user.user_id)
+          .eq('success', true)
+          .maybeSingle()
+
+        if (alreadySent && !forceAll && !testEmail) {
+          console.log(`[DutyNotify] Already sent ${notifTypeKey} to ${user.user_email} on ${todayStr}, skipping.`)
+          continue
+        }
+
         // If testing mode is active, strictly send test notifications to hans@ccs.sch.id ONLY
         const recipientEmail = testEmail || user.user_email
         const name = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
-        const remMins = cfg.reminderMins || 60
-        const remLabel = remMins === 60 ? 'in 1 hour' : (remMins >= 60 ? `in ${Math.floor(remMins / 60)} hour(s)` : `in ${remMins} mins`)
+
+        // Calculate dynamic remaining time label
+        const diffMins = cfg.startMins ? (cfg.startMins - wib.totalMins) : cfg.reminderMins
+        const remLabel = diffMins >= 55 ? 'in 1 hour' : (diffMins > 0 ? `in ${diffMins} mins` : 'starting now')
 
         let messageText = ''
         if (cfg.type === 'devotion') {
           const teacherPrayed = schedule.teacher_to_be_prayed || '—'
           const studentPrayed = schedule.student_to_be_prayed || '—'
 
-        messageText = `🔔 *REMINDER: Morning Devotion Duty (${remLabel})*\n\n` +
-          `Hello *${name}*,\n` +
-          `You are scheduled as the *Devotion Leader* today at *${cfg.timeLabel}*.\n\n` +
-          `🙏 *Prayer Subjects:*\n` +
-          `• *Teacher to Pray For:* ${teacherPrayed}\n` +
-          `• *Student to Pray For:* ${studentPrayed}\n\n` +
-          `Please prepare and be ready at the devotion area. Thank you!`
-      } else {
-        messageText = `🔔 *REMINDER: ${cfg.title} (${remLabel})*\n\n` +
-          `Hello *${name}*,\n` +
-          `Your duty assignment for *${cfg.title}* starts ${remLabel} at *${cfg.timeLabel}*.\n\n` +
-          `Please be ready at your assigned location. Thank you for your service!`
-      }
-
-      try {
-        console.log(`[DutyNotify] Sending Google Chat message to ${recipientEmail} for ${cfg.title}`)
-        await sendGoogleChatMessage(recipientEmail, messageText)
-
-        // Always send a CC copy to hans@ccs.sch.id for monitoring if recipient is someone else
-        if (!testEmail && recipientEmail !== 'hans@ccs.sch.id') {
-          try {
-            const ccMessage = `[Cron Monitoring Copy for Hans]\n` + messageText
-            await sendGoogleChatMessage('hans@ccs.sch.id', ccMessage)
-            console.log(`[DutyNotify] CC copy delivered to hans@ccs.sch.id`)
-          } catch (ccErr) {
-            console.warn(`[DutyNotify] Failed to send CC to hans@ccs.sch.id:`, ccErr.message)
-          }
+          messageText = `🔔 *REMINDER: Morning Devotion Duty (${remLabel})*\n\n` +
+            `Hello *${name}*,\n` +
+            `You are scheduled as the *Devotion Leader* today at *${cfg.timeLabel}*.\n\n` +
+            `🙏 *Prayer Subjects:*\n` +
+            `• *Teacher to Pray For:* ${teacherPrayed}\n` +
+            `• *Student to Pray For:* ${studentPrayed}\n\n` +
+            `Please prepare and be ready at the devotion area. Thank you!`
+        } else {
+          messageText = `🔔 *REMINDER: ${cfg.title} (${remLabel})*\n\n` +
+            `Hello *${name}*,\n` +
+            `Your duty assignment for *${cfg.title}* starts ${remLabel} at *${cfg.timeLabel}*.\n\n` +
+            `Please be ready at your assigned location. Thank you for your service!`
         }
 
-        notifiedResults.push({
-          user_id: user.user_id,
-          user_email: user.user_email,
-          duty: cfg.title,
-          status: 'sent'
-        })
-      } catch (err) {
-        console.error(`[DutyNotify] Error sending Google Chat to ${user.user_email}:`, err.message)
-        notifiedResults.push({
-          user_id: user.user_id,
-          user_email: user.user_email,
-          duty: cfg.title,
-          status: 'failed',
-          error: err.message
-        })
+        try {
+          console.log(`[DutyNotify] Sending Google Chat message to ${recipientEmail} for ${cfg.title}`)
+          await sendGoogleChatMessage(recipientEmail, messageText)
+
+          // Log successful notification into attendance_notification_log to prevent duplicate sends today
+          try {
+            await supabaseAdmin.from('attendance_notification_log').insert({
+              user_id: user.user_id,
+              notif_date: todayStr,
+              notif_type: notifTypeKey,
+              scheduled_time: cfg.timeLabel,
+              email_to: [recipientEmail],
+              success: true,
+              sent_at: new Date().toISOString()
+            })
+          } catch (logErr) {
+            console.warn(`[DutyNotify] Failed to log notification:`, logErr.message)
+          }
+
+          // Always send a CC copy to hans@ccs.sch.id for monitoring if recipient is someone else
+          if (!testEmail && recipientEmail !== 'hans@ccs.sch.id') {
+            try {
+              const ccMessage = `[Cron Monitoring Copy for Hans]\n` + messageText
+              await sendGoogleChatMessage('hans@ccs.sch.id', ccMessage)
+              console.log(`[DutyNotify] CC copy delivered to hans@ccs.sch.id`)
+            } catch (ccErr) {
+              console.warn(`[DutyNotify] Failed to send CC to hans@ccs.sch.id:`, ccErr.message)
+            }
+          }
+
+          notifiedResults.push({
+            user_id: user.user_id,
+            user_email: user.user_email,
+            duty: cfg.title,
+            status: 'sent'
+          })
+        } catch (err) {
+          console.error(`[DutyNotify] Error sending Google Chat to ${user.user_email}:`, err.message)
+          notifiedResults.push({
+            user_id: user.user_id,
+            user_email: user.user_email,
+            duty: cfg.title,
+            status: 'failed',
+            error: err.message
+          })
+        }
       }
     }
-  }
 
     return NextResponse.json({
       success: true,
