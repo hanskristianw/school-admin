@@ -259,7 +259,8 @@ async function handleDutyNotification(req) {
           .from('attendance_notification_log')
           .select('id')
           .eq('notif_date', todayStr)
-          .eq('notif_type', notifTypeKey)
+          .eq('notif_type', 'no_checkin')
+          .eq('scheduled_time', notifTypeKey)
           .eq('user_id', user.user_id)
           .eq('success', true)
           .maybeSingle()
@@ -305,8 +306,8 @@ async function handleDutyNotification(req) {
             await supabaseAdmin.from('attendance_notification_log').insert({
               user_id: user.user_id,
               notif_date: todayStr,
-              notif_type: notifTypeKey,
-              scheduled_time: cfg.timeLabel,
+              notif_type: 'no_checkin',
+              scheduled_time: notifTypeKey,
               email_to: [recipientEmail],
               success: true,
               sent_at: new Date().toISOString()
