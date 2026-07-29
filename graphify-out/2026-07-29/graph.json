@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 130,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 130,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 127,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 127,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -11865,8 +11865,8 @@
       "source_location": "L993",
       "_origin": "ast",
       "id": "database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -11876,8 +11876,8 @@
       "source_location": "L997",
       "_origin": "ast",
       "id": "database_schema_7_1_tables",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "7.1 tables"
     },
     {
@@ -11887,8 +11887,8 @@
       "source_location": "L999",
       "_origin": "ast",
       "id": "database_schema_menus",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "`menus`"
     },
     {
@@ -11898,8 +11898,8 @@
       "source_location": "L1012",
       "_origin": "ast",
       "id": "database_schema_menu_permissions",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -11909,8 +11909,8 @@
       "source_location": "L1024",
       "_origin": "ast",
       "id": "database_schema_7_2_erd_relationships_menu_domain",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -12063,8 +12063,8 @@
       "source_location": "L1267",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -12074,8 +12074,8 @@
       "source_location": "L1271",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "10.1 tables"
     },
     {
@@ -12085,8 +12085,8 @@
       "source_location": "L1273",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -12096,8 +12096,8 @@
       "source_location": "L1302",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "`duty_settings`"
     },
     {
@@ -12107,8 +12107,8 @@
       "source_location": "L1316",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -26172,7 +26172,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4744",
+      "source_location": "L4742",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26388,7 +26388,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4753",
+      "source_location": "L4751",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26412,7 +26412,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4767",
+      "source_location": "L4765",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26436,7 +26436,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4782",
+      "source_location": "L4780",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26460,7 +26460,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4794",
+      "source_location": "L4792",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26508,7 +26508,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L2773",
+      "source_location": "L2771",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26532,7 +26532,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L2787",
+      "source_location": "L2785",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26556,7 +26556,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L2803",
+      "source_location": "L2801",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26603,7 +26603,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4089",
+      "source_location": "L4087",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",

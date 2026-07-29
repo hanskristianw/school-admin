@@ -26,6 +26,8 @@ export default function AssessmentGradingPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const importRef = useRef(null)
 
+  const [isDraftLocked, setIsDraftLocked] = useState(false)
+
   // Fetch all data
   useEffect(() => {
     if (assessmentId) {
@@ -50,19 +52,18 @@ export default function AssessmentGradingPage() {
           assessment_status,
           topic:assessment_topic_id (
             topic_id,
-            topic_year
+            topic_year,
+            topic_status
           )
         `)
         .eq('assessment_id', assessmentId)
         .single()
 
       if (aError) throw new Error('Assessment not found: ' + aError.message)
-      // TEMP: bypass approval check — allow grading regardless of status
-      // if (assessmentData.assessment_status !== 1) {
-      //   throw new Error('Assessment is not approved yet. Only approved assessments can be graded.')
-      // }
       
       const topicYear = assessmentData.topic?.topic_year
+      const isDraft = assessmentData.topic?.topic_status === 'draft'
+      setIsDraftLocked(isDraft)
       setMypYear(topicYear)
       setAssessment(assessmentData)
 
@@ -226,6 +227,10 @@ export default function AssessmentGradingPage() {
 
   // Save all grades
   const handleSave = async () => {
+    if (isDraftLocked) {
+      alert('Cannot save grades: The Unit Planner for this assessment is currently in DRAFT status. Please publish the Unit Planner in /data/topic-new first.')
+      return
+    }
     try {
       setSaving(true)
       setSaveSuccess(false)
@@ -583,17 +588,28 @@ export default function AssessmentGradingPage() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || isDraftLocked}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                style={{ background: theme.textPrimary, color: theme.cardBg }}
+                style={{ background: isDraftLocked ? '#9ca3af' : theme.textPrimary, color: theme.cardBg, cursor: (saving || isDraftLocked) ? 'not-allowed' : 'pointer' }}
               >
                 <FontAwesomeIcon icon={saving ? faSpinner : faSave} spin={saving} className="text-xs" />
-                <span className="hidden sm:inline">{saving ? 'Saving...' : 'Save'}</span>
+                <span className="hidden sm:inline">{saving ? 'Saving...' : isDraftLocked ? 'Locked (Draft)' : 'Save'}</span>
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Draft Warning Banner */}
+      {isDraftLocked && (
+        <div style={{ margin: '12px 12px 0 12px', padding: '12px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.3)', color: '#dc2626', fontSize: 13, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 22 }}>🔒</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14 }}>Grading Locked (Draft Unit Planner)</div>
+            <div style={{ fontSize: 12, marginTop: 2 }}>The Unit Planner for this assessment is saved as a <strong>DRAFT</strong>. Please publish the Unit Planner in <strong>Unit Planners (/data/topic-new)</strong> to unlock grading.</div>
+          </div>
+        </div>
+      )}
 
       {/* Compact Grading Table */}
       <div className="p-3">

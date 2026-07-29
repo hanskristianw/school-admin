@@ -222,6 +222,37 @@ Assigns a student to a specific class.
 | `detail_siswa_kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` |
 | `detail_siswa_user_id` | `INTEGER` | FK to `users(user_id)` (The Student) |
 
+#### `topic`
+Stores IB MYP Unit Planners / Topics created via `/data/topic-new`.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `topic_id` | `SERIAL` | Primary Key |
+| `topic_nama` | `VARCHAR` | Title of the unit / topic |
+| `topic_subject_id` | `INTEGER` | FK to `subject(subject_id)` |
+| `topic_kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` |
+| `topic_year` | `INTEGER` | Academic year / MYP Year level |
+| `topic_global_context` | `TEXT` | IB MYP Global Context |
+| `topic_key_concept` | `TEXT` | IB MYP Key Concept |
+| `topic_related_concept` | `TEXT` | IB MYP Related Concept |
+| `topic_statement` | `TEXT` | Statement of Inquiry |
+| `topic_learner_profile` | `TEXT` | Learner Profile Attributes |
+| `topic_service_learning` | `TEXT` | Service as Action / Service Learning |
+| `topic_inquiry_question` | `TEXT` | Inquiry Questions (Factual, Conceptual, Debatable) |
+| `topic_urutan` | `INTEGER` | Unit sequence number |
+| `topic_duration` | `INTEGER` | Unit duration (weeks) |
+| `topic_hours_per_week` | `INTEGER` | Teaching hours per week |
+| `topic_learning_process` | `TEXT` | Learning Process / Activities |
+| `topic_relationship_summative_assessment_statement_of_inquiry` | `TEXT` | Relationship between SA and SOI |
+| `topic_resources` | `TEXT` | Learning resources & references |
+| `topic_atl` | `TEXT` | Approaches to Learning (ATL) skills |
+| `topic_reflection_prior` | `TEXT` | Prior reflection before teaching |
+| `topic_reflection_after` | `TEXT` | Reflection after teaching |
+| `topic_conceptual_understanding` | `TEXT` | Conceptual understanding statement |
+| `topic_gc_exploration` | `TEXT` | Global context exploration |
+| `topic_status` | `VARCHAR(20)` | Status of unit planner (`'draft'` or `'published'`). Default `'published'` |
+
+
 ### 2.2 ERD / Relationships (Class Domain)
 
 ```mermaid

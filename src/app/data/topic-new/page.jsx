@@ -97,8 +97,10 @@ export default function TopicNewPage() {
     assessment_detail_kelas_id: '',
     assessment_topic_id: '',
     assessment_semester: '',
-    selected_criteria: [] // Array of criterion IDs
+    selected_criteria: []
   })
+  // Collapsible IB Guidance state for wizard steps
+  const [showStepGuidance, setShowStepGuidance] = useState(false)
   const [assessmentFormErrors, setAssessmentFormErrors] = useState({})
   const [submittingAssessment, setSubmittingAssessment] = useState(false)
   const [topicsForAssessment, setTopicsForAssessment] = useState([])
@@ -1304,7 +1306,8 @@ export default function TopicNewPage() {
           topic_summative_assessment,
           topic_relationship_summative_assessment_statement_of_inquiry,
           topic_reflection_prior,
-          topic_reflection_after
+          topic_reflection_after,
+          topic_status
         `)
         .in('topic_subject_id', subjectIds)
         .order('topic_nama')
@@ -4246,63 +4249,81 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   }
 
   // Final save for new topic
-  const saveNewTopic = async () => {
-    if (!selectedTopic.topic_nama) {
-      alert('Please enter a topic name')
+  const saveNewTopic = async (isDraft = false) => {
+    if (!selectedTopic.topic_nama?.trim()) {
+      alert('Please enter a Unit Title')
       return
     }
     if (!selectedTopic.topic_year) {
       alert('Please select MYP Year')
       return
     }
-    
-    // Validate ATL field
-    if (!selectedTopic.topic_atl?.trim()) {
-      alert('Please fill in ATL Skills (Approaches to Learning)')
+    if (!selectedTopic.topic_kelas_id) {
+      alert('Please select Class before saving')
+      return
+    }
+    if (!selectedTopic.topic_subject_id) {
+      alert('Please select Subject before saving')
       return
     }
     
-    // Validate assessment required fields (tanggal tidak wajib saat create)
-    if (!wizardAssessment.assessment_nama || 
-        !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0 ||
-        !wizardAssessment.assessment_conceptual_understanding?.trim() ||
-        !wizardAssessment.assessment_instructions?.trim()) {
-      alert('Please complete all assessment fields including Conceptual Understanding and Instructions')
-      return
-    }
-    
-    // Validate assessment date only if provided
-    if (wizardAssessment.assessment_tanggal) {
-      const selectedDate = new Date(wizardAssessment.assessment_tanggal)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      selectedDate.setHours(0, 0, 0, 0)
-      
-      // Check if date is in the past
-      if (selectedDate < today) {
-        alert('Assessment date cannot be in the past. Please select a future date.')
+    if (!isDraft) {
+      // Validate ATL field
+      if (!selectedTopic.topic_atl?.trim()) {
+        alert('Please fill in ATL Skills (Approaches to Learning)')
         return
       }
       
-      // Check if date is tomorrow (must be minimum 2 days ahead)
-      const getDaysDiff = (date1, date2) => {
-        const diffTime = Math.abs(date2 - date1)
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      // Validate assessment required fields (tanggal tidak wajib saat create)
+      if (!wizardAssessment.assessment_nama || 
+          !wizardAssessment.assessment_semester || wizardAssessment.selected_criteria.length === 0 ||
+          !wizardAssessment.assessment_conceptual_understanding?.trim() ||
+          !wizardAssessment.assessment_instructions?.trim()) {
+        alert('Please complete all assessment fields including Conceptual Understanding and Instructions')
+        return
       }
       
-      const daysDiff = getDaysDiff(today, selectedDate)
-      if (daysDiff === 1) {
-        alert('Assessment date cannot be tomorrow. Minimum 2 days ahead is required.')
-        return
+      // Validate assessment date only if provided
+      if (wizardAssessment.assessment_tanggal) {
+        const selectedDate = new Date(wizardAssessment.assessment_tanggal)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        selectedDate.setHours(0, 0, 0, 0)
+        
+        // Check if date is in the past
+        if (selectedDate < today) {
+          alert('Assessment date cannot be in the past. Please select a future date.')
+          return
+        }
+        
+        // Check if date is tomorrow (must be minimum 2 days ahead)
+        const getDaysDiff = (date1, date2) => {
+          const diffTime = Math.abs(date2 - date1)
+          return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        }
+        
+        const daysDiff = getDaysDiff(today, selectedDate)
+        if (daysDiff === 1) {
+          alert('Assessment date cannot be tomorrow. Minimum 2 days ahead is required.')
+          return
+        }
       }
     }
 
     setSaving(true)
     try {
+      const cleanInt = (val) => (val !== null && val !== undefined && val !== '' && !isNaN(val)) ? parseInt(val) : null
+
       // Prepare data with proper types
       const topicData = {
         ...selectedTopic,
-        topic_year: selectedTopic.topic_year ? parseInt(selectedTopic.topic_year) : null,
+        topic_status: isDraft ? 'draft' : 'published',
+        topic_subject_id: cleanInt(selectedTopic.topic_subject_id),
+        topic_kelas_id: cleanInt(selectedTopic.topic_kelas_id),
+        topic_year: cleanInt(selectedTopic.topic_year),
+        topic_urutan: cleanInt(selectedTopic.topic_urutan),
+        topic_duration: cleanInt(selectedTopic.topic_duration),
+        topic_hours_per_week: cleanInt(selectedTopic.topic_hours_per_week),
         topic_relationship_summative_assessment_statement_of_inquiry: wizardAssessment.assessment_relationship || null
       }
       
@@ -4316,74 +4337,47 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       if (data && data[0]) {
         const newTopic = data[0]
         
-        // Now create the assessment
-        // First, find detail_kelas_id for subject + kelas combination
-        const { data: dkData, error: dkError } = await supabase
-          .from('detail_kelas')
-          .select('detail_kelas_id')
-          .eq('detail_kelas_subject_id', selectedTopic.topic_subject_id)
-          .eq('detail_kelas_kelas_id', selectedTopic.topic_kelas_id)
-          .single()
-        
-        if (dkError) {
-          console.error('❌ Error finding detail_kelas:', dkError)
-          throw new Error('Could not find class-subject mapping. Please check detail_kelas.')
-        }
-        
-        // Create assessment
-        // Status logic: null if no date (draft), 0 if date is set (waiting for approval)
-        const hasDate = wizardAssessment.assessment_tanggal && wizardAssessment.assessment_tanggal.trim() !== ''
-        const assessmentData = {
-          assessment_nama: wizardAssessment.assessment_nama,
-          assessment_tanggal: wizardAssessment.assessment_tanggal || null,
-          assessment_keterangan: wizardAssessment.assessment_keterangan || null,
-          assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
-          assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
-          assessment_instructions: wizardAssessment.assessment_instructions || null,
-          assessment_tsc: wizardAssessment.assessment_tsc || {}, // Task Specific Clarification JSON
-          assessment_detail_kelas_id: dkData.detail_kelas_id,
-          assessment_topic_id: newTopic.topic_id,
-          assessment_semester: parseInt(wizardAssessment.assessment_semester),
-          // TEMP: bypass approval — set status to 1 (approved) directly
-          // assessment_status: 0, // Always 0; draft is indicated by null date + status 0
-          assessment_status: 1, // TEMP: auto-approved, no approval flow needed
-          assessment_user_id: currentUserId
-        }
-        
-        console.log('📝 Saving assessment with TSC:', JSON.stringify(wizardAssessment.assessment_tsc, null, 2))
-        console.log('📝 Full assessmentData being saved:', JSON.stringify(assessmentData, null, 2))
-        
-        const { data: assessmentResult, error: assessmentError } = await supabase
-          .from('assessment')
-          .insert([assessmentData])
-          .select()
-        
-        if (assessmentError) {
-          console.error('❌ Assessment insert error:', assessmentError)
-          throw assessmentError
-        }
-        
-        console.log('✅ Assessment saved successfully:', assessmentResult)
-        
-        // TEMP: approval notifications disabled (bypass approval flow)
-        // if (assessmentResult && assessmentResult[0] && hasDate) {
-        //   notifyVicePrincipal(assessmentResult[0].assessment_id)
-        // }
-        
-        // Insert assessment_criteria junction records
-        if (assessmentResult && assessmentResult[0]) {
-          const assessmentId = assessmentResult[0].assessment_id
-          const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
-            assessment_id: assessmentId,
-            criterion_id: criterionId
-          }))
+        // Only create assessment if class, subject & assessment name are provided
+        if (topicData.topic_subject_id && topicData.topic_kelas_id && wizardAssessment.assessment_nama) {
+          const { data: dkData } = await supabase
+            .from('detail_kelas')
+            .select('detail_kelas_id')
+            .eq('detail_kelas_subject_id', topicData.topic_subject_id)
+            .eq('detail_kelas_kelas_id', topicData.topic_kelas_id)
+            .maybeSingle()
           
-          const { error: criteriaError } = await supabase
-            .from('assessment_criteria')
-            .insert(criteriaRecords)
-          
-          if (criteriaError) {
-            console.error('❌ Error inserting assessment criteria:', criteriaError)
+          if (dkData) {
+            const assessmentData = {
+              assessment_nama: wizardAssessment.assessment_nama,
+              assessment_tanggal: wizardAssessment.assessment_tanggal || null,
+              assessment_keterangan: wizardAssessment.assessment_keterangan || null,
+              assessment_conceptual_understanding: wizardAssessment.assessment_conceptual_understanding || null,
+              assessment_task_specific_description: wizardAssessment.assessment_task_specific_description || null,
+              assessment_instructions: wizardAssessment.assessment_instructions || null,
+              assessment_tsc: wizardAssessment.assessment_tsc || {},
+              assessment_detail_kelas_id: dkData.detail_kelas_id,
+              assessment_topic_id: newTopic.topic_id,
+              assessment_semester: cleanInt(wizardAssessment.assessment_semester),
+              assessment_status: 1,
+              assessment_user_id: currentUserId
+            }
+            
+            const { data: assessmentResult, error: assessmentError } = await supabase
+              .from('assessment')
+              .insert([assessmentData])
+              .select()
+            
+            if (!assessmentError && assessmentResult && assessmentResult[0] && wizardAssessment.selected_criteria?.length > 0) {
+              const assessmentId = assessmentResult[0].assessment_id
+              const criteriaRecords = wizardAssessment.selected_criteria.map(criterionId => ({
+                assessment_id: assessmentId,
+                criterion_id: criterionId
+              }))
+              
+              await supabase
+                .from('assessment_criteria')
+                .insert(criteriaRecords)
+            }
           }
         }
         
@@ -4426,26 +4420,42 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   }
 
   // Update existing topic (edit mode)
-  const updateExistingTopic = async () => {
-    console.log('🔍 [UPDATE START] Starting updateExistingTopic')
+  const updateExistingTopic = async (isDraft = false) => {
+    console.log('🔍 [UPDATE START] Starting updateExistingTopic, isDraft:', isDraft)
     console.log('🔍 [TOPIC DATA] selectedTopic:', selectedTopic)
     console.log('🔍 [WIZARD ASSESSMENT] wizardAssessment:', wizardAssessment)
     
-    if (!selectedTopic.topic_nama) {
-      alert('Please enter a topic name')
+    if (!selectedTopic.topic_nama?.trim()) {
+      alert('Please enter a Unit Title')
       return
     }
     if (!selectedTopic.topic_year) {
       alert('Please select MYP Year')
       return
     }
+    if (!selectedTopic.topic_kelas_id) {
+      alert('Please select Class before saving')
+      return
+    }
+    if (!selectedTopic.topic_subject_id) {
+      alert('Please select Subject before saving')
+      return
+    }
 
     setSaving(true)
     try {
+      const cleanInt = (val) => (val !== null && val !== undefined && val !== '' && !isNaN(val)) ? parseInt(val) : null
+
       // Prepare data with proper types
       const topicData = {
         ...selectedTopic,
-        topic_year: selectedTopic.topic_year ? parseInt(selectedTopic.topic_year) : null,
+        topic_status: isDraft ? 'draft' : 'published',
+        topic_subject_id: cleanInt(selectedTopic.topic_subject_id),
+        topic_kelas_id: cleanInt(selectedTopic.topic_kelas_id),
+        topic_year: cleanInt(selectedTopic.topic_year),
+        topic_urutan: cleanInt(selectedTopic.topic_urutan),
+        topic_duration: cleanInt(selectedTopic.topic_duration),
+        topic_hours_per_week: cleanInt(selectedTopic.topic_hours_per_week),
         topic_relationship_summative_assessment_statement_of_inquiry: wizardAssessment.assessment_relationship || null
       }
       
@@ -5319,6 +5329,29 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             onMouseEnter={e => { e.currentTarget.style.borderColor = theme.borderHover }}
                             onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border }}
                           >
+                            {/* Status Ribbon (Pita Transparan Melintang) */}
+                            {(() => {
+                              const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
+                              return (
+                                <div className="absolute top-0 left-0 z-20 overflow-hidden w-28 h-28 pointer-events-none">
+                                  <div 
+                                    className="absolute top-3 -left-9 w-36 text-center text-[9px] font-extrabold uppercase tracking-widest py-1 backdrop-blur-sm shadow-sm"
+                                    style={{
+                                      transform: 'rotate(-45deg)',
+                                      background: isDraft 
+                                        ? 'rgba(245, 158, 11, 0.88)' 
+                                        : 'rgba(16, 185, 129, 0.88)', 
+                                      color: '#ffffff',
+                                      boxShadow: '0 2px 4px rgba(0,0,0,0.12)',
+                                      textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                    }}
+                                  >
+                                    {isDraft ? 'DRAFT' : 'PUBLISHED'}
+                                  </div>
+                                </div>
+                              )
+                            })()}
+
                             {/* Grade Watermark */}
                             {gradeNumber && (
                               <div className="absolute top-0 right-0 font-black leading-none pointer-events-none select-none" style={{ fontSize: '120px', color: theme.border, transform: 'translate(20%, -20%)' }}>
@@ -5327,7 +5360,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             )}
                             
                             {/* Header */}
-                            <div className="mb-3 pb-3 relative z-10" style={{ borderBottom: `1px solid ${theme.border}` }}>
+                            <div className="mb-3 pb-3 relative z-10 pl-6" style={{ borderBottom: `1px solid ${theme.border}` }}>
                               <div className="flex items-start justify-between gap-2 mb-2">
                                 <h3 className="text-sm font-semibold line-clamp-2 flex-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
                                   {topic.topic_nama}
@@ -5440,6 +5473,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.subtleBg }}>
                             <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider w-10" style={{ color: theme.textSecondary }}>#</th>
                             <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Topic Name</th>
+                            <th className="px-4 py-2.5 text-center font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Status</th>
                             <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Subject</th>
                             <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Class</th>
                             <th className="px-4 py-2.5 text-center font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Duration</th>
@@ -5449,7 +5483,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredTopics.map((topic, idx) => (
+                          {filteredTopics.map((topic, idx) => {
+                            const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
+                            return (
                             <tr
                               key={topic.topic_id}
                               className="cursor-pointer transition-colors"
@@ -5462,6 +5498,18 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               <td className="px-4 py-3">
                                 <div className="font-medium" style={{ color: theme.textPrimary }}>{topic.topic_nama}</div>
                                 {topic.topic_urutan && <div className="text-[10px] mt-0.5" style={{ color: theme.textSecondary }}>Unit #{topic.topic_urutan}</div>}
+                              </td>
+                              <td className="px-4 py-3 text-center whitespace-nowrap">
+                                <span 
+                                  className="px-2 py-0.5 text-[10px] font-bold uppercase rounded" 
+                                  style={{ 
+                                    background: isDraft ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)', 
+                                    color: isDraft ? '#b45309' : '#047857', 
+                                    border: `1px solid ${isDraft ? '#fcd34d' : '#6ee7b7'}` 
+                                  }}
+                                >
+                                  {isDraft ? 'DRAFT' : 'PUBLISHED'}
+                                </span>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
@@ -5501,7 +5549,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 </div>
                               </td>
                             </tr>
-                          ))}
+                          )})}
                         </tbody>
                       </table>
                     </div>
@@ -7331,20 +7379,47 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 <div className="px-6 py-6">
                   {/* Wizard Content (both add and edit mode) */}
                     <div className="space-y-6">
-                      {/* Step Title and Description */}
-                      <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded">
-                        <h3 className="text-lg font-semibold text-cyan-900 mb-1">
-                          {plannerSteps[currentStep].title}
-                        </h3>
-                        <p className="text-sm text-cyan-700 mb-2">
-                          {plannerSteps[currentStep].description}
-                        </p>
-                        <div className="bg-white p-3 rounded mt-3 border border-cyan-200">
-                          <p className="text-xs font-semibold text-cyan-600 mb-1">💡 IB Guidance:</p>
-                          <p className="text-sm text-gray-700 leading-relaxed">
-                            {plannerSteps[currentStep].guidance}
-                          </p>
-                        </div>
+                      {/* Step Title, Description & Collapsible IB Guidance */}
+                      <div className="bg-cyan-50/80 border border-cyan-200 rounded-md overflow-hidden transition-all">
+                        <button
+                          type="button"
+                          onClick={() => setShowStepGuidance(prev => !prev)}
+                          className="w-full px-3.5 py-2 flex items-center justify-between hover:bg-cyan-100/60 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2 flex-wrap min-w-0 pr-2">
+                            <span className="text-xs font-bold text-cyan-900">
+                              {plannerSteps[currentStep].title}
+                            </span>
+                            <span className="text-[11px] text-cyan-700 hidden sm:inline border-l border-cyan-300 pl-2 truncate max-w-md">
+                              {plannerSteps[currentStep].description}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-cyan-700 font-medium flex-shrink-0">
+                            <span className="text-[10px] bg-cyan-100 px-2 py-0.5 rounded text-cyan-800 border border-cyan-200">
+                              💡 IB Guidance
+                            </span>
+                            <svg
+                              className={`w-3.5 h-3.5 transform transition-transform ${showStepGuidance ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </button>
+                        
+                        {showStepGuidance && (
+                          <div className="px-3.5 pb-3 pt-1 border-t border-cyan-200/80 bg-white/95 space-y-1.5">
+                            <p className="text-cyan-800 font-medium text-xs sm:hidden">
+                              {plannerSteps[currentStep].description}
+                            </p>
+                            <div className="bg-cyan-50/60 p-2.5 rounded border border-cyan-100 text-[11px] text-gray-700 leading-normal">
+                              <p className="font-semibold text-cyan-700 text-xs mb-0.5">💡 IB Guidance:</p>
+                              <p>{plannerSteps[currentStep].guidance}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       
                       {/* Step Fields */}
@@ -7409,19 +7484,18 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         t={t}
                       />
                       {/* Navigation Buttons */}
-                      <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                         <div className="flex items-center gap-2">
                           <button
                             onClick={goToPreviousStep}
                             disabled={currentStep === 0}
-                            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="px-3.5 py-2 border border-gray-300 text-gray-700 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                             Previous
                           </button>
-                          
                         </div>
                         
                         <div className="text-center flex-1">
@@ -7431,15 +7505,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             
                             if (progress.completed === plannerSteps.length) {
                               return (
-                                <div className="flex items-center justify-center gap-2 text-green-600">
-                                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <div className="flex items-center justify-center gap-1.5 text-green-600">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                   </svg>
-                                  <span className="text-sm font-medium">All steps completed - Ready to save!</span>
+                                  <span className="text-xs font-medium">All steps completed - Ready to save!</span>
                                 </div>
                               )
                             } else if (missingFields.length > 0) {
-                              // Group missing fields by step
                               const groupedByStep = missingFields.reduce((acc, item) => {
                                 if (!acc[item.step]) acc[item.step] = []
                                 acc[item.step].push(item.field)
@@ -7447,11 +7520,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               }, {})
                               
                               return (
-                                <div className="text-left">
-                                  <p className="text-xs text-red-600 font-semibold mb-1">⚠️ Missing required fields:</p>
-                                  <div className="max-h-20 overflow-y-auto">
+                                <div className="text-left px-2">
+                                  <p className="text-[11px] text-red-600 font-semibold mb-0.5">⚠️ Missing required fields:</p>
+                                  <div className="max-h-16 overflow-y-auto">
                                     {Object.entries(groupedByStep).map(([step, fields]) => (
-                                      <p key={step} className="text-xs text-gray-600">
+                                      <p key={step} className="text-[11px] text-gray-600">
                                         <span className="font-medium text-red-500">Step {step}:</span> {fields.join(', ')}
                                       </p>
                                     ))}
@@ -7459,41 +7532,73 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 </div>
                               )
                             } else {
-                              return <p className="text-sm text-gray-500">Fill all required fields</p>
+                              return <p className="text-xs text-gray-500">Fill all required fields</p>
                             }
                           })()}
                         </div>
                         
                         {currentStep < plannerSteps.length - 1 ? (
-                          <button
-                            onClick={goToNextStep}
-                            className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                          >
-                            Next
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={isAddMode ? saveNewTopic : updateExistingTopic}
-                            disabled={saving}
-                            className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                          >
-                            {saving ? (
-                              <>
-                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                                {isAddMode ? 'Saving...' : 'Updating...'}
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                {isAddMode ? 'Create Unit' : 'Update Unit'}
-                              </>
+                          <div className="flex items-center gap-2">
+                            {isAddMode && (
+                              <button
+                                onClick={() => saveNewTopic(true)}
+                                disabled={saving}
+                                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+                                title="Save incomplete topic as draft without full field validation"
+                              >
+                                {saving ? (
+                                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
+                                ) : (
+                                  <span>📝 Save as Draft</span>
+                                )}
+                              </button>
                             )}
-                          </button>
+                            <button
+                              onClick={goToNextStep}
+                              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
+                            >
+                              Next
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            {isAddMode && (
+                              <button
+                                onClick={() => saveNewTopic(true)}
+                                disabled={saving}
+                                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+                                title="Save incomplete topic as draft without full field validation"
+                              >
+                                {saving ? (
+                                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
+                                ) : (
+                                  <span>📝 Save as Draft</span>
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => isAddMode ? saveNewTopic(false) : updateExistingTopic(false)}
+                              disabled={saving}
+                              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+                            >
+                              {saving ? (
+                                <>
+                                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
+                                  {isAddMode ? 'Publishing...' : 'Updating...'}
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  {isAddMode ? 'Publish Unit' : 'Update & Publish'}
+                                </>
+                              )}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
