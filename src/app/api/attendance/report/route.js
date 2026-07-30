@@ -189,7 +189,7 @@ export async function GET(request) {
         user_id, user_nama_depan, user_nama_belakang,
         user_unit_id, user_role_id, user_pin,
         expected_check_in, expected_check_out, join_date,
-        role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours)
+        role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
@@ -300,6 +300,8 @@ export async function GET(request) {
       const workDays = (user.role?.work_days || '1,2,3,4,5').split(',').map(Number)
       const isPartTime = !!user.role?.is_part_time_staff
       const isFlexible = !!user.role?.is_flexible_hours
+      const roleNameLower = (user.role?.role_name || '').toLowerCase()
+      const isOnCall   = !!user.role?.is_on_call_staff || roleNameLower.includes('on call') || roleNameLower.includes('on-call')
       const expectedIn  = user.expected_check_in  || DEFAULT_CHECK_IN
       const expectedOut = user.expected_check_out || DEFAULT_CHECK_OUT
       const expectedInMins  = timeToMinutes(expectedIn)
@@ -315,6 +317,7 @@ export async function GET(request) {
         is_vendor:  !!user.role?.is_vendor,
         is_part_time_staff: !!user.role?.is_part_time_staff,
         is_flexible_hours:  !!user.role?.is_flexible_hours,
+        is_on_call_staff:   !!user.role?.is_on_call_staff,
         position:   positionMap[user.user_id]?.position_title || '',
         expected_check_in:  expectedIn.slice(0, 5),
         expected_check_out: expectedOut.slice(0, 5),
@@ -403,8 +406,8 @@ export async function GET(request) {
         const noCheckOut = checkouts.length === 0
 
         if (noCheckIn && noCheckOut) {
-          if (isPartTime) {
-            // Part-time: tidak masuk = tidak dicatat sebagai absen
+          if (isPartTime || isOnCall) {
+            // Part-time / On-Call: tidak masuk = tidak dicatat sebagai absen
             dayRecord.status = 'ok'
           } else {
             // ── Tidak masuk sama sekali ───────────────────────────────────
@@ -547,6 +550,10 @@ export async function GET(request) {
 
   } catch (err) {
     console.error('[AttendanceReport]', err)
-    return NextResponse.json({ success: false, message: err.message }, { status: 500 })
+    let msg = err.message
+    if (msg.includes('fetch failed')) {
+      msg = 'Koneksi ke server Supabase terputus (Network Timeout). Silakan coba lagi.'
+    }
+    return NextResponse.json({ success: false, message: msg }, { status: 500 })
   }
 }

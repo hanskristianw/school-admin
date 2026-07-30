@@ -660,8 +660,8 @@
     "semantic_hash": "655ff4969401f85d067a205512767404"
   },
   "package.json": {
-    "mtime": 1784703981.3937376,
-    "ast_hash": "ec29e0dde59a78703789f7e73e2de20c",
+    "mtime": 1785391400.4813526,
+    "ast_hash": "59ce4c5f870586876130e187064cbebb",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -725,8 +725,8 @@
     "semantic_hash": "315962553f5c31c876de509490acaf08"
   },
   "src/app/api/attendance/notify/route.js": {
-    "mtime": 1784794021.6356757,
-    "ast_hash": "a4e494dfa4b34cc1648429b1633fb27f",
+    "mtime": 1785392080.1151888,
+    "ast_hash": "1f416d284a7bc68c07c69213c04ce125",
     "semantic_hash": ""
   },
   "src/app/api/attendance/notify/test-email/route.js": {
@@ -735,8 +735,8 @@
     "semantic_hash": "ee2db9404a462cd52d527b1df97e6681"
   },
   "src/app/api/attendance/report/route.js": {
-    "mtime": 1784794040.192944,
-    "ast_hash": "5e814f7511ce119138464e580f328f32",
+    "mtime": 1785392073.0484116,
+    "ast_hash": "cf5cfd02ad81fbdf721dd487cb306fce",
     "semantic_hash": ""
   },
   "src/app/api/attendance/role-approvers/route.js": {
@@ -1010,8 +1010,8 @@
     "semantic_hash": "74abb2f31fb2ec3ac99ac67db63d56ad"
   },
   "src/app/data/role_management/page.jsx": {
-    "mtime": 1784794006.7504041,
-    "ast_hash": "60b8f524e9fc26dea5bf8ee34ae14473",
+    "mtime": 1785391560.1214955,
+    "ast_hash": "e53b97aae785354c1458fd6b4143be63",
     "semantic_hash": ""
   },
   "src/app/data/room/page.jsx": {
@@ -1065,8 +1065,8 @@
     "semantic_hash": "ed62be15a684e4722d48de789ed2e4ba"
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1785388757.8072844,
-    "ast_hash": "9fc1686a013f984fd0c79d095b73c882",
+    "mtime": 1785388989.8203373,
+    "ast_hash": "98a3e83b0658aac04d3c8b0f05bb1950",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -1115,9 +1115,9 @@
     "semantic_hash": "05959da90a715b74096bffe11dc2d478"
   },
   "src/app/layout.js": {
-    "mtime": 1784179362.450841,
-    "ast_hash": "d48c5d296f063cad338983a1c02fca99",
-    "semantic_hash": "d48c5d296f063cad338983a1c02fca99"
+    "mtime": 1785392543.0795,
+    "ast_hash": "65806f33646bdc1df3bba3293fbd2d13",
+    "semantic_hash": ""
   },
   "src/app/login/page.jsx": {
     "mtime": 1784179362.450841,
@@ -1660,8 +1660,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1785311817.931398,
-    "ast_hash": "9f120eed9dfb31b4c4dd42c8aa60b598",
+    "mtime": 1785391528.3485045,
+    "ast_hash": "2c36101eec2425564941279e20f45aa0",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -1695,8 +1695,8 @@
     "semantic_hash": ""
   },
   "src/app/data/attendance-check/page.jsx": {
-    "mtime": 1784883070.2090034,
-    "ast_hash": "321213f187c0e9ba3c693e28a1cf55a7",
+    "mtime": 1785392099.1317618,
+    "ast_hash": "43a2f824316306bb64a609892d1b531c",
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
@@ -1707,6 +1707,41 @@
   "migrations/add-topic-status.sql": {
     "mtime": 1785311805.0520062,
     "ast_hash": "25513ab1faa32b823310f383182eb346",
+    "semantic_hash": ""
+  },
+  "migrations/add-is-on-call-staff-to-role.sql": {
+    "mtime": 1785391305.6404424,
+    "ast_hash": "d673fb8df50ae260d3282d39d2b401b0",
+    "semantic_hash": ""
+  },
+  "scratch_add_col.mjs": {
+    "mtime": 1785391333.025019,
+    "ast_hash": "f6b197589cb4391b33fb31b262ae004d",
+    "semantic_hash": ""
+  },
+  "scratch_pg_migrate.mjs": {
+    "mtime": 1785391436.135335,
+    "ast_hash": "a13e65755c6dd91680e6fcbaf1ca66e0",
+    "semantic_hash": ""
+  },
+  "scratch_pg_passwords.mjs": {
+    "mtime": 1785391486.4616745,
+    "ast_hash": "bbdc2ec0f93f193efffb78eb36e84426",
+    "semantic_hash": ""
+  },
+  "scratch_run_ddl.mjs": {
+    "mtime": 1785391363.9652708,
+    "ast_hash": "05179f43b10f8b025171b082ccf0d0b9",
+    "semantic_hash": ""
+  },
+  "scratch_test_col.mjs": {
+    "mtime": 1785391959.8823261,
+    "ast_hash": "282efaf32d36c1be69325e28f958cfb4",
+    "semantic_hash": ""
+  },
+  "scratch_test_rpc.mjs": {
+    "mtime": 1785391505.4184544,
+    "ast_hash": "7ee3b9495c2dd93f23eec0a04a33b8b4",
     "semantic_hash": ""
   }
 }

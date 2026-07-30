@@ -32,7 +32,8 @@ export default function RoleManagementPage() {
     can_void_transactions: false,
     is_vendor: false,
     is_part_time_staff: false,
-    is_flexible_hours: false
+    is_flexible_hours: false,
+    is_on_call_staff: false
   })
 
   const isAdmin = useMemo(() => {
@@ -59,7 +60,7 @@ export default function RoleManagementPage() {
         // Fetch roles with dashboard_type info
         const { data, error } = await supabase
           .from('role')
-          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours')
+          .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff')
           .order('role_priority', { ascending: false })
           .order('role_name')
         if (error) throw new Error(error.message)
@@ -78,7 +79,7 @@ export default function RoleManagementPage() {
   }, [roles, search])
 
   const openNew = () => {
-    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, is_curriculum: false, is_nurse: false, can_void_transactions: false, is_vendor: false, is_part_time_staff: false, is_flexible_hours: false })
+    setForm({ role_id: null, role_name: '', dashboard_type_id: null, role_priority: 50, is_admin: false, is_teacher: false, is_principal: false, is_student: false, is_counselor: false, is_curriculum: false, is_nurse: false, can_void_transactions: false, is_vendor: false, is_part_time_staff: false, is_flexible_hours: false, is_on_call_staff: false })
     setShowEdit(true)
   }
   const openEdit = (r) => {
@@ -97,7 +98,8 @@ export default function RoleManagementPage() {
       can_void_transactions: !!r.can_void_transactions,
       is_vendor: !!r.is_vendor,
       is_part_time_staff: !!r.is_part_time_staff,
-      is_flexible_hours: !!r.is_flexible_hours
+      is_flexible_hours: !!r.is_flexible_hours,
+      is_on_call_staff: !!r.is_on_call_staff
     })
     setShowEdit(true)
   }
@@ -128,7 +130,8 @@ export default function RoleManagementPage() {
         can_void_transactions: !!form.can_void_transactions,
         is_vendor: !!form.is_vendor,
         is_part_time_staff: !!form.is_part_time_staff,
-        is_flexible_hours: !!form.is_flexible_hours
+        is_flexible_hours: !!form.is_flexible_hours,
+        is_on_call_staff: !!form.is_on_call_staff
       }
       if (form.role_id) {
         const { error } = await supabase.from('role').update(payload).eq('role_id', form.role_id)
@@ -137,7 +140,7 @@ export default function RoleManagementPage() {
         const { error } = await supabase.from('role').insert([payload])
         if (error) throw new Error(error.message)
       }
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours').order('role_priority', { ascending: false }).order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff').order('role_priority', { ascending: false }).order('role_name')
       if (rErr) throw new Error(rErr.message)
       setRoles(data || [])
       setShowEdit(false)
@@ -234,7 +237,8 @@ export default function RoleManagementPage() {
                           {r.is_nurse && <span className="px-2 py-0.5 rounded bg-red-100 text-red-700">Nurse</span>}
                           {r.is_vendor && <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">🏭 Vendor</span>}
                           {r.is_part_time_staff && <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-semibold">🕐 Part-time</span>}
-                          {!r.is_admin && !r.is_curriculum && !r.is_teacher && !r.is_principal && !r.is_student && !r.is_counselor && !r.is_nurse && !r.is_vendor && !r.is_part_time_staff && (
+                          {r.is_on_call_staff && <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-semibold">📞 Staf Honor / On-Call</span>}
+                          {!r.is_admin && !r.is_curriculum && !r.is_teacher && !r.is_principal && !r.is_student && !r.is_counselor && !r.is_nurse && !r.is_vendor && !r.is_part_time_staff && !r.is_on_call_staff && (
                             <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">Staff</span>
                           )}
                         </div>
@@ -315,6 +319,13 @@ export default function RoleManagementPage() {
                 <span className={form.is_part_time_staff ? 'text-indigo-700 font-semibold' : ''}>🕐 Part-time Staff (bebas absen total)</span>
               </label>
               <p className="text-xs text-gray-500 mt-1">Bebas 100% — tidak dihitung terlambat, pulang awal, maupun alpa</p>
+            </div>
+            <div className="mt-3">
+              <label className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg" style={{ background: form.is_on_call_staff ? '#f3e8ff' : '#f9fafb', border: `1px solid ${form.is_on_call_staff ? '#a855f7' : '#e5e7eb'}` }}>
+                <input type="checkbox" checked={form.is_on_call_staff} onChange={e=>setForm(p=>({...p,is_on_call_staff:e.target.checked}))} />
+                <span className={form.is_on_call_staff ? 'text-purple-700 font-semibold' : ''}>📞 Staf Honor / On-Call (Bebas Alpa, Wajib Tepat Waktu)</span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1">Bebas dari hitungan Alpa jika tidak hadir, namun jika hadir tetap wajib tepat waktu (hitung Terlambat & Pulang Awal)</p>
             </div>
             <div className="mt-3">
               <label className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg" style={{ background: form.is_flexible_hours ? '#ecfdf5' : '#f9fafb', border: `1px solid ${form.is_flexible_hours ? '#10b981' : '#e5e7eb'}` }}>

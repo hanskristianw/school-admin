@@ -254,7 +254,7 @@ async function handleNotify(request) {
         user_pin,
         expected_check_in,
         expected_check_out,
-        role:user_role_id (role_name, work_days, is_part_time_staff, is_flexible_hours)
+        role:user_role_id (role_name, work_days, is_part_time_staff, is_flexible_hours, is_on_call_staff)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
@@ -335,6 +335,8 @@ async function handleNotify(request) {
       const workDays    = (user.role?.work_days || '1,2,3,4,5').split(',').map(Number)
       const isPartTime  = !!user.role?.is_part_time_staff
       const isFlexible  = !!user.role?.is_flexible_hours
+      const roleNameLower = (user.role?.role_name || '').toLowerCase()
+      const isOnCall    = !!user.role?.is_on_call_staff || roleNameLower.includes('on call') || roleNameLower.includes('on-call')
 
       // ── Resolve special rule for this user/date ──
       const specialRule = resolveSpecialRule(user.user_role_id, user.user_id)
@@ -375,7 +377,7 @@ async function handleNotify(request) {
 
       if (noCheckIn && noCheckOut) {
         // ── A. Tidak masuk sama sekali (absent = Tidak Masuk) ─────────────────
-        if (!isPartTime) {
+        if (!isPartTime && !isOnCall) {
           issues.push({ type: 'absent', scheduledTime: effIn.slice(0,5), actualTime: null, minutesDiff: null })
         }
       } else {

@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-07-30)
 
 ## Corpus Check
-- 327 files · ~439,322 words
+- 334 files · ~440,205 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1585 nodes · 1622 edges · 304 communities (199 shown, 105 thin omitted)
+- 1606 nodes · 1637 edges · 312 communities (203 shown, 109 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3698c45e`
+- Built from commit: `391e4d7a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -216,10 +216,16 @@
 - @googleapis/chat
 - react-hook-form
 - **3. Assessment System**
+- scratch_add_col.mjs
 - driver.js
 - @fortawesome/react-fontawesome
 - Project Agent Rules
 - @fortawesome/free-solid-svg-icons
+- scratch_pg_migrate.mjs
+- pg
+- pngjs
+- zod
+- bcryptjs
 
 ## God Nodes (most connected - your core abstractions)
 1. `🚀 Supabase Connection Fixed!` - 18 edges
@@ -248,7 +254,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (304 total, 105 thin omitted)
+## Communities (312 total, 109 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.13
@@ -316,7 +322,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, clsx, googleapis, dependencies, bcryptjs, clsx, googleapis, pngjs (+3 more)
+Nodes (11): bcryptjs, browser-image-compression, clsx, googleapis, html5-qrcode, dependencies, bcryptjs, browser-image-compression (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -492,7 +498,7 @@ Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domai
 
 ### Community 130 - "bcryptjs"
 Cohesion: 0.40
-Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
+Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
 
 ### Community 137 - "Module 137"
 Cohesion: 0.06
@@ -505,6 +511,10 @@ Nodes (33): 1. Bulk Import, 1. `criteria`, 1. Data Entry, 1. Looping Through Str
 ### Community 150 - "Module 150"
 Cohesion: 0.06
 Nodes (33): 1. Purchase Receipt - Auto Track Supplier (/stock/uniform/add), 1. Stock Available per Item per Supplier, 1. uniform_stock_txn - Tambah kolom supplier_id, 2. Index untuk Performance, 2. Initial Stock Input (/stock/uniform/initial), 2. Stock Movement by Supplier, 3. Stock Out - Manual Supplier Selection (/sales/uniform/stock-out), 3. Total Stock per Supplier (All Items) (+25 more)
+
+### Community 156 - "Module 156"
+Cohesion: 0.40
+Nodes (3): passwordsToTest, portsToTest, usersToTest
 
 ### Community 158 - "Module 158"
 Cohesion: 0.06
@@ -567,8 +577,8 @@ Cohesion: 0.20
 Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject` (+2 more)
 
 ### Community 264 - "4.1 Tables"
-Cohesion: 0.17
-Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
+Cohesion: 0.20
+Nodes (10): 4.1 Tables, `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items`, `fpb_revisions`, `fpb_role_approvers` (+2 more)
 
 ### Community 265 - "School Admin System - Complete Documentation"
 Cohesion: 0.20
@@ -599,8 +609,8 @@ Cohesion: 0.29
 Nodes (7): 9.1 Tables, 9.2 ERD / Relationships (Timetable & Schedule Domain), 9. Timetable & Schedule Management Domain (`/data/timetable`, `/data/weekly-overview`), `timetable`, `timetable_exception`, `topic_weekly_plan`, `weekly_overview_draft`
 
 ### Community 272 - "Database Schema & Relationships"
-Cohesion: 0.14
-Nodes (14): 11.1 Tables, `uniform`, `uniform_po_settings`, `uniform_purchase`, `uniform_purchase_item`, `uniform_purchase_receipt`, `uniform_purchase_receipt_item`, `uniform_sale` (+6 more)
+Cohesion: 0.12
+Nodes (16): 11.1 Tables, 11.2 ERD / Relationships (Uniform & Stock Domain), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`), `uniform`, `uniform_po_settings`, `uniform_purchase`, `uniform_purchase_item`, `uniform_purchase_receipt` (+8 more)
 
 ### Community 273 - "8.1 Tables"
 Cohesion: 0.33
@@ -619,8 +629,8 @@ Cohesion: 0.33
 Nodes (6): **Assessment Calendar (View + RPC)**, **Assessment with Relations:**, 📊 **Database Queries Reference**, **Get Teachers Only:**, **Subject with Teacher & Unit:**, **Topics (Units) Queries:**
 
 ### Community 278 - "7.1 Tables"
-Cohesion: 0.18
-Nodes (10): 11.2 ERD / Relationships (Uniform & Stock Domain), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands` (+2 more)
+Cohesion: 0.40
+Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
 
 ### Community 279 - "**Key Components**"
 Cohesion: 0.40
@@ -646,26 +656,30 @@ Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure*
 Cohesion: 0.67
 Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(), getImageDimensions(), POST()
 
+### Community 290 - "dotenv"
+Cohesion: 0.33
+Nodes (5): 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), Database Schema & Relationships
+
 ### Community 299 - "**3. Assessment System**"
 Cohesion: 0.40
 Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
 
 ## Knowledge Gaps
-- **670 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+665 more)
+- **678 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+673 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **109 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `6.1 Tables`, `Module 149`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `Module 156`, `browser-image-compression`, `docx`, `dotenv`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `driver.js`, `@fortawesome/react-fontawesome`, `@fortawesome/free-solid-svg-icons`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `6.1 Tables`, `Module 149`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `driver.js`, `@fortawesome/react-fontawesome`, `@fortawesome/free-solid-svg-icons`, `pg`, `pngjs`, `zod`, `bcryptjs`?**
   _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._
 - **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `**3. Assessment System**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `📌 Changelog`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _670 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _678 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.12685560053981107 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

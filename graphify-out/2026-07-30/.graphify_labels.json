@@ -299,8 +299,16 @@
   "297": "Users.md",
   "298": "react-hook-form",
   "299": "**3. Assessment System**",
+  "300": "scratch_add_col.mjs",
   "301": "driver.js",
   "302": "@fortawesome/react-fontawesome",
   "303": "Project Agent Rules",
-  "304": "@fortawesome/free-solid-svg-icons"
+  "304": "@fortawesome/free-solid-svg-icons",
+  "305": "scratch_pg_migrate.mjs",
+  "306": "scratch_test_col.mjs",
+  "307": "pg",
+  "308": "pngjs",
+  "309": "zod",
+  "310": "scratch_run_ddl.mjs",
+  "311": "bcryptjs"
 }

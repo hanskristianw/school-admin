@@ -161,9 +161,14 @@ export default function AttendanceCheckPage() {
             if (['holiday', 'dayoff', 'off'].includes(day.status)) continue
 
             // Check if day has any issue flags
-            const issueTypes = (day.issues || []).filter(i =>
+            let issueTypes = (day.issues || []).filter(i =>
               ['late', 'leave_early', 'absent', 'no_checkin', 'no_checkout'].includes(i)
             )
+            const roleNameLower = (user.role_name || '').toLowerCase()
+            const isOnCall = user.is_on_call_staff || roleNameLower.includes('on call') || roleNameLower.includes('on-call')
+            if (isOnCall) {
+              issueTypes = issueTypes.filter(i => i !== 'absent')
+            }
 
             if (issueTypes.length > 0) {
               const key = `${user.user_id}_${day.date}`

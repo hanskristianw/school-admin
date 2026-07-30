@@ -768,8 +768,21 @@ export default function AttendanceReportPage() {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg text-sm" style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>
-          ❌ {error}
+        <div className="p-3.5 rounded-xl text-sm flex items-center justify-between gap-3 shadow-xs" style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>
+          <div>
+            <span className="font-bold block">❌ Gagal Memuat Data Presensi</span>
+            <span className="text-xs text-red-700">
+              {error.includes('fetch failed') || error.includes('Koneksi')
+                ? 'Koneksi jaringan ke Supabase terputus/timeout. Silakan klik tombol "Coba Lagi".'
+                : error}
+            </span>
+          </div>
+          <button
+            onClick={fetchReport}
+            className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-xs"
+          >
+            🔄 Coba Lagi
+          </button>
         </div>
       )}
 
