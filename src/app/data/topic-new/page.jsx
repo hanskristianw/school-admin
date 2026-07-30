@@ -5370,7 +5370,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
                     </div>
                   ) : planningView === 'card' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
                       {filteredTopics.length === 0 && (
                         <div className="col-span-full text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
                           {t('topicNew.table.noUnits')}
@@ -5379,6 +5379,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       
                       {filteredTopics.length > 0 && (
                         filteredTopics.map((topic) => {
+                          const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
                           const kelasName = kelasNameMap.get(topic.topic_kelas_id) || ''
                           const gradeMatch = kelasName.match(/(\d{1,2})/)
                           const gradeNumber = gradeMatch ? gradeMatch[1] : ''
@@ -5386,106 +5387,165 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           return (
                           <div 
                             key={topic.topic_id}
-                            className="relative overflow-hidden cursor-pointer transition-all hover:shadow-md flex flex-col justify-between"
-                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '12px 14px', background: theme.cardBg, minHeight: '130px' }}
+                            className="group relative overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col justify-between rounded-xl p-4"
+                            style={{
+                              background: theme.cardBg,
+                              border: `1px solid ${theme.border}`
+                            }}
                             onClick={() => handleTopicOpen(topic)}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = theme.borderHover }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border }}
                           >
-                            {/* Status Ribbon (Pita Transparan Melintang) */}
-                            {(() => {
-                              const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
-                              return (
-                                <div className="absolute top-0 left-0 z-20 overflow-hidden w-24 h-24 pointer-events-none">
-                                  <div 
-                                    className="absolute top-2.5 -left-9 w-32 text-center text-[8px] font-extrabold uppercase tracking-wider py-0.5 backdrop-blur-sm shadow-sm"
-                                    style={{
-                                      transform: 'rotate(-45deg)',
-                                      background: isDraft 
-                                        ? 'rgba(245, 158, 11, 0.88)' 
-                                        : 'rgba(16, 185, 129, 0.88)', 
-                                      color: '#ffffff',
-                                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-                                      textShadow: '0 1px 2px rgba(0,0,0,0.2)'
-                                    }}
-                                  >
-                                    {isDraft ? 'DRAFT' : 'PUBLISHED'}
-                                  </div>
-                                </div>
-                              )
-                            })()}
-
-                            {/* Grade Watermark */}
-                            {gradeNumber && (
-                              <div className="absolute bottom-1 right-2 font-black leading-none pointer-events-none select-none opacity-30" style={{ fontSize: '56px', color: theme.border }}>
-                                {gradeNumber}
-                              </div>
-                            )}
-                            
-                            {/* Layer 1: Top Bar (Unit #, Action Buttons) */}
-                            <div className="flex items-center justify-between gap-1.5 mb-2 relative z-10 pl-6">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-black px-2 py-0.5 shadow-sm" style={{ background: theme.subtleBg, color: theme.textPrimary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
+                            {/* Layer 1: Top Bar (Unit Badge, Status Capsule, Action Buttons) */}
+                            <div 
+                              className="flex items-center justify-between gap-2 pb-2.5"
+                              style={{ borderBottom: `1px solid ${theme.border}` }}
+                            >
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {/* Unit Badge */}
+                                <span 
+                                  className="text-xs font-black px-2.5 py-0.5 rounded-md shadow-2xs"
+                                  style={{
+                                    background: theme.blueBg,
+                                    color: theme.blueText,
+                                    border: `1px solid ${theme.border}`
+                                  }}
+                                >
                                   Unit {topic.topic_urutan || '-'}
                                 </span>
+
+                                {/* Status Capsule Pill */}
+                                {isDraft ? (
+                                  <span 
+                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-full"
+                                    style={{
+                                      background: theme.yellowBg || 'rgba(245, 158, 11, 0.15)',
+                                      color: theme.yellowText || '#d97706',
+                                      border: `1px solid ${theme.border}`
+                                    }}
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    Draft
+                                  </span>
+                                ) : (
+                                  <span 
+                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-full"
+                                    style={{
+                                      background: theme.greenBg,
+                                      color: theme.greenText,
+                                      border: `1px solid ${theme.border}`
+                                    }}
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Published
+                                  </span>
+                                )}
                               </div>
 
                               {/* Action Buttons */}
-                              <div className="flex items-center gap-1 flex-shrink-0">
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
                                 <button
                                   onClick={(e) => handleGeneratePDF(topic, e)}
-                                  className="w-6 h-6 flex items-center justify-center transition-opacity hover:opacity-80"
-                                  style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+                                  style={{
+                                    background: theme.blueBg,
+                                    color: theme.blueText,
+                                    border: `1px solid ${theme.border}`
+                                  }}
                                   title="Download Unit Planner PDF"
                                 >
-                                  <FontAwesomeIcon icon={faPrint} className="text-[11px]" />
+                                  <FontAwesomeIcon icon={faPrint} className="text-xs" />
                                 </button>
                                 <button
                                   onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)}
-                                  className="w-6 h-6 flex items-center justify-center transition-opacity hover:opacity-80"
-                                  style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+                                  style={{
+                                    background: theme.subtleBg,
+                                    color: theme.textSecondary,
+                                    border: `1px solid ${theme.border}`
+                                  }}
                                   title="Download Assessment PDF"
                                 >
-                                  <FontAwesomeIcon icon={faFileAlt} className="text-[11px]" />
+                                  <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
                                 </button>
                                 <button
                                   onClick={(e) => handleExportAssessmentWordFromCard(topic, e)}
-                                  className="w-6 h-6 flex items-center justify-center transition-opacity hover:opacity-80"
-                                  style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+                                  style={{
+                                    background: theme.subtleBg,
+                                    color: theme.textSecondary,
+                                    border: `1px solid ${theme.border}`
+                                  }}
                                   title="Download Assessment Word"
                                 >
-                                  <FontAwesomeIcon icon={faFileWord} className="text-[11px]" />
+                                  <FontAwesomeIcon icon={faFileWord} className="text-xs" />
                                 </button>
                               </div>
                             </div>
 
-                            {/* Layer 2: Unit Title (Full Width & Fully Readable) */}
-                            <div className="my-1.5 flex-1 relative z-10 pl-6">
-                              <h3 className="text-xs font-bold line-clamp-3 leading-snug" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
+                            {/* Layer 2: Unit Title with Consistent Min-Height */}
+                            <div className="my-3 min-h-[2.5rem] flex items-center">
+                              <h3 
+                                className="text-sm font-bold line-clamp-2 leading-snug"
+                                style={{
+                                  color: theme.textPrimary,
+                                  fontFamily: "'Helvetica Neue', sans-serif"
+                                }}
+                              >
                                 {topic.topic_nama}
                               </h3>
                             </div>
 
-                            {/* Layer 3: Footer Meta (Subject, Class, MYP Year, Duration) */}
-                            <div className="flex items-center justify-between gap-1 mt-2 pt-2 relative z-10" style={{ borderTop: `1px border-dashed ${theme.border}` }}>
-                              <div className="flex items-center gap-1 flex-wrap">
-                                <span className="text-[10px] px-1.5 py-0.5 font-semibold" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
+                            {/* Layer 3: Footer Meta (Subject, Class, Grade Tag, MYP Year, Duration) */}
+                            <div 
+                              className="flex items-center justify-between gap-2 pt-2.5"
+                              style={{ borderTop: `1px solid ${theme.border}` }}
+                            >
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span 
+                                  className="text-[10px] px-2 py-0.5 font-bold rounded-md"
+                                  style={{ background: theme.blueBg, color: theme.blueText }}
+                                >
                                   {subjectMap.get(topic.topic_subject_id) || 'N/A'}
                                 </span>
-                                {topic.topic_kelas_id && (
-                                  <span className="text-[10px] px-1.5 py-0.5 font-semibold" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>
+
+                                {topic.topic_kelas_id ? (
+                                  <span 
+                                    className="text-[10px] px-2 py-0.5 font-bold rounded-md"
+                                    style={{ background: theme.greenBg, color: theme.greenText }}
+                                  >
                                     {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
                                   </span>
-                                )}
+                                ) : gradeNumber ? (
+                                  <span 
+                                    className="text-[10px] px-2 py-0.5 font-bold rounded-md"
+                                    style={{
+                                      background: theme.subtleBg,
+                                      color: theme.textPrimary,
+                                      border: `1px solid ${theme.border}`
+                                    }}
+                                  >
+                                    Grade {gradeNumber}
+                                  </span>
+                                ) : null}
+
                                 {topic.topic_year && (
-                                  <span className="text-[10px] px-1.5 py-0.5 font-semibold bg-purple-100 text-purple-800 border border-purple-200" style={{ borderRadius: '4px' }}>
+                                  <span 
+                                    className="text-[10px] px-2 py-0.5 font-bold rounded-md"
+                                    style={{
+                                      background: theme.subtleBg,
+                                      color: theme.textSecondary,
+                                      border: `1px solid ${theme.border}`
+                                    }}
+                                  >
                                     MYP Y{topic.topic_year}
                                   </span>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-1 text-[11px] font-medium flex-shrink-0" style={{ color: theme.textSecondary }}>
-                                <FontAwesomeIcon icon={faCalendar} className="text-[10px]" />
+                              <div 
+                                className="flex items-center gap-1 text-xs font-semibold flex-shrink-0"
+                                style={{ color: theme.textSecondary }}
+                              >
+                                <FontAwesomeIcon icon={faCalendar} className="text-[11px]" />
                                 <span>
                                   {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
                                     ? `${topic.topic_duration}w`
