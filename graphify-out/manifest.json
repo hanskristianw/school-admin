@@ -1055,9 +1055,9 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/pdfGenerators.js": {
-    "mtime": 1784179362.4426584,
-    "ast_hash": "84b7e89e5169b75fade298009a14af04",
-    "semantic_hash": "84b7e89e5169b75fade298009a14af04"
+    "mtime": 1785399459.9622324,
+    "ast_hash": "ff9645b493556f3e88d0dc6ca350bbf1",
+    "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/useAiHelp.js": {
     "mtime": 1784179362.4446633,

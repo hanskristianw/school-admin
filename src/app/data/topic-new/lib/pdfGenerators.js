@@ -12,6 +12,25 @@ import JSZip from 'jszip'
 
 // ─── Pure Helpers ────────────────────────────────────────────────────────────
 
+/**
+ * Sanitizes text content for jsPDF Helvetica standard fonts.
+ * Converts Unicode arrows, em-dashes, en-dashes, bullets, and smart quotes
+ * into standard ASCII characters so jsPDF autoTable won't corrupt glyphs or explode letter spacing.
+ */
+export const cleanPdfText = (str) => {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/[→➔➜➤]/g, '->')
+    .replace(/←/g, '<-')
+    .replace(/↔/g, '<->')
+    .replace(/[—–‒―]/g, ' - ')
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[•▪●◦]/g, '*')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+};
+
 export const openAssessmentHtml = async (payload) => {
   const res = await fetch('/api/assessment-html', {
     method: 'POST',
@@ -151,7 +170,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
     
     if (topicErr) throw new Error(topicErr.message);
 
-    // Load subject data
+    // Load subject & teacher data (Priority: detail_kelas.teacher_user_id -> subject.subject_user_id -> currentUserId)
     let subject = null;
     let teacher = null;
     if (topicData.topic_subject_id) {
@@ -163,30 +182,55 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       
       if (!subjectErr && subjectData) {
         subject = subjectData;
+      }
 
-        if (subjectData?.subject_user_id) {
-          const { data: teacherData, error: teacherErr } = await supabase
+      // Priority 1: Query detail_kelas for teacher_user_id (Real Teacher teaching this specific class & subject)
+      if (topicData.topic_kelas_id) {
+        const { data: dkData } = await supabase
+          .from("detail_kelas")
+          .select("teacher_user_id")
+          .eq("detail_kelas_subject_id", topicData.topic_subject_id)
+          .eq("detail_kelas_kelas_id", topicData.topic_kelas_id)
+          .maybeSingle();
+
+        if (dkData?.teacher_user_id) {
+          const { data: realTeacher } = await supabase
             .from("users")
             .select("user_nama_depan, user_nama_belakang")
-            .eq("user_id", subjectData.subject_user_id)
-            .single();
-          
-          if (!teacherErr && teacherData) {
+            .eq("user_id", dkData.teacher_user_id)
+            .maybeSingle();
+
+          if (realTeacher) {
             teacher = {
-              name: `${teacherData.user_nama_depan || ''} ${teacherData.user_nama_belakang || ''}`.trim()
+              name: `${realTeacher.user_nama_depan || ''} ${realTeacher.user_nama_belakang || ''}`.trim()
             };
           }
         }
       }
+
+      // Priority 2 (Fallback): If no teacher assigned in detail_kelas, use subject_user_id (Subject Coordinator)
+      if (!teacher && subjectData?.subject_user_id) {
+        const { data: coordTeacher } = await supabase
+          .from("users")
+          .select("user_nama_depan, user_nama_belakang")
+          .eq("user_id", subjectData.subject_user_id)
+          .maybeSingle();
+        
+        if (coordTeacher) {
+          teacher = {
+            name: `${coordTeacher.user_nama_depan || ''} ${coordTeacher.user_nama_belakang || ''}`.trim()
+          };
+        }
+      }
     }
 
-    // Fallback: if teacher still null, try to get current user name
+    // Priority 3 (Fallback): if teacher still null, try to get current user name
     if (!teacher && currentUserId) {
       const { data: currentUser, error: userErr } = await supabase
         .from("users")
         .select("user_nama_depan, user_nama_belakang")
         .eq("user_id", currentUserId)
-        .single();
+        .maybeSingle();
       
       if (!userErr && currentUser) {
         teacher = {
@@ -243,13 +287,13 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       body: [
         [
           { content: 'Teacher(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: teacher?.name || 'N/A', colSpan: 2 },
+          { content: cleanPdfText(teacher?.name || 'N/A'), colSpan: 2 },
           { content: 'Subject group and discipline', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: subject?.subject_name || 'N/A', colSpan: 2 },
+          { content: cleanPdfText(subject?.subject_name || 'N/A'), colSpan: 2 },
         ],
         [
           { content: 'Unit title', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: topicData.topic_nama || 'N/A' },
+          { content: cleanPdfText(topicData.topic_nama || 'N/A') },
           { content: 'MYP year', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
           { content: topicData.topic_year ? `Year ${topicData.topic_year}` : 'N/A' },
           { content: 'Unit duration (hrs)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
@@ -280,23 +324,23 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       body: [
         [
           { content: 'Key concept', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: topicData.topic_key_concept || 'N/A' },
+          { content: cleanPdfText(topicData.topic_key_concept || 'N/A') },
           { content: 'Related concept(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: topicData.topic_related_concept || 'N/A' },
+          { content: cleanPdfText(topicData.topic_related_concept || 'N/A') },
           { content: 'Global context', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: (topicData.topic_global_context || 'N/A') + (topicData.topic_gc_exploration ? '\nExplorations: ' + topicData.topic_gc_exploration : '') },
+          { content: cleanPdfText((topicData.topic_global_context || 'N/A') + (topicData.topic_gc_exploration ? '\nExplorations: ' + topicData.topic_gc_exploration : '')) },
         ],
         [
           { content: 'Statement of inquiry', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
         ],
         [
-          { content: topicData.topic_statement || 'N/A', colSpan: 6, styles: { cellPadding: 3 } },
+          { content: cleanPdfText(topicData.topic_statement || 'N/A'), colSpan: 6, styles: { cellPadding: 3 } },
         ],
         [
           { content: 'Inquiry questions', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
         ],
         [
-          { content: topicData.topic_inquiry_question || 'N/A', colSpan: 6, styles: { cellPadding: 3 } },
+          { content: cleanPdfText(topicData.topic_inquiry_question || 'N/A'), colSpan: 6, styles: { cellPadding: 3 } },
         ],
       ],
       theme: 'grid',
@@ -320,7 +364,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
         head: [],
         body: [
           [{ content: 'Objectives', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
-          [{ content: topicData.topic_myp_objectives || 'N/A', styles: { cellPadding: 3 } }],
+          [{ content: cleanPdfText(topicData.topic_myp_objectives || 'N/A'), styles: { cellPadding: 3 } }],
         ],
         theme: 'grid',
         styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] } });
@@ -343,8 +387,8 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
         ],
         [
           { content: '', styles: { cellPadding: 3 }},
-          { content: topicData.topic_summative_assessment || 'N/A', styles: { cellPadding: 3 }},
-          { content: topicData.topic_relationship_summative_assessment_statement_of_inquiry || 'N/A', styles: { cellPadding: 3 }},
+          { content: cleanPdfText(topicData.topic_summative_assessment || 'N/A'), styles: { cellPadding: 3 }},
+          { content: cleanPdfText(topicData.topic_relationship_summative_assessment_statement_of_inquiry || 'N/A'), styles: { cellPadding: 3 }},
         ],
       ],
       theme: 'grid',
@@ -362,7 +406,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       head: [],
       body: [
         [{ content: 'Approaches to learning (ATL)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
-        [{ content: topicData.topic_atl || 'No ATL skills defined', styles: { cellPadding: 3 }}],
+        [{ content: cleanPdfText(topicData.topic_atl || 'No ATL skills defined'), styles: { cellPadding: 3 }}],
       ],
       theme: 'grid',
       styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
@@ -389,10 +433,10 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
         ],
         [
           { content: '', styles: { cellPadding: 3 }, rowSpan: 2 },
-          { content: learningProcessContent, styles: { cellPadding: 3 }},
+          { content: cleanPdfText(learningProcessContent), styles: { cellPadding: 3 }},
         ],
         [
-          { content: `Formative assessment:\n\n${topicData.topic_formative_assessment || ''}`, styles: { cellPadding: 3 }},
+          { content: cleanPdfText(`Formative assessment:\n\n${topicData.topic_formative_assessment || ''}`), styles: { cellPadding: 3 }},
         ],
       ],
       theme: 'grid',
@@ -409,7 +453,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       head: [],
       body: [
         [{ content: 'Resources', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
-        [{ content: topicData.topic_resources || '', styles: { cellPadding: 3 }}],
+        [{ content: cleanPdfText(topicData.topic_resources || ''), styles: { cellPadding: 3 }}],
       ],
       theme: 'grid',
       styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
@@ -432,9 +476,9 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
           { content: 'After teaching the unit', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
         ],
         [
-          { content: topicData.topic_reflection_prior || '', styles: { cellPadding: 3 }},
-          { content: topicData.topic_reflection_during || '', styles: { cellPadding: 3 }},
-          { content: topicData.topic_reflection_after || '', styles: { cellPadding: 3 }},
+          { content: cleanPdfText(topicData.topic_reflection_prior || ''), styles: { cellPadding: 3 }},
+          { content: cleanPdfText(topicData.topic_reflection_during || ''), styles: { cellPadding: 3 }},
+          { content: cleanPdfText(topicData.topic_reflection_after || ''), styles: { cellPadding: 3 }},
         ],
       ],
       theme: 'grid',
@@ -457,7 +501,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
           head: [],
           body: [
             [{ content: section.label, styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 8 }],
-            [{ content: section.content, colSpan: 8, styles: { cellPadding: 3 } }],
+            [{ content: cleanPdfText(section.content), colSpan: 8, styles: { cellPadding: 3 } }],
           ],
           theme: 'grid',
           styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] }
@@ -3336,16 +3380,17 @@ export const generateStudentReportHTML = async ({ reportFilters, reportStudents,
       if (!dk.subject) continue;
       if (dk.subject.include_in_print === false) continue; // skip subjects marked as not for print
       
-      // Fetch teacher name
+      // Fetch real teaching teacher name (Priority: detail_kelas.teacher_user_id -> subject.subject_user_id)
       let teacherName = '-';
-      if (dk.subject.subject_user_id) {
+      const targetUserId = dk.teacher_user_id || dk.subject?.subject_user_id;
+      if (targetUserId) {
         const { data: teacherData } = await supabase
           .from('users')
           .select('user_nama_depan, user_nama_belakang')
-          .eq('user_id', dk.subject.subject_user_id)
-          .single();
+          .eq('user_id', targetUserId)
+          .maybeSingle();
         if (teacherData) {
-          teacherName = `${teacherData.user_nama_depan} ${teacherData.user_nama_belakang}`.trim();
+          teacherName = `${teacherData.user_nama_depan || ''} ${teacherData.user_nama_belakang || ''}`.trim();
         }
       }
       
