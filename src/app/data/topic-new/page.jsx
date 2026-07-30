@@ -255,7 +255,58 @@ export default function TopicNewPage() {
   const [weeklyPlans, setWeeklyPlans] = useState([]) // Array of { id, week_number, week_objectives, week_activities, week_resources }
   const [loadingWeeklyPlans, setLoadingWeeklyPlans] = useState(false)
   const [savingWeeklyPlans, setSavingWeeklyPlans] = useState(false)
+  const [isWeeklyPlanDirty, setIsWeeklyPlanDirty] = useState(false)
   const [weeklyPlanNotification, setWeeklyPlanNotification] = useState({ show: false, message: '', type: 'success' })
+  const [unsavedModalOpen, setUnsavedModalOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
+
+  const initialWeeklyPlansRef = useRef(null)
+
+  const getNormalizedWeeklyPlansString = useCallback((plans) => {
+    if (!Array.isArray(plans)) return '[]'
+    return JSON.stringify(
+      plans.map(p => ({
+        w: p.week_number || 0,
+        d: p.week_date || '',
+        o: p.week_objectives || '',
+        a: p.week_activities || '',
+        r: p.week_resources || '',
+        f: p.week_reflection || ''
+      }))
+    )
+  }, [])
+
+  // Automatically check if current weeklyPlans differ from initial baseline
+  useEffect(() => {
+    if (initialWeeklyPlansRef.current === null) {
+      setIsWeeklyPlanDirty(false)
+      return
+    }
+    const currentStr = getNormalizedWeeklyPlansString(weeklyPlans)
+    const isDifferent = currentStr !== initialWeeklyPlansRef.current
+    setIsWeeklyPlanDirty(isDifferent)
+  }, [weeklyPlans, getNormalizedWeeklyPlansString])
+
+  const handleGuardedAction = (actionCallback) => {
+    if (isWeeklyPlanDirty) {
+      setPendingAction(() => actionCallback)
+      setUnsavedModalOpen(true)
+    } else {
+      actionCallback()
+    }
+  }
+
+  // Guard browser reload when weekly plan has unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isWeeklyPlanDirty) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isWeeklyPlanDirty])
   const [weeklyAiModalOpen, setWeeklyAiModalOpen] = useState(false)
   const [weeklyAiInput, setWeeklyAiInput] = useState({ assessmentDuration: '', specialRequests: '' })
   const [weeklyAiLoading, setWeeklyAiLoading] = useState(false)
@@ -1799,10 +1850,15 @@ export default function TopicNewPage() {
         .order('week_number')
       
       if (error) throw error
-      setWeeklyPlans(unpackWeeklyPlanRows(data))
+      const unpacked = unpackWeeklyPlanRows(data)
+      setWeeklyPlans(unpacked)
+      initialWeeklyPlansRef.current = getNormalizedWeeklyPlansString(unpacked)
+      setIsWeeklyPlanDirty(false)
     } catch (err) {
       console.error('Error fetching weekly plans:', err)
       setWeeklyPlans([])
+      initialWeeklyPlansRef.current = '[]'
+      setIsWeeklyPlanDirty(false)
     } finally {
       setLoadingWeeklyPlans(false)
     }
@@ -1905,6 +1961,8 @@ export default function TopicNewPage() {
         if (error) throw error
       }
       
+      initialWeeklyPlansRef.current = getNormalizedWeeklyPlansString(weeklyPlans)
+      setIsWeeklyPlanDirty(false)
       setWeeklyPlanNotification({
         show: true,
         message: t('topicNew.weeklyPlanTab.savedSuccess'),
@@ -1940,7 +1998,6 @@ export default function TopicNewPage() {
     try {
       setSavingWeeklyPlans(true)
       
-      // Delete all weekly plans for this topic
       const { error } = await supabase
         .from('topic_weekly_plan')
         .delete()
@@ -1948,14 +2005,14 @@ export default function TopicNewPage() {
       
       if (error) throw error
       
+      setWeeklyPlans([])
+      initialWeeklyPlansRef.current = '[]'
+      setIsWeeklyPlanDirty(false)
       setWeeklyPlanNotification({
         show: true,
         message: t('topicNew.weeklyPlanTab.deletedSuccess'),
         type: 'success'
       })
-      
-      // Clear local state
-      setWeeklyPlans([])
       
       setTimeout(() => {
         setWeeklyPlanNotification({ show: false, message: '', type: 'success' })
@@ -1972,67 +2029,70 @@ export default function TopicNewPage() {
     }
   }
   
-  const handleTopicSelectionForWeekly = async (topicId) => {
-    const topic = topics.find(t => t.topic_id === parseInt(topicId))
-    setSelectedTopicForWeekly(topic)
-    
-    if (!topic) {
-      setWeeklyPlans([])
-      return
-    }
-    
-    try {
-      setLoadingWeeklyPlans(true)
+  const handleTopicSelectionForWeekly = (topicId) => {
+    handleGuardedAction(async () => {
+      const topic = topics.find(t => t.topic_id === parseInt(topicId))
+      setSelectedTopicForWeekly(topic)
       
-      // Check if weekly plans exist for this topic
-      const { data: existingPlans, error: fetchError } = await supabase
-        .from('topic_weekly_plan')
-        .select('*')
-        .eq('topic_id', topic.topic_id)
-        .order('week_number')
-      
-      if (fetchError) throw fetchError
-      
-      // If no plans exist and topic has duration, create them
-      if ((!existingPlans || existingPlans.length === 0) && topic.topic_duration > 0) {
-        console.log('No weekly plans found, generating for', topic.topic_duration, 'weeks')
-        
-        // Generate empty weekly plans based on topic_duration
-        const newPlans = []
-        for (let i = 1; i <= topic.topic_duration; i++) {
-          newPlans.push({
-            topic_id: topic.topic_id,
-            week_number: i,
-            week_objectives: null,
-            week_activities: null,
-            week_resources: null
-          })
-        }
-        
-        // Insert new plans
-        const { data: insertedPlans, error: insertError } = await supabase
-          .from('topic_weekly_plan')
-          .insert(newPlans)
-          .select()
-        
-        if (insertError) throw insertError
-        
-        setWeeklyPlans(unpackWeeklyPlanRows(insertedPlans || newPlans))
-      } else {
-        // Plans exist, load them and unpack JSON multi-sessions
-        setWeeklyPlans(unpackWeeklyPlanRows(existingPlans))
+      if (!topic) {
+        setWeeklyPlans([])
+        initialWeeklyPlansRef.current = '[]'
+        setIsWeeklyPlanDirty(false)
+        return
       }
-    } catch (err) {
-      console.error('Error handling weekly plan selection:', err)
-      setWeeklyPlans([])
-      setWeeklyPlanNotification({
-        show: true,
-        message: 'Failed to load weekly plans',
-        type: 'error'
-      })
-    } finally {
-      setLoadingWeeklyPlans(false)
-    }
+      
+      try {
+        setLoadingWeeklyPlans(true)
+        
+        const { data: existingPlans, error: fetchError } = await supabase
+          .from('topic_weekly_plan')
+          .select('*')
+          .eq('topic_id', topic.topic_id)
+          .order('week_number')
+        
+        if (fetchError) throw fetchError
+        
+        if ((!existingPlans || existingPlans.length === 0) && topic.topic_duration > 0) {
+          const newPlans = []
+          for (let i = 1; i <= topic.topic_duration; i++) {
+            newPlans.push({
+              topic_id: topic.topic_id,
+              week_number: i,
+              week_objectives: null,
+              week_activities: null,
+              week_resources: null
+            })
+          }
+          
+          const { data: insertedPlans, error: insertError } = await supabase
+            .from('topic_weekly_plan')
+            .insert(newPlans)
+            .select()
+          
+          if (insertError) throw insertError
+          const unpacked = unpackWeeklyPlanRows(insertedPlans || newPlans)
+          setWeeklyPlans(unpacked)
+          initialWeeklyPlansRef.current = getNormalizedWeeklyPlansString(unpacked)
+        } else {
+          const unpacked = unpackWeeklyPlanRows(existingPlans)
+          setWeeklyPlans(unpacked)
+          initialWeeklyPlansRef.current = getNormalizedWeeklyPlansString(unpacked)
+        }
+        setIsWeeklyPlanDirty(false)
+      } catch (err) {
+        console.error('Error handling weekly plan selection:', err)
+        setWeeklyPlans([])
+        initialWeeklyPlansRef.current = '[]'
+        setIsWeeklyPlanDirty(false)
+        setWeeklyPlanNotification({
+          show: true,
+          message: 'Failed to load weekly plans',
+          type: 'error'
+        })
+      } finally {
+        setLoadingWeeklyPlans(false)
+      }
+    })
   }
   
   // Weekly Plan AI Help Functions
@@ -2231,6 +2291,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     })
     
     setWeeklyPlans(updatedPlans)
+    setIsWeeklyPlanDirty(true)
     setWeeklyAiResults(null)
     
     setWeeklyPlanNotification({
@@ -4480,15 +4541,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         .from('assessment')
         .select('assessment_id')
         .eq('assessment_topic_id', selectedTopic.topic_id)
-        .single()
+        .maybeSingle()
       
       if (assessmentSearchError) {
-        console.error('❌ [ASSESSMENT SEARCH ERROR]:', assessmentSearchError)
-        if (assessmentSearchError.code === 'PGRST116') {
-          console.warn('⚠️ No assessment found for this topic')
-        } else {
-          throw assessmentSearchError
-        }
+        console.warn('⚠️ [ASSESSMENT SEARCH WARN]:', assessmentSearchError.message)
       }
       
       if (existingAssessment) {
@@ -4567,24 +4623,19 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         } else {
           console.warn('⚠️ [CRITERIA EMPTY] No criteria selected to insert')
         }
-      } else {
-        // No assessment exists yet, create a new one
-        console.log('🆕 [CREATE ASSESSMENT] No existing assessment, creating new one')
+      } else if (selectedTopic.topic_subject_id && selectedTopic.topic_kelas_id && wizardAssessment.assessment_nama) {
+        // No assessment exists yet, create a new one if class, subject & assessment name are provided
+        console.log('🆕 [CREATE ASSESSMENT] No existing assessment, checking detail_kelas')
         
-        // Find detail_kelas_id for subject + kelas combination
-        const { data: dkData, error: dkError } = await supabase
+        const { data: dkData } = await supabase
           .from('detail_kelas')
           .select('detail_kelas_id')
           .eq('detail_kelas_subject_id', selectedTopic.topic_subject_id)
           .eq('detail_kelas_kelas_id', selectedTopic.topic_kelas_id)
-          .single()
+          .maybeSingle()
         
-        if (dkError) {
-          console.error('❌ [DETAIL_KELAS ERROR]:', dkError)
-          throw new Error('Could not find class-subject mapping. Please check detail_kelas.')
-        }
-        
-        console.log('✅ [DETAIL_KELAS FOUND] detail_kelas_id:', dkData.detail_kelas_id)
+        if (dkData) {
+          console.log('✅ [DETAIL_KELAS FOUND] detail_kelas_id:', dkData.detail_kelas_id)
         
         // Create new assessment
         const assessmentInsertPayload = {
@@ -4636,6 +4687,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           }
         }
       }
+    }
       
       console.log('🔍 [REFRESH] Refreshing topics list')
       
@@ -5148,7 +5200,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleGuardedAction(() => setActiveTab(tab.id))}
               className="inline-flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors"
               style={{
                 borderBottom: activeTab === tab.id ? `2px solid ${theme.textPrimary}` : '2px solid transparent',
@@ -5178,8 +5230,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 ].map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveSubMenu(item.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors"
+                    onClick={() => {
+                      if (activeSubMenu === 'weekly-plan' && item.id !== 'weekly-plan') {
+                        handleGuardedAction(() => setActiveSubMenu(item.id))
+                      } else {
+                        setActiveSubMenu(item.id)
+                      }
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium transition-colors"
                     style={{
                       borderRadius: '6px',
                       color: activeSubMenu === item.id ? theme.blueText : theme.textSecondary,
@@ -5189,8 +5247,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     onMouseEnter={e => { if (activeSubMenu !== item.id) e.currentTarget.style.background = theme.border }}
                     onMouseLeave={e => { e.currentTarget.style.background = activeSubMenu === item.id ? theme.blueBg : 'transparent' }}
                   >
-                    <FontAwesomeIcon icon={item.icon} className="w-3 h-3" style={{ color: 'inherit' }} />
-                    {item.label}
+                    <div className="flex items-center gap-2.5">
+                      <FontAwesomeIcon icon={item.icon} className="w-3 h-3" style={{ color: 'inherit' }} />
+                      {item.label}
+                    </div>
+                    {item.id === 'weekly-plan' && isWeeklyPlanDirty && (
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" title="Unsaved changes" />
+                    )}
                   </button>
                 ))}
               </nav>
@@ -5307,7 +5370,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
                     </div>
                   ) : planningView === 'card' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
                       {filteredTopics.length === 0 && (
                         <div className="col-span-full text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
                           {t('topicNew.table.noUnits')}
@@ -5323,8 +5386,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           return (
                           <div 
                             key={topic.topic_id}
-                            className="relative overflow-hidden cursor-pointer transition-all"
-                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '20px', background: theme.cardBg }}
+                            className="relative overflow-hidden cursor-pointer transition-all hover:shadow-md flex flex-col justify-between"
+                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '12px 14px', background: theme.cardBg, minHeight: '130px' }}
                             onClick={() => handleTopicOpen(topic)}
                             onMouseEnter={e => { e.currentTarget.style.borderColor = theme.borderHover }}
                             onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border }}
@@ -5333,16 +5396,16 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             {(() => {
                               const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
                               return (
-                                <div className="absolute top-0 left-0 z-20 overflow-hidden w-28 h-28 pointer-events-none">
+                                <div className="absolute top-0 left-0 z-20 overflow-hidden w-24 h-24 pointer-events-none">
                                   <div 
-                                    className="absolute top-3 -left-9 w-36 text-center text-[9px] font-extrabold uppercase tracking-widest py-1 backdrop-blur-sm shadow-sm"
+                                    className="absolute top-2.5 -left-9 w-32 text-center text-[8px] font-extrabold uppercase tracking-wider py-0.5 backdrop-blur-sm shadow-sm"
                                     style={{
                                       transform: 'rotate(-45deg)',
                                       background: isDraft 
                                         ? 'rgba(245, 158, 11, 0.88)' 
                                         : 'rgba(16, 185, 129, 0.88)', 
                                       color: '#ffffff',
-                                      boxShadow: '0 2px 4px rgba(0,0,0,0.12)',
+                                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
                                       textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                                     }}
                                   >
@@ -5354,110 +5417,82 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                             {/* Grade Watermark */}
                             {gradeNumber && (
-                              <div className="absolute top-0 right-0 font-black leading-none pointer-events-none select-none" style={{ fontSize: '120px', color: theme.border, transform: 'translate(20%, -20%)' }}>
+                              <div className="absolute bottom-1 right-2 font-black leading-none pointer-events-none select-none opacity-30" style={{ fontSize: '56px', color: theme.border }}>
                                 {gradeNumber}
                               </div>
                             )}
                             
-                            {/* Header */}
-                            <div className="mb-3 pb-3 relative z-10 pl-6" style={{ borderBottom: `1px solid ${theme.border}` }}>
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <h3 className="text-sm font-semibold line-clamp-2 flex-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
-                                  {topic.topic_nama}
-                                </h3>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
-                                    #{topic.topic_urutan || '-'}
-                                  </span>
-                                  <button
-                                    onClick={(e) => handleGeneratePDF(topic, e)}
-                                    className="p-1.5 transition-colors"
-                                    style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}
-                                    title="Download Unit Planner PDF"
-                                  >
-                                    <FontAwesomeIcon icon={faPrint} className="text-xs" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)}
-                                    className="p-1.5 transition-colors"
-                                    style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}
-                                    title="Download Assessment PDF"
-                                  >
-                                    <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleExportAssessmentWordFromCard(topic, e)}
-                                    className="p-1.5 transition-colors"
-                                    style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}
-                                    title="Download Assessment Word"
-                                  >
-                                    <FontAwesomeIcon icon={faFileWord} className="text-xs" />
-                                  </button>
-                                </div>
+                            {/* Layer 1: Top Bar (Unit #, Action Buttons) */}
+                            <div className="flex items-center justify-between gap-1.5 mb-2 relative z-10 pl-6">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-black px-2 py-0.5 shadow-sm" style={{ background: theme.subtleBg, color: theme.textPrimary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
+                                  Unit {topic.topic_urutan || '-'}
+                                </span>
                               </div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
+
+                              {/* Action Buttons */}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  onClick={(e) => handleGeneratePDF(topic, e)}
+                                  className="w-6 h-6 flex items-center justify-center transition-opacity hover:opacity-80"
+                                  style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}
+                                  title="Download Unit Planner PDF"
+                                >
+                                  <FontAwesomeIcon icon={faPrint} className="text-[11px]" />
+                                </button>
+                                <button
+                                  onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)}
+                                  className="w-6 h-6 flex items-center justify-center transition-opacity hover:opacity-80"
+                                  style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}
+                                  title="Download Assessment PDF"
+                                >
+                                  <FontAwesomeIcon icon={faFileAlt} className="text-[11px]" />
+                                </button>
+                                <button
+                                  onClick={(e) => handleExportAssessmentWordFromCard(topic, e)}
+                                  className="w-6 h-6 flex items-center justify-center transition-opacity hover:opacity-80"
+                                  style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}
+                                  title="Download Assessment Word"
+                                >
+                                  <FontAwesomeIcon icon={faFileWord} className="text-[11px]" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Layer 2: Unit Title (Full Width & Fully Readable) */}
+                            <div className="my-1.5 flex-1 relative z-10 pl-6">
+                              <h3 className="text-xs font-bold line-clamp-3 leading-snug" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
+                                {topic.topic_nama}
+                              </h3>
+                            </div>
+
+                            {/* Layer 3: Footer Meta (Subject, Class, MYP Year, Duration) */}
+                            <div className="flex items-center justify-between gap-1 mt-2 pt-2 relative z-10" style={{ borderTop: `1px border-dashed ${theme.border}` }}>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <span className="text-[10px] px-1.5 py-0.5 font-semibold" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
                                   {subjectMap.get(topic.topic_subject_id) || 'N/A'}
                                 </span>
                                 {topic.topic_kelas_id && (
-                                  <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>
+                                  <span className="text-[10px] px-1.5 py-0.5 font-semibold" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>
                                     {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
                                   </span>
                                 )}
                                 {topic.topic_year && (
-                                  <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>
+                                  <span className="text-[10px] px-1.5 py-0.5 font-semibold bg-purple-100 text-purple-800 border border-purple-200" style={{ borderRadius: '4px' }}>
                                     MYP Y{topic.topic_year}
                                   </span>
                                 )}
                               </div>
+
+                              <div className="flex items-center gap-1 text-[11px] font-medium flex-shrink-0" style={{ color: theme.textSecondary }}>
+                                <FontAwesomeIcon icon={faCalendar} className="text-[10px]" />
+                                <span>
+                                  {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
+                                    ? `${topic.topic_duration}w`
+                                    : '-'}
+                                </span>
+                              </div>
                             </div>
-
-                            {/* Duration */}
-                            <div className="mb-2 flex items-center gap-1.5 relative z-10">
-                              <FontAwesomeIcon icon={faCalendar} className="w-3 h-3" style={{ color: theme.textSecondary }} />
-                              <span className="text-xs" style={{ color: theme.textBody }}>
-                                {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
-                                  ? `${topic.topic_duration} weeks`
-                                  : '-'}
-                              </span>
-                            </div>
-
-                            {/* Inquiry Question */}
-                            {topic.topic_inquiry_question && (
-                              <div className="mb-2 relative z-10">
-                                <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Inquiry Question</p>
-                                <p className="text-xs line-clamp-2" style={{ color: theme.textBody }}>
-                                  {topic.topic_inquiry_question}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Global Context */}
-                            {topic.topic_global_context && (
-                              <div className="mb-2 relative z-10">
-                                <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Global Context</p>
-                                <p className="text-xs line-clamp-2" style={{ color: theme.textBody }}>
-                                  {topic.topic_global_context}
-                                </p>
-                                {topic.topic_gc_exploration && (
-                                  <div className="mt-1">
-                                    <span className="inline-block px-1.5 py-0.5 text-[10px]" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
-                                      {topic.topic_gc_exploration}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Statement of Inquiry */}
-                            {topic.topic_statement && (
-                              <div className="relative z-10">
-                                <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Statement of Inquiry</p>
-                                <p className="text-xs line-clamp-3" style={{ color: theme.textBody }}>
-                                  {topic.topic_statement}
-                                </p>
-                              </div>
-                            )}
                           </div>
                         )})
                       )}
@@ -5570,7 +5605,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterYear')}</label>
                       <select
                         value={wpYear}
-                        onChange={e => { setWpYear(e.target.value); setWpKelas(''); setWpSubject(''); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
+                        onChange={e => {
+                          const val = e.target.value
+                          handleGuardedAction(() => {
+                            setWpYear(val)
+                            setWpKelas('')
+                            setWpSubject('')
+                            setSelectedTopicForWeekly(null)
+                            setWeeklyPlans([])
+                            setIsWeeklyPlanDirty(false)
+                          })
+                        }}
                         className="w-full px-3 py-2 text-xs focus:outline-none"
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
@@ -5585,7 +5630,16 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <select
                         value={wpKelas}
                         disabled={!wpYear}
-                        onChange={e => { setWpKelas(e.target.value); setWpSubject(''); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
+                        onChange={e => {
+                          const val = e.target.value
+                          handleGuardedAction(() => {
+                            setWpKelas(val)
+                            setWpSubject('')
+                            setSelectedTopicForWeekly(null)
+                            setWeeklyPlans([])
+                            setIsWeeklyPlanDirty(false)
+                          })
+                        }}
                         className="w-full px-3 py-2 text-xs focus:outline-none"
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: !wpYear ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpYear ? 0.6 : 1 }}
                       >
@@ -5603,7 +5657,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterSubject')}</label>
                       <select
                         value={wpSubject}
-                        onChange={e => { setWpSubject(e.target.value); setSelectedTopicForWeekly(null); setWeeklyPlans([]); }}
+                        onChange={e => {
+                          const val = e.target.value
+                          handleGuardedAction(() => {
+                            setWpSubject(val)
+                            setSelectedTopicForWeekly(null)
+                            setWeeklyPlans([])
+                            setIsWeeklyPlanDirty(false)
+                          })
+                        }}
                         className="w-full px-3 py-2 text-xs focus:outline-none"
                         style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
                       >
@@ -5672,6 +5734,24 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         </button>
                       </div>
                     </div>
+
+                    {/* Unsaved Changes Warning Banner */}
+                    {isWeeklyPlanDirty && (
+                      <div className="mb-4 p-3 text-xs font-semibold flex items-center justify-between bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">⚠️</span>
+                          <span>Attention: You have unsaved changes in your Weekly Plan!</span>
+                        </div>
+                        <button
+                          onClick={saveWeeklyPlans}
+                          disabled={savingWeeklyPlans}
+                          className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                        >
+                          {savingWeeklyPlans ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faSave} />}
+                          Save Now
+                        </button>
+                      </div>
+                    )}
 
                     {/* Notification */}
                     {weeklyPlanNotification.show && (
@@ -7537,69 +7617,77 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           })()}
                         </div>
                         
-                        {currentStep < plannerSteps.length - 1 ? (
-                          <div className="flex items-center gap-2">
-                            {isAddMode && (
-                              <button
-                                onClick={() => saveNewTopic(true)}
-                                disabled={saving}
-                                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
-                                title="Save incomplete topic as draft without full field validation"
-                              >
-                                {saving ? (
-                                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
-                                ) : (
-                                  <span>📝 Save as Draft</span>
+                        {(() => {
+                          const isDraftTopic = isAddMode || selectedTopic?.topic_status === 'draft' || selectedTopic?.topic_status === 'Draft'
+                          
+                          if (currentStep < plannerSteps.length - 1) {
+                            return (
+                              <div className="flex items-center gap-2">
+                                {isDraftTopic && (
+                                  <button
+                                    onClick={() => isAddMode ? saveNewTopic(true) : updateExistingTopic(true)}
+                                    disabled={saving}
+                                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+                                    title="Save progress as draft without publishing"
+                                  >
+                                    {saving ? (
+                                      <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
+                                    ) : (
+                                      <span>📝 Save Draft</span>
+                                    )}
+                                  </button>
                                 )}
-                              </button>
-                            )}
-                            <button
-                              onClick={goToNextStep}
-                              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
-                            >
-                              Next
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            {isAddMode && (
-                              <button
-                                onClick={() => saveNewTopic(true)}
-                                disabled={saving}
-                                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
-                                title="Save incomplete topic as draft without full field validation"
-                              >
-                                {saving ? (
-                                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
-                                ) : (
-                                  <span>📝 Save as Draft</span>
-                                )}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => isAddMode ? saveNewTopic(false) : updateExistingTopic(false)}
-                              disabled={saving}
-                              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
-                            >
-                              {saving ? (
-                                <>
-                                  <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
-                                  {isAddMode ? 'Publishing...' : 'Updating...'}
-                                </>
-                              ) : (
-                                <>
+                                <button
+                                  onClick={goToNextStep}
+                                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
+                                >
+                                  Next
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                   </svg>
-                                  {isAddMode ? 'Publish Unit' : 'Update & Publish'}
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
+                                </button>
+                              </div>
+                            )
+                          } else {
+                            return (
+                              <div className="flex items-center gap-2">
+                                {isDraftTopic && (
+                                  <button
+                                    onClick={() => isAddMode ? saveNewTopic(true) : updateExistingTopic(true)}
+                                    disabled={saving}
+                                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+                                    title="Save progress as draft without publishing"
+                                  >
+                                    {saving ? (
+                                      <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
+                                    ) : (
+                                      <span>📝 Save Draft</span>
+                                    )}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => isAddMode ? saveNewTopic(false) : updateExistingTopic(false)}
+                                  disabled={saving}
+                                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+                                >
+                                  {saving ? (
+                                    <>
+                                      <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
+                                      {isDraftTopic ? 'Publishing...' : 'Updating...'}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      {isDraftTopic ? 'Publish Unit' : 'Update Unit'}
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )
+                          }
+                        })()}
                       </div>
                     </div>
                 </div>
@@ -9646,6 +9734,82 @@ ${refineOriginal}`
           </div>
         </div>
       </Modal>
+
+      {/* Unsaved Weekly Plan Changes Confirmation Modal */}
+      {unsavedModalOpen && (
+        <Modal
+          isOpen={unsavedModalOpen}
+          onClose={() => {
+            setUnsavedModalOpen(false)
+            setPendingAction(null)
+          }}
+          title="⚠️ Unsaved Weekly Plan Changes"
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 font-bold text-base flex-shrink-0">
+                ⚠️
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-amber-800">
+                  You have unsaved changes in your Weekly Plan
+                </h4>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
+                  You are attempting to navigate away or change filters. Would you like to save your modifications before proceeding, or discard them?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/60">
+              <button
+                type="button"
+                onClick={() => {
+                  setUnsavedModalOpen(false)
+                  setPendingAction(null)
+                }}
+                className="px-3.5 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsWeeklyPlanDirty(false)
+                  setUnsavedModalOpen(false)
+                  if (pendingAction) {
+                    const act = pendingAction
+                    setPendingAction(null)
+                    act()
+                  }
+                }}
+                className="px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              >
+                Discard Changes
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  await saveWeeklyPlans()
+                  setUnsavedModalOpen(false)
+                  if (pendingAction) {
+                    const act = pendingAction
+                    setPendingAction(null)
+                    act()
+                  }
+                }}
+                disabled={savingWeeklyPlans}
+                className="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                {savingWeeklyPlans ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faSave} />}
+                Save & Proceed
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
