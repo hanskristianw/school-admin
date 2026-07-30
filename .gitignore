@@ -42,3 +42,9 @@ next-env.d.ts
 
 # Kredensial Google Cloud
 project-c16c7efe-fd40-417e-8ee-a95d10636d04.json
+
+# Temporary scratch & test files
+scratch*
+*.mjs
+!next.config.mjs
+!postcss.config.mjs
