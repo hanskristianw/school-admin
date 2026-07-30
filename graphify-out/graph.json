@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 277,
-      "community_name": "6.1 Tables",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 277,
-      "community_name": "6.1 Tables",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "driver.js"
     },
     {
@@ -3131,8 +3131,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "driver.js"
     },
     {
@@ -26172,7 +26172,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4900",
+      "source_location": "L4913",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26388,7 +26388,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4909",
+      "source_location": "L4922",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26412,7 +26412,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4923",
+      "source_location": "L4936",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26436,7 +26436,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4938",
+      "source_location": "L4951",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26460,7 +26460,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4950",
+      "source_location": "L4963",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26508,7 +26508,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L2938",
+      "source_location": "L2951",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26532,7 +26532,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L2952",
+      "source_location": "L2965",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26556,7 +26556,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L2968",
+      "source_location": "L2981",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -26603,7 +26603,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4254",
+      "source_location": "L4267",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -35559,5 +35559,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "662b4659172caafef3b643adc8419e49e83dbbdc"
+  "built_at_commit": "3698c45e240c879925b547c323b569701fb55956"
 }

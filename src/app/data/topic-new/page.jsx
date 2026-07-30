@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV } from '@fortawesome/free-solid-svg-icons'
 import { useTheme } from '@/lib/theme'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
@@ -266,6 +266,19 @@ export default function TopicNewPage() {
   const [deleteTopicBlocked, setDeleteTopicBlocked] = useState(false)
   const [deleteTopicChecking, setDeleteTopicChecking] = useState(false)
   const [deleteTopicLoading, setDeleteTopicLoading] = useState(false)
+
+  // Card Three-Dots Menu State
+  const [activeCardMenuId, setActiveCardMenuId] = useState(null)
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setActiveCardMenuId(null)
+    }
+    if (activeCardMenuId !== null) {
+      window.addEventListener('click', handleClickOutside)
+    }
+    return () => window.removeEventListener('click', handleClickOutside)
+  }, [activeCardMenuId])
 
   const handleInitiateDeleteTopic = async (topic, e) => {
     if (e) e.stopPropagation()
@@ -5324,51 +5337,53 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       {/* Tab Content */}
       <div style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px', overflow: 'hidden' }}>
         {activeTab === 'planning' && (
-          <div className="flex">
-            {/* Sidebar for Planning */}
-            <div className="w-48 flex-shrink-0" style={{ borderRight: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-              <nav className="p-3 space-y-0.5">
+          <div className="p-6 w-full">
+            {/* Top Sub-Menu Segmented Control Header */}
+            <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100 dark:border-gray-700/60">
+              <h2 className="text-base font-bold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
+                {activeSubMenu === 'overview' ? t('topicNew.subMenu.planningOverview') : t('topicNew.subMenu.weeklyPlan')}
+              </h2>
+
+              {/* Segmented Pill Switcher */}
+              <div className="inline-flex p-1 rounded-xl bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 shadow-2xs">
                 {[
                   { id: 'overview', label: t('topicNew.subMenu.overview'), icon: faClipboardList },
                   { id: 'weekly-plan', label: t('topicNew.subMenu.weeklyPlan'), icon: faCalendar }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      if (activeSubMenu === 'weekly-plan' && item.id !== 'weekly-plan') {
-                        handleGuardedAction(() => setActiveSubMenu(item.id))
-                      } else {
-                        setActiveSubMenu(item.id)
-                      }
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium transition-colors"
-                    style={{
-                      borderRadius: '6px',
-                      color: activeSubMenu === item.id ? theme.blueText : theme.textSecondary,
-                      background: activeSubMenu === item.id ? theme.blueBg : 'transparent',
-                      fontFamily: "'Helvetica Neue', sans-serif",
-                    }}
-                    onMouseEnter={e => { if (activeSubMenu !== item.id) e.currentTarget.style.background = theme.border }}
-                    onMouseLeave={e => { e.currentTarget.style.background = activeSubMenu === item.id ? theme.blueBg : 'transparent' }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <FontAwesomeIcon icon={item.icon} className="w-3 h-3" style={{ color: 'inherit' }} />
-                      {item.label}
-                    </div>
-                    {item.id === 'weekly-plan' && isWeeklyPlanDirty && (
-                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" title="Unsaved changes" />
-                    )}
-                  </button>
-                ))}
-              </nav>
+                ].map((item) => {
+                  const isActive = activeSubMenu === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        if (activeSubMenu === 'weekly-plan' && item.id !== 'weekly-plan') {
+                          handleGuardedAction(() => setActiveSubMenu(item.id))
+                        } else {
+                          setActiveSubMenu(item.id)
+                        }
+                      }}
+                      className={`relative flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all duration-150 ${
+                        isActive
+                          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      <FontAwesomeIcon icon={item.icon} className="w-3.5 h-3.5" />
+                      <span>{item.label}</span>
+                      {item.id === 'weekly-plan' && isWeeklyPlanDirty && (
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" title="Unsaved changes" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 p-6 min-w-0">
+            <div className="w-full min-w-0">
               {activeSubMenu === 'overview' && (
                 <div>
-                  <div className="flex items-center justify-between mb-5">
-                    <h2 className="text-sm font-semibold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>{t('topicNew.subMenu.planningOverview')}</h2>
+                  <div className="flex items-center justify-end mb-5">
                     <div className="flex items-center gap-1 p-1" style={{ background: theme.subtleBg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
                       <button
                         onClick={() => { setPlanningView('card'); localStorage.setItem('planning_view', 'card') }}
@@ -5493,24 +5508,24 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             key={topic.topic_id}
                             className="group relative overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col justify-between rounded-xl p-4"
                             style={{
-                              background: theme.cardBg,
-                              border: `1px solid ${theme.border}`
+                              background: isDraft ? theme.yellowBg : theme.cardBg,
+                              border: `1px solid ${isDraft ? theme.yellowText + '55' : theme.border}`
                             }}
                             onClick={() => handleTopicOpen(topic)}
                           >
                             {/* Layer 1: Top Bar (Unit Badge, Status Capsule, Action Buttons) */}
                             <div 
                               className="flex items-center justify-between gap-2 pb-2.5"
-                              style={{ borderBottom: `1px solid ${theme.border}` }}
+                              style={{ borderBottom: `1px solid ${isDraft ? theme.yellowText + '33' : theme.border}` }}
                             >
                               <div className="flex items-center gap-2 flex-wrap">
                                 {/* Unit Badge */}
                                 <span 
                                   className="text-xs font-black px-2.5 py-0.5 rounded-md shadow-2xs"
                                   style={{
-                                    background: theme.blueBg,
-                                    color: theme.blueText,
-                                    border: `1px solid ${theme.border}`
+                                    background: isDraft ? theme.cardBg : theme.blueBg,
+                                    color: isDraft ? theme.textPrimary : theme.blueText,
+                                    border: `1px solid ${isDraft ? theme.yellowText + '44' : theme.border}`
                                   }}
                                 >
                                   Unit {topic.topic_urutan || '-'}
@@ -5521,9 +5536,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   <span 
                                     className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-full"
                                     style={{
-                                      background: theme.yellowBg || 'rgba(245, 158, 11, 0.15)',
-                                      color: theme.yellowText || '#d97706',
-                                      border: `1px solid ${theme.border}`
+                                      background: theme.cardBg,
+                                      color: theme.yellowText,
+                                      border: `1px solid ${theme.yellowText}55`
                                     }}
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -5544,56 +5559,93 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 )}
                               </div>
 
-                              {/* Action Buttons */}
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {/* Three-Dots Menu Dropdown */}
+                              <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <button
-                                  onClick={(e) => handleGeneratePDF(topic, e)}
-                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
-                                  style={{
-                                    background: theme.blueBg,
-                                    color: theme.blueText,
-                                    border: `1px solid ${theme.border}`
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setActiveCardMenuId(prev => (prev === topic.topic_id ? null : topic.topic_id))
                                   }}
-                                  title="Download Unit Planner PDF"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                                  title="Actions"
                                 >
-                                  <FontAwesomeIcon icon={faPrint} className="text-xs" />
+                                  <FontAwesomeIcon icon={faEllipsisV} className="text-xs" />
                                 </button>
-                                <button
-                                  onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)}
-                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
-                                  style={{
-                                    background: theme.subtleBg,
-                                    color: theme.textSecondary,
-                                    border: `1px solid ${theme.border}`
-                                  }}
-                                  title="Download Assessment PDF"
-                                >
-                                  <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
-                                </button>
-                                <button
-                                  onClick={(e) => handleExportAssessmentWordFromCard(topic, e)}
-                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
-                                  style={{
-                                    background: theme.subtleBg,
-                                    color: theme.textSecondary,
-                                    border: `1px solid ${theme.border}`
-                                  }}
-                                  title="Download Assessment Word"
-                                >
-                                  <FontAwesomeIcon icon={faFileWord} className="text-xs" />
-                                </button>
-                                <button
-                                  onClick={(e) => handleInitiateDeleteTopic(topic, e)}
-                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
-                                  style={{
-                                    background: 'rgba(239, 68, 68, 0.12)',
-                                    color: '#ef4444',
-                                    border: `1px solid ${theme.border}`
-                                  }}
-                                  title="Delete Unit"
-                                >
-                                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
-                                </button>
+
+                                {activeCardMenuId === topic.topic_id && (
+                                  <div 
+                                    className="absolute right-0 top-8 z-30 w-52 py-1.5 rounded-lg shadow-xl border outline-none animate-fadeIn"
+                                    style={{
+                                      background: theme.cardBg,
+                                      borderColor: theme.border,
+                                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)'
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setActiveCardMenuId(null)
+                                        handleGeneratePDF(topic, e)
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left font-semibold transition-colors"
+                                      style={{ color: theme.textPrimary }}
+                                      onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <FontAwesomeIcon icon={faPrint} className="w-3.5 text-blue-600 dark:text-blue-400" />
+                                      <span>Unit Planner (PDF)</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setActiveCardMenuId(null)
+                                        handleGenerateAssessmentPDFFromCard(topic, e)
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left font-medium transition-colors"
+                                      style={{ color: theme.textPrimary }}
+                                      onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <FontAwesomeIcon icon={faFileAlt} className="w-3.5 text-gray-500 dark:text-gray-400" />
+                                      <span>Assessment (PDF)</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setActiveCardMenuId(null)
+                                        handleExportAssessmentWordFromCard(topic, e)
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left font-medium transition-colors"
+                                      style={{ color: theme.textPrimary }}
+                                      onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <FontAwesomeIcon icon={faFileWord} className="w-3.5 text-blue-500" />
+                                      <span>Assessment (Word)</span>
+                                    </button>
+
+                                    <div className="my-1 border-t" style={{ borderColor: theme.border }} />
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setActiveCardMenuId(null)
+                                        handleInitiateDeleteTopic(topic, e)
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left font-bold transition-colors text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                                    >
+                                      <FontAwesomeIcon icon={faTrash} className="w-3.5 text-red-500" />
+                                      <span>Delete Unit</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -5613,7 +5665,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             {/* Layer 3: Footer Meta (Subject, Class, Grade Tag, MYP Year, Duration) */}
                             <div 
                               className="flex items-center justify-between gap-2 pt-2.5"
-                              style={{ borderTop: `1px solid ${theme.border}` }}
+                              style={{ borderTop: `1px solid ${isDraft ? theme.yellowText + '33' : theme.border}` }}
                             >
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span 
