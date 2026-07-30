@@ -3851,72 +3851,6 @@
       "norm_label": "config"
     },
     {
-      "label": "testDutyEndpoint.js",
-      "file_type": "code",
-      "source_file": "scratch/testDutyEndpoint.js",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "scratch_testdutyendpoint",
-      "community": 126,
-      "community_name": "Module 126",
-      "norm_label": "testdutyendpoint.js"
-    },
-    {
-      "label": "supabaseAdmin",
-      "file_type": "code",
-      "source_file": "scratch/testDutyEndpoint.js",
-      "source_location": "L5",
-      "_origin": "ast",
-      "id": "scratch_testdutyendpoint_supabaseadmin",
-      "community": 126,
-      "community_name": "Module 126",
-      "norm_label": "supabaseadmin"
-    },
-    {
-      "label": "test()",
-      "file_type": "code",
-      "source_file": "scratch/testDutyEndpoint.js",
-      "source_location": "L10",
-      "_origin": "ast",
-      "id": "scratch_testdutyendpoint_test",
-      "community": 126,
-      "community_name": "Module 126",
-      "norm_label": "test()"
-    },
-    {
-      "label": "testDutyNotificationTrigger.js",
-      "file_type": "code",
-      "source_file": "scratch/testDutyNotificationTrigger.js",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "scratch_testdutynotificationtrigger",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "testdutynotificationtrigger.js"
-    },
-    {
-      "label": "supabaseAdmin",
-      "file_type": "code",
-      "source_file": "scratch/testDutyNotificationTrigger.js",
-      "source_location": "L6",
-      "_origin": "ast",
-      "id": "scratch_testdutynotificationtrigger_supabaseadmin",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "supabaseadmin"
-    },
-    {
-      "label": "testTrigger()",
-      "file_type": "code",
-      "source_file": "scratch/testDutyNotificationTrigger.js",
-      "source_location": "L11",
-      "_origin": "ast",
-      "id": "scratch_testdutynotificationtrigger_testtrigger",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "testtrigger()"
-    },
-    {
       "label": "layout.jsx",
       "file_type": "code",
       "source_file": "src/app/admission/layout.jsx",
@@ -13218,8 +13152,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -13229,8 +13163,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "**core tables:**"
     },
     {
@@ -13240,8 +13174,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -13251,8 +13185,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -13295,8 +13229,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 156,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -13306,8 +13240,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 156,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -13317,8 +13251,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 156,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -13493,8 +13427,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 299,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -13504,8 +13438,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 299,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -13515,8 +13449,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 299,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**development:**"
     },
     {
@@ -13526,8 +13460,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 299,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**key environment:**"
     },
     {
@@ -13537,8 +13471,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 299,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**additional files:**"
     },
     {
@@ -21266,86 +21200,6 @@
       "_origin": "ast",
       "source": "postcss_config",
       "target": "postcss_config_config",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch/testDutyEndpoint.js",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_testdutyendpoint",
-      "target": "scratch_testdutyendpoint_supabaseadmin",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch/testDutyEndpoint.js",
-      "source_location": "L10",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_testdutyendpoint",
-      "target": "scratch_testdutyendpoint_test",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch/testDutyNotificationTrigger.js",
-      "source_location": "L6",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_testdutynotificationtrigger",
-      "target": "scratch_testdutynotificationtrigger_supabaseadmin",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch/testDutyNotificationTrigger.js",
-      "source_location": "L11",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_testdutynotificationtrigger",
-      "target": "scratch_testdutynotificationtrigger_testtrigger",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch/testDutyNotificationTrigger.js",
-      "source_location": "L2",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_testdutynotificationtrigger",
-      "target": "src_lib_googlechat",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch/testDutyNotificationTrigger.js",
-      "source_location": "L2",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_testdutynotificationtrigger",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch/testDutyNotificationTrigger.js",
-      "source_location": "L46",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_testdutynotificationtrigger_testtrigger",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
       "confidence_score": 1.0
     },
     {
@@ -35604,5 +35458,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c378c401ba7af045c2f9d5fd9d64abaa7fa72a8a"
+  "built_at_commit": "bf8107a73ee5566653f46a50a917045e04e94496"
 }

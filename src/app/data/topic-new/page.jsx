@@ -395,14 +395,14 @@ export default function TopicNewPage() {
 
   // Automatically check if current weeklyPlans differ from initial baseline
   useEffect(() => {
-    if (initialWeeklyPlansRef.current === null) {
+    if (!selectedTopicForWeekly || initialWeeklyPlansRef.current === null) {
       setIsWeeklyPlanDirty(false)
       return
     }
     const currentStr = getNormalizedWeeklyPlansString(weeklyPlans)
     const isDifferent = currentStr !== initialWeeklyPlansRef.current
     setIsWeeklyPlanDirty(isDifferent)
-  }, [weeklyPlans, getNormalizedWeeklyPlansString])
+  }, [weeklyPlans, selectedTopicForWeekly, getNormalizedWeeklyPlansString])
 
   const handleGuardedAction = (actionCallback) => {
     if (isWeeklyPlanDirty) {
@@ -5844,6 +5844,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             setWpSubject('')
                             setSelectedTopicForWeekly(null)
                             setWeeklyPlans([])
+                            initialWeeklyPlansRef.current = null
                             setIsWeeklyPlanDirty(false)
                           })
                         }}
@@ -5868,6 +5869,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             setWpSubject('')
                             setSelectedTopicForWeekly(null)
                             setWeeklyPlans([])
+                            initialWeeklyPlansRef.current = null
                             setIsWeeklyPlanDirty(false)
                           })
                         }}
@@ -5894,6 +5896,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             setWpSubject(val)
                             setSelectedTopicForWeekly(null)
                             setWeeklyPlans([])
+                            initialWeeklyPlansRef.current = null
                             setIsWeeklyPlanDirty(false)
                           })
                         }}

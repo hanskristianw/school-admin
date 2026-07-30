@@ -1713,35 +1713,5 @@
     "mtime": 1785391305.6404424,
     "ast_hash": "d673fb8df50ae260d3282d39d2b401b0",
     "semantic_hash": ""
-  },
-  "scratch_add_col.mjs": {
-    "mtime": 1785391333.025019,
-    "ast_hash": "f6b197589cb4391b33fb31b262ae004d",
-    "semantic_hash": ""
-  },
-  "scratch_pg_migrate.mjs": {
-    "mtime": 1785391436.135335,
-    "ast_hash": "a13e65755c6dd91680e6fcbaf1ca66e0",
-    "semantic_hash": ""
-  },
-  "scratch_pg_passwords.mjs": {
-    "mtime": 1785391486.4616745,
-    "ast_hash": "bbdc2ec0f93f193efffb78eb36e84426",
-    "semantic_hash": ""
-  },
-  "scratch_run_ddl.mjs": {
-    "mtime": 1785391363.9652708,
-    "ast_hash": "05179f43b10f8b025171b082ccf0d0b9",
-    "semantic_hash": ""
-  },
-  "scratch_test_col.mjs": {
-    "mtime": 1785391959.8823261,
-    "ast_hash": "282efaf32d36c1be69325e28f958cfb4",
-    "semantic_hash": ""
-  },
-  "scratch_test_rpc.mjs": {
-    "mtime": 1785391505.4184544,
-    "ast_hash": "7ee3b9495c2dd93f23eec0a04a33b8b4",
-    "semantic_hash": ""
   }
 }
