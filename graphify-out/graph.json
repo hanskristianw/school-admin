@@ -3917,215 +3917,6 @@
       "norm_label": "testtrigger()"
     },
     {
-      "label": "scratch_add_col.mjs",
-      "file_type": "code",
-      "source_file": "scratch_add_col.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "scratch_add_col",
-      "community": 300,
-      "community_name": "scratch_add_col.mjs",
-      "norm_label": "scratch_add_col.mjs"
-    },
-    {
-      "label": "supabase",
-      "file_type": "code",
-      "source_file": "scratch_add_col.mjs",
-      "source_location": "L6",
-      "_origin": "ast",
-      "id": "scratch_add_col_supabase",
-      "community": 300,
-      "community_name": "scratch_add_col.mjs",
-      "norm_label": "supabase"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "scratch_add_col.mjs",
-      "source_location": "L8",
-      "_origin": "ast",
-      "id": "scratch_add_col_run",
-      "community": 300,
-      "community_name": "scratch_add_col.mjs",
-      "norm_label": "run()"
-    },
-    {
-      "label": "scratch_pg_migrate.mjs",
-      "file_type": "code",
-      "source_file": "scratch_pg_migrate.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "scratch_pg_migrate",
-      "community": 305,
-      "community_name": "scratch_pg_migrate.mjs",
-      "norm_label": "scratch_pg_migrate.mjs"
-    },
-    {
-      "label": "connectionStrings",
-      "file_type": "code",
-      "source_file": "scratch_pg_migrate.mjs",
-      "source_location": "L6",
-      "_origin": "ast",
-      "id": "scratch_pg_migrate_connectionstrings",
-      "community": 305,
-      "community_name": "scratch_pg_migrate.mjs",
-      "norm_label": "connectionstrings"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "scratch_pg_migrate.mjs",
-      "source_location": "L13",
-      "_origin": "ast",
-      "id": "scratch_pg_migrate_run",
-      "community": 305,
-      "community_name": "scratch_pg_migrate.mjs",
-      "norm_label": "run()"
-    },
-    {
-      "label": "scratch_pg_passwords.mjs",
-      "file_type": "code",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "scratch_pg_passwords",
-      "community": 156,
-      "community_name": "Module 156",
-      "norm_label": "scratch_pg_passwords.mjs"
-    },
-    {
-      "label": "passwordsToTest",
-      "file_type": "code",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L7",
-      "_origin": "ast",
-      "id": "scratch_pg_passwords_passwordstotest",
-      "community": 156,
-      "community_name": "Module 156",
-      "norm_label": "passwordstotest"
-    },
-    {
-      "label": "usersToTest",
-      "file_type": "code",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L13",
-      "_origin": "ast",
-      "id": "scratch_pg_passwords_userstotest",
-      "community": 156,
-      "community_name": "Module 156",
-      "norm_label": "userstotest"
-    },
-    {
-      "label": "portsToTest",
-      "file_type": "code",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L18",
-      "_origin": "ast",
-      "id": "scratch_pg_passwords_portstotest",
-      "community": 156,
-      "community_name": "Module 156",
-      "norm_label": "portstotest"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L20",
-      "_origin": "ast",
-      "id": "scratch_pg_passwords_run",
-      "community": 156,
-      "community_name": "Module 156",
-      "norm_label": "run()"
-    },
-    {
-      "label": "scratch_run_ddl.mjs",
-      "file_type": "code",
-      "source_file": "scratch_run_ddl.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "scratch_run_ddl",
-      "community": 310,
-      "community_name": "scratch_run_ddl.mjs",
-      "norm_label": "scratch_run_ddl.mjs"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "scratch_run_ddl.mjs",
-      "source_location": "L4",
-      "_origin": "ast",
-      "id": "scratch_run_ddl_run",
-      "community": 310,
-      "community_name": "scratch_run_ddl.mjs",
-      "norm_label": "run()"
-    },
-    {
-      "label": "scratch_test_col.mjs",
-      "file_type": "code",
-      "source_file": "scratch_test_col.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "scratch_test_col",
-      "community": 306,
-      "community_name": "scratch_test_col.mjs",
-      "norm_label": "scratch_test_col.mjs"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "scratch_test_col.mjs",
-      "source_location": "L4",
-      "_origin": "ast",
-      "id": "scratch_test_col_run",
-      "community": 306,
-      "community_name": "scratch_test_col.mjs",
-      "norm_label": "run()"
-    },
-    {
-      "label": "scratch_test_rpc.mjs",
-      "file_type": "code",
-      "source_file": "scratch_test_rpc.mjs",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "scratch_test_rpc",
-      "community": 289,
-      "community_name": "docx",
-      "norm_label": "scratch_test_rpc.mjs"
-    },
-    {
-      "label": "supabase",
-      "file_type": "code",
-      "source_file": "scratch_test_rpc.mjs",
-      "source_location": "L5",
-      "_origin": "ast",
-      "id": "scratch_test_rpc_supabase",
-      "community": 289,
-      "community_name": "docx",
-      "norm_label": "supabase"
-    },
-    {
-      "label": "rpcNames",
-      "file_type": "code",
-      "source_file": "scratch_test_rpc.mjs",
-      "source_location": "L7",
-      "_origin": "ast",
-      "id": "scratch_test_rpc_rpcnames",
-      "community": 289,
-      "community_name": "docx",
-      "norm_label": "rpcnames"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "scratch_test_rpc.mjs",
-      "source_location": "L9",
-      "_origin": "ast",
-      "id": "scratch_test_rpc_run",
-      "community": 289,
-      "community_name": "docx",
-      "norm_label": "run()"
-    },
-    {
       "label": "layout.jsx",
       "file_type": "code",
       "source_file": "src/app/admission/layout.jsx",
@@ -11436,8 +11227,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema",
-      "community": 290,
-      "community_name": "dotenv",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "database_schema.md"
     },
     {
@@ -11447,8 +11238,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema_database_schema_relationships",
-      "community": 290,
-      "community_name": "dotenv",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "database schema & relationships"
     },
     {
@@ -11755,8 +11546,8 @@
       "source_location": "L511",
       "_origin": "ast",
       "id": "database_schema_4_purchasing_budgeting_domain_data_fpb",
-      "community": 290,
-      "community_name": "dotenv",
+      "community": 264,
+      "community_name": "4.1 Tables",
       "norm_label": "4. purchasing & budgeting domain (/data/fpb)"
     },
     {
@@ -11876,8 +11667,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "database_schema_4_2_erd_relationships_purchasing_domain",
-      "community": 290,
-      "community_name": "dotenv",
+      "community": 264,
+      "community_name": "4.1 Tables",
       "norm_label": "4.2 erd / relationships (purchasing domain)"
     },
     {
@@ -11887,8 +11678,8 @@
       "source_location": "L672",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 290,
-      "community_name": "dotenv",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -12030,8 +11821,8 @@
       "source_location": "L828",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 290,
-      "community_name": "dotenv",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -12349,8 +12140,8 @@
       "source_location": "L1357",
       "_origin": "ast",
       "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_data_uniform_data_uniform_size",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)"
     },
     {
@@ -12514,8 +12305,8 @@
       "source_location": "L1566",
       "_origin": "ast",
       "id": "database_schema_11_2_erd_relationships_uniform_stock_domain",
-      "community": 272,
-      "community_name": "Database Schema & Relationships",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "11.2 erd / relationships (uniform & stock domain)"
     },
     {
@@ -21555,149 +21346,6 @@
       "_origin": "ast",
       "source": "scratch_testdutynotificationtrigger_testtrigger",
       "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_add_col.mjs",
-      "source_location": "L8",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_add_col",
-      "target": "scratch_add_col_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_add_col.mjs",
-      "source_location": "L6",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_add_col",
-      "target": "scratch_add_col_supabase",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_pg_migrate.mjs",
-      "source_location": "L6",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_pg_migrate",
-      "target": "scratch_pg_migrate_connectionstrings",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_pg_migrate.mjs",
-      "source_location": "L13",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_pg_migrate",
-      "target": "scratch_pg_migrate_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L7",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_pg_passwords",
-      "target": "scratch_pg_passwords_passwordstotest",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L18",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_pg_passwords",
-      "target": "scratch_pg_passwords_portstotest",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L20",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_pg_passwords",
-      "target": "scratch_pg_passwords_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_pg_passwords.mjs",
-      "source_location": "L13",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_pg_passwords",
-      "target": "scratch_pg_passwords_userstotest",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_run_ddl.mjs",
-      "source_location": "L4",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_run_ddl",
-      "target": "scratch_run_ddl_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_test_col.mjs",
-      "source_location": "L4",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_test_col",
-      "target": "scratch_test_col_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_test_rpc.mjs",
-      "source_location": "L7",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_test_rpc",
-      "target": "scratch_test_rpc_rpcnames",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_test_rpc.mjs",
-      "source_location": "L9",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_test_rpc",
-      "target": "scratch_test_rpc_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scratch_test_rpc.mjs",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "scratch_test_rpc",
-      "target": "scratch_test_rpc_supabase",
       "confidence_score": 1.0
     },
     {
@@ -35956,5 +35604,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "391e4d7a993d65f5171b7deab479061880a5843e"
+  "built_at_commit": "c378c401ba7af045c2f9d5fd9d64abaa7fa72a8a"
 }

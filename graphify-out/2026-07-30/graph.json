@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 311,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 311,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 311,
+      "community_name": "bcryptjs",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 311,
+      "community_name": "bcryptjs",
       "norm_label": "class-variance-authority"
     },
     {
@@ -24865,7 +24865,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-report/page.jsx",
-      "source_location": "L859",
+      "source_location": "L872",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_report_page_attendancereportpage",
