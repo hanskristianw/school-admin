@@ -260,6 +260,110 @@ export default function TopicNewPage() {
   const [unsavedModalOpen, setUnsavedModalOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
 
+  // Topic Deletion State
+  const [deleteTopicModalOpen, setDeleteTopicModalOpen] = useState(false)
+  const [topicToDelete, setTopicToDelete] = useState(null)
+  const [deleteTopicBlocked, setDeleteTopicBlocked] = useState(false)
+  const [deleteTopicChecking, setDeleteTopicChecking] = useState(false)
+  const [deleteTopicLoading, setDeleteTopicLoading] = useState(false)
+
+  const handleInitiateDeleteTopic = async (topic, e) => {
+    if (e) e.stopPropagation()
+    setTopicToDelete(topic)
+    setDeleteTopicModalOpen(true)
+    setDeleteTopicChecking(true)
+    setDeleteTopicBlocked(false)
+
+    try {
+      // 1. Fetch all assessments connected to this topic
+      const { data: topicAssessments, error: assError } = await supabase
+        .from('assessment')
+        .select('assessment_id')
+        .eq('assessment_topic_id', topic.topic_id)
+
+      if (assError) throw assError
+
+      if (topicAssessments && topicAssessments.length > 0) {
+        const assessmentIds = topicAssessments.map(a => a.assessment_id)
+        const { count: gradeCount, error: gradeError } = await supabase
+          .from('assessment_grades')
+          .select('grade_id', { count: 'exact', head: true })
+          .in('assessment_id', assessmentIds)
+
+        if (gradeError) throw gradeError
+
+        if (gradeCount && gradeCount > 0) {
+          setDeleteTopicBlocked(true)
+        }
+      }
+    } catch (err) {
+      console.error('Error checking topic grades before deletion:', err)
+    } finally {
+      setDeleteTopicChecking(false)
+    }
+  }
+
+  const handleConfirmDeleteTopic = async () => {
+    if (!topicToDelete) return
+    try {
+      setDeleteTopicLoading(true)
+
+      // 1. Find connected assessments
+      const { data: topicAssessments } = await supabase
+        .from('assessment')
+        .select('assessment_id')
+        .eq('assessment_topic_id', topicToDelete.topic_id)
+
+      if (topicAssessments && topicAssessments.length > 0) {
+        const assessmentIds = topicAssessments.map(a => a.assessment_id)
+
+        // Delete assessment_criteria
+        await supabase
+          .from('assessment_criteria')
+          .delete()
+          .in('assessment_id', assessmentIds)
+
+        // Delete assessment
+        await supabase
+          .from('assessment')
+          .delete()
+          .in('assessment_id', assessmentIds)
+      }
+
+      // 2. Delete topic_weekly_plan
+      await supabase
+        .from('topic_weekly_plan')
+        .delete()
+        .eq('topic_id', topicToDelete.topic_id)
+
+      // 3. Delete topic
+      const { error: deleteTopicError } = await supabase
+        .from('topic')
+        .delete()
+        .eq('topic_id', topicToDelete.topic_id)
+
+      if (deleteTopicError) throw deleteTopicError
+
+      // Update local state
+      setTopics(prev => prev.filter(t => t.topic_id !== topicToDelete.topic_id))
+
+      if (selectedTopicForWeekly?.topic_id === topicToDelete.topic_id) {
+        setSelectedTopicForWeekly(null)
+        setWeeklyPlans([])
+        if (initialWeeklyPlansRef.current) initialWeeklyPlansRef.current = '[]'
+        setIsWeeklyPlanDirty(false)
+      }
+
+      setDeleteTopicModalOpen(false)
+      setTopicToDelete(null)
+    } catch (err) {
+      console.error('Error deleting topic:', err)
+      alert('Failed to delete topic. Please try again.')
+    } finally {
+      setDeleteTopicLoading(false)
+    }
+  }
+
   const initialWeeklyPlansRef = useRef(null)
 
   const getNormalizedWeeklyPlansString = useCallback((plans) => {
@@ -5478,6 +5582,18 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 >
                                   <FontAwesomeIcon icon={faFileWord} className="text-xs" />
                                 </button>
+                                <button
+                                  onClick={(e) => handleInitiateDeleteTopic(topic, e)}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+                                  style={{
+                                    background: 'rgba(239, 68, 68, 0.12)',
+                                    color: '#ef4444',
+                                    border: `1px solid ${theme.border}`
+                                  }}
+                                  title="Delete Unit"
+                                >
+                                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                                </button>
                               </div>
                             </div>
 
@@ -5640,6 +5756,9 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   </button>
                                   <button onClick={(e) => handleExportAssessmentWordFromCard(topic, e)} className="p-1.5 transition-colors" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }} title="Assessment Word">
                                     <FontAwesomeIcon icon={faFileWord} className="text-xs" />
+                                  </button>
+                                  <button onClick={(e) => handleInitiateDeleteTopic(topic, e)} className="p-1.5 transition-colors text-red-600 hover:text-red-800" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', borderRadius: '4px', border: `1px solid ${theme.border}` }} title="Delete Unit">
+                                    <FontAwesomeIcon icon={faTrash} className="text-xs" />
                                   </button>
                                 </div>
                               </td>
@@ -9867,6 +9986,104 @@ ${refineOriginal}`
                 Save & Proceed
               </button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Unit / Topic Modal */}
+      {deleteTopicModalOpen && (
+        <Modal
+          isOpen={deleteTopicModalOpen}
+          onClose={() => {
+            if (!deleteTopicLoading) {
+              setDeleteTopicModalOpen(false)
+              setTopicToDelete(null)
+            }
+          }}
+          title={deleteTopicBlocked ? "⚠️ Cannot Delete Unit" : "🗑️ Confirm Unit Deletion"}
+          size="sm"
+        >
+          <div className="space-y-4">
+            {deleteTopicChecking ? (
+              <div className="flex flex-col items-center justify-center py-6 gap-2">
+                <FontAwesomeIcon icon={faSpinner} spin className="text-xl text-blue-600" />
+                <p className="text-xs text-gray-500">Checking unit assessment grades...</p>
+              </div>
+            ) : deleteTopicBlocked ? (
+              <>
+                <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold text-base flex-shrink-0">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-900 dark:text-amber-300">
+                      Deletion Blocked by Student Grades
+                    </h4>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 leading-relaxed">
+                      This unit cannot be deleted because student grades have already been entered for its associated assessment(s).
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-300">
+                  Unit Name: <span className="font-bold text-gray-900 dark:text-gray-100">{topicToDelete?.topic_nama}</span>
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  To delete this unit, please clear or remove the student grades from the assessment grading tab first.
+                </p>
+                <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteTopicModalOpen(false)
+                      setTopicToDelete(null)
+                    }}
+                    className="px-4 py-2 text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-3.5 bg-red-50 dark:bg-red-950/40 rounded-lg border border-red-200 dark:border-red-900/60">
+                  <p className="text-xs font-semibold text-red-900 dark:text-red-300">
+                    Are you sure you want to delete this unit?
+                  </p>
+                  <p className="text-xs text-red-700 dark:text-red-400 mt-1">
+                    This action is permanent and cannot be undone.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-gray-50 dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700 space-y-1 text-xs">
+                  <div><span className="text-gray-500">Unit:</span> <span className="font-bold text-gray-900 dark:text-gray-100">Unit {topicToDelete?.topic_urutan || '-'} — {topicToDelete?.topic_nama}</span></div>
+                  {topicToDelete?.topic_subject_id && <div><span className="text-gray-500">Subject:</span> <span className="font-medium text-gray-700 dark:text-gray-300">{subjectMap.get(topicToDelete.topic_subject_id)}</span></div>}
+                  {topicToDelete?.topic_kelas_id && <div><span className="text-gray-500">Class:</span> <span className="font-medium text-gray-700 dark:text-gray-300">{kelasNameMap.get(topicToDelete.topic_kelas_id)}</span></div>}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteTopicModalOpen(false)
+                      setTopicToDelete(null)
+                    }}
+                    disabled={deleteTopicLoading}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDeleteTopic}
+                    disabled={deleteTopicLoading}
+                    className="px-4 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {deleteTopicLoading ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faTrash} />}
+                    Delete Unit
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       )}
