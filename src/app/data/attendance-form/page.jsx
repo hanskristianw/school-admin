@@ -859,8 +859,8 @@ export default function AttendanceFormPage() {
           {issueRows.length > 0 && (
             <div className="space-y-3">
               <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                <span>⚠️</span>
-                <span>Machine Attendance Issues This Month ({issueRows.length})</span>
+                <span>📋</span>
+                <span>HCM Form(s) This Month ({issueRows.length})</span>
               </h2>
 
               <div className="space-y-2">
@@ -940,7 +940,7 @@ export default function AttendanceFormPage() {
             <div className="space-y-3 pt-2">
               <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
                 <span>📋</span>
-                <span>My Submitted Forms History This Month ({submittedList.length})</span>
+                <span>My Submitted Form(s) History This Month ({submittedList.length})</span>
               </h2>
 
               <div className="space-y-2.5">

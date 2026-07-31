@@ -68,43 +68,43 @@ export async function GET(request) {
 
     // Attach face scan timestamps from attendances table for verification
     if (result.length > 0) {
-      const userIds = [...new Set(result.map(e => e.user_id).filter(Boolean))]
-      const dates = [...new Set(result.map(e => e.attendance_date).filter(Boolean))]
-      if (userIds.length > 0 && dates.length > 0) {
-        const minDate = dates.reduce((a, b) => (a < b ? a : b))
-        const maxDate = dates.reduce((a, b) => (a > b ? a : b))
-        const tsStart = `${minDate}T00:00:00+07:00`
-        const tsEnd   = `${maxDate}T23:59:59+07:00`
+      const pairs = [...new Set(result.map(e => `${e.user_id}_${e.attendance_date}`).filter(p => !p.startsWith('undefined_')))]
+      const scanMap = {}
 
-        const { data: scanLogs } = await supabaseAdmin
+      const scanPromises = pairs.map(async (pair) => {
+        const [uidStr, dateStr] = pair.split('_')
+        const uid = parseInt(uidStr, 10)
+        if (!uid || !dateStr) return
+
+        const tsStart = `${dateStr}T00:00:00+07:00`
+        const tsEnd   = `${dateStr}T23:59:59+07:00`
+
+        const { data: logs } = await supabaseAdmin
           .from('attendances')
-          .select('user_id, scan_time')
-          .in('user_id', userIds)
+          .select('scan_time')
+          .eq('user_id', uid)
           .gte('scan_time', tsStart)
           .lte('scan_time', tsEnd)
           .order('scan_time', { ascending: true })
 
-        const scanMap = {}
-        if (scanLogs && scanLogs.length > 0) {
-          const dateFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' })
-          const timeFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false })
-
-          for (const s of scanLogs) {
+        if (logs && logs.length > 0) {
+          const timeFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+          const times = []
+          for (const s of logs) {
             if (!s.scan_time) continue
-            const dt = new Date(s.scan_time)
-            const dateStr = dateFmt.format(dt)
-            const timeStr = timeFmt.format(dt)
-            const key = `${s.user_id}_${dateStr}`
-            if (!scanMap[key]) scanMap[key] = []
-            if (!scanMap[key].includes(timeStr)) scanMap[key].push(timeStr)
+            const tStr = timeFmt.format(new Date(s.scan_time))
+            if (!times.includes(tStr)) times.push(tStr)
           }
+          scanMap[pair] = times
         }
+      })
 
-        result = result.map(e => ({
-          ...e,
-          scans: scanMap[`${e.user_id}_${e.attendance_date}`] || []
-        }))
-      }
+      await Promise.all(scanPromises)
+
+      result = result.map(e => ({
+        ...e,
+        scans: scanMap[`${e.user_id}_${e.attendance_date}`] || []
+      }))
     }
 
     return NextResponse.json({ success: true, data: result })
