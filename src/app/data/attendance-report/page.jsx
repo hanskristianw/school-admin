@@ -925,8 +925,8 @@ export default function AttendanceReportPage() {
                                      {row.daily.map((d, di) => {
                                       const hasProblem = d.issues.length > 0
                                       const excLabel = !d.excuse && !d.excused && !d.excuse_pending ? null
-                                        : d.excuse?.status === 'approved' || d.excused ? { text: '✅ Disetujui', bg: '#d1fae5', color: '#065f46' }
-                                        : d.excuse_pending ? { text: '⏳ Menunggu Persetujuan', bg: '#fef9c3', color: '#854d0e' }
+                                         : d.excuse?.status === 'approved' || d.excused ? { text: `✅ Disetujui${d.excuse?.excuse_type === 'temporary_exit' ? ' (Izin Keluar Jam Kerja' + (d.excuse.exit_time || d.excuse.return_time ? `: ${String(d.excuse.exit_time || '').slice(0,5)}–${String(d.excuse.return_time || '').slice(0,5)}` : '') + ')' : d.excuse?.excuse_type ? ` (${d.excuse.excuse_type})` : ''}`, bg: '#d1fae5', color: '#065f46' }
+                                        : d.excuse_pending ? { text: `⏳ Menunggu Persetujuan${d.excuse?.excuse_type === 'temporary_exit' ? ' (Izin Keluar Jam Kerja' + (d.excuse.exit_time || d.excuse.return_time ? `: ${String(d.excuse.exit_time || '').slice(0,5)}–${String(d.excuse.return_time || '').slice(0,5)}` : '') + ')' : d.excuse?.excuse_type ? ` (${d.excuse.excuse_type})` : ''}`, bg: '#fef9c3', color: '#854d0e' }
                                         : d.excuse?.status === 'rejected' ? { text: `❌ Ditolak${d.excuse.rejected_note ? ' — ' + d.excuse.rejected_note : ''}`, bg: '#fee2e2', color: '#991b1b' }
                                         : null
                                       return (

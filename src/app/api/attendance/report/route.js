@@ -261,7 +261,7 @@ export async function GET(request) {
     try {
       const { data: excuses } = await supabaseAdmin
         .from('attendance_excuses')
-        .select('user_id, excuse_type, attendance_date, status, approver1_id, approver2_id, approver1_action, approver1_note, approver2_action, approver2_note')
+        .select('user_id, excuse_type, attendance_date, exit_time, return_time, category, status, approver1_id, approver2_id, approver1_action, approver1_note, approver2_action, approver2_note')
         .in('user_id', userIds)
         .gte('attendance_date', start)
         .lte('attendance_date', end)
@@ -459,9 +459,17 @@ export async function GET(request) {
               }
             }
           } else if (!noCheckIn && !isPartTime) {
-            // Check-in ada tapi tidak check-out
-            summary.no_checkout_count++
-            dayRecord.issues.push('no_checkout')
+            // Check-in ada tapi belum/tidak check-out
+            // Hanya tandai `no_checkout` jika tanggal sudah lalu ATAU jika jam kerja hari ini sudah selesai (> effOut)
+            const isToday = dateStr === defEnd
+            const nowWibStr = wibTimeStr(new Date().toISOString())
+            const nowWibSecs = timeToSeconds(nowWibStr)
+            const effOutSecs = timeToSeconds(effOut)
+
+            if (!isToday || (nowWibSecs && effOutSecs && nowWibSecs > effOutSecs)) {
+              summary.no_checkout_count++
+              dayRecord.issues.push('no_checkout')
+            }
           }
 
           dayRecord.status = dayRecord.issues.length === 0
@@ -487,6 +495,9 @@ export async function GET(request) {
           dayRecord.excuse = {
             status:       excuse.status,
             excuse_type:  excuse.excuse_type,
+            exit_time:    excuse.exit_time,
+            return_time:  excuse.return_time,
+            category:     excuse.category,
           }
 
           if (excuse.status === 'approved') {

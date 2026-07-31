@@ -466,6 +466,203 @@ function DeleteConfirmModal({ excuse, onClose, onSuccess }) {
   )
 }
 
+// ─── Voluntary Excuse Modal (Submit Izin Keluar Jam Kerja / Cuti Mandiri) ───
+
+// ─── Temporary Exit Modal (Khusus Form Izin Keluar Jam Kerja) ───────────────
+
+function TemporaryExitModal({ userId, onClose, onSuccess }) {
+  const { theme } = useTheme()
+
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const [targetDate, setTargetDate]   = useState(todayStr)
+  const [exitTime, setExitTime]       = useState('09:00')
+  const [returnTime, setReturnTime]   = useState('13:00')
+  const [category, setCategory]       = useState('')
+  const [otherReason, setOtherReason] = useState('')
+  const [submitting, setSubmitting]   = useState(false)
+  const [msg, setMsg]                 = useState('')
+  const [uploadFile, setUploadFile]   = useState(null)
+  const [processedFile, setProcessedFile] = useState(null)
+  const [cropSrc, setCropSrc]         = useState(null)
+  const [compressing, setCompressing] = useState(false)
+  const [uploading, setUploading]     = useState(false)
+
+  const categories = [
+    { value: 'school_duty',         label: 'Official School Duty / Assignment' },
+    { value: 'personal_family',     label: 'Family / Personal Matter' },
+    { value: 'medical_appointment', label: 'Medical Appointment / Clinic' },
+    { value: 'official_training',   label: 'External Training / Workshop' },
+    { value: 'other',               label: 'Other' },
+  ]
+
+  const handleFileSelect = (file) => {
+    if (!file) return
+    setUploadFile(file)
+    setProcessedFile(null)
+    if (file.type.startsWith('image/')) { const url = URL.createObjectURL(file); setCropSrc(url) }
+    else { setProcessedFile(file) }
+  }
+
+  const handleCropDone = async (blob) => {
+    setCropSrc(null); setCompressing(true)
+    try {
+      const compressed = await compressImage(blob)
+      const named = new File([compressed], (uploadFile?.name?.replace(/\.[^.]+$/, '') || 'attachment') + '.jpg', { type: 'image/jpeg' })
+      setProcessedFile(named)
+    } finally { setCompressing(false) }
+  }
+
+  const fileToUpload = processedFile || (uploadFile && !uploadFile.type.startsWith('image/') ? uploadFile : null)
+
+  const uploadAttachment = async () => {
+    if (!fileToUpload) return null
+    const formData = new FormData()
+    formData.append('file', fileToUpload)
+    formData.append('user_id', String(userId))
+    setUploading(true)
+    try {
+      const res  = await fetch('/api/attendance/excuses/upload', { method: 'POST', body: formData })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.message || 'Upload failed')
+      return json.url
+    } finally { setUploading(false) }
+  }
+
+  const handleSubmit = async () => {
+    if (!category) { setMsg('Please select a reason category'); return }
+    if (category === 'other' && !otherReason.trim()) { setMsg('Please specify your reason'); return }
+    if (cropSrc) { setMsg('Please finish cropping your image first'); return }
+    setSubmitting(true); setMsg('')
+    try {
+      const attachmentUrl = fileToUpload ? await uploadAttachment() : null
+      const res = await fetch('/api/attendance/excuses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          excuse_type: 'temporary_exit',
+          attendance_date: targetDate,
+          exit_time: exitTime,
+          return_time: returnTime,
+          category,
+          other_reason: category === 'other' ? otherReason.trim() : (otherReason.trim() || null),
+          attachment_url: attachmentUrl
+        })
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.message)
+      onSuccess()
+    } catch (err) { setMsg('❌ ' + err.message); setSubmitting(false) }
+  }
+
+  const inputStyle = { width: '100%', background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '8px', padding: '9px 12px', fontSize: '13px', outline: 'none' }
+
+  return (
+    <>
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
+      <div style={{ background: theme.cardBg, borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 32px)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between" style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
+          <div>
+            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+              🚪 Temporary Exit Permission Form
+            </h2>
+            <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+              This submission will be forwarded to your Unit Principal & Approver for review.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-lg leading-none cursor-pointer" style={{ color: theme.textSecondary }}>×</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ overflowY: 'auto', padding: '16px 24px', flex: 1 }} className="space-y-4">
+          {/* Tanggal */}
+          <div>
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: theme.textSecondary }}>
+              Permission Date <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={inputStyle} />
+          </div>
+
+          {/* Jam Keluar & Jam Kembali */}
+          <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
+            <div>
+              <label className="text-xs font-semibold block mb-1 text-amber-900 dark:text-amber-300">
+                ⏱️ Exit Time
+              </label>
+              <input type="time" value={exitTime} onChange={e => setExitTime(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold block mb-1 text-amber-900 dark:text-amber-300">
+                ⏱️ Return Time
+              </label>
+              <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+
+          {/* Kategori Alasan */}
+          <div>
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: theme.textSecondary }}>
+              Reason Category <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div className="space-y-1.5">
+              {categories.map(c => (
+                <label key={c.value} className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all"
+                  style={{
+                    background: category === c.value ? (theme.blueText ? `${theme.blueText}18` : '#eff6ff') : 'transparent',
+                    border: `1px solid ${category === c.value ? (theme.blueText || '#2563eb') : theme.border}`
+                  }}>
+                  <input type="radio" name="temp_exit_category" value={c.value} checked={category === c.value}
+                    onChange={() => setCategory(c.value)} style={{ accentColor: '#2563eb' }} />
+                  <span className="text-xs font-medium" style={{ color: theme.textBody }}>{c.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Keterangan Detail */}
+          <div>
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: theme.textSecondary }}>
+              Additional Details / Description {category === 'other' && <span style={{ color: '#ef4444' }}>*</span>}
+            </label>
+            <textarea rows={2} value={otherReason} onChange={e => setOtherReason(e.target.value)}
+              placeholder="e.g. Official meeting at Education Department / Medical appointment"
+              style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+
+          {/* Lampiran */}
+          <div>
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: theme.textSecondary }}>
+              Attachment / Official Document (Optional)
+            </label>
+            {fileToUpload && !compressing && (
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
+                ✅ {fileToUpload.name}
+              </div>
+            )}
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => handleFileSelect(e.target.files[0] || null)} className="text-xs" />
+          </div>
+
+          {msg && <div className="p-2.5 rounded-lg text-xs font-medium" style={{ background: '#fef2f2', color: '#991b1b' }}>{msg}</div>}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2" style={{ padding: '12px 24px 18px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-lg text-xs font-medium flex-1 cursor-pointer" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+            Cancel
+          </button>
+          <button onClick={handleSubmit} disabled={submitting || compressing} className="px-4 py-2.5 rounded-lg text-xs font-bold flex-1 cursor-pointer"
+            style={{ background: theme.blueText || '#2563eb', color: '#fff', opacity: (submitting || compressing) ? 0.7 : 1 }}>
+            {submitting ? 'Submitting...' : 'Submit Request'}
+          </button>
+        </div>
+      </div>
+    </div>
+    {cropSrc && <ImageCropModal src={cropSrc} onDone={handleCropDone} onCancel={() => setCropSrc(null)} />}
+    </>
+  )
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function AttendanceFormPage() {
@@ -477,14 +674,16 @@ export default function AttendanceFormPage() {
   const [month, setMonth]             = useState(() => new Date().toISOString().slice(0, 7))
   const [issueRows, setIssueRows]     = useState([])
   const [excuseMap, setExcuseMap]     = useState({})
+  const [submittedList, setSubmittedList] = useState([])
   const [loading, setLoading]         = useState(false)
   const [modalRecord, setModalRecord] = useState(null)
   const [deleteExcuse, setDeleteExcuse] = useState(null)
+  const [isTempExitModalOpen, setIsTempExitModalOpen] = useState(false)
   const [successDate, setSuccessDate] = useState(null)
   const [leaveTypes, setLeaveTypes]   = useState([])
   const [isFlexibleRole, setIsFlexibleRole] = useState(false)
 
-  // i18n-driven configs (computed inside render so they react to language changes)
+  // i18n-driven configs
   const STATUS_CONFIG = {
     pending:    { label: t('attendanceForm.statusPending'),   color: '#92400e', bg: '#fef3c7', icon: '⏳' },
     approved_1: { label: t('attendanceForm.statusApproved1'), color: '#1e40af', bg: '#dbeafe', icon: '🔄' },
@@ -492,11 +691,12 @@ export default function AttendanceFormPage() {
     rejected:   { label: t('attendanceForm.statusRejected'),  color: '#991b1b', bg: '#fee2e2', icon: '❌' },
   }
   const ISSUE_CONFIG = {
-    late:        { label: t('attendanceForm.issueLate'),        color: '#92400e', bg: '#fef3c7', icon: '🕐' },
-    leave_early: { label: t('attendanceForm.issueLeaveEarly'),  color: '#9a3412', bg: '#ffedd5', icon: '🚪' },
-    absent:      { label: t('attendanceForm.issueAbsent'),      color: '#6b21a8', bg: '#f3e8ff', icon: '❌' },
-    no_checkout: { label: t('attendanceForm.issueNoCheckout'),  color: '#1e40af', bg: '#dbeafe', icon: '⚠️' },
-    no_checkin:  { label: t('attendanceForm.issueNoCheckin'),   color: '#9d174d', bg: '#fce7f3', icon: '🔴' },
+    late:           { label: t('attendanceForm.issueLate'),        color: '#92400e', bg: '#fef3c7', icon: '🕐' },
+    leave_early:    { label: t('attendanceForm.issueLeaveEarly'),  color: '#9a3412', bg: '#ffedd5', icon: '🚪' },
+    absent:         { label: t('attendanceForm.issueAbsent'),      color: '#6b21a8', bg: '#f3e8ff', icon: '❌' },
+    no_checkout:    { label: t('attendanceForm.issueNoCheckout'),  color: '#1e40af', bg: '#dbeafe', icon: '⚠️' },
+    no_checkin:     { label: t('attendanceForm.issueNoCheckin'),   color: '#9d174d', bg: '#fce7f3', icon: '🔴' },
+    temporary_exit: { label: '🚪 Temporary Exit',                  color: '#b45309', bg: '#fef3c7', icon: '🚪' },
   }
 
   useEffect(() => {
@@ -514,7 +714,6 @@ export default function AttendanceFormPage() {
     if (!uid) return
     setLoading(true)
     try {
-      // Check if logged in user's role is flexible hours, part-time staff, or vendor
       const { data: userRow } = await supabase.from('users').select('user_role_id').eq('user_id', uid).single()
       if (userRow?.user_role_id) {
         const { data: roleRow } = await supabase
@@ -550,8 +749,11 @@ export default function AttendanceFormPage() {
       const excusesJson = await excusesRes.json()
 
       const em = {}
-      if (excusesJson.success) {
-        for (const ex of (excusesJson.data || [])) em[ex.attendance_date] = ex
+      const submitted = excusesJson.success ? (excusesJson.data || []) : []
+      setSubmittedList(submitted)
+
+      for (const ex of submitted) {
+        em[ex.attendance_date] = ex
       }
       setExcuseMap(em)
 
@@ -573,9 +775,10 @@ export default function AttendanceFormPage() {
   useEffect(() => { if (userId) loadData(userId, month) }, [userId, month, loadData])
 
   const handleModalSuccess = () => {
-    const date = modalRecord?.record?.date
+    const date = modalRecord?.record?.date || new Date().toISOString().slice(0, 10)
     setSuccessDate(date)
     setModalRecord(null)
+    setIsTempExitModalOpen(false)
     loadData(userId, month)
     setTimeout(() => setSuccessDate(null), 3000)
   }
@@ -588,22 +791,38 @@ export default function AttendanceFormPage() {
     <div className="p-4 md:p-6 space-y-5" style={{ color: theme.textBody }}>
 
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="flex items-start justify-between flex-wrap gap-4 border-b pb-4" style={{ borderColor: theme.border }}>
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: theme.textPrimary }}>
+          <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
             📝 {t('attendanceForm.pageTitle')}
           </h1>
           <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>
             {t('attendanceForm.pageSubtitle')} <strong>{t('attendanceForm.pageSubtitleAction')}</strong> {t('attendanceForm.pageSubtitleSuffix')}
           </p>
         </div>
-        <input type="month" value={month} onChange={e => setMonth(e.target.value)}
-          style={{ background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '8px', padding: '8px 12px', fontSize: '14px' }} />
+
+        {/* Action Button for Temporary Exit ONLY */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => setIsTempExitModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all cursor-pointer"
+          >
+            <span>🚪</span>
+            <span>Temporary Exit Request</span>
+          </button>
+
+          <input
+            type="month"
+            value={month}
+            onChange={e => setMonth(e.target.value)}
+            style={{ background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '10px', padding: '7px 12px', fontSize: '13px' }}
+          />
+        </div>
       </div>
 
       {/* Summary banner */}
       {!loading && noExcuseCount > 0 && (
-        <div className="p-3 rounded-xl flex items-center gap-3 text-sm"
+        <div className="p-3.5 rounded-xl flex items-center gap-3 text-sm shadow-2xs"
           style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e' }}>
           ⚠️ {t('attendanceForm.summaryBanner')} <strong>{noExcuseCount} {t('attendanceForm.summaryBannerMid')}</strong> {t('attendanceForm.summaryBannerSuffix')}
         </div>
@@ -611,7 +830,7 @@ export default function AttendanceFormPage() {
 
       {/* Success banner */}
       {successDate && (
-        <div className="p-3 rounded-xl flex items-center gap-2 text-sm"
+        <div className="p-3.5 rounded-xl flex items-center gap-2 text-sm shadow-2xs"
           style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
           ✅ {t('attendanceForm.successBanner')} <strong>{successDate}</strong> {t('attendanceForm.successBannerSuffix')}
         </div>
@@ -634,78 +853,147 @@ export default function AttendanceFormPage() {
             Your role is exempt from HCM forms.
           </p>
         </div>
-      ) : issueRows.length === 0 ? (
-        <div className="py-16 text-center" style={{ color: theme.textSecondary }}>
-          <div className="text-4xl mb-3">🎉</div>
-          <p className="text-sm font-medium">{t('attendanceForm.noIssues')}</p>
-        </div>
       ) : (
-        <div className="space-y-2">
-          {issueRows.map(day => {
-            const excuse = excuseMap[day.date]
-            const st     = excuse ? STATUS_CONFIG[excuse.status] : null
-            const primaryIssue = ['late', 'leave_early', 'absent', 'no_checkout', 'no_checkin'].find(i => day.issues?.includes(i))
-            const ic = ISSUE_CONFIG[primaryIssue] || ISSUE_CONFIG.absent
-            const duration = primaryIssue === 'late' ? day.late_minutes : primaryIssue === 'leave_early' ? day.leave_early_minutes : null
-            const rejectedBy = excuse?.approver1_action === 'rejected' ? excuse.approver1_note || 'Approver 1' : excuse?.approver2_note || 'Approver 2'
-            const canEditDelete = excuse && excuse.status === 'pending'
+        <div className="space-y-6">
+          {/* Machine Anomaly Form Submissions Section (Original System) */}
+          {issueRows.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                <span>⚠️</span>
+                <span>Machine Attendance Issues This Month ({issueRows.length})</span>
+              </h2>
 
-            return (
-              <div key={day.date} style={cardStyle} className="flex items-center justify-between gap-4 flex-wrap">
-                {/* Left: date + issue type */}
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="text-sm font-semibold min-w-[90px]" style={{ color: theme.textPrimary }}>{day.date}</div>
-                  <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: ic.bg, color: ic.color }}>
-                    {ic.icon} {ic.label}
-                  </span>
-                  {duration > 0 && <span className="text-xs font-semibold" style={{ color: ic.color }}>+{fmtMins(duration)}</span>}
-                  {day.checkin_time && (
-                    <span className="text-xs" style={{ color: theme.textSecondary }}>
-                      {day.checkin_time}{day.checkout_time && <span> – {day.checkout_time}</span>}
-                    </span>
-                  )}
-                </div>
+              <div className="space-y-2">
+                {issueRows.map(day => {
+                  const excuse = excuseMap[day.date]
+                  const st     = excuse ? STATUS_CONFIG[excuse.status] : null
+                  const primaryIssue = ['late', 'leave_early', 'absent', 'no_checkout', 'no_checkin'].find(i => day.issues?.includes(i))
+                  const ic = ISSUE_CONFIG[primaryIssue] || ISSUE_CONFIG.absent
+                  const duration = primaryIssue === 'late' ? day.late_minutes : primaryIssue === 'leave_early' ? day.leave_early_minutes : null
+                  const rejectedBy = excuse?.approver1_action === 'rejected' ? excuse.approver1_note || 'Approver 1' : excuse?.approver2_note || 'Approver 2'
+                  const canEditDelete = excuse && excuse.status === 'pending'
 
-                {/* Right: status + actions */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {excuse ? (
-                    <>
-                      <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: st.bg, color: st.color }}>
-                        {st.icon} {st.label}
-                      </span>
-                      {excuse.status === 'rejected' && <span className="text-xs" style={{ color: '#991b1b' }}>({rejectedBy})</span>}
-                      {canEditDelete && (
-                        <>
-                          <button onClick={() => setModalRecord({ record: { ...day, issues: [primaryIssue] }, excuse })}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-                            style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-                            {t('attendanceForm.btnEdit')}
+                  return (
+                    <div key={day.date} style={cardStyle} className="flex items-center justify-between gap-4 flex-wrap">
+                      {/* Left: date + issue type */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="text-sm font-semibold min-w-[90px]" style={{ color: theme.textPrimary }}>{day.date}</div>
+                        <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: ic.bg, color: ic.color }}>
+                          {ic.icon} {ic.label}
+                        </span>
+                        {duration > 0 && <span className="text-xs font-semibold" style={{ color: ic.color }}>+{fmtMins(duration)}</span>}
+                        {day.checkin_time && (
+                          <span className="text-xs" style={{ color: theme.textSecondary }}>
+                            {day.checkin_time}{day.checkout_time && <span> – {day.checkout_time}</span>}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Right: status + actions */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {excuse ? (
+                          <>
+                            <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: st.bg, color: st.color }}>
+                              {st.icon} {st.label}
+                            </span>
+                            {excuse.status === 'rejected' && <span className="text-xs" style={{ color: '#991b1b' }}>({rejectedBy})</span>}
+                            {canEditDelete && (
+                              <>
+                                <button onClick={() => setModalRecord({ record: { ...day, issues: [primaryIssue] }, excuse })}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
+                                  style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+                                  {t('attendanceForm.btnEdit')}
+                                </button>
+                                <button onClick={() => setDeleteExcuse(excuse)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
+                                  style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }}>
+                                  🗑️
+                                </button>
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          <button onClick={() => setModalRecord({ record: day })}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shadow-2xs"
+                            style={{ background: theme.blueText || '#2563eb', color: '#fff' }}>
+                            {t('attendanceForm.btnSubmit')}
                           </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Empty Anomaly State - Clean original UI */}
+          {issueRows.length === 0 && (
+            <div className="py-16 text-center" style={{ color: theme.textSecondary }}>
+              <div className="text-4xl mb-3">🎉</div>
+              <p className="text-sm font-medium">{t('attendanceForm.noIssues')}</p>
+            </div>
+          )}
+
+          {/* Submitted Forms History Section */}
+          {submittedList.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                <span>📋</span>
+                <span>My Submitted Forms History This Month ({submittedList.length})</span>
+              </h2>
+
+              <div className="space-y-2.5">
+                {submittedList.map(excuse => {
+                  const st = STATUS_CONFIG[excuse.status] || STATUS_CONFIG.pending
+                  const ic = ISSUE_CONFIG[excuse.excuse_type] || ISSUE_CONFIG.absent
+
+                  return (
+                    <div key={excuse.id} style={cardStyle} className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold" style={{ color: theme.textPrimary }}>📅 {excuse.attendance_date}</span>
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold" style={{ background: ic.bg, color: ic.color }}>
+                            {ic.icon} {ic.label}
+                          </span>
+                          {excuse.excuse_type === 'temporary_exit' && (excuse.exit_time || excuse.return_time) && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200">
+                              ⏱️ Time: {String(excuse.exit_time).slice(0,5)} — {String(excuse.return_time).slice(0,5)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs" style={{ color: theme.textSecondary }}>
+                          Reason: <strong>{excuse.category}</strong> {excuse.other_reason ? `— ${excuse.other_reason}` : ''}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-3 py-1 rounded-full font-bold" style={{ background: st.bg, color: st.color }}>
+                          {st.icon} {st.label}
+                        </span>
+                        {excuse.status === 'pending' && (
                           <button onClick={() => setDeleteExcuse(excuse)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
                             style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }}>
                             🗑️
                           </button>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <button onClick={() => setModalRecord({ record: day })}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-                      style={{ background: theme.blueText || '#2563eb', color: '#fff' }}>
-                      {t('attendanceForm.btnSubmit')}
-                    </button>
-                  )}
-                </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          )}
         </div>
       )}
 
       {/* Modals */}
       {modalRecord && (
         <ExcuseModal record={modalRecord.record} excuse={modalRecord.excuse || null} userId={userId} leaveTypes={leaveTypes} onClose={() => setModalRecord(null)} onSuccess={handleModalSuccess} />
+      )}
+      {isTempExitModalOpen && (
+        <TemporaryExitModal userId={userId} onClose={() => setIsTempExitModalOpen(false)} onSuccess={handleModalSuccess} />
       )}
       {deleteExcuse && (
         <DeleteConfirmModal excuse={deleteExcuse} onClose={() => setDeleteExcuse(null)} onSuccess={handleDeleteSuccess} />

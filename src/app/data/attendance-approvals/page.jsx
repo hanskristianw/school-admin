@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/theme'
+import { supabase } from '@/lib/supabase'
 
 const CATEGORY_LABEL = {
   // Late / Leave Early
@@ -24,6 +25,8 @@ const CATEGORY_LABEL = {
   // Absent — Tugas / diklat
   ib_trainer:            'Official IB Trainer / Examiner',
   school_duty:           'School Duty — Training / Workshop',
+  official_duty:         'Official Duty / Assignment',
+  medical_appointment:   'Medical Appointment',
   // Absent — Cuti
   annual_leave:          'Annual Leave (12 days)',
   unpaid_leave:          'Unpaid Personal Leave',
@@ -35,11 +38,13 @@ const CATEGORY_LABEL = {
 }
 
 const TYPE_LABEL = {
-  late:        'Late',
-  leave_early: 'Leave Early',
-  absent:      'Absent',
-  no_checkin:  'No Check-In',
-  no_checkout: 'No Check-Out',
+  late:           'Late',
+  leave_early:    'Leave Early',
+  absent:         'Absent',
+  no_checkin:     'No Check-In',
+  no_checkout:    'No Check-Out',
+  temporary_exit: '🚪 Temporary Exit',
+  other:          'Other',
 }
 
 function fmtMins(m) {
@@ -49,38 +54,81 @@ function fmtMins(m) {
   return h > 0 ? `${h}h ${min}m` : `${min} mins`
 }
 
+function fmtTime(tStr) {
+  if (!tStr) return ''
+  return String(tStr).slice(0, 5)
+}
+
 export default function AttendanceApprovalsPage() {
   const { theme } = useTheme()
   const router = useRouter()
 
-  const [userId, setUserId]         = useState(null)
-  const [tab, setTab]               = useState('pending') // pending | done
+  const [userId, setUserId]               = useState(null)
+  const [userInfo, setUserInfo]           = useState(null)
+  const [isAuthorized, setIsAuthorized]   = useState(true)
+  const [tab, setTab]                     = useState('pending') // pending | done | unit_overview
   const currentMonthKey = new Date().toISOString().slice(0, 7)
-  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey) // default to current month YYYY-MM
-  const [excuses, setExcuses]       = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [actionId, setActionId]     = useState(null)  // excuse id being acted on
-  const [noteMap, setNoteMap]       = useState({})    // id → note text
-  const [msg, setMsg]               = useState('')
-  const [deletingId, setDeletingId] = useState(null)
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey)
+  const [selectedUnit, setSelectedUnit]   = useState('all')
+  const [units, setUnits]                 = useState([])
+  const [excuses, setExcuses]             = useState([])
+  const [unitExcuses, setUnitExcuses]     = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [actionId, setActionId]           = useState(null)
+  const [noteMap, setNoteMap]             = useState({})
+  const [msg, setMsg]                     = useState('')
+  const [deletingId, setDeletingId]       = useState(null)
 
+  // Auth & Security initialization matching standard /data/ pages
   useEffect(() => {
     const id = localStorage.getItem('kr_id')
     if (!id) { router.replace('/login'); return }
-    setUserId(parseInt(id, 10))
+    const uid = parseInt(id, 10)
+    setUserId(uid)
+
+    const initUserData = async () => {
+      try {
+        const { data: uData } = await supabase
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang, user_unit_id, user_role_id, role:user_role_id(role_name, is_admin, is_principal)')
+          .eq('user_id', uid)
+          .single()
+
+        if (uData) {
+          setUserInfo(uData)
+          if (uData.user_unit_id) {
+            setSelectedUnit(String(uData.user_unit_id))
+          }
+        }
+
+        // Fetch Units list
+        const { data: unitList } = await supabase.from('unit').select('unit_id, unit_name').order('unit_id')
+        if (unitList) setUnits(unitList)
+      } catch (err) {
+        console.error('Init user data error:', err)
+      }
+    }
+
+    initUserData()
   }, [router])
 
   useEffect(() => {
     if (!userId) return
     fetchExcuses()
-  }, [userId])
+  }, [userId, selectedUnit])
 
   const fetchExcuses = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/attendance/excuses?approver_id=${userId}`)
-      const json = await res.json()
-      if (json.success) setExcuses(json.data || [])
+      const [resMy, resUnit] = await Promise.all([
+        fetch(`/api/attendance/excuses?approver_id=${userId}`),
+        fetch(`/api/attendance/excuses${selectedUnit !== 'all' ? `?unit_id=${selectedUnit}` : ''}`)
+      ])
+      const jsonMy = await resMy.json()
+      const jsonUnit = await resUnit.json()
+
+      if (jsonMy.success) setExcuses(jsonMy.data || [])
+      if (jsonUnit.success) setUnitExcuses(jsonUnit.data || [])
     } finally {
       setLoading(false)
     }
@@ -318,7 +366,7 @@ export default function AttendanceApprovalsPage() {
                   const isPending = (myStep === 1 && e.status === 'pending') || (myStep === 2 && e.status === 'approved_1')
 
                   const submitterName = `${e.submitter?.user_nama_depan || ''} ${e.submitter?.user_nama_belakang || ''}`.trim()
-                  const unitId        = e.submitter?.user_unit_id || '—'
+                  const unitName      = e.unit?.unit_name || (units.find(u => u.unit_id === e.unit_id)?.unit_name) || `Unit ${e.unit_id || e.submitter?.user_unit_id || '—'}`
 
                   return (
                     <div key={e.id} className="rounded-xl p-5 space-y-3"
@@ -327,20 +375,31 @@ export default function AttendanceApprovalsPage() {
                       {/* Top: submitter info */}
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div>
-                          <div className="font-semibold text-sm" style={{ color: theme.textPrimary }}>
-                            {submitterName}
+                          <div className="font-semibold text-sm flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                            <span>{submitterName}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              {unitName}
+                            </span>
                           </div>
-                          <div className="text-xs mt-0.5 flex gap-2" style={{ color: theme.textSecondary }}>
-                            <span>Unit {unitId}</span>
+                          <div className="text-xs mt-1 flex items-center gap-2 flex-wrap" style={{ color: theme.textSecondary }}>
+                            <span className="font-medium px-2 py-0.5 rounded text-[11px]" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
+                              {TYPE_LABEL[e.excuse_type] || e.excuse_type}
+                            </span>
                             <span>·</span>
-                            <span>{TYPE_LABEL[e.excuse_type] || e.excuse_type}</span>
-                            <span>·</span>
-                            <span>{e.attendance_date}</span>
+                            <span>📅 {e.attendance_date}</span>
                             {e.late_minutes > 0 && (
                               <>
                                 <span>·</span>
                                 <span className="font-medium" style={{ color: '#92400e' }}>
                                   +{fmtMins(e.late_minutes)}
+                                </span>
+                              </>
+                            )}
+                            {e.excuse_type === 'temporary_exit' && (e.exit_time || e.return_time) && (
+                              <>
+                                <span>·</span>
+                                <span className="font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                                  ⏱️ Exit: {fmtTime(e.exit_time)} — Return: {fmtTime(e.return_time)}
                                 </span>
                               </>
                             )}
@@ -353,7 +412,7 @@ export default function AttendanceApprovalsPage() {
                             color:      isPending ? '#1e40af' : myAction === 'approved' ? '#166534' : '#991b1b',
                           }}>
                           {isPending
-                            ? `Approver ${myStep} — Awaiting Your Action`
+                            ? `Approver ${myStep} — Awaiting Action`
                             : myAction === 'approved'
                               ? `Approver ${myStep} — Approved`
                               : `Approver ${myStep} — Rejected`}
@@ -367,6 +426,30 @@ export default function AttendanceApprovalsPage() {
                           {CATEGORY_LABEL[e.category] || e.category}
                           {e.other_reason && <span className="ml-1" style={{ color: theme.textSecondary }}>— {e.other_reason}</span>}
                         </div>
+                      </div>
+
+                      {/* Machine Face Scans Verification Proof */}
+                      <div className="text-xs p-2.5 rounded-lg border space-y-1.5" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                        <div className="font-semibold flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
+                          <span>📷</span>
+                          <span>Machine Face Scans Log on {e.attendance_date}:</span>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">
+                            ({e.scans?.length || 0} scan{e.scans?.length === 1 ? '' : 's'})
+                          </span>
+                        </div>
+                        {e.scans && e.scans.length > 0 ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {e.scans.map((t, idx) => (
+                              <span key={idx} className="px-2 py-0.5 rounded font-mono font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                                ⏱️ {t}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] italic" style={{ color: theme.textSecondary }}>
+                            No machine face scans recorded on this date.
+                          </div>
+                        )}
                       </div>
 
                       {/* Attachment File Preview / Link */}

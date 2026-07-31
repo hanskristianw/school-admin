@@ -3120,8 +3120,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "driver.js"
     },
     {
@@ -3131,8 +3131,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "driver.js"
     },
     {
@@ -3560,8 +3560,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "package_dependencies_react_easy_crop",
-      "community": 277,
-      "community_name": "6.1 Tables",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "react-easy-crop"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "react_easy_crop",
-      "community": 277,
-      "community_name": "6.1 Tables",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "react-easy-crop"
     },
     {
@@ -4217,7 +4217,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/attendance/excuses/route.js",
-      "source_location": "L118",
+      "source_location": "L114",
       "_origin": "ast",
       "id": "src_app_api_attendance_excuses_route_post",
       "community": 63,
@@ -21576,7 +21576,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/excuses/route.js",
-      "source_location": "L118",
+      "source_location": "L114",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_excuses_route",
