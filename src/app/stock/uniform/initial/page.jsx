@@ -401,7 +401,11 @@ export default function InitialStockPage() {
             totalHppValue += t.qty_delta * Number(variant.hpp)
           }
         })
-        const weightedAvgHpp = totalHppQty > 0 ? Math.round(totalHppValue / totalHppQty) : (variants.length > 0 ? Number(variants[0]?.hpp || 0) : 0)
+        const weightedAvgHpp = totalHppQty > 0
+          ? Math.round(totalHppValue / totalHppQty)
+          : (variants.length > 0
+            ? Math.round(variants.reduce((sum, v) => sum + Number(v.hpp || 0), 0) / variants.length)
+            : 0)
 
         // -- REALISASI PEMBELIAN per PO --
         const purchaseByPo = {}
@@ -423,7 +427,7 @@ export default function InitialStockPage() {
         const totalSoldQty = salesForUniform.reduce((sum, si) => sum + si.qty, 0)
         const totalSaleRevenue = salesForUniform.reduce((sum, si) => sum + Number(si.subtotal || 0), 0)
         const avgSellPrice = totalSoldQty > 0 ? Math.round(totalSaleRevenue / totalSoldQty) : (variants.length > 0 ? Number(variants[0]?.price || 0) : 0)
-        const totalSaleCost = salesForUniform.reduce((sum, si) => sum + (si.qty * Number(si.unit_hpp || 0)), 0)
+        const totalSaleCost = salesForUniform.reduce((sum, si) => sum + (si.qty * Number(si.unit_hpp || weightedAvgHpp || 0)), 0)
         const profit = totalSaleRevenue - totalSaleCost
 
         // -- STOCK AWAL = Current Stock - Purchases in Period + Sales in Period --
@@ -446,22 +450,46 @@ export default function InitialStockPage() {
           .filter(t => t.uniform_id === uId && !t.supplier_id)
           .reduce((sum, t) => sum + Math.abs(t.qty_delta), 0)
 
-        const stockAwalBySupplier = {}
+        const rawStockAwalBySupplier = {}
         supplierList.forEach(s => {
-          stockAwalBySupplier[s.supplier_id] = 
+          rawStockAwalBySupplier[s.supplier_id] = 
             (currentStockBySupplier[s.supplier_id] || 0) - 
             (purchaseQtyBySupplier[s.supplier_id] || 0) + 
             (saleQtyBySupplier[s.supplier_id] || 0)
         })
-        const stockAwalInv = (currentStockInv + currentStockUnmatched) + saleQtyInv
-        const totalStockAwal = totalCurrentStock - totalPurchaseQty + totalSoldQty
+        const rawStockAwalInv = (currentStockInv + currentStockUnmatched) + saleQtyInv
+
+        // Helper to allocate negative unallocated stock (POS sales without supplier_id) to supplier balances
+        const allocateUnallocated = (invQty, suppMap) => {
+          const resSuppMap = { ...suppMap }
+          let remInv = invQty
+          if (remInv < 0) {
+            let needed = Math.abs(remInv)
+            for (const s of supplierList) {
+              if (needed <= 0) break
+              const qty = resSuppMap[s.supplier_id] || 0
+              if (qty > 0) {
+                const deduct = Math.min(qty, needed)
+                resSuppMap[s.supplier_id] -= deduct
+                needed -= deduct
+              }
+            }
+            remInv = -needed
+          }
+          return { invQty: remInv, suppMap: resSuppMap }
+        }
+
+        const { invQty: stockAwalInv, suppMap: stockAwalBySupplier } = allocateUnallocated(rawStockAwalInv, rawStockAwalBySupplier)
+        const totalStockAwal = stockAwalInv + Object.values(stockAwalBySupplier).reduce((a, b) => a + b, 0)
 
         // -- STOCK AKHIR = Current Stock (equals Awal + Beli - Jual) --
-        const stockAkhirBySupplier = {}
+        const rawStockAkhirInv = currentStockInv + currentStockUnmatched
+        const rawStockAkhirBySupplier = {}
         supplierList.forEach(s => {
-          stockAkhirBySupplier[s.supplier_id] = currentStockBySupplier[s.supplier_id] || 0
+          rawStockAkhirBySupplier[s.supplier_id] = currentStockBySupplier[s.supplier_id] || 0
         })
-        const stockAkhirInv = currentStockInv + currentStockUnmatched
+
+        const { invQty: stockAkhirInv, suppMap: stockAkhirBySupplier } = allocateUnallocated(rawStockAkhirInv, rawStockAkhirBySupplier)
         const totalStockAkhir = totalCurrentStock
 
         return {
@@ -516,8 +544,9 @@ export default function InitialStockPage() {
         akhirJenis: 12 + supplierCount + poCount,
         akhirInv: 13 + supplierCount + poCount,
         suppAkhirStart: 14 + supplierCount + poCount,
+        totalStokAkhir: 14 + (supplierCount * 2) + poCount,
       }
-      const totalCols = C.suppAkhirStart + supplierCount - 1
+      const totalCols = C.totalStokAkhir
 
       // Set column widths
       for (let i = 1; i <= totalCols; i++) ws.getColumn(i).width = 14
@@ -588,6 +617,7 @@ export default function InitialStockPage() {
       subHeaders[C.akhirJenis - 1] = 'Jenis Seragam'
       subHeaders[C.akhirInv - 1] = 'Inv'
       supplierList.forEach((s, i) => { subHeaders[C.suppAkhirStart + i - 1] = s.supplier_name })
+      subHeaders[C.totalStokAkhir - 1] = 'Total Stok'
 
       const subHeaderRow = ws.addRow(subHeaders)
       subHeaderRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
@@ -602,7 +632,7 @@ export default function InitialStockPage() {
       // Data rows
       const totals = {
         inv: 0, suppAwal: {}, hppNilai: 0, totalStokAwal: 0,
-        poQty: {}, totalPembelian: 0,
+        poQty: {}, totalPoQty: 0, totalPembelian: 0,
         jmlTerjual: 0, totalPenjualan: 0, keuntungan: 0,
         akhirInv: 0, suppAkhir: {}, totalStokAkhir: 0
       }
@@ -645,10 +675,12 @@ export default function InitialStockPage() {
           vals[C.suppAkhirStart + i - 1] = fmtNum(v)
           totals.suppAkhir[s.supplier_id] += v
         })
+        vals[C.totalStokAkhir - 1] = fmtNum(row.totalStockAkhir)
 
         totals.inv += row.stockAwalInv || 0
         totals.hppNilai += nilai || 0
         totals.totalStokAwal += row.totalStockAwal || 0
+        totals.totalPoQty += row.totalPurchaseQty || 0
         totals.totalPembelian += row.totalPurchaseCost || 0
         totals.jmlTerjual += row.totalSoldQty || 0
         totals.totalPenjualan += row.totalSaleRevenue || 0
@@ -679,13 +711,16 @@ export default function InitialStockPage() {
       if (poList.length > 0) {
         poList.forEach((po, i) => { totalVals[C.poStart + i - 1] = fmtNum(totals.poQty[po.purchase_id]) })
       }
+      totalVals[C.hargaBeli - 1] = totals.totalPoQty > 0 ? fmtNum(Math.round(totals.totalPembelian / totals.totalPoQty)) : ''
       totalVals[C.totalPembelian - 1] = fmtNum(totals.totalPembelian)
       totalVals[C.jmlTerjual - 1] = fmtNum(totals.jmlTerjual)
+      totalVals[C.hargaJual - 1] = totals.jmlTerjual > 0 ? fmtNum(Math.round(totals.totalPenjualan / totals.jmlTerjual)) : ''
       totalVals[C.totalPenjualan - 1] = fmtNum(totals.totalPenjualan)
       totalVals[C.keuntungan - 1] = fmtNum(totals.keuntungan)
       totalVals[C.akhirJenis - 1] = 'TOTAL'
       totalVals[C.akhirInv - 1] = fmtNum(totals.akhirInv)
       supplierList.forEach((s, i) => { totalVals[C.suppAkhirStart + i - 1] = fmtNum(totals.suppAkhir[s.supplier_id]) })
+      totalVals[C.totalStokAkhir - 1] = fmtNum(totals.totalStokAkhir)
 
       const totalRow = ws.addRow(totalVals)
       totalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
@@ -697,18 +732,70 @@ export default function InitialStockPage() {
         }
       })
 
-      // ---- Sheet 2+: Per-supplier summary (current stock) ----
+      // ---- Sheet 2+: Per-supplier summary (current stock matching Sheet 1) ----
       const dataBySupplier = new Map()
       dataBySupplier.set('Tanpa Supplier', [])
-      summaryData.forEach(item => {
-        if (item.total_qty <= 0) return
-        const key = item.supplier ? `${item.supplier.supplier_code} - ${item.supplier.supplier_name}` : 'Tanpa Supplier'
-        if (!dataBySupplier.has(key)) dataBySupplier.set(key, [])
-        dataBySupplier.get(key).push({
-          seragam: item.uniform?.uniform_name || '',
-          ukuran: item.size?.size_name || '',
-          jumlah: item.total_qty,
-          universal: item.uniform?.is_universal ? 'Ya' : 'Tidak'
+
+      // Group allStockTxns directly by (uniform_id, size_id, supplier_id)
+      const variantStockMap = new Map()
+      ;(allStockTxns || []).forEach(t => {
+        const uId = t.uniform_id
+        const sId = t.size_id
+        const suppId = t.supplier_id || 'null'
+        const key = `${uId}|${sId}|${suppId}`
+
+        if (!variantStockMap.has(key)) {
+          const uniform = (allUniforms || []).find(u => u.uniform_id === uId)
+          const sizeObj = (sizes || []).find(s => s.size_id === sId)
+          const suppObj = (allSuppliers || []).find(s => s.supplier_id === t.supplier_id)
+
+          variantStockMap.set(key, {
+            uniform_id: uId,
+            size_id: sId,
+            supplier_id: t.supplier_id,
+            uniform_name: uniform?.uniform_name || '',
+            size_name: sizeObj?.size_name || '',
+            supplier_name: suppObj ? `${suppObj.supplier_code} - ${suppObj.supplier_name}` : 'Tanpa Supplier',
+            is_universal: uniform?.is_universal || false,
+            net_qty: 0
+          })
+        }
+        variantStockMap.get(key).net_qty += t.qty_delta
+      })
+
+      // Group variant items by uniform_id
+      const variantByUniform = new Map()
+      variantStockMap.forEach(item => {
+        if (!variantByUniform.has(item.uniform_id)) variantByUniform.set(item.uniform_id, [])
+        variantByUniform.get(item.uniform_id).push(item)
+      })
+
+      // For each uniform, allocate negative unallocated stock (POS sales without supplier_id) across positive unallocated variant sizes
+      variantByUniform.forEach((items) => {
+        const unallocItems = items.filter(i => !i.supplier_id)
+        const totalNegativeUnalloc = unallocItems.filter(i => i.net_qty < 0).reduce((sum, i) => sum + Math.abs(i.net_qty), 0)
+
+        if (totalNegativeUnalloc > 0) {
+          let needed = totalNegativeUnalloc
+          unallocItems.forEach(i => {
+            if (i.net_qty > 0 && needed > 0) {
+              const deduct = Math.min(i.net_qty, needed)
+              i.net_qty -= deduct
+              needed -= deduct
+            }
+          })
+        }
+
+        items.forEach(item => {
+          if (item.net_qty <= 0) return
+          const key = item.supplier_name
+          if (!dataBySupplier.has(key)) dataBySupplier.set(key, [])
+          dataBySupplier.get(key).push({
+            seragam: item.uniform_name,
+            ukuran: item.size_name,
+            jumlah: item.net_qty,
+            universal: item.is_universal ? 'Ya' : 'Tidak'
+          })
         })
       })
 
