@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "class-variance-authority"
     },
     {
@@ -8991,7 +8991,7 @@
       "label": "InitialStockPage()",
       "file_type": "code",
       "source_file": "src/app/stock/uniform/initial/page.jsx",
-      "source_location": "L14",
+      "source_location": "L13",
       "_origin": "ast",
       "id": "src_app_stock_uniform_initial_page_initialstockpage",
       "community": 214,
@@ -27273,7 +27273,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/stock/uniform/initial/page.jsx",
-      "source_location": "L14",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_stock_uniform_initial_page",

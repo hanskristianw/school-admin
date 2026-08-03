@@ -1200,8 +1200,8 @@
     "semantic_hash": "f02d7c2aca735f37d3ca52372cef22ad"
   },
   "src/app/stock/uniform/initial/page.jsx": {
-    "mtime": 1785723722.1348765,
-    "ast_hash": "cff38d51218d431000d97866158991ba",
+    "mtime": 1785722075.6161344,
+    "ast_hash": "7cd059cd2e67e2edfe1c41ea08060409",
     "semantic_hash": ""
   },
   "src/app/stock/uniform/po-settings/page.jsx": {
@@ -1660,8 +1660,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1785723209.543403,
-    "ast_hash": "85ebb6f69e7304f30be825bf7e8a8cda",
+    "mtime": 1785721952.7142189,
+    "ast_hash": "6d15421967e31b58cb1674b0687e1199",
     "semantic_hash": ""
   },
   "banner-220.png": {

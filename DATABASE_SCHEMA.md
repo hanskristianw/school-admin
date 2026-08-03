@@ -1354,9 +1354,9 @@ erDiagram
     }
 ```
 
-## 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/*`, `/data/uniform`, `/data/uniform-size`)
+## 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`)
 
-This domain manages uniform catalog master data (`/data/uniform`), size master data (`/data/uniform-size`), pricing/HPP variants (`uniform_variant`), unit assignments (`uniform_unit`), supplier procurement (PO & Goods Receipts under `/stock/uniform/*`), student sales transactions (`/sales/uniform`), and multi-supplier inventory stock ledger.
+This domain manages uniform catalog master data (`/data/uniform`), size master data (`/data/uniform-size`), pricing/HPP variants (`uniform_variant`), unit assignments (`uniform_unit`), initial stock setup & stock movement ledger (`/stock/uniform/initial`), supplier procurement (PO & Goods Receipts under `/stock/uniform/add` and `/stock/uniform/po-settings`), student sales transactions (`/sales/uniform`), and multi-supplier inventory stock balance calculations.
 
 ### 11.1 Tables
 
@@ -1644,5 +1644,29 @@ erDiagram
         string ref_table
     }
 ```
+
+### 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`)
+
+The `/stock/uniform/initial` route handles baseline inventory entry, stock transaction history auditing, live supplier-based stock aggregation, and academic year inventory report exports:
+
+1. **Initial Stock Input (`txn_type = 'init'`):**
+   - Records baseline stock items per unit, uniform catalog item (`uniform`), size (`uniform_size`), and vendor (`uniform_supplier` or `NULL` for unallocated stock).
+   - Creates ledger entries in `uniform_stock_txn` with `ref_table = 'manual'`, `ref_id = null`, and `txn_type = 'init'`.
+
+2. **Initial Stock Adjustments:**
+   - Supports modifying initial stock quantities by updating `qty_delta` directly on target `uniform_stock_txn` records (`txn_type = 'init'`).
+
+3. **Real-time Stock Balance Aggregation:**
+   - Calculates live stock per variant & supplier by computing `SUM(qty_delta)` from `uniform_stock_txn` grouped by `(uniform_id, size_id, supplier_id)`.
+
+4. **Academic Year Stock Report Export (`Laporan_Stok_Seragam_*.xlsx`):**
+   - Exports formatted Excel workbooks (using ExcelJS) for any selected academic year (`year` table `start_date` to `end_date`).
+   - Reconciles inventory balance across all uniform items using the accounting equation:
+     $$\text{Stock Akhir} = \text{Stock Awal} + \text{Realisasi Pembelian (PO Receipts)} - \text{Jumlah Terjual (Paid Sales)}$$
+   - Calculates weighted average HPP from initial stock entries and `uniform_variant` HPP rates.
+
+5. **Sales Buyer Tracing in Transaction Audit History (`ref_table = 'uniform_sale'`):**
+   - For stock movements resulting from uniform sales (`txn_type = 'sale'` with `ref_table = 'uniform_sale'`), the history auditor resolves `ref_id` against `uniform_sale(sale_id)` and `users(user_id)` to display the recipient student/buyer full name (`Terjual ke: [user_nama_depan] [user_nama_belakang]`) directly within the audit notes column.
+
 
 
