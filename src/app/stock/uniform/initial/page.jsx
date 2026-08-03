@@ -278,10 +278,10 @@ export default function InitialStockPage() {
         .from('uniform_variant')
         .select('uniform_id, size_id, hpp, price')
 
-      // 4. Fetch ALL stock transactions (for current stock + HPP calculation)
+      // 4. Fetch ALL stock transactions (for stock awal, stock akhir & HPP calculation)
       const { data: allStockTxns } = await supabase
         .from('uniform_stock_txn')
-        .select('uniform_id, size_id, supplier_id, qty_delta, txn_type')
+        .select('uniform_id, size_id, supplier_id, qty_delta, txn_type, created_at')
 
       // 5. Fetch purchase orders within the year period
       const { data: purchases } = await supabase
@@ -375,21 +375,22 @@ export default function InitialStockPage() {
         const uId = uniform.uniform_id
         const variants = (allVariants || []).filter(v => v.uniform_id === uId)
 
-        // -- CURRENT STOCK = sum of ALL transactions for this uniform --
-        const currentStockBySupplier = {}
+        // -- STOCK AWAL = Sum of transactions created BEFORE start_date (or init txns) --
+        const stockAwalTxns = (allStockTxns || []).filter(t => 
+          t.uniform_id === uId && (
+            t.txn_type === 'init' || 
+            (t.created_at && t.created_at < start_date + 'T00:00:00')
+          )
+        )
+        const rawStockAwalBySupplier = {}
         supplierList.forEach(s => {
-          currentStockBySupplier[s.supplier_id] = (allStockTxns || [])
-            .filter(t => t.uniform_id === uId && t.supplier_id === s.supplier_id)
+          rawStockAwalBySupplier[s.supplier_id] = stockAwalTxns
+            .filter(t => t.supplier_id === s.supplier_id)
             .reduce((sum, t) => sum + t.qty_delta, 0)
         })
-        const currentStockInv = (allStockTxns || [])
-          .filter(t => t.uniform_id === uId && !t.supplier_id)
+        const rawStockAwalInv = stockAwalTxns
+          .filter(t => !t.supplier_id || !supplierList.some(s => s.supplier_id === t.supplier_id))
           .reduce((sum, t) => sum + t.qty_delta, 0)
-        // Catch txns with supplier_id not in active supplierList
-        const currentStockUnmatched = (allStockTxns || [])
-          .filter(t => t.uniform_id === uId && t.supplier_id && !supplierList.some(s => s.supplier_id === t.supplier_id))
-          .reduce((sum, t) => sum + t.qty_delta, 0)
-        const totalCurrentStock = currentStockInv + currentStockUnmatched + Object.values(currentStockBySupplier).reduce((a, b) => a + b, 0)
 
         // -- HPP (weighted average from init txns + variant HPP) --
         let totalHppQty = 0
@@ -430,34 +431,21 @@ export default function InitialStockPage() {
         const totalSaleCost = salesForUniform.reduce((sum, si) => sum + (si.qty * Number(si.unit_hpp || weightedAvgHpp || 0)), 0)
         const profit = totalSaleRevenue - totalSaleCost
 
-        // -- STOCK AWAL = Current Stock - Purchases in Period + Sales in Period --
-        // (back-calculated so it always balances: Awal + Beli - Jual = Akhir)
-        const purchaseQtyBySupplier = {}
+        // -- STOCK AKHIR = Sum of transactions created UP TO end_date --
+        const stockAkhirTxns = (allStockTxns || []).filter(t => 
+          t.uniform_id === uId && (
+            !t.created_at || t.created_at <= end_date + 'T23:59:59'
+          )
+        )
+        const rawStockAkhirBySupplier = {}
         supplierList.forEach(s => {
-          const posForSupplier = poList.filter(p => p.supplier_id === s.supplier_id)
-          const pIdsForSupplier = posForSupplier.map(p => p.purchase_id)
-          purchaseQtyBySupplier[s.supplier_id] = receiptData
-            .filter(ri => pIdsForSupplier.includes(ri.purchase_id) && ri.uniform_id === uId)
-            .reduce((sum, ri) => sum + ri.qty_received, 0)
+          rawStockAkhirBySupplier[s.supplier_id] = stockAkhirTxns
+            .filter(t => t.supplier_id === s.supplier_id)
+            .reduce((sum, t) => sum + t.qty_delta, 0)
         })
-        const saleQtyBySupplier = {}
-        supplierList.forEach(s => {
-          saleQtyBySupplier[s.supplier_id] = (saleTxnsInPeriod || [])
-            .filter(t => t.uniform_id === uId && t.supplier_id === s.supplier_id)
-            .reduce((sum, t) => sum + Math.abs(t.qty_delta), 0)
-        })
-        const saleQtyInv = (saleTxnsInPeriod || [])
-          .filter(t => t.uniform_id === uId && !t.supplier_id)
-          .reduce((sum, t) => sum + Math.abs(t.qty_delta), 0)
-
-        const rawStockAwalBySupplier = {}
-        supplierList.forEach(s => {
-          rawStockAwalBySupplier[s.supplier_id] = 
-            (currentStockBySupplier[s.supplier_id] || 0) - 
-            (purchaseQtyBySupplier[s.supplier_id] || 0) + 
-            (saleQtyBySupplier[s.supplier_id] || 0)
-        })
-        const rawStockAwalInv = (currentStockInv + currentStockUnmatched) + saleQtyInv
+        const rawStockAkhirInv = stockAkhirTxns
+          .filter(t => !t.supplier_id || !supplierList.some(s => s.supplier_id === t.supplier_id))
+          .reduce((sum, t) => sum + t.qty_delta, 0)
 
         // Helper to allocate negative unallocated stock (POS sales without supplier_id) to supplier balances
         const allocateUnallocated = (invQty, suppMap) => {
@@ -482,15 +470,8 @@ export default function InitialStockPage() {
         const { invQty: stockAwalInv, suppMap: stockAwalBySupplier } = allocateUnallocated(rawStockAwalInv, rawStockAwalBySupplier)
         const totalStockAwal = stockAwalInv + Object.values(stockAwalBySupplier).reduce((a, b) => a + b, 0)
 
-        // -- STOCK AKHIR = Current Stock (equals Awal + Beli - Jual) --
-        const rawStockAkhirInv = currentStockInv + currentStockUnmatched
-        const rawStockAkhirBySupplier = {}
-        supplierList.forEach(s => {
-          rawStockAkhirBySupplier[s.supplier_id] = currentStockBySupplier[s.supplier_id] || 0
-        })
-
         const { invQty: stockAkhirInv, suppMap: stockAkhirBySupplier } = allocateUnallocated(rawStockAkhirInv, rawStockAkhirBySupplier)
-        const totalStockAkhir = totalCurrentStock
+        const totalStockAkhir = stockAkhirInv + Object.values(stockAkhirBySupplier).reduce((a, b) => a + b, 0)
 
         return {
           uniform_name: uniform.uniform_name,
@@ -736,9 +717,11 @@ export default function InitialStockPage() {
       const dataBySupplier = new Map()
       dataBySupplier.set('Tanpa Supplier', [])
 
-      // Group allStockTxns directly by (uniform_id, size_id, supplier_id)
+      // Group allStockTxns directly by (uniform_id, size_id, supplier_id) up to end_date of period
       const variantStockMap = new Map()
-      ;(allStockTxns || []).forEach(t => {
+      ;(allStockTxns || [])
+        .filter(t => !t.created_at || t.created_at <= end_date + 'T23:59:59')
+        .forEach(t => {
         const uId = t.uniform_id
         const sId = t.size_id
         const suppId = t.supplier_id || 'null'
