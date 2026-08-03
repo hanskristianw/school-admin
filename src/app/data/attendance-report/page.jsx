@@ -606,10 +606,17 @@ export default function AttendanceReportPage() {
         })
       }
       // Generate SEMUA hari dalam periode (dateStart s/d dateEnd)
-      const cur = new Date(dateStart + 'T00:00:00')
-      const end = new Date(dateEnd   + 'T00:00:00')
+      const [sY, sM, sD] = dateStart.split('-').map(Number)
+      const [eY, eM, eD] = dateEnd.split('-').map(Number)
+      const cur = new Date(sY, sM - 1, sD)
+      const end = new Date(eY, eM - 1, eD)
+
       while (cur <= end) {
-        const dateStr = cur.toISOString().slice(0, 10)
+        const y = cur.getFullYear()
+        const m = String(cur.getMonth() + 1).padStart(2, '0')
+        const d = String(cur.getDate()).padStart(2, '0')
+        const dateStr = `${y}-${m}-${d}`
+
         allVendorDays.push({
           user,
           dateStr,
@@ -625,7 +632,8 @@ export default function AttendanceReportPage() {
     })
 
     allVendorDays.forEach(({ user, dateStr, scanMasuk, scanPulang }, idx) => {
-      const dow  = new Date(dateStr + 'T00:00:00').getDay()
+      const [y, m, d] = dateStr.split('-').map(Number)
+      const dow  = new Date(y, m - 1, d).getDay()
       const hari = HARI_ID[dow]
 
       const dr = ws.addRow({

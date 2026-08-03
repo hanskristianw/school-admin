@@ -139,7 +139,6 @@ export default function AttendanceSettingsPage() {
       .from('users')
       .select('user_id, user_nama_depan, user_nama_belakang, user_pin')
       .eq('is_active', true)
-      .not('user_pin', 'is', null)
       .order('user_nama_depan')
     setAllUsers(data || [])
   }
@@ -1367,7 +1366,7 @@ export default function AttendanceSettingsPage() {
                     <option value="">-- Pilih karyawan --</option>
                     {allUsers.map(u => (
                       <option key={u.user_id} value={u.user_id}>
-                        {u.user_nama_depan} {u.user_nama_belakang} (PIN: {u.user_pin})
+                        {u.user_nama_depan} {u.user_nama_belakang}{u.user_pin ? ` (PIN: ${u.user_pin})` : ''}
                       </option>
                     ))}
                   </select>
