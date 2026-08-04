@@ -254,7 +254,7 @@ async function handleNotify(request) {
         user_pin,
         expected_check_in,
         expected_check_out,
-        role:user_role_id (role_name, work_days, is_part_time_staff, is_flexible_hours, is_on_call_staff)
+        role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff)
       `)
       .eq('is_active', true)
       .not('user_pin', 'is', null)
@@ -362,13 +362,34 @@ async function handleNotify(request) {
       const effIn  = (specialRule?.custom_check_in  ? String(specialRule.custom_check_in).slice(0,5)  : null) || expectedIn
       const effOut = (specialRule?.custom_check_out ? String(specialRule.custom_check_out).slice(0,5) : null) || expectedOut
 
-      // Classify scans using midpoint logic (same as report API)
-      const checkins  = userAtts
-        .filter(a => resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
-        .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
-      const checkouts = userAtts
-        .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
-        .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+      // Classify scans:
+      // - Khusus VENDOR: Scan Pertama = Check-In, Scan Terakhir = Check-Out
+      // - NON-VENDOR: Gunakan midpoint logic standar
+      let checkins = []
+      let checkouts = []
+
+      if (user.role?.is_vendor) {
+        const sortedAtts = [...userAtts].sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+        if (sortedAtts.length === 1) {
+          if (resolveIsCheckIn(sortedAtts[0].scan_time, expectedIn, expectedOut)) {
+            checkins = [sortedAtts[0]]
+            checkouts = []
+          } else {
+            checkins = []
+            checkouts = [sortedAtts[0]]
+          }
+        } else if (sortedAtts.length >= 2) {
+          checkins = [sortedAtts[0]]
+          checkouts = [sortedAtts[sortedAtts.length - 1]]
+        }
+      } else {
+        checkins = userAtts
+          .filter(a => resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
+          .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+        checkouts = userAtts
+          .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
+          .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+      }
 
       const noCheckIn  = checkins.length === 0
       const noCheckOut = checkouts.length === 0

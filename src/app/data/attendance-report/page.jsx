@@ -109,21 +109,25 @@ export default function AttendanceReportPage() {
   }, [dateStart, dateEnd, graceMin])
 
   // ── Derived Data ───────────────────────────────────────────────────────────
-  // Exclude vendor roles from attendance report table
-  const allRows = (report?.data || []).filter(r => !r.is_vendor)
+  const nonVendorRows = (report?.data || []).filter(r => !r.is_vendor)
+  const vendorRows    = (report?.data || []).filter(r => r.is_vendor)
+  const allRows       = nonVendorRows
 
-  // Build tab list: All + each unit that has at least 1 user
+  // Build tab list: All + each unit + Vendor tab
   const unitTabs = [
-    { id: 'all', name: `Semua (${allRows.length})` },
-    ...units.filter(u => allRows.some(r => r.unit_id === u.unit_id)).map(u => ({
+    { id: 'all', name: `Semua (${nonVendorRows.length})` },
+    ...units.filter(u => nonVendorRows.some(r => r.unit_id === u.unit_id)).map(u => ({
       id: u.unit_id,
-      name: `${u.unit_name} (${allRows.filter(r => r.unit_id === u.unit_id).length})`
-    }))
+      name: `${u.unit_name} (${nonVendorRows.filter(r => r.unit_id === u.unit_id).length})`
+    })),
+    { id: 'vendor', name: `Vendor (${vendorRows.length})` }
   ]
 
   const filteredRows = activeTab === 'all'
-    ? allRows
-    : allRows.filter(r => r.unit_id === activeTab)
+    ? nonVendorRows
+    : activeTab === 'vendor'
+      ? vendorRows
+      : nonVendorRows.filter(r => r.unit_id === activeTab)
 
   // ── Export Excel ───────────────────────────────────────────────────────────
   const exportExcel = async () => {
@@ -770,7 +774,7 @@ export default function AttendanceReportPage() {
         </button>
         {report && (
           <span className="text-xs self-center" style={{ color: theme.textSecondary }}>
-            {allRows.length} karyawan · {report.dates?.length} hari kerja
+            {nonVendorRows.length} karyawan · {vendorRows.length} vendor · {report.dates?.length} hari kerja
           </span>
         )}
       </div>

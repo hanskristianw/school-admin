@@ -383,14 +383,35 @@ export async function GET(request) {
 
         const dayAtts = attMap[user.user_id]?.[dateStr] || []
 
-        // Classify each scan as check-in or check-out using midpoint logic
-        const checkins  = dayAtts
-          .filter(a => resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
-          .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+        // Classify each scan as check-in or check-out:
+        // - Khusus VENDOR: Scan Pertama = Check-In, Scan Terakhir = Check-Out
+        // - NON-VENDOR: Gunakan midpoint logic standar
+        let checkins = []
+        let checkouts = []
 
-        const checkouts = dayAtts
-          .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
-          .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+        if (user.role?.is_vendor) {
+          const sortedAtts = [...dayAtts].sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+          if (sortedAtts.length === 1) {
+            if (resolveIsCheckIn(sortedAtts[0].scan_time, expectedIn, expectedOut)) {
+              checkins = [sortedAtts[0]]
+              checkouts = []
+            } else {
+              checkins = []
+              checkouts = [sortedAtts[0]]
+            }
+          } else if (sortedAtts.length >= 2) {
+            checkins = [sortedAtts[0]]
+            checkouts = [sortedAtts[sortedAtts.length - 1]]
+          }
+        } else {
+          checkins = dayAtts
+            .filter(a => resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
+            .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+
+          checkouts = dayAtts
+            .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
+            .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+        }
 
         const dayRecord = {
           date:               dateStr,
