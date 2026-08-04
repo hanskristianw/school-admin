@@ -1160,9 +1160,9 @@
     "semantic_hash": "af076bafe761d17e04ef078e067b9b5f"
   },
   "src/app/sales/uniform/page.jsx": {
-    "mtime": 1784179362.4547284,
-    "ast_hash": "e9b4e248ac30c1d440d0617f9cfc4cea",
-    "semantic_hash": "e9b4e248ac30c1d440d0617f9cfc4cea"
+    "mtime": 1785807309.7593093,
+    "ast_hash": "591f659ff2fe6d7a52d10dba1676079b",
+    "semantic_hash": ""
   },
   "src/app/settings/ai-rule/page.jsx": {
     "mtime": 1784179362.4547284,
@@ -1660,8 +1660,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1785723209.543403,
-    "ast_hash": "85ebb6f69e7304f30be825bf7e8a8cda",
+    "mtime": 1785807155.387112,
+    "ast_hash": "79c89a9f9f8a281ee4ba5f02e56f8b79",
     "semantic_hash": ""
   },
   "banner-220.png": {

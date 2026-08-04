@@ -1668,5 +1668,36 @@ The `/stock/uniform/initial` route handles baseline inventory entry, stock trans
 5. **Sales Buyer Tracing in Transaction Audit History (`ref_table = 'uniform_sale'`):**
    - For stock movements resulting from uniform sales (`txn_type = 'sale'` with `ref_table = 'uniform_sale'`), the history auditor resolves `ref_id` against `uniform_sale(sale_id)` and `users(user_id)` to display the recipient student/buyer full name (`Terjual ke: [user_nama_depan] [user_nama_belakang]`) directly within the audit notes column.
 
+### 11.4 POS Uniform Sales Workflows (`/sales/uniform`)
+
+The `/sales/uniform` route serves as the Point of Sale (POS) interface for selling school uniforms to students, managing payment methods, tracking pickup dates, generating receipts, and maintaining inventory ledger integrity:
+
+1. **Student Selection & Catalog Filtering:**
+   - Filters active students from `users` (where `user_role_id` corresponds to `Student`).
+   - Dynamically filters available uniform items based on the student's assigned unit (`user_unit_id`), showing universal uniforms (`is_universal = true`) plus unit-specific uniforms mapped in `uniform_unit`.
+   - Computes real-time available stock per variant and per supplier batch from `uniform_stock_txn` (`SUM(qty_delta)` grouped by `uniform_id`, `size_id`, and `supplier_id`).
+
+2. **Cart & Supplier Stock Allocation:**
+   - Items added to cart record `uniform_id`, `size_id`, `qty`, `unit_price`, `unit_hpp`, and `supplier_id` (allowing staff to select specific vendor stock or unallocated stock).
+
+3. **Payment Methods & Status Lifecycle:**
+   - **`transfer` (Bank Transfer):** Inserts transaction header into `uniform_sale` with `status = 'pending'`. Staff uploads transfer receipt image to Supabase storage bucket `uniform-receipts` (`receipt_url`). Stock is **NOT** deducted while pending. Upon payment verification, marking as paid inserts negative `qty_delta` entries into `uniform_stock_txn` (`txn_type = 'sale'`, `ref_table = 'uniform_sale'`) and updates status to `'paid'`.
+   - **`cash` (Cash Payment):** Created in `pending` status, then upon confirmation, stock is deducted via `uniform_stock_txn` and status updated to `'paid'`.
+   - **`free` (Promo / Complimentary Uniform):** Sets `unit_price = 0` (`total_amount = 0`), immediately marks status as `'paid'`, sets `pickup_date` to current date, directly deducts stock from `uniform_stock_txn` (`txn_type = 'sale'`, `notes = 'promo free seragam'`), and opens the Kwitansi/Invoice modal directly without requiring payment confirmation.
+
+4. **Pickup Tracking:**
+   - Records when uniform items are physically handed over to the student (`pickup_date`). Staff can record or modify pickup dates via the UI modal.
+
+5. **Void / Cancellation Workflow:**
+   - Users with void permissions (`can_void_transactions = true` in `role`) can void a transaction (`status = 'voided'`, `is_voided = true`, recording `void_reason`, `voided_at`, and `voided_by`).
+   - If a `paid` transaction is voided, positive stock transactions (`qty_delta = +qty`, `txn_type = 'sale'`, `notes = 'void sale #[sale_id]'`) are inserted into `uniform_stock_txn` to restore inventory balances.
+
+6. **Kwitansi & Invoice Generation (`KwitansiModal`):**
+   - Displays student name, unit, transaction date, payment method, item breakdown (uniform name, size, quantity, unit price, subtotal), and total amount with browser printing support.
+
+7. **Sales Reports & Financial Summary:**
+   - Aggregates sales statistics across customizable date ranges: Total Orders Count, Total Revenue (`total_amount`), Total HPP Cost (`total_cost`), Gross Profit ($\text{Total Revenue} - \text{Total Cost}$), and Total Items Sold.
+
+
 
 

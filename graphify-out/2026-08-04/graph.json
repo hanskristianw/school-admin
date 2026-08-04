@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 149,
-      "community_name": "Module 149",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 149,
-      "community_name": "Module 149",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3450,8 +3450,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "package_dependencies_pngjs",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 149,
+      "community_name": "Module 149",
       "norm_label": "pngjs"
     },
     {
@@ -3461,8 +3461,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "pngjs",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 149,
+      "community_name": "Module 149",
       "norm_label": "pngjs"
     },
     {
@@ -11645,8 +11645,8 @@
       "source_location": "L672",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11788,8 +11788,8 @@
       "source_location": "L828",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -12052,8 +12052,8 @@
       "source_location": "L1268",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -12063,8 +12063,8 @@
       "source_location": "L1272",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "10.1 tables"
     },
     {
@@ -12074,8 +12074,8 @@
       "source_location": "L1274",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -12085,8 +12085,8 @@
       "source_location": "L1303",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "`duty_settings`"
     },
     {
@@ -12096,8 +12096,8 @@
       "source_location": "L1317",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 127,
-      "community_name": "browser-image-compression",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -12286,6 +12286,17 @@
       "community": 126,
       "community_name": "Module 126",
       "norm_label": "11.3 initial stock & inventory ledger workflows (`/stock/uniform/initial`)"
+    },
+    {
+      "label": "11.4 POS Uniform Sales Workflows (`/sales/uniform`)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1671",
+      "_origin": "ast",
+      "id": "database_schema_11_4_pos_uniform_sales_workflows_sales_uniform",
+      "community": 126,
+      "community_name": "Module 126",
+      "norm_label": "11.4 pos uniform sales workflows (`/sales/uniform`)"
     },
     {
       "label": "DELETE_VOID_IMPLEMENTATION.md",
@@ -21911,7 +21922,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/notify/route.js",
-      "source_location": "L388",
+      "source_location": "L409",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_notify_route_handlenotify",
@@ -21959,7 +21970,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/notify/route.js",
-      "source_location": "L367",
+      "source_location": "L374",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_notify_route_handlenotify",
@@ -21971,7 +21982,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/notify/route.js",
-      "source_location": "L387",
+      "source_location": "L408",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_notify_route_handlenotify",
@@ -21995,7 +22006,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/notify/route.js",
-      "source_location": "L457",
+      "source_location": "L478",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_notify_route_handlenotify",
@@ -22165,7 +22176,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/report/route.js",
-      "source_location": "L427",
+      "source_location": "L448",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_report_route_get",
@@ -22201,7 +22212,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/report/route.js",
-      "source_location": "L388",
+      "source_location": "L395",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_report_route_get",
@@ -22213,7 +22224,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/report/route.js",
-      "source_location": "L422",
+      "source_location": "L443",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_report_route_get",
@@ -30506,6 +30517,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1671",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_add_stock_uniform_initial_stock_uniform_po_settings_data_uniform_data_uniform_size",
+      "target": "database_schema_11_4_pos_uniform_sales_workflows_sales_uniform",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L1363",
       "weight": 1.0,
       "_origin": "ast",
@@ -35582,5 +35604,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "0a3cbb27b7a0b23bb60a8cd5b0aadc78dc4b470b"
+  "built_at_commit": "6b1b513b652f8ccddf205c3349148514e33945e7"
 }

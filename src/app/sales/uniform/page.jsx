@@ -514,14 +514,28 @@ export default function UniformSalesPage() {
   const fetchSalesHistory = async () => {
     setLoadingHistory(true)
     try {
-      // Fetch sales with user info (including void columns, pickup_date, processed_by, and note)
-      const { data: sales, error: salesErr } = await supabase
-        .from('uniform_sale')
-        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason, pickup_date, processed_by, note')
-        .order('sale_id', { ascending: false })
-        .limit(100)
+      // Fetch ALL sales with user info using pagination batching (prevents 1000 row Supabase limit)
+      let allSales = []
+      let offset = 0
+      const BATCH_SIZE = 1000
+      let hasMore = true
 
-      if (salesErr) throw salesErr
+      while (hasMore) {
+        const { data: batch, error: salesErr } = await supabase
+          .from('uniform_sale')
+          .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, created_at, is_voided, voided_at, voided_by, void_reason, pickup_date, processed_by, note')
+          .order('sale_id', { ascending: false })
+          .range(offset, offset + BATCH_SIZE - 1)
+
+        if (salesErr) throw salesErr
+        if (!batch || batch.length === 0) break
+
+        allSales = allSales.concat(batch)
+        hasMore = batch.length === BATCH_SIZE
+        offset += BATCH_SIZE
+      }
+
+      const sales = allSales
 
       // Get unique user IDs (buyers), unit IDs, and processed_by IDs (staff)
       const userIds = [...new Set(sales.map(s => s.user_id))]
@@ -529,27 +543,43 @@ export default function UniformSalesPage() {
       const allUserIds = [...new Set([...userIds, ...processedByIds])]
       const unitIds = [...new Set(sales.map(s => s.unit_id))]
 
-      // Fetch users and units info
-      const [usersRes, unitsRes] = await Promise.all([
-        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_manual_picture').in('user_id', allUserIds),
-        supabase.from('unit').select('unit_id, unit_name').in('unit_id', unitIds)
-      ])
+      // Fetch users and units info in chunks of 500 if necessary
+      let usersData = []
+      for (let i = 0; i < allUserIds.length; i += 500) {
+        const batchIds = allUserIds.slice(i, i + 500)
+        const { data: uBatch } = await supabase
+          .from('users')
+          .select('user_id, user_nama_depan, user_nama_belakang, user_manual_picture')
+          .in('user_id', batchIds)
+        if (uBatch) usersData = usersData.concat(uBatch)
+      }
 
-      const userMap = new Map((usersRes.data || []).map(u => [
+      const { data: unitsData } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name')
+        .in('unit_id', unitIds.length > 0 ? unitIds : [0])
+
+      const userMap = new Map((usersData || []).map(u => [
         u.user_id,
         {
           name: `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim(),
           photo: u.user_manual_picture
         }
       ]))
-      const unitMap = new Map((unitsRes.data || []).map(u => [u.unit_id, u.unit_name]))
+      const unitMap = new Map((unitsData || []).map(u => [u.unit_id, u.unit_name]))
 
-      // Get sale items for each sale
+      // Get sale items for each sale in chunks of 500 to avoid URL length limit
       const saleIds = sales.map(s => s.sale_id)
-      const { data: items } = await supabase
-        .from('uniform_sale_item')
-        .select('sale_id, uniform_id, size_id, qty, unit_price, subtotal')
-        .in('sale_id', saleIds)
+      let items = []
+      for (let i = 0; i < saleIds.length; i += 500) {
+        const batchIds = saleIds.slice(i, i + 500)
+        const { data: batchItems, error: itemsErr } = await supabase
+          .from('uniform_sale_item')
+          .select('sale_id, uniform_id, size_id, qty, unit_price, subtotal')
+          .in('sale_id', batchIds)
+        if (itemsErr) throw itemsErr
+        if (batchItems) items = items.concat(batchItems)
+      }
 
       // Group items by sale_id
       const itemsBySale = new Map()
