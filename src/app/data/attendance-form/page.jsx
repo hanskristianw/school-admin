@@ -934,57 +934,6 @@ export default function AttendanceFormPage() {
               <p className="text-sm font-medium">{t('attendanceForm.noIssues')}</p>
             </div>
           )}
-
-          {/* Submitted Forms History Section */}
-          {submittedList.length > 0 && (
-            <div className="space-y-3 pt-2">
-              <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                <span>📋</span>
-                <span>My Submitted Form(s) History This Month ({submittedList.length})</span>
-              </h2>
-
-              <div className="space-y-2.5">
-                {submittedList.map(excuse => {
-                  const st = STATUS_CONFIG[excuse.status] || STATUS_CONFIG.pending
-                  const ic = ISSUE_CONFIG[excuse.excuse_type] || ISSUE_CONFIG.absent
-
-                  return (
-                    <div key={excuse.id} style={cardStyle} className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold" style={{ color: theme.textPrimary }}>📅 {excuse.attendance_date}</span>
-                          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold" style={{ background: ic.bg, color: ic.color }}>
-                            {ic.icon} {ic.label}
-                          </span>
-                          {excuse.excuse_type === 'temporary_exit' && (excuse.exit_time || excuse.return_time) && (
-                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200">
-                              ⏱️ Time: {String(excuse.exit_time).slice(0,5)} — {String(excuse.return_time).slice(0,5)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs" style={{ color: theme.textSecondary }}>
-                          Reason: <strong>{excuse.category}</strong> {excuse.other_reason ? `— ${excuse.other_reason}` : ''}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs px-3 py-1 rounded-full font-bold" style={{ background: st.bg, color: st.color }}>
-                          {st.icon} {st.label}
-                        </span>
-                        {excuse.status === 'pending' && (
-                          <button onClick={() => setDeleteExcuse(excuse)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
-                            style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }}>
-                            🗑️
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </div>
       )}
 

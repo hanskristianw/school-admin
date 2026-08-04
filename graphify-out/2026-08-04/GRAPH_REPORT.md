@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-08-04)
 
 ## Corpus Check
-- 327 files · ~442,920 words
+- 327 files · ~441,710 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6b1b513b`
+- Built from commit: `7872258c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -136,6 +136,7 @@
 - Module 124
 - Module 125
 - Module 126
+- bcryptjs
 - Module 128
 - Module 129
 - bcryptjs
@@ -217,7 +218,6 @@
 - driver.js
 - driver.js
 - Project Agent Rules
-- @fortawesome/free-solid-svg-icons
 - pg
 - zod
 
@@ -316,7 +316,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, browser-image-compression, clsx, googleapis, html5-qrcode, dependencies, bcryptjs, browser-image-compression (+3 more)
+Nodes (11): browser-image-compression, clsx, googleapis, @googleapis/chat, html5-qrcode, dependencies, browser-image-compression, clsx (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -658,7 +658,7 @@ Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Per
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `Module 149`, `7.1 Tables`, `6.1 Tables`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `driver.js`, `driver.js`, `@fortawesome/free-solid-svg-icons`, `pg`, `zod`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `Module 149`, `7.1 Tables`, `6.1 Tables`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `driver.js`, `driver.js`, `pg`, `zod`, `bcryptjs`?**
   _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `**3. Assessment System**`, `📌 Changelog`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._

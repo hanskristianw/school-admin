@@ -735,8 +735,8 @@
     "semantic_hash": "ee2db9404a462cd52d527b1df97e6681"
   },
   "src/app/api/attendance/report/route.js": {
-    "mtime": 1785806169.2255337,
-    "ast_hash": "7b6e86b7184d9e0a05b4052f745e3ecf",
+    "mtime": 1785814836.2983196,
+    "ast_hash": "27d922213ca53d9dae7fb5645d4b99cf",
     "semantic_hash": ""
   },
   "src/app/api/attendance/role-approvers/route.js": {
@@ -1160,9 +1160,9 @@
     "semantic_hash": "af076bafe761d17e04ef078e067b9b5f"
   },
   "src/app/sales/uniform/page.jsx": {
-    "mtime": 1784179362.4547284,
-    "ast_hash": "e9b4e248ac30c1d440d0617f9cfc4cea",
-    "semantic_hash": "e9b4e248ac30c1d440d0617f9cfc4cea"
+    "mtime": 1785807309.7593093,
+    "ast_hash": "591f659ff2fe6d7a52d10dba1676079b",
+    "semantic_hash": ""
   },
   "src/app/settings/ai-rule/page.jsx": {
     "mtime": 1784179362.4547284,
@@ -1695,8 +1695,8 @@
     "semantic_hash": ""
   },
   "src/app/data/attendance-check/page.jsx": {
-    "mtime": 1785392099.1317618,
-    "ast_hash": "43a2f824316306bb64a609892d1b531c",
+    "mtime": 1785814860.5490859,
+    "ast_hash": "0b74152a2ca83bd36cbc88f3328f0bd7",
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {

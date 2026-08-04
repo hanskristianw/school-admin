@@ -6,10 +6,9 @@ import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faSearch, faCheckCircle, faClock, faExclamationTriangle,
-  faPaperPlane, faFileExcel, faSync, faFilter, faUserCheck,
-  faTimesCircle, faArrowRight, faCalendarAlt, faBell, faTasks,
-  faChevronDown, faChevronRight, faUser, faCommentDots, faTimes,
+  faCheckCircle, faClock, faExclamationTriangle,
+  faSync, faTimesCircle, faCalendarAlt,
+  faChevronDown, faChevronRight, faUser,
   faPaperclip, faExternalLinkAlt, faShieldAlt
 } from '@fortawesome/free-solid-svg-icons'
 
@@ -71,36 +70,19 @@ export default function AttendanceCheckPage() {
 
   // ── Filters & State ────────────────────────────────────────────────────────
   const todayStr = new Date().toISOString().slice(0, 10)
-  const firstDayOfMonth = `${todayStr.slice(0, 7)}-01`
 
-  const [dateMode, setDateMode]           = useState('range') // 'range' | 'month'
-  const [startDate, setStartDate]         = useState(firstDayOfMonth) // Default: 1st of current month
-  const [endDate, setEndDate]             = useState(todayStr)         // Default: Today's date
-  const [selectedMonth, setSelectedMonth] = useState(todayStr.slice(0, 7))
+  const [selectedMonth, setSelectedMonth]   = useState(todayStr.slice(0, 7))
+  const [statusFilter, setStatusFilter]     = useState('all') // 'all' | 'unfiled' | 'pending' | 'approved' | 'rejected'
+  const [selectedUnit, setSelectedUnit]     = useState('all')     // 'all' | unit_id
+  const [selectedEmployee, setSelectedEmployee] = useState('all') // 'all' | user_id
 
-  const [statusFilter, setStatusFilter]   = useState('unfiled') // 'unfiled' | 'pending' | 'approved' | 'rejected' | 'all'
-  const [selectedUnit, setSelectedUnit]   = useState('all')
-  const [searchQuery, setSearchQuery]     = useState('')
-
-  const [loading, setLoading]             = useState(true)
-  const [units, setUnits]                 = useState([])
-  const [rawIssues, setRawIssues]         = useState([])
-  const [notif, setNotif]                 = useState({ show: false, message: '', type: 'success' })
-  const [sendingId, setSendingId]         = useState(null)
-  const [sendingAll, setSendingAll]       = useState(false)
+  const [loading, setLoading]               = useState(true)
+  const [units, setUnits]                   = useState([])
+  const [rawIssues, setRawIssues]           = useState([])
+  const [notif, setNotif]                   = useState({ show: false, message: '', type: 'success' })
 
   // Track expanded employee cards (set of user_ids)
-  const [expandedUsers, setExpandedUsers] = useState(new Set())
-
-  // Confirmation & Message Preview Modal State
-  const [confirmModal, setConfirmModal]   = useState({
-    show: false,
-    title: '',
-    targetLabel: '',
-    recipientCount: 1,
-    messagePreview: '',
-    onConfirm: null
-  })
+  const [expandedUsers, setExpandedUsers]   = useState(new Set())
 
   const showNotification = (message, type = 'success') => {
     setNotif({ show: true, message, type })
@@ -113,9 +95,6 @@ export default function AttendanceCheckPage() {
       const { data } = await supabase.from('unit').select('unit_id, unit_name').order('unit_name')
       const unitList = data || []
       setUnits(unitList)
-      if (unitList.length > 0) {
-        setSelectedUnit(String(unitList[0].unit_id))
-      }
     }
     fetchMeta()
   }, [])
@@ -124,14 +103,8 @@ export default function AttendanceCheckPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      let start, end
-      if (dateMode === 'range') {
-        start = startDate
-        end   = endDate
-      } else {
-        start = getMonthStart(selectedMonth)
-        end   = getMonthEnd(selectedMonth)
-      }
+      const start = getMonthStart(selectedMonth)
+      const end   = getMonthEnd(selectedMonth)
 
       // Fetch attendance report and submitted excuses in parallel
       const [rRes, eRes] = await Promise.all([
@@ -160,6 +133,11 @@ export default function AttendanceCheckPage() {
           for (const day of user.daily || []) {
             if (['holiday', 'dayoff', 'off'].includes(day.status)) continue
 
+            // Skip future dates if no excuse form has been submitted yet
+            const key = `${user.user_id}_${day.date}`
+            const excuse = excuseMap.get(key) || null
+            if (day.date > todayStr && !excuse) continue
+
             // Check if day has any issue flags
             let issueTypes = (day.issues || []).filter(i =>
               ['late', 'leave_early', 'absent', 'no_checkin', 'no_checkout'].includes(i)
@@ -171,9 +149,6 @@ export default function AttendanceCheckPage() {
             }
 
             if (issueTypes.length > 0) {
-              const key = `${user.user_id}_${day.date}`
-              const excuse = excuseMap.get(key) || null
-
               let excuseStatus = 'unfiled'
               if (excuse) {
                 if (excuse.status === 'approved' || excuse.status === 'approved_2') excuseStatus = 'approved'
@@ -189,6 +164,7 @@ export default function AttendanceCheckPage() {
                 unit_id: user.unit_id,
                 unit_name: user.unit_name,
                 role_name: user.role_name,
+                photo: user.photo || null,
                 date: day.date,
                 checkIn: day.checkin_time ? day.checkin_time.slice(0, 5) : '—',
                 checkOut: day.checkout_time ? day.checkout_time.slice(0, 5) : '—',
@@ -210,11 +186,36 @@ export default function AttendanceCheckPage() {
     } finally {
       setLoading(false)
     }
-  }, [dateMode, startDate, endDate, selectedMonth])
+  }, [selectedMonth])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // ── Employee Options (Derived from rawIssues filtered by selectedUnit) ────
+  const employeeOptions = useMemo(() => {
+    const filteredByUnit = selectedUnit === 'all'
+      ? rawIssues
+      : rawIssues.filter(i => String(i.unit_id) === String(selectedUnit))
+
+    const empMap = new Map()
+    filteredByUnit.forEach(i => {
+      if (!empMap.has(i.user_id)) {
+        empMap.set(i.user_id, {
+          user_id: i.user_id,
+          name: i.name,
+          unit_name: i.unit_name
+        })
+      }
+    })
+
+    return Array.from(empMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [rawIssues, selectedUnit])
+
+  const handleUnitChange = (unitVal) => {
+    setSelectedUnit(unitVal)
+    setSelectedEmployee('all')
+  }
 
   // ── Filtered Raw Issues ─────────────────────────────────────────────────────
   const filteredIssues = useMemo(() => {
@@ -223,17 +224,11 @@ export default function AttendanceCheckPage() {
       if (statusFilter !== 'all' && item.excuseStatus !== statusFilter) return false
       // Unit filter
       if (selectedUnit !== 'all' && String(item.unit_id) !== String(selectedUnit)) return false
-      // Search query filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        const nameMatch = item.name?.toLowerCase().includes(q)
-        const emailMatch = item.email?.toLowerCase().includes(q)
-        const unitMatch = item.unit_name?.toLowerCase().includes(q)
-        if (!nameMatch && !emailMatch && !unitMatch) return false
-      }
+      // Employee filter
+      if (selectedEmployee !== 'all' && String(item.user_id) !== String(selectedEmployee)) return false
       return true
     })
-  }, [rawIssues, statusFilter, selectedUnit, searchQuery])
+  }, [rawIssues, statusFilter, selectedUnit, selectedEmployee])
 
   // ── Grouped Employees ──────────────────────────────────────────────────────
   const groupedEmployees = useMemo(() => {
@@ -247,6 +242,7 @@ export default function AttendanceCheckPage() {
           email: item.email,
           unit_name: item.unit_name,
           role_name: item.role_name,
+          photo: item.photo,
           items: [],
           unfiledCount: 0,
           pendingCount: 0,
@@ -309,187 +305,7 @@ export default function AttendanceCheckPage() {
     }
   }, [rawIssues])
 
-  // ── PROMPT & EXECUTE: Single Employee Reminder ──────────────────────────────
-  const promptSendUserReminder = (group) => {
-    const unfiledItems = group.items.filter(i => i.excuseStatus === 'unfiled')
-    if (unfiledItems.length === 0) return
-
-    const dateList = unfiledItems.map(i => {
-      const issueNames = i.issueTypes.map(t => ISSUE_LABELS[t]?.name || t).join(', ')
-      return `• *${i.date}*: ${issueNames}`
-    }).join('\n')
-
-    const msgText = `🔔 *HCM Attendance Reminder*\n\n` +
-      `Hello *${group.name}*,\n` +
-      `You currently have *${unfiledItems.length} pending HCM form(s)* for the following date(s):\n` +
-      `${dateList}\n\n` +
-      `Please log in to the portal and submit your Attendance Excuse Form for these dates.\n` +
-      `Thank you for your prompt action!`
-
-    setConfirmModal({
-      show: true,
-      title: `Send Reminder to ${group.name}`,
-      targetLabel: `${group.name} (${group.email}) — ${unfiledItems.length} Unfiled Date(s)`,
-      recipientCount: 1,
-      messagePreview: msgText,
-      onConfirm: async () => {
-        setConfirmModal(prev => ({ ...prev, show: false }))
-        setSendingId(`user_${group.user_id}`)
-        try {
-          const res = await fetch('/api/attendance/test-chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: group.email, message: msgText })
-          })
-          const json = await res.json()
-          if (!json.success) throw new Error(json.error || 'Failed to send Google Chat message')
-
-          showNotification(`Reminder successfully sent to ${group.name} (${unfiledItems.length} dates)!`, 'success')
-        } catch (e) {
-          showNotification(`Failed to send reminder to ${group.name}: ${e.message}`, 'error')
-        } finally {
-          setSendingId(null)
-        }
-      }
-    })
-  }
-
-  // ── PROMPT & EXECUTE: Single Date Item Reminder ─────────────────────────────
-  const promptSendSingleReminder = (item) => {
-    const issueNames = item.issueTypes.map(t => ISSUE_LABELS[t]?.name || t).join(', ')
-    const msgText = `🔔 *HCM Attendance Reminder*\n\n` +
-      `Hello *${item.name}*,\n` +
-      `Our records show an unfiled attendance issue on *${item.date}* (*${issueNames}*).\n\n` +
-      `Please log in to the portal and submit your Attendance Excuse Form as soon as possible.\n` +
-      `Thank you!`
-
-    setConfirmModal({
-      show: true,
-      title: `Send Reminder for ${item.date}`,
-      targetLabel: `${item.name} (${item.email}) — Date: ${item.date}`,
-      recipientCount: 1,
-      messagePreview: msgText,
-      onConfirm: async () => {
-        setConfirmModal(prev => ({ ...prev, show: false }))
-        setSendingId(item.key)
-        try {
-          const res = await fetch('/api/attendance/test-chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: item.email, message: msgText })
-          })
-          const json = await res.json()
-          if (!json.success) throw new Error(json.error || 'Failed to send Google Chat message')
-
-          showNotification(`Reminder sent to ${item.name} for ${item.date}!`, 'success')
-        } catch (e) {
-          showNotification(`Failed to send reminder: ${e.message}`, 'error')
-        } finally {
-          setSendingId(null)
-        }
-      }
-    })
-  }
-
-  // ── PROMPT & EXECUTE: Batch Remind All Unfiled Employees ───────────────────
-  const promptBatchSendReminders = () => {
-    const unfiledList = rawIssues.filter(i => i.excuseStatus === 'unfiled')
-    if (unfiledList.length === 0) {
-      showNotification('No unfiled attendance issues to send reminders for.', 'info')
-      return
-    }
-
-    // Group by user
-    const userGroupMap = new Map()
-    for (const item of unfiledList) {
-      if (!userGroupMap.has(item.user_id)) {
-        userGroupMap.set(item.user_id, { name: item.name, email: item.email, dates: [] })
-      }
-      const issueNames = item.issueTypes.map(t => ISSUE_LABELS[t]?.name || t).join(', ')
-      userGroupMap.get(item.user_id).dates.push(`• *${item.date}*: ${issueNames}`)
-    }
-
-    const sampleUser = Array.from(userGroupMap.values())[0]
-    const sampleMsgText = `🔔 *HCM Attendance Reminder Notice*\n\n` +
-      `Hello *${sampleUser.name}*,\n` +
-      `You currently have *${sampleUser.dates.length} pending HCM form(s)* for the following date(s):\n` +
-      `${sampleUser.dates.join('\n')}\n\n` +
-      `Please log in to the portal and submit your Attendance Excuse Forms for these dates. Thank you!`
-
-    setConfirmModal({
-      show: true,
-      title: `Batch Send Google Chat Reminders`,
-      targetLabel: `Target: ${userGroupMap.size} Employees (${unfiledList.length} total unfiled issues)`,
-      recipientCount: userGroupMap.size,
-      messagePreview: sampleMsgText,
-      onConfirm: async () => {
-        setConfirmModal(prev => ({ ...prev, show: false }))
-        setSendingAll(true)
-        let successCount = 0
-        let failCount = 0
-
-        for (const [uId, uData] of userGroupMap.entries()) {
-          try {
-            const msgText = `🔔 *HCM Attendance Reminder Notice*\n\n` +
-              `Hello *${uData.name}*,\n` +
-              `You currently have *${uData.dates.length} pending HCM form(s)* for the following date(s):\n` +
-              `${uData.dates.join('\n')}\n\n` +
-              `Please log in to the portal and submit your Attendance Excuse Forms for these dates. Thank you!`
-
-            const res = await fetch('/api/attendance/test-chat', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: uData.email, message: msgText })
-            })
-            const json = await res.json()
-            if (json.success) successCount++
-            else failCount++
-          } catch (err) {
-            failCount++
-          }
-        }
-
-        setSendingAll(false)
-        showNotification(`Reminders sent! ${successCount} successful, ${failCount} failed.`, successCount > 0 ? 'success' : 'error')
-      }
-    })
-  }
-
   // ── Export CSV ─────────────────────────────────────────────────────────────
-  const handleExportCSV = () => {
-    if (filteredIssues.length === 0) return
-    const headers = ['Employee Name', 'Email', 'Unit', 'Role', 'Date', 'Check In', 'Check Out', 'Issue Types', 'Excuse Status', 'Category', 'Reason Note']
-    const csvRows = [headers.join(',')]
-
-    for (const i of filteredIssues) {
-      const issuesStr = i.issueTypes.map(t => ISSUE_LABELS[t]?.name || t).join('; ')
-      const categoryStr = i.excuse?.category || ''
-      const reasonStr = (i.excuse?.reason || i.excuse?.other_reason || '').replace(/"/g, '""')
-      csvRows.push([
-        `"${i.name}"`,
-        `"${i.email}"`,
-        `"${i.unit_name || ''}"`,
-        `"${i.role_name || ''}"`,
-        `"${i.date}"`,
-        `"${i.checkIn || ''}"`,
-        `"${i.checkOut || ''}"`,
-        `"${issuesStr}"`,
-        `"${i.excuseStatus}"`,
-        `"${categoryStr}"`,
-        `"${reasonStr}"`
-      ].join(','))
-    }
-
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
-    const url  = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href  = url
-    link.setAttribute('download', `Attendance_Excuse_Audit_${startDate}_to_${endDate}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-4 md:p-6 space-y-6" style={{ color: theme.textBody }}>
@@ -501,79 +317,6 @@ export default function AttendanceCheckPage() {
           notif.type === 'warning' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
         }`}>
           {notif.message}
-        </div>
-      )}
-
-      {/* Confirmation & Google Chat Message Preview Modal */}
-      {confirmModal.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border max-w-lg w-full overflow-hidden transition-all" style={{ borderColor: theme.border }}>
-            
-            {/* Modal Header */}
-            <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 flex items-center justify-center text-lg font-bold">
-                  <FontAwesomeIcon icon={faCommentDots} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base" style={{ color: theme.textPrimary }}>
-                    {confirmModal.title}
-                  </h3>
-                  <p className="text-xs" style={{ color: theme.textSecondary }}>
-                    Google Chat Direct Message Confirmation
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
-              >
-                <FontAwesomeIcon icon={faTimes} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 space-y-4 text-xs">
-              
-              {/* Target info */}
-              <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900 text-purple-900 dark:text-purple-200 font-medium">
-                <span className="font-bold">Target Recipient:</span> {confirmModal.targetLabel}
-              </div>
-
-              {/* Message Content Preview Label */}
-              <div>
-                <label className="font-bold text-xs mb-1.5 block" style={{ color: theme.textPrimary }}>
-                  💬 Google Chat Message Content Preview:
-                </label>
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-900 border font-sans text-xs whitespace-pre-wrap leading-relaxed shadow-inner" style={{ borderColor: theme.border, color: theme.textBody }}>
-                  {confirmModal.messagePreview}
-                </div>
-              </div>
-
-              <div className="text-[11px] text-gray-500 italic">
-                * Note: The notification will be delivered directly to the employee's Google Chat inbox.
-              </div>
-
-            </div>
-
-            {/* Modal Footer Buttons */}
-            <div className="p-4 border-t flex items-center justify-end gap-2 bg-gray-50 dark:bg-gray-900/50" style={{ borderColor: theme.border }}>
-              <button
-                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-                className="px-4 py-2 text-xs font-semibold rounded-xl border bg-white dark:bg-gray-800 hover:bg-gray-100 text-gray-700 dark:text-gray-200 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmModal.onConfirm}
-                className="px-5 py-2 text-xs font-semibold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-md transition-all flex items-center gap-2"
-              >
-                <FontAwesomeIcon icon={faPaperPlane} />
-                Send Notification Now
-              </button>
-            </div>
-
-          </div>
         </div>
       )}
 
@@ -599,11 +342,11 @@ export default function AttendanceCheckPage() {
           {/* Status Filter Tabs */}
           <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-gray-800 text-xs">
             {[
+              { id: 'all', label: '🌐 All Issues', count: counts.total },
               { id: 'unfiled', label: '🚨 Unfiled', count: counts.unfiled },
               { id: 'pending', label: '⏳ Pending Approval', count: counts.pending },
               { id: 'approved', label: '✅ Approved', count: counts.approved },
               { id: 'rejected', label: '❌ Rejected', count: counts.rejected },
-              { id: 'all', label: '🌐 All Issues', count: counts.total },
             ].map(t => (
               <button
                 key={t.id}
@@ -623,141 +366,57 @@ export default function AttendanceCheckPage() {
             ))}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={promptBatchSendReminders}
-              disabled={sendingAll || counts.unfiled === 0}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow transition-all disabled:opacity-50"
-            >
-              <FontAwesomeIcon icon={sendingAll ? faSync : faPaperPlane} spin={sendingAll} />
-              Remind All Unfiled ({counts.unfiledUsers} Employees)
-            </button>
-
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border"
-              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary }}
-            >
-              <FontAwesomeIcon icon={faFileExcel} className="text-emerald-600" /> Export CSV
-            </button>
-          </div>
-
         </div>
 
-        {/* Secondary Filter Row: Date Range / Month & Unit */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-3 border-t" style={{ borderColor: theme.border }}>
+        {/* Secondary Filter Row: Month, Unit & Employee Filter */}
+        <div className="flex flex-wrap items-center gap-4 pt-3 border-t text-xs" style={{ borderColor: theme.border }}>
           
-          <div className="flex flex-wrap items-center gap-3">
-            
-            {/* Mode Switcher */}
-            <div className="flex items-center p-0.5 rounded-lg border bg-gray-100 dark:bg-gray-800 text-xs font-semibold">
-              <button
-                onClick={() => setDateMode('range')}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  dateMode === 'range' ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-700 dark:text-purple-300 font-bold' : 'text-gray-600 dark:text-gray-400'
-                }`}
-              >
-                📅 Date Range
-              </button>
-              <button
-                onClick={() => setDateMode('month')}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  dateMode === 'month' ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-700 dark:text-purple-300 font-bold' : 'text-gray-600 dark:text-gray-400'
-                }`}
-              >
-                🗓️ Full Month
-              </button>
-            </div>
-
-            {/* Inputs depending on Mode */}
-            {dateMode === 'range' ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-semibold" style={{ color: theme.textSecondary }}>From:</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
-                    className="text-xs px-2.5 py-1.5 rounded-lg border font-medium"
-                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary }}
-                  />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-semibold" style={{ color: theme.textSecondary }}>To:</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
-                    className="text-xs px-2.5 py-1.5 rounded-lg border font-medium"
-                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary }}
-                  />
-                </div>
-
-                {/* Quick Presets */}
-                <div className="hidden sm:flex items-center gap-1 text-[11px]">
-                  <button
-                    onClick={() => { setStartDate(firstDayOfMonth); setEndDate(todayStr) }}
-                    className="px-2 py-1 rounded border bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 text-gray-700 dark:text-gray-300"
-                    title="1st of month to Today"
-                  >
-                    1st – Today
-                  </button>
-                  <button
-                    onClick={() => {
-                      const d7 = new Date()
-                      d7.setDate(d7.getDate() - 7)
-                      setStartDate(d7.toISOString().slice(0, 10))
-                      setEndDate(todayStr)
-                    }}
-                    className="px-2 py-1 rounded border bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 text-gray-700 dark:text-gray-300"
-                  >
-                    Last 7 Days
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold flex items-center gap-1.5" style={{ color: theme.textSecondary }}>
-                  <FontAwesomeIcon icon={faCalendarAlt} /> Month:
-                </label>
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={e => setSelectedMonth(e.target.value)}
-                  className="text-xs px-3 py-1.5 rounded-lg border font-medium"
-                  style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary }}
-                />
-              </div>
-            )}
-
-            {/* Unit Filter */}
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-semibold" style={{ color: theme.textSecondary }}>Unit:</label>
-              <select
-                value={selectedUnit}
-                onChange={e => setSelectedUnit(e.target.value)}
-                className="text-xs px-3 py-1.5 rounded-lg border font-medium"
-                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary }}
-              >
-                {units.map(u => (
-                  <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Search Box */}
-          <div className="relative w-full md:w-64">
+          {/* Monthly Picker Filter */}
+          <div className="flex items-center gap-2">
+            <label className="font-semibold flex items-center gap-1.5" style={{ color: theme.textSecondary }}>
+              <FontAwesomeIcon icon={faCalendarAlt} className="text-purple-600" /> Month:
+            </label>
             <input
-              type="text"
-              placeholder="Search employee or unit..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border"
+              type="month"
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border font-medium"
               style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary }}
             />
-            <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-2.5 text-xs text-gray-400" />
+          </div>
+
+          {/* Unit Filter */}
+          <div className="flex items-center gap-1.5">
+            <label className="font-semibold" style={{ color: theme.textSecondary }}>Unit:</label>
+            <select
+              value={selectedUnit}
+              onChange={e => handleUnitChange(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border font-medium"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary }}
+            >
+              <option value="all">Semua Unit</option>
+              {units.map(u => (
+                <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Karyawan Filter */}
+          <div className="flex items-center gap-1.5">
+            <label className="font-semibold" style={{ color: theme.textSecondary }}>Karyawan:</label>
+            <select
+              value={selectedEmployee}
+              onChange={e => setSelectedEmployee(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border font-medium max-w-xs truncate"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary }}
+            >
+              <option value="all">Semua Karyawan</option>
+              {employeeOptions.map(emp => (
+                <option key={emp.user_id} value={emp.user_id}>
+                  {emp.name} {selectedUnit === 'all' && emp.unit_name ? `(${emp.unit_name})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
         </div>
@@ -809,7 +468,6 @@ export default function AttendanceCheckPage() {
           <div className="space-y-3">
             {groupedEmployees.map((group) => {
               const isExpanded = expandedUsers.has(group.user_id)
-              const isSendingUser = sendingId === `user_${group.user_id}`
 
               return (
                 <div
@@ -830,7 +488,24 @@ export default function AttendanceCheckPage() {
                         <FontAwesomeIcon icon={isExpanded ? faChevronDown : faChevronRight} className="text-sm" />
                       </div>
 
-                      <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-600 flex items-center justify-center font-bold text-sm">
+                      {group.photo ? (
+                        <img
+                          src={group.photo}
+                          alt={group.name}
+                          referrerPolicy="no-referrer"
+                          className="w-9 h-9 rounded-full object-cover border border-purple-200 shadow-xs flex-shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            if (e.currentTarget.nextSibling) {
+                              e.currentTarget.nextSibling.style.display = 'flex'
+                            }
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-600 flex items-center justify-center font-bold text-sm flex-shrink-0"
+                        style={{ display: group.photo ? 'none' : 'flex' }}
+                      >
                         <FontAwesomeIcon icon={faUser} />
                       </div>
 
@@ -851,7 +526,7 @@ export default function AttendanceCheckPage() {
                       </div>
                     </div>
 
-                    {/* Right: Badges & Employee-level Action */}
+                    {/* Right: Badges */}
                     <div className="flex items-center gap-3 ml-9 md:ml-0" onClick={e => e.stopPropagation()}>
                       
                       {/* Summary Counters Badges */}
@@ -885,18 +560,6 @@ export default function AttendanceCheckPage() {
                         )}
                       </div>
 
-                      {/* Remind Employee Button */}
-                      {group.unfiledCount > 0 && (
-                        <button
-                          onClick={() => promptSendUserReminder(group)}
-                          disabled={isSendingUser}
-                          className="px-3.5 py-1.5 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-sm transition-all flex items-center gap-1.5"
-                        >
-                          <FontAwesomeIcon icon={isSendingUser ? faSync : faPaperPlane} spin={isSendingUser} />
-                          {isSendingUser ? 'Sending...' : `Remind Employee (${group.unfiledCount})`}
-                        </button>
-                      )}
-
                     </div>
 
                   </div>
@@ -911,13 +574,11 @@ export default function AttendanceCheckPage() {
                             <th className="p-3 font-semibold">Scan Times</th>
                             <th className="p-3 font-semibold">Attendance Issues</th>
                             <th className="p-3 font-semibold">Excuse Form & Approval Status</th>
-                            <th className="p-3 font-semibold text-right">Action</th>
+                            <th className="p-3 font-semibold text-right">Status</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y" style={{ borderColor: theme.border }}>
                           {group.items.map((item) => {
-                            const isSendingSingle = sendingId === item.key
-
                             return (
                               <tr key={item.key} className="hover:bg-white/60 dark:hover:bg-gray-800/60 transition-colors">
                                 
@@ -1039,17 +700,12 @@ export default function AttendanceCheckPage() {
                                   )}
                                 </td>
 
-                                {/* Action Column */}
+                                {/* Status Column */}
                                 <td className="p-3 text-right whitespace-nowrap">
                                   {item.excuseStatus === 'unfiled' ? (
-                                    <button
-                                      onClick={() => promptSendSingleReminder(item)}
-                                      disabled={isSendingSingle}
-                                      className="px-2.5 py-1 text-xs font-semibold bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-950 dark:text-purple-300 rounded-lg transition-all flex items-center gap-1 ml-auto"
-                                    >
-                                      <FontAwesomeIcon icon={isSendingSingle ? faSync : faPaperPlane} spin={isSendingSingle} />
-                                      {isSendingSingle ? 'Sending...' : 'Remind Date'}
-                                    </button>
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950 px-2.5 py-1 rounded-md border border-red-200">
+                                      <FontAwesomeIcon icon={faExclamationTriangle} /> Unfiled
+                                    </span>
                                   ) : item.excuseStatus === 'pending' ? (
                                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 px-2.5 py-1 rounded-md border border-amber-200">
                                       <FontAwesomeIcon icon={faClock} /> Pending Approval
@@ -1084,3 +740,4 @@ export default function AttendanceCheckPage() {
     </div>
   )
 }
+

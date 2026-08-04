@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+export const dynamic = 'force-dynamic'
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -188,6 +190,7 @@ export async function GET(request) {
       .select(`
         user_id, user_nama_depan, user_nama_belakang,
         user_unit_id, user_role_id, user_pin,
+        user_manual_picture, user_profile_picture,
         expected_check_in, expected_check_out, join_date,
         role:user_role_id (role_name, work_days, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff)
       `)
@@ -314,6 +317,7 @@ export async function GET(request) {
         unit_id:    user.user_unit_id,
         unit_name:  unitMap[String(user.user_unit_id)] || '—',
         role_name:  user.role?.role_name || '—',
+        photo:      user.user_manual_picture || user.user_profile_picture || null,
         is_vendor:  !!user.role?.is_vendor,
         is_part_time_staff: !!user.role?.is_part_time_staff,
         is_flexible_hours:  !!user.role?.is_flexible_hours,
