@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV, faClock } from '@fortawesome/free-solid-svg-icons'
 import { useTheme } from '@/lib/theme'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
@@ -260,6 +260,134 @@ export default function TopicNewPage() {
   const [unsavedModalOpen, setUnsavedModalOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
 
+  // Timetable Schedule Info for Weekly Plan (Schedule Helper & Smart Warning)
+  const [subjectTimetableInfo, setSubjectTimetableInfo] = useState({
+    loading: false,
+    routineDays: [],
+    timeSlots: [],
+    nextDates: []
+  })
+
+  const parseTimeSlot = useCallback((rawTime) => {
+    if (!rawTime) return { formatted: '', start: '' }
+    if (/^\d{2}:\d{2}\s*-\s*\d{2}:\d{2}$/.test(rawTime)) {
+      const start = rawTime.split('-')[0].trim()
+      return { formatted: rawTime, start }
+    }
+    const m = rawTime.match(/(\d{2}:\d{2})(?::\d{2})?.*?,.*?(\d{2}:\d{2})(?::\d{2})?/)
+    if (m) {
+      return { formatted: `${m[1]} - ${m[2]}`, start: m[1] }
+    }
+    return { formatted: rawTime, start: rawTime }
+  }, [])
+
+  const formatDateDDMMYYYY = useCallback((isoDate) => {
+    if (!isoDate) return ''
+    const parts = isoDate.split('-')
+    if (parts.length === 3) {
+      const [yyyy, mm, dd] = parts
+      return `${dd}/${mm}/${yyyy}`
+    }
+    return isoDate
+  }, [])
+
+  useEffect(() => {
+    if (!selectedTopicForWeekly) {
+      setSubjectTimetableInfo({ loading: false, routineDays: [], timeSlots: [], nextDates: [] })
+      return
+    }
+
+    const fetchTimetableInfo = async () => {
+      setSubjectTimetableInfo(prev => ({ ...prev, loading: true }))
+      try {
+        const kelasId = selectedTopicForWeekly.topic_kelas_id
+        const subjectId = selectedTopicForWeekly.topic_subject_id
+
+        const { data: dkData } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_id')
+          .eq('detail_kelas_kelas_id', kelasId)
+          .eq('detail_kelas_subject_id', subjectId)
+
+        const dkIds = (dkData || []).map(d => d.detail_kelas_id)
+
+        let ttRows = []
+        if (dkIds.length > 0) {
+          const { data: ttData } = await supabase
+            .from('timetable')
+            .select('timetable_day, timetable_time, custom_label')
+            .in('timetable_detail_kelas_id', dkIds)
+          ttRows = ttData || []
+        }
+
+        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+        const dayTimeMap = {}
+        ttRows.forEach(r => {
+          if (!r.timetable_day || !r.timetable_time) return
+          const parsed = parseTimeSlot(r.timetable_time)
+          if (!parsed.formatted) return
+          if (!dayTimeMap[r.timetable_day]) dayTimeMap[r.timetable_day] = []
+          if (!dayTimeMap[r.timetable_day].some(t => t.formatted === parsed.formatted)) {
+            dayTimeMap[r.timetable_day].push(parsed)
+          }
+        })
+
+        Object.keys(dayTimeMap).forEach(d => {
+          dayTimeMap[d].sort((a, b) => a.start.localeCompare(b.start))
+        })
+
+        const days = Object.keys(dayTimeMap).sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b))
+
+        const dayMap = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 }
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const nextDates = []
+        for (let i = 0; i < 21; i++) {
+          const d = new Date(today)
+          d.setDate(today.getDate() + i)
+          const dayName = Object.keys(dayMap).find(k => dayMap[k] === d.getDay())
+          if (days.includes(dayName)) {
+            const yyyy = d.getFullYear()
+            const mm = String(d.getMonth() + 1).padStart(2, '0')
+            const dd = String(d.getDate()).padStart(2, '0')
+            const dateStr = `${yyyy}-${mm}-${dd}`
+            const formatted = d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
+            const daySlots = (dayTimeMap[dayName] || []).map(t => t.formatted).join(', ')
+            nextDates.push({ day: dayName, dateStr, formatted, daySlots })
+          }
+        }
+
+        setSubjectTimetableInfo({
+          loading: false,
+          routineDays: days,
+          nextDates: nextDates.slice(0, 6)
+        })
+      } catch (err) {
+        console.error('Error fetching timetable info for weekly plan:', err)
+        setSubjectTimetableInfo({ loading: false, routineDays: [], timeSlots: [], nextDates: [] })
+      }
+    }
+
+    fetchTimetableInfo()
+  }, [selectedTopicForWeekly, parseTimeSlot])
+
+  const getDayWarningForDate = (dateStr) => {
+    if (!dateStr || subjectTimetableInfo.routineDays.length === 0) return null
+    const dt = new Date(dateStr + 'T00:00:00Z')
+    if (isNaN(dt.getTime())) return null
+    const dayNamesEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const dayIdx = dt.getUTCDay()
+    const dayEn = dayNamesEn[dayIdx]
+
+    const isRoutineDay = subjectTimetableInfo.routineDays.includes(dayEn)
+    if (!isRoutineDay) {
+      return `No class scheduled for this subject on ${dayEn}.`
+    }
+    return null
+  }
+
   // Topic Deletion State
   const [deleteTopicModalOpen, setDeleteTopicModalOpen] = useState(false)
   const [topicToDelete, setTopicToDelete] = useState(null)
@@ -504,9 +632,30 @@ export default function TopicNewPage() {
 
   useEffect(() => {
     if (woDocxModalOpen && yearOptions.length > 0 && !woDocxYearId) {
-      setWoDocxYearId(String(yearOptions[0].year_id))
+      const today = new Date()
+      const current = yearOptions.find(y => {
+        if (!y.start_date || !y.end_date) return false
+        const s = new Date(y.start_date + 'T00:00:00')
+        const e = new Date(y.end_date + 'T23:59:59')
+        return s <= today && today <= e
+      })
+      setWoDocxYearId(String(current ? current.year_id : yearOptions[0].year_id))
     }
   }, [woDocxModalOpen, yearOptions, woDocxYearId])
+
+  // Auto-select current Academic Year for Weekly Plan tab based on today's date in range [start_date, end_date]
+  useEffect(() => {
+    if (yearOptions.length > 0 && !wpYear) {
+      const today = new Date()
+      const current = yearOptions.find(y => {
+        if (!y.start_date || !y.end_date) return false
+        const s = new Date(y.start_date + 'T00:00:00')
+        const e = new Date(y.end_date + 'T23:59:59')
+        return s <= today && today <= e
+      })
+      setWpYear(String(current ? current.year_id : yearOptions[0].year_id))
+    }
+  }, [yearOptions, wpYear])
 
   useEffect(() => {
     if (woDocxModalOpen && allKelasRaw.length > 0) {
@@ -1148,14 +1297,20 @@ export default function TopicNewPage() {
       const today = new Date()
       const current = (yearData || []).find(y => {
         if (!y.start_date || !y.end_date) return false
-        return new Date(y.start_date) <= today && today <= new Date(y.end_date)
+        const s = new Date(y.start_date + 'T00:00:00')
+        const e = new Date(y.end_date + 'T23:59:59')
+        return s <= today && today <= e
       })
       if (current) {
         filteredForDropdown = kelasData.filter(k => String(k.kelas_year_id) === String(current.year_id))
         setAllKelas(filteredForDropdown)
         setFilters(prev => ({ ...prev, year: String(current.year_id) }))
+        setWpYear(prev => prev || String(current.year_id))
       } else {
         setAllKelas(kelasData || [])
+        if (yearData && yearData.length > 0) {
+          setWpYear(prev => prev || String(yearData[0].year_id))
+        }
       }
 
       // Compute allowedKelasRaw: kelas user is permitted to teach
@@ -5945,7 +6100,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 ) : selectedTopicForWeekly && weeklyPlans.length > 0 ? (
                   <div>
                     {/* Topic Info and Actions */}
-                    <div className="p-4 mb-5" style={{ background: theme.blueBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
+                    <div className="p-4 mb-4" style={{ background: theme.blueBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
                       <div className="flex items-start justify-between">
                         <div>
                           <h3 className="font-semibold text-sm mb-1" style={{ color: theme.textPrimary }}>{selectedTopicForWeekly.topic_nama}</h3>
@@ -5967,6 +6122,46 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           {t('topicNew.weeklyPlanTab.aiHelp')}
                         </button>
                       </div>
+                    </div>
+
+                    {/* Schedule Helper Banner: Upcoming Class Dates */}
+                    <div className="mb-5 p-4 rounded-xl border-2 shadow-sm text-xs space-y-3 bg-gradient-to-br from-indigo-50/90 via-blue-50/80 to-sky-50/90 dark:from-indigo-950/60 dark:via-blue-950/50 dark:to-slate-900/80 border-indigo-300 dark:border-indigo-700">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 dark:border-indigo-800 pb-2.5">
+                        <div className="font-bold flex items-center gap-2 text-xs sm:text-sm text-indigo-950 dark:text-indigo-100">
+                          <FontAwesomeIcon icon={faClock} className="text-amber-500 text-base" />
+                          <span>Schedule</span>
+                        </div>
+                        {subjectTimetableInfo.routineDays.length > 0 && (
+                          <span className="px-3 py-1 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs">
+                            {subjectTimetableInfo.routineDays.length} {subjectTimetableInfo.routineDays.length === 1 ? 'Day' : 'Days'} / Week
+                          </span>
+                        )}
+                      </div>
+
+                      {subjectTimetableInfo.loading ? (
+                        <div className="flex items-center gap-2 py-1 text-indigo-700 dark:text-indigo-300">
+                          <FontAwesomeIcon icon={faSpinner} spin />
+                          <span>Loading timetable schedule...</span>
+                        </div>
+                      ) : subjectTimetableInfo.routineDays.length > 0 && subjectTimetableInfo.nextDates.length > 0 ? (
+                        <div className="space-y-2">
+                          <span className="font-bold text-indigo-700 dark:text-indigo-300 block">Upcoming Class Dates:</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {subjectTimetableInfo.nextDates.slice(0, 4).map((nd, idx) => {
+                              const timeSlotStr = nd.daySlots ? ` (${nd.daySlots})` : ''
+                              return (
+                                <span key={idx} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-2 border-indigo-400 dark:border-indigo-600 shadow-sm flex items-center gap-1.5 hover:scale-102 transition-all">
+                                  📌 {nd.formatted}{timeSlotStr}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs italic text-indigo-700/80 dark:text-indigo-300/80">
+                          No routine timetable schedule configured for this Class and Subject yet.
+                        </p>
+                      )}
                     </div>
 
                     {/* Unsaved Changes Warning Banner */}
@@ -6041,15 +6236,29 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   <span className="text-[11px] font-semibold" style={{ color: theme.textPrimary }}>
                                     {sessionsToRender.length > 1 ? `Session ${sIdx + 1}` : 'Main Teaching Session'}
                                   </span>
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1">
-                                      <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.dateLabel')}</label>
+                                  <div className="flex items-center gap-1.5">
+                                    <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.dateLabel')}</label>
+                                    <div
+                                      onClick={(e) => {
+                                        const input = e.currentTarget.querySelector('input[type="date"]')
+                                        if (input) {
+                                          if (typeof input.showPicker === 'function') {
+                                            try { input.showPicker() } catch (err) { input.focus() }
+                                          } else {
+                                            input.focus()
+                                          }
+                                        }
+                                      }}
+                                      className="text-[10px] px-2 py-0.5 rounded border flex items-center justify-between gap-2 cursor-pointer font-bold shadow-2xs hover:border-indigo-500 transition-all min-w-[115px] relative"
+                                      style={{ borderColor: theme.border, background: theme.inputBg, color: plan.week_date ? theme.textBody : theme.textSecondary }}
+                                    >
+                                      <span>{plan.week_date ? formatDateDDMMYYYY(plan.week_date) : 'dd/mm/yyyy'}</span>
+                                      <FontAwesomeIcon icon={faCalendar} className="text-slate-400 text-[10px]" />
                                       <input
                                         type="date"
                                         value={plan.week_date || ''}
                                         onChange={e => handleWeeklyPlanChange(plan, 'week_date', e.target.value)}
-                                        className="text-[10px] px-1.5 py-0.5 focus:outline-none rounded border"
-                                        style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                        className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
                                       />
                                     </div>
                                     {sessionsToRender.length > 1 && (
@@ -6064,6 +6273,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                     )}
                                   </div>
                                 </div>
+
+                                {getDayWarningForDate(plan.week_date) && (
+                                  <div className="text-[10px] font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 p-1.5 rounded border border-red-300 dark:border-red-800 flex items-start gap-1">
+                                    <span>⚠️</span>
+                                    <span>{getDayWarningForDate(plan.week_date)}</span>
+                                  </div>
+                                )}
 
                                 {/* Objectives */}
                                 <div>

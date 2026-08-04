@@ -111,7 +111,7 @@ export default function TimetablePage() {
         supabase.from('timetable').select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time, custom_label, kelas_id, custom_color'),
         supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id, teacher_user_id'),
         supabase.from('kelas').select('kelas_id, kelas_nama, kelas_year_id').order('kelas_nama'),
-        supabase.from('year').select('year_id, year_name').order('year_name', { ascending: false }),
+        supabase.from('year').select('year_id, year_name, start_date, end_date').order('year_name', { ascending: false }),
         supabase.from('subject').select('subject_id, subject_name, subject_code'),
         supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang').eq('is_active', true),
       ]);
@@ -135,7 +135,15 @@ export default function TimetablePage() {
       setYears(yearRes.data || []);
 
       if (yearRes.data && yearRes.data.length > 0) {
-        const defaultYear = String(yearRes.data[0].year_id);
+        const today = new Date();
+        const currentYear = yearRes.data.find(y => {
+          if (!y.start_date || !y.end_date) return false;
+          const s = new Date(y.start_date + 'T00:00:00');
+          const e = new Date(y.end_date + 'T23:59:59');
+          return s <= today && today <= e;
+        });
+
+        const defaultYear = String(currentYear ? currentYear.year_id : yearRes.data[0].year_id);
         const availableKelas = (kelasRes.data || []).filter(k => String(k.kelas_year_id) === defaultYear);
         const defaultKelas = availableKelas.length > 0 ? String(availableKelas[0].kelas_id) : '';
         setFilters({ year: defaultYear, kelas: defaultKelas, day: '' });
