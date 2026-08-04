@@ -237,8 +237,18 @@ async function handleDutyNotification(req) {
     const notifiedResults = []
     const testEmail  = searchParams.get('test_email') || (searchParams.get('test') === 'true' ? 'hans@ccs.sch.id' : null)
 
+    // Helper function to resolve per-unit time settings with global fallback
+    const getTimeSettings = (slotType, unitId) => {
+      if (unitId && timeSettings[`${slotType}_unit_${unitId}`]) {
+        return timeSettings[`${slotType}_unit_${unitId}`]
+      }
+      return timeSettings[slotType] || { start: '07:30 AM', end: '', startMins: 450, reminderMins: 60 }
+    }
+
     // 4. Evaluate each schedule (per unit) and each duty slot
     for (const schedule of schedules) {
+      const unitId = schedule.unit_id
+
       for (const cfg of dutyConfigs) {
         const userId = schedule[cfg.key]
         if (!userId) continue
@@ -246,8 +256,14 @@ async function handleDutyNotification(req) {
         const user = userMap.get(userId)
         if (!user || !user.user_email) continue
 
+        const st = getTimeSettings(cfg.type, unitId)
+        const startMins = st.startMins
+        const reminderMins = st.reminderMins
+        const targetMins = startMins - reminderMins
+        const timeLabel = st.end ? `${st.start} – ${st.end}` : st.start
+
         // Check if current time is within reminder window (targetMins - 5 mins up to targetMins + 25 mins) or forceAll
-        const isInWindow = (wib.totalMins >= cfg.targetMins - 5) && (wib.totalMins < cfg.targetMins + 25)
+        const isInWindow = (wib.totalMins >= targetMins - 5) && (wib.totalMins < targetMins + 25)
 
         if (!isInWindow && !forceAll && !testEmail) {
           continue
@@ -275,7 +291,7 @@ async function handleDutyNotification(req) {
         const name = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.trim()
 
         // Calculate dynamic remaining time label
-        const diffMins = cfg.startMins ? (cfg.startMins - wib.totalMins) : cfg.reminderMins
+        const diffMins = startMins ? (startMins - wib.totalMins) : reminderMins
         const remLabel = diffMins >= 55 ? 'in 1 hour' : (diffMins > 0 ? `in ${diffMins} mins` : 'starting now')
 
         let messageText = ''
@@ -285,7 +301,7 @@ async function handleDutyNotification(req) {
 
           messageText = `🔔 *REMINDER: Morning Devotion Duty (${remLabel})*\n\n` +
             `Hello *${name}*,\n` +
-            `You are scheduled as the *Devotion Leader* today at *${cfg.timeLabel}*.\n\n` +
+            `You are scheduled as the *Devotion Leader* today at *${timeLabel}*.\n\n` +
             `🙏 *Prayer Subjects:*\n` +
             `• *Teacher to Pray For:* ${teacherPrayed}\n` +
             `• *Student to Pray For:* ${studentPrayed}\n\n` +
@@ -293,7 +309,7 @@ async function handleDutyNotification(req) {
         } else {
           messageText = `🔔 *REMINDER: ${cfg.title} (${remLabel})*\n\n` +
             `Hello *${name}*,\n` +
-            `Your duty assignment for *${cfg.title}* starts ${remLabel} at *${cfg.timeLabel}*.\n\n` +
+            `Your duty assignment for *${cfg.title}* starts ${remLabel} at *${timeLabel}*.\n\n` +
             `Please be ready at your assigned location. Thank you for your service!`
         }
 

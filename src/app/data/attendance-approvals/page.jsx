@@ -68,7 +68,7 @@ export default function AttendanceApprovalsPage() {
   const [isAuthorized, setIsAuthorized]   = useState(true)
   const [tab, setTab]                     = useState('pending') // pending | done | unit_overview
   const currentMonthKey = new Date().toISOString().slice(0, 7)
-  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey)
+  const [selectedMonth, setSelectedMonth] = useState('all')
   const [selectedUnit, setSelectedUnit]   = useState('all')
   const [units, setUnits]                 = useState([])
   const [excuses, setExcuses]             = useState([])

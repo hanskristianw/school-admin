@@ -34,7 +34,18 @@ function formatDutyDateLabel(dateStr) {
 
 function resolveUserDuties(row, uId, timeMap) {
   if (!row || !uId) return []
-  const tm = timeMap || { devotion: '07:30–08:00', greeter: '07:30–08:00', break: '09:45–10:15', lunch: '12:30–13:00' }
+  const unitId = row.unit_id || row.unit?.unit_id
+  const getTM = (type, defaultVal) => {
+    if (unitId && timeMap && timeMap[`${type}_unit_${unitId}`]) return timeMap[`${type}_unit_${unitId}`]
+    return timeMap?.[type] || defaultVal
+  }
+
+  const tm = {
+    devotion: getTM('devotion', '07:30–08:00'),
+    greeter:  getTM('greeter', '07:30–08:00'),
+    break:    getTM('break', '09:45–10:15'),
+    lunch:    getTM('lunch', '12:30–13:00'),
+  }
   const duties = []
   if (row.devotion_leader_user_id === uId) duties.push({ type: 'devotion', label: `Devotion Leader (${tm.devotion})`, icon: '📖' })
   if (row.greeter_1st_floor_user_id === uId) duties.push({ type: 'greeter', label: `Morning Greeter 1st Fl (${tm.greeter})`, icon: '🚪' })

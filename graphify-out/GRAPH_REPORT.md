@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-08-04)
 
 ## Corpus Check
-- 327 files · ~441,716 words
+- 324 files · ~441,696 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1586 nodes · 1625 edges · 304 communities (199 shown, 105 thin omitted)
+- 1579 nodes · 1611 edges · 306 communities (201 shown, 105 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7872258c`
+- Built from commit: `aabc5726`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -216,7 +216,9 @@
 - @googleapis/chat
 - react-hook-form
 - driver.js
+- �🏗️ **Database Structure**
 - driver.js
+- **3. Assessment System**
 - Project Agent Rules
 - pg
 - zod
@@ -242,13 +244,13 @@
   src/app/data/topic/page.jsx → package.json
 - `generateClassReportZIP()` --references--> `jszip`  [EXTRACTED]
   src/app/data/topic-new/lib/pdfGenerators.js → package.json
-- `run()` --calls--> `sendGoogleChatMessage()`  [EXTRACTED]
-  temp.js → src/lib/googleChat.js
+- `FeeSimulationPage()` --references--> `jspdf`  [EXTRACTED]
+  src/app/data/admission/simulation/page.jsx → package.json
 
 ## Import Cycles
 - None detected.
 
-## Communities (304 total, 105 thin omitted)
+## Communities (306 total, 105 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.12
@@ -316,7 +318,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): browser-image-compression, clsx, @fortawesome/free-solid-svg-icons, googleapis, html5-qrcode, dependencies, browser-image-compression, clsx (+3 more)
+Nodes (11): bcryptjs, browser-image-compression, clsx, googleapis, html5-qrcode, dependencies, bcryptjs, browser-image-compression (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -487,8 +489,8 @@ Cohesion: 0.53
 Nodes (5): GET(), getWibDateTime(), handleDutyNotification(), POST(), supabaseAdmin
 
 ### Community 126 - "Module 126"
-Cohesion: 0.18
-Nodes (10): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), Database Schema & Relationships (+2 more)
+Cohesion: 0.25
+Nodes (7): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), Database Schema & Relationships
 
 ### Community 130 - "bcryptjs"
 Cohesion: 0.40
@@ -508,7 +510,7 @@ Nodes (33): 1. Purchase Receipt - Auto Track Supplier (/stock/uniform/add), 1. S
 
 ### Community 156 - "**3. Assessment System**"
 Cohesion: 0.40
-Nodes (5): **Additional Files:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Environment:**, 🚀 **Setup & Deployment**
+Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
 
 ### Community 158 - "Module 158"
 Cohesion: 0.06
@@ -543,8 +545,8 @@ Cohesion: 0.10
 Nodes (19): Database Schema, Features, Format Examples, Frontend Implementation, Function: `generatePONumber()`, Future Enhancements, Integration Points, Manual Reset Procedure (+11 more)
 
 ### Community 257 - "🎯 **System Modules & Features**"
-Cohesion: 0.12
-Nodes (17): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **3. Assessment System** (+9 more)
+Cohesion: 0.14
+Nodes (14): **10. Data Mapping Note**, **11. Attendance (QR Sessions & Scans)**, **12. Student Consultation (BK)**, **13. Room Booking Module**, **14. Uniform Sales Module (NEW)**, **1. Authentication & User Management**, **2. Academic Data Management**, **4. User Profile System** (+6 more)
 
 ### Community 258 - "MYP Year Level Implementation"
 Cohesion: 0.13
@@ -559,12 +561,12 @@ Cohesion: 0.14
 Nodes (13): Active/Current Migrations, Core Attendance System, Database Migrations, 🚀 How to Run Migrations, ⚠️ Important Notes, 📋 Migration Checklist, Other Systems (Unrelated to Attendance), 🔄 Recent Changes (October 2025) (+5 more)
 
 ### Community 261 - "5.1 Tables"
-Cohesion: 0.14
-Nodes (14): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas` (+6 more)
+Cohesion: 0.17
+Nodes (12): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas`, `leave_types`, `role_approvers` (+4 more)
 
 ### Community 262 - "sendGoogleChatMessage"
-Cohesion: 0.33
-Nodes (8): getCredentials(), getPrivateKey(), getUserIdByEmail(), sendGoogleChatMessage(), run(), run(), buildGoogleChatMessage(), run()
+Cohesion: 0.80
+Nodes (4): getCredentials(), getPrivateKey(), getUserIdByEmail(), sendGoogleChatMessage()
 
 ### Community 263 - "3.1 Tables"
 Cohesion: 0.20
@@ -575,8 +577,8 @@ Cohesion: 0.17
 Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
 
 ### Community 265 - "School Admin System - Complete Documentation"
-Cohesion: 0.20
-Nodes (9): Attendance (QR) Tables, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table, **Key Business Rules:**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation (+1 more)
+Cohesion: 0.18
+Nodes (10): **Additional Files:**, **Completed Features:**, **Database Migration Files (Execute in Order):**, **Development:**, **Key Business Rules:**, **Key Environment:**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation (+2 more)
 
 ### Community 266 - "Protocol: Premium Utilitarian Minimalism UI Architect"
 Cohesion: 0.20
@@ -650,6 +652,14 @@ Nodes (5): buildWeeklyOverviewDocx(), compositeStampAndSignature(), fitAspect(),
 Cohesion: 0.40
 Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
 
+### Community 300 - "�🏗️ **Database Structure**"
+Cohesion: 0.50
+Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
+
+### Community 302 - "**3. Assessment System**"
+Cohesion: 0.67
+Nodes (3): **3. Assessment System**, **Admin Workflow**:, **Teacher Workflow**:
+
 ## Knowledge Gaps
 - **671 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+666 more)
   These have ≤1 connection - possible missing edges or undocumented components.
@@ -660,8 +670,8 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `Third-party Libraries` to `Module 128`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 132`, `Module 133`, `Module 134`, `Module 135`, `Admission Management`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 142`, `Module 143`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `Module 149`, `7.1 Tables`, `6.1 Tables`, `Module 151`, `Module 152`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `google-auth-library`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `driver.js`, `driver.js`, `pg`, `zod`, `bcryptjs`?**
   _High betweenness centrality (0.008) - this node is a cross-community bridge._
-- **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `**3. Assessment System**`, `📌 Changelog`?**
-  _High betweenness centrality (0.004) - this node is a cross-community bridge._
+- **Why does `School Admin System - Complete Documentation` connect `School Admin System - Complete Documentation` to `🎯 **System Modules & Features**`, `�🏗️ **Database Structure**`, `🎓 **IB MYP Assessment Grading System**`, `📋 **Common Issues & Solutions**`, `🔐 **Role-Based Access Control**`, `📊 **Database Queries Reference**`, `🔧 **Technical Implementation**`, `📁 **Project Structure**`, `📌 Changelog`?**
+  _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**

@@ -73,47 +73,127 @@ export default function DutySchedulePage() {
     break:    { startTime: '09:45', endTime: '10:15', reminderMins: 60 },
     lunch:    { startTime: '12:30', endTime: '13:00', reminderMins: 60 }
   })
-  const [savingSettings, setSavingSettings] = useState(false)
+  const [settingsUnit, setSettingsUnit]       = useState('global')
+  const [allDbDutySettings, setAllDbDutySettings] = useState([])
+  const [savingSettings, setSavingSettings]   = useState(false)
 
   const showNotification = (message, type = 'success') => {
     setNotif({ show: true, message, type })
     setTimeout(() => setNotif({ show: false, message: '', type: 'success' }), 4000)
   }
 
+  const populateSettingsForUnit = (targetUnitId, rawData) => {
+    const data = rawData || allDbDutySettings
+    const defaultDefaults = {
+      devotion: { startTime: '07:30', endTime: '08:00', reminderMins: 60 },
+      greeter:  { startTime: '07:30', endTime: '08:00', reminderMins: 30 },
+      break:    { startTime: '09:45', endTime: '10:15', reminderMins: 15 },
+      lunch:    { startTime: '12:30', endTime: '13:00', reminderMins: 15 },
+    }
+
+    const newSt = { ...defaultDefaults }
+    const suffix = targetUnitId === 'global' ? '' : `_unit_${targetUnitId}`
+
+    // Populate from global default
+    const globalData = data.filter(d => ['devotion', 'greeter', 'break', 'lunch'].includes(d.slot_key))
+    globalData.forEach(item => {
+      if (newSt[item.slot_key]) {
+        newSt[item.slot_key] = {
+          startTime: item.start_time ? String(item.start_time).slice(0, 5) : newSt[item.slot_key].startTime,
+          endTime: item.end_time ? String(item.end_time).slice(0, 5) : newSt[item.slot_key].endTime,
+          reminderMins: item.reminder_minutes_before ?? newSt[item.slot_key].reminderMins
+        }
+      }
+    })
+
+    // Override with unit-specific data if present
+    if (suffix) {
+      const unitData = data.filter(d => d.slot_key.endsWith(suffix))
+      unitData.forEach(item => {
+        const baseKey = item.slot_key.replace(suffix, '')
+        if (newSt[baseKey]) {
+          newSt[baseKey] = {
+            startTime: item.start_time ? String(item.start_time).slice(0, 5) : newSt[baseKey].startTime,
+            endTime: item.end_time ? String(item.end_time).slice(0, 5) : newSt[baseKey].endTime,
+            reminderMins: item.reminder_minutes_before ?? newSt[baseKey].reminderMins
+          }
+        }
+      })
+    }
+
+    setDutySettings(newSt)
+  }
+
   const fetchDutySettings = async () => {
     try {
       const { data, error } = await supabase.from('duty_settings').select('*')
       if (error || !data) return
-      if (data.length > 0) {
-        const newSt = { ...dutySettings }
-        data.forEach(item => {
-          if (newSt[item.slot_key]) {
-            newSt[item.slot_key] = {
-              startTime: item.start_time ? String(item.start_time).slice(0, 5) : newSt[item.slot_key].startTime,
-              endTime: item.end_time ? String(item.end_time).slice(0, 5) : newSt[item.slot_key].endTime,
-              reminderMins: item.reminder_minutes_before ?? 60
-            }
-          }
-        })
-        setDutySettings(newSt)
-      }
+      setAllDbDutySettings(data)
+      populateSettingsForUnit(settingsUnit, data)
     } catch (_) {}
+  }
+
+  const formatTimeForDb = (timeStr, fallback = null) => {
+    const val = (timeStr || fallback || '').trim()
+    if (!val) return null
+    const parts = val.split(':')
+    if (parts.length >= 2) {
+      const h = parts[0].padStart(2, '0')
+      const m = parts[1].padStart(2, '0')
+      const s = parts[2] ? parts[2].slice(0, 2).padStart(2, '0') : '00'
+      return `${h}:${m}:${s}`
+    }
+    return null
   }
 
   const handleSaveDutySettings = async () => {
     setSavingSettings(true)
     try {
+      const suffix = settingsUnit === 'global' ? '' : `_unit_${settingsUnit}`
+
+      const getUnitName = (uId) => {
+        if (!uId || uId === 'global') return ''
+        const found = schoolUnits.find(u => String(u.unit_id) === String(uId))
+        return found ? ` (Unit ${found.unit_name})` : ` (Unit ${uId})`
+      }
+      const unitNameLabel = getUnitName(settingsUnit)
+
       const rowsToUpsert = [
-        { slot_key: 'devotion', slot_name: 'Morning Devotion Leader', start_time: dutySettings.devotion.startTime + ':00', end_time: dutySettings.devotion.endTime ? dutySettings.devotion.endTime + ':00' : null, reminder_minutes_before: parseInt(dutySettings.devotion.reminderMins, 10) },
-        { slot_key: 'greeter',  slot_name: 'Morning Door Greeter',    start_time: dutySettings.greeter.startTime + ':00',  end_time: dutySettings.greeter.endTime ? dutySettings.greeter.endTime + ':00' : null,   reminder_minutes_before: parseInt(dutySettings.greeter.reminderMins, 10) },
-        { slot_key: 'break',    slot_name: 'Break Duty',              start_time: dutySettings.break.startTime + ':00',    end_time: dutySettings.break.endTime ? dutySettings.break.endTime + ':00' : null,       reminder_minutes_before: parseInt(dutySettings.break.reminderMins, 10) },
-        { slot_key: 'lunch',    slot_name: 'Lunch Duty',              start_time: dutySettings.lunch.startTime + ':00',    end_time: dutySettings.lunch.endTime ? dutySettings.lunch.endTime + ':00' : null,       reminder_minutes_before: parseInt(dutySettings.lunch.reminderMins, 10) }
+        {
+          slot_key: `devotion${suffix}`,
+          slot_name: `Morning Devotion Leader${unitNameLabel}`,
+          start_time: formatTimeForDb(dutySettings.devotion?.startTime, '07:30'),
+          end_time: formatTimeForDb(dutySettings.devotion?.endTime, '08:00'),
+          reminder_minutes_before: parseInt(dutySettings.devotion?.reminderMins || 60, 10)
+        },
+        {
+          slot_key: `greeter${suffix}`,
+          slot_name: `Morning Door Greeter${unitNameLabel}`,
+          start_time: formatTimeForDb(dutySettings.greeter?.startTime, '07:30'),
+          end_time: formatTimeForDb(dutySettings.greeter?.endTime, '08:00'),
+          reminder_minutes_before: parseInt(dutySettings.greeter?.reminderMins || 30, 10)
+        },
+        {
+          slot_key: `break${suffix}`,
+          slot_name: `Break Duty${unitNameLabel}`,
+          start_time: formatTimeForDb(dutySettings.break?.startTime, '09:45'),
+          end_time: formatTimeForDb(dutySettings.break?.endTime, '10:15'),
+          reminder_minutes_before: parseInt(dutySettings.break?.reminderMins || 15, 10)
+        },
+        {
+          slot_key: `lunch${suffix}`,
+          slot_name: `Lunch Duty${unitNameLabel}`,
+          start_time: formatTimeForDb(dutySettings.lunch?.startTime, '12:30'),
+          end_time: formatTimeForDb(dutySettings.lunch?.endTime, '13:00'),
+          reminder_minutes_before: parseInt(dutySettings.lunch?.reminderMins || 15, 10)
+        }
       ]
 
       const { error } = await supabase.from('duty_settings').upsert(rowsToUpsert, { onConflict: 'slot_key' })
       if (error) throw error
 
       showNotification('Duty time settings saved successfully!', 'success')
+      await fetchDutySettings()
       setSettingsModalOpen(false)
     } catch (e) {
       showNotification('Failed to save duty settings: ' + e.message, 'error')
@@ -1084,10 +1164,32 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
             </div>
 
             <p className="text-xs" style={{ color: theme.textSecondary }}>
-              Configure operational hours and Google Chat reminder timing for each duty assignment slot.
+              Configure operational hours and Google Chat reminder timing for each duty assignment slot per Unit.
             </p>
 
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            {/* Target Unit Selector */}
+            <div className="p-3 rounded-lg border flex items-center justify-between gap-3" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+              <label className="text-xs font-bold whitespace-nowrap" style={{ color: theme.textPrimary }}>
+                Target Unit Settings:
+              </label>
+              <select
+                value={settingsUnit}
+                onChange={e => {
+                  const uVal = e.target.value
+                  setSettingsUnit(uVal)
+                  populateSettingsForUnit(uVal)
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg font-semibold border cursor-pointer flex-1 max-w-[240px]"
+                style={{ border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary }}
+              >
+                <option value="global">🌐 Global Default (All Units)</option>
+                {schoolUnits.map(u => (
+                  <option key={u.unit_id} value={String(u.unit_id)}>🏫 Unit {u.unit_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
               {[
                 { key: 'devotion', title: '📖 Morning Devotion Leader' },
                 { key: 'greeter',  title: '🚪 Morning Door Greeter' },
