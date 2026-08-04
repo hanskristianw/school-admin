@@ -10572,83 +10572,6 @@
       "norm_label": "messagetemplates"
     },
     {
-      "label": "temp.js",
-      "file_type": "code",
-      "source_file": "temp.js",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "temp",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "temp.js"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "temp.js",
-      "source_location": "L3",
-      "_origin": "ast",
-      "id": "temp_run",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "run()"
-    },
-    {
-      "label": "testChat.js",
-      "file_type": "code",
-      "source_file": "testChat.js",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "testchat",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "testchat.js"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "testChat.js",
-      "source_location": "L3",
-      "_origin": "ast",
-      "id": "testchat_run",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "run()"
-    },
-    {
-      "label": "testFpbChat.js",
-      "file_type": "code",
-      "source_file": "testFpbChat.js",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "testfpbchat",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "testfpbchat.js"
-    },
-    {
-      "label": "buildGoogleChatMessage()",
-      "file_type": "code",
-      "source_file": "testFpbChat.js",
-      "source_location": "L5",
-      "_origin": "ast",
-      "id": "testfpbchat_buildgooglechatmessage",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "buildgooglechatmessage()"
-    },
-    {
-      "label": "run()",
-      "file_type": "code",
-      "source_file": "testFpbChat.js",
-      "source_location": "L16",
-      "_origin": "ast",
-      "id": "testfpbchat_run",
-      "community": 262,
-      "community_name": "sendGoogleChatMessage",
-      "norm_label": "run()"
-    },
-    {
       "label": "vercel.json",
       "file_type": "code",
       "source_file": "vercel.json",
@@ -11645,8 +11568,8 @@
       "source_location": "L672",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 261,
-      "community_name": "5.1 Tables",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11788,8 +11711,8 @@
       "source_location": "L828",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 261,
-      "community_name": "5.1 Tables",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -12052,8 +11975,8 @@
       "source_location": "L1268",
       "_origin": "ast",
       "id": "database_schema_10_duty_greeter_devotion_schedule_domain_data_door_greeter",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 156,
+      "community_name": "**3. Assessment System**",
       "norm_label": "10. duty, greeter & devotion schedule domain (`/data/door_greeter`)"
     },
     {
@@ -12063,8 +11986,8 @@
       "source_location": "L1272",
       "_origin": "ast",
       "id": "database_schema_10_1_tables",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 156,
+      "community_name": "**3. Assessment System**",
       "norm_label": "10.1 tables"
     },
     {
@@ -12074,8 +11997,8 @@
       "source_location": "L1274",
       "_origin": "ast",
       "id": "database_schema_duty_schedules",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 156,
+      "community_name": "**3. Assessment System**",
       "norm_label": "`duty_schedules`"
     },
     {
@@ -12085,8 +12008,8 @@
       "source_location": "L1303",
       "_origin": "ast",
       "id": "database_schema_duty_settings",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 156,
+      "community_name": "**3. Assessment System**",
       "norm_label": "`duty_settings`"
     },
     {
@@ -12096,8 +12019,8 @@
       "source_location": "L1317",
       "_origin": "ast",
       "id": "database_schema_10_2_erd_relationships_duty_devotion_schedule_domain",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 156,
+      "community_name": "**3. Assessment System**",
       "norm_label": "10.2 erd / relationships (duty & devotion schedule domain)"
     },
     {
@@ -13207,8 +13130,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 300,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -13218,8 +13141,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 300,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "**core tables:**"
     },
     {
@@ -13229,8 +13152,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 300,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -13240,8 +13163,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 300,
+      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -13284,8 +13207,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 302,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -13295,8 +13218,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 302,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -13306,8 +13229,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 302,
+      "community_name": "**3. Assessment System**",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -13482,8 +13405,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 156,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -13493,8 +13416,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 156,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -13504,8 +13427,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 156,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**development:**"
     },
     {
@@ -13515,8 +13438,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 156,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**key environment:**"
     },
     {
@@ -13526,8 +13449,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 156,
-      "community_name": "**3. Assessment System**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**additional files:**"
     },
     {
@@ -28439,42 +28362,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "temp.js",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "temp",
-      "target": "src_lib_googlechat",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "testChat.js",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testchat",
-      "target": "src_lib_googlechat",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "testFpbChat.js",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testfpbchat",
-      "target": "src_lib_googlechat",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -28520,78 +28407,6 @@
       "_origin": "ast",
       "source": "src_lib_googlechat_sendgooglechatmessage",
       "target": "src_lib_googlechat_getuseridbyemail",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "temp.js",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "temp",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "temp.js",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "temp_run",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "testChat.js",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testchat",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "testChat.js",
-      "source_location": "L10",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testchat_run",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "testFpbChat.js",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testfpbchat",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "testFpbChat.js",
-      "source_location": "L32",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testfpbchat_run",
-      "target": "src_lib_googlechat_sendgooglechatmessage",
       "confidence_score": 1.0
     },
     {
@@ -29047,62 +28862,6 @@
       "_origin": "ast",
       "source": "src_lib_whatsapp_sendwhatsapp",
       "target": "src_lib_whatsapp_delay",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "temp.js",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "temp",
-      "target": "temp_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "testChat.js",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testchat",
-      "target": "testchat_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "testFpbChat.js",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testfpbchat",
-      "target": "testfpbchat_buildgooglechatmessage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "testFpbChat.js",
-      "source_location": "L16",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testfpbchat",
-      "target": "testfpbchat_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "testFpbChat.js",
-      "source_location": "L28",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "testfpbchat_run",
-      "target": "testfpbchat_buildgooglechatmessage",
       "confidence_score": 1.0
     },
     {

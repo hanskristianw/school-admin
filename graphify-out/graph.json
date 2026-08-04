@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 132,
+      "community_name": "Module 132",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 132,
+      "community_name": "Module 132",
       "norm_label": "bcryptjs"
     },
     {
@@ -3098,8 +3098,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "package_dependencies_dotenv",
-      "community": 132,
-      "community_name": "Module 132",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "dotenv"
     },
     {
@@ -3109,8 +3109,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 132,
-      "community_name": "Module 132",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "dotenv"
     },
     {
@@ -24548,7 +24548,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/door_greeter/page.jsx",
-      "source_location": "L345",
+      "source_location": "L368",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_door_greeter_page_dutyschedulepage",
@@ -35363,5 +35363,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "aabc57269173846431e207bca816c039def9d5d9"
+  "built_at_commit": "860e9f5c5052c698445bb1bc3d875cd9449c2b59"
 }

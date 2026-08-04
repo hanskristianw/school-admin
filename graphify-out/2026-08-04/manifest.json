@@ -965,8 +965,8 @@
     "semantic_hash": "d45f1589c812a84cd8446ba5843d4e93"
   },
   "src/app/data/door_greeter/page.jsx": {
-    "mtime": 1785821961.9268208,
-    "ast_hash": "0838b24cb10f0b8cb58795a825a42cb0",
+    "mtime": 1785823380.6106155,
+    "ast_hash": "dc9fd723c4de95559bd20e215a21aa7a",
     "semantic_hash": ""
   },
   "src/app/data/fpb/[id]/edit/page.jsx": {
@@ -1642,21 +1642,6 @@
   "src/lib/googleChat.js": {
     "mtime": 1784537537.1136663,
     "ast_hash": "7290bce4de72d85dff5f9735f342dfe1",
-    "semantic_hash": ""
-  },
-  "temp.js": {
-    "mtime": 1784537379.3319454,
-    "ast_hash": "c2ea25ec26de01b7c39684fe6b3354cf",
-    "semantic_hash": ""
-  },
-  "testChat.js": {
-    "mtime": 1784597945.7061894,
-    "ast_hash": "6127511c236eac2a2137567d82a037c8",
-    "semantic_hash": ""
-  },
-  "testFpbChat.js": {
-    "mtime": 1784619507.229493,
-    "ast_hash": "21aada3288cef5bb29e9e262b845f9be",
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {

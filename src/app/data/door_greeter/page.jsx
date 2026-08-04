@@ -303,10 +303,11 @@ export default function DutySchedulePage() {
     const unitMap = new Map((schoolUnits || []).map(u => [u.unit_id, u.unit_name]))
     const roleMap = new Map((roles || []).map(r => [r.role_id, r.role_name]))
 
-    return (teachers || []).map(t => {
+    const list = (teachers || []).map(t => {
       const uName = unitMap.get(t.user_unit_id)
       const rName = roleMap.get(t.user_role_id)
       const isCurrentUnit = String(t.user_unit_id) === String(selectedUnitId)
+      const isStudent = String(rName || '').toLowerCase() === 'student' || t.user_role_id === 3
       const nameStr = `${t.user_nama_depan || ''} ${t.user_nama_belakang || ''}`.trim()
 
       let infoStr = ''
@@ -316,12 +317,34 @@ export default function DutySchedulePage() {
 
       return {
         id: t.user_id,
-        name: `${isCurrentUnit ? '⭐ ' : ''}${nameStr}${infoStr}`,
+        name: `${nameStr}${infoStr}`,
+        cleanName: nameStr,
         unit_id: t.user_unit_id,
+        unitName: uName || '',
         role_id: t.user_role_id,
-        isCurrentUnit
+        isCurrentUnit,
+        isStudent
       }
-    }).sort((a, b) => (b.isCurrentUnit ? 1 : 0) - (a.isCurrentUnit ? 1 : 0))
+    })
+
+    return list.sort((a, b) => {
+      // 1. Current Unit first
+      if (a.isCurrentUnit !== b.isCurrentUnit) {
+        return a.isCurrentUnit ? -1 : 1
+      }
+
+      // 2. Unit Name alphabetically
+      const uCmp = a.unitName.localeCompare(b.unitName)
+      if (uCmp !== 0) return uCmp
+
+      // 3. Teacher / Staff first (isStudent = false), Student last (isStudent = true)
+      if (a.isStudent !== b.isStudent) {
+        return a.isStudent ? 1 : -1
+      }
+
+      // 4. Alphabetical by Name (A-Z)
+      return a.cleanName.localeCompare(b.cleanName, undefined, { sensitivity: 'base' })
+    })
   }, [teachers, schoolUnits, roles, selectedUnitId])
 
   // Filtered rows for active Unit Tab & UI search
