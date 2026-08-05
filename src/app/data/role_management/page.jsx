@@ -61,8 +61,7 @@ export default function RoleManagementPage() {
         const { data, error } = await supabase
           .from('role')
           .select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff')
-          .order('role_priority', { ascending: false })
-          .order('role_name')
+          .order('role_name', { ascending: true })
         if (error) throw new Error(error.message)
         setRoles(data || [])
       } catch (e) {
@@ -74,8 +73,8 @@ export default function RoleManagementPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return roles
-    return (roles||[]).filter(r => (r.role_name||'').toLowerCase().includes(q))
+    const list = !q ? roles : (roles||[]).filter(r => (r.role_name||'').toLowerCase().includes(q))
+    return [...list].sort((a, b) => (a.role_name || '').localeCompare(b.role_name || ''))
   }, [roles, search])
 
   const openNew = () => {
@@ -140,7 +139,7 @@ export default function RoleManagementPage() {
         const { error } = await supabase.from('role').insert([payload])
         if (error) throw new Error(error.message)
       }
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff').order('role_priority', { ascending: false }).order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff').order('role_name', { ascending: true })
       if (rErr) throw new Error(rErr.message)
       setRoles(data || [])
       setShowEdit(false)
@@ -156,7 +155,7 @@ export default function RoleManagementPage() {
     try {
       const { error } = await supabase.from('role').delete().eq('role_id', r.role_id)
       if (error) throw error
-      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor').order('role_priority', { ascending: false }).order('role_name')
+      const { data, error: rErr } = await supabase.from('role').select('role_id, role_name, dashboard_type_id, role_priority, is_admin, is_teacher, is_principal, is_student, is_counselor, is_curriculum, is_nurse, can_void_transactions, is_vendor, is_part_time_staff, is_flexible_hours, is_on_call_staff').order('role_name', { ascending: true })
       if (rErr) throw rErr
       setRoles(data || [])
       setNotif({ isOpen: true, title: 'Deleted', message: 'Role removed', type: 'success' })

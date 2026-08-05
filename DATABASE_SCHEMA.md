@@ -123,10 +123,17 @@ erDiagram
         string role_name
         boolean is_teacher
         boolean is_admin
+        boolean is_principal
+        boolean is_student
         boolean is_counselor
         boolean is_curriculum
         boolean is_nurse
+        boolean is_vendor
+        boolean is_part_time_staff
+        boolean is_flexible_hours
+        boolean is_on_call_staff
         boolean can_void_transactions
+        string work_days
         int dashboard_type_id FK
         int role_priority
     }
