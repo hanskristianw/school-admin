@@ -50,7 +50,11 @@ import {
   faTrophy,
   faFileInvoice,
   faFileInvoiceDollar,
-  faLandmark
+  faLandmark,
+  faHandHoldingHeart,
+  faHandsHoldingChild,
+  faUserShield,
+  faHandsHolding
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -158,6 +162,11 @@ const iconMap = {
   , 'fas fa-fingerprint': require('@fortawesome/free-solid-svg-icons').faFingerprint
   , 'faFingerprint': require('@fortawesome/free-solid-svg-icons').faFingerprint
   , 'fas fa-clock': require('@fortawesome/free-solid-svg-icons').faClock
+  , 'faClock': require('@fortawesome/free-solid-svg-icons').faClock
+  , 'fas fa-exclamation-triangle': require('@fortawesome/free-solid-svg-icons').faExclamationTriangle
+  , 'faExclamationTriangle': require('@fortawesome/free-solid-svg-icons').faExclamationTriangle
+  , 'fas fa-sliders': require('@fortawesome/free-solid-svg-icons').faSliders
+  , 'faSliders': require('@fortawesome/free-solid-svg-icons').faSliders
   , 'fas fa-shield-alt': faShieldAlt
   , 'faShieldAlt': faShieldAlt
   , 'fas fa-user-check': faUserCheck
@@ -169,6 +178,18 @@ const iconMap = {
   , 'faChartBar': faChartBar
   , 'fas fa-file-signature': faFileSignature
   , 'faFileSignature': faFileSignature
+  , 'fas fa-hand-holding-heart': faHandHoldingHeart
+  , 'faHandHoldingHeart': faHandHoldingHeart
+  , 'fas fa-hands-holding-child': faHandsHoldingChild
+  , 'faHandsHoldingChild': faHandsHoldingChild
+  , 'fas fa-user-shield': faUserShield
+  , 'faUserShield': faUserShield
+  , 'fas fa-hands-holding': faHandsHolding
+  , 'faHandsHolding': faHandsHolding
+  , 'fas fa-pastoral-care': faHandHoldingHeart
+  , 'faPastoralCare': faHandHoldingHeart
+  , 'Pastoral Care': faHandHoldingHeart
+  , 'pastoral-care': faHandHoldingHeart
   , 'fas fa-check-double': faCheckDouble
   , 'faCheckDouble': faCheckDouble
   , 'fas fa-list-check': faListCheck

@@ -2768,8 +2768,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_free_solid_svg_icons",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 302,
+      "community_name": "**3. Assessment System**",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2779,8 +2779,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "fortawesome_free_solid_svg_icons",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 302,
+      "community_name": "**3. Assessment System**",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2790,8 +2790,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_react_fontawesome",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -2801,8 +2801,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "fortawesome_react_fontawesome",
-      "community": 289,
-      "community_name": "bcryptjs",
+      "community": 278,
+      "community_name": "7.1 Tables",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 278,
-      "community_name": "7.1 Tables",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 143,
-      "community_name": "Module 143",
+      "community": 310,
+      "community_name": "class-variance-authority",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 143,
-      "community_name": "Module 143",
+      "community": 310,
+      "community_name": "class-variance-authority",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3142,8 +3142,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "package_dependencies_exceljs",
-      "community": 128,
-      "community_name": "Module 128",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "exceljs"
     },
     {
@@ -3153,8 +3153,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "exceljs",
-      "community": 128,
-      "community_name": "Module 128",
+      "community": 289,
+      "community_name": "bcryptjs",
       "norm_label": "exceljs"
     },
     {
@@ -5404,6 +5404,28 @@
     {
       "label": "route.js",
       "file_type": "code",
+      "source_file": "src/app/api/notifications/incident-report/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_notifications_incident_report_route",
+      "community": 304,
+      "community_name": "route.js",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/notifications/incident-report/route.js",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_app_api_notifications_incident_report_route_post",
+      "community": 304,
+      "community_name": "route.js",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
       "source_file": "src/app/api/ocr/ktp/route.js",
       "source_location": "L1",
       "_origin": "ast",
@@ -7393,6 +7415,50 @@
       "norm_label": "healthreportpage()"
     },
     {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/incident-report-approval/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_incident_report_approval_page",
+      "community": 311,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "IncidentHandlingApprovalPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/incident-report-approval/page.jsx",
+      "source_location": "L31",
+      "_origin": "ast",
+      "id": "src_app_data_incident_report_approval_page_incidenthandlingapprovalpage",
+      "community": 311,
+      "community_name": "page.jsx",
+      "norm_label": "incidenthandlingapprovalpage()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/data/incident-report/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_data_incident_report_page",
+      "community": 306,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "IncidentReportListPage()",
+      "file_type": "code",
+      "source_file": "src/app/data/incident-report/page.jsx",
+      "source_location": "L33",
+      "_origin": "ast",
+      "id": "src_app_data_incident_report_page_incidentreportlistpage",
+      "community": 306,
+      "community_name": "page.jsx",
+      "norm_label": "incidentreportlistpage()"
+    },
+    {
       "label": "layout.jsx",
       "file_type": "code",
       "source_file": "src/app/data/layout.jsx",
@@ -8889,6 +8955,28 @@
       "norm_label": "fpbsettingspage()"
     },
     {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/settings/incident-report/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_settings_incident_report_page",
+      "community": 308,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "IncidentNotificationSettingsPage()",
+      "file_type": "code",
+      "source_file": "src/app/settings/incident-report/page.jsx",
+      "source_location": "L27",
+      "_origin": "ast",
+      "id": "src_app_settings_incident_report_page_incidentnotificationsettingspage",
+      "community": 308,
+      "community_name": "page.jsx",
+      "norm_label": "incidentnotificationsettingspage()"
+    },
+    {
       "label": "layout.jsx",
       "file_type": "code",
       "source_file": "src/app/settings/layout.jsx",
@@ -9420,7 +9508,7 @@
       "label": "iconMap",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L64",
+      "source_location": "L68",
       "_origin": "ast",
       "id": "src_components_sidebar_iconmap",
       "community": 89,
@@ -9431,7 +9519,7 @@
       "label": "Sidebar",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L204",
+      "source_location": "L225",
       "_origin": "ast",
       "id": "src_components_sidebar_sidebar",
       "community": 89,
@@ -12222,6 +12310,83 @@
       "norm_label": "11.4 pos uniform sales workflows (`/sales/uniform`)"
     },
     {
+      "label": "12. Student Incident Reports & Unit Notification Domain (`/data/incident-report`, `/data/incident-report-approval`, `/settings/incident-report`)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1707",
+      "_origin": "ast",
+      "id": "database_schema_12_student_incident_reports_unit_notification_domain_data_incident_report_data_incident_report_approval_settings_incident_report",
+      "community": 143,
+      "community_name": "Module 143",
+      "norm_label": "12. student incident reports & unit notification domain (`/data/incident-report`, `/data/incident-report-approval`, `/settings/incident-report`)"
+    },
+    {
+      "label": "12.0 Dedicated Pages & Access Roles",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1711",
+      "_origin": "ast",
+      "id": "database_schema_12_0_dedicated_pages_access_roles",
+      "community": 143,
+      "community_name": "Module 143",
+      "norm_label": "12.0 dedicated pages & access roles"
+    },
+    {
+      "label": "12.1 Tables",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1716",
+      "_origin": "ast",
+      "id": "database_schema_12_1_tables",
+      "community": 143,
+      "community_name": "Module 143",
+      "norm_label": "12.1 tables"
+    },
+    {
+      "label": "`incident_reports`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1718",
+      "_origin": "ast",
+      "id": "database_schema_incident_reports",
+      "community": 143,
+      "community_name": "Module 143",
+      "norm_label": "`incident_reports`"
+    },
+    {
+      "label": "`incident_followups`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1741",
+      "_origin": "ast",
+      "id": "database_schema_incident_followups",
+      "community": 143,
+      "community_name": "Module 143",
+      "norm_label": "`incident_followups`"
+    },
+    {
+      "label": "`incident_unit_recipients`",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1756",
+      "_origin": "ast",
+      "id": "database_schema_incident_unit_recipients",
+      "community": 143,
+      "community_name": "Module 143",
+      "norm_label": "`incident_unit_recipients`"
+    },
+    {
+      "label": "12.2 ERD / Relationships (Incident Reports Domain)",
+      "file_type": "document",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1766",
+      "_origin": "ast",
+      "id": "database_schema_12_2_erd_relationships_incident_reports_domain",
+      "community": 143,
+      "community_name": "Module 143",
+      "norm_label": "12.2 erd / relationships (incident reports domain)"
+    },
+    {
       "label": "DELETE_VOID_IMPLEMENTATION.md",
       "file_type": "document",
       "source_file": "DELETE_VOID_IMPLEMENTATION.md",
@@ -13130,8 +13295,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 300,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -13141,8 +13306,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 300,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**core tables:**"
     },
     {
@@ -13152,8 +13317,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 300,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -13163,8 +13328,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 300,
-      "community_name": "\ufffd\ud83c\udfd7\ufe0f **Database Structure**",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -13207,8 +13372,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 302,
-      "community_name": "**3. Assessment System**",
+      "community": 257,
+      "community_name": "\ud83c\udfaf **System Modules & Features**",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -13218,8 +13383,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 302,
-      "community_name": "**3. Assessment System**",
+      "community": 257,
+      "community_name": "\ud83c\udfaf **System Modules & Features**",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -13229,8 +13394,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 302,
-      "community_name": "**3. Assessment System**",
+      "community": 257,
+      "community_name": "\ud83c\udfaf **System Modules & Features**",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -13405,8 +13570,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -13416,8 +13581,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -13427,8 +13592,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "**development:**"
     },
     {
@@ -13438,8 +13603,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "**key environment:**"
     },
     {
@@ -13449,8 +13614,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "**additional files:**"
     },
     {
@@ -22771,6 +22936,17 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/api/notifications/incident-report/route.js",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_notifications_incident_report_route",
+      "target": "src_app_api_notifications_incident_report_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/api/ocr/ktp/route.js",
       "source_location": "L11",
       "weight": 1.0,
@@ -25184,6 +25360,28 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/data/incident-report-approval/page.jsx",
+      "source_location": "L31",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_incident_report_approval_page",
+      "target": "src_app_data_incident_report_approval_page_incidenthandlingapprovalpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/incident-report/page.jsx",
+      "source_location": "L33",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_incident_report_page",
+      "target": "src_app_data_incident_report_page_incidentreportlistpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/data/layout.jsx",
       "source_location": "L9",
       "weight": 1.0,
@@ -27162,6 +27360,17 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/settings/incident-report/page.jsx",
+      "source_location": "L27",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_settings_incident_report_page",
+      "target": "src_app_settings_incident_report_page_incidentnotificationsettingspage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/settings/layout.jsx",
       "source_location": "L9",
       "weight": 1.0,
@@ -27712,7 +27921,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L64",
+      "source_location": "L68",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -27723,7 +27932,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L204",
+      "source_location": "L225",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -29363,6 +29572,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1707",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_database_schema_relationships",
+      "target": "database_schema_12_student_incident_reports_unit_notification_domain_data_incident_report_data_incident_report_approval_settings_incident_report",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
       "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
@@ -30424,6 +30644,72 @@
       "_origin": "ast",
       "source": "database_schema_11_1_tables",
       "target": "database_schema_uniform_variant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1711",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_12_student_incident_reports_unit_notification_domain_data_incident_report_data_incident_report_approval_settings_incident_report",
+      "target": "database_schema_12_0_dedicated_pages_access_roles",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1716",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_12_student_incident_reports_unit_notification_domain_data_incident_report_data_incident_report_approval_settings_incident_report",
+      "target": "database_schema_12_1_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1766",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_12_student_incident_reports_unit_notification_domain_data_incident_report_data_incident_report_approval_settings_incident_report",
+      "target": "database_schema_12_2_erd_relationships_incident_reports_domain",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1741",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_12_1_tables",
+      "target": "database_schema_incident_followups",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1718",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_12_1_tables",
+      "target": "database_schema_incident_reports",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DATABASE_SCHEMA.md",
+      "source_location": "L1756",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "database_schema_12_1_tables",
+      "target": "database_schema_incident_unit_recipients",
       "confidence_score": 1.0
     },
     {
@@ -35363,5 +35649,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c073cc14d1af024ab6086fd0942db7e057443357"
+  "built_at_commit": "b8aa558a3692fb3d679c4471f86a89398c2a0da5"
 }

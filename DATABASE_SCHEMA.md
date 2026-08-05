@@ -1702,6 +1702,113 @@ The `/sales/uniform` route serves as the Point of Sale (POS) interface for selli
 6. **Kwitansi & Invoice Generation (`KwitansiModal`):**
    - Displays student name, unit, transaction date, payment method, item breakdown (uniform name, size, quantity, unit price, subtotal), and total amount with browser printing support.
 
+---
+
+## 12. Student Incident Reports & Unit Notification Domain (`/data/incident-report`, `/data/incident-report-approval`, `/settings/incident-report`)
+
+This domain manages student incident reporting, multi-stage status lifecycle (`waiting`, `on_progress`, `completed`), follow-up/feedback timeline logs, and automated unit-level Email & Google Chat notification dispatching.
+
+### 12.0 Dedicated Pages & Access Roles
+- **Input & My Reports (`/data/incident-report`):** Form input for teachers/reporters to create new student incident reports and view reports submitted by themselves.
+- **Handling & Solution Approval (`/data/incident-report-approval`):** Overview table for Counselors, Principals, Vice Principals, or assigned Unit Handling Staff to review incoming unit reports, track status metrics (`waiting`, `on_progress`, `completed`), and record solutions/follow-ups.
+- **Unit Recipient Settings (`/settings/incident-report`):** Per-unit configuration of specific user recipients who receive Email & Google Chat alerts on report submissions and follow-up updates.
+
+### 12.1 Tables
+
+#### `incident_reports`
+Main header table storing student incident report submissions.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `incident_number` | `VARCHAR(50)` | Unique tracking code (e.g. `INC-202608-001`) |
+| `title` | `VARCHAR(255)` | Short title of the incident |
+| `student_user_id` | `INTEGER` | FK to `users(user_id)` (The involved student) |
+| `reporter_user_id` | `INTEGER` | FK to `users(user_id)` (The submitting teacher/staff) |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` (Unit of the student/incident) |
+| `incident_date` | `DATE` | Date of incident (Defaults to current date) |
+| `incident_time` | `TIME` | Time of incident (Defaults to current time) |
+| `incident_record` | `VARCHAR(255)` | Manual text entry describing record category/type |
+| `description` | `TEXT` | **Describe the case** (Detailed case description) |
+| `action_taken` | `TEXT` | **Things done by teacher** (Initial teacher response) |
+| `status` | `VARCHAR(30)` | Case status: `'waiting'` (initial), `'on_progress'`, or `'completed'` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+> [!NOTE]
+> **Status Lifecycle:** Initial reports start in `'waiting'` status (editable). Once a follow-up action is logged in `incident_followups`, status automatically advances to `'on_progress'` (locking initial report edit). When fully resolved, it is marked `'completed'`.
+
+#### `incident_followups`
+Stores the timeline history of follow-ups and feedback logged for an incident report.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `incident_id` | `INTEGER` | FK to `incident_reports(id)` ON DELETE CASCADE |
+| `user_id` | `INTEGER` | FK to `users(user_id)` (Staff/Counselor logging follow-up) |
+| `followup_date` | `DATE` | Date when follow-up occurred |
+| `followup_time` | `TIME` | Time when follow-up occurred |
+| `location` | `VARCHAR(255)` | Location of action (e.g. "Counseling Room", "Classroom 8B") |
+| `action_details` | `TEXT` | Description of follow-up actions performed |
+| `resulting_status` | `VARCHAR(30)` | Resulting status update (`'on_progress'` or `'completed'`) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+
+#### `incident_unit_recipients`
+Maps specific users per unit who receive Email and Google Chat notification alerts.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `SERIAL` | Primary Key |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` ON DELETE CASCADE |
+| `user_id` | `INTEGER` | FK to `users(user_id)` ON DELETE CASCADE |
+| `(unit_id, user_id)` | `UNIQUE` | Unique constraint per unit and recipient user |
+
+### 12.2 ERD / Relationships (Incident Reports Domain)
+
+```mermaid
+erDiagram
+    unit ||--o{ incident_reports : "categorizes_unit"
+    users ||--o{ incident_reports : "involved_student"
+    users ||--o{ incident_reports : "reported_by"
+    incident_reports ||--o{ incident_followups : "has_followup_history"
+    users ||--o{ incident_followups : "handled_by"
+    unit ||--o{ incident_unit_recipients : "configures_recipients"
+    users ||--o{ incident_unit_recipients : "notified_user"
+
+    incident_reports {
+        int id PK
+        string incident_number UK
+        string title
+        int student_user_id FK
+        int reporter_user_id FK
+        int unit_id FK
+        date incident_date
+        time incident_time
+        string incident_record
+        text description
+        text action_taken
+        string status
+    }
+
+    incident_followups {
+        int id PK
+        int incident_id FK
+        int user_id FK
+        date followup_date
+        time followup_time
+        string location
+        text action_details
+        string resulting_status
+    }
+
+    incident_unit_recipients {
+        int id PK
+        int unit_id FK
+        int user_id FK
+    }
+```
+
+
 7. **Sales Reports & Financial Summary:**
    - Aggregates sales statistics across customizable date ranges: Total Orders Count, Total Revenue (`total_amount`), Total HPP Cost (`total_cost`), Gross Profit ($\text{Total Revenue} - \text{Total Cost}$), and Total Items Sold.
 

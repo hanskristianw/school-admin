@@ -1275,8 +1275,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1784880324.5921917,
-    "ast_hash": "4f214ff2c5b09fc2f866df89b0b99c5e",
+    "mtime": 1785915933.8527553,
+    "ast_hash": "275c052fac0cf53f4829ab35334c9192",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {
@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1785895932.8623946,
-    "ast_hash": "a41ac97c81411dc569af39482d48f91a",
+    "mtime": 1785907760.7821505,
+    "ast_hash": "6de9086ffbcc2cfca11e7d343af97c15",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -1702,6 +1702,31 @@
   "migrations/add-temporary-exit-and-unit-principal-approval.sql": {
     "mtime": 1785473127.682731,
     "ast_hash": "d356aa790131bcc470c1702b01f24dd7",
+    "semantic_hash": ""
+  },
+  "migrations/create-incident-reports.sql": {
+    "mtime": 1785915944.3450162,
+    "ast_hash": "6df60438f56064f8c4acc009b67e035b",
+    "semantic_hash": ""
+  },
+  "src/app/api/notifications/incident-report/route.js": {
+    "mtime": 1785920042.2176178,
+    "ast_hash": "9f1026f4b745c9231e87bac6e0e7fc2e",
+    "semantic_hash": ""
+  },
+  "src/app/data/incident-report/page.jsx": {
+    "mtime": 1785916504.2182157,
+    "ast_hash": "77c51bbae3fc8806aae68bdf8c250d18",
+    "semantic_hash": ""
+  },
+  "src/app/settings/incident-report/page.jsx": {
+    "mtime": 1785914387.5217953,
+    "ast_hash": "9305a60c76d91b1de04dc26dcae8765e",
+    "semantic_hash": ""
+  },
+  "src/app/data/incident-report-approval/page.jsx": {
+    "mtime": 1785919849.2053277,
+    "ast_hash": "fb08c10b53cfa388ed41b2a0360481c0",
     "semantic_hash": ""
   }
 }

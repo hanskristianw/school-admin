@@ -1010,8 +1010,8 @@
     "semantic_hash": "74abb2f31fb2ec3ac99ac67db63d56ad"
   },
   "src/app/data/role_management/page.jsx": {
-    "mtime": 1785391560.1214955,
-    "ast_hash": "e53b97aae785354c1458fd6b4143be63",
+    "mtime": 1785895925.0386229,
+    "ast_hash": "15cd4bf18571e0b0f71e6f49e168b170",
     "semantic_hash": ""
   },
   "src/app/data/room/page.jsx": {
@@ -1275,8 +1275,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1784880324.5921917,
-    "ast_hash": "4f214ff2c5b09fc2f866df89b0b99c5e",
+    "mtime": 1785907624.070306,
+    "ast_hash": "661b60d954af8f06a508f1094c73130a",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {
@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1785807155.387112,
-    "ast_hash": "79c89a9f9f8a281ee4ba5f02e56f8b79",
+    "mtime": 1785907760.7821505,
+    "ast_hash": "6de9086ffbcc2cfca11e7d343af97c15",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -1702,6 +1702,31 @@
   "migrations/add-temporary-exit-and-unit-principal-approval.sql": {
     "mtime": 1785473127.682731,
     "ast_hash": "d356aa790131bcc470c1702b01f24dd7",
+    "semantic_hash": ""
+  },
+  "migrations/create-incident-reports.sql": {
+    "mtime": 1785912666.3091204,
+    "ast_hash": "db0b18e2cedac9ea4386f25264d73637",
+    "semantic_hash": ""
+  },
+  "src/app/api/notifications/incident-report/route.js": {
+    "mtime": 1785914938.2418833,
+    "ast_hash": "53052c0b060255429e3201e44b02f791",
+    "semantic_hash": ""
+  },
+  "src/app/data/incident-report/page.jsx": {
+    "mtime": 1785915308.6720445,
+    "ast_hash": "4692790cbfac8e12f43a2f466a96ef97",
+    "semantic_hash": ""
+  },
+  "src/app/settings/incident-report/page.jsx": {
+    "mtime": 1785914387.5217953,
+    "ast_hash": "9305a60c76d91b1de04dc26dcae8765e",
+    "semantic_hash": ""
+  },
+  "src/app/data/incident-report-approval/page.jsx": {
+    "mtime": 1785915790.972962,
+    "ast_hash": "09f28c2701f9b51a9499ad6167bb1855",
     "semantic_hash": ""
   }
 }
