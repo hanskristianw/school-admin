@@ -3076,8 +3076,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 132,
-      "community_name": "Module 132",
+      "community": 300,
+      "community_name": "bcryptjs",
       "norm_label": "docx"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 132,
-      "community_name": "Module 132",
+      "community": 300,
+      "community_name": "bcryptjs",
       "norm_label": "docx"
     },
     {
@@ -7429,7 +7429,7 @@
       "label": "IncidentHandlingApprovalPage()",
       "file_type": "code",
       "source_file": "src/app/data/incident-report-approval/page.jsx",
-      "source_location": "L31",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "src_app_data_incident_report_approval_page_incidenthandlingapprovalpage",
       "community": 311,
@@ -9063,6 +9063,28 @@
       "community": 213,
       "community_name": "Module 213",
       "norm_label": "adduniformstockpage()"
+    },
+    {
+      "label": "page.jsx",
+      "file_type": "code",
+      "source_file": "src/app/stock/uniform/audit/page.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_stock_uniform_audit_page",
+      "community": 305,
+      "community_name": "page.jsx",
+      "norm_label": "page.jsx"
+    },
+    {
+      "label": "StockAuditResolutionPage()",
+      "file_type": "code",
+      "source_file": "src/app/stock/uniform/audit/page.jsx",
+      "source_location": "L29",
+      "_origin": "ast",
+      "id": "src_app_stock_uniform_audit_page_stockauditresolutionpage",
+      "community": 305,
+      "community_name": "page.jsx",
+      "norm_label": "stockauditresolutionpage()"
     },
     {
       "label": "page.jsx",
@@ -11656,8 +11678,8 @@
       "source_location": "L679",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -11799,8 +11821,8 @@
       "source_location": "L835",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 261,
+      "community_name": "5.1 Tables",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -12368,7 +12390,7 @@
       "label": "`incident_unit_recipients`",
       "file_type": "document",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1756",
+      "source_location": "L1757",
       "_origin": "ast",
       "id": "database_schema_incident_unit_recipients",
       "community": 143,
@@ -12379,7 +12401,7 @@
       "label": "12.2 ERD / Relationships (Incident Reports Domain)",
       "file_type": "document",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1766",
+      "source_location": "L1767",
       "_origin": "ast",
       "id": "database_schema_12_2_erd_relationships_incident_reports_domain",
       "community": 143,
@@ -13295,8 +13317,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -13306,8 +13328,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "**core tables:**"
     },
     {
@@ -13317,8 +13339,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -13328,8 +13350,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 128,
+      "community_name": "Module 128",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -13372,8 +13394,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 132,
+      "community_name": "Module 132",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -13383,8 +13405,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 132,
+      "community_name": "Module 132",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -13394,8 +13416,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 257,
-      "community_name": "\ud83c\udfaf **System Modules & Features**",
+      "community": 132,
+      "community_name": "Module 132",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -13570,8 +13592,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 128,
-      "community_name": "Module 128",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -13581,8 +13603,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 128,
-      "community_name": "Module 128",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -13592,8 +13614,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 128,
-      "community_name": "Module 128",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**development:**"
     },
     {
@@ -13603,8 +13625,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 128,
-      "community_name": "Module 128",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**key environment:**"
     },
     {
@@ -13614,8 +13636,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 128,
-      "community_name": "Module 128",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**additional files:**"
     },
     {
@@ -25361,7 +25383,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/incident-report-approval/page.jsx",
-      "source_location": "L31",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_incident_report_approval_page",
@@ -27410,6 +27432,17 @@
       "_origin": "ast",
       "source": "src_app_stock_uniform_add_page",
       "target": "src_app_stock_uniform_add_page_adduniformstockpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/stock/uniform/audit/page.jsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_stock_uniform_audit_page",
+      "target": "src_app_stock_uniform_audit_page_stockauditresolutionpage",
       "confidence_score": 1.0
     },
     {
@@ -30672,7 +30705,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1766",
+      "source_location": "L1767",
       "weight": 1.0,
       "_origin": "ast",
       "source": "database_schema_12_student_incident_reports_unit_notification_domain_data_incident_report_data_incident_report_approval_settings_incident_report",
@@ -30705,7 +30738,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1756",
+      "source_location": "L1757",
       "weight": 1.0,
       "_origin": "ast",
       "source": "database_schema_12_1_tables",
@@ -35649,5 +35682,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "b8aa558a3692fb3d679c4471f86a89398c2a0da5"
+  "built_at_commit": "a93a11721a5d7f31ce79dab52e896a3ab40da286"
 }

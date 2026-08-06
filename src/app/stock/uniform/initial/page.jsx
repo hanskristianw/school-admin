@@ -1009,6 +1009,14 @@ export default function InitialStockPage() {
           <h2 className="font-semibold" style={{ color: theme.textPrimary }}>📊 Ringkasan Stock Seragam</h2>
           
           <div className="flex flex-wrap gap-2 items-center">
+            {/* Audit & Resolution Shortcut */}
+            <Button
+              onClick={() => router.push('/stock/uniform/audit')}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-1.5 flex items-center gap-1.5 font-semibold"
+            >
+              <span>🔍 Audit & Resolusi Data</span>
+            </Button>
+
             {/* Export Button */}
             {summaryData.length > 0 && (
               <Button

@@ -358,10 +358,15 @@ export default function UniformSalesPage() {
       if (isFree) {
         const stockRows = payloadItems.map(it => {
           const cartItem = items.find(i => i.uniform_id === it.uniform_id && i.size_id === it.size_id)
+          const availSupp = getAvailableSuppliers(it.uniform_id, it.size_id)[0]?.supplier_id
+          const suppId = (cartItem?.supplier_id !== undefined && cartItem?.supplier_id !== null)
+            ? cartItem.supplier_id
+            : (availSupp !== undefined ? availSupp : null)
+
           return {
             uniform_id: it.uniform_id,
             size_id:    it.size_id,
-            supplier_id: cartItem?.supplier_id || null,
+            supplier_id: suppId,
             qty_delta:  -Number(it.qty),
             txn_type:   'sale',
             ref_table:  'uniform_sale',
@@ -438,10 +443,15 @@ export default function UniformSalesPage() {
       // Post stock txn with supplier_id
       const stockRows = (saleItems || []).map(it => {
         const itemInCart = items.find(i => i.uniform_id === it.uniform_id && i.size_id === it.size_id)
+        const availSupp = getAvailableSuppliers(it.uniform_id, it.size_id)[0]?.supplier_id
+        const suppId = (itemInCart?.supplier_id !== undefined && itemInCart?.supplier_id !== null)
+          ? itemInCart.supplier_id
+          : (availSupp !== undefined ? availSupp : null)
+
         return {
           uniform_id: it.uniform_id, 
           size_id: it.size_id, 
-          supplier_id: itemInCart?.supplier_id || null,
+          supplier_id: suppId,
           qty_delta: -Number(it.qty), 
           txn_type: 'sale', 
           ref_table: 'uniform_sale', 
