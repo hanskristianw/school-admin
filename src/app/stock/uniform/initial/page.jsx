@@ -1512,6 +1512,11 @@ export default function InitialStockPage() {
                 const startIndex = (currentPage - 1) * itemsPerPage
                 const endIndex = startIndex + itemsPerPage
                 const paginatedHistory = filteredHistory.slice(startIndex, endIndex)
+
+                // Calculate overall metrics for filtered history across all pages
+                const totalNetQty = filteredHistory.reduce((acc, row) => acc + (row.qty_delta || 0), 0)
+                const totalQtyIn = filteredHistory.reduce((acc, row) => acc + (row.qty_delta > 0 ? row.qty_delta : 0), 0)
+                const totalQtyOut = filteredHistory.reduce((acc, row) => acc + (row.qty_delta < 0 ? Math.abs(row.qty_delta) : 0), 0)
                 
                 return filteredHistory.length === 0 ? (
             <div className="text-center py-8" style={{ color: theme.textSecondary }}>
@@ -1604,8 +1609,52 @@ export default function InitialStockPage() {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot className="border-t font-semibold" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                  <tr>
+                    <td colSpan={3} className="py-2.5 px-3" style={{ color: theme.textPrimary }}>
+                      TOTAL (Seluruh {filteredHistory.length} Transaksi Filtered)
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={`font-extrabold text-sm ${totalNetQty >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {totalNetQty >= 0 ? '+' : ''}{totalNetQty.toLocaleString('id-ID')}
+                      </span>
+                      <div className="text-[10px] font-normal flex gap-1.5 mt-0.5 whitespace-nowrap">
+                        <span className="text-green-600">Masuk: +{totalQtyIn.toLocaleString('id-ID')}</span>
+                        <span className="text-red-600">Keluar: -{totalQtyOut.toLocaleString('id-ID')}</span>
+                      </div>
+                    </td>
+                    <td colSpan={4} className="py-2.5 px-3 text-xs font-normal" style={{ color: theme.textSecondary }}>
+                      Total terhitung dari seluruh {filteredHistory.length} transaksi yang sesuai filter
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
               
+              {/* Summary Cards Bar */}
+              <div className="mt-4 p-3 rounded-lg border flex flex-wrap items-center justify-between gap-3 text-xs" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-base">📦</span>
+                  <div>
+                    <span className="font-bold text-xs" style={{ color: theme.textPrimary }}>Total Jumlah Seragam (Filtered): </span>
+                    <span className={`font-extrabold text-sm ml-1 ${totalNetQty >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {totalNetQty >= 0 ? '+' : ''}{totalNetQty.toLocaleString('id-ID')} pcs
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-1 rounded font-medium border" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
+                    Hasil Filter: <strong className="ml-1" style={{ color: theme.textPrimary }}>{filteredHistory.length} transaksi</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded font-medium border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300">
+                    Masuk (+): <strong className="ml-1">+{totalQtyIn.toLocaleString('id-ID')} pcs</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded font-medium border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300">
+                    Keluar (-): <strong className="ml-1">-{totalQtyOut.toLocaleString('id-ID')} pcs</strong>
+                  </span>
+                </div>
+              </div>
+
               {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
