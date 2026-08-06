@@ -1751,6 +1751,7 @@ Stores the timeline history of follow-ups and feedback logged for an incident re
 | `location` | `VARCHAR(255)` | Location of action (e.g. "Counseling Room", "Classroom 8B") |
 | `action_details` | `TEXT` | Description of follow-up actions performed |
 | `resulting_status` | `VARCHAR(30)` | Resulting status update (`'on_progress'` or `'completed'`) |
+| `attachment_url` | `TEXT` | Optional URL of uploaded image attachment / evidence |
 | `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
 
 #### `incident_unit_recipients`
@@ -1799,6 +1800,7 @@ erDiagram
         string location
         text action_details
         string resulting_status
+        string attachment_url
     }
 
     incident_unit_recipients {

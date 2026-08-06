@@ -110,6 +110,7 @@ export default function IncidentReportListPage() {
       const { data: unitsData } = await supabase
         .from('unit')
         .select('*')
+        .eq('is_school', true)
         .order('unit_name')
       setUnits(unitsData || [])
 

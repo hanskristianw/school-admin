@@ -275,6 +275,7 @@ export async function POST(request) {
       const locationText = body.location || followupInfo?.location || '-'
       const followupDateText = body.followupDate || followupInfo?.followup_date || incident.incident_date
       const followupTimeText = followupInfo?.followup_time || ''
+      const attachmentUrlText = body.attachmentUrl || body.attachment_url || followupInfo?.attachment_url || null
 
       const handlerName = followupInfo?.user 
         ? `${followupInfo.user.user_nama_depan || ''} ${followupInfo.user.user_nama_belakang || ''}`.trim() 
@@ -304,6 +305,14 @@ export async function POST(request) {
             <div style="background-color: #eff6ff; padding: 14px; border-left: 4px solid #2563eb; margin-bottom: 20px; border-radius: 4px;">
               <h4 style="margin: 0 0 8px 0; color: #1e3a8a;">Action Taken / Feedback:</h4>
               <p style="margin: 0; white-space: pre-wrap; font-size: 14px;">${actionDetailsText}</p>
+              ${attachmentUrlText ? `
+                <div style="margin-top: 14px; pt-3; border-top: 1px solid #cbd5e1;">
+                  <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: bold; color: #1e3a8a;">📷 Image Attachment:</p>
+                  <a href="${attachmentUrlText}" target="_blank">
+                    <img src="${attachmentUrlText}" alt="Follow-up Attachment" style="max-width: 100%; max-height: 280px; border-radius: 6px; border: 1px solid #cbd5e1; object-fit: contain;" />
+                  </a>
+                </div>
+              ` : ''}
             </div>
 
             <div style="text-align: center; margin-top: 24px;">
@@ -316,7 +325,7 @@ export async function POST(request) {
         </div>
       `
 
-      chatText = `📝 *INCIDENT FOLLOW-UP UPDATE*\n\n*Incident:* ${incident.title} (${incident.incident_number || `#${incident.id}`})\n*Student:* ${studentName}\n*Handled By:* ${handlerName}\n*Location:* ${locationText}\n*Status:* ${statusUpper}\n\n*Action / Feedback:*\n${actionDetailsText}\n\n*View Details:* ${detailLink}`
+      chatText = `📝 *INCIDENT FOLLOW-UP UPDATE*\n\n*Incident:* ${incident.title} (${incident.incident_number || `#${incident.id}`})\n*Student:* ${studentName}\n*Handled By:* ${handlerName}\n*Location:* ${locationText}\n*Status:* ${statusUpper}\n\n*Action / Feedback:*\n${actionDetailsText}${attachmentUrlText ? `\n\n*Attachment:* ${attachmentUrlText}` : ''}\n\n*View Details:* ${detailLink}`
     }
 
     // 4. Send Email notifications to all configured recipient emails

@@ -31,8 +31,12 @@ CREATE TABLE IF NOT EXISTS incident_followups (
   location VARCHAR(255) DEFAULT '-',
   action_details TEXT NOT NULL,
   resulting_status VARCHAR(30) DEFAULT 'on_progress',
+  attachment_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure attachment_url column exists if table was created previously
+ALTER TABLE incident_followups ADD COLUMN IF NOT EXISTS attachment_url TEXT;
 
 -- 3. Table for Per-Unit Incident Notification Recipients
 CREATE TABLE IF NOT EXISTS incident_unit_recipients (

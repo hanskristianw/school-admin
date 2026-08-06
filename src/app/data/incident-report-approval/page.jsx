@@ -25,7 +25,10 @@ import {
   faSliders,
   faUser,
   faCalendar,
-  faPlus
+  faPlus,
+  faPaperclip,
+  faImage,
+  faTrash
 } from '@fortawesome/free-solid-svg-icons'
 
 export default function IncidentHandlingApprovalPage() {
@@ -72,6 +75,61 @@ export default function IncidentHandlingApprovalPage() {
   })
   const [submittingFollowup, setSubmittingFollowup] = useState(false)
 
+  // Image Attachment States
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [filePreview, setFilePreview] = useState('')
+  const [uploadingFile, setUploadingFile] = useState(false)
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setNotif({ isOpen: true, title: 'Invalid File', message: 'Attachment must be an image (PNG, JPG, WEBP)', type: 'error' })
+      return
+    }
+    setSelectedFile(file)
+    setFilePreview(URL.createObjectURL(file))
+  }
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    setFilePreview('')
+  }
+
+  const uploadAttachmentImage = async (file) => {
+    if (!file) return null
+    try {
+      const fileExt = file.name.split('.').pop() || 'png'
+      const fileName = `incident-followups/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`
+      
+      let publicUrl = ''
+      const { data: storageData, error: storageErr } = await supabase.storage
+        .from('profile-pictures')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true })
+
+      if (!storageErr && storageData) {
+        const { data: pubData } = supabase.storage
+          .from('profile-pictures')
+          .getPublicUrl(fileName)
+        publicUrl = pubData?.publicUrl || ''
+      }
+
+      if (!publicUrl) {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('userId', String(currentUser?.user_id || currentUser?.id || 1))
+        const res = await fetch('/api/upload', { method: 'POST', body: fd })
+        const json = await res.json()
+        if (json.publicUrl) publicUrl = json.publicUrl
+      }
+
+      return publicUrl
+    } catch (err) {
+      console.warn('Upload attachment error:', err)
+      return null
+    }
+  }
+
   // Fetch Current Logged-in User
   useEffect(() => {
     try {
@@ -91,6 +149,7 @@ export default function IncidentHandlingApprovalPage() {
       const { data: unitsData } = await supabase
         .from('unit')
         .select('*')
+        .eq('is_school', true)
         .order('unit_name')
       setUnits(unitsData || [])
 
@@ -195,6 +254,8 @@ export default function IncidentHandlingApprovalPage() {
     setSelectedReport(report)
     setShowHandlingModal(true)
     setLoadingFollowups(true)
+    setSelectedFile(null)
+    setFilePreview('')
     setFollowupForm({
       followup_date: getTodayDate(),
       followup_time: getCurrentTime(),
@@ -227,6 +288,13 @@ export default function IncidentHandlingApprovalPage() {
     try {
       setSubmittingFollowup(true)
 
+      let attachmentUrl = null
+      if (selectedFile) {
+        setUploadingFile(true)
+        attachmentUrl = await uploadAttachmentImage(selectedFile)
+        setUploadingFile(false)
+      }
+
       const payload = {
         incident_id: selectedReport.id,
         user_id: currentUser.user_id || currentUser.id,
@@ -234,7 +302,8 @@ export default function IncidentHandlingApprovalPage() {
         followup_time: followupForm.followup_time,
         location: followupForm.location.trim() || null,
         action_details: followupForm.action_details.trim(),
-        resulting_status: followupForm.resulting_status
+        resulting_status: followupForm.resulting_status,
+        attachment_url: attachmentUrl
       }
 
       // Insert Followup Entry
@@ -284,20 +353,29 @@ export default function IncidentHandlingApprovalPage() {
             resultingStatus: followupForm.resulting_status,
             location: followupForm.location.trim(),
             followupDate: followupForm.followup_date,
-            handlerName: handlerFullName || 'Staff/Counselor'
+            handlerName: handlerFullName || 'Staff/Counselor',
+            attachmentUrl: attachmentUrl
           })
         })
       } catch (notifErr) {
         console.warn('Follow-up notification trigger failed:', notifErr)
       }
 
-      setNotif({ isOpen: true, title: 'Success', message: 'Solution & follow-up recorded successfully!', type: 'success' })
-      setShowHandlingModal(false)
-      fetchData()
+      // Refresh followups list and clear form
+      setFollowups(prev => [...prev, createdFol || payload])
+      setSelectedFile(null)
+      setFilePreview('')
+      setFollowupForm(p => ({
+        ...p,
+        action_details: '',
+        location: ''
+      }))
 
+      setNotif({ isOpen: true, title: 'Success', message: 'Solution & follow-up recorded successfully!', type: 'success' })
+      fetchData()
     } catch (err) {
       console.error('Submit followup error:', err)
-      setNotif({ isOpen: true, title: 'Error', message: err.message || 'Failed to record solution', type: 'error' })
+      setNotif({ isOpen: true, title: 'Error', message: err.message || 'Failed to save solution', type: 'error' })
     } finally {
       setSubmittingFollowup(false)
     }
@@ -674,7 +752,26 @@ export default function IncidentHandlingApprovalPage() {
                               <span className="text-[10px]" style={{ color: theme.textSecondary }}>{folDate} {fol.followup_time ? fol.followup_time.slice(0, 5) : ''}</span>
                             </div>
                             <p className="text-xs leading-relaxed" style={{ color: theme.textBody }}>{fol.action_details}</p>
-                            <div className="flex items-center justify-between text-[10px]" style={{ color: theme.textSecondary }}>
+
+                            {fol.attachment_url && (
+                              <div className="mt-2 pt-1.5 border-t space-y-1" style={{ borderColor: theme.border }}>
+                                <a href={fol.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
+                                  <FontAwesomeIcon icon={faPaperclip} className="text-[10px]" />
+                                  <span>View Image Attachment</span>
+                                </a>
+                                <div>
+                                  <a href={fol.attachment_url} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                      src={fol.attachment_url}
+                                      alt="Follow-up Attachment"
+                                      className="max-h-36 rounded-md border object-cover shadow-sm hover:opacity-90 transition-opacity"
+                                    />
+                                  </a>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between text-[10px] pt-1" style={{ color: theme.textSecondary }}>
                               <span>Status: {fol.resulting_status}</span>
                               {getStatusBadge(fol.resulting_status)}
                             </div>
@@ -741,6 +838,32 @@ export default function IncidentHandlingApprovalPage() {
                       className="w-full text-xs p-2 rounded-md focus:outline-none border"
                       style={inputStyle}
                     />
+                  </div>
+
+                  {/* Attachment Upload Field */}
+                  <div>
+                    <Label className="text-xs font-semibold mb-1 flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
+                      <FontAwesomeIcon icon={faPaperclip} className="text-indigo-500" />
+                      <span>Image Attachment (Optional)</span>
+                    </Label>
+                    
+                    {!selectedFile ? (
+                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" style={{ borderColor: theme.border }}>
+                        <FontAwesomeIcon icon={faImage} className="text-indigo-500 text-sm" />
+                        <span className="text-xs font-medium" style={{ color: theme.textSecondary }}>Choose image (PNG, JPG, WEBP)...</span>
+                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                      </label>
+                    ) : (
+                      <div className="flex items-center justify-between p-2 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <img src={filePreview} alt="Attachment Preview" className="w-9 h-9 object-cover rounded border" />
+                          <span className="text-xs font-medium truncate" style={{ color: theme.textPrimary }}>{selectedFile.name}</span>
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFile} className="text-red-500 hover:text-red-700 h-7 w-7 p-0">
+                          <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div>

@@ -51,7 +51,7 @@ export default function IncidentNotificationSettingsPage() {
     try {
       setLoading(true)
       const [{ data: unitsData, error: uErr }, { data: usersData, error: usrErr }] = await Promise.all([
-        supabase.from('unit').select('*').order('unit_name'),
+        supabase.from('unit').select('*').eq('is_school', true).order('unit_name'),
         supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_email, user_role_id, role:user_role_id(role_name)').eq('is_active', true).order('user_nama_depan')
       ])
 
