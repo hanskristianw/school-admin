@@ -12,6 +12,8 @@ import { supabase, createSupabaseWithAuth } from '@/lib/supabase';
 import ImageCropUploader from '@/components/ui/image-crop-uploader';
 import { useTheme } from '@/lib/theme';
 import { useI18n } from '@/lib/i18n';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrash, faExclamationTriangle, faSpinner, faShieldAlt, faBan, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
 
 
 export default function UserManagement() {
@@ -73,6 +75,167 @@ export default function UserManagement() {
     message: '',
     type: 'success'
   });
+
+  // Delete modal state & safety verification
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    user: null,
+    isChecking: false,
+    canDelete: false,
+    blockers: [],
+    isDeleting: false
+  });
+
+  // Start Delete User Process with Multi-Table Safety Checks
+  const handleStartDeleteUser = async (userToDelete) => {
+    if (!userToDelete) return;
+    setDeleteModal({
+      isOpen: true,
+      user: userToDelete,
+      isChecking: true,
+      canDelete: false,
+      blockers: [],
+      isDeleting: false
+    });
+
+    const userId = userToDelete.user_id;
+    const blockers = [];
+
+    // 1. Check uniform_sale (Pembelian Seragam)
+    try {
+      const { count } = await supabase
+        .from('uniform_sale')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (count && count > 0) {
+        blockers.push(`Riwayat Penjualan Seragam (${count} transaksi)`);
+      }
+    } catch (e) {}
+
+    // 2. Check detail_siswa (Profile Siswa & Rapor)
+    try {
+      const { count } = await supabase
+        .from('detail_siswa')
+        .select('*', { count: 'exact', head: true })
+        .eq('detail_siswa_user_id', userId);
+
+      if (count && count > 0) {
+        blockers.push(`Profile Siswa & Keanggotaan Kelas/Rapor (${count} kelas/rapor)`);
+      }
+    } catch (e) {}
+
+    // 3. Check assessment (Catatan Asesmen)
+    try {
+      const { count } = await supabase
+        .from('assessment')
+        .select('*', { count: 'exact', head: true })
+        .eq('assessment_user_id', userId);
+
+      if (count && count > 0) {
+        blockers.push(`Catatan Asesmen (${count} asesmen)`);
+      }
+    } catch (e) {}
+
+    // 4. Check incident_reports (Laporan Insiden)
+    try {
+      const { count } = await supabase
+        .from('incident_reports')
+        .select('*', { count: 'exact', head: true })
+        .or(`student_user_id.eq.${userId},reporter_user_id.eq.${userId}`);
+
+      if (count && count > 0) {
+        blockers.push(`Laporan Insiden (${count} laporan)`);
+      }
+    } catch (e) {}
+
+    // 5. Check fpb (Form Pengajuan Biaya)
+    try {
+      const { count } = await supabase
+        .from('fpb')
+        .select('*', { count: 'exact', head: true })
+        .eq('requested_by_user_id', userId);
+
+      if (count && count > 0) {
+        blockers.push(`Form Pengajuan Biaya / FPB (${count} pengajuan)`);
+      }
+    } catch (e) {}
+
+    // 6. Check consultation (Catatan Konsultasi)
+    try {
+      const { count } = await supabase
+        .from('consultation')
+        .select('*', { count: 'exact', head: true })
+        .or(`consultation_counselor_user_id.eq.${userId},created_by_user_id.eq.${userId}`);
+
+      if (count && count > 0) {
+        blockers.push(`Catatan Konsultasi (${count} catatan)`);
+      }
+    } catch (e) {}
+
+    // 7. Check kelas_attendance (Presensi Kehadiran)
+    try {
+      const { count } = await supabase
+        .from('kelas_attendance')
+        .select('*', { count: 'exact', head: true })
+        .eq('created_by', userId);
+
+      if (count && count > 0) {
+        blockers.push(`Catatan Presensi Kehadiran (${count} presensi)`);
+      }
+    } catch (e) {}
+
+    setDeleteModal({
+      isOpen: true,
+      user: userToDelete,
+      isChecking: false,
+      canDelete: blockers.length === 0,
+      blockers,
+      isDeleting: false
+    });
+  };
+
+  // Confirm Delete User
+  const handleConfirmDeleteUser = async () => {
+    if (!deleteModal.user || !deleteModal.canDelete) return;
+    try {
+      setDeleteModal(prev => ({ ...prev, isDeleting: true }));
+
+      // Delete position history first if any
+      await supabase.from('user_position_history').delete().eq('user_id', deleteModal.user.user_id);
+
+      // Delete user
+      const { error } = await supabase.from('users').delete().eq('user_id', deleteModal.user.user_id);
+      if (error) throw error;
+
+      setNotification({
+        isOpen: true,
+        title: 'Berhasil',
+        message: `Pengguna "${deleteModal.user.user_nama_depan} ${deleteModal.user.user_nama_belakang || ''}" berhasil dihapus.`,
+        type: 'success'
+      });
+
+      setDeleteModal({ isOpen: false, user: null, isChecking: false, canDelete: false, blockers: [], isDeleting: false });
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setNotification({
+        isOpen: true,
+        title: 'Gagal',
+        message: err.message || 'Gagal menghapus pengguna',
+        type: 'error'
+      });
+    } finally {
+      setDeleteModal(prev => ({ ...prev, isDeleting: false }));
+    }
+  };
+
+  // Helper check if user is Student
+  const isStudentUser = (user) => {
+    if (!user) return false;
+    const roleName = (user.role_name || '').toLowerCase();
+    return roleName.includes('student') || roleName.includes('siswa') || roleName.includes('murid') || user.user_role_id === 3;
+  };
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -1858,6 +2021,15 @@ export default function UserManagement() {
                     >
                       Edit
                     </Button>
+                    {isStudentUser(user) && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleStartDeleteUser(user)}
+                        className="bg-red-600 hover:bg-red-700 text-white border-none px-3"
+                      >
+                        <FontAwesomeIcon icon={faTrash} className="mr-1" /> Hapus
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
@@ -1919,9 +2091,16 @@ export default function UserManagement() {
                         </td>
                       )}
                       <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
-                        <Button size="sm" onClick={() => handleEdit(user)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
-                          Edit
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => handleEdit(user)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
+                            Edit
+                          </Button>
+                          {isStudentUser(user) && (
+                            <Button size="sm" onClick={() => handleStartDeleteUser(user)} className="bg-red-600 hover:bg-red-700 text-white border-none">
+                              <FontAwesomeIcon icon={faTrash} className="mr-1" /> Hapus
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1952,6 +2131,114 @@ export default function UserManagement() {
         onCropComplete={handleCropComplete}
         aspectRatio={1}
       />
+
+      {/* Delete User Safety Verification Modal */}
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onClose={() => {
+          if (!deleteModal.isDeleting) setDeleteModal(prev => ({ ...prev, isOpen: false }))
+        }}
+        title={deleteModal.canDelete ? "🗑️ Konfirmasi Hapus Pengguna" : "🛡️ Proteksi Data Pengguna"}
+        size="md"
+      >
+        <div className="space-y-4 text-xs">
+          {deleteModal.isChecking ? (
+            <div className="py-8 text-center space-y-3">
+              <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-indigo-500" />
+              <p className="font-semibold" style={{ color: theme.textBody }}>Memeriksa keterkaitan data pengguna...</p>
+            </div>
+          ) : !deleteModal.canDelete ? (
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-900 dark:text-red-200">
+                <div className="flex items-start gap-2.5">
+                  <FontAwesomeIcon icon={faBan} className="text-red-600 dark:text-red-400 text-base mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-sm mb-1">Pengguna Tidak Dapat Dihapus!</h4>
+                    <p className="text-xs opacity-90">
+                      Pengguna <span className="font-bold underline">{deleteModal.user?.user_nama_depan} {deleteModal.user?.user_nama_belakang || ''}</span> (ID #{deleteModal.user?.user_id}) memiliki keterkaitan data penting dalam sistem sehingga tidak dapat dihapus:
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-900/50" style={{ borderColor: theme.border }}>
+                <h5 className="font-bold mb-2 text-xs text-gray-700 dark:text-gray-300">Detail Keterkaitan Data:</h5>
+                <ul className="space-y-1.5 list-disc list-inside font-medium text-red-600 dark:text-red-400">
+                  {deleteModal.blockers.map((b, idx) => (
+                    <li key={idx}>{b}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="p-2.5 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-blue-900 dark:text-blue-200 text-[11px]">
+                💡 <strong>Saran:</strong> Jika pengguna sudah tidak aktif di sekolah, Anda dapat mengubah status akunnya menjadi <strong>"Inactive"</strong> pada tombol Edit.
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  size="sm"
+                  onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
+                  style={{ background: theme.subtleBg, color: theme.textBody, border: `1px solid ${theme.border}` }}
+                >
+                  Tutup
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200">
+                <div className="flex items-start gap-2.5">
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-600 dark:text-amber-400 text-base mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-sm mb-1">Konfirmasi Penghapusan Akun</h4>
+                    <p className="text-xs opacity-90">
+                      Apakah Anda yakin ingin menghapus pengguna <span className="font-bold">{deleteModal.user?.user_nama_depan} {deleteModal.user?.user_nama_belakang || ''}</span> (ID #{deleteModal.user?.user_id})?
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900/40 text-green-900 dark:text-green-200 text-xs">
+                <FontAwesomeIcon icon={faCheckCircle} className="text-green-600 mr-1.5" />
+                <span>Pemeriksaan aman: Pengguna ini tidak memiliki transaksi penjualan seragam, data rapor, asesmen, atau insiden terkait.</span>
+              </div>
+
+              <p className="text-xs text-red-500 dark:text-red-400 font-semibold italic">
+                ⚠️ Catatan: Tindakan penghapusan akun ini permanen dan tidak dapat dibatalkan.
+              </p>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  size="sm"
+                  disabled={deleteModal.isDeleting}
+                  onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
+                  style={{ background: theme.subtleBg, color: theme.textBody, border: `1px solid ${theme.border}` }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={deleteModal.isDeleting}
+                  onClick={handleConfirmDeleteUser}
+                  className="bg-red-600 hover:bg-red-700 text-white border-none"
+                >
+                  {deleteModal.isDeleting ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} spin className="mr-1.5" />
+                      Menghapus...
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faTrash} className="mr-1.5" />
+                      Ya, Hapus Pengguna
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

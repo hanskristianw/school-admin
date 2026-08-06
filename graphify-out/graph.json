@@ -8375,7 +8375,7 @@
       "label": "UserManagement()",
       "file_type": "code",
       "source_file": "src/app/data/user/page.jsx",
-      "source_location": "L17",
+      "source_location": "L19",
       "_origin": "ast",
       "id": "src_app_data_user_page_usermanagement",
       "community": 200,
@@ -26856,7 +26856,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/user/page.jsx",
-      "source_location": "L17",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_user_page",
@@ -35682,5 +35682,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a93a11721a5d7f31ce79dab52e896a3ab40da286"
+  "built_at_commit": "eb71ae33759112824eb191b5fc403f56be91ecc0"
 }
