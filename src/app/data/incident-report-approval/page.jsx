@@ -28,7 +28,8 @@ import {
   faPlus,
   faPaperclip,
   faImage,
-  faTrash
+  faTrash,
+  faArrowsLeftRight
 } from '@fortawesome/free-solid-svg-icons'
 
 export default function IncidentHandlingApprovalPage() {
@@ -223,15 +224,15 @@ export default function IncidentHandlingApprovalPage() {
   const getLevelBadge = (level) => {
     switch (level) {
       case 'Level 1':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">Level 1</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">Level 1</span>
       case 'Level 2':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">Level 2</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">Level 2</span>
       case 'Level 3':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">Level 3</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">Level 3</span>
       case 'Zero Tolerance':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">Zero Tolerance</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">Zero Tolerance</span>
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{level || 'Level 1'}</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{level || 'Level 1'}</span>
     }
   }
 
@@ -239,13 +240,13 @@ export default function IncidentHandlingApprovalPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'waiting':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.yellowBg, color: theme.yellowText, borderColor: theme.border }}><FontAwesomeIcon icon={faClock} className="text-[10px]" /> Waiting</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.yellowBg, color: theme.yellowText, borderColor: theme.border }}><FontAwesomeIcon icon={faClock} className="text-[10px]" /> Waiting</span>
       case 'on_progress':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.blueBg, color: theme.blueText, borderColor: theme.border }}><FontAwesomeIcon icon={faHourglassHalf} className="text-[10px]" /> On Progress</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.blueBg, color: theme.blueText, borderColor: theme.border }}><FontAwesomeIcon icon={faHourglassHalf} className="text-[10px]" /> On Progress</span>
       case 'completed':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.greenBg, color: theme.greenText, borderColor: theme.border }}><FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" /> Completed</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.greenBg, color: theme.greenText, borderColor: theme.border }}><FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" /> Completed</span>
       default:
-        return <span className="px-2 py-0.5 rounded text-xs border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{status}</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded text-xs border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{status}</span>
     }
   }
 
@@ -501,108 +502,241 @@ export default function IncidentHandlingApprovalPage() {
               No incident reports found for the selected filter.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs border-collapse">
-                <thead>
-                  <tr className="text-left border-b font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary, borderColor: theme.border }}>
-                    <th className="py-3 px-3">Code / Title / Case Preview</th>
-                    <th className="py-3 px-3">Student</th>
-                    <th className="py-3 px-3">Unit</th>
-                    <th className="py-3 px-3">Location</th>
-                    <th className="py-3 px-3">Date & Time</th>
-                    <th className="py-3 px-3">Incident Level</th>
-                    <th className="py-3 px-3">Reported By</th>
-                    <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y" style={{ borderColor: theme.border }}>
-                  {filteredReports.map(rep => {
-                    const studentName = `${rep.student?.user_nama_depan || ''} ${rep.student?.user_nama_belakang || ''}`.trim() || 'Unknown Student'
-                    const reporterName = `${rep.reporter?.user_nama_depan || ''} ${rep.reporter?.user_nama_belakang || ''}`.trim() || 'Staff'
-                    const unitName = rep.unit?.unit_name || '-'
+            <div className="space-y-4">
+              {/* Mobile / Tablet Responsive Card View (Visible on screens < lg) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-3">
+                {filteredReports.map(rep => {
+                  const studentName = `${rep.student?.user_nama_depan || ''} ${rep.student?.user_nama_belakang || ''}`.trim() || 'Unknown Student'
+                  const reporterName = `${rep.reporter?.user_nama_depan || ''} ${rep.reporter?.user_nama_belakang || ''}`.trim() || 'Staff'
+                  const unitName = rep.unit?.unit_name || '-'
 
-                    let locationDisplay = '-'
-                    let extraStudentsCount = 0
-                    let casePreview = ''
-                    if (rep.description) {
-                      if (rep.description.includes('📍 Place of Incident:')) {
-                        const matchLoc = rep.description.match(/📍 Place of Incident:\s*([^\n]+)/)
-                        if (matchLoc && matchLoc[1]) locationDisplay = matchLoc[1].trim()
-                      }
-                      if (rep.description.includes('👥 All Involved Students:')) {
-                        const matchSt = rep.description.match(/👥 All Involved Students:\s*([^\n]+)/)
-                        if (matchSt && matchSt[1]) {
-                          const names = matchSt[1].split(',').map(n => n.trim()).filter(Boolean)
-                          if (names.length > 1) extraStudentsCount = names.length - 1
-                        }
-                      }
-                      casePreview = rep.description
-                        .replace(/📍 Place of Incident:[^\n]+\n?/, '')
-                        .replace(/👥 All Involved Students:[^\n]+\n?/, '')
-                        .trim()
-                      if (casePreview.length > 55) casePreview = casePreview.substring(0, 55) + '...'
+                  let locationDisplay = '-'
+                  let extraStudentsCount = 0
+                  let casePreview = ''
+                  if (rep.description) {
+                    if (rep.description.includes('📍 Place of Incident:')) {
+                      const matchLoc = rep.description.match(/📍 Place of Incident:\s*([^\n]+)/)
+                      if (matchLoc && matchLoc[1]) locationDisplay = matchLoc[1].trim()
                     }
+                    if (rep.description.includes('👥 All Involved Students:')) {
+                      const matchSt = rep.description.match(/👥 All Involved Students:\s*([^\n]+)/)
+                      if (matchSt && matchSt[1]) {
+                        const names = matchSt[1].split(',').map(n => n.trim()).filter(Boolean)
+                        if (names.length > 1) extraStudentsCount = names.length - 1
+                      }
+                    }
+                    casePreview = rep.description
+                      .replace(/📍 Place of Incident:[^\n]+\n?/, '')
+                      .replace(/👥 All Involved Students:[^\n]+\n?/, '')
+                      .trim()
+                    if (casePreview.length > 70) casePreview = casePreview.substring(0, 70) + '...'
+                  }
 
-                    return (
-                      <tr key={rep.id} className="transition-colors" style={{ borderColor: theme.border }}>
-                        <td className="py-3 px-3">
-                          <div className="font-bold" style={{ color: theme.textPrimary }}>{rep.title}</div>
-                          <div className="text-[10px]" style={{ color: theme.textSecondary }}>{rep.incident_number || `#${rep.id}`}</div>
-                          {casePreview && (
-                            <div className="text-[11px] text-gray-500 italic mt-0.5 line-clamp-1">
-                              "{casePreview}"
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-3">
-                          <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                            <span>{studentName}</span>
-                            {extraStudentsCount > 0 && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800" title="Multiple students involved">
-                                +{extraStudentsCount}
-                              </span>
-                            )}
+                  return (
+                    <div
+                      key={rep.id}
+                      onClick={() => handleOpenHandlingModal(rep)}
+                      className="p-3.5 rounded-xl border transition-all hover:shadow-md cursor-pointer flex flex-col justify-between space-y-3"
+                      style={{ background: theme.cardBg, borderColor: theme.border }}
+                    >
+                      <div className="space-y-2">
+                        {/* Top Header: Title & Badges */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className="font-bold text-xs leading-tight" style={{ color: theme.textPrimary }}>
+                              {rep.title}
+                            </h3>
+                            <span className="text-[10px]" style={{ color: theme.textSecondary }}>
+                              {rep.incident_number || `#${rep.id}`}
+                            </span>
                           </div>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded font-medium border" style={{ background: theme.subtleBg, color: theme.textBody, borderColor: theme.border }}>
-                            {unitName}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-medium" style={{ color: theme.textBody }}>
-                          {locationDisplay}
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap" style={{ color: theme.textBody }}>
-                          <div>{rep.incident_date}</div>
-                          <div className="text-[10px]" style={{ color: theme.textSecondary }}>{rep.incident_time}</div>
-                        </td>
-                        <td className="py-3 px-3">
-                          {getLevelBadge(rep.incident_record)}
-                        </td>
-                        <td className="py-3 px-3" style={{ color: theme.textBody }}>{reporterName}</td>
-                        <td className="py-3 px-3">{getStatusBadge(rep.status)}</td>
-                        <td className="py-3 px-3 text-right">
-                          <Button
-                            size="sm"
-                            onClick={() => handleOpenHandlingModal(rep)}
-                            className={`text-xs px-2.5 py-1 flex items-center gap-1 ml-auto font-semibold ${
-                              rep.status === 'waiting'
-                                ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                            }`}
-                          >
-                            <FontAwesomeIcon icon={faEye} />
-                            <span>{rep.status === 'waiting' ? 'Add Solution' : 'View & Update'}</span>
-                          </Button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                          <div className="flex flex-wrap items-center gap-1.5 justify-end shrink-0">
+                            {getLevelBadge(rep.incident_record)}
+                            {getStatusBadge(rep.status)}
+                          </div>
+                        </div>
+
+                        {/* Case Preview */}
+                        {casePreview && (
+                          <p className="text-[11px] text-gray-500 italic line-clamp-2 bg-gray-50 dark:bg-gray-800/40 p-2 rounded border border-gray-100 dark:border-gray-800">
+                            "{casePreview}"
+                          </p>
+                        )}
+
+                        {/* Details Grid */}
+                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t" style={{ borderColor: theme.border }}>
+                          <div>
+                            <span className="block text-[10px] uppercase font-semibold" style={{ color: theme.textSecondary }}>Student</span>
+                            <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                              <span>{studentName}</span>
+                              {extraStudentsCount > 0 && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
+                                  +{extraStudentsCount}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="block text-[10px] uppercase font-semibold" style={{ color: theme.textSecondary }}>Unit / Location</span>
+                            <span className="font-medium" style={{ color: theme.textBody }}>{unitName} • {locationDisplay}</span>
+                          </div>
+
+                          <div>
+                            <span className="block text-[10px] uppercase font-semibold" style={{ color: theme.textSecondary }}>Date & Time</span>
+                            <span className="font-medium" style={{ color: theme.textBody }}>{rep.incident_date} ({rep.incident_time})</span>
+                          </div>
+
+                          <div>
+                            <span className="block text-[10px] uppercase font-semibold" style={{ color: theme.textSecondary }}>Reported By</span>
+                            <span className="font-medium" style={{ color: theme.textBody }}>{reporterName}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Button */}
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenHandlingModal(rep)
+                        }}
+                        className={`w-full text-xs py-1.5 flex items-center justify-center gap-1.5 font-semibold ${
+                          rep.status === 'waiting'
+                            ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        }`}
+                      >
+                        <FontAwesomeIcon icon={faEye} />
+                        <span>{rep.status === 'waiting' ? 'Add Solution' : 'View & Update'}</span>
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Desktop / Large Screen Table View (Visible on screens >= lg) */}
+              <div className="hidden lg:block space-y-2">
+                <div className="flex items-center justify-between text-[11px] px-1" style={{ color: theme.textSecondary }}>
+                  <div className="flex items-center gap-1.5 font-medium text-indigo-600 dark:text-indigo-400">
+                    <FontAwesomeIcon icon={faArrowsLeftRight} className="animate-pulse" />
+                    <span>Scroll table horizontally to view all columns</span>
+                  </div>
+                  <span className="text-[10px] italic" style={{ color: theme.textSecondary }}>💡 Click any row or action button to manage incident</span>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-gray-800/50 [&::-webkit-scrollbar-thumb]:bg-indigo-400/60 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-indigo-600" style={{ borderColor: theme.border }}>
+                  <table className="min-w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="text-left border-b font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: theme.textSecondary, borderColor: theme.border, background: theme.cardBgAlt }}>
+                      <th className="py-3 px-3 min-w-[200px]">Code / Title / Case Preview</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Student</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Unit</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Location</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Date & Time</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Incident Level</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Reported By</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Status</th>
+                      <th className="py-3 px-3 text-right whitespace-nowrap sticky right-0 z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.1)]" style={{ background: theme.cardBgAlt }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                    {filteredReports.map(rep => {
+                      const studentName = `${rep.student?.user_nama_depan || ''} ${rep.student?.user_nama_belakang || ''}`.trim() || 'Unknown Student'
+                      const reporterName = `${rep.reporter?.user_nama_depan || ''} ${rep.reporter?.user_nama_belakang || ''}`.trim() || 'Staff'
+                      const unitName = rep.unit?.unit_name || '-'
+
+                      let locationDisplay = '-'
+                      let extraStudentsCount = 0
+                      let casePreview = ''
+                      if (rep.description) {
+                        if (rep.description.includes('📍 Place of Incident:')) {
+                          const matchLoc = rep.description.match(/📍 Place of Incident:\s*([^\n]+)/)
+                          if (matchLoc && matchLoc[1]) locationDisplay = matchLoc[1].trim()
+                        }
+                        if (rep.description.includes('👥 All Involved Students:')) {
+                          const matchSt = rep.description.match(/👥 All Involved Students:\s*([^\n]+)/)
+                          if (matchSt && matchSt[1]) {
+                            const names = matchSt[1].split(',').map(n => n.trim()).filter(Boolean)
+                            if (names.length > 1) extraStudentsCount = names.length - 1
+                          }
+                        }
+                        casePreview = rep.description
+                          .replace(/📍 Place of Incident:[^\n]+\n?/, '')
+                          .replace(/👥 All Involved Students:[^\n]+\n?/, '')
+                          .trim()
+                        if (casePreview.length > 55) casePreview = casePreview.substring(0, 55) + '...'
+                      }
+
+                      return (
+                        <tr
+                          key={rep.id}
+                          onClick={() => handleOpenHandlingModal(rep)}
+                          className="transition-colors cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20"
+                          style={{ borderColor: theme.border }}
+                        >
+                          <td className="py-3 px-3 min-w-[200px]">
+                            <div className="font-bold hover:underline" style={{ color: theme.textPrimary }}>{rep.title}</div>
+                            <div className="text-[10px]" style={{ color: theme.textSecondary }}>{rep.incident_number || `#${rep.id}`}</div>
+                            {casePreview && (
+                              <div className="text-[11px] text-gray-500 italic mt-0.5 line-clamp-1">
+                                "{casePreview}"
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                              <span>{studentName}</span>
+                              {extraStudentsCount > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800" title="Multiple students involved">
+                                  +{extraStudentsCount}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded font-medium border inline-block whitespace-nowrap" style={{ background: theme.subtleBg, color: theme.textBody, borderColor: theme.border }}>
+                              {unitName}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-medium whitespace-nowrap" style={{ color: theme.textBody }}>
+                            {locationDisplay}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap" style={{ color: theme.textBody }}>
+                            <div>{rep.incident_date}</div>
+                            <div className="text-[10px]" style={{ color: theme.textSecondary }}>{rep.incident_time}</div>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {getLevelBadge(rep.incident_record)}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap" style={{ color: theme.textBody }}>{reporterName}</td>
+                          <td className="py-3 px-3 whitespace-nowrap">{getStatusBadge(rep.status)}</td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap sticky right-0 z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.1)]" style={{ background: theme.cardBg }}>
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenHandlingModal(rep)
+                              }}
+                              className={`text-xs px-2.5 py-1 inline-flex items-center gap-1 ml-auto font-semibold whitespace-nowrap ${
+                                rep.status === 'waiting'
+                                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                              }`}
+                            >
+                              <FontAwesomeIcon icon={faEye} />
+                              <span>{rep.status === 'waiting' ? 'Add Solution' : 'View & Update'}</span>
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          )}
+          </div>
+        )}
         </CardContent>
       </Card>
 

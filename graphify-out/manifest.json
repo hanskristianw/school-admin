@@ -1715,8 +1715,8 @@
     "semantic_hash": ""
   },
   "src/app/data/incident-report/page.jsx": {
-    "mtime": 1785982056.3235066,
-    "ast_hash": "c8c2b92253328d3fdd41bdca369d71cf",
+    "mtime": 1786092039.2014222,
+    "ast_hash": "50ba220deef3c7e12c9b366d7ba9527d",
     "semantic_hash": ""
   },
   "src/app/settings/incident-report/page.jsx": {
@@ -1725,8 +1725,8 @@
     "semantic_hash": ""
   },
   "src/app/data/incident-report-approval/page.jsx": {
-    "mtime": 1785984800.3811374,
-    "ast_hash": "b6a74ccdfc9dca216589c76032c08938",
+    "mtime": 1786092024.011515,
+    "ast_hash": "eae236effe401c82d7df3befd1933c98",
     "semantic_hash": ""
   },
   "src/app/stock/uniform/audit/page.jsx": {

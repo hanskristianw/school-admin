@@ -27,7 +27,8 @@ import {
   faCheckCircle,
   faHourglassHalf,
   faExternalLinkAlt,
-  faBuilding
+  faBuilding,
+  faArrowsLeftRight
 } from '@fortawesome/free-solid-svg-icons'
 
 export default function IncidentReportListPage() {
@@ -428,15 +429,15 @@ export default function IncidentReportListPage() {
   const getLevelBadge = (level) => {
     switch (level) {
       case 'Level 1':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">Level 1</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">Level 1</span>
       case 'Level 2':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">Level 2</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">Level 2</span>
       case 'Level 3':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">Level 3</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">Level 3</span>
       case 'Zero Tolerance':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">Zero Tolerance</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">Zero Tolerance</span>
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{level || 'Level 1'}</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{level || 'Level 1'}</span>
     }
   }
 
@@ -444,13 +445,13 @@ export default function IncidentReportListPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'waiting':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.yellowBg, color: theme.yellowText, borderColor: theme.border }}><FontAwesomeIcon icon={faClock} className="text-[10px]" /> Waiting</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.yellowBg, color: theme.yellowText, borderColor: theme.border }}><FontAwesomeIcon icon={faClock} className="text-[10px]" /> Waiting</span>
       case 'on_progress':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.blueBg, color: theme.blueText, borderColor: theme.border }}><FontAwesomeIcon icon={faHourglassHalf} className="text-[10px]" /> On Progress</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.blueBg, color: theme.blueText, borderColor: theme.border }}><FontAwesomeIcon icon={faHourglassHalf} className="text-[10px]" /> On Progress</span>
       case 'completed':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.greenBg, color: theme.greenText, borderColor: theme.border }}><FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" /> Completed</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.greenBg, color: theme.greenText, borderColor: theme.border }}><FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" /> Completed</span>
       default:
-        return <span className="px-2 py-0.5 rounded text-xs border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{status}</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded text-xs border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{status}</span>
     }
   }
 
@@ -513,8 +514,17 @@ export default function IncidentReportListPage() {
               No incident reports found matching your criteria.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs border-collapse">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] px-1" style={{ color: theme.textSecondary }}>
+                <div className="flex items-center gap-1.5 font-medium text-indigo-600 dark:text-indigo-400">
+                  <FontAwesomeIcon icon={faArrowsLeftRight} className="animate-pulse" />
+                  <span>Scroll table horizontally to view all columns</span>
+                </div>
+                <span className="text-[10px] italic" style={{ color: theme.textSecondary }}>💡 Click any row to view incident details</span>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-gray-800/50 [&::-webkit-scrollbar-thumb]:bg-indigo-400/60 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-indigo-600" style={{ borderColor: theme.border }}>
+                <table className="min-w-full text-xs border-collapse">
                 <thead>
                   <tr className="text-left border-b font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary, borderColor: theme.border }}>
                     <th className="py-3 px-3">Code / Title / Case Preview</th>
@@ -617,6 +627,7 @@ export default function IncidentReportListPage() {
                 </tbody>
               </table>
             </div>
+          </div>
           )}
         </CardContent>
       </Card>

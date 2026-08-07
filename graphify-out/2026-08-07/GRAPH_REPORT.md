@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-08-07)
 
 ## Corpus Check
-- 331 files · ~458,476 words
+- 331 files · ~458,298 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `db99ed8c`
+- Built from commit: `8dd7c416`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -319,7 +319,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, browser-image-compression, clsx, googleapis, html5-qrcode, dependencies, bcryptjs, browser-image-compression (+3 more)
+Nodes (11): browser-image-compression, clsx, @fortawesome/free-solid-svg-icons, googleapis, html5-qrcode, dependencies, browser-image-compression, clsx (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
