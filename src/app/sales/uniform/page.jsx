@@ -861,6 +861,12 @@ export default function UniformSalesPage() {
     setError('')
 
     try {
+      if (selectedSaleForVoid.is_voided) {
+        setError('Transaksi ini sudah pernah dibatalkan (void).')
+        setVoiding(false)
+        return
+      }
+
       const currentUser = JSON.parse(localStorage.getItem('user_data') || '{}')
       const userName = `${currentUser.user_nama_depan || ''} ${currentUser.user_nama_belakang || ''}`.trim()
 
@@ -872,44 +878,49 @@ export default function UniformSalesPage() {
 
       if (itemsError) throw itemsError
 
-      // 2. Get original stock transactions to find supplier_id
+      // 2. Get original stock transactions to verify if stock was ever deducted
       const { data: originalTxns, error: txnError } = await supabase
         .from('uniform_stock_txn')
-        .select('uniform_id, size_id, supplier_id')
+        .select('uniform_id, size_id, supplier_id, qty_delta')
         .eq('txn_type', 'sale')
         .eq('ref_table', 'uniform_sale')
         .eq('ref_id', selectedSaleForVoid.sale_id)
 
       if (txnError) throw txnError
 
-      // Create map for supplier lookup
-      const supplierMap = new Map()
-      for (const txn of (originalTxns || [])) {
-        const key = `${txn.uniform_id}_${txn.size_id}`
-        supplierMap.set(key, txn.supplier_id)
-      }
+      const hasDeductedStock = (originalTxns || []).length > 0 && selectedSaleForVoid.status === 'paid'
 
-      // 3. Create reverse stock transactions (return stock)
-      const reverseTransactions = saleItems.map(item => {
-        const key = `${item.uniform_id}_${item.size_id}`
-        return {
-          uniform_id: item.uniform_id,
-          size_id: item.size_id,
-          qty_delta: item.qty, // POSITIVE - return stock
-          txn_type: 'void',
-          ref_table: 'uniform_sale',
-          ref_id: selectedSaleForVoid.sale_id,
-          supplier_id: supplierMap.get(key) || null,
-          notes: `Void sale #${selectedSaleForVoid.sale_id}: ${voidReason}`,
-          created_at: new Date().toISOString()
+      // 3. Create reverse stock transactions ONLY if stock was actually deducted
+      if (hasDeductedStock) {
+        const supplierMap = new Map()
+        for (const txn of (originalTxns || [])) {
+          const key = `${txn.uniform_id}_${txn.size_id}`
+          supplierMap.set(key, txn.supplier_id)
         }
-      })
 
-      const { error: insertTxnError } = await supabase
-        .from('uniform_stock_txn')
-        .insert(reverseTransactions)
+        const reverseTransactions = (saleItems || []).map(item => {
+          const key = `${item.uniform_id}_${item.size_id}`
+          return {
+            uniform_id: item.uniform_id,
+            size_id: item.size_id,
+            qty_delta: Math.abs(item.qty), // POSITIVE - return stock
+            txn_type: 'void',
+            ref_table: 'uniform_sale',
+            ref_id: selectedSaleForVoid.sale_id,
+            supplier_id: supplierMap.get(key) || null,
+            notes: `Void sale #${selectedSaleForVoid.sale_id}: ${voidReason}`,
+            created_at: new Date().toISOString()
+          }
+        })
 
-      if (insertTxnError) throw insertTxnError
+        if (reverseTransactions.length > 0) {
+          const { error: insertTxnError } = await supabase
+            .from('uniform_stock_txn')
+            .insert(reverseTransactions)
+
+          if (insertTxnError) throw insertTxnError
+        }
+      }
 
       // 4. Update sale as voided
       const { error: updateError } = await supabase
@@ -932,7 +943,11 @@ export default function UniformSalesPage() {
       
       // Show success message
       setError('')
-      alert('Transaksi berhasil dibatalkan dan stock telah dikembalikan')
+      alert(
+        hasDeductedStock
+          ? 'Transaksi berhasil dibatalkan dan stok telah dikembalikan'
+          : 'Transaksi berhasil dibatalkan (stok tidak dipotong karena transaksi belum dibayar)'
+      )
     } catch (e) {
       console.error('Error voiding sale:', e)
       setError('Gagal membatalkan transaksi: ' + e.message)

@@ -117,17 +117,17 @@ export default function IncidentReportListPage() {
 
       const unitMap = new Map((unitsData || []).map(u => [u.unit_id, u.unit_name]))
 
-      // Fetch Students (role with is_student = true or role_name contains Student/Siswa)
+      // Fetch Students strictly (role with is_student = true OR exact role_name = 'Student'/'Siswa')
       const { data: studentRoles } = await supabase
         .from('role')
-        .select('role_id')
-        .or('is_student.eq.true,role_name.ilike.%student%,role_name.ilike.%siswa%')
+        .select('role_id, role_name, is_student')
+        .or('is_student.eq.true,role_name.eq.Student,role_name.eq.Siswa')
 
       const studentRoleIds = (studentRoles || []).map(r => r.role_id)
 
       let studentsQuery = supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_unit_id')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_unit_id, role:user_role_id(role_id, role_name, is_student)')
         .order('user_nama_depan')
 
       if (studentRoleIds.length > 0) {
@@ -135,10 +135,16 @@ export default function IncidentReportListPage() {
       }
 
       const { data: rawStudents } = await studentsQuery
-      const formattedStudents = (rawStudents || []).map(s => ({
-        ...s,
-        unit: { unit_id: s.user_unit_id, unit_name: unitMap.get(s.user_unit_id) || 'Unit' }
-      }))
+      const formattedStudents = (rawStudents || [])
+        .filter(s =>
+          s.role?.is_student === true ||
+          (s.role?.role_name || '').toLowerCase() === 'student' ||
+          (s.role?.role_name || '').toLowerCase() === 'siswa'
+        )
+        .map(s => ({
+          ...s,
+          unit: { unit_id: s.user_unit_id, unit_name: unitMap.get(s.user_unit_id) || 'Unit' }
+        }))
       setStudents(formattedStudents)
 
       const rawKrId = typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null
