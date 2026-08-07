@@ -294,7 +294,7 @@ async function handleNotify(request) {
     try {
       const { data: srData } = await supabaseAdmin
         .from('special_day_rules')
-        .select('id, tanggal, scope_type, role_id, user_id, is_work_day, custom_check_in, custom_check_out, keterangan')
+        .select('id, tanggal, scope_type, role_id, user_id, is_work_day, is_flexible_hours, custom_check_in, custom_check_out, keterangan')
         .eq('tanggal', targetDate)
       specialRules = srData || []
     } catch (_) {}
