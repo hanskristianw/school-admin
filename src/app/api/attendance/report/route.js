@@ -153,7 +153,7 @@ export async function GET(request) {
     try {
       const { data: srData } = await supabaseAdmin
         .from('special_day_rules')
-        .select('id, tanggal, scope_type, role_id, user_id, is_work_day, custom_check_in, custom_check_out')
+        .select('id, tanggal, scope_type, role_id, user_id, is_work_day, is_flexible_hours, custom_check_in, custom_check_out, keterangan')
         .gte('tanggal', start)
         .lte('tanggal', end)
       specialRules = srData || []
@@ -382,6 +382,8 @@ export async function GET(request) {
         const effOut = (specialRule?.custom_check_out ? String(specialRule.custom_check_out).slice(0,5) : null) || expectedOut
         const effInMins  = timeToMinutes(effIn)
         const effOutMins = timeToMinutes(effOut)
+        const isRuleFlexible = !!specialRule?.is_flexible_hours || (specialRule?.keterangan || '').includes('[BEBAS_JAM]')
+        const effIsFlexible = isFlexible || isRuleFlexible
 
         summary.work_days_in_range++
 
@@ -446,7 +448,7 @@ export async function GET(request) {
           if (!noCheckIn) {
             const timeStr = wibTimeStr(checkins[0].scan_time) // "HH:MM:SS"
             dayRecord.checkin_time = timeStr
-            if (!isPartTime && !isFlexible) {
+            if (!isPartTime && !effIsFlexible) {
               // Second-precision: effIn is "HH:MM", timeStr is "HH:MM:SS"
               // grace is in minutes → convert to seconds for comparison
               const actualInSecs = timeToSeconds(timeStr)
@@ -470,7 +472,7 @@ export async function GET(request) {
           if (!noCheckOut) {
             const timeStr = wibTimeStr(checkouts[checkouts.length - 1].scan_time) // "HH:MM:SS"
             dayRecord.checkout_time = timeStr
-            if (!isPartTime && !isFlexible) {
+            if (!isPartTime && !effIsFlexible) {
               const actualOutSecs = timeToSeconds(timeStr)
               const effOutSecs    = timeToSeconds(effOut)
               const graceSecs     = grace * 60
@@ -492,8 +494,10 @@ export async function GET(request) {
             const effOutSecs = timeToSeconds(effOut)
 
             if (!isToday || (nowWibSecs && effOutSecs && nowWibSecs > effOutSecs)) {
-              summary.no_checkout_count++
-              dayRecord.issues.push('no_checkout')
+              if (!effIsFlexible) {
+                summary.no_checkout_count++
+                dayRecord.issues.push('no_checkout')
+              }
             }
           }
 

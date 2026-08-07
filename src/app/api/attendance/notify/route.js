@@ -361,6 +361,8 @@ async function handleNotify(request) {
       // Apply special rule custom hours if present
       const effIn  = (specialRule?.custom_check_in  ? String(specialRule.custom_check_in).slice(0,5)  : null) || expectedIn
       const effOut = (specialRule?.custom_check_out ? String(specialRule.custom_check_out).slice(0,5) : null) || expectedOut
+      const isRuleFlexible = !!specialRule?.is_flexible_hours || (specialRule?.keterangan || '').includes('[BEBAS_JAM]')
+      const effIsFlexible = isFlexible || isRuleFlexible
 
       // Classify scans:
       // - Khusus VENDOR: Scan Pertama = Check-In, Scan Terakhir = Check-Out
@@ -404,7 +406,7 @@ async function handleNotify(request) {
       } else {
         // ── B. Analisis Check-In ──────────────────────────────────────────────
         if (!noCheckIn) {
-          if (!isPartTime && !isFlexible) {
+          if (!isPartTime && !effIsFlexible) {
             const actualInStr  = wibTimeStr(checkins[0].scan_time)
             const actualInSecs  = timeToSeconds(actualInStr)
             const effInSecs     = timeToSeconds(effIn)
@@ -422,7 +424,7 @@ async function handleNotify(request) {
 
         // ── C. Analisis Check-Out ─────────────────────────────────────────────
         if (!noCheckOut) {
-          if (!isPartTime && !isFlexible) {
+          if (!isPartTime && !effIsFlexible) {
             const actualOutStr  = wibTimeStr(checkouts[checkouts.length - 1].scan_time) // "HH:MM:SS"
             const actualOutSecs  = timeToSeconds(actualOutStr)
             const effOutSecs     = timeToSeconds(effOut)
@@ -433,7 +435,7 @@ async function handleNotify(request) {
               issues.push({ type: 'leave_early', scheduledTime: effOut.slice(0,5), actualTime: actualOutStr, minutesDiff: earlyMins })
             }
           }
-        } else if (!noCheckIn && !isPartTime) {
+        } else if (!noCheckIn && !isPartTime && !effIsFlexible) {
           // Ada check-in tapi tidak ada check-out
           issues.push({ type: 'no_checkout', scheduledTime: effOut.slice(0,5), actualTime: null, minutesDiff: null })
         }

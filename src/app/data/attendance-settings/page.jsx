@@ -85,6 +85,7 @@ export default function AttendanceSettingsPage() {
   const [srRoleIds, setSrRoleIds]           = useState(new Set()) // multi-checkbox untuk jabatan
   const [srUserId, setSrUserId]             = useState('')
   const [srIsWorkDay, setSrIsWorkDay]       = useState(true)
+  const [srIsFlexibleHours, setSrIsFlexibleHours] = useState(false)
   const [srCheckIn, setSrCheckIn]           = useState('')
   const [srCheckOut, setSrCheckOut]         = useState('')
   const [srKet, setSrKet]                   = useState('')
@@ -122,7 +123,7 @@ export default function AttendanceSettingsPage() {
 
   const resetSrForm = () => {
     setSrTanggal(''); setSrScope('all'); setSrRoleIds(new Set()); setSrUserId('')
-    setSrIsWorkDay(true); setSrCheckIn(''); setSrCheckOut(''); setSrKet('')
+    setSrIsWorkDay(true); setSrIsFlexibleHours(false); setSrCheckIn(''); setSrCheckOut(''); setSrKet('')
     setEditingSrId(null)
   }
 
@@ -208,11 +209,12 @@ export default function AttendanceSettingsPage() {
     setSavingSr(true); setSrMsg('')
 
     const basePayload = {
-      tanggal:          srTanggal,
-      is_work_day:      srIsWorkDay,
-      custom_check_in:  srCheckIn  || null,
-      custom_check_out: srCheckOut || null,
-      keterangan:       srKet.trim() || null,
+      tanggal:           srTanggal,
+      is_work_day:       srIsWorkDay,
+      is_flexible_hours: srIsFlexibleHours,
+      custom_check_in:   srCheckIn  || null,
+      custom_check_out:  srCheckOut || null,
+      keterangan:        srKet.trim() || null,
     }
 
     try {
@@ -261,12 +263,12 @@ export default function AttendanceSettingsPage() {
         if (!json.success) throw new Error(json.message)
       }
 
-      setSrMsg(editingSrId ? '\u2705 Aturan berhasil diperbarui' : '\u2705 Aturan berhasil ditambahkan')
+      setSrMsg(editingSrId ? '✅ Aturan berhasil diperbarui' : '✅ Aturan berhasil ditambahkan')
       resetSrForm()
       fetchSpecialRules()
       setTimeout(() => setSrMsg(''), 3000)
     } catch (err) {
-      setSrMsg('\u274c ' + err.message)
+      setSrMsg('❌ ' + err.message)
     } finally {
       setSavingSr(false)
     }
@@ -279,9 +281,12 @@ export default function AttendanceSettingsPage() {
     setSrRoleIds(r.role_id ? new Set([r.role_id]) : new Set())
     setSrUserId(r.user_id ? String(r.user_id) : '')
     setSrIsWorkDay(r.is_work_day)
+    setSrIsFlexibleHours(!!r.is_flexible_hours || (r.keterangan || '').includes('[BEBAS_JAM]'))
     setSrCheckIn(r.custom_check_in  ? String(r.custom_check_in).slice(0,5)  : '')
     setSrCheckOut(r.custom_check_out ? String(r.custom_check_out).slice(0,5) : '')
-    setSrKet(r.keterangan || '')
+    // Clean tag from keterangan for display in edit form
+    const cleanKetDisplay = (r.keterangan || '').replace('[BEBAS_JAM]', '').trim()
+    setSrKet(cleanKetDisplay)
     setSrMsg('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -1394,24 +1399,47 @@ export default function AttendanceSettingsPage() {
               </div>
             </div>
 
-            {/* Is Work Day toggle */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSrIsWorkDay(!srIsWorkDay)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
-                style={{
-                  background: srIsWorkDay ? '#dcfce7' : '#fee2e2',
-                  color: srIsWorkDay ? '#166534' : '#991b1b',
-                  border: `1px solid ${srIsWorkDay ? '#bbf7d0' : '#fecaca'}`
-                }}
-              >
-                {srIsWorkDay ? '✅ Dihitung hari kerja' : '❌ Bukan hari kerja (libur pengganti)'}
-              </button>
-              <span className="text-xs" style={{ color: theme.textSecondary }}>
-                {srIsWorkDay
-                  ? 'Karyawan yang tidak hadir akan dihitung tidak masuk'
-                  : 'Karyawan tidak diwajibkan hadir (tidak masuk tidak dihitung absen)'}
-              </span>
+            {/* Toggles: Is Work Day & Is Flexible Hours */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={() => setSrIsWorkDay(!srIsWorkDay)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    background: srIsWorkDay ? '#dcfce7' : '#fee2e2',
+                    color: srIsWorkDay ? '#166534' : '#991b1b',
+                    border: `1px solid ${srIsWorkDay ? '#bbf7d0' : '#fecaca'}`
+                  }}
+                >
+                  {srIsWorkDay ? '✅ Dihitung hari kerja' : '❌ Bukan hari kerja (libur pengganti)'}
+                </button>
+                <span className="text-xs" style={{ color: theme.textSecondary }}>
+                  {srIsWorkDay
+                    ? 'Karyawan yang tidak hadir akan dihitung tidak masuk'
+                    : 'Karyawan tidak diwajibkan hadir (tidak masuk tidak dihitung absen)'}
+                </span>
+              </div>
+
+              {srIsWorkDay && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => setSrIsFlexibleHours(!srIsFlexibleHours)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                    style={{
+                      background: srIsFlexibleHours ? '#fef3c7' : (theme.subtleBg || '#f3f4f6'),
+                      color: srIsFlexibleHours ? '#92400e' : (theme.textSecondary || '#4b5563'),
+                      border: `1px solid ${srIsFlexibleHours ? '#fde68a' : (theme.border || '#e5e7eb')}`
+                    }}
+                  >
+                    {srIsFlexibleHours ? '✨ Bebas Sanksi Terlambat & Pulang Awal (Bebas Jam)' : '⏱️ Jam Kerja Normal (Diuji Terlambat & Pulang Awal)'}
+                  </button>
+                  <span className="text-xs" style={{ color: theme.textSecondary }}>
+                    {srIsFlexibleHours
+                      ? 'Karyawan WAJIB hadir & scan absensi, tetapi TIDAK dihitung terlambat atau pulang awal.'
+                      : 'Karyawan diuji terlambat dan pulang awal sesuai jam masuk/keluar.'}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -1437,7 +1465,7 @@ export default function AttendanceSettingsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-                  {['Tanggal', 'Berlaku untuk', 'Jam Masuk', 'Jam Keluar', 'Hari Kerja', 'Keterangan', ''].map(h => (
+                  {['Tanggal', 'Berlaku untuk', 'Jam Masuk', 'Jam Keluar', 'Hari Kerja & Sifat', 'Keterangan', ''].map(h => (
                     <th key={h} className="text-left px-3 py-2 text-xs font-semibold"
                       style={{ color: theme.textSecondary }}>{h}</th>
                   ))}
@@ -1455,6 +1483,9 @@ export default function AttendanceSettingsPage() {
                     : r.scope_type === 'role'
                       ? `🏷️ ${r.role?.role_name || 'Jabatan'}`
                       : `👤 ${r.user?.user_nama_depan || ''} ${r.user?.user_nama_belakang || ''}`
+                  const isFlexRule = !!r.is_flexible_hours || (r.keterangan || '').includes('[BEBAS_JAM]')
+                  const displayKet = (r.keterangan || '').replace('[BEBAS_JAM]', '').trim()
+
                   return (
                     <tr key={r.id} style={{ borderTop: ri > 0 ? `1px solid ${theme.border}` : 'none' }}>
                       <td className="px-3 py-2 font-medium" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>
@@ -1468,13 +1499,22 @@ export default function AttendanceSettingsPage() {
                         {r.custom_check_out ? String(r.custom_check_out).slice(0,5) : <span style={{ color: theme.textSecondary }}>—</span>}
                       </td>
                       <td className="px-3 py-2">
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
-                          background: r.is_work_day ? '#dcfce7' : '#fee2e2',
-                          color:      r.is_work_day ? '#166534' : '#991b1b'
-                        }}>{r.is_work_day ? 'Hari Kerja' : 'Libur'}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
+                            background: r.is_work_day ? '#dcfce7' : '#fee2e2',
+                            color:      r.is_work_day ? '#166534' : '#991b1b'
+                          }}>{r.is_work_day ? 'Hari Kerja' : 'Libur'}</span>
+
+                          {r.is_work_day && isFlexRule && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
+                              background: '#fef3c7',
+                              color: '#92400e'
+                            }}>✨ Bebas Jam</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>
-                        {r.keterangan || '—'}
+                        {displayKet || '—'}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex gap-1">

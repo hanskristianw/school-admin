@@ -16,8 +16,7 @@ export async function GET(request) {
     let q = supabaseAdmin
       .from('special_day_rules')
       .select(`
-        id, tanggal, scope_type, role_id, user_id,
-        is_work_day, custom_check_in, custom_check_out, keterangan, created_at,
+        *,
         role:role_id (role_name),
         user:user_id (user_nama_depan, user_nama_belakang, user_pin)
       `)
@@ -30,7 +29,16 @@ export async function GET(request) {
     const { data, error } = await q
     if (error) throw error
 
-    return NextResponse.json({ success: true, data: data || [] })
+    // Map is_flexible_hours with fallback to keterangan tag
+    const mapped = (data || []).map(r => {
+      const isFlexTag = (r.keterangan || '').includes('[BEBAS_JAM]')
+      return {
+        ...r,
+        is_flexible_hours: r.is_flexible_hours !== undefined ? !!r.is_flexible_hours : isFlexTag
+      }
+    })
+
+    return NextResponse.json({ success: true, data: mapped })
   } catch (err) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 })
   }
@@ -41,10 +49,17 @@ export async function POST(request) {
   try {
     const body = await request.json()
     const { tanggal, scope_type, role_id, user_id,
-            is_work_day, custom_check_in, custom_check_out, keterangan } = body
+            is_work_day, is_flexible_hours, custom_check_in, custom_check_out, keterangan } = body
 
     if (!tanggal)    return NextResponse.json({ success: false, message: 'tanggal wajib diisi' }, { status: 400 })
     if (!scope_type) return NextResponse.json({ success: false, message: 'scope_type wajib diisi' }, { status: 400 })
+
+    let cleanKet = (keterangan || '').trim()
+    if (is_flexible_hours && !cleanKet.includes('[BEBAS_JAM]')) {
+      cleanKet = cleanKet ? `${cleanKet} [BEBAS_JAM]` : '[BEBAS_JAM]'
+    } else if (!is_flexible_hours && cleanKet.includes('[BEBAS_JAM]')) {
+      cleanKet = cleanKet.replace('[BEBAS_JAM]', '').trim()
+    }
 
     const payload = {
       tanggal,
@@ -54,16 +69,34 @@ export async function POST(request) {
       is_work_day:      is_work_day ?? true,
       custom_check_in:  custom_check_in  || null,
       custom_check_out: custom_check_out || null,
-      keterangan:       keterangan?.trim() || null,
+      keterangan:       cleanKet || null,
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('special_day_rules')
-      .insert([payload])
-      .select()
-      .single()
+    // Try including is_flexible_hours in payload
+    let data, error
+    try {
+      const res = await supabaseAdmin
+        .from('special_day_rules')
+        .insert([{ ...payload, is_flexible_hours: !!is_flexible_hours }])
+        .select()
+        .single()
+      data = res.data
+      error = res.error
+    } catch (_) {
+      error = true
+    }
 
-    if (error) throw error
+    // Fallback if column does not exist yet
+    if (error) {
+      const res = await supabaseAdmin
+        .from('special_day_rules')
+        .insert([payload])
+        .select()
+        .single()
+      if (res.error) throw res.error
+      data = res.data
+    }
+
     return NextResponse.json({ success: true, data })
   } catch (err) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 })
@@ -75,9 +108,16 @@ export async function PATCH(request) {
   try {
     const body = await request.json()
     const { id, tanggal, scope_type, role_id, user_id,
-            is_work_day, custom_check_in, custom_check_out, keterangan } = body
+            is_work_day, is_flexible_hours, custom_check_in, custom_check_out, keterangan } = body
 
     if (!id) return NextResponse.json({ success: false, message: 'id wajib diisi' }, { status: 400 })
+
+    let cleanKet = (keterangan || '').trim()
+    if (is_flexible_hours && !cleanKet.includes('[BEBAS_JAM]')) {
+      cleanKet = cleanKet ? `${cleanKet} [BEBAS_JAM]` : '[BEBAS_JAM]'
+    } else if (!is_flexible_hours && cleanKet.includes('[BEBAS_JAM]')) {
+      cleanKet = cleanKet.replace('[BEBAS_JAM]', '').trim()
+    }
 
     const payload = {
       tanggal,
@@ -87,17 +127,34 @@ export async function PATCH(request) {
       is_work_day:      is_work_day ?? true,
       custom_check_in:  custom_check_in  || null,
       custom_check_out: custom_check_out || null,
-      keterangan:       keterangan?.trim() || null,
+      keterangan:       cleanKet || null,
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('special_day_rules')
-      .update(payload)
-      .eq('id', id)
-      .select()
-      .single()
+    let data, error
+    try {
+      const res = await supabaseAdmin
+        .from('special_day_rules')
+        .update({ ...payload, is_flexible_hours: !!is_flexible_hours })
+        .eq('id', id)
+        .select()
+        .single()
+      data = res.data
+      error = res.error
+    } catch (_) {
+      error = true
+    }
 
-    if (error) throw error
+    if (error) {
+      const res = await supabaseAdmin
+        .from('special_day_rules')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single()
+      if (res.error) throw res.error
+      data = res.data
+    }
+
     return NextResponse.json({ success: true, data })
   } catch (err) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 })
