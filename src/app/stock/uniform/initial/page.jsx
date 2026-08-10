@@ -1,6 +1,7 @@
 "use client"
 
 import React, { Fragment, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { Card } from '@/components/ui/card'
@@ -12,6 +13,7 @@ import NotificationModal from '@/components/ui/notification-modal'
 import ExcelJS from 'exceljs'
 
 export default function InitialStockPage() {
+  const router = useRouter()
   const [units, setUnits] = useState([])
   const [uniforms, setUniforms] = useState([])
   const [sizes, setSizes] = useState([])

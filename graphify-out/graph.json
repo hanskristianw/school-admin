@@ -9101,7 +9101,7 @@
       "label": "InitialStockPage()",
       "file_type": "code",
       "source_file": "src/app/stock/uniform/initial/page.jsx",
-      "source_location": "L14",
+      "source_location": "L15",
       "_origin": "ast",
       "id": "src_app_stock_uniform_initial_page_initialstockpage",
       "community": 214,
@@ -27449,7 +27449,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/stock/uniform/initial/page.jsx",
-      "source_location": "L14",
+      "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_stock_uniform_initial_page",
@@ -35682,5 +35682,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "63844f84809bb222db1d5a034901673cfed3f95b"
+  "built_at_commit": "878b748426cdd9c2b1ec54e2b1178045031b2293"
 }
