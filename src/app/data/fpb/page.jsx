@@ -2093,10 +2093,10 @@ export default function FpbListPage() {
       const startDate = `${exportYear}-${String(exportMonth).padStart(2,'0')}-01`
       const endDate   = new Date(exportYear, exportMonth, 1).toISOString().slice(0,10)
 
-      // Fetch all FPBs in that month
+      // Fetch all FPBs in that month (including note field)
       const { data: fpbs, error: fpbErr } = await supabase
         .from('fpb')
-        .select('fpb_id, fpb_number, status, grand_total, usage_date, division, budget, remaining_budget, created_at, fpb_types(type_name, type_code), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang), procurement_status')
+        .select('fpb_id, fpb_number, status, grand_total, usage_date, division, note, budget, remaining_budget, created_at, fpb_types(type_name, type_code), users!fpb_submitted_by_fkey(user_nama_depan, user_nama_belakang), procurement_status')
         .gte('created_at', startDate)
         .lt('created_at', endDate)
         .order('fpb_number', { ascending: true })
@@ -2131,13 +2131,14 @@ export default function FpbListPage() {
           STATUS_LABEL[fpb.status] || fpb.status,
           fpb.budget ?? '',
           fpb.remaining_budget ?? '',
+          fpb.note || '',
         ]
         if (items.length) items.forEach(it => dataRows.push(makeRow(it)))
         else dataRows.push(makeRow(null))
       }
 
       const monthLabel = MONTHS_ID[exportMonth - 1]
-      const HEADERS = ['No', 'No FPB', 'Created By', 'Division', 'Item Name', 'Qty', 'Unit', 'Price', 'Total', 'Status', 'Budget', 'Remaining Budget']
+      const HEADERS = ['No', 'No FPB', 'Created By', 'Division', 'Item Name', 'Qty', 'Unit', 'Price', 'Total', 'Status', 'Budget', 'Remaining Budget', 'Note']
       const NCOLS = HEADERS.length
 
       // Use ExcelJS for full styling support
@@ -2146,7 +2147,7 @@ export default function FpbListPage() {
       const ws = wb.addWorksheet(`FPB ${monthLabel} ${exportYear}`)
 
       // Column widths
-      ws.columns = [5, 22, 22, 15, 32, 6, 9, 15, 15, 18, 15, 18].map((w, i) => ({ key: String(i), width: w }))
+      ws.columns = [5, 22, 22, 15, 32, 6, 9, 15, 15, 18, 15, 18, 30].map((w, i) => ({ key: String(i), width: w }))
 
       // Helper: apply border to a cell
       const applyBorder = (cell, color = 'FFB0B0B0') => {
