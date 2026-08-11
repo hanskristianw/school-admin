@@ -5739,44 +5739,58 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           const kelasName = kelasNameMap.get(topic.topic_kelas_id) || ''
                           const gradeMatch = kelasName.match(/(\d{1,2})/)
                           const gradeNumber = gradeMatch ? gradeMatch[1] : ''
-                          
+
+                          // Duration formatting: "7 Weeks", "1 Week", or "-"
+                          const durationVal = topic.topic_duration
+                          const durationNum = parseInt(durationVal, 10)
+                          const formattedDuration = !isNaN(durationNum) && durationNum > 0
+                            ? `${durationNum} ${durationNum === 1 ? 'Week' : 'Weeks'}`
+                            : (durationVal && durationVal !== '0' && durationVal !== 0 ? `${durationVal} Weeks` : '-')
+
+                          // Secondary Info Snippet (Inquiry Question / Statement of Inquiry / Key Concept)
+                          const secondarySnippet = topic.topic_statement || topic.topic_inquiry_question || topic.topic_key_concept || ''
+
+                          // Redundant filter checks (Hide badge if globally filtered to avoid duplication)
+                          const isSubjectFiltered = Boolean(filters.subject && filters.subject !== '')
+                          const isKelasFiltered = Boolean(filters.kelas && filters.kelas !== '')
+
                           return (
                           <div 
                             key={topic.topic_id}
-                            className="group relative cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between rounded-2xl p-5"
+                            className="group relative cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between rounded-2xl p-4.5"
                             style={{
                               background: isDraft ? theme.yellowBg : theme.cardBg,
                               border: `1.5px solid ${isDraft ? 'rgba(245, 158, 11, 0.35)' : theme.border}`,
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)'
                             }}
                             onClick={() => handleTopicOpen(topic)}
                           >
-                            {/* Layer 1: Top Bar (Unit Badge, Status Capsule, Action Menu Button) */}
+                            {/* Layer 1: Fixed Height Header with De-cluttered Badges (Max 3-4 Badges) & Action Menu */}
                             <div 
-                              className="flex items-center justify-between gap-2 pb-3"
+                              className="flex items-center justify-between gap-2 pb-2.5 mb-3"
                               style={{ borderBottom: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.2)' : theme.border}` }}
                             >
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {/* Unit Badge */}
+                              <div className="flex items-center gap-1.5 flex-nowrap overflow-hidden flex-1 pr-1 min-h-[24px]">
+                                {/* 1. Unit Badge (Primary Identifier) */}
                                 <span 
-                                  className="text-[11px] font-black px-2.5 py-0.5 rounded-md"
+                                  className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0"
                                   style={{
-                                    background: isDraft ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.12)',
+                                    background: isDraft ? 'rgba(245, 158, 11, 0.12)' : 'rgba(59, 130, 246, 0.08)',
                                     color: isDraft ? '#b45309' : '#2563eb',
-                                    border: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.3)' : 'rgba(59, 130, 246, 0.25)'}`
+                                    border: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.25)' : 'rgba(59, 130, 246, 0.2)'}`
                                   }}
                                 >
                                   Unit {topic.topic_urutan || '-'}
                                 </span>
 
-                                {/* Status Capsule Pill */}
+                                {/* 2. Status Capsule Pill (Small & Distinct Dot) */}
                                 {isDraft ? (
                                   <span 
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold rounded-full"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0"
                                     style={{
-                                      background: 'rgba(245, 158, 11, 0.12)',
+                                      background: 'rgba(245, 158, 11, 0.08)',
                                       color: '#b45309',
-                                      border: '1px solid rgba(245, 158, 11, 0.3)'
+                                      border: '1px solid rgba(245, 158, 11, 0.25)'
                                     }}
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -5784,15 +5798,69 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   </span>
                                 ) : (
                                   <span 
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold rounded-full"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0"
                                     style={{
-                                      background: 'rgba(16, 185, 129, 0.12)',
+                                      background: 'rgba(16, 185, 129, 0.08)',
                                       color: '#047857',
-                                      border: '1px solid rgba(16, 185, 129, 0.25)'
+                                      border: '1px solid rgba(16, 185, 129, 0.2)'
                                     }}
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     Published
+                                  </span>
+                                )}
+
+                                {/* 3. Subject Badge (Muted soft tone, hidden if subject filter is active) */}
+                                {!isSubjectFiltered && subjectMap.get(topic.topic_subject_id) && (
+                                  <span 
+                                    className="text-[10px] px-2 py-0.5 font-medium rounded-md truncate flex-shrink-0 max-w-[110px]"
+                                    style={{
+                                      background: 'rgba(99, 102, 241, 0.08)',
+                                      color: '#4f46e5',
+                                      border: '1px solid rgba(99, 102, 241, 0.15)'
+                                    }}
+                                    title={subjectMap.get(topic.topic_subject_id)}
+                                  >
+                                    {subjectMap.get(topic.topic_subject_id)}
+                                  </span>
+                                )}
+
+                                {/* 4. Class / Grade Badge (Soft tone, hidden if class filter is active) */}
+                                {!isKelasFiltered && (topic.topic_kelas_id ? (
+                                  <span 
+                                    className="text-[10px] px-2 py-0.5 font-medium rounded-md flex-shrink-0"
+                                    style={{
+                                      background: 'rgba(16, 185, 129, 0.08)',
+                                      color: '#047857',
+                                      border: '1px solid rgba(16, 185, 129, 0.15)'
+                                    }}
+                                  >
+                                    {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
+                                  </span>
+                                ) : gradeNumber ? (
+                                  <span 
+                                    className="text-[10px] px-2 py-0.5 font-medium rounded-md flex-shrink-0"
+                                    style={{
+                                      background: theme.subtleBg,
+                                      color: theme.textPrimary,
+                                      border: `1px solid ${theme.border}`
+                                    }}
+                                  >
+                                    Grade {gradeNumber}
+                                  </span>
+                                ) : null)}
+
+                                {/* 5. MYP Year Badge (Only shown if class badge not present & filters not active) */}
+                                {!isKelasFiltered && !kelasNameMap.get(topic.topic_kelas_id) && !gradeNumber && topic.topic_year && (
+                                  <span 
+                                    className="text-[10px] px-2 py-0.5 font-medium rounded-md flex-shrink-0"
+                                    style={{
+                                      background: theme.subtleBg,
+                                      color: theme.textSecondary,
+                                      border: `1px solid ${theme.border}`
+                                    }}
+                                  >
+                                    MYP Y{topic.topic_year}
                                   </span>
                                 )}
                               </div>
@@ -5887,85 +5955,32 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               </div>
                             </div>
 
-                            {/* Layer 2: Unit Title with Prescisely Clamped Height */}
-                            <div className="my-3.5 min-h-[2.75rem] flex items-center">
+                            {/* Layer 2: Primary Unit Title & Secondary Info Line */}
+                            <div className="my-2 flex-1 flex flex-col justify-center min-h-[3rem]">
                               <h3 
-                                className="text-sm font-bold line-clamp-2 leading-snug tracking-tight"
+                                className="text-[15px] font-extrabold line-clamp-2 leading-snug tracking-tight"
                                 style={{ color: theme.textPrimary }}
                               >
                                 {topic.topic_nama}
                               </h3>
+                              {secondarySnippet ? (
+                                <p 
+                                  className="text-xs line-clamp-1 mt-1 font-medium opacity-75"
+                                  style={{ color: theme.textSecondary }}
+                                >
+                                  {secondarySnippet}
+                                </p>
+                              ) : null}
                             </div>
 
-                            {/* Layer 3: Footer Meta (Subject Tag, Grade/MYP Pill, Duration) */}
-                            <div 
-                              className="flex items-center justify-between gap-2 pt-3 mt-auto"
-                              style={{ borderTop: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.2)' : theme.border}` }}
-                            >
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {/* Subject Badge */}
-                                <span 
-                                  className="text-[10px] px-2 py-0.5 font-bold rounded-md"
-                                  style={{
-                                    background: 'rgba(99, 102, 241, 0.12)',
-                                    color: '#4f46e5',
-                                    border: '1px solid rgba(99, 102, 241, 0.2)'
-                                  }}
-                                >
-                                  {subjectMap.get(topic.topic_subject_id) || 'N/A'}
-                                </span>
-
-                                {/* Class / Grade Badge */}
-                                {topic.topic_kelas_id ? (
-                                  <span 
-                                    className="text-[10px] px-2 py-0.5 font-bold rounded-md"
-                                    style={{
-                                      background: 'rgba(16, 185, 129, 0.12)',
-                                      color: '#047857',
-                                      border: '1px solid rgba(16, 185, 129, 0.2)'
-                                    }}
-                                  >
-                                    {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
-                                  </span>
-                                ) : gradeNumber ? (
-                                  <span 
-                                    className="text-[10px] px-2 py-0.5 font-bold rounded-md"
-                                    style={{
-                                      background: theme.subtleBg,
-                                      color: theme.textPrimary,
-                                      border: `1px solid ${theme.border}`
-                                    }}
-                                  >
-                                    Grade {gradeNumber}
-                                  </span>
-                                ) : null}
-
-                                {/* MYP Year Badge */}
-                                {topic.topic_year && (
-                                  <span 
-                                    className="text-[10px] px-2 py-0.5 font-bold rounded-md"
-                                    style={{
-                                      background: theme.subtleBg,
-                                      color: theme.textSecondary,
-                                      border: `1px solid ${theme.border}`
-                                    }}
-                                  >
-                                    MYP Y{topic.topic_year}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Duration Pill */}
+                            {/* Layer 3: Duration Label with Clock Icon (Bottom Right) */}
+                            <div className="flex items-center justify-end gap-1.5 pt-2 mt-auto">
                               <div 
-                                className="flex items-center gap-1 text-xs font-semibold flex-shrink-0"
+                                className="flex items-center gap-1.5 text-[11px] font-semibold"
                                 style={{ color: theme.textSecondary }}
                               >
-                                <FontAwesomeIcon icon={faCalendar} className="text-[11px]" />
-                                <span>
-                                  {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
-                                    ? `${topic.topic_duration}w`
-                                    : '-'}
-                                </span>
+                                <FontAwesomeIcon icon={faClock} className="text-[11px] opacity-70" />
+                                <span>{formattedDuration}</span>
                               </div>
                             </div>
                           </div>
