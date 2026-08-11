@@ -2768,8 +2768,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_free_solid_svg_icons",
-      "community": 356,
-      "community_name": "@fortawesome/free-solid-svg-icons",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2779,8 +2779,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "fortawesome_free_solid_svg_icons",
-      "community": 356,
-      "community_name": "@fortawesome/free-solid-svg-icons",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "@fortawesome/free-solid-svg-icons"
     },
     {
@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 356,
+      "community_name": "@fortawesome/free-solid-svg-icons",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 356,
+      "community_name": "@fortawesome/free-solid-svg-icons",
       "norm_label": "bcryptjs"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 346,
-      "community_name": "\ud83d\ude80 **Setup & Deployment**",
+      "community": 331,
+      "community_name": "bcryptjs",
       "norm_label": "docx"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 346,
-      "community_name": "\ud83d\ude80 **Setup & Deployment**",
+      "community": 331,
+      "community_name": "bcryptjs",
       "norm_label": "docx"
     },
     {
@@ -9904,7 +9904,7 @@
       "label": "Modal()",
       "file_type": "code",
       "source_file": "src/components/ui/modal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "_origin": "ast",
       "id": "src_components_ui_modal_modal",
       "community": 6,
@@ -14637,8 +14637,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 346,
+      "community_name": "SKILL.md",
       "norm_label": "skill.md"
     },
     {
@@ -14648,8 +14648,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 346,
+      "community_name": "SKILL.md",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -14659,8 +14659,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 346,
+      "community_name": "SKILL.md",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -31970,7 +31970,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5091",
+      "source_location": "L5121",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32186,7 +32186,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5100",
+      "source_location": "L5130",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32210,7 +32210,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5114",
+      "source_location": "L5144",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32234,7 +32234,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5129",
+      "source_location": "L5159",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32258,7 +32258,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5141",
+      "source_location": "L5171",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32306,7 +32306,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3129",
+      "source_location": "L3154",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32330,7 +32330,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3143",
+      "source_location": "L3168",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32354,7 +32354,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3159",
+      "source_location": "L3184",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32401,7 +32401,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4445",
+      "source_location": "L4475",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -34004,7 +34004,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ui/modal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_ui_modal",
@@ -46781,5 +46781,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "d7ef64ecc5fca387ce1e24906dfef20bf43076fc"
+  "built_at_commit": "bbcafe85bd6951747d722d23dc55f225e1cf5b7d"
 }

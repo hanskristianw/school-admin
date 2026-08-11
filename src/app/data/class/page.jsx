@@ -87,6 +87,11 @@ export default function ClassManagement() {
   const [studentSearch, setStudentSearch] = useState('');
   // Students already assigned to another class in the same year
   const [yearConflictByUser, setYearConflictByUser] = useState(new Map()); // user_id -> { kelas_id, kelas_nama }
+
+  // View Roster modal states (Read-only list of enrolled students)
+  const [rosterModalOpen, setRosterModalOpen] = useState(false);
+  const [selectedClassForRoster, setSelectedClassForRoster] = useState(null);
+  const [rosterSearch, setRosterSearch] = useState('');
   
   // Notification modal states
   const [notification, setNotification] = useState({
@@ -122,6 +127,12 @@ export default function ClassManagement() {
       message,
       type
     });
+  };
+
+  const openViewRoster = (kelas) => {
+    setSelectedClassForRoster(kelas);
+    setRosterSearch('');
+    setRosterModalOpen(true);
   };
 
   const fetchClasses = async () => {
@@ -162,10 +173,25 @@ export default function ClassManagement() {
         throw new Error(yearsError.message);
       }
 
+      // Fetch all student-class relations with user names
+      const { data: detailSiswaData } = await supabase
+        .from('detail_siswa')
+        .select('detail_siswa_kelas_id, detail_siswa_user_id, users(user_id, user_nama_depan, user_nama_belakang)');
+
+      const studentsByClass = {};
+      (detailSiswaData || []).forEach(row => {
+        const kid = row.detail_siswa_kelas_id;
+        if (!studentsByClass[kid]) studentsByClass[kid] = [];
+        if (row.users) {
+          studentsByClass[kid].push(row.users);
+        }
+      });
+
       const transformedData = classesData.map(kelas => {
         const user = usersData.find(u => u.user_id === kelas.kelas_user_id);
         const unit = unitsData.find(u => u.unit_id === kelas.kelas_unit_id);
         const year = yearsData.find(y => y.year_id === kelas.kelas_year_id);
+        const studentList = studentsByClass[kelas.kelas_id] || [];
         
         return {
           kelas_id: kelas.kelas_id,
@@ -176,7 +202,9 @@ export default function ClassManagement() {
           user_nama_depan: user?.user_nama_depan || '',
           user_nama_belakang: user?.user_nama_belakang || '',
           unit_name: unit?.unit_name || '',
-          year_name: year?.year_name || ''
+          year_name: year?.year_name || '',
+          student_count: studentList.length,
+          students: studentList,
         };
       });
 
@@ -194,7 +222,7 @@ export default function ClassManagement() {
     try {
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_role_id')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_role_id, user_unit_id')
         .eq('is_active', true)
         .order('user_nama_depan');
 
@@ -202,15 +230,20 @@ export default function ClassManagement() {
 
       const { data: rolesData, error: rolesError } = await supabase
         .from('role')
-        .select('role_id, role_name');
+        .select('role_id, role_name, is_teacher, is_admin, is_principal, is_curriculum, is_counselor, is_student');
 
       if (rolesError) throw new Error(rolesError.message);
 
-      const usersWithRoles = usersData.map(user => {
-        const role = rolesData.find(r => r.role_id === user.user_role_id);
+      const usersWithRoles = (usersData || []).map(user => {
+        const role = (rolesData || []).find(r => Number(r.role_id) === Number(user.user_role_id));
+        const isTeacherStaff = role
+          ? (Boolean(role.is_teacher) || Boolean(role.is_admin) || Boolean(role.is_principal) || Boolean(role.is_curriculum) || Boolean(role.is_counselor)) && !role.is_student
+          : false;
+
         return {
           ...user,
-          role_name: role?.role_name || 'Unknown Role'
+          role_name: role?.role_name || 'Unknown Role',
+          is_teacher: isTeacherStaff
         };
       });
 
@@ -415,6 +448,7 @@ export default function ClassManagement() {
       showNotification(t('classManagement.notifSuccessTitle') || 'Success', t('classManagement.studentsSaved') || 'Class-student relations saved successfully.', 'success');
       setStudentModalOpen(false);
       setSelectedClassForStudents(null);
+      await fetchClasses();
 
       const blocked = toAddRaw.filter(id => yearConflictByUser.has(id));
       if (blocked.length > 0) {
@@ -668,11 +702,11 @@ export default function ClassManagement() {
   return (
     <div className="min-h-screen p-4 sm:p-6 md:p-8 font-sans antialiased space-y-6" style={{ background: theme.pageBg, color: theme.textPrimary }}>
 
-      {/* ─── High-End Editorial Header ─── */}
+      {/* ─── Minimalist Editorial Header ─── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b" style={{ borderColor: theme.border }}>
         <div>
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase mb-2" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-            <FontAwesomeIcon icon={faChalkboardTeacher} className="text-xs text-blue-500" />
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase mb-2 border" style={{ background: '#E1F3FE', color: '#1F6C9F', borderColor: '#BDE3FC' }}>
+            <FontAwesomeIcon icon={faChalkboardTeacher} className="text-[10px]" />
             <span>Academic Roster & Class Architecture</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: theme.textPrimary }}>
@@ -681,26 +715,28 @@ export default function ClassManagement() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* View Mode Toggle */}
+          {/* View Mode Segment Toggle */}
           <div className="inline-flex p-1 rounded-lg border" style={{ background: theme.cardBg, borderColor: theme.border }}>
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === 'grid'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-              }`}
+              className="px-3 py-1.5 rounded text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border"
+              style={{
+                background: viewMode === 'grid' ? theme.textPrimary : 'transparent',
+                color: viewMode === 'grid' ? theme.pageBg : theme.textSecondary,
+                borderColor: viewMode === 'grid' ? theme.textPrimary : 'transparent'
+              }}
             >
               <FontAwesomeIcon icon={faThLarge} className="text-[11px]" />
               <span>Grid View</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                viewMode === 'table'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-              }`}
+              className="px-3 py-1.5 rounded text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border"
+              style={{
+                background: viewMode === 'table' ? theme.textPrimary : 'transparent',
+                color: viewMode === 'table' ? theme.pageBg : theme.textSecondary,
+                borderColor: viewMode === 'table' ? theme.textPrimary : 'transparent'
+              }}
             >
               <FontAwesomeIcon icon={faList} className="text-[11px]" />
               <span>Table View</span>
@@ -709,7 +745,7 @@ export default function ClassManagement() {
 
           <button
             onClick={handleAddNew}
-            className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold px-4 py-2.5 rounded-lg transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold px-4 py-2 rounded-lg transition-all cursor-pointer active:scale-[0.98]"
             style={btnPrimaryStyle}
           >
             <FontAwesomeIcon icon={faPlus} className="text-xs" />
@@ -718,14 +754,14 @@ export default function ClassManagement() {
         </div>
       </div>
 
-      {/* ─── Search & Filter Toolbar (Double-Bezel Shell) ─── */}
+      {/* ─── Search & Filter Toolbar ─── */}
       <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
         <CardContent className="p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             
             {/* Quick Search */}
             <div className="relative sm:col-span-1">
-              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: theme.textSecondary }} />
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: theme.textSecondary }} />
               <Input
                 type="text"
                 placeholder="Search class name or teacher..."
@@ -781,39 +817,48 @@ export default function ClassManagement() {
           {/* Active Filter Chips */}
           {(filters.year || filters.unit || filters.waliKelas || filters.search) && (
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t text-xs" style={{ borderColor: theme.border }}>
-              <span className="font-semibold" style={{ color: theme.textSecondary }}>Active Filters:</span>
+              <span className="font-mono text-[11px] font-bold uppercase tracking-wider" style={{ color: theme.textSecondary }}>Active Filters:</span>
               
               {filters.year && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
                   Tahun: {getUniqueYears().find(y => String(y.id) === String(filters.year))?.name || filters.year}
-                  <button onClick={() => setFilters(prev => ({ ...prev, year: '', unit: '' }))} className="hover:text-black font-bold">✕</button>
+                  <button onClick={() => setFilters(prev => ({ ...prev, year: '', unit: '' }))} className="hover:opacity-75 font-bold bg-transparent border-none cursor-pointer">
+                    <FontAwesomeIcon icon={faTimes} className="text-[9px]" />
+                  </button>
                 </span>
               )}
 
               {filters.unit && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
                   Unit: {filters.unit}
-                  <button onClick={() => setFilters(prev => ({ ...prev, unit: '' }))} className="hover:text-black font-bold">✕</button>
+                  <button onClick={() => setFilters(prev => ({ ...prev, unit: '' }))} className="hover:opacity-75 font-bold bg-transparent border-none cursor-pointer">
+                    <FontAwesomeIcon icon={faTimes} className="text-[9px]" />
+                  </button>
                 </span>
               )}
 
               {filters.waliKelas && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
                   Wali Kelas: {filters.waliKelas}
-                  <button onClick={() => setFilters(prev => ({ ...prev, waliKelas: '' }))} className="hover:text-black font-bold">✕</button>
+                  <button onClick={() => setFilters(prev => ({ ...prev, waliKelas: '' }))} className="hover:opacity-75 font-bold bg-transparent border-none cursor-pointer">
+                    <FontAwesomeIcon icon={faTimes} className="text-[9px]" />
+                  </button>
                 </span>
               )}
 
               {filters.search && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF]">
                   Search: {filters.search}
-                  <button onClick={() => setFilters(prev => ({ ...prev, search: '' }))} className="hover:text-black font-bold">✕</button>
+                  <button onClick={() => setFilters(prev => ({ ...prev, search: '' }))} className="hover:opacity-75 font-bold bg-transparent border-none cursor-pointer">
+                    <FontAwesomeIcon icon={faTimes} className="text-[9px]" />
+                  </button>
                 </span>
               )}
 
               <button
                 onClick={() => setFilters({ year: '', unit: '', waliKelas: '', search: '' })}
-                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline ml-2"
+                className="text-xs font-semibold hover:underline ml-2 bg-transparent border-none cursor-pointer"
+                style={{ color: theme.textSecondary }}
               >
                 Clear all filters
               </button>
@@ -848,7 +893,7 @@ export default function ClassManagement() {
           </CardContent>
         </Card>
       ) : viewMode === 'grid' ? (
-        /* ─── BENTO GRID VIEW (High-End Doppelrand Card Architecture) ─── */
+        /* ─── BENTO GRID VIEW (Minimalist Editorial Cards) ─── */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredClasses.map((kelas) => {
             const teacherName = `${kelas.user_nama_depan || ''} ${kelas.user_nama_belakang || ''}`.trim() || 'Unassigned Teacher';
@@ -856,83 +901,98 @@ export default function ClassManagement() {
             return (
               <div
                 key={kelas.kelas_id}
-                className="p-1 rounded-2xl border transition-all duration-300 hover:shadow-md group"
+                className="p-5 rounded-xl border transition-all duration-200 space-y-4 hover:border-neutral-400 dark:hover:border-neutral-500"
                 style={{ background: theme.cardBg, borderColor: theme.border }}
               >
-                <div className="p-4 rounded-xl space-y-3" style={{ background: theme.subtleBg }}>
-                  
-                  {/* Card Header Tag & Title */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
-                        <FontAwesomeIcon icon={faBuilding} className="text-[9px]" />
-                        {kelas.unit_name || 'Unit'}
-                      </span>
-                      <h3 className="text-lg font-bold mt-1 tracking-tight" style={{ color: theme.textPrimary }}>
-                        {kelas.kelas_nama}
-                      </h3>
-                    </div>
+                {/* Header Tag & Class Name */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                      <FontAwesomeIcon icon={faBuilding} className="text-[9px]" />
+                      {kelas.unit_name || 'Unit'}
+                    </span>
+                    <h3 className="text-base font-bold mt-2 tracking-tight" style={{ color: theme.textPrimary }}>
+                      {kelas.kelas_nama}
+                    </h3>
+                  </div>
 
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary }}>
-                      ID: #{kelas.kelas_id}
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                    #{kelas.kelas_id}
+                  </span>
+                </div>
+
+                {/* Metadata info */}
+                <div className="space-y-2 pt-3 border-t text-xs" style={{ borderColor: theme.border }}>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.textSecondary }}>
+                      <FontAwesomeIcon icon={faChalkboardTeacher} className="text-[11px]" />
+                      Homeroom Teacher:
+                    </span>
+                    <span className="font-bold" style={{ color: theme.textPrimary }}>{teacherName}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.textSecondary }}>
+                      <FontAwesomeIcon icon={faCalendarAlt} className="text-[11px]" />
+                      Academic Year:
+                    </span>
+                    <span className="font-mono font-bold px-2 py-0.5 rounded text-[10px] bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                      {kelas.year_name || '-'}
                     </span>
                   </div>
 
-                  {/* Class Details */}
-                  <div className="space-y-1.5 pt-2 border-t text-xs" style={{ borderColor: theme.border }}>
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.textSecondary }}>
-                        <FontAwesomeIcon icon={faChalkboardTeacher} className="text-xs text-blue-500" />
-                        Homeroom Teacher:
-                      </span>
-                      <span className="font-bold" style={{ color: theme.textPrimary }}>{teacherName}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.textSecondary }}>
-                        <FontAwesomeIcon icon={faCalendarAlt} className="text-xs text-emerald-500" />
-                        Academic Year:
-                      </span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">{kelas.year_name || '-'}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions Grid */}
-                  <div className="pt-3 border-t grid grid-cols-2 gap-2" style={{ borderColor: theme.border }}>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.textSecondary }}>
+                      <FontAwesomeIcon icon={faUserGraduate} className="text-[11px]" />
+                      Enrolled Students:
+                    </span>
                     <button
-                      onClick={() => openManageSubjects(kelas)}
-                      className="px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100"
+                      onClick={() => openViewRoster(kelas)}
+                      className="font-mono font-bold text-[10px] px-2.5 py-0.5 rounded-full border cursor-pointer transition-all hover:opacity-80 active:scale-[0.98] inline-flex items-center gap-1"
+                      style={{ background: '#EDF3EC', color: '#346538', borderColor: '#D5E6D3' }}
                     >
-                      <FontAwesomeIcon icon={faBookOpen} className="text-[10px]" />
-                      <span>Subjects</span>
-                    </button>
-
-                    <button
-                      onClick={() => openManageStudents(kelas)}
-                      className="px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100"
-                    >
-                      <FontAwesomeIcon icon={faUserGraduate} className="text-[10px]" />
-                      <span>Students</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleEdit(kelas)}
-                      className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                      style={btnSecondaryStyle}
-                    >
-                      <FontAwesomeIcon icon={faEdit} className="text-[10px]" />
-                      <span>Edit</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(kelas)}
-                      className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 bg-[#FDEBEC] text-[#9F2F2D] border-[#F8C9CC] hover:bg-red-100"
-                    >
-                      <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
-                      <span>Delete</span>
+                      <span>{kelas.student_count || 0} Siswa</span>
+                      <span className="text-[9px] font-bold">→</span>
                     </button>
                   </div>
+                </div>
 
+                {/* Action Buttons Grid */}
+                <div className="pt-3 border-t grid grid-cols-2 gap-2" style={{ borderColor: theme.border }}>
+                  <button
+                    onClick={() => openManageSubjects(kelas)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                    style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
+                  >
+                    <FontAwesomeIcon icon={faBookOpen} className="text-[10px]" />
+                    <span>Subjects</span>
+                  </button>
+
+                  <button
+                    onClick={() => openManageStudents(kelas)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                    style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
+                  >
+                    <FontAwesomeIcon icon={faUserGraduate} className="text-[10px]" />
+                    <span>Manage Roster</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleEdit(kelas)}
+                    className="px-2.5 py-1.5 text-xs font-semibold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    style={btnSecondaryStyle}
+                  >
+                    <FontAwesomeIcon icon={faEdit} className="text-[10px]" />
+                    <span>Edit</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(kelas)}
+                    className="px-2.5 py-1.5 text-xs font-semibold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 bg-[#FDEBEC] text-[#9F2F2D] border-[#F8C9CC] hover:bg-red-100"
+                  >
+                    <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
+                    <span>Delete</span>
+                  </button>
                 </div>
               </div>
             )
@@ -942,26 +1002,27 @@ export default function ClassManagement() {
         /* ─── TABLE VIEW ─── */
         <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
           <CardHeader className="p-4 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
-            <CardTitle className="text-sm font-bold" style={{ color: theme.textPrimary }}>
+            <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: theme.textPrimary }}>
               Class Directory ({filteredClasses.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="min-w-full text-xs border-collapse">
               <thead>
-                <tr className="border-b font-semibold uppercase tracking-wider text-[11px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
-                  <th className="p-3 text-left">ID</th>
+                <tr className="border-b font-mono font-semibold uppercase tracking-wider text-[10px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                  <th className="p-3 text-left w-16">ID</th>
                   <th className="p-3 text-left">Class Name</th>
                   <th className="p-3 text-left">Homeroom Teacher</th>
                   <th className="p-3 text-left">Unit</th>
                   <th className="p-3 text-left">Academic Year</th>
+                  <th className="p-3 text-center">Students</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: theme.border }}>
                 {filteredClasses.map((kelas) => (
                   <tr key={kelas.kelas_id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                    <td className="p-3 font-mono font-bold" style={{ color: theme.textSecondary }}>
+                    <td className="p-3 font-mono font-bold text-[11px]" style={{ color: theme.textSecondary }}>
                       #{kelas.kelas_id}
                     </td>
                     <td className="p-3 font-bold" style={{ color: theme.textPrimary }}>
@@ -971,23 +1032,35 @@ export default function ClassManagement() {
                       {kelas.user_nama_depan} {kelas.user_nama_belakang}
                     </td>
                     <td className="p-3">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
                         {kelas.unit_name}
                       </span>
                     </td>
-                    <td className="p-3 font-semibold text-emerald-600 dark:text-emerald-400">
+                    <td className="p-3 font-mono font-bold text-[11px] text-[#346538]">
                       {kelas.year_name || '-'}
+                    </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => openViewRoster(kelas)}
+                        className="font-mono font-bold text-[10px] px-2.5 py-0.5 rounded-full border cursor-pointer transition-all hover:opacity-80 inline-flex items-center gap-1"
+                        style={{ background: '#EDF3EC', color: '#346538', borderColor: '#D5E6D3' }}
+                      >
+                        <span>{kelas.student_count || 0} Siswa</span>
+                        <span className="text-[9px]">→</span>
+                      </button>
                     </td>
                     <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
                       <button
                         onClick={() => openManageSubjects(kelas)}
-                        className="px-2.5 py-1 text-xs font-bold rounded border bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 cursor-pointer"
+                        className="px-2.5 py-1 text-xs font-bold rounded border cursor-pointer"
+                        style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
                       >
                         Subjects
                       </button>
                       <button
                         onClick={() => openManageStudents(kelas)}
-                        className="px-2.5 py-1 text-xs font-bold rounded border bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 cursor-pointer"
+                        className="px-2.5 py-1 text-xs font-bold rounded border cursor-pointer"
+                        style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
                       >
                         Students
                       </button>
@@ -1060,11 +1133,13 @@ export default function ClassManagement() {
                 className="w-full p-2.5 text-xs font-semibold focus:outline-none"
               >
                 <option value="">{t('classManagement.selectWaliKelas') || '-- Select Homeroom Teacher --'}</option>
-                {users.map((user) => (
-                  <option key={user.user_id} value={user.user_id}>
-                    {user.user_nama_depan} {user.user_nama_belakang} ({user.role_name})
-                  </option>
-                ))}
+                {users
+                  .filter(user => user.is_teacher || String(user.user_id) === String(formData.kelas_user_id))
+                  .map((user) => (
+                    <option key={user.user_id} value={user.user_id}>
+                      {user.user_nama_depan} {user.user_nama_belakang} ({user.role_name})
+                    </option>
+                  ))}
               </select>
               {formErrors.kelas_user_id && (
                 <p className="text-red-500 text-[11px] mt-1">{formErrors.kelas_user_id}</p>
@@ -1196,10 +1271,9 @@ export default function ClassManagement() {
                         const isChecked = selectedStudentIds.includes(stu.user_id);
 
                         return (
-                          <div
+                          <label
                             key={stu.user_id}
-                            onClick={() => !isConflict && toggleStudentSelection(stu.user_id)}
-                            className={`p-2 rounded-md border flex items-center justify-between transition-all ${
+                            className={`p-2.5 rounded-lg border flex items-center justify-between transition-all select-none ${
                               isConflict ? 'opacity-50 cursor-not-allowed bg-red-50/50 dark:bg-red-950/20' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'
                             }`}
                             style={{ borderColor: theme.border, background: isChecked ? theme.cardBg : 'transparent' }}
@@ -1208,9 +1282,9 @@ export default function ClassManagement() {
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={() => toggleStudentSelection(stu.user_id)}
+                                onChange={() => !isConflict && toggleStudentSelection(stu.user_id)}
                                 disabled={isConflict}
-                                className="rounded text-blue-600 focus:ring-0 cursor-pointer"
+                                className="rounded cursor-pointer"
                               />
                               <div>
                                 <span className="font-semibold block" style={{ color: theme.textPrimary }}>
@@ -1227,7 +1301,7 @@ export default function ClassManagement() {
                                 {t('classManagement.conflictNote', { class: conflictInfo?.kelas_nama || conflictInfo?.kelas_id }) || `Already in ${conflictInfo?.kelas_nama || conflictInfo?.kelas_id}`}
                               </span>
                             )}
-                          </div>
+                          </label>
                         )
                       })}
                   </div>
@@ -1253,7 +1327,8 @@ export default function ClassManagement() {
                     type="button"
                     onClick={saveStudents}
                     disabled={studentsSaving}
-                    className="px-4 py-2 text-xs font-bold rounded-md cursor-pointer bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
+                    className="px-4 py-2 text-xs font-bold rounded-md cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5 border-none"
+                    style={btnPrimaryStyle}
                   >
                     {studentsSaving ? (
                       <>
@@ -1285,7 +1360,7 @@ export default function ClassManagement() {
 
           {subjectsLoading ? (
             <div className="py-8 text-center" style={{ color: theme.textSecondary }}>
-              <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-1 text-blue-500" />
+              <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-1" style={{ color: theme.textPrimary }} />
               <p>{t('classManagement.loadingSubjects') || 'Loading subject relations...'}</p>
             </div>
           ) : (
@@ -1308,7 +1383,7 @@ export default function ClassManagement() {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => toggleSubjectSelection(subj.subject_id)}
-                              className="rounded text-blue-600 focus:ring-0 cursor-pointer"
+                              className="rounded cursor-pointer"
                             />
                             <span>{subj.subject_name}</span>
                           </label>
@@ -1337,7 +1412,7 @@ export default function ClassManagement() {
                             {/* MYP Year S1/S2 Selectors */}
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">MYP S1:</span>
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-wider" style={{ color: theme.textSecondary }}>MYP S1:</span>
                                 {[1, 2, 3, 4, 5].map(yr => (
                                   <button
                                     key={yr}
@@ -1346,11 +1421,12 @@ export default function ClassManagement() {
                                       ...prev,
                                       [subj.subject_id]: { ...(prev[subj.subject_id] ?? { s1: 1, s2: 1 }), s1: yr }
                                     }))}
-                                    className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-all ${
-                                      (subjectMypYearMap[subj.subject_id]?.s1 ?? 1) === yr
-                                        ? 'bg-blue-600 text-white shadow-2xs'
-                                        : 'bg-slate-200 dark:bg-slate-800 text-gray-700 dark:text-gray-300'
-                                    }`}
+                                    className="px-2 py-0.5 text-[10px] font-mono font-bold rounded cursor-pointer transition-all border"
+                                    style={{
+                                      background: (subjectMypYearMap[subj.subject_id]?.s1 ?? 1) === yr ? theme.textPrimary : theme.subtleBg,
+                                      color: (subjectMypYearMap[subj.subject_id]?.s1 ?? 1) === yr ? theme.pageBg : theme.textSecondary,
+                                      borderColor: theme.border,
+                                    }}
                                   >
                                     Yr {yr}
                                   </button>
@@ -1358,7 +1434,7 @@ export default function ClassManagement() {
                               </div>
 
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">MYP S2:</span>
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-wider" style={{ color: theme.textSecondary }}>MYP S2:</span>
                                 {[1, 2, 3, 4, 5].map(yr => (
                                   <button
                                     key={yr}
@@ -1367,11 +1443,12 @@ export default function ClassManagement() {
                                       ...prev,
                                       [subj.subject_id]: { ...(prev[subj.subject_id] ?? { s1: 1, s2: 1 }), s2: yr }
                                     }))}
-                                    className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-all ${
-                                      (subjectMypYearMap[subj.subject_id]?.s2 ?? 1) === yr
-                                        ? 'bg-indigo-600 text-white shadow-2xs'
-                                        : 'bg-slate-200 dark:bg-slate-800 text-gray-700 dark:text-gray-300'
-                                    }`}
+                                    className="px-2 py-0.5 text-[10px] font-mono font-bold rounded cursor-pointer transition-all border"
+                                    style={{
+                                      background: (subjectMypYearMap[subj.subject_id]?.s2 ?? 1) === yr ? theme.textPrimary : theme.subtleBg,
+                                      color: (subjectMypYearMap[subj.subject_id]?.s2 ?? 1) === yr ? theme.pageBg : theme.textSecondary,
+                                      borderColor: theme.border,
+                                    }}
                                   >
                                     Yr {yr}
                                   </button>
@@ -1406,7 +1483,8 @@ export default function ClassManagement() {
                     type="button"
                     onClick={saveSubjects}
                     disabled={subjectsSaving}
-                    className="px-4 py-2 text-xs font-bold rounded-md cursor-pointer bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
+                    className="px-4 py-2 text-xs font-bold rounded-md cursor-pointer border-none disabled:opacity-50 inline-flex items-center gap-1.5"
+                    style={btnPrimaryStyle}
                   >
                     {subjectsSaving ? (
                       <>
@@ -1421,6 +1499,104 @@ export default function ClassManagement() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* ─── MODAL 4: VIEW ROSTER MODAL (Student List Popup) ─── */}
+      <Modal isOpen={rosterModalOpen} onClose={() => setRosterModalOpen(false)} maxWidth="max-w-md">
+        <div className="space-y-4 text-xs">
+          <div className="border-b pb-2 flex items-center justify-between" style={{ borderColor: theme.border }}>
+            <div>
+              <h2 className="text-base font-bold tracking-tight" style={{ color: theme.textPrimary }}>
+                {selectedClassForRoster?.kelas_nama || 'Class'} Roster
+              </h2>
+              <p className="text-[11px]" style={{ color: theme.textSecondary }}>
+                {selectedClassForRoster?.unit_name} • {selectedClassForRoster?.year_name || 'Academic Year'}
+              </p>
+            </div>
+            <span className="font-mono font-bold text-[10px] px-2.5 py-0.5 rounded-full border" style={{ background: '#EDF3EC', color: '#346538', borderColor: '#D5E6D3' }}>
+              {selectedClassForRoster?.students?.length || 0} Enrolled
+            </span>
+          </div>
+
+          <div className="relative">
+            <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: theme.textSecondary }} />
+            <Input
+              id="roster-search"
+              placeholder="Search enrolled student..."
+              value={rosterSearch}
+              onChange={(e) => setRosterSearch(e.target.value)}
+              style={inputStyle}
+              className="pl-9 text-xs w-full"
+            />
+          </div>
+
+          {(!selectedClassForRoster?.students || selectedClassForRoster.students.length === 0) ? (
+            <div className="py-8 text-center" style={{ color: theme.textSecondary }}>
+              <FontAwesomeIcon icon={faUserGraduate} className="text-3xl mb-2 opacity-30" />
+              <p className="font-semibold text-xs">Belum ada siswa di kelas ini.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setRosterModalOpen(false);
+                  openManageStudents(selectedClassForRoster);
+                }}
+                className="mt-3 px-3 py-1.5 text-xs font-bold rounded-md cursor-pointer border-none"
+                style={btnPrimaryStyle}
+              >
+                + Tambah Siswa Ke Kelas
+              </button>
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto rounded-lg border p-2 space-y-1.5" style={{ borderColor: theme.border, background: theme.subtleBg }}>
+              {selectedClassForRoster.students
+                .filter(s => !rosterSearch || `${s.user_nama_depan} ${s.user_nama_belakang}`.toLowerCase().includes(rosterSearch.toLowerCase()))
+                .map((stu, index) => (
+                  <div
+                    key={stu.user_id}
+                    className="p-2.5 rounded-lg border flex items-center justify-between"
+                    style={{ background: theme.cardBg, borderColor: theme.border }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono font-bold text-[10px] w-6 h-6 rounded-full flex items-center justify-center border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                        {index + 1}
+                      </span>
+                      <span className="font-semibold text-xs" style={{ color: theme.textPrimary }}>
+                        {stu.user_nama_depan} {stu.user_nama_belakang}
+                      </span>
+                    </div>
+
+                    <span className="font-mono text-[10px]" style={{ color: theme.textSecondary }}>
+                      ID #{stu.user_id}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: theme.border }}>
+            <button
+              type="button"
+              onClick={() => {
+                setRosterModalOpen(false);
+                openManageStudents(selectedClassForRoster);
+              }}
+              className="px-3 py-1.5 text-xs font-bold rounded border cursor-pointer transition-all active:scale-[0.98] inline-flex items-center gap-1.5"
+              style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
+            >
+              <FontAwesomeIcon icon={faUserGraduate} className="text-[10px]" />
+              <span>Kelola Siswa</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setRosterModalOpen(false)}
+              className="px-4 py-1.5 text-xs font-medium rounded cursor-pointer"
+              style={btnSecondaryStyle}
+            >
+              Tutup
+            </button>
+          </div>
         </div>
       </Modal>
 

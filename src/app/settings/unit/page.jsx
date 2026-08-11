@@ -21,7 +21,7 @@ export default function UnitManagement() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingUnit, setEditingUnit] = useState(null);
-  const [formData, setFormData] = useState({ unit_name: '', is_school: false });
+  const [formData, setFormData] = useState({ unit_name: '', is_school: false, is_pyp: false, is_myp: false, is_dp: false });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -205,9 +205,25 @@ export default function UnitManagement() {
   const fetchUnits = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('unit').select('unit_id, unit_name, is_school').order('unit_name');
-      if (error) throw new Error(error.message);
-      setUnits(data || []);
+      const { data, error } = await supabase.from('unit').select('unit_id, unit_name, is_school, is_pyp, is_myp, is_dp').order('unit_name');
+      if (error) {
+        // Fallback if columns not yet created
+        const { data: fallbackData, error: fallbackError } = await supabase.from('unit').select('unit_id, unit_name, is_school').order('unit_name');
+        if (fallbackError) throw new Error(fallbackError.message);
+        setUnits((fallbackData || []).map(u => ({
+          ...u,
+          is_pyp: u.unit_name ? u.unit_name.toUpperCase().includes('PYP') : false,
+          is_myp: u.unit_name ? u.unit_name.toUpperCase().includes('MYP') : false,
+          is_dp: u.unit_name ? u.unit_name.toUpperCase().includes('DP') : false,
+        })));
+      } else {
+        setUnits((data || []).map(u => ({
+          ...u,
+          is_pyp: u.is_pyp ?? (u.unit_name ? u.unit_name.toUpperCase().includes('PYP') : false),
+          is_myp: u.is_myp ?? (u.unit_name ? u.unit_name.toUpperCase().includes('MYP') : false),
+          is_dp: u.is_dp ?? (u.unit_name ? u.unit_name.toUpperCase().includes('DP') : false),
+        })));
+      }
     } catch (err) {
       setError('Error fetching units: ' + err.message);
     } finally {
@@ -217,8 +233,8 @@ export default function UnitManagement() {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.unit_name.trim()) errors.unit_name = 'Nama unit wajib diisi';
-    else if (formData.unit_name.length < 2) errors.unit_name = 'Nama unit minimal 2 karakter';
+    if (!formData.unit_name.trim()) errors.unit_name = 'Unit name is required';
+    else if (formData.unit_name.length < 2) errors.unit_name = 'Unit name must be at least 2 characters';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -228,17 +244,29 @@ export default function UnitManagement() {
     if (!validateForm()) return;
     setSubmitting(true);
     try {
-      const submitData = { unit_name: formData.unit_name.trim(), is_school: !!formData.is_school };
-      let result;
-      if (editingUnit) {
-        result = await supabase.from('unit').update(submitData).eq('unit_id', editingUnit.unit_id);
-      } else {
+      const submitData = {
+        unit_name: formData.unit_name.trim(),
+        is_school: !!formData.is_school,
+        is_pyp: !!formData.is_pyp,
+        is_myp: !!formData.is_myp,
+        is_dp: !!formData.is_dp,
+      };
+      let result = await supabase.from('unit').update(submitData).eq('unit_id', editingUnit?.unit_id);
+      if (result.error) {
+        // Fallback without new boolean columns if DB not migrated yet
+        const basicData = { unit_name: formData.unit_name.trim(), is_school: !!formData.is_school };
+        if (editingUnit) {
+          result = await supabase.from('unit').update(basicData).eq('unit_id', editingUnit.unit_id);
+        } else {
+          result = await supabase.from('unit').insert([basicData]);
+        }
+      } else if (!editingUnit) {
         result = await supabase.from('unit').insert([submitData]);
       }
       if (result.error) throw new Error(result.error.message);
       await fetchUnits();
       resetForm();
-      showNotification('Berhasil!', editingUnit ? 'Data unit berhasil diupdate!' : 'Unit baru berhasil ditambahkan!', 'success');
+      showNotification('Success!', editingUnit ? 'Unit updated successfully!' : 'New unit added successfully!', 'success');
     } catch (err) {
       setError('Error: ' + err.message);
     } finally {
@@ -248,25 +276,31 @@ export default function UnitManagement() {
 
   const handleEdit = (unit) => {
     setEditingUnit(unit);
-    setFormData({ unit_name: unit.unit_name, is_school: !!unit.is_school });
+    setFormData({
+      unit_name: unit.unit_name,
+      is_school: !!unit.is_school,
+      is_pyp: !!unit.is_pyp,
+      is_myp: !!unit.is_myp,
+      is_dp: !!unit.is_dp,
+    });
     setShowForm(true);
     setFormErrors({});
   };
 
   const handleDelete = async (unit) => {
-    if (!confirm(`Hapus unit "${unit.unit_name}"?`)) return;
+    if (!confirm(`Delete unit "${unit.unit_name}"?`)) return;
     try {
       const { error } = await supabase.from('unit').delete().eq('unit_id', unit.unit_id);
       if (error) throw new Error(error.message);
       await fetchUnits();
-      showNotification('Berhasil!', 'Unit berhasil dihapus!', 'success');
+      showNotification('Success!', 'Unit deleted successfully!', 'success');
     } catch (err) {
       showNotification('Error!', err.message, 'error');
     }
   };
 
   const resetForm = () => {
-    setFormData({ unit_name: '', is_school: false });
+    setFormData({ unit_name: '', is_school: false, is_pyp: false, is_myp: false, is_dp: false });
     setEditingUnit(null);
     setShowForm(false);
     setFormErrors({});
@@ -282,101 +316,154 @@ export default function UnitManagement() {
   if (loading) return <div className="p-4 text-center" style={{ color: theme.textSecondary }}>Loading...</div>;
 
   const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody };
-  const selectClass = "w-full mt-1 rounded-md px-3 py-2 text-sm focus:outline-none";
-  const sectionLabel = "text-sm font-semibold uppercase tracking-wide mb-3 flex items-center gap-2";
+  const selectClass = "w-full mt-1 rounded-md px-3 py-2 text-xs focus:outline-none";
+  const sectionLabel = "text-xs font-mono font-bold uppercase tracking-wider mb-3 flex items-center gap-2";
 
   return (
-    <div className="p-3">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: theme.textPrimary }}>Unit Management</h1>
-        <Button onClick={() => setShowForm(true)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>Add New Unit</Button>
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Editorial Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b gap-4" style={{ borderColor: theme.border }}>
+        <div>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+            SYSTEM CONFIGURATION • UNIT ARCHITECTURE
+          </span>
+          <h1 className="text-xl md:text-2xl font-bold mt-2 tracking-tight" style={{ color: theme.textPrimary }}>
+            Unit & Report Management
+          </h1>
+          <p className="text-xs" style={{ color: theme.textSecondary }}>
+            Configure organizational units, IB programme mappings (PYP/MYP/DP), and report card signatures.
+          </p>
+        </div>
+        <Button
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 text-xs font-bold rounded-md border-none cursor-pointer"
+          style={{ background: theme.textPrimary, color: theme.pageBg }}
+        >
+          + Add New Unit
+        </Button>
       </div>
 
       <Modal isOpen={showForm} onClose={resetForm} title={editingUnit ? 'Edit Unit' : 'Add New Unit'} size="sm">
-        {error && <div className="px-3 py-2 rounded mb-3" style={{ background: theme.redBg, border: `1px solid ${theme.border}`, color: theme.redText }}>{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-3">
+        {error && <div className="px-3 py-2 rounded mb-3 text-xs font-medium" style={{ background: theme.redBg, border: `1px solid ${theme.border}`, color: theme.redText }}>{error}</div>}
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <Label htmlFor="unit_name" style={{ color: theme.textBody }}>Nama Unit *</Label>
+            <Label htmlFor="unit_name" style={{ color: theme.textPrimary }} className="font-semibold block mb-1">Unit Name *</Label>
             <Input id="unit_name" name="unit_name" value={formData.unit_name} onChange={handleInputChange}
-              className={formErrors.unit_name ? 'border-red-500' : ''}
-              style={{ background: theme.inputBg, border: `1px solid ${formErrors.unit_name ? '#ef4444' : theme.border}`, color: theme.textBody }}
-              disabled={submitting} placeholder="Masukkan nama unit" />
-            {formErrors.unit_name && <p className="text-red-500 text-sm mt-1">{formErrors.unit_name}</p>}
+              className={`text-xs ${formErrors.unit_name ? 'border-red-500' : ''}`}
+              style={{ background: theme.inputBg, border: `1px solid ${formErrors.unit_name ? '#ef4444' : theme.border}`, color: theme.textPrimary }}
+              disabled={submitting} placeholder="e.g. Primary, Secondary MYP, Management" />
+            {formErrors.unit_name && <p className="text-red-500 text-[11px] mt-1">{formErrors.unit_name}</p>}
           </div>
-          <div className="flex items-center gap-2 pt-1">
-            <input id="is_school" name="is_school" type="checkbox" checked={!!formData.is_school}
-              onChange={handleInputChange} disabled={submitting} className="h-4 w-4 rounded" />
-            <Label htmlFor="is_school" style={{ color: theme.textBody }}>Merupakan Sekolah?</Label>
+
+          <div className="p-3 rounded-lg border space-y-2.5" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider block" style={{ color: theme.textSecondary }}>Type & Programme Mapping</span>
+            
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input id="is_school" name="is_school" type="checkbox" checked={!!formData.is_school}
+                onChange={handleInputChange} disabled={submitting} className="h-4 w-4 rounded cursor-pointer" />
+              <span className="font-medium" style={{ color: theme.textPrimary }}>Is School Unit</span>
+            </label>
+
+            <div className="pt-2 border-t space-y-2" style={{ borderColor: theme.border }}>
+              <span className="text-[10px] font-semibold block" style={{ color: theme.textSecondary }}>IB Programme Categories:</span>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="flex items-center gap-1.5 cursor-pointer p-2 rounded border transition-colors" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                  <input id="is_pyp" name="is_pyp" type="checkbox" checked={!!formData.is_pyp}
+                    onChange={handleInputChange} disabled={submitting} className="rounded cursor-pointer" />
+                  <span className="font-mono font-bold text-[10px]" style={{ color: theme.greenText }}>PYP</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer p-2 rounded border transition-colors" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                  <input id="is_myp" name="is_myp" type="checkbox" checked={!!formData.is_myp}
+                    onChange={handleInputChange} disabled={submitting} className="rounded cursor-pointer" />
+                  <span className="font-mono font-bold text-[10px]" style={{ color: theme.blueText }}>MYP</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer p-1.5 rounded border transition-colors" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                  <input id="is_dp" name="is_dp" type="checkbox" checked={!!formData.is_dp}
+                    onChange={handleInputChange} disabled={submitting} className="rounded cursor-pointer" />
+                  <span className="font-mono font-bold text-[10px] text-[#A855F7]">DP</span>
+                </label>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2 pt-3">
-            <Button type="submit" style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none', flex: 1 }} disabled={submitting}>
+
+          <div className="flex gap-2 pt-2">
+            <Button type="submit" style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none', flex: 1 }} disabled={submitting} className="text-xs font-bold py-2">
               {submitting ? 'Processing...' : (editingUnit ? 'Update Unit' : 'Create Unit')}
             </Button>
-            <Button type="button" onClick={resetForm} variant="outline" style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border, flex: 1 }} disabled={submitting}>Cancel</Button>
+            <Button type="button" onClick={resetForm} variant="outline" style={{ background: theme.subtleBg, color: theme.textPrimary, borderColor: theme.border, flex: 1 }} disabled={submitting} className="text-xs font-medium py-2">Cancel</Button>
           </div>
         </form>
       </Modal>
 
       {/* Units Table */}
       <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-        <CardHeader>
-          <CardTitle style={{ color: theme.textPrimary }}>Units List ({units.length} units)</CardTitle>
+        <CardHeader className="p-4 border-b" style={{ borderColor: theme.border }}>
+          <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: theme.textPrimary }}>Units Directory ({units.length} units)</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="block md:hidden space-y-3">
+        <CardContent className="p-0">
+          <div className="block md:hidden p-3 space-y-3">
             {units.length === 0 ? (
-              <div className="text-center py-6" style={{ color: theme.textSecondary }}>No units found</div>
+              <div className="text-center py-6 text-xs" style={{ color: theme.textSecondary }}>No units found</div>
             ) : units.map(unit => (
-              <div key={unit.unit_id} className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}` }}>
+              <div key={unit.unit_id} className="rounded-lg p-3 space-y-2.5 border" style={{ borderColor: theme.border, background: theme.subtleBg }}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold" style={{ color: theme.textPrimary }}>{unit.unit_name}</h3>
-                    <div className="mt-1">
+                    <h3 className="font-bold text-xs" style={{ color: theme.textPrimary }}>{unit.unit_name}</h3>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                       {unit.is_school
-                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.greenBg, color: theme.greenText }}>Sekolah</span>
-                        : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary }}>Manajemen</span>}
+                        ? <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">School</span>
+                        : <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700">Management</span>}
+
+                      {unit.is_pyp && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">PYP</span>}
+                      {unit.is_myp && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">MYP</span>}
+                      {unit.is_dp && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF]">DP</span>}
                     </div>
                   </div>
-                  <span className="text-xs" style={{ color: theme.textSecondary }}>ID: {unit.unit_id}</span>
+                  <span className="font-mono text-[10px]" style={{ color: theme.textSecondary }}>ID: #{unit.unit_id}</span>
                 </div>
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" onClick={() => handleEdit(unit)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none', flex: 1 }}>Edit</Button>
-                  <Button size="sm" onClick={() => handleDelete(unit)} style={{ background: theme.redBg, color: theme.redText, border: 'none', flex: 1 }}>Delete</Button>
+                <div className="flex gap-2 pt-1 border-t" style={{ borderColor: theme.border }}>
+                  <Button size="sm" onClick={() => handleEdit(unit)} className="text-xs py-1" style={{ background: theme.textPrimary, color: theme.pageBg, border: 'none', flex: 1 }}>Edit</Button>
+                  <Button size="sm" onClick={() => handleDelete(unit)} className="text-xs py-1 bg-[#FDEBEC] text-[#9F2F2D] border border-[#F8C9CC] flex-1">Delete</Button>
                 </div>
               </div>
             ))}
           </div>
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full border-collapse" style={{ border: `1px solid ${theme.border}` }}>
+            <table className="w-full text-xs border-collapse">
               <thead>
-                <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>ID</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>Nama Unit</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>Tipe</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>Actions</th>
+                <tr className="border-b font-mono font-semibold uppercase tracking-wider text-[10px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                  <th className="p-3 text-left w-16">ID</th>
+                  <th className="p-3 text-left">Unit Name</th>
+                  <th className="p-3 text-left">Type</th>
+                  <th className="p-3 text-left">Programme Mapping</th>
+                  <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y" style={{ borderColor: theme.border }}>
                 {units.length === 0 ? (
-                  <tr><td colSpan="4" className="px-4 py-6 text-center" style={{ color: theme.textSecondary, border: `1px solid ${theme.border}` }}>No units found</td></tr>
+                  <tr><td colSpan="5" className="p-6 text-center text-xs" style={{ color: theme.textSecondary }}>No units found</td></tr>
                 ) : units.map(unit => (
-                  <tr key={unit.unit_id}
-                    style={{ borderBottom: `1px solid ${theme.border}` }}
-                    onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td className="px-4 py-2" style={{ color: theme.textBody, border: `1px solid ${theme.border}` }}>{unit.unit_id}</td>
-                    <td className="px-4 py-2" style={{ color: theme.textBody, border: `1px solid ${theme.border}` }}>{unit.unit_name}</td>
-                    <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
+                  <tr key={unit.unit_id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                    <td className="p-3 font-mono font-bold text-[11px]" style={{ color: theme.textSecondary }}>#{unit.unit_id}</td>
+                    <td className="p-3 font-bold" style={{ color: theme.textPrimary }}>{unit.unit_name}</td>
+                    <td className="p-3">
                       {unit.is_school
-                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.greenBg, color: theme.greenText }}>Sekolah</span>
-                        : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary }}>Manajemen</span>}
+                        ? <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">School</span>
+                        : <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700">Management</span>}
                     </td>
-                    <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
-                      <div className="flex space-x-2">
-                        <Button size="sm" onClick={() => handleEdit(unit)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>Edit</Button>
-                        <Button size="sm" onClick={() => handleDelete(unit)} style={{ background: theme.redBg, color: theme.redText, border: 'none' }}>Delete</Button>
+                    <td className="p-3">
+                      <div className="flex items-center gap-1.5">
+                        {unit.is_pyp && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">PYP</span>}
+                        {unit.is_myp && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">MYP</span>}
+                        {unit.is_dp && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF]">DP</span>}
+                        {!unit.is_pyp && !unit.is_myp && !unit.is_dp && <span className="text-[10px] text-neutral-400 font-mono">-</span>}
                       </div>
+                    </td>
+                    <td className="p-3 text-right space-x-1.5">
+                      <Button size="sm" onClick={() => handleEdit(unit)} className="text-xs px-3 py-1 font-semibold" style={{ background: theme.textPrimary, color: theme.pageBg, border: 'none' }}>Edit</Button>
+                      <Button size="sm" onClick={() => handleDelete(unit)} className="text-xs px-3 py-1 font-semibold bg-[#FDEBEC] text-[#9F2F2D] border border-[#F8C9CC] hover:bg-red-100">Delete</Button>
                     </td>
                   </tr>
                 ))}
@@ -388,26 +475,26 @@ export default function UnitManagement() {
 
       {/* Report Settings */}
       <Card className="mt-6" style={{ background: theme.cardBg, borderColor: theme.border }}>
-        <CardHeader>
-          <CardTitle style={{ color: theme.textPrimary }}>Report Settings</CardTitle>
-          <p className="text-sm" style={{ color: theme.textSecondary }}>Konfigurasi laporan per unit per tahun ajaran</p>
+        <CardHeader className="p-4 border-b" style={{ borderColor: theme.border }}>
+          <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: theme.textPrimary }}>Report Settings</CardTitle>
+          <p className="text-xs" style={{ color: theme.textSecondary }}>Report card configuration per unit per academic year</p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-4 space-y-4">
           {/* Unit & Year selector */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <Label style={{ color: theme.textBody }}>Unit</Label>
+              <Label style={{ color: theme.textPrimary }} className="text-xs font-semibold block mb-1">Unit</Label>
               <select value={rsUnitId} onChange={handleRsUnitChange} className={selectClass} style={selectStyle}>
-                <option value="">-- Pilih Unit --</option>
+                <option value="">-- Select Unit --</option>
                 {units.filter(u => u.is_school).map(u => (
                   <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
                 ))}
               </select>
             </div>
             <div className="flex-1">
-              <Label style={{ color: theme.textBody }}>Tahun Ajaran</Label>
+              <Label style={{ color: theme.textPrimary }} className="text-xs font-semibold block mb-1">Academic Year</Label>
               <select value={rsYearId} onChange={handleRsYearChange} className={selectClass} style={selectStyle}>
-                <option value="">-- Pilih Tahun --</option>
+                <option value="">-- Select Academic Year --</option>
                 {years.map(y => (
                   <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
                 ))}
@@ -417,12 +504,12 @@ export default function UnitManagement() {
 
           {rsUnitId && rsYearId && (
             rsLoading ? (
-              <div className="text-sm py-4 text-center" style={{ color: theme.textSecondary }}>Memuat data...</div>
+              <div className="text-xs py-4 text-center" style={{ color: theme.textSecondary }}>Loading settings...</div>
             ) : (
               <div className="space-y-6 pt-4" style={{ borderTop: `1px solid ${theme.border}` }}>
                 {!rsExistingId && (
                   <p className="text-xs rounded px-3 py-2" style={{ color: theme.blueText, background: theme.blueBg, border: `1px solid ${theme.border}` }}>
-                    Belum ada data untuk kombinasi ini. Isi form dan simpan untuk membuat baru.
+                    No report configuration found for this combination. Fill in the details below and save to create a record.
                   </p>
                 )}
 
@@ -430,80 +517,80 @@ export default function UnitManagement() {
                 <div className="space-y-3">
                   <p className={sectionLabel} style={{ color: theme.textSecondary }}>
                     <span className="w-5 h-0.5 inline-block" style={{ background: theme.border }} />
-                    Informasi Kepala Sekolah
+                    Principal Information
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1">
-                      <Label style={{ color: theme.textBody }}>Nama Kepala Sekolah</Label>
+                      <Label style={{ color: theme.textPrimary }} className="text-xs font-semibold block mb-1">Principal Full Name</Label>
                       <Input value={rsData.principal_name}
                         onChange={e => setRsData(p => ({ ...p, principal_name: e.target.value }))}
-                        placeholder="Contoh: Edwin Arlianto" className="mt-1"
-                        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+                        placeholder="e.g. Edwin Arlianto" className="text-xs mt-1"
+                        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }} />
                     </div>
                     <div className="flex-1">
-                      <Label style={{ color: theme.textBody }}>Jabatan</Label>
+                      <Label style={{ color: theme.textPrimary }} className="text-xs font-semibold block mb-1">Principal Title</Label>
                       <Input value={rsData.principal_title}
                         onChange={e => setRsData(p => ({ ...p, principal_title: e.target.value }))}
-                        placeholder="Contoh: HS Principal" className="mt-1"
-                        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+                        placeholder="e.g. HS Principal" className="text-xs mt-1"
+                        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }} />
                     </div>
                   </div>
                 </div>
 
                 {/* ── Semester 1 ── */}
-                <div className="space-y-3 rounded-lg p-4" style={{ background: theme.subtleBg }}>
+                <div className="space-y-3 rounded-lg p-4 border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
                   <p className={sectionLabel} style={{ color: theme.textSecondary }}>
-                    <span className="text-white text-xs px-2 py-0.5 rounded" style={{ background: '#2563eb' }}>S1</span>
+                    <span className="text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded" style={{ background: '#1F6C9F' }}>S1</span>
                     Semester 1
                   </p>
                   <div>
-                    <Label style={{ color: theme.textBody }}>Tanggal Laporan Semester 1 <span className="font-normal" style={{ color: theme.textSecondary }}>("Prepared on")</span></Label>
+                    <Label style={{ color: theme.textPrimary }} className="text-xs font-semibold block mb-1">Semester 1 Report Date <span className="font-normal text-[11px]" style={{ color: theme.textSecondary }}>("Prepared on")</span></Label>
                     <Input type="date" value={rsData.report_date_s1}
                       onChange={e => setRsData(p => ({ ...p, report_date_s1: e.target.value }))}
-                      className="mt-1 w-full sm:w-48"
-                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
+                      className="mt-1 text-xs w-full sm:w-48"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }} />
                   </div>
                   <div>
-                    <Label style={{ color: theme.textBody }}>Kata Sambutan Semester 1</Label>
-                    <p className="text-xs mb-1" style={{ color: theme.textSecondary }}>Gunakan <code className="px-1 rounded" style={{ background: theme.cardBg, color: theme.textBody }}>{'{semester}'}</code> untuk nama semester otomatis.</p>
+                    <Label style={{ color: theme.textPrimary }} className="text-xs font-semibold block mb-1">Semester 1 Opening Greeting</Label>
+                    <p className="text-[11px] mb-1" style={{ color: theme.textSecondary }}>Use <code className="px-1 rounded font-mono text-[10px]" style={{ background: theme.cardBg, color: theme.textPrimary }}>{'{semester}'}</code> for automatic semester name replacement.</p>
                     <textarea
                       value={rsData.report_greeting_s1}
                       onChange={e => setRsData(p => ({ ...p, report_greeting_s1: e.target.value }))}
-                      rows={6}
-                      placeholder="Tulis kata sambutan untuk Semester 1..."
-                      className="w-full rounded-md px-3 py-2 text-sm focus:outline-none resize-y"
-                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
+                      rows={4}
+                      placeholder="Enter opening remarks for Semester 1..."
+                      className="w-full rounded-md px-3 py-2 text-xs focus:outline-none resize-y"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                     />
-                    <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{rsData.report_greeting_s1.length} karakter</p>
+                    <p className="text-[11px] mt-1 font-mono" style={{ color: theme.textSecondary }}>{rsData.report_greeting_s1.length} characters</p>
                   </div>
                 </div>
 
                 {/* ── Semester 2 ── */}
-                <div className="space-y-3 rounded-lg p-4" style={{ background: theme.subtleBg }}>
+                <div className="space-y-3 rounded-lg p-4 border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
                   <p className={sectionLabel} style={{ color: theme.textSecondary }}>
-                    <span className="text-white text-xs px-2 py-0.5 rounded" style={{ background: '#f97316' }}>S2</span>
+                    <span className="text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded" style={{ background: '#956400' }}>S2</span>
                     Semester 2
                   </p>
                   <div>
-                    <Label style={{ color: theme.textBody }}>Tanggal Laporan Semester 2 <span className="font-normal" style={{ color: theme.textSecondary }}>("Prepared on")</span></Label>
+                    <Label style={{ color: theme.textPrimary }} className="text-xs font-semibold block mb-1">Semester 2 Report Date <span className="font-normal text-[11px]" style={{ color: theme.textSecondary }}>("Prepared on")</span></Label>
                     <Input type="date" value={rsData.report_date_s2}
                       onChange={e => setRsData(p => ({ ...p, report_date_s2: e.target.value }))}
-                      className="mt-1 w-full sm:w-48"
-                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
-                    <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>Kosongkan untuk menggunakan tanggal cetak otomatis.</p>
+                      className="mt-1 text-xs w-full sm:w-48"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }} />
+                    <p className="text-[11px] mt-1" style={{ color: theme.textSecondary }}>Leave blank to use automatic print date.</p>
                   </div>
                   <div>
-                    <Label style={{ color: theme.textBody }}>Kata Sambutan Semester 2</Label>
-                    <p className="text-xs mb-1" style={{ color: theme.textSecondary }}>Kosongkan untuk menggunakan kata sambutan S1.</p>
+                    <Label style={{ color: theme.textPrimary }} className="text-xs font-semibold block mb-1">Semester 2 Opening Greeting</Label>
+                    <p className="text-[11px] mb-1" style={{ color: theme.textSecondary }}>Leave blank to inherit Semester 1 greeting.</p>
                     <textarea
                       value={rsData.report_greeting_s2}
                       onChange={e => setRsData(p => ({ ...p, report_greeting_s2: e.target.value }))}
-                      rows={6}
-                      placeholder="Tulis kata sambutan untuk Semester 2 (opsional)..."
-                      className="w-full rounded-md px-3 py-2 text-sm focus:outline-none resize-y"
-                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
+                      rows={4}
+                      placeholder="Enter opening remarks for Semester 2 (optional)..."
+                      className="w-full rounded-md px-3 py-2 text-xs focus:outline-none resize-y"
+                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
                     />
-                    <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{rsData.report_greeting_s2.length} karakter</p>
+                    <p className="text-[11px] mt-1 font-mono" style={{ color: theme.textSecondary }}>{rsData.report_greeting_s2.length} characters</p>
                   </div>
                 </div>
 
@@ -511,13 +598,13 @@ export default function UnitManagement() {
                 <div className="space-y-4">
                   <p className={sectionLabel} style={{ color: theme.textSecondary }}>
                     <span className="w-5 h-0.5 inline-block" style={{ background: theme.border }} />
-                    Tanda Tangan &amp; Cap Sekolah
+                    Signature &amp; School Stamp
                   </p>
-                  <p className="text-xs" style={{ color: theme.textSecondary }}>File gambar (PNG/JPG, transparan lebih baik). Ditampilkan di halaman Progression Report Semester 2.</p>
+                  <p className="text-xs" style={{ color: theme.textSecondary }}>Image file (PNG/JPG, transparent background recommended). Rendered on Semester 2 Progression Report.</p>
 
                   {/* Principal Signature */}
                   <ImageCropUploader
-                    label="Tanda Tangan Kepala Sekolah"
+                    label="Principal Signature"
                     previewUrl={rsData.signature_principal_url}
                     uploading={uploadingSignature}
                     inputRef={signatureInputRef}
@@ -527,7 +614,7 @@ export default function UnitManagement() {
 
                   {/* School Stamp */}
                   <ImageCropUploader
-                    label="Cap / Stempel Sekolah"
+                    label="School Stamp / Seal"
                     previewUrl={rsData.stamp_url}
                     uploading={uploadingStamp}
                     inputRef={stampInputRef}
@@ -536,9 +623,9 @@ export default function UnitManagement() {
                   />
                 </div>
 
-                <div className="flex justify-end pt-2" style={{ borderTop: `1px solid ${theme.border}` }}>
-                  <Button onClick={handleSaveReportSettings} disabled={rsSaving} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
-                    {rsSaving ? 'Menyimpan...' : (rsExistingId ? 'Update' : 'Simpan')}
+                <div className="flex justify-end pt-3" style={{ borderTop: `1px solid ${theme.border}` }}>
+                  <Button onClick={handleSaveReportSettings} disabled={rsSaving} className="text-xs font-bold px-4 py-2" style={{ background: theme.textPrimary, color: theme.pageBg, border: 'none' }}>
+                    {rsSaving ? 'Saving...' : (rsExistingId ? 'Update Report Settings' : 'Save Report Settings')}
                   </Button>
                 </div>
               </div>

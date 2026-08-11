@@ -1298,11 +1298,27 @@ export default function TopicNewPage() {
     try {
       const isAdminUser = (role?.toLowerCase() === 'admin') || isAdminFlag || isCurriculum
 
-      const { data: kelasData, error: kelasError } = await supabase
+      // 1. Fetch units to identify MYP unit_ids
+      const { data: unitsData } = await supabase
+        .from('unit')
+        .select('unit_id, unit_name, is_myp')
+
+      const mypUnitIds = new Set(
+        (unitsData || [])
+          .filter(u => u.is_myp === true || (u.unit_name && u.unit_name.toUpperCase().includes('MYP')))
+          .map(u => u.unit_id)
+      )
+
+      // 2. Fetch raw kelas and strictly filter for MYP units only
+      const { data: rawKelasData, error: kelasError } = await supabase
         .from('kelas')
-        .select('kelas_id, kelas_nama, kelas_year_id')
+        .select('kelas_id, kelas_nama, kelas_year_id, kelas_unit_id')
         .order('kelas_nama')
       if (kelasError) throw kelasError
+
+      const kelasData = (rawKelasData || [])
+        .filter(k => mypUnitIds.has(k.kelas_unit_id))
+        .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
 
       const { data: yearData, error: yearError } = await supabase
         .from('year')
@@ -1716,12 +1732,17 @@ export default function TopicNewPage() {
       if (userKelasIds.length > 0) {
         const { data: kelasData, error: kelasError } = await supabase
           .from('kelas')
-          .select('kelas_id, kelas_nama')
+          .select('kelas_id, kelas_nama, kelas_unit_id')
           .in('kelas_id', userKelasIds)
           .order('kelas_nama')
         
         if (!kelasError && kelasData) {
-          setAssessmentKelasOptions(kelasData)
+          const { data: unitsData } = await supabase.from('unit').select('unit_id, unit_name, is_myp')
+          const mypIds = new Set((unitsData || []).filter(u => u.is_myp || (u.unit_name && u.unit_name.toUpperCase().includes('MYP'))).map(u => u.unit_id))
+          const filteredSorted = kelasData
+            .filter(k => mypIds.has(k.kelas_unit_id))
+            .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+          setAssessmentKelasOptions(filteredSorted)
         }
       }
       
@@ -3027,16 +3048,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       const kelasIds = [...new Set((detailKelasData || []).map(dk => dk.detail_kelas_kelas_id).filter(Boolean))]
       
       if (kelasIds.length > 0) {
-        // Filter by year_id
         const { data: kelasData, error: kelasError } = await supabase
           .from('kelas')
-          .select('kelas_id, kelas_nama')
+          .select('kelas_id, kelas_nama, kelas_unit_id')
           .in('kelas_id', kelasIds)
           .eq('kelas_year_id', yearId)
           .order('kelas_nama')
         
         if (!kelasError && kelasData) {
-          setReportKelasOptions(kelasData)
+          const { data: unitsData } = await supabase.from('unit').select('unit_id, unit_name, is_myp')
+          const mypIds = new Set((unitsData || []).filter(u => u.is_myp || (u.unit_name && u.unit_name.toUpperCase().includes('MYP'))).map(u => u.unit_id))
+          const filteredSorted = (kelasData || [])
+            .filter(k => mypIds.has(k.kelas_unit_id))
+            .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+          setReportKelasOptions(filteredSorted)
         }
       } else {
         setReportKelasOptions([])
@@ -3194,7 +3219,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       const kelasIds = [...new Set(detailKelasData.map(d => d.detail_kelas_kelas_id))]
       let kelasQuery = supabase
         .from('kelas')
-        .select('kelas_id, kelas_nama, kelas_year_id')
+        .select('kelas_id, kelas_nama, kelas_year_id, kelas_unit_id')
         .in('kelas_id', kelasIds)
         .order('kelas_nama')
       // Filter by selected year if one is chosen
@@ -3202,7 +3227,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       const { data: kelasData, error: kError } = await kelasQuery
       
       if (kError) throw kError
-      setCommentKelasOptions(kelasData || [])
+      const { data: unitsData } = await supabase.from('unit').select('unit_id, unit_name, is_myp')
+      const mypIds = new Set((unitsData || []).filter(u => u.is_myp || (u.unit_name && u.unit_name.toUpperCase().includes('MYP'))).map(u => u.unit_id))
+      const filteredSorted = (kelasData || [])
+        .filter(k => mypIds.has(k.kelas_unit_id))
+        .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+      setCommentKelasOptions(filteredSorted)
     } catch (err) {
       console.error('Error fetching comment kelas:', err)
     } finally {
