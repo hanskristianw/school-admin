@@ -25,6 +25,10 @@ export default function FpbSettingsPage() {
   const [savingBudget, setSavingBudget]   = useState(false)
   const [savedBudget, setSavedBudget]     = useState(false)
 
+  const [highLimitRoleIds, setHighLimitRoleIds] = useState(new Set())
+  const [savingHighLimit, setSavingHighLimit]   = useState(false)
+  const [savedHighLimit, setSavedHighLimit]     = useState(false)
+
   const [screenerId, setScreenerId]         = useState('')
   const [screenerRowId, setScreenerRowId]   = useState(null)
   const [savingScreener, setSavingScreener] = useState(false)
@@ -148,7 +152,8 @@ export default function FpbSettingsPage() {
       supabase.from('fpb_role_approvers').select('*'),
       supabase.from('fpb_budget_roles').select('role_id'),
       supabase.from('fpb_screener').select('*').limit(1).maybeSingle(),
-    ]).then(([{ data: r }, { data: u }, { data: ra }, { data: br }, { data: sc }]) => {
+      supabase.from('settings').select('value').eq('key', 'fpb_high_limit_role_ids').maybeSingle(),
+    ]).then(([{ data: r }, { data: u }, { data: ra }, { data: br }, { data: sc }, { data: hl }]) => {
       setRoles(r || [])
       setUsers(u || [])
       const map = {}
@@ -163,6 +168,12 @@ export default function FpbSettingsPage() {
       setRoleApprovers(map)
       setBudgetRoleIds(new Set((br || []).map(b => b.role_id)))
       if (sc) { setScreenerId(String(sc.screener_role_id)); setScreenerRowId(sc.id) }
+      if (hl?.value) {
+        try {
+          const parsed = JSON.parse(hl.value)
+          setHighLimitRoleIds(new Set(parsed))
+        } catch (e) { console.error(e) }
+      }
       if (r?.length) setSelRole(r[0])
       setLoading(false)
     })
@@ -285,6 +296,26 @@ export default function FpbSettingsPage() {
       setSavedBudget(true); setTimeout(() => setSavedBudget(false), 3000)
     } catch (e) { setError(e.message) }
     finally { setSavingBudget(false) }
+  }
+
+  const toggleHighLimitRole = (roleId) => {
+    setHighLimitRoleIds(prev => { const next = new Set(prev); next.has(roleId) ? next.delete(roleId) : next.add(roleId); return next })
+  }
+
+  const saveHighLimitRoles = async () => {
+    setSavingHighLimit(true)
+    try {
+      const payload = {
+        key: 'fpb_high_limit_role_ids',
+        value: JSON.stringify([...highLimitRoleIds]),
+        description: 'Role IDs allowed to create FPBs up to Rp 2,000,000',
+        updated_at: new Date().toISOString(),
+      }
+      const { error: err } = await supabase.from('settings').upsert(payload, { onConflict: 'key' })
+      if (err) throw err
+      setSavedHighLimit(true); setTimeout(() => setSavedHighLimit(false), 3000)
+    } catch (e) { setError(e.message) }
+    finally { setSavingHighLimit(false) }
   }
 
   const inputStyle = {
@@ -744,6 +775,57 @@ export default function FpbSettingsPage() {
             <Button onClick={saveBudgetRoles} disabled={savingBudget}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: savedBudget ? '#059669' : savingBudget ? theme.subtleBg : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: savingBudget ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: savingBudget ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
               {savingBudget ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : savedBudget ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Hak Akses Budget</>}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* High Limit Roles Card (> 600k - 2 Million) */}
+      <Card style={{ background: theme.cardBg, borderColor: theme.border, marginTop: 24 }}>
+        <CardHeader className="pb-3">
+          <CardTitle style={{ color: theme.textPrimary, fontSize: 16 }}>
+            <FontAwesomeIcon icon={faFileInvoiceDollar} style={{ marginRight: 8, color: '#059669' }} />
+            Hak Akses Nominal FPB &gt; Rp 600.000 – Rp 2.000.000 (Extended Limit)
+          </CardTitle>
+          <p style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
+            Pilih jabatan yang diizinkan untuk membuat pengajuan FPB dengan total nominal di atas <strong>Rp 600.000</strong> hingga <strong>Rp 2.000.000</strong>. Role yang tidak tercentang secara otomatis dibatasi maksimal <strong>Rp 600.000</strong>.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 20 }}>
+            {roles.map(r => {
+              const checked = highLimitRoleIds.has(r.role_id)
+              return (
+                <label key={r.role_id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, cursor: 'pointer', border: `2px solid ${checked ? '#059669' : theme.border}`, background: checked ? 'rgba(5,150,105,0.07)' : theme.cardBg, transition: 'all 0.15s', userSelect: 'none' }}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleHighLimitRole(r.role_id)}
+                    style={{ width: 16, height: 16, accentColor: '#059669', cursor: 'pointer', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>{r.role_name}</div>
+                    {checked ? (
+                      <div style={{ fontSize: 10, color: '#059669', fontWeight: 600, marginTop: 1 }}>✓ Limit s.d. Rp 2.000.000</div>
+                    ) : (
+                      <div style={{ fontSize: 10, color: theme.textSecondary, fontWeight: 500, marginTop: 1 }}>Limit s.d. Rp 600.000</div>
+                    )}
+                  </div>
+                </label>
+              )
+            })}
+          </div>
+          {highLimitRoleIds.size > 0 && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.2)', fontSize: 12, color: theme.textSecondary }}>
+              <strong style={{ color: '#059669' }}>{highLimitRoleIds.size} jabatan</strong> diizinkan mengajukan FPB hingga Rp 2.000.000. Jabatan lainnya terbatas pada Rp 600.000.
+            </div>
+          )}
+          {highLimitRoleIds.size === 0 && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 12, color: '#b45309' }}>
+              ℹ Semua jabatan saat ini dibatasi maksimal Rp 600.000.
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+            <Button onClick={saveHighLimitRoles} disabled={savingHighLimit}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 24px', background: savedHighLimit ? '#059669' : savingHighLimit ? theme.subtleBg : 'linear-gradient(135deg,#059669,#10b981)', color: savingHighLimit ? theme.textSecondary : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: savingHighLimit ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+              {savingHighLimit ? <><FontAwesomeIcon icon={faSpinner} spin />Menyimpan...</> : savedHighLimit ? <><FontAwesomeIcon icon={faCheck} />Tersimpan!</> : <><FontAwesomeIcon icon={faSave} />Simpan Limit Nominal</>}
             </Button>
           </div>
         </CardContent>

@@ -9,16 +9,16 @@ import {
   faPlus, faClipboardList, faClock, faEye, faSpinner,
   faArrowLeft, faTrash, faTimes, faShoppingCart, faBoxOpen, faTools,
   faCheck, faRotateLeft, faPen, faExternalLinkAlt, faCheckDouble, faPrint,
-  faFileExcel,
+  faFileExcel, faSearch, faLock, faCog,
 } from '@fortawesome/free-solid-svg-icons'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_META = {
-  draft:    { label: 'Draft',     color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
-  pending:  { label: 'Pending',   color: '#d97706', bg: 'rgba(217,119,6,0.12)'   },
-  revision: { label: 'Revision',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)'  },
-  approved: { label: 'Approved',  color: '#059669', bg: 'rgba(5,150,105,0.12)'   },
-  rejected: { label: 'Rejected',  color: '#dc2626', bg: 'rgba(220,38,38,0.12)'   },
+  draft:    { label: 'DRAFT',    color: '#4B5563', bg: '#F3F4F6' },
+  pending:  { label: 'PENDING',  color: '#956400', bg: '#FBF3DB' },
+  revision: { label: 'REVISION', color: '#956400', bg: '#FBF3DB' },
+  approved: { label: 'APPROVED', color: '#346538', bg: '#EDF3EC' },
+  rejected: { label: 'REJECTED', color: '#9F2F2D', bg: '#FDEBEC' },
 }
 const TYPE_ICONS = { small: faShoppingCart, large: faBoxOpen, repair: faTools }
 const fmt     = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0)
@@ -538,81 +538,98 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 16, width: '100%', maxWidth: 780, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+      <div onClick={onClose} className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-[2px]">
+        <div onClick={e => e.stopPropagation()} className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-lg border shadow-xl font-sans text-xs antialiased overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
 
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
-            {loading ? <span style={{ color: theme.textSecondary, fontSize: 14 }}>Loading...</span> : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 800, fontSize: 16, color: theme.textPrimary }}>{fpb?.fpb_number || '—'}</span>
-                <span style={{ fontSize: 11, color: theme.textSecondary }}>{fpb?.fpb_types?.type_name}</span>
+          {/* Modal Header */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b flex-shrink-0" style={{ borderColor: theme.border }}>
+            {loading ? <span style={{ color: theme.textSecondary }}>Loading FPB...</span> : (
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="font-mono font-bold text-sm tracking-tight" style={{ color: theme.textPrimary }}>{fpb?.fpb_number || '—'}</span>
+                <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: theme.textSecondary }}>{fpb?.fpb_types?.type_name}</span>
                 {fpb && <StatusBadge status={fpb.status} />}
-                {fpb?.revision_count > 0 && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Revision #{fpb.revision_count}</span>}
+                {fpb?.revision_count > 0 && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold" style={{ background: '#FBF3DB', color: '#956400' }}>
+                    Revision #{fpb.revision_count}
+                  </span>
+                )}
               </div>
             )}
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div className="flex items-center gap-1.5">
               {fpb && !loading && (
                 <button onClick={() => setPrintFpbId(fpbId)}
-                  style={{ background: 'none', border: `1px solid ${theme.border}`, color: theme.textSecondary, cursor: 'pointer', padding: '4px 10px', fontSize: 13, borderRadius: 7, display: 'flex', alignItems: 'center', gap: 5 }}
+                  className="px-3 py-1 rounded-md text-xs font-semibold border cursor-pointer inline-flex items-center gap-1.5"
+                  style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}
                   title="Print FPB">
-                  <FontAwesomeIcon icon={faPrint} />
+                  <FontAwesomeIcon icon={faPrint} className="text-[11px]" />
+                  <span>Print</span>
                 </button>
               )}
-              <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}>
+              <button onClick={onClose} className="p-1 text-base border-none bg-transparent cursor-pointer transition-opacity hover:opacity-75" style={{ color: theme.textSecondary }}>
                 <FontAwesomeIcon icon={faTimes} />
               </button>
             </div>
           </div>
 
-          {/* Body */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Modal Body */}
+          <div className="p-5 flex-1 overflow-y-auto space-y-4">
             {loading ? (
-              <div style={{ textAlign: 'center', padding: 40, color: theme.textSecondary }}>
-                <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 24 }} />
+              <div className="py-16 text-center text-xs flex flex-col items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-xl text-blue-500" />
+                <span className="font-semibold">Loading request details...</span>
               </div>
             ) : !fpb ? (
-              <div style={{ textAlign: 'center', padding: 40, color: '#dc2626' }}>FPB not found.</div>
+              <div className="py-16 text-center text-xs font-semibold text-red-600">FPB not found.</div>
             ) : (
               <>
-                {/* Info bar — compact single row */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 20px', padding: '10px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.subtleBg, fontSize: 12 }}>
+                {/* Info bar — flat grid */}
+                <div className="p-3.5 rounded-md border text-xs grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ background: theme.subtleBg, borderColor: theme.border }}>
                   {[
                     ['Requester', `${fpb.users?.user_nama_depan || ''} ${fpb.users?.user_nama_belakang || ''}`.trim()],
                     ['Division', fpb.division || '—'],
                     ['Created', fmtDate(fpb.created_at)],
                     ['Required Date', fmtDate(fpb.usage_date)],
                   ].map(([l, v]) => (
-                    <span key={l}><span style={{ color: theme.textSecondary }}>{l}: </span><strong style={{ color: theme.textPrimary }}>{v}</strong></span>
+                    <div key={l}>
+                      <span className="text-[10px] font-mono uppercase tracking-wider block" style={{ color: theme.textSecondary }}>{l}</span>
+                      <span className="font-bold text-xs mt-0.5 block" style={{ color: theme.textPrimary }}>{v}</span>
+                    </div>
                   ))}
-                  {fpb.note && <span style={{ width: '100%', marginTop: 2 }}><span style={{ color: theme.textSecondary }}>Note: </span><span style={{ color: theme.textPrimary }}>{fpb.note}</span></span>}
+                  {fpb.note && (
+                    <div className="col-span-2 sm:col-span-4 pt-1 border-t" style={{ borderColor: theme.border }}>
+                      <span className="text-[10px] font-mono uppercase tracking-wider block" style={{ color: theme.textSecondary }}>Note</span>
+                      <span className="text-xs mt-0.5 block font-medium" style={{ color: theme.textPrimary }}>{fpb.note}</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Items table — editable for screener during screening */}
-                <div style={{ borderRadius: 10, border: `1px solid ${screenerEditMode ? '#d97706' : theme.border}`, display: 'block', overflow: 'auto', WebkitOverflowScrolling: 'touch', transition: 'border-color 0.2s' }}>
-                  {/* Screener edit mode header */}
+                {/* Items table */}
+                <div className="rounded-md border overflow-hidden" style={{ borderColor: screenerEditMode ? '#956400' : theme.border }}>
                   {myScreeningPending && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: `1px solid ${screenerEditMode ? '#d97706' : theme.border}`, background: screenerEditMode ? 'rgba(245,158,11,0.05)' : theme.cardBg }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: screenerEditMode ? '#d97706' : theme.textSecondary }}>
-                          🔍 Item List
+                    <div className="flex items-center justify-between p-3 border-b" style={{ background: screenerEditMode ? '#FBF3DB' : theme.cardBg, borderColor: theme.border }}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider" style={{ color: screenerEditMode ? '#956400' : theme.textSecondary }}>
+                          Item List {screenerEditMode && '(Screener Edit Mode)'}
                         </span>
-                        {screenerEditMode && <span style={{ fontSize: 11, color: '#d97706' }}>— Screener Edit Mode</span>}
                       </div>
                       {!screenerEditMode ? (
                         <button onClick={() => { setEditItems(items.map(i => ({ ...i, _id: crypto.randomUUID() }))); setScreenerEditMode(true) }}
-                          style={{ fontSize: 11, padding: '4px 12px', borderRadius: 6, border: '1px solid #d97706', background: 'rgba(245,158,11,0.08)', color: '#d97706', cursor: 'pointer', fontWeight: 700 }}>
-                          ✏️ Edit Items
+                          className="px-3 py-1 rounded-md text-xs font-bold border cursor-pointer inline-flex items-center gap-1.5"
+                          style={{ borderColor: '#F59E0B', background: '#FBF3DB', color: '#956400' }}>
+                          <FontAwesomeIcon icon={faPen} className="text-[10px]" />
+                          <span>Edit Items</span>
                         </button>
                       ) : (
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div className="flex gap-2">
                           <button onClick={() => { setScreenerEditMode(false); setError('') }}
-                            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, cursor: 'pointer' }}>
+                            className="px-3 py-1 rounded-md text-xs font-bold border cursor-pointer"
+                            style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}>
                             Cancel
                           </button>
                           <button onClick={handleSaveScreenerItems} disabled={savingItems}
-                            style={{ fontSize: 11, padding: '4px 12px', borderRadius: 6, border: 'none', background: savedItems ? '#059669' : savingItems ? '#e5e7eb' : '#d97706', color: savingItems ? '#9ca3af' : '#fff', cursor: savingItems ? 'not-allowed' : 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
-                            {savingItems ? '⏳ Saving...' : savedItems ? '✓ Saved!' : '💾 Save Changes'}
+                            className="px-3 py-1 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-amber-700 hover:bg-amber-800 disabled:opacity-50 inline-flex items-center gap-1.5">
+                            {savingItems ? <FontAwesomeIcon icon={faSpinner} spin className="text-xs" /> : <FontAwesomeIcon icon={faCheck} className="text-xs" />}
+                            <span>{savingItems ? 'Saving...' : savedItems ? 'Saved!' : 'Save Changes'}</span>
                           </button>
                         </div>
                       )}
@@ -620,182 +637,170 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   )}
 
                   {screenerEditMode ? (
-                    /* ── Editable table ── */
-                    <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 620, width: '100%' }}>
-                      <thead>
-                        <tr style={{ background: 'rgba(245,158,11,0.06)' }}>
-                          {['#', 'Item Name', 'Qty', 'Unit', 'Unit Price', 'Subtotal', 'Link', ''].map(h => (
-                            <th key={h} style={{ padding: '7px 8px', textAlign: h === 'Nama Barang' || h === 'Link' ? 'left' : h === '#' || h === '' ? 'center' : 'right', color: '#b45309', fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b text-[10px] font-mono uppercase tracking-wider font-semibold" style={{ background: '#FBF3DB', borderColor: theme.border, color: '#956400' }}>
+                            <th className="p-2 text-center w-8">#</th>
+                            <th className="p-2 text-left w-1/3">Item Name</th>
+                            <th className="p-2 text-center w-14">Qty</th>
+                            <th className="p-2 text-left w-20">Unit</th>
+                            <th className="p-2 text-right w-24">Unit Price</th>
+                            <th className="p-2 text-right w-24">Subtotal</th>
+                            <th className="p-2 text-left">Link</th>
+                            <th className="p-2 w-8"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                          {editItems.map((it, i) => (
+                            <tr key={it._id}>
+                              <td className="p-2 text-center font-mono text-[11px]" style={{ color: theme.textSecondary }}>{i + 1}</td>
+                              <td className="p-1.5">
+                                <input value={it.item_name} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, item_name: e.target.value } : x))}
+                                  className="w-full px-2 py-1 rounded border text-xs outline-none" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
+                              </td>
+                              <td className="p-1.5">
+                                <input type="number" min="1" value={it.quantity} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x))}
+                                  className="w-full px-1.5 py-1 rounded border text-xs text-center outline-none font-mono" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
+                              </td>
+                              <td className="p-1.5">
+                                <input value={it.unit} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, unit: e.target.value } : x))}
+                                  className="w-full px-1.5 py-1 rounded border text-xs outline-none" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
+                              </td>
+                              <td className="p-1.5">
+                                <input type="number" min="0" value={it.unit_price} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, unit_price: e.target.value } : x))}
+                                  className="w-full px-2 py-1 rounded border text-xs text-right outline-none font-mono" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
+                              </td>
+                              <td className="p-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: theme.textPrimary }}>
+                                {fmt(Number(it.quantity) * Number(it.unit_price))}
+                              </td>
+                              <td className="p-1.5">
+                                <input value={it.seller_url || ''} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, seller_url: e.target.value } : x))}
+                                  placeholder="https://..." className="w-full px-2 py-1 rounded border text-[11px] outline-none" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
+                              </td>
+                              <td className="p-1.5 text-center">
+                                {editItems.length > 1 && (
+                                  <button onClick={() => setEditItems(prev => prev.filter((_, j) => j !== i))} className="p-1 text-red-500 hover:text-red-700 border-none bg-transparent cursor-pointer">
+                                    <FontAwesomeIcon icon={faTrash} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
                           ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {editItems.map((it, i) => (
-                          <tr key={it._id} style={{ borderTop: `1px solid ${theme.border}` }}>
-                            <td style={{ padding: '5px 8px', textAlign: 'center', color: theme.textSecondary, fontSize: 11 }}>{i + 1}</td>
-                            <td style={{ padding: '4px 6px' }}>
-                              <input value={it.item_name} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, item_name: e.target.value } : x))}
-                                style={{ width: '100%', minWidth: 160, padding: '4px 7px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 12 }} />
-                            </td>
-                            <td style={{ padding: '4px 5px' }}>
-                              <input type="number" min="1" value={it.quantity} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x))}
-                                style={{ width: 55, padding: '4px 6px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 12, textAlign: 'right' }} />
-                            </td>
-                            <td style={{ padding: '4px 5px' }}>
-                              <input value={it.unit} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, unit: e.target.value } : x))}
-                                style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 12 }} />
-                            </td>
-                            <td style={{ padding: '4px 5px' }}>
-                              <input type="number" min="0" value={it.unit_price} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, unit_price: e.target.value } : x))}
-                                style={{ width: 100, padding: '4px 6px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 12, textAlign: 'right' }} />
-                            </td>
-                            <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, fontSize: 12, color: '#6366f1', whiteSpace: 'nowrap' }}>
-                              {fmt(Number(it.quantity) * Number(it.unit_price))}
-                            </td>
-                            <td style={{ padding: '4px 5px' }}>
-                              <input value={it.seller_url || ''} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, seller_url: e.target.value } : x))}
-                                placeholder="https://..." style={{ width: 90, padding: '4px 6px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, fontSize: 11 }} />
-                            </td>
-                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
-                              {editItems.length > 1 && (
-                                <button onClick={() => setEditItems(prev => prev.filter((_, j) => j !== i))}
-                                  style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 14, padding: 2 }}>✕</button>
-                              )}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t font-bold font-mono" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                            <td colSpan={8} className="p-2.5">
+                              <button onClick={() => setEditItems(prev => [...prev, { _id: crypto.randomUUID(), item_name: '', quantity: 1, unit: 'pcs', unit_price: '', seller_url: '' }])}
+                                className="px-3 py-1 rounded border border-dashed text-xs font-semibold cursor-pointer"
+                                style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
+                                + Add Item
+                              </button>
+                              <span className="float-right font-mono font-bold text-xs py-1" style={{ color: theme.textPrimary }}>
+                                Total: {fmt(editItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0))}
+                              </span>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr style={{ borderTop: `1px solid ${theme.border}`, background: 'rgba(245,158,11,0.04)' }}>
-                          <td colSpan={8} style={{ padding: '6px 8px' }}>
-                            <button onClick={() => setEditItems(prev => [...prev, { _id: crypto.randomUUID(), item_name: '', quantity: 1, unit: 'pcs', unit_price: '', seller_url: '' }])}
-                              style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px dashed #d97706', background: 'rgba(245,158,11,0.06)', color: '#d97706', cursor: 'pointer', fontWeight: 600 }}>
-                              + Add Item
-                            </button>
-                            <span style={{ float: 'right', fontWeight: 800, fontSize: 13, color: '#6366f1', padding: '3px 8px' }}>
-                              Total: {fmt(editItems.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0))}
-                            </span>
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                        </tfoot>
+                      </table>
+                    </div>
                   ) : (
-                    /* ── Read-only table ── */
-                    <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: 580, width: '100%' }}>
-                      <thead>
-                        <tr style={{ background: theme.subtleBg }}>
-                          {['#', 'Item Name', 'Qty', 'Unit', 'Price', 'Subtotal', 'Link'].map(h => (
-                            <th key={h} style={{ padding: '7px 10px', textAlign: h === 'Nama Barang' || h === 'Link' ? 'left' : h === '#' ? 'center' : 'right', color: theme.textSecondary, fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.length === 0 ? (
-                          <tr><td colSpan={7} style={{ padding: '16px', textAlign: 'center', color: theme.textSecondary, fontStyle: 'italic', fontSize: 12 }}>No items found</td></tr>
-                        ) : items.map((it, i) => (
-                          <tr key={it.item_id} style={{ borderTop: `1px solid ${theme.border}` }}>
-                            <td style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary }}>{i + 1}</td>
-                            <td style={{ padding: '7px 10px', color: theme.textPrimary, fontWeight: 500 }}>{it.item_name}</td>
-                            <td style={{ padding: '7px 10px', textAlign: 'right' }}>{it.quantity}</td>
-                            <td style={{ padding: '7px 10px', textAlign: 'right', color: theme.textSecondary }}>{it.unit}</td>
-                            <td style={{ padding: '7px 10px', textAlign: 'right' }}>{fmt(it.unit_price)}</td>
-                            <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary }}>{fmt(it.quantity * it.unit_price)}</td>
-                            <td style={{ padding: '7px 10px' }}>
-                              {it.seller_url
-                                ? <a href={it.seller_url} target="_blank" rel="noreferrer" style={{ color: '#6366f1', fontSize: 11 }}>🔗</a>
-                                : <span style={{ color: theme.textSecondary }}>—</span>}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b text-[10px] font-mono uppercase tracking-wider font-semibold" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                            <th className="p-2 text-center w-8">#</th>
+                            <th className="p-2 text-left w-1/3">Item Name</th>
+                            <th className="p-2 text-center w-14">Qty</th>
+                            <th className="p-2 text-left w-20">Unit</th>
+                            <th className="p-2 text-right w-24">Price</th>
+                            <th className="p-2 text-right w-28">Subtotal</th>
+                            <th className="p-2 text-left">Link</th>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
-                          <td colSpan={5} style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, fontSize: 12, color: theme.textPrimary }}>Grand Total</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#6366f1' }}>{fmt(fpb.grand_total)}</td>
-                          <td />
-                        </tr>
-                      </tfoot>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                          {items.length === 0 ? (
+                            <tr><td colSpan={7} className="p-4 text-center text-xs italic" style={{ color: theme.textSecondary }}>No items found</td></tr>
+                          ) : items.map((it, i) => (
+                            <tr key={it.item_id}>
+                              <td className="p-2 text-center font-mono text-[11px]" style={{ color: theme.textSecondary }}>{i + 1}</td>
+                              <td className="p-2 font-semibold" style={{ color: theme.textPrimary }}>{it.item_name}</td>
+                              <td className="p-2 text-center font-mono">{it.quantity}</td>
+                              <td className="p-2 font-mono" style={{ color: theme.textSecondary }}>{it.unit}</td>
+                              <td className="p-2 text-right font-mono">{fmt(it.unit_price)}</td>
+                              <td className="p-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: theme.textPrimary }}>{fmt(it.quantity * it.unit_price)}</td>
+                              <td className="p-2">
+                                {it.seller_url ? (
+                                  <a href={it.seller_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline">
+                                    <span>Link</span>
+                                    <FontAwesomeIcon icon={faExternalLinkAlt} className="text-[9px]" />
+                                  </a>
+                                ) : <span style={{ color: theme.textSecondary }}>—</span>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t font-bold font-mono" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                            <td colSpan={5} className="p-2.5 text-right" style={{ color: theme.textPrimary }}>Grand Total</td>
+                            <td className="p-2.5 text-right text-sm" style={{ color: theme.textPrimary }}>{fmt(fpb.grand_total)}</td>
+                            <td />
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
                   )}
                 </div>
 
                 {/* Screener edit audit note */}
                 {itemsEditedByName && (
-                  <div style={{ padding: '7px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 11, color: '#92400e', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    ✏️ <strong>Item list updated by screener:</strong> {itemsEditedByName}
-                    {itemsEditedAt && <span style={{ color: theme.textSecondary, marginLeft: 4 }}>— {fmtDt(itemsEditedAt)}</span>}
+                  <div className="p-3 rounded-md border text-xs font-semibold space-y-0.5" style={{ background: '#FBF3DB', borderColor: '#F59E0B', color: '#956400' }}>
+                    <div className="inline-flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faPen} className="text-[10px]" />
+                      <span>Item list updated by screener: {itemsEditedByName}</span>
+                      {itemsEditedAt && <span className="font-normal font-mono text-[10px]">({fmtDt(itemsEditedAt)})</span>}
+                    </div>
                   </div>
                 )}
 
-
-                {/* Budget — compact inline */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.cardBg, fontSize: 12, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 12 }}>💰 Budget</span>
-                  <span style={{ color: fpb.budget != null ? '#6366f1' : theme.textSecondary, fontWeight: 700 }}>
-                    {fpb.budget != null ? fpb.budget : <i>—</i>}
-                  </span>
-                  <span style={{ color: theme.textSecondary }}>·</span>
-                  <span style={{ fontSize: 11, color: theme.textSecondary }}>Remaining:</span>
-                  <span style={{ color: fpb.remaining_budget != null ? '#059669' : theme.textSecondary, fontWeight: 700 }}>
-                    {fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : <i>—</i>}
-                  </span>
+                {/* Budget card */}
+                <div className="p-3.5 rounded-md border text-xs flex flex-wrap items-center gap-3 justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span className="font-mono font-bold uppercase tracking-wider text-[10px]" style={{ color: theme.textSecondary }}>BUDGET</span>
+                    <span className="font-mono font-bold" style={{ color: theme.textPrimary }}>{fpb.budget != null ? fpb.budget : '—'}</span>
+                    <span style={{ color: theme.textSecondary }}>•</span>
+                    <span className="font-mono font-bold uppercase tracking-wider text-[10px]" style={{ color: theme.textSecondary }}>REMAINING BUDGET</span>
+                    <span className="font-mono font-bold" style={{ color: fpb.remaining_budget != null ? '#346538' : theme.textSecondary }}>
+                      {fpb.remaining_budget != null ? fmt(fpb.remaining_budget) : '—'}
+                    </span>
+                  </div>
                   {canEditBudget && !editBudget && (
-                    <button onClick={() => setEditBudget(true)} style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 9px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary, cursor: 'pointer' }}>✏️ Edit</button>
+                    <button onClick={() => setEditBudget(true)} className="px-3 py-1 rounded-md text-xs font-bold border cursor-pointer inline-flex items-center gap-1" style={{ borderColor: theme.border, background: theme.subtleBg, color: theme.textSecondary }}>
+                      <FontAwesomeIcon icon={faPen} className="text-[10px]" />
+                      <span>Edit</span>
+                    </button>
                   )}
                   {editBudget && (
-                    <div style={{ width: '100%', display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 6 }}>
+                    <div className="w-full flex gap-3 items-end pt-2 border-t" style={{ borderColor: theme.border }}>
                       <div>
-                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 3 }}>Budget</div>
+                        <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>Budget Name</label>
                         <input type="text" value={budgetVal} onChange={e => setBudgetVal(e.target.value)}
-                          style={{ padding: '5px 8px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, width: 140 }} />
+                          className="px-3 py-1.5 rounded-md border text-xs outline-none font-medium" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                       </div>
                       <div>
-                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 3 }}>Remaining Budget (Rp)</div>
+                        <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>Remaining Budget (Rp)</label>
                         <input type="number" min="0" value={remainingVal} onChange={e => setRemainingVal(e.target.value)}
-                          style={{ padding: '5px 8px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, width: 140 }} />
+                          className="px-3 py-1.5 rounded-md border text-xs outline-none font-mono font-medium" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                       </div>
-                      <button onClick={() => setEditBudget(false)} style={{ padding: '5px 12px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={handleSaveBudget} disabled={savingBudget} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                        {savingBudget ? '…' : 'Save'}
+                      <button onClick={() => setEditBudget(false)} className="px-3 py-1.5 rounded-md text-xs font-bold border cursor-pointer" style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}>Cancel</button>
+                      <button onClick={handleSaveBudget} disabled={savingBudget} className="px-4 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-slate-900 dark:bg-white dark:text-slate-900 disabled:opacity-50">
+                        {savingBudget ? 'Saving...' : 'Save'}
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* Revision request notice — shown prominently to requester */}
-                {(() => {
-                  const revisionRequests = approvals.filter(a => a.status === 'revision' && a.comment)
-                  if (revisionRequests.length === 0) return null
-                  return (
-                    <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(245,158,11,0.09)', border: '1.5px solid rgba(245,158,11,0.45)' }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: '#b45309', marginBottom: 6 }}>⚠ Revision Request from Approver</div>
-                      {revisionRequests.map(ap => (
-                        <div key={ap.approval_id} style={{ fontSize: 12, marginBottom: revisionRequests.length > 1 ? 8 : 0 }}>
-                          <span style={{ fontWeight: 600, color: '#92400e' }}>
-                            {`${ap.users?.user_nama_depan || ''} ${ap.users?.user_nama_belakang || ''}`.trim()}
-                          </span>
-                          {ap.action_at && <span style={{ color: '#b45309', fontSize: 11, marginLeft: 6 }}>{fmtDt(ap.action_at)}</span>}
-                          <p style={{ margin: '4px 0 0', color: '#78350f', lineHeight: 1.5, paddingLeft: 8, borderLeft: '3px solid #f59e0b' }}>{ap.comment}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })()}
-                {/* Revision note from requester (re-submit notes) */}
-                {revisions.length > 0 && revisions[0].revision_note && (
-                  <div style={{ padding: '9px 13px', borderRadius: 9, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.35)', fontSize: 12 }}>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span style={{ fontWeight: 700, color: '#b45309' }}>📝 Revision #{revisions[0].revision_number}</span>
-                      <span style={{ color: '#92400e', fontSize: 11, marginLeft: 'auto' }}>
-                        {`${revisions[0].users?.user_nama_depan || ''} ${revisions[0].users?.user_nama_belakang || ''}`.trim()}
-                        {revisions[0].revised_at && ` · ${fmtDt(revisions[0].revised_at)}`}
-                      </span>
-                    </div>
-                    <p style={{ margin: 0, color: '#78350f', lineHeight: 1.5 }}>{revisions[0].revision_note}</p>
-                  </div>
-                )}
-
-                {/* Progress: Screening + Approval — collapseable */}
+                {/* Progress Section */}
                 <ProgressSection
                   screeningRow={screeningRow}
                   approvals={approvals}
@@ -804,97 +809,99 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
                   theme={theme}
                 />
 
-                {/* Action buttons — screener */}
+                {/* Screener action banner */}
                 {myScreeningPending && (
-                  <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid #d97706', background: 'rgba(245,158,11,0.04)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, fontSize: 12, color: '#d97706', flex: 1 }}>🔍 Screening: it's your turn to verify this FPB</span>
-                    <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faCheck} />Pass
-                    </button>
-                    <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faRotateLeft} />Revision
-                    </button>
-                    <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faTimes} />Reject
-                    </button>
+                  <div className="p-4 rounded-md border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ background: '#FBF3DB', borderColor: '#F59E0B', color: '#956400' }}>
+                    <div className="font-bold text-xs inline-flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faClipboardList} className="text-xs" />
+                      <span>Screening: Verify line items before forwarding to approvers</span>
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }}
+                        className="px-3.5 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-emerald-700 hover:bg-emerald-800 transition-all active:scale-[0.98] inline-flex items-center gap-1">
+                        <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
+                        <span>Pass</span>
+                      </button>
+                      <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }}
+                        className="px-3.5 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-amber-700 hover:bg-amber-800 transition-all active:scale-[0.98] inline-flex items-center gap-1">
+                        <FontAwesomeIcon icon={faRotateLeft} className="text-[10px]" />
+                        <span>Revision</span>
+                      </button>
+                      <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }}
+                        className="px-3.5 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-red-700 hover:bg-red-800 transition-all active:scale-[0.98] inline-flex items-center gap-1">
+                        <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {/* Action buttons — regular approver */}
+                {/* Regular approver action banner */}
                 {!myScreeningPending && myPendingApproval && fpb.status === 'pending' && screeningDone && (
-                  <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid #6366f1', background: 'rgba(99,102,241,0.04)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, fontSize: 12, color: '#6366f1', flex: 1 }}>⚡ Step {fpb.current_step}: {myPendingApproval.step_name}</span>
-                    <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faCheck} />Approve
-                    </button>
-                    <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faRotateLeft} />Revision
-                    </button>
-                    <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <FontAwesomeIcon icon={faTimes} />Reject
-                    </button>
+                  <div className="p-4 rounded-md border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ background: '#E1F3FE', borderColor: '#7DD3FC', color: '#1F6C9F' }}>
+                    <div className="font-bold text-xs font-mono inline-flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faClock} className="text-xs" />
+                      <span>Step {fpb.current_step}: {myPendingApproval.step_name}</span>
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button onClick={() => { setAction('approved'); setComment(''); setError(''); setShowActionModal(true) }}
+                        className="px-3.5 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-emerald-700 hover:bg-emerald-800 transition-all active:scale-[0.98] inline-flex items-center gap-1">
+                        <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
+                        <span>Approve</span>
+                      </button>
+                      <button onClick={() => { setAction('revision'); setComment(''); setError(''); setShowActionModal(true) }}
+                        className="px-3.5 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-amber-700 hover:bg-amber-800 transition-all active:scale-[0.98] inline-flex items-center gap-1">
+                        <FontAwesomeIcon icon={faRotateLeft} className="text-[10px]" />
+                        <span>Revision</span>
+                      </button>
+                      <button onClick={() => { setAction('reject'); setComment(''); setError(''); setShowActionModal(true) }}
+                        className="px-3.5 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-red-700 hover:bg-red-800 transition-all active:scale-[0.98] inline-flex items-center gap-1">
+                        <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {/* ── Procurement Section ── */}
-                {/* Visible to screener role or budget role, only when FPB is fully approved */}
+                {/* Procurement Section */}
                 {fpb.status === 'approved' && (iAmScreener || canEditBudget) && (
-                  <div style={{ padding: '12px 14px', borderRadius: 10, border: `2px solid ${fpb.procurement_status === 'ordered' ? '#059669' : theme.border}`, background: fpb.procurement_status === 'ordered' ? 'rgba(5,150,105,0.04)' : theme.cardBg, transition: 'all 0.25s' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      {/* Status indicator / toggle */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                        <div style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${fpb.procurement_status === 'ordered' ? '#059669' : theme.border}`, background: fpb.procurement_status === 'ordered' ? '#059669' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: !savingProcurement ? 'pointer' : 'not-allowed', flexShrink: 0, transition: 'all 0.2s' }}
-                          onClick={() => !savingProcurement && (fpb.procurement_status === 'ordered' ? handleToggleProcurement(false) : setShowProcurementNote(v => !v))}>
-                          {fpb.procurement_status === 'ordered' && <span style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>✓</span>}
+                  <div className="p-4 rounded-md border space-y-3" style={{ background: fpb.procurement_status === 'ordered' ? '#EDF3EC' : theme.cardBg, borderColor: fpb.procurement_status === 'ordered' ? '#346538' : theme.border }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div onClick={() => !savingProcurement && (fpb.procurement_status === 'ordered' ? handleToggleProcurement(false) : setShowProcurementNote(v => !v))}
+                          className="w-5 h-5 rounded border flex items-center justify-center cursor-pointer transition-all"
+                          style={{ borderColor: fpb.procurement_status === 'ordered' ? '#346538' : theme.border, background: fpb.procurement_status === 'ordered' ? '#346538' : theme.cardBg }}>
+                          {fpb.procurement_status === 'ordered' && <FontAwesomeIcon icon={faCheck} className="text-white text-[10px]" />}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 12, color: fpb.procurement_status === 'ordered' ? '#059669' : theme.textPrimary }}>
-                            {fpb.procurement_status === 'ordered' ? '✅ Ordered / Funds Disbursed' : '📦 Mark as Ordered / Funds Disbursed'}
+                          <div className="font-bold text-xs" style={{ color: fpb.procurement_status === 'ordered' ? '#346538' : theme.textPrimary }}>
+                            {fpb.procurement_status === 'ordered' ? 'Ordered / Funds Disbursed' : 'Mark as Ordered / Funds Disbursed'}
                           </div>
                           {fpb.procurement_status === 'ordered' && (
-                            <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                            <div className="text-[11px]" style={{ color: theme.textSecondary }}>
                               by <strong>{`${fpb.procurator?.user_nama_depan || ''} ${fpb.procurator?.user_nama_belakang || ''}`.trim() || 'Admin'}</strong>
                               {fpb.procurement_at && ` · ${fmtDt(fpb.procurement_at)}`}
-                            </div>
-                          )}
-                          {fpb.procurement_note && (
-                            <div style={{ fontSize: 11, color: '#065f46', marginTop: 3, padding: '2px 8px', borderLeft: '3px solid #059669', fontStyle: 'italic' }}>
-                              {fpb.procurement_note}
                             </div>
                           )}
                         </div>
                       </div>
                       {fpb.procurement_status !== 'ordered' && (
-                        <button onClick={() => setShowProcurementNote(v => !v)}
-                          style={{ fontSize: 11, padding: '5px 14px', borderRadius: 7, border: '1px solid #059669', background: showProcurementNote ? '#059669' : 'rgba(5,150,105,0.08)', color: showProcurementNote ? '#fff' : '#059669', cursor: 'pointer', fontWeight: 700, transition: 'all 0.2s' }}>
-                          {showProcurementNote ? 'Close' : '📦 Mark'}
-                        </button>
-                      )}
-                      {fpb.procurement_status === 'ordered' && (
-                        <button onClick={() => handleToggleProcurement(false)} disabled={savingProcurement}
-                          style={{ fontSize: 11, padding: '5px 14px', borderRadius: 7, border: '1px solid #dc2626', background: 'rgba(220,38,38,0.06)', color: '#dc2626', cursor: savingProcurement ? 'not-allowed' : 'pointer', fontWeight: 700 }}>
-                          {savingProcurement ? '⏳' : 'Cancel'}
+                        <button onClick={() => setShowProcurementNote(v => !v)} className="px-3 py-1.5 rounded-md text-xs font-bold border cursor-pointer" style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textPrimary }}>
+                          {showProcurementNote ? 'Cancel' : 'Mark Ordered'}
                         </button>
                       )}
                     </div>
-                    {/* Note input — shown when about to mark */}
                     {showProcurementNote && fpb.procurement_status !== 'ordered' && (
-                      <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: 200 }}>
-                          <label style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Note (optional)</label>
-                          <input value={procurementNote} onChange={e => setProcurementNote(e.target.value)}
-                            placeholder="e.g. transfer to vendor X, date..."
-                            style={{ width: '100%', padding: '6px 10px', borderRadius: 7, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, boxSizing: 'border-box' }} />
-                        </div>
-                        <button onClick={() => handleToggleProcurement(true)} disabled={savingProcurement}
-                          style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: savingProcurement ? '#e5e7eb' : '#059669', color: savingProcurement ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 12, cursor: savingProcurement ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
-                          {savingProcurement ? '⏳ Saving...' : '✅ Confirm Order'}
+                      <div className="flex gap-2 items-end pt-2 border-t" style={{ borderColor: theme.border }}>
+                        <input value={procurementNote} onChange={e => setProcurementNote(e.target.value)} placeholder="Procurement note..."
+                          className="flex-1 px-3 py-1.5 rounded-md border text-xs outline-none" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
+                        <button onClick={() => handleToggleProcurement(true)} disabled={savingProcurement} className="px-4 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50">
+                          {savingProcurement ? 'Saving...' : 'Confirm Order'}
                         </button>
                       </div>
                     )}
                   </div>
                 )}
-
               </>
             )}
           </div>
@@ -903,37 +910,42 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
 
       {/* Action Confirmation Sub-Modal */}
       {showActionModal && (
-        <div onClick={() => { if (!saving) { setShowActionModal(false); setAction(null); setComment(''); setError('') } }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 14, width: '100%', maxWidth: 420, padding: 22, boxShadow: '0 12px 48px rgba(0,0,0,0.3)' }}>
-            <div style={{ fontWeight: 800, fontSize: 15, color: theme.textPrimary, marginBottom: 14 }}>
-              {action === 'approved' ? '✅ Confirm Approval' : action === 'revision' ? '🔄 Confirm Revision' : '❌ Confirm Rejection'}
-            </div>
-            <div style={{ padding: '9px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, marginBottom: 12, background: action === 'approved' ? 'rgba(5,150,105,0.08)' : action === 'revision' ? 'rgba(245,158,11,0.08)' : 'rgba(220,38,38,0.08)', color: action === 'approved' ? '#065f46' : action === 'revision' ? '#92400e' : '#991b1b', border: `1px solid ${action === 'approved' ? 'rgba(5,150,105,0.25)' : action === 'revision' ? 'rgba(245,158,11,0.25)' : 'rgba(220,38,38,0.25)'}` }}>
+        <div onClick={() => { if (!saving) { setShowActionModal(false); setAction(null); setComment(''); setError('') } }} className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-[2px]">
+          <div onClick={e => e.stopPropagation()} className="w-full max-w-md p-6 rounded-lg border shadow-xl font-sans text-xs antialiased space-y-4" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
+            <h2 className="text-base font-bold tracking-tight inline-flex items-center gap-2" style={{ color: theme.textPrimary }}>
+              <FontAwesomeIcon icon={action === 'approved' ? faCheck : action === 'revision' ? faRotateLeft : faTimes} className="text-xs" />
+              <span>Confirm {action === 'approved' ? 'Approval' : action === 'revision' ? 'Revision' : 'Rejection'}</span>
+            </h2>
+            <div className="p-3 rounded-md border text-xs font-medium" style={{ background: action === 'approved' ? '#EDF3EC' : action === 'revision' ? '#FBF3DB' : '#FDEBEC', borderColor: theme.border, color: action === 'approved' ? '#346538' : action === 'revision' ? '#956400' : '#9F2F2D' }}>
               {action === 'approved'
-                ? (myScreeningPending ? `Pass screening for FPB ${fpb?.fpb_number} — FPB will proceed to approvers` : `Approve FPB ${fpb?.fpb_number} — Step ${fpb?.current_step}`)
-                : action === 'revision' ? `Request revision for FPB ${fpb?.fpb_number}. The requester will be asked to make corrections.`
-                : `Reject FPB ${fpb?.fpb_number}. This action cannot be undone.`}
+                ? (myScreeningPending ? `Pass screening for FPB ${fpb?.fpb_number} — proceed to approvers.` : `Approve FPB ${fpb?.fpb_number} at Step ${fpb?.current_step}.`)
+                : action === 'revision' ? `Request revision for FPB ${fpb?.fpb_number}. Submitter will be notified.`
+                : `Reject FPB ${fpb?.fpb_number}. This decision cannot be reversed.`}
             </div>
             {action !== 'approved' && (
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold block" style={{ color: theme.textSecondary }}>
                   {action === 'revision' ? 'What needs to be revised *' : 'Reason for rejection *'}
                 </label>
                 <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} autoFocus
-                  placeholder={action === 'revision' ? 'Explain what needs to be revised...' : 'Explain the reason for rejection...'}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  placeholder={action === 'revision' ? 'Describe required changes...' : 'Describe reason for rejection...'}
+                  className="w-full px-3 py-2 rounded-md border text-xs outline-none font-medium resize-y"
+                  style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
               </div>
             )}
-            {error && <p style={{ color: '#dc2626', fontSize: 12, margin: '0 0 10px' }}>⚠ {error}</p>}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => { if (!saving) { setShowActionModal(false); setAction(null); setComment(''); setError('') } }} disabled={saving}
-                style={{ padding: '8px 18px', borderRadius: 7, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+            {error && (
+              <div className="p-2.5 rounded-md border text-xs font-semibold" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+                <FontAwesomeIcon icon={faTimes} className="mr-1.5" />
+                {error}
+              </div>
+            )}
+            <div className="flex gap-2 justify-end pt-2">
+              <button onClick={() => { if (!saving) { setShowActionModal(false); setAction(null); setComment(''); setError('') } }} disabled={saving} className="px-4 py-2 rounded-md text-xs font-bold border cursor-pointer" style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}>
                 Cancel
               </button>
-              <button onClick={handleAction} disabled={saving}
-                style={{ padding: '8px 22px', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 12, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? '#e5e7eb' : action === 'approved' ? '#059669' : action === 'revision' ? '#f59e0b' : '#dc2626', color: saving ? '#9ca3af' : '#fff' }}>
-                {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 5 }} />Processing...</> : action === 'approved' ? 'Approve' : action === 'revision' ? 'Request Revision' : 'Reject'}
+              <button onClick={handleAction} disabled={saving} className="px-5 py-2 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-slate-900 dark:bg-white dark:text-slate-900 transition-all active:scale-[0.98] disabled:opacity-50 inline-flex items-center gap-1.5">
+                {saving ? <FontAwesomeIcon icon={faSpinner} spin className="text-xs" /> : <FontAwesomeIcon icon={faCheck} className="text-xs" />}
+                <span>{saving ? 'Processing...' : action === 'approved' ? 'Approve' : action === 'revision' ? 'Request Revision' : 'Reject'}</span>
               </button>
             </div>
           </div>
@@ -1296,7 +1308,6 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
 
   const handleSave = async () => {
     setError('')
-    // Validate
     if (!usageDate) { setError('Required date is required'); return }
     if (editItems.length === 0) { setError('At least 1 item is required'); return }
     for (const it of editItems) {
@@ -1306,14 +1317,12 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
     setSaving(true)
     try {
       const uid = parseInt(localStorage.getItem('kr_id'))
-      // 1) Update FPB header
       await supabase.from('fpb').update({
         usage_date: usageDate,
         note: note.trim() || null,
         grand_total: grandTotal,
       }).eq('fpb_id', fpbId)
 
-      // 2) Delete old items + re-insert
       await supabase.from('fpb_items').delete().eq('fpb_id', fpbId)
       await supabase.from('fpb_items').insert(editItems.map(i => ({
         fpb_id: fpbId,
@@ -1324,7 +1333,6 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
         seller_url: i.seller_url?.trim() || null,
       })))
 
-      // 3) If in revision: insert revision snapshot + resubmit
       if (fpb?.status === 'revision') {
         const { data: rev } = await supabase.from('fpb_revisions').select('revision_number')
           .eq('fpb_id', fpbId).order('revision_number', { ascending: false }).limit(1)
@@ -1343,123 +1351,130 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
     finally { setSaving(false) }
   }
 
-  const inp = { width: '100%', padding: '8px 11px', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none' }
-
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 18, width: '100%', maxWidth: 860, maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.3)' }}>
+    <div onClick={onClose} className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-[2px]">
+      <div onClick={e => e.stopPropagation()} className="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-lg border shadow-xl font-sans text-xs antialiased overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: theme.border }}>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 17, color: theme.textPrimary }}>
-              ✏️ Edit FPB {fpb?.fpb_number}
-            </div>
-            <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-              {fpb?.status === 'revision' ? '🔄 FPB needs revision — update and resubmit' : 'Edit FPB data'}
-            </div>
+            <h2 className="text-base font-bold tracking-tight inline-flex items-center gap-2" style={{ color: theme.textPrimary }}>
+              <FontAwesomeIcon icon={faPen} className="text-xs" />
+              <span>Edit FPB {fpb?.fpb_number}</span>
+            </h2>
+            <p className="text-[11px] mt-0.5" style={{ color: theme.textSecondary }}>
+              {fpb?.status === 'revision' ? 'FPB needs revision — update items and resubmit for approval' : 'Modify requisition parameters'}
+            </p>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: 6, fontSize: 18 }}>
+          <button onClick={onClose} className="p-1 text-base border-none bg-transparent cursor-pointer transition-opacity hover:opacity-75" style={{ color: theme.textSecondary }}>
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Modal Body */}
+        <div className="p-5 flex-1 overflow-y-auto space-y-4">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: 48 }}>
-              <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 28, color: theme.textSecondary }} />
-              <p style={{ marginTop: 12, color: theme.textSecondary }}>Loading data...</p>
+            <div className="py-16 text-center text-xs flex flex-col items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
+              <FontAwesomeIcon icon={faSpinner} spin className="text-xl text-blue-500" />
+              <span className="font-semibold">Loading FPB parameters...</span>
             </div>
           ) : (
             <>
-              {/* Revision comment banner (if revision status) */}
+              {/* Approver comment banner */}
               {fpb?.status === 'revision' && revisions.length > 0 && revisions[0].revision_note === null && revisions.find(r => r.revision_note) && (
-                <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1.5px solid rgba(245,158,11,0.4)' }}>
-                  <div style={{ fontWeight: 700, color: '#b45309', fontSize: 13, marginBottom: 4 }}>📝 Approver Comment</div>
-                  <p style={{ margin: 0, fontSize: 13, color: '#78350f' }}>{revisions.find(r => r.revision_note)?.revision_note}</p>
+                <div className="p-3.5 rounded-md border space-y-1" style={{ background: '#FBF3DB', borderColor: '#F59E0B', color: '#956400' }}>
+                  <div className="font-bold text-xs inline-flex items-center gap-1.5">
+                    <FontAwesomeIcon icon={faRotateLeft} className="text-[10px]" />
+                    <span>Approver Comment</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed m-0">{revisions.find(r => r.revision_note)?.revision_note}</p>
                 </div>
               )}
 
-              {/* Informasi Umum */}
-              <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary, marginBottom: 14 }}>General Information</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              {/* General Information */}
+              <div className="p-4 rounded-md border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider block" style={{ color: theme.textSecondary }}>General Information</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Required Date *</label>
-                    <input type="date" value={usageDate} onChange={e => setUsageDate(e.target.value)} style={inp} />
+                    <label className="text-[11px] font-semibold block mb-1" style={{ color: theme.textSecondary }}>Required Date <span className="text-red-500">*</span></label>
+                    <input type="date" value={usageDate} onChange={e => setUsageDate(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-md border text-xs outline-none font-medium"
+                      style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Note (optional)</label>
-                    <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Additional notes..." style={inp} />
+                    <label className="text-[11px] font-semibold block mb-1" style={{ color: theme.textSecondary }}>Note (Optional)</label>
+                    <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Additional notes..."
+                      className="w-full px-3 py-1.5 rounded-md border text-xs outline-none font-medium"
+                      style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                   </div>
                 </div>
               </div>
 
-              {/* Daftar Barang — editable */}
-              <div style={{ borderRadius: 12, border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textPrimary }}>Item List</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 12, color: '#6366f1', fontWeight: 700 }}>Total: {fmt(grandTotal)}</span>
+              {/* Item List */}
+              <div className="rounded-md border overflow-hidden" style={{ borderColor: theme.border }}>
+                <div className="flex items-center justify-between p-3 border-b" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider block" style={{ color: theme.textSecondary }}>Item List</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono font-bold" style={{ color: theme.textPrimary }}>Total: {fmt(grandTotal)}</span>
                     <button onClick={() => setEditItems(prev => [...prev, { _id: crypto.randomUUID(), item_name: '', quantity: '1', unit: 'pcs', unit_price: '', seller_url: '' }])}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                      <FontAwesomeIcon icon={faPlus} /> Add Item
+                      className="px-3 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer inline-flex items-center gap-1.5 transition-all active:scale-[0.98]"
+                      style={{ background: theme.textPrimary, color: theme.pageBg }}>
+                      <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
+                      <span>Add Item</span>
                     </button>
                   </div>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed' }}>
-                    <colgroup>
-                      <col style={{ width: '28%' }} />
-                      <col style={{ width: '60px' }} />
-                      <col style={{ width: '90px' }} />
-                      <col style={{ width: '120px' }} />
-                      <col style={{ width: '100px' }} />
-                      <col />
-                      <col style={{ width: '36px' }} />
-                    </colgroup>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-xs">
                     <thead>
-                      <tr style={{ background: theme.subtleBg }}>
-                        {['Item Name *', 'Qty *', 'Unit', 'Unit Price (Rp)', 'Subtotal', 'Reference Link', ''].map(h => (
-                          <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>{h}</th>
-                        ))}
+                      <tr className="border-b text-[10px] font-mono uppercase tracking-wider font-semibold" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                        <th className="p-2 text-left w-1/3">Item Name *</th>
+                        <th className="p-2 text-center w-14">Qty *</th>
+                        <th className="p-2 text-left w-24">Unit</th>
+                        <th className="p-2 text-right w-28">Unit Price</th>
+                        <th className="p-2 text-right w-28">Subtotal</th>
+                        <th className="p-2 text-left">Reference Link</th>
+                        <th className="p-2 w-8"></th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y" style={{ borderColor: theme.border }}>
                       {editItems.map((item, i) => (
-                        <tr key={item._id} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                          <td style={{ padding: '6px 8px' }}>
+                        <tr key={item._id}>
+                          <td className="p-1.5">
                             <input value={item.item_name} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, item_name: e.target.value } : x))}
                               placeholder="Item name..."
-                              style={{ ...inp, padding: '5px 8px', border: `1px solid ${!item.item_name ? '#fca5a5' : theme.border}` }} />
+                              className="w-full px-2 py-1 rounded border text-xs outline-none"
+                              style={{ background: theme.cardBg, borderColor: !item.item_name ? '#F8C9CC' : theme.border, color: theme.textPrimary }} />
                           </td>
-                          <td style={{ padding: '6px 6px' }}>
+                          <td className="p-1.5">
                             <input type="number" min="1" value={item.quantity} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x))}
-                              style={{ ...inp, padding: '5px 6px', textAlign: 'center' }} />
+                              className="w-full px-1.5 py-1 rounded border text-xs text-center outline-none font-mono"
+                              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                           </td>
-                          <td style={{ padding: '6px 6px' }}>
+                          <td className="p-1.5">
                             <select value={item.unit} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, unit: e.target.value } : x))}
-                              style={{ ...inp, padding: '5px 4px' }}>
+                              className="w-full px-1.5 py-1 rounded border text-xs outline-none"
+                              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
                               {['pcs','kg','liter','box','rim','lusin','unit','set','lump sum'].map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
                           </td>
-                          <td style={{ padding: '6px 6px' }}>
+                          <td className="p-1.5">
                             <input type="number" min="0" value={item.unit_price} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, unit_price: e.target.value } : x))}
-                              placeholder="0" style={{ ...inp, padding: '5px 8px', textAlign: 'right' }} />
+                              placeholder="0" className="w-full px-2 py-1 rounded border text-xs text-right outline-none font-mono"
+                              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                           </td>
-                          <td style={{ padding: '6px 8px', fontWeight: 700, color: '#6366f1', textAlign: 'right' }}>
+                          <td className="p-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: theme.textPrimary }}>
                             {fmt((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}
                           </td>
-                          <td style={{ padding: '6px 6px' }}>
+                          <td className="p-1.5">
                             <input value={item.seller_url} onChange={e => setEditItems(prev => prev.map((x, j) => j === i ? { ...x, seller_url: e.target.value } : x))}
                               placeholder="https://..."
-                              style={{ ...inp, padding: '5px 8px', fontSize: 11 }} />
+                              className="w-full px-2 py-1 rounded border text-[11px] outline-none"
+                              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                           </td>
-                          <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                          <td className="p-1.5 text-center">
                             {editItems.length > 1 && (
-                              <button onClick={() => setEditItems(prev => prev.filter((_, j) => j !== i))}
-                                style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 4 }}>
+                              <button onClick={() => setEditItems(prev => prev.filter((_, j) => j !== i))} className="p-1 text-red-500 hover:text-red-700 border-none bg-transparent cursor-pointer">
                                 <FontAwesomeIcon icon={faTrash} />
                               </button>
                             )}
@@ -1468,9 +1483,9 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
-                        <td colSpan={4} style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary, fontSize: 13 }}>Grand Total</td>
-                        <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 800, fontSize: 15, color: '#6366f1' }}>{fmt(grandTotal)}</td>
+                      <tr className="border-t font-bold font-mono" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                        <td colSpan={4} className="p-2.5 text-right" style={{ color: theme.textPrimary }}>Grand Total</td>
+                        <td className="p-2.5 text-right text-sm" style={{ color: theme.textPrimary }}>{fmt(grandTotal)}</td>
                         <td /><td />
                       </tr>
                     </tfoot>
@@ -1480,29 +1495,35 @@ function EditFpbModal({ fpbId, onClose, theme, onSuccess }) {
 
               {/* Revision note (only if status = revision) */}
               {fpb?.status === 'revision' && (
-                <div style={{ padding: '16px 18px', borderRadius: 12, border: '1.5px solid #f59e0b', background: 'rgba(245,158,11,0.04)' }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#f59e0b', marginBottom: 8 }}>🔄 Revision Note (optional)</div>
-                  <p style={{ fontSize: 12, color: '#92400e', marginBottom: 10 }}>Describe what you changed in this revision.</p>
+                <div className="p-4 rounded-md border space-y-2" style={{ background: '#FBF3DB', borderColor: '#F59E0B', color: '#956400' }}>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider block">Revision Note (Optional)</span>
+                  <p className="text-[11px] leading-snug">Describe what was updated or corrected in this submission.</p>
                   <textarea value={revNote} onChange={e => setRevNote(e.target.value)} rows={2}
-                    placeholder="What did you change..."
-                    style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }} />
+                    placeholder="Describe changes..."
+                    className="w-full px-3 py-2 rounded-md border text-xs outline-none font-medium resize-y"
+                    style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                 </div>
               )}
 
-              {error && <div style={{ padding: '11px 15px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>⚠ {error}</div>}
+              {error && (
+                <div className="p-3 rounded-md border text-xs font-semibold" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+                  <FontAwesomeIcon icon={faTimes} className="mr-1.5" />
+                  {error}
+                </div>
+              )}
             </>
           )}
         </div>
 
-        {/* Footer */}
+        {/* Modal Footer */}
         {!loading && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 24px', borderTop: `1px solid ${theme.border}`, flexShrink: 0, background: theme.cardBg }}>
-            <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+          <div className="flex justify-end gap-2 p-4 border-t flex-shrink-0" style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <button onClick={onClose} className="px-4 py-2 rounded-md text-xs font-bold border cursor-pointer" style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}>
               Cancel
             </button>
-            <button onClick={handleSave} disabled={saving}
-              style={{ padding: '10px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? '#e5e7eb' : fpb?.status === 'revision' ? '#f59e0b' : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: saving ? '#9ca3af' : '#fff' }}>
-              {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Saving...</> : fpb?.status === 'revision' ? '📤 Save & Resubmit' : '💾 Save Changes'}
+            <button onClick={handleSave} disabled={saving} className="px-5 py-2 rounded-md text-xs font-bold border-none cursor-pointer inline-flex items-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-50" style={{ background: theme.textPrimary, color: theme.pageBg }}>
+              {saving ? <FontAwesomeIcon icon={faSpinner} spin className="text-xs" /> : <FontAwesomeIcon icon={faCheck} className="text-xs" />}
+              <span>{saving ? 'Saving...' : fpb?.status === 'revision' ? 'Save & Resubmit' : 'Save Changes'}</span>
             </button>
           </div>
         )}
@@ -1530,23 +1551,31 @@ function DeleteConfirmModal({ fpb, onClose, theme, onSuccess }) {
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 16, width: '100%', maxWidth: 440, padding: 28, boxShadow: '0 12px 48px rgba(0,0,0,0.3)' }}>
-        <div style={{ fontSize: 40, textAlign: 'center', marginBottom: 16 }}>🗑️</div>
-        <div style={{ fontWeight: 800, fontSize: 17, color: theme.textPrimary, textAlign: 'center', marginBottom: 8 }}>Delete FPB?</div>
-        <p style={{ fontSize: 13, color: theme.textSecondary, textAlign: 'center', marginBottom: 18, lineHeight: 1.6 }}>
-          You are about to delete <strong style={{ color: theme.textPrimary }}>{fpb.fpb_number}</strong>.<br />
-          This action <strong style={{ color: '#dc2626' }}>cannot be undone</strong>.
-        </p>
-        {error && <p style={{ color: '#dc2626', fontSize: 12, marginBottom: 12, textAlign: 'center' }}>⚠ {error}</p>}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-          <button onClick={onClose} disabled={deleting}
-            style={{ padding: '10px 24px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+    <div onClick={onClose} className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-[2px]">
+      <div onClick={e => e.stopPropagation()} className="w-full max-w-sm p-6 rounded-lg border shadow-xl font-sans text-xs antialiased space-y-4 text-center" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 mx-auto">
+          <FontAwesomeIcon icon={faTrash} className="text-lg" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-base font-bold tracking-tight" style={{ color: theme.textPrimary }}>Delete FPB Requisition?</h2>
+          <p className="text-xs leading-relaxed" style={{ color: theme.textSecondary }}>
+            You are about to delete <strong style={{ color: theme.textPrimary }}>{fpb.fpb_number}</strong>.<br />
+            This action cannot be undone.
+          </p>
+        </div>
+        {error && (
+          <div className="p-2.5 rounded-md border text-xs font-semibold text-left" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+            <FontAwesomeIcon icon={faTimes} className="mr-1.5" />
+            {error}
+          </div>
+        )}
+        <div className="flex gap-2 justify-center pt-2">
+          <button onClick={onClose} disabled={deleting} className="flex-1 px-4 py-2 rounded-md text-xs font-bold border cursor-pointer" style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}>
             Cancel
           </button>
-          <button onClick={handleDelete} disabled={deleting}
-            style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: deleting ? '#e5e7eb' : '#dc2626', color: deleting ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 13, cursor: deleting ? 'not-allowed' : 'pointer' }}>
-            {deleting ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Deleting...</> : '🗑 Yes, Delete'}
+          <button onClick={handleDelete} disabled={deleting} className="flex-1 px-4 py-2 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-red-700 hover:bg-red-800 disabled:opacity-50 transition-all active:scale-[0.98] inline-flex items-center justify-center gap-1.5">
+            {deleting ? <FontAwesomeIcon icon={faSpinner} spin className="text-xs" /> : <FontAwesomeIcon icon={faTrash} className="text-xs" />}
+            <span>{deleting ? 'Deleting...' : 'Delete'}</span>
           </button>
         </div>
       </div>
@@ -1556,13 +1585,13 @@ function DeleteConfirmModal({ fpb, onClose, theme, onSuccess }) {
 
 // ─── Create FPB Modal ─────────────────────────────────────────────────────────
 function CreateFpbModal({ onClose, onSuccess, theme }) {
-  const [step, setStep]         = useState(1)
-  const [types, setTypes]       = useState([])
-  const [selType, setSelType]   = useState(null)
-  const [saving, setSaving]     = useState(false)
-  const [done, setDone]         = useState(null)
+  const [types, setTypes]         = useState([])
+  const [selType, setSelType]     = useState(null)
+  const [saving, setSaving]       = useState(false)
+  const [done, setDone]           = useState(null)
   const [approverStatus, setApproverStatus] = useState('loading') // 'loading' | 'ok' | 'no_role' | 'no_approver'
-  const [userRoleName, setUserRoleName] = useState('')
+  const [userRoleName, setUserRoleName]     = useState('')
+  const [userMaxLimit, setUserMaxLimit]     = useState(600000)
 
   const [division, setDivision]   = useState('')
   const [note, setNote]           = useState('')
@@ -1573,43 +1602,48 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
 
-    // Load FPB types
+    // Load active FPB types and default selection
     supabase.from('fpb_types').select('*').eq('is_active', true).order('created_at')
       .then(({ data }) => {
         const list = data || []
         setTypes(list)
-        if (list.length === 1) {
-          setSelType(list[0])
-          setStep(2)
-        }
+        if (list.length > 0) setSelType(list[0])
       })
 
     if (uid) {
-      // Load user info: unit + role
-      supabase.from('users').select('user_unit_id, user_role_id, role!users_user_role_id_fkey(role_name)').eq('user_id', uid).single()
-        .then(async ({ data: u }) => {
-          // Set division from unit
-          if (u?.user_unit_id) {
-            const { data: unit } = await supabase.from('unit').select('unit_name').eq('unit_id', u.user_unit_id).single()
-            if (unit) setDivision(unit.unit_name)
-          }
-          // Check approver configuration
-          if (!u?.user_role_id) {
-            setUserRoleName('—')
-            setApproverStatus('no_role')
-            return
-          }
-          setUserRoleName(u.role?.role_name || '—')
-          const { data: ra } = await supabase.from('fpb_role_approvers')
-            .select('approver1_id').eq('role_id', u.user_role_id).maybeSingle()
-          setApproverStatus(ra?.approver1_id ? 'ok' : 'no_approver')
-        })
+      // Load user info, role, unit, and high-limit settings
+      Promise.all([
+        supabase.from('users').select('user_unit_id, user_role_id, role!users_user_role_id_fkey(role_name)').eq('user_id', uid).single(),
+        supabase.from('settings').select('value').eq('key', 'fpb_high_limit_role_ids').maybeSingle(),
+      ]).then(async ([{ data: u }, { data: hl }]) => {
+        if (u?.user_unit_id) {
+          const { data: unit } = await supabase.from('unit').select('unit_name').eq('unit_id', u.user_unit_id).single()
+          if (unit) setDivision(unit.unit_name)
+        }
+        if (!u?.user_role_id) {
+          setUserRoleName('—')
+          setApproverStatus('no_role')
+          return
+        }
+        setUserRoleName(u.role?.role_name || '—')
+
+        // Check if user's role is granted high limit (>600k up to 2M)
+        let highLimitRoles = []
+        if (hl?.value) {
+          try { highLimitRoles = JSON.parse(hl.value) } catch (e) { console.error(e) }
+        }
+        const hasHighLimit = highLimitRoles.map(Number).includes(Number(u.user_role_id))
+        setUserMaxLimit(hasHighLimit ? 2000000 : 600000)
+
+        const { data: ra } = await supabase.from('fpb_role_approvers')
+          .select('approver1_id').eq('role_id', u.user_role_id).maybeSingle()
+        setApproverStatus(ra?.approver1_id ? 'ok' : 'no_approver')
+      })
     }
   }, [])
 
   const grandTotal = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0)
-  const maxAmount  = selType?.max_amount || 600000
-  const exceeds    = grandTotal > maxAmount
+  const exceeds    = grandTotal > userMaxLimit
 
   const updateItem = (id, field, val) => setItems(prev => prev.map(i => i._id === id ? { ...i, [field]: val } : i))
   const addItem    = () => setItems(prev => [...prev, emptyItem()])
@@ -1620,7 +1654,7 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
     if (!usageDate) e.usageDate = 'Required date is required'
     if (items.some(i => !i.item_name.trim())) e.items = 'All item names are required'
     if (items.some(i => !i.unit_price || Number(i.unit_price) <= 0)) e.items = 'All unit prices are required'
-    if (exceeds) e.items = `Grand total exceeds the maximum limit of ${fmt(maxAmount)}`
+    if (exceeds) e.items = `Grand total exceeds your maximum limit of ${fmt(userMaxLimit)}`
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -1638,21 +1672,18 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
       const roman = ROMAN[month - 1]
       const pattern = `/YPMS/FPB/${roman}/${year}`
 
-      // Get submitter's role
       const { data: submitter } = await supabase.from('users')
         .select('user_role_id').eq('user_id', uid).single()
       if (!submitter?.user_role_id) throw new Error('Your role is not configured. Please contact the administrator.')
 
-      // Get approvers for submitter's role
       const { data: ra } = await supabase.from('fpb_role_approvers')
         .select('*').eq('role_id', submitter.user_role_id).single()
       if (!ra?.approver1_id) throw new Error('Approver for your role is not configured. Please contact the administrator to set up approvers in FPB Settings.')
 
-      // Build approval rows — 1 per approver, each gets their own sequential step_order
       const approverIds = [ra.approver1_id, ra.approver2_id, ra.approver3_id].filter(Boolean)
       const approvalRows = approverIds.map((approverId, idx) => ({
         fpb_id:           null,
-        step_order:       idx + 1,   // Step 1, 2, 3 per approver
+        step_order:       idx + 1,
         step_name:        'Approval',
         approver_user_id: approverId,
         approver_role_id: submitter.user_role_id,
@@ -1660,12 +1691,11 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         status:           'pending',
       }))
 
-      // Fetch global screener role (if any) — screener gets step_order=0
       const { data: sc } = await supabase.from('fpb_screener').select('screener_role_id').limit(1).maybeSingle()
       if (sc?.screener_role_id) {
         approvalRows.unshift({
           fpb_id:           null,
-          step_order:       0,         // Screener is step 0 (before approvers)
+          step_order:       0,
           step_name:        'Screening',
           approver_user_id: null,
           approver_role_id: sc.screener_role_id,
@@ -1674,12 +1704,10 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         })
       }
 
-      // Generate FPB number: get max existing sequence for this month, then retry on duplicate
       let fpb = null
       let fpbNumber = ''
       let attempt = 0
       while (attempt < 5) {
-        // Query all existing numbers for this month to find the current max sequence
         const { data: existingFpbs } = await supabase.from('fpb')
           .select('fpb_number')
           .like('fpb_number', `%${pattern}`)
@@ -1690,13 +1718,13 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
         fpbNumber = `${String(maxSeq + 1 + attempt).padStart(2, '0')}/YPMS/FPB/${roman}/${year}`
 
         const initialStep = approvalRows.some(r => r.approver_order === 0) ? 0 : 1
+        const typeId = selType?.fpb_type_id || 1
         const { data: inserted, error: fpbErr } = await supabase.from('fpb').insert({
-          fpb_number: fpbNumber, fpb_type_id: selType.fpb_type_id, division, submitted_by: uid,
+          fpb_number: fpbNumber, fpb_type_id: typeId, division, submitted_by: uid,
           grand_total: grandTotal, note, usage_date: usageDate, status: 'pending', current_step: initialStep,
         }).select().single()
 
         if (!fpbErr) { fpb = inserted; break }
-        // 23505 = unique violation — another insert raced us, try next number
         if (fpbErr.code === '23505') { attempt++; continue }
         throw fpbErr
       }
@@ -1719,181 +1747,193 @@ function CreateFpbModal({ onClose, onSuccess, theme }) {
     } finally { setSaving(false) }
   }
 
-  const inputStyle = { width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', border: `1px solid ${theme.border}`, background: theme.inputBg || theme.cardBg, color: theme.textPrimary, outline: 'none' }
-
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: theme.cardBg, borderRadius: 18, width: '100%', maxWidth: 800, maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
+    <div onClick={onClose} className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-[2px]">
+      <div onClick={e => e.stopPropagation()} className="w-full max-w-3xl max-h-[92vh] flex flex-col rounded-lg border shadow-xl font-sans text-xs antialiased overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
+        
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: theme.border }}>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 17, color: theme.textPrimary }}>
-              {done ? 'FPB Submitted Successfully' : step === 1 ? 'Create New FPB' : `Create FPB — ${selType?.type_name}`}
-            </div>
-            {!done && <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 3 }}>{step === 1 ? 'Select the type of purchase form' : selType?.description}</div>}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <h2 className="text-base font-bold tracking-tight" style={{ color: theme.textPrimary }}>
+              {done ? 'FPB Submitted Successfully' : 'Create New FPB'}
+            </h2>
             {!done && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {[1, 2].map(s => (
-                  <div key={s} style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, background: step >= s ? 'linear-gradient(135deg,#6366f1,#0ea5e9)' : theme.subtleBg, color: step >= s ? '#fff' : theme.textSecondary, transition: 'all 0.2s' }}>{s}</div>
-                ))}
-              </div>
+              <p className="text-[11px] mt-0.5" style={{ color: theme.textSecondary }}>
+                Purchase items with a maximum total of {fmt(userMaxLimit)}
+              </p>
             )}
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textSecondary, cursor: 'pointer', padding: 6, fontSize: 18 }}>
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
           </div>
+          <button onClick={onClose} className="p-1 text-base border-none bg-transparent cursor-pointer transition-opacity hover:opacity-75" style={{ color: theme.textSecondary }}>
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
         </div>
-        <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
+
+        {/* Modal Body */}
+        <div className="p-5 flex-1 overflow-y-auto space-y-4">
           {(approverStatus === 'no_role' || approverStatus === 'no_approver') && (
-            <div style={{ margin: '0 0 20px', padding: '20px 22px', borderRadius: 14, background: 'rgba(251,191,36,0.08)', border: '2px solid rgba(251,191,36,0.5)', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-              <div style={{ fontSize: 32, flexShrink: 0, lineHeight: 1 }}>🔒</div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#92400e', marginBottom: 6 }}>
-                  FPB request cannot be processed yet
-                </div>
-                <p style={{ fontSize: 13, color: '#78350f', margin: '0 0 10px', lineHeight: 1.6 }}>
+            <div className="p-4 rounded-md border flex gap-3 items-start" style={{ background: '#FBF3DB', borderColor: '#F59E0B', color: '#956400' }}>
+              <FontAwesomeIcon icon={faLock} className="text-lg mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <div className="font-bold text-xs">FPB Request Cannot Be Processed</div>
+                <p className="text-[11px] leading-relaxed">
                   {approverStatus === 'no_role'
                     ? 'Your role has not been configured in the system. Please contact the administrator to set up your account role.'
                     : `The approver for role ${userRoleName ? `"${userRoleName}"` : 'your position'} has not been set by the administrator. FPB requests cannot be processed until the administrator configures approvers in FPB Settings.`
                   }
                 </p>
-                <div style={{ fontSize: 12, color: '#92400e', fontWeight: 600, padding: '6px 12px', borderRadius: 8, background: 'rgba(251,191,36,0.15)', display: 'inline-block' }}>
-                  ⚙️ Admin: go to <strong>Settings → FPB Approval</strong> to configure approvers
+                <div className="text-[10px] font-bold inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-200/50">
+                  <FontAwesomeIcon icon={faCog} className="text-[10px]" />
+                  <span>Admin: go to Settings → FPB Approval to configure approvers</span>
                 </div>
               </div>
             </div>
           )}
 
           {done && (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
-              <div style={{ fontWeight: 800, fontSize: 18, color: theme.textPrimary, marginBottom: 8 }}>{done.fpb_number}</div>
-              <div style={{ fontSize: 14, color: theme.textSecondary, marginBottom: 28 }}>FPB submitted successfully and is awaiting approval.</div>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                <button onClick={onClose} style={{ padding: '10px 24px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Close</button>
-                <a href={`/data/fpb/${done.fpb_id}`} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', textDecoration: 'none' }}>View FPB Details →</a>
+            <div className="text-center py-8 space-y-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                <FontAwesomeIcon icon={faCheck} className="text-xl" />
+              </div>
+              <div>
+                <div className="text-base font-bold font-mono" style={{ color: theme.textPrimary }}>{done.fpb_number}</div>
+                <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>FPB submitted successfully and is awaiting approval.</p>
+              </div>
+              <div className="flex gap-2 justify-center pt-2">
+                <button onClick={onClose} className="px-4 py-2 rounded-md text-xs font-bold border cursor-pointer" style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}>Close</button>
+                <a href={`/data/fpb/${done.fpb_id}`} className="px-4 py-2 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-slate-900 dark:bg-white dark:text-slate-900 transition-all active:scale-[0.98] inline-flex items-center gap-1.5 no-underline">
+                  <span>View FPB Details</span>
+                  <FontAwesomeIcon icon={faArrowLeft} className="rotate-180 text-[10px]" />
+                </a>
               </div>
             </div>
           )}
 
-          {!done && step === 1 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 14 }}>
-              {types.map(t => (
-                <button key={t.fpb_type_id} onClick={() => { setSelType(t); setStep(2) }}
-                  style={{ textAlign: 'left', padding: 20, borderRadius: 14, border: `2px solid ${theme.border}`, background: theme.cardBg, cursor: 'pointer', transition: 'all 0.18s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,102,241,0.2)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.boxShadow = 'none' }}>
-                  <div style={{ fontSize: 26, marginBottom: 10, color: '#6366f1' }}><FontAwesomeIcon icon={TYPE_ICONS[t.type_code] || faShoppingCart} /></div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: theme.textPrimary, marginBottom: 5 }}>{t.type_name}</div>
-                  <div style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 1.5 }}>{t.description}</div>
-                  {t.max_amount && <div style={{ marginTop: 10, padding: '3px 9px', borderRadius: 99, background: 'rgba(99,102,241,0.1)', color: '#6366f1', fontSize: 11, fontWeight: 700, width: 'fit-content' }}>Max {fmt(t.max_amount)}</div>}
-                </button>
-              ))}
-            </div>
-          )}
-          {!done && step === 2 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary, marginBottom: 14 }}>General Information</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          {!done && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-md border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider block" style={{ color: theme.textSecondary }}>General Information</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Division / Unit</label>
-                    <div style={{ ...inputStyle, background: theme.subtleBg, color: theme.textSecondary }}>{division || <span style={{ fontStyle: 'italic' }}>Unit not found</span>}</div>
+                    <label className="text-[11px] font-semibold block mb-1" style={{ color: theme.textSecondary }}>Division / Unit</label>
+                    <div className="px-3 py-2 rounded-md border text-xs font-semibold" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                      {division || <span className="italic">Unit not found</span>}
+                    </div>
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 5 }}>Required Date <span style={{ color: '#dc2626' }}>*</span></label>
-                    <input type="date" value={usageDate} onChange={e => setUsageDate(e.target.value)} style={inputStyle} min={new Date().toISOString().slice(0, 10)} />
-                    {errors.usageDate && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{errors.usageDate}</p>}
+                    <label className="text-[11px] font-semibold block mb-1" style={{ color: theme.textSecondary }}>Required Date <span className="text-red-500">*</span></label>
+                    <input type="date" value={usageDate} onChange={e => setUsageDate(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-md border text-xs outline-none font-medium"
+                      style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}
+                      min={new Date().toISOString().slice(0, 10)} />
+                    {errors.usageDate && <p className="text-red-500 text-[10px] mt-1 font-semibold">{errors.usageDate}</p>}
                   </div>
                 </div>
               </div>
-              <div style={{ borderRadius: 12, border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary }}>Item List</div>
-                  <button onClick={addItem} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                    <FontAwesomeIcon icon={faPlus} /> Add Item
+
+              <div className="rounded-md border overflow-hidden" style={{ borderColor: theme.border }}>
+                <div className="flex items-center justify-between p-3 border-b" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider block" style={{ color: theme.textSecondary }}>Item List</span>
+                  <button onClick={addItem} className="px-3 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer inline-flex items-center gap-1.5 transition-all active:scale-[0.98]" style={{ background: theme.textPrimary, color: theme.pageBg }}>
+                    <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
+                    <span>Add Item</span>
                   </button>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed' }}>
-                    <colgroup>
-                      <col style={{ width: '28%' }} />
-                      <col style={{ width: '60px' }} />
-                      <col style={{ width: '100px' }} />
-                      <col style={{ width: '120px' }} />
-                      <col style={{ width: '110px' }} />
-                      <col />
-                      <col style={{ width: '36px' }} />
-                    </colgroup>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-xs">
                     <thead>
-                      <tr style={{ background: theme.subtleBg }}>
-                        {['Item Name', 'Qty', 'Unit', 'Unit Price', 'Subtotal', 'Reference Link', ''].map(h => (
-                          <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden' }}>{h}</th>
-                        ))}
+                      <tr className="border-b text-[10px] font-mono uppercase tracking-wider font-semibold" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                        <th className="p-2 text-left w-1/3">Item Name</th>
+                        <th className="p-2 text-center w-14">Qty</th>
+                        <th className="p-2 text-left w-24">Unit</th>
+                        <th className="p-2 text-right w-28">Unit Price</th>
+                        <th className="p-2 text-right w-28">Subtotal</th>
+                        <th className="p-2 text-left">Reference Link</th>
+                        <th className="p-2 w-8"></th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y" style={{ borderColor: theme.border }}>
                       {items.map(item => (
-                        <tr key={item._id} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                          <td style={{ padding: '7px 8px' }}>
-                            <input value={item.item_name} onChange={e => updateItem(item._id, 'item_name', e.target.value)} placeholder="Item name..." style={{ ...inputStyle, padding: '5px 8px', width: '100%' }} />
+                        <tr key={item._id}>
+                          <td className="p-1.5">
+                            <input value={item.item_name} onChange={e => updateItem(item._id, 'item_name', e.target.value)} placeholder="Item name..." className="w-full px-2 py-1 rounded border text-xs outline-none" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                           </td>
-                          <td style={{ padding: '7px 6px' }}>
-                            <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item._id, 'quantity', e.target.value)} style={{ ...inputStyle, padding: '5px 6px', textAlign: 'center', width: '100%', minWidth: 44 }} />
+                          <td className="p-1.5">
+                            <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item._id, 'quantity', e.target.value)} className="w-full px-1.5 py-1 rounded border text-xs text-center outline-none font-mono" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                           </td>
-                          <td style={{ padding: '7px 6px' }}>
-                            <select value={item.unit} onChange={e => updateItem(item._id, 'unit', e.target.value)} style={{ ...inputStyle, padding: '5px 4px', width: '100%' }}>
+                          <td className="p-1.5">
+                            <select value={item.unit} onChange={e => updateItem(item._id, 'unit', e.target.value)} className="w-full px-1.5 py-1 rounded border text-xs outline-none" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
                               {['pcs','kg','liter','box','rim','lusin','unit','set','lump sum'].map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
                           </td>
-                          <td style={{ padding: '7px 6px' }}>
-                            <input type="number" min="0" value={item.unit_price} onChange={e => updateItem(item._id, 'unit_price', e.target.value)} placeholder="0" style={{ ...inputStyle, padding: '5px 8px', textAlign: 'right', width: '100%' }} />
+                          <td className="p-1.5">
+                            <input type="number" min="0" value={item.unit_price} onChange={e => updateItem(item._id, 'unit_price', e.target.value)} placeholder="0" className="w-full px-2 py-1 rounded border text-xs text-right outline-none font-mono" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
                           </td>
-                          <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <td className="p-2 text-right font-mono font-bold whitespace-nowrap" style={{ color: theme.textPrimary }}>
                             {fmt((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}
                           </td>
-                          <td style={{ padding: '7px 6px' }}>
+                          <td className="p-1.5">
                             <input
                               value={item.seller_url || ''}
                               onChange={e => updateItem(item._id, 'seller_url', e.target.value)}
                               placeholder="https://tokopedia.com/..."
-                              style={{ ...inputStyle, padding: '5px 8px', fontSize: 11, width: '100%' }}
+                              className="w-full px-2 py-1 rounded border text-[11px] outline-none"
+                              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}
                             />
                           </td>
-                          <td style={{ padding: '7px 4px', textAlign: 'center' }}>
-                            {items.length > 1 && <button onClick={() => removeItem(item._id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 4 }}><FontAwesomeIcon icon={faTrash} /></button>}
+                          <td className="p-1.5 text-center">
+                            {items.length > 1 && (
+                              <button onClick={() => removeItem(item._id)} className="p-1 text-red-500 hover:text-red-700 border-none bg-transparent cursor-pointer">
+                                <FontAwesomeIcon icon={faTrash} />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
-                        <td colSpan={4} style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: theme.textPrimary, fontSize: 13 }}>Grand Total</td>
-                        <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 800, fontSize: 15, color: exceeds ? '#dc2626' : '#059669' }}>{fmt(grandTotal)}</td>
+                      <tr className="border-t font-bold font-mono" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                        <td colSpan={4} className="p-2.5 text-right" style={{ color: theme.textPrimary }}>Grand Total</td>
+                        <td className="p-2.5 text-right text-sm" style={{ color: exceeds ? '#dc2626' : '#346538' }}>{fmt(grandTotal)}</td>
                         <td /><td />
                       </tr>
                     </tfoot>
                   </table>
                 </div>
-                {errors.items && <p style={{ padding: '6px 14px', color: '#dc2626', fontSize: 12 }}>{errors.items}</p>}
+                {errors.items && <p className="p-2 text-red-500 text-xs font-semibold">{errors.items}</p>}
               </div>
-              {exceeds && <div style={{ padding: '11px 15px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13, fontWeight: 600 }}>⚠ Grand total exceeds the maximum limit of {fmt(selType?.max_amount)} for this FPB type.</div>}
-              <div style={{ padding: '16px 18px', borderRadius: 12, border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary, marginBottom: 10 }}>Note (Optional)</div>
-                <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Add notes or additional information..." style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
+
+              {exceeds && (
+                <div className="p-3 rounded-md border text-xs font-semibold" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+                  <FontAwesomeIcon icon={faTimes} className="mr-1.5" />
+                  Grand total exceeds your maximum limit of {fmt(userMaxLimit)}.
+                </div>
+              )}
+
+              <div className="p-4 rounded-md border space-y-2" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider block" style={{ color: theme.textSecondary }}>Note (Optional)</span>
+                <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Add notes or additional information..."
+                  className="w-full px-3 py-2 rounded-md border text-xs outline-none font-medium resize-y"
+                  style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
               </div>
-              {errors.submit && <div style={{ padding: '11px 15px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>⚠ {errors.submit}</div>}
+              {errors.submit && (
+                <div className="p-3 rounded-md border text-xs font-semibold" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+                  <FontAwesomeIcon icon={faTimes} className="mr-1.5" />
+                  {errors.submit}
+                </div>
+              )}
             </div>
           )}
         </div>
-        {!done && step === 2 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 24px', borderTop: `1px solid ${theme.border}`, flexShrink: 0, background: theme.cardBg }}>
-            <button onClick={() => setStep(1)} style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textSecondary, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-              <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: 6 }} />Back
+
+        {/* Modal Footer */}
+        {!done && (
+          <div className="flex justify-end gap-2 p-4 border-t flex-shrink-0" style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <button onClick={onClose} className="px-4 py-2 rounded-md text-xs font-bold border cursor-pointer" style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}>
+              Cancel
             </button>
-            <button onClick={handleSubmit} disabled={saving || exceeds} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, background: saving || exceeds ? theme.subtleBg : 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: saving || exceeds ? theme.textSecondary : '#fff', cursor: saving || exceeds ? 'not-allowed' : 'pointer', boxShadow: saving || exceeds ? 'none' : '0 2px 12px rgba(99,102,241,0.35)' }}>
-              {saving ? <><FontAwesomeIcon icon={faSpinner} spin style={{ marginRight: 6 }} />Saving...</> : '📤 Submit FPB'}
+            <button onClick={handleSubmit} disabled={saving || exceeds} className="px-5 py-2 rounded-md text-xs font-bold border-none cursor-pointer inline-flex items-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-50" style={{ background: theme.textPrimary, color: theme.pageBg }}>
+              {saving ? <FontAwesomeIcon icon={faSpinner} spin className="text-xs" /> : <FontAwesomeIcon icon={faCheck} className="text-xs" />}
+              <span>{saving ? 'Saving...' : 'Submit FPB'}</span>
             </button>
           </div>
         )}
@@ -2302,7 +2342,6 @@ export default function FpbListPage() {
                 <FontAwesomeIcon icon={faPen} />Edit
               </button>
             )}
-            {/* Delete — only in 'mine' tab */}
             {!isPending && !isHistory && (
               <button onClick={e => { e.stopPropagation(); if (canDelete) setDeleteFpb(f) }}
                 title={!canDelete ? 'FPBs already processed by approver cannot be deleted' : 'Delete this FPB'}
@@ -2318,7 +2357,6 @@ export default function FpbListPage() {
 
   const currentList = tab === 'mine' ? myFpbs : tab === 'pending' ? pendingFpbs : historyFpbs
 
-  // Filter by search query and status
   const filteredList = currentList.filter(f => {
     const q = searchQuery.toLowerCase()
     const matchText = !q ||
@@ -2332,178 +2370,218 @@ export default function FpbListPage() {
   })
 
   return (
-    <div className="p-4 md:p-8 min-h-screen" style={{ background: theme.pageBg }}>
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-6 gap-4">
+    <div className="p-4 sm:p-6 md:p-8 min-h-screen font-sans antialiased space-y-6" style={{ background: theme.pageBg, color: theme.textPrimary }}>
+      
+      {/* ─── Minimalist Editorial Header ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b" style={{ borderColor: theme.border }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>📋 Purchase Request Form</h1>
-          <p style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>Manage purchase requests and approval workflow</p>
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest mb-1.5" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+            <FontAwesomeIcon icon={faClipboardList} className="text-[9px]" />
+            <span>PURCHASING WORKFLOW</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: theme.textPrimary, margin: 0 }}>
+            Purchase Request Form (FPB)
+          </h1>
+          <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
+            Manage purchase requisitions, line item budgets, and multi-level approval routing.
+          </p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 12px rgba(99,102,241,0.35)', width: 'fit-content' }}>
-          <FontAwesomeIcon icon={faPlus} />Create New FPB
+
+        <button
+          onClick={() => setShowCreate(true)}
+          className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-md cursor-pointer transition-all active:scale-[0.98]"
+          style={{ background: theme.textPrimary, color: theme.pageBg, border: 'none' }}
+        >
+          <FontAwesomeIcon icon={faPlus} className="text-xs" />
+          <span>Create New FPB</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      {/* ─── Ultra-Flat Summary Bento Cards ─── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
         {[
-          { label: 'Total Requests',   value: myFpbs.length,                                      color: '#6366f1' },
-          { label: 'Awaiting Approval', value: myFpbs.filter(f => f.status === 'pending').length,  color: '#d97706' },
-          { label: 'Needs Revision',    value: myFpbs.filter(f => f.status === 'revision').length, color: '#f59e0b' },
-          { label: 'Approved',          value: myFpbs.filter(f => f.status === 'approved').length, color: '#059669' },
-          { label: 'Waiting for Me',    value: pendingFpbs.length,                                 color: '#8b5cf6' },
+          { label: 'Total Requests',    value: myFpbs.length,                                      badgeBg: '#F3F4F6', badgeColor: '#374151' },
+          { label: 'Awaiting Approval',  value: myFpbs.filter(f => f.status === 'pending').length,  badgeBg: '#FBF3DB', badgeColor: '#956400' },
+          { label: 'Needs Revision',     value: myFpbs.filter(f => f.status === 'revision').length, badgeBg: '#FBF3DB', badgeColor: '#956400' },
+          { label: 'Approved',           value: myFpbs.filter(f => f.status === 'approved').length, badgeBg: '#EDF3EC', badgeColor: '#346538' },
+          { label: 'Waiting for Me',     value: pendingFpbs.length,                                 badgeBg: '#E1F3FE', badgeColor: '#1F6C9F' },
         ].map(c => (
-          <Card key={c.label} style={{ background: theme.cardBg, borderColor: theme.border }}>
-            <CardContent className="pt-4 pb-3">
-              <div style={{ fontSize: 24, fontWeight: 800, color: c.color }}>{c.value}</div>
-              <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{c.label}</div>
-            </CardContent>
-          </Card>
+          <div key={c.label} className="p-3 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider block" style={{ color: theme.textSecondary }}>
+              {c.label}
+            </span>
+            <div className="flex items-baseline justify-between mt-2">
+              <span className="text-xl font-bold font-mono tracking-tight" style={{ color: theme.textPrimary }}>
+                {c.value}
+              </span>
+              <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded" style={{ background: c.badgeBg, color: c.badgeColor }}>
+                STATS
+              </span>
+            </div>
+          </div>
         ))}
       </div>
 
-      <div className="flex gap-1 p-1 rounded-lg w-full sm:w-fit overflow-x-auto mb-5 no-scrollbar" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
+      {/* ─── Flat Segmented Tab Switcher ─── */}
+      <div className="flex gap-1 p-1 rounded-md w-full sm:w-fit overflow-x-auto no-scrollbar" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-md font-semibold text-xs md:text-sm transition-all"
-            style={{ border: 'none', cursor: 'pointer', background: tab === t.key ? theme.cardBg : 'transparent', color: tab === t.key ? theme.textPrimary : theme.textSecondary, boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
-            <FontAwesomeIcon icon={t.icon} />
-            {t.label}
-            {t.count > 0 && <span style={{ padding: '1px 7px', borderRadius: 99, fontSize: 10, fontWeight: 800, background: tab === t.key ? '#6366f1' : theme.subtleBg, color: tab === t.key ? '#fff' : theme.textSecondary }}>{t.count}</span>}
+            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer border-none"
+            style={{
+              background: tab === t.key ? theme.cardBg : 'transparent',
+              color: tab === t.key ? theme.textPrimary : theme.textSecondary,
+              border: tab === t.key ? `1px solid ${theme.border}` : '1px solid transparent'
+            }}>
+            <FontAwesomeIcon icon={t.icon} className="text-[11px]" />
+            <span>{t.label}</span>
+            {t.count > 0 && (
+              <span className="px-1.5 py-0.2 rounded font-mono text-[10px] font-bold" style={{ background: tab === t.key ? theme.textPrimary : theme.cardBg, color: tab === t.key ? theme.pageBg : theme.textSecondary }}>
+                {t.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-        <CardContent className="p-0">
+      {/* ─── Main Content Container ─── */}
+      <div className="rounded-lg border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border }}>
+        <div>
           {/* Export tab panel */}
           {tab === 'export' ? (
-            <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 520 }}>
+            <div className="p-6 md:p-8 space-y-5 max-w-xl">
               <div>
-                <div style={{ fontWeight: 800, fontSize: 16, color: theme.textPrimary, marginBottom: 6 }}>
-                  📊 Export FPB Data to Excel
+                <div className="flex items-center gap-2 text-base font-bold mb-1" style={{ color: theme.textPrimary }}>
+                  <FontAwesomeIcon icon={faFileExcel} className="text-emerald-600 dark:text-emerald-400 text-lg" />
+                  <span>Export FPB Data to Excel</span>
                 </div>
-                <div style={{ fontSize: 13, color: theme.textSecondary }}>
-                  Export all FPBs with item details for the selected month. Each item appears as a separate row.
-                </div>
+                <p className="text-xs" style={{ color: theme.textSecondary }}>
+                  Export all FPBs with item details for the selected month. Each item appears as a separate row in the Excel report.
+                </p>
               </div>
 
               {/* Month & Year picker */}
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div className="flex flex-wrap items-end gap-3">
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Month</label>
+                  <label className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>Month</label>
                   <select value={exportMonth} onChange={e => setExportMonth(Number(e.target.value))}
-                    style={{ padding: '9px 14px', borderRadius: 9, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer', minWidth: 140 }}>
+                    className="px-3 py-2 rounded-md text-xs border outline-none cursor-pointer min-w-36 font-semibold"
+                    style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
                     {MONTHS_ID.map((m, i) => (
                       <option key={i + 1} value={i + 1}>{m}</option>
                     ))}
                   </select>
                 </div>
+
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, display: 'block', marginBottom: 6 }}>Year</label>
+                  <label className="text-[11px] font-bold uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>Year</label>
                   <select value={exportYear} onChange={e => setExportYear(Number(e.target.value))}
-                    style={{ padding: '9px 14px', borderRadius: 9, fontSize: 13, border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary, outline: 'none', cursor: 'pointer', minWidth: 100 }}>
+                    className="px-3 py-2 rounded-md text-xs border outline-none cursor-pointer min-w-24 font-semibold"
+                    style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
                     {[2024, 2025, 2026, 2027, 2028].map(y => (
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>
                 </div>
+
                 <button onClick={handleExport} disabled={exportLoading}
-                  style={{ padding: '9px 22px', borderRadius: 9, border: 'none', background: exportLoading ? '#e5e7eb' : 'linear-gradient(135deg,#059669,#10b981)', color: exportLoading ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 13, cursor: exportLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: exportLoading ? 'none' : '0 2px 10px rgba(5,150,105,0.3)', whiteSpace: 'nowrap' }}>
-                  <FontAwesomeIcon icon={exportLoading ? faSpinner : faFileExcel} spin={exportLoading} />
-                  {exportLoading ? 'Downloading...' : `Download Excel — ${MONTHS_ID[exportMonth - 1]} ${exportYear}`}
+                  className="px-4 py-2 rounded-md text-xs font-bold border-none cursor-pointer flex items-center gap-2 text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 transition-all active:scale-[0.98]">
+                  <FontAwesomeIcon icon={exportLoading ? faSpinner : faFileExcel} spin={exportLoading} className="text-xs" />
+                  <span>{exportLoading ? 'Downloading...' : `Download Excel (${MONTHS_ID[exportMonth - 1]} ${exportYear})`}</span>
                 </button>
               </div>
 
               {exportError && (
-                <div style={{ padding: '10px 14px', borderRadius: 9, background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontSize: 13 }}>
-                  ⚠ {exportError}
+                <div className="p-3 rounded-md border text-xs font-semibold" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+                  <FontAwesomeIcon icon={faTimes} className="mr-1.5" />
+                  {exportError}
                 </div>
               )}
 
               {/* Column preview */}
-              <div style={{ padding: '12px 16px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, marginBottom: 8 }}>EXPORTED COLUMNS</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px' }}>
+              <div className="p-3 rounded-md border text-xs space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest block" style={{ color: theme.textSecondary }}>EXPORTED COLUMNS PREVIEW</span>
+                <div className="flex flex-wrap gap-1.5">
                   {['No', 'No FPB', 'Created By', 'Divisi', 'Item Name', 'Qty', 'Unit', 'Price', 'Total', 'Status', 'Budget', 'Remaining Budget'].map(c => (
-                    <span key={c} style={{ padding: '3px 9px', borderRadius: 6, background: theme.cardBg, border: `1px solid ${theme.border}`, fontSize: 11, color: theme.textPrimary }}>{c}</span>
+                    <span key={c} className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>{c}</span>
                   ))}
-                </div>
-                <div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 10 }}>
-                  * Each item in an FPB appears as a separate row
                 </div>
               </div>
             </div>
           ) : (
           <>
           {/* Search & Filter bar */}
-          <div className="flex flex-col sm:flex-row gap-3 items-center p-3 md:p-4" style={{ borderBottom: `1px solid ${theme.border}` }}>
+          <div className="flex flex-col sm:flex-row gap-3 items-center p-3 sm:p-4 border-b" style={{ borderColor: theme.border }}>
             <div className="relative w-full sm:flex-1">
-              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: theme.textSecondary, fontSize: 13, pointerEvents: 'none' }}>🔍</span>
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: theme.textSecondary }} />
               <input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search FPB number, division, requester..."
-                className="w-full px-3 py-2 pl-8 rounded-lg text-xs md:text-sm outline-none"
-                style={{ border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary }}
+                className="w-full pl-9 pr-3 py-2 rounded-md text-xs outline-none font-medium border"
+                style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}
               />
             </div>
             <div className="flex w-full sm:w-auto gap-2 items-center">
               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                className="flex-1 sm:flex-none px-3 py-2 rounded-lg text-xs md:text-sm outline-none cursor-pointer"
-                style={{ border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary }}>
+                className="flex-1 sm:flex-none px-3 py-2 rounded-md text-xs outline-none cursor-pointer border font-medium"
+                style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
                 <option value="">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="revision">Revision</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="ordered">📦 Ordered</option>
-            </select>
+                <option value="pending">Pending</option>
+                <option value="revision">Revision</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="ordered">Ordered</option>
+              </select>
               {(searchQuery || filterStatus) && (
                 <button onClick={() => { setSearchQuery(''); setFilterStatus('') }}
-                  className="px-3 py-2 rounded-lg text-xs md:text-sm whitespace-nowrap cursor-pointer"
-                  style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary }}>
-                  ✕ Reset
+                  className="px-3 py-2 rounded-md text-xs border cursor-pointer font-semibold inline-flex items-center gap-1"
+                  style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                  <FontAwesomeIcon icon={faTimes} className="text-[10px]" />
+                  <span>Reset</span>
                 </button>
               )}
-              <span className="text-xs md:text-sm whitespace-nowrap ml-auto" style={{ color: theme.textSecondary }}>{filteredList.length} FPB</span>
+              <span className="text-xs font-mono font-bold whitespace-nowrap ml-auto" style={{ color: theme.textSecondary }}>{filteredList.length} FPB</span>
             </div>
           </div>
+
           {loading ? (
-            <div style={{ padding: 40, textAlign: 'center', color: theme.textSecondary }}>
-              <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: 24 }} />
-              <p style={{ marginTop: 10 }}>Loading data...</p>
+            <div className="py-16 text-center text-xs flex flex-col items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
+              <FontAwesomeIcon icon={faSpinner} spin className="text-xl text-blue-500" />
+              <span className="font-semibold">Loading purchase requests...</span>
             </div>
           ) : filteredList.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center' }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>{searchQuery || filterStatus ? '🔍' : '📋'}</div>
-              <p style={{ fontWeight: 700, color: theme.textPrimary, fontSize: 15, marginBottom: 6 }}>
+            <div className="py-16 text-center text-xs space-y-2" style={{ color: theme.textSecondary }}>
+              <FontAwesomeIcon icon={faClipboardList} className="text-3xl opacity-30 mb-1" />
+              <p className="font-bold text-sm" style={{ color: theme.textPrimary }}>
                 {searchQuery || filterStatus ? 'No FPBs match the current filter'
                   : tab === 'mine' ? 'No requests submitted yet' : tab === 'pending' ? 'No FPBs awaiting your approval' : 'No FPBs in your approval history'}
               </p>
               {!(searchQuery || filterStatus) && tab === 'mine' && (
                 <button onClick={() => setShowCreate(true)}
-                  style={{ marginTop: 16, padding: '9px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#0ea5e9)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                  <FontAwesomeIcon icon={faPlus} style={{ marginRight: 6 }} />Create New FPB
+                  className="mt-3 px-4 py-2 rounded-md text-xs font-bold text-white border-none cursor-pointer inline-flex items-center gap-1.5 transition-all active:scale-[0.98]"
+                  style={{ background: theme.textPrimary, color: theme.pageBg }}>
+                  <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
+                  <span>Create New FPB</span>
                 </button>
               )}
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-xs">
                 <thead>
-                  <tr style={{ background: theme.subtleBg, borderBottom: `2px solid ${theme.border}` }}>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>FPB Number</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Division</th>
-                    {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>My Step</th>}
-                    {tab === 'pending' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Requester</th>}
-                    {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Requester</th>}
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Grand Total</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Required Date</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Status</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Order</th>
-                    {tab === 'mine' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}></th>}
-                    {tab === 'history' && <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11 }}>Approved At</th>}
-                    <th style={{ padding: '10px 14px' }}></th>
+                  <tr className="border-b uppercase tracking-wider font-semibold text-[10px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                    <th className="p-3 text-left">FPB Number</th>
+                    <th className="p-3 text-left">Division</th>
+                    {tab === 'pending' && <th className="p-3 text-left">My Step</th>}
+                    {tab === 'pending' && <th className="p-3 text-left">Requester</th>}
+                    {tab === 'history' && <th className="p-3 text-left">Requester</th>}
+                    <th className="p-3 text-left">Grand Total</th>
+                    <th className="p-3 text-left">Required Date</th>
+                    <th className="p-3 text-left">Status</th>
+                    <th className="p-3 text-left">Order</th>
+                    {tab === 'mine' && <th className="p-3 text-left"></th>}
+                    {tab === 'history' && <th className="p-3 text-left">Approved At</th>}
+                    <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2514,8 +2592,8 @@ export default function FpbListPage() {
           )}
           </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {showCreate && <CreateFpbModal theme={theme} onClose={() => setShowCreate(false)} onSuccess={reloadAll} />}
       {viewFpbId && <ViewFpbModal fpbId={viewFpbId} theme={theme} onClose={() => setViewFpbId(null)} onActionDone={reloadAll} />}

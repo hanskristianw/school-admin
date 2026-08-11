@@ -32,44 +32,41 @@ export default function CreateFpbPage() {
   const [items, setItems]         = useState([emptyItem()])
   const [errors, setErrors]       = useState({})
 
+  const [userMaxLimit, setUserMaxLimit] = useState(600000)
+
   useEffect(() => {
-    // Load active FPB types
     supabase.from('fpb_types').select('*').eq('is_active', true).order('created_at')
       .then(({ data }) => {
         const list = data || []
         setTypes(list)
-        if (list.length === 1) {
-          setSelType(list[0])
-          setStep(2)
-        }
+        if (list.length > 0) setSelType(list[0])
       })
 
-    // Auto-load current user's unit (2-step to avoid FK name dependency)
     const uid = parseInt(localStorage.getItem('kr_id'))
     if (uid) {
-      supabase
-        .from('users')
-        .select('user_unit_id')
-        .eq('user_id', uid)
-        .single()
-        .then(async ({ data: userData }) => {
-          if (userData?.user_unit_id) {
-            const { data: unitData } = await supabase
-              .from('unit')
-              .select('unit_id, unit_name')
-              .eq('unit_id', userData.user_unit_id)
-              .single()
-            if (unitData) {
-              setUserUnit(unitData)
-              setDivision(unitData.unit_name)
-            }
+      Promise.all([
+        supabase.from('users').select('user_unit_id, user_role_id').eq('user_id', uid).single(),
+        supabase.from('settings').select('value').eq('key', 'fpb_high_limit_role_ids').maybeSingle(),
+      ]).then(async ([{ data: userData }, { data: hl }]) => {
+        if (userData?.user_unit_id) {
+          const { data: unitData } = await supabase.from('unit').select('unit_id, unit_name').eq('unit_id', userData.user_unit_id).single()
+          if (unitData) {
+            setUserUnit(unitData)
+            setDivision(unitData.unit_name)
           }
-        })
+        }
+        let highLimitRoles = []
+        if (hl?.value) {
+          try { highLimitRoles = JSON.parse(hl.value) } catch (e) { console.error(e) }
+        }
+        const hasHighLimit = highLimitRoles.map(Number).includes(Number(userData?.user_role_id))
+        setUserMaxLimit(hasHighLimit ? 2000000 : 600000)
+      })
     }
   }, [])
 
   const grandTotal = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0)
-  const exceeds    = selType?.max_amount ? grandTotal > selType.max_amount : false
+  const exceeds    = grandTotal > userMaxLimit
 
   // ── Item helpers ──────────────────────────────────────────────────
   const updateItem = (id, field, val) =>
@@ -83,7 +80,7 @@ export default function CreateFpbPage() {
     if (!usageDate) e.usageDate = 'Required date of usage is mandatory'
     if (items.some(i => !i.item_name.trim())) e.items = 'All item names are required'
     if (items.some(i => !i.unit_price || Number(i.unit_price) <= 0)) e.items = 'All unit prices must be greater than 0'
-    if (exceeds) e.total = `Grand total exceeds maximum limit of Rp ${selType.max_amount.toLocaleString('en-US')}`
+    if (exceeds) e.total = `Grand total exceeds maximum limit of ${fmt(userMaxLimit)}`
     setErrors(e)
     return Object.keys(e).length === 0
   }
