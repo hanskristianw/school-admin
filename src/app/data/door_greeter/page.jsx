@@ -7,7 +7,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faCalendarDays, faPlus, faTrash, faSave,
   faFileExcel, faPrint, faRotate, faWandMagicSparkles,
-  faCheck, faExclamationTriangle, faCopy, faSearch, faGear, faClock
+  faCheck, faExclamationTriangle, faCopy, faSearch, faGear, faClock,
+  faBuildingColumns, faSchool, faFilter, faCheckCircle
 } from '@fortawesome/free-solid-svg-icons'
 
 // List of days helper
@@ -31,7 +32,13 @@ function formatDateLabel(dateStr) {
 }
 
 export default function DutySchedulePage() {
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
+
+  // Dynamic Styles tied to useTheme() (100% Light & Dark Mode Compatible)
+  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
+  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
+  const btnPrimaryStyle = { background: theme.textPrimary, color: isDark ? '#18171A' : '#FFFFFF', border: 'none' }
+  const btnSecondaryStyle = { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [loading, setLoading]           = useState(true)
@@ -328,21 +335,14 @@ export default function DutySchedulePage() {
     })
 
     return list.sort((a, b) => {
-      // 1. Current Unit first
       if (a.isCurrentUnit !== b.isCurrentUnit) {
         return a.isCurrentUnit ? -1 : 1
       }
-
-      // 2. Unit Name alphabetically
       const uCmp = a.unitName.localeCompare(b.unitName)
       if (uCmp !== 0) return uCmp
-
-      // 3. Teacher / Staff first (isStudent = false), Student last (isStudent = true)
       if (a.isStudent !== b.isStudent) {
         return a.isStudent ? 1 : -1
       }
-
-      // 4. Alphabetical by Name (A-Z)
       return a.cleanName.localeCompare(b.cleanName, undefined, { sensitivity: 'base' })
     })
   }, [teachers, schoolUnits, roles, selectedUnitId])
@@ -356,7 +356,6 @@ export default function DutySchedulePage() {
         if (r.unit_id !== undefined && r.unit_id !== null) {
           return String(r.unit_id) === String(selectedUnitId)
         }
-        // Legacy rows without unit_id: assign to unit_id = 2 (MYP) as default
         const defaultUnit = schoolUnits.find(u => Number(u.unit_id) === 2)?.unit_id || schoolUnits[0]?.unit_id
         return !defaultUnit || String(selectedUnitId) === String(defaultUnit)
       })
@@ -399,7 +398,6 @@ export default function DutySchedulePage() {
       const unitIdNum = selectedUnitId ? parseInt(selectedUnitId, 10) : null
       const updates = rowsToSave.map(async r => {
         const { id, ...data } = r
-        // Ensure year_id and unit_id are set
         data.year_id = parseInt(selectedYearId, 10)
         data.unit_id = unitIdNum
         data.updated_at = new Date().toISOString()
@@ -522,7 +520,7 @@ export default function DutySchedulePage() {
 
       while (curr <= end) {
         const dateStr = curr.toISOString().slice(0, 10)
-        const dayOfWeek = curr.getUTCDay() // 0=Sun, 6=Sat
+        const dayOfWeek = curr.getUTCDay()
 
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
         if (!existingDates.has(dateStr) && (!genExcludeWeekends || !isWeekend)) {
@@ -615,29 +613,34 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
     setTimeout(() => setCopiedSql(false), 2000)
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render Minimalist Editorial Layout ──────────────────────────────────────
   return (
-    <div className="p-4 md:p-6 space-y-5" style={{ color: theme.textBody }}>
+    <div className="min-h-screen p-4 sm:p-6 md:p-8 font-sans antialiased space-y-6" style={{ background: theme.pageBg, color: theme.textPrimary }}>
 
-      {/* Notification Toast */}
+      {/* Toast Notification */}
       {notif.show && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
-          notif.type === 'error' ? 'bg-red-600 text-white' :
-          notif.type === 'warning' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
-        }`}>
-          {notif.message}
+        <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-md border shadow-sm text-xs font-medium tracking-tight flex items-center gap-2" style={
+          notif.type === 'error' ? { background: theme.redBg, color: theme.redText, borderColor: theme.redBg } :
+          notif.type === 'warning' ? { background: theme.yellowBg, color: theme.yellowText, borderColor: theme.yellowBg } :
+          { background: theme.greenBg, color: theme.greenText, borderColor: theme.greenBg }
+        }>
+          <FontAwesomeIcon icon={notif.type === 'error' ? faExclamationTriangle : faCheckCircle} />
+          <span>{notif.message}</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ─── Minimalist Editorial Header ─── */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b" style={{ borderColor: theme.border }}>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2.5" style={{ color: theme.textPrimary }}>
-            <FontAwesomeIcon icon={faCalendarDays} className="text-emerald-500" />
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase mb-2" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+            <FontAwesomeIcon icon={faCalendarDays} className="text-xs" />
+            <span>School Duty Management</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: theme.textPrimary }}>
             Duty & Devotion Schedule
           </h1>
-          <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>
-            Manage Morning Devotion, Prayer Subjects, Door Greeter, Break Duty & Lunch Duty schedules
+          <p className="text-xs sm:text-sm mt-1" style={{ color: theme.textSecondary }}>
+            Morning Devotion, Door Greeter, Break Duty, and Lunch Duty assignments.
           </p>
         </div>
 
@@ -647,170 +650,176 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
             <button
               onClick={handleSaveAll}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow transition-all"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium px-4 py-2.5 rounded-md transition-all cursor-pointer active:scale-[0.98]"
+              style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.greenBg}` }}
             >
               <FontAwesomeIcon icon={saving ? faRotate : faSave} spin={saving} />
-              Save Changes ({editedRowIds.size})
+              <span>Save Changes ({editedRowIds.size})</span>
             </button>
           )}
 
           <button
             onClick={() => setAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium"
-            style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2.5 rounded-md cursor-pointer transition-colors"
+            style={btnSecondaryStyle}
           >
-            <FontAwesomeIcon icon={faPlus} /> Add Date
+            <FontAwesomeIcon icon={faPlus} className="text-xs" style={{ color: theme.textSecondary }} />
+            <span>Add Date</span>
           </button>
 
           <button
             onClick={() => setSettingsModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium"
-            style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2.5 rounded-md cursor-pointer transition-colors"
+            style={btnSecondaryStyle}
           >
-            <FontAwesomeIcon icon={faGear} className="text-amber-500" /> Duty Settings
+            <FontAwesomeIcon icon={faGear} className="text-xs" style={{ color: theme.textSecondary }} />
+            <span>Duty Settings</span>
           </button>
 
           <button
             onClick={() => setGenModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-4 py-2.5 rounded-md cursor-pointer transition-all active:scale-[0.98]"
+            style={btnPrimaryStyle}
           >
-            <FontAwesomeIcon icon={faWandMagicSparkles} /> Generate Dates
+            <FontAwesomeIcon icon={faWandMagicSparkles} className="text-xs" />
+            <span>Generate Dates</span>
           </button>
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium"
-            style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+            style={btnSecondaryStyle}
           >
-            <FontAwesomeIcon icon={faFileExcel} className="text-emerald-600" /> Export
+            <FontAwesomeIcon icon={faFileExcel} className="text-xs" style={{ color: theme.textSecondary }} />
+            <span>Export</span>
           </button>
 
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium"
-            style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+            style={btnSecondaryStyle}
           >
-            <FontAwesomeIcon icon={faPrint} /> Print
+            <FontAwesomeIcon icon={faPrint} className="text-xs" style={{ color: theme.textSecondary }} />
+            <span>Print</span>
           </button>
         </div>
       </div>
 
-      {/* Database Table Missing Alert */}
+      {/* Database Missing Banner */}
       {!tableExists && (
-        <div className="p-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 space-y-3">
-          <div className="flex items-center gap-2 font-semibold text-base">
-            <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-600 text-lg" />
-            `duty_schedules` Table Not Found in Supabase Database
+        <div className="p-4 rounded-lg border space-y-3" style={{ background: theme.yellowBg, borderColor: theme.yellowBg, color: theme.yellowText }}>
+          <div className="flex items-center gap-2 font-semibold text-xs uppercase tracking-wider">
+            <FontAwesomeIcon icon={faExclamationTriangle} />
+            <span>duty_schedules Table Missing in Supabase Database</span>
           </div>
-          <p className="text-sm">
-            The database table for duty schedules does not exist in Supabase yet. Please copy the DDL query below and run it in the <strong>Supabase SQL Editor</strong>:
+          <p className="text-xs opacity-90">
+            Run the SQL DDL statement below inside the Supabase SQL Editor to enable duty scheduling:
           </p>
-          <div className="relative bg-gray-900 text-gray-100 p-3 rounded-lg font-mono text-xs overflow-x-auto max-h-48">
+          <div className="relative p-3 rounded font-mono text-[11px] overflow-x-auto border" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
             <pre>{ddlSql}</pre>
             <button
               onClick={copyDdlSql}
-              className="absolute top-2 right-2 px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded flex items-center gap-1"
+              className="absolute top-2 right-2 px-2 py-1 text-[10px] font-sans font-medium rounded border cursor-pointer"
+              style={btnSecondaryStyle}
             >
-              <FontAwesomeIcon icon={copiedSql ? faCheck : faCopy} />
+              <FontAwesomeIcon icon={copiedSql ? faCheck : faCopy} className="mr-1" />
               {copiedSql ? 'Copied!' : 'Copy SQL'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Unit Tabs */}
+      {/* Unit Selector Tabs */}
       {schoolUnits.length > 0 && (
-        <div className="flex items-center gap-2 p-1.5 rounded-xl border overflow-x-auto" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-          <span className="text-xs font-bold uppercase tracking-wider px-3" style={{ color: theme.textSecondary }}>Unit:</span>
+        <div className="flex items-center gap-1.5 p-1 rounded-lg border overflow-x-auto" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider px-3 shrink-0" style={{ color: theme.textSecondary }}>Unit:</span>
           {schoolUnits.map(u => {
             const active = String(u.unit_id) === String(selectedUnitId)
             return (
               <button
                 key={u.unit_id}
                 onClick={() => setSelectedUnitId(String(u.unit_id))}
-                className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all flex items-center gap-2 ${
-                  active
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'hover:opacity-80'
-                }`}
-                style={!active ? { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` } : {}}
+                className="px-3 py-1.5 text-xs font-medium rounded transition-all cursor-pointer whitespace-nowrap"
+                style={{
+                  background: active ? theme.textPrimary : 'transparent',
+                  color: active ? (isDark ? '#18171A' : '#FFFFFF') : theme.textSecondary,
+                  fontWeight: active ? '600' : '400'
+                }}
               >
-                <span>🏫</span>
-                <span>{u.unit_name} Schedule</span>
+                <span>Unit {u.unit_name} Schedule</span>
               </button>
             )
           })}
         </div>
       )}
 
-      {/* Filter Bar */}
-      <div className="flex flex-wrap gap-3 items-end p-4 rounded-xl" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
-        
-        {/* Academic Year Filter */}
-        <div className="flex flex-col gap-1 min-w-[180px]">
-          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary }}>Academic Year</label>
-          <select
-            value={selectedYearId}
-            onChange={e => setSelectedYearId(e.target.value)}
-            className="text-sm px-3 py-2 rounded-lg font-medium"
-            style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
-          >
-            {years.map(y => (
-              <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
-            ))}
-          </select>
-        </div>
+      {/* Filter Toolbar */}
+      <div className="rounded-lg p-4 border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Academic Year Filter */}
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>
+              Academic Year
+            </label>
+            <select
+              value={selectedYearId}
+              onChange={e => setSelectedYearId(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs rounded-md"
+              style={selectStyle}
+            >
+              {years.map(y => (
+                <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Month Filter */}
-        <div className="flex flex-col gap-1 min-w-[160px]">
-          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary }}>Month</label>
-          <input
-            type="month"
-            value={filterMonth}
-            onChange={e => setFilterMonth(e.target.value)}
-            className="text-sm px-3 py-2 rounded-lg font-medium"
-            style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
-          />
-        </div>
-
-        {/* Search Input */}
-        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary }}>Search Name / Prayer Subject</label>
-          <div className="relative">
-            <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: theme.textSecondary }} />
+          {/* Month Filter */}
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>
+              Month Filter
+            </label>
             <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search teacher, student, or date..."
-              className="text-sm pl-8 pr-3 py-2 rounded-lg w-full"
-              style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+              type="month"
+              value={filterMonth}
+              onChange={e => setFilterMonth(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs font-mono rounded-md"
+              style={inputStyle}
             />
           </div>
-        </div>
 
-        <button
-          onClick={fetchSchedules}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg"
-          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
-        >
-          <FontAwesomeIcon icon={faRotate} spin={loading} /> Refresh
-        </button>
+          {/* Search Input */}
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>
+              Search Teacher / Subject
+            </label>
+            <div className="relative">
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: theme.textSecondary }} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search name, date, or notes..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Grid Table */}
-      <div className="rounded-xl overflow-hidden shadow-sm" style={{ border: `1px solid ${theme.border}` }}>
+      {/* ─── Main Schedule Table Card ─── */}
+      <div className="rounded-lg border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border }}>
         {loading ? (
-          <div className="text-center py-16" style={{ color: theme.textSecondary }}>
-            <FontAwesomeIcon icon={faRotate} spin className="text-3xl mb-3 text-emerald-500" />
-            <p className="text-sm font-medium">Loading duty schedules...</p>
+          <div className="text-center py-16 text-xs font-medium" style={{ color: theme.textSecondary }}>
+            <FontAwesomeIcon icon={faRotate} spin className="text-base mb-2" style={{ color: theme.textPrimary }} />
+            <p>Loading duty schedules...</p>
           </div>
         ) : filteredRows.length === 0 ? (
-          <div className="text-center py-16" style={{ color: theme.textSecondary }}>
-            <FontAwesomeIcon icon={faCalendarDays} className="text-5xl mb-3 opacity-30" />
-            <p className="text-base font-semibold" style={{ color: theme.textPrimary }}>No Duty Schedules Found</p>
-            <p className="text-sm mt-1 max-w-md mx-auto">
-              Use the <strong>Generate Dates</strong> button to create working days automatically, or <strong>Add Date</strong> to add a single day manually.
+          <div className="text-center py-16 px-4 text-xs" style={{ color: theme.textSecondary }}>
+            <FontAwesomeIcon icon={faCalendarDays} className="text-3xl mb-3 opacity-30" />
+            <p className="font-semibold text-sm" style={{ color: theme.textPrimary }}>No Duty Schedules Found</p>
+            <p className="mt-1 max-w-md mx-auto">
+              Use <strong>Generate Dates</strong> to create working days automatically, or <strong>Add Date</strong> to insert a day manually.
             </p>
           </div>
         ) : (
@@ -818,44 +827,38 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
             <table className="min-w-full text-xs border-collapse">
               
               {/* Header Groups */}
-              <thead className="sticky top-0 z-10 text-white font-bold select-none">
-                <tr className="text-center divide-x divide-white/20">
-                  <th colSpan={2} className="py-2 px-3 bg-slate-800 uppercase tracking-wider text-[11px]">Date & Day</th>
-                  <th colSpan={3} className="py-2 px-3 bg-blue-900 uppercase tracking-wider text-[11px]">Devotion & Prayer Subjects</th>
-                  <th colSpan={2} className="py-2 px-3 bg-emerald-700 uppercase tracking-wider text-[11px]">Morning Door Greeter (07.30–08.00)</th>
-                  <th colSpan={4} className="py-2 px-3 bg-amber-700 uppercase tracking-wider text-[11px]">Break Duty (09.45–10.15)</th>
-                  <th colSpan={4} className="py-2 px-3 bg-indigo-800 uppercase tracking-wider text-[11px]">Lunch Duty</th>
-                  <th colSpan={1} className="py-2 px-2 bg-slate-800">Actions</th>
+              <thead className="sticky top-0 z-10 font-semibold uppercase text-[10px] tracking-wider select-none border-b" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                <tr className="text-center border-b" style={{ borderColor: theme.border }}>
+                  <th colSpan={2} className="py-2 px-3 border-r" style={{ borderColor: theme.border }}>Date & Day</th>
+                  <th colSpan={3} className="py-2 px-3 border-r" style={{ borderColor: theme.border }}>Devotion & Prayer Subjects</th>
+                  <th colSpan={2} className="py-2 px-3 border-r" style={{ borderColor: theme.border }}>Morning Door Greeter (07.30–08.00)</th>
+                  <th colSpan={4} className="py-2 px-3 border-r" style={{ borderColor: theme.border }}>Break Duty (09.45–10.15)</th>
+                  <th colSpan={4} className="py-2 px-3 border-r" style={{ borderColor: theme.border }}>Lunch Duty</th>
+                  <th colSpan={1} className="py-2 px-2 text-right">#</th>
                 </tr>
 
-                <tr className="text-left divide-x divide-white/20 text-[11px]">
-                  {/* Date & Day */}
-                  <th className="py-2 px-3 bg-slate-700 w-28">Date</th>
-                  <th className="py-2 px-3 bg-slate-700 w-24">Day</th>
+                <tr className="text-left text-[10px]">
+                  <th className="py-2 px-3 w-28 border-r" style={{ borderColor: theme.border }}>Date</th>
+                  <th className="py-2 px-3 w-24 border-r" style={{ borderColor: theme.border }}>Day</th>
 
-                  {/* Devotion & Prayer */}
-                  <th className="py-2 px-3 bg-blue-800 min-w-[200px]">Devotion Leader</th>
-                  <th className="py-2 px-3 bg-blue-800 min-w-[200px]">Teacher to Be Prayed For</th>
-                  <th className="py-2 px-3 bg-blue-800 min-w-[200px]">Student to Be Prayed For</th>
+                  <th className="py-2 px-3 min-w-[190px]">Devotion Leader</th>
+                  <th className="py-2 px-3 min-w-[190px]">Teacher to Be Prayed</th>
+                  <th className="py-2 px-3 min-w-[190px] border-r" style={{ borderColor: theme.border }}>Student to Be Prayed</th>
 
-                  {/* Morning Greeter */}
-                  <th className="py-2 px-3 bg-emerald-600 min-w-[190px]">1st Floor</th>
-                  <th className="py-2 px-3 bg-emerald-600 min-w-[190px]">2nd Floor</th>
+                  <th className="py-2 px-3 min-w-[180px]">1st Floor</th>
+                  <th className="py-2 px-3 min-w-[180px] border-r" style={{ borderColor: theme.border }}>2nd Floor</th>
 
-                  {/* Break Duty */}
-                  <th className="py-2 px-3 bg-amber-600 min-w-[190px]">Canteen</th>
-                  <th className="py-2 px-3 bg-amber-600 min-w-[190px]">PE Field</th>
-                  <th className="py-2 px-3 bg-amber-600 min-w-[190px]">2nd Floor</th>
-                  <th className="py-2 px-3 bg-amber-600 min-w-[190px]">3rd Floor</th>
+                  <th className="py-2 px-3 min-w-[180px]">Canteen</th>
+                  <th className="py-2 px-3 min-w-[180px]">PE Field</th>
+                  <th className="py-2 px-3 min-w-[180px]">2nd Floor</th>
+                  <th className="py-2 px-3 min-w-[180px] border-r" style={{ borderColor: theme.border }}>3rd Floor</th>
 
-                  {/* Lunch Duty */}
-                  <th className="py-2 px-3 bg-indigo-700 min-w-[190px]">Canteen</th>
-                  <th className="py-2 px-3 bg-indigo-700 min-w-[190px]">PE Field</th>
-                  <th className="py-2 px-3 bg-indigo-700 min-w-[190px]">2nd Floor</th>
-                  <th className="py-2 px-3 bg-indigo-700 min-w-[190px]">3rd Floor</th>
+                  <th className="py-2 px-3 min-w-[180px]">Canteen</th>
+                  <th className="py-2 px-3 min-w-[180px]">PE Field</th>
+                  <th className="py-2 px-3 min-w-[180px]">2nd Floor</th>
+                  <th className="py-2 px-3 min-w-[180px] border-r" style={{ borderColor: theme.border }}>3rd Floor</th>
 
-                  {/* Actions */}
-                  <th className="py-2 px-2 bg-slate-700 text-center w-12">#</th>
+                  <th className="py-2 px-2 text-center w-12">#</th>
                 </tr>
               </thead>
 
@@ -869,16 +872,21 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                   return (
                     <tr
                       key={row.id}
-                      className={`transition-colors ${isEdited ? 'bg-amber-500/10' : isWeekend ? 'opacity-60 bg-gray-500/5' : ''}`}
-                      style={{ borderBottom: `1px solid ${theme.border}` }}
+                      className="transition-colors duration-150"
+                      style={{
+                        background: isEdited ? theme.yellowBg : isWeekend ? theme.subtleBg : 'transparent',
+                        borderBottom: `1px solid ${theme.border}`
+                      }}
+                      onMouseEnter={e => { if (!isEdited && !isWeekend) e.currentTarget.style.background = theme.subtleBg }}
+                      onMouseLeave={e => { if (!isEdited && !isWeekend) e.currentTarget.style.background = 'transparent' }}
                     >
                       {/* Date */}
-                      <td className="py-1.5 px-2.5 font-medium whitespace-nowrap font-mono text-[11px]" style={{ color: theme.textPrimary }}>
+                      <td className="py-1.5 px-3 font-medium whitespace-nowrap font-mono text-[11px]" style={{ color: theme.textPrimary }}>
                         {formatted}
                       </td>
 
                       {/* Day */}
-                      <td className="py-1.5 px-2.5 font-semibold whitespace-nowrap text-[11px]" style={{ color: isWeekend ? '#ef4444' : theme.textSecondary }}>
+                      <td className="py-1.5 px-3 font-semibold whitespace-nowrap text-[11px]" style={{ color: isWeekend ? theme.redText : theme.textSecondary }}>
                         {dayName}
                       </td>
 
@@ -887,8 +895,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.devotion_leader_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'devotion_leader_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded font-medium border cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -902,8 +910,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                           value={row.teacher_to_be_prayed || ''}
                           onChange={e => handleCellChange(row.id, 'teacher_to_be_prayed', e.target.value)}
                           placeholder="Teacher name..."
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border"
+                          style={inputStyle}
                         />
                       </td>
 
@@ -914,8 +922,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                           value={row.student_to_be_prayed || ''}
                           onChange={e => handleCellChange(row.id, 'student_to_be_prayed', e.target.value)}
                           placeholder="Student name..."
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border"
+                          style={inputStyle}
                         />
                       </td>
 
@@ -924,8 +932,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.greeter_1st_floor_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'greeter_1st_floor_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -937,8 +945,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.greeter_2nd_floor_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'greeter_2nd_floor_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -950,8 +958,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.break_canteen_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'break_canteen_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -963,8 +971,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.break_pe_field_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'break_pe_field_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -976,8 +984,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.break_2nd_floor_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'break_2nd_floor_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -989,8 +997,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.break_3rd_floor_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'break_3rd_floor_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -1002,8 +1010,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.lunch_canteen_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'lunch_canteen_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -1015,8 +1023,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.lunch_pe_field_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'lunch_pe_field_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -1028,8 +1036,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.lunch_2nd_floor_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'lunch_2nd_floor_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -1041,8 +1049,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                         <select
                           value={row.lunch_3rd_floor_user_id || ''}
                           onChange={e => handleCellChange(row.id, 'lunch_3rd_floor_user_id', e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full min-w-[175px] text-xs py-1.5 px-2 rounded border font-medium cursor-pointer"
-                          style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary }}
+                          className="w-full min-w-[170px] text-xs py-1 px-2 rounded font-medium border cursor-pointer"
+                          style={selectStyle}
                         >
                           <option value="">— Select User / Staff —</option>
                           {teacherOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -1053,7 +1061,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                       <td className="py-1 px-2 text-center">
                         <button
                           onClick={() => handleDeleteRow(row.id)}
-                          className="text-red-500 hover:text-red-700 p-1 transition-colors"
+                          className="p-1 text-xs rounded transition-colors cursor-pointer"
+                          style={{ color: theme.redText }}
                           title="Delete this date row"
                         >
                           <FontAwesomeIcon icon={faTrash} />
@@ -1070,32 +1079,33 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
 
       {/* Modal: Add Single Date */}
       {addModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <h3 className="text-lg font-bold" style={{ color: theme.textPrimary }}>Add New Date</h3>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="rounded-lg max-w-md w-full p-6 border shadow-sm space-y-4 text-xs" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
+            <h3 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>Add New Duty Date</h3>
             <div>
-              <label className="text-xs font-semibold block mb-1" style={{ color: theme.textSecondary }}>Select Date</label>
+              <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Select Date</label>
               <input
                 type="date"
                 value={newDate}
                 onChange={e => setNewDate(e.target.value)}
-                className="w-full text-sm px-3 py-2 rounded-lg border"
-                style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                className="w-full text-xs px-3 py-2 rounded-md font-mono"
+                style={inputStyle}
               />
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t" style={{ borderColor: theme.border }}>
               <button
                 onClick={() => setAddModalOpen(false)}
-                className="px-4 py-2 text-sm rounded-lg"
-                style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}
+                className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
+                style={btnSecondaryStyle}
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddSingleDate}
-                className="px-4 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
+                style={btnPrimaryStyle}
               >
-                Add
+                Add Date
               </button>
             </div>
           </div>
@@ -1104,65 +1114,68 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
 
       {/* Modal: Generate Date Range */}
       {genModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-              <FontAwesomeIcon icon={faWandMagicSparkles} className="text-blue-500" />
-              Auto-Generate Dates
-            </h3>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="rounded-lg max-w-md w-full p-6 border shadow-sm space-y-4 text-xs" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
+            <div className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faWandMagicSparkles} className="text-xs" style={{ color: theme.textSecondary }} />
+              <h3 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
+                Auto-Generate Dates
+              </h3>
+            </div>
             <p className="text-xs" style={{ color: theme.textSecondary }}>
               Automatically generate new date rows for a specified date range within the selected Academic Year.
             </p>
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-semibold block mb-1" style={{ color: theme.textSecondary }}>Start Date</label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: theme.textSecondary }}>Start Date</label>
                 <input
                   type="date"
                   value={genStartDate}
                   onChange={e => setGenStartDate(e.target.value)}
-                  className="w-full text-sm px-3 py-2 rounded-lg border"
-                  style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                  className="w-full text-xs px-3 py-2 rounded-md font-mono"
+                  style={inputStyle}
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold block mb-1" style={{ color: theme.textSecondary }}>End Date</label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: theme.textSecondary }}>End Date</label>
                 <input
                   type="date"
                   value={genEndDate}
                   onChange={e => setGenEndDate(e.target.value)}
-                  className="w-full text-sm px-3 py-2 rounded-lg border"
-                  style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                  className="w-full text-xs px-3 py-2 rounded-md font-mono"
+                  style={inputStyle}
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
+              <label className="flex items-center gap-2 text-xs cursor-pointer pt-1" style={{ color: theme.textPrimary }}>
                 <input
                   type="checkbox"
                   checked={genExcludeWeekends}
                   onChange={e => setGenExcludeWeekends(e.target.checked)}
-                  className="rounded text-blue-600 focus:ring-blue-500"
+                  className="rounded"
                 />
-                <span style={{ color: theme.textPrimary }}>Exclude Weekends (Saturday & Sunday)</span>
+                <span>Exclude Weekends (Saturday & Sunday)</span>
               </label>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t" style={{ borderColor: theme.border }}>
               <button
                 onClick={() => setGenModalOpen(false)}
-                className="px-4 py-2 text-sm rounded-lg"
-                style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}
+                className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
+                style={btnSecondaryStyle}
               >
                 Cancel
               </button>
               <button
                 onClick={handleGenerateDateRange}
                 disabled={genLoading}
-                className="px-4 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                style={btnPrimaryStyle}
               >
                 <FontAwesomeIcon icon={genLoading ? faRotate : faWandMagicSparkles} spin={genLoading} />
-                {genLoading ? 'Processing...' : 'Generate Dates'}
+                <span>{genLoading ? 'Processing...' : 'Generate Dates'}</span>
               </button>
             </div>
           </div>
@@ -1171,16 +1184,17 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
 
       {/* Modal: Duty Time & Reminder Settings */}
       {settingsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-xl space-y-5">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="rounded-lg max-w-lg w-full p-6 border shadow-sm space-y-4 text-xs" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
-              <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                <FontAwesomeIcon icon={faGear} className="text-amber-500" />
-                Duty Time & Google Chat Settings
+              <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                <FontAwesomeIcon icon={faGear} className="text-xs" style={{ color: theme.textSecondary }} />
+                <span>Duty Time & Google Chat Settings</span>
               </h3>
               <button
                 onClick={() => setSettingsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm font-bold"
+                className="text-xs font-semibold cursor-pointer"
+                style={{ color: theme.textSecondary }}
               >
                 ✕
               </button>
@@ -1191,8 +1205,8 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
             </p>
 
             {/* Target Unit Selector */}
-            <div className="p-3 rounded-lg border flex items-center justify-between gap-3" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-              <label className="text-xs font-bold whitespace-nowrap" style={{ color: theme.textPrimary }}>
+            <div className="p-3 rounded-md border flex items-center justify-between gap-3" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+              <label className="text-xs font-medium whitespace-nowrap" style={{ color: theme.textPrimary }}>
                 Target Unit Settings:
               </label>
               <select
@@ -1202,55 +1216,55 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
                   setSettingsUnit(uVal)
                   populateSettingsForUnit(uVal)
                 }}
-                className="text-xs px-3 py-1.5 rounded-lg font-semibold border cursor-pointer flex-1 max-w-[240px]"
-                style={{ border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.textPrimary }}
+                className="text-xs px-3 py-1.5 rounded-md font-medium border cursor-pointer flex-1 max-w-[240px]"
+                style={selectStyle}
               >
-                <option value="global">🌐 Global Default (All Units)</option>
+                <option value="global">Global Default (All Units)</option>
                 {schoolUnits.map(u => (
-                  <option key={u.unit_id} value={String(u.unit_id)}>🏫 Unit {u.unit_name}</option>
+                  <option key={u.unit_id} value={String(u.unit_id)}>Unit {u.unit_name}</option>
                 ))}
               </select>
             </div>
 
-            <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
               {[
-                { key: 'devotion', title: '📖 Morning Devotion Leader' },
-                { key: 'greeter',  title: '🚪 Morning Door Greeter' },
-                { key: 'break',    title: '🍿 Break Duty' },
-                { key: 'lunch',    title: '🍱 Lunch Duty' },
+                { key: 'devotion', title: 'Morning Devotion Leader' },
+                { key: 'greeter',  title: 'Morning Door Greeter' },
+                { key: 'break',    title: 'Break Duty' },
+                { key: 'lunch',    title: 'Lunch Duty' },
               ].map(slot => (
-                <div key={slot.key} className="p-3.5 rounded-lg border space-y-3" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-                  <div className="text-xs font-bold" style={{ color: theme.textPrimary }}>
+                <div key={slot.key} className="p-3 rounded-md border space-y-2.5" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                  <div className="text-xs font-medium" style={{ color: theme.textPrimary }}>
                     {slot.title}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="text-[11px] font-medium block mb-1" style={{ color: theme.textSecondary }}>Start Time</label>
+                      <label className="text-[10px] font-medium block mb-1" style={{ color: theme.textSecondary }}>Start Time</label>
                       <input
                         type="time"
                         value={dutySettings[slot.key]?.startTime || '07:30'}
                         onChange={e => setDutySettings(st => ({ ...st, [slot.key]: { ...st[slot.key], startTime: e.target.value } }))}
-                        className="w-full text-xs px-2 py-1.5 rounded border"
-                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                        className="w-full text-xs px-2 py-1.5 rounded border font-mono"
+                        style={inputStyle}
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-medium block mb-1" style={{ color: theme.textSecondary }}>End Time</label>
+                      <label className="text-[10px] font-medium block mb-1" style={{ color: theme.textSecondary }}>End Time</label>
                       <input
                         type="time"
                         value={dutySettings[slot.key]?.endTime || '08:00'}
                         onChange={e => setDutySettings(st => ({ ...st, [slot.key]: { ...st[slot.key], endTime: e.target.value } }))}
-                        className="w-full text-xs px-2 py-1.5 rounded border"
-                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                        className="w-full text-xs px-2 py-1.5 rounded border font-mono"
+                        style={inputStyle}
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-medium block mb-1" style={{ color: theme.textSecondary }}>Chat Reminder</label>
+                      <label className="text-[10px] font-medium block mb-1" style={{ color: theme.textSecondary }}>Chat Reminder</label>
                       <select
                         value={dutySettings[slot.key]?.reminderMins ?? 60}
                         onChange={e => setDutySettings(st => ({ ...st, [slot.key]: { ...st[slot.key], reminderMins: parseInt(e.target.value, 10) } }))}
                         className="w-full text-xs px-2 py-1.5 rounded border"
-                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textPrimary }}
+                        style={selectStyle}
                       >
                         <option value={15}>15 mins before</option>
                         <option value={30}>30 mins before</option>
@@ -1266,18 +1280,19 @@ ALTER TABLE duty_schedules ADD CONSTRAINT duty_schedules_unit_year_date_unique U
             <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
               <button
                 onClick={() => setSettingsModalOpen(false)}
-                className="px-4 py-2 text-xs font-medium rounded-lg"
-                style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}
+                className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
+                style={btnSecondaryStyle}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveDutySettings}
                 disabled={savingSettings}
-                className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                style={btnPrimaryStyle}
               >
                 <FontAwesomeIcon icon={savingSettings ? faRotate : faSave} spin={savingSettings} />
-                {savingSettings ? 'Saving...' : 'Save Duty Settings'}
+                <span>{savingSettings ? 'Saving...' : 'Save Duty Settings'}</span>
               </button>
             </div>
           </div>

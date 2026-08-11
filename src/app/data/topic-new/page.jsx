@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV, faClock } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faPlus, faTimes, faClipboardList, faBook, faInfoCircle, faPaperPlane, faTrash, faPrint, faFileAlt, faFileWord, faSave, faLightbulb, faCalendar, faCalendarCheck, faCheck, faTableCells, faListUl, faMap, faClipboardCheck, faComments, faHouseUser, faChartBar, faWandMagicSparkles, faSliders, faEllipsisV, faClock, faEye, faSearch } from '@fortawesome/free-solid-svg-icons'
 import { useTheme } from '@/lib/theme'
 import SlideOver from '@/components/ui/slide-over'
 import Modal from '@/components/ui/modal'
@@ -570,6 +570,11 @@ export default function TopicNewPage() {
   const [woDocxLoading, setWoDocxLoading] = useState(false)
   const [woDocxError, setWoDocxError] = useState('')
 
+  // Weekly Overview Preview Modal State
+  const [woPreviewModalOpen, setWoPreviewModalOpen] = useState(false)
+  const [woPreviewData, setWoPreviewData] = useState(null)
+  const [woPreviewLoading, setWoPreviewLoading] = useState(false)
+
   const getWeeksForMonth = (year, monthIdx) => {
     const weeks = []
     let d = new Date(year, monthIdx, 1)
@@ -693,6 +698,274 @@ export default function TopicNewPage() {
     }
   }, [woDocxWeekOptions, woDocxDate])
 
+  const fetchWeeklyOverviewData = async (kelasIdVal, dateStr, yearIdVal) => {
+    const formatLocalDate = (dateObj) => {
+      const yyyy = dateObj.getFullYear()
+      const mm = String(dateObj.getMonth() + 1).padStart(2, '0')
+      const dd = String(dateObj.getDate()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}`
+    }
+
+    const kelasId = parseInt(kelasIdVal)
+    const d = new Date(dateStr + 'T00:00:00')
+    const dayIdx = d.getDay()
+    const diff = dayIdx === 0 ? -6 : 1 - dayIdx
+    d.setDate(d.getDate() + diff)
+    const monday = formatLocalDate(d)
+    const fridayObj = new Date(d); fridayObj.setDate(d.getDate() + 4)
+    const friday = formatLocalDate(fridayObj)
+
+    const monD = d.toLocaleDateString('en-GB', { day: 'numeric' })
+    const friD = fridayObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    const weekLabel = `${monD} - ${friD}`
+
+    const targetKelas = allKelasRaw.find(k => k.kelas_id === kelasId)
+    const kelasNama = targetKelas?.kelas_nama || 'Class'
+
+    const [ttRes, dkRes, subjRes, exRes, wpRes, draftRes, rsRes] = await Promise.all([
+      supabase.from('timetable').select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time, custom_label, kelas_id, custom_color'),
+      supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id').eq('detail_kelas_kelas_id', kelasId),
+      supabase.from('subject').select('subject_id, subject_name'),
+      supabase.from('timetable_exception').select('*').gte('exception_date', monday).lte('exception_date', friday),
+      supabase.from('topic_weekly_plan').select('id, topic_id, week_number, week_date, week_objectives, week_activities, week_resources, topic:topic_id(topic_id, topic_kelas_id, topic_subject_id)').gte('week_date', monday).lte('week_date', friday),
+      supabase.from('weekly_overview_draft').select('draft_data').eq('kelas_id', kelasId).eq('week_date', monday).maybeSingle(),
+      supabase.from('report_settings').select('principal_name, principal_title, signature_principal_url, stamp_url, unit_id, year_id'),
+    ])
+
+    const dkData = dkRes.data || []
+    const dkIds = new Set(dkData.map(d => d.detail_kelas_id))
+    const dkMap = new Map(dkData.map(d => [d.detail_kelas_id, d]))
+    const subjMap = new Map((subjRes.data || []).map(s => [s.subject_id, s.subject_name]))
+    const slots = (ttRes.data || []).filter(r => dkIds.has(r.timetable_detail_kelas_id) || r.kelas_id === kelasId)
+
+    const parseRangeTime = (pgRange) => {
+      if (!pgRange) return { start: '', end: '' }
+      const m = pgRange.match(/^[\[(](.*),(.*)[)\]]$/)
+      if (!m) return { start: '', end: '' }
+      const clean = (raw) => raw.trim().replace(/^"|"$/g, '').slice(11, 16)
+      return { start: clean(m[1]), end: clean(m[2]) }
+    }
+
+    const relevantEx = (exRes.data || []).filter(ex =>
+      ex.affects_all_kelas || (ex.affected_kelas_ids && ex.affected_kelas_ids.includes(kelasId))
+    )
+
+    const relevantWP = (wpRes.data || []).filter(wp => wp.topic?.topic_kelas_id === kelasId)
+    const wpByDateAndSubject = new Map()
+    const wpBySubject = new Map()
+
+    relevantWP.forEach(wp => {
+      if (wp.topic?.topic_subject_id) {
+        const subjId = wp.topic.topic_subject_id
+        wpBySubject.set(subjId, wp)
+
+        if (wp.week_objectives && wp.week_objectives.trim().startsWith('[')) {
+          try {
+            const sessionList = JSON.parse(wp.week_objectives)
+            if (Array.isArray(sessionList)) {
+              sessionList.forEach(s => {
+                if (s.week_date) {
+                  wpByDateAndSubject.set(`${s.week_date}|${subjId}`, {
+                    ...wp,
+                    week_date: s.week_date,
+                    week_objectives: s.week_objectives,
+                    week_activities: s.week_activities,
+                    week_resources: s.week_resources,
+                    week_reflection: s.week_reflection,
+                  })
+                }
+              })
+              return
+            }
+          } catch (e) {}
+        }
+
+        if (wp.week_date) {
+          wpByDateAndSubject.set(`${wp.week_date}|${subjId}`, wp)
+        }
+      }
+    })
+
+    const timeToMin = (tStr) => {
+      if (!tStr) return 0
+      const parts = tStr.split(':')
+      return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0)
+    }
+
+    const minToTime = (m) => {
+      const hh = String(Math.floor(m / 60)).padStart(2, '0')
+      const mm = String(m % 60).padStart(2, '0')
+      return `${hh}:${mm}`
+    }
+
+    const parsedSlots = slots.map(r => {
+      const { start, end } = parseRangeTime(r.timetable_time)
+      return {
+        ...r,
+        startStr: start,
+        endStr: end,
+        minStart: timeToMin(start),
+        minEnd: timeToMin(end),
+      }
+    }).filter(r => r.minStart < r.minEnd)
+
+    const pointSet = new Set()
+    parsedSlots.forEach(r => {
+      pointSet.add(r.minStart)
+      pointSet.add(r.minEnd)
+    })
+    const points = Array.from(pointSet).sort((a, b) => a - b)
+
+    const timeSlots = []
+    for (let i = 0; i < points.length - 1; i++) {
+      const pStart = points[i]
+      const pEnd = points[i + 1]
+      const hasOverlap = parsedSlots.some(r => r.minStart < pEnd && r.minEnd > pStart)
+      if (hasOverlap) {
+        timeSlots.push(`${minToTime(pStart)}|${minToTime(pEnd)}`)
+      }
+    }
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    const cells = {}
+
+    days.forEach((dayName, idx) => {
+      const currD = new Date(d); currD.setDate(currD.getDate() + idx)
+      const dateStr = formatLocalDate(currD)
+
+      const holidayEx = relevantEx.find(ex => ex.exception_date === dateStr && ex.exception_type === 'holiday')
+      if (holidayEx) {
+        cells[`${dayName}|HOLIDAY`] = { type: 'holiday', label: holidayEx.exception_label }
+      }
+    })
+
+    timeSlots.forEach((slotKey, slotIdx) => {
+      const [slotStart, slotEnd] = slotKey.split('|')
+      const slotMinStart = timeToMin(slotStart)
+      const slotMinEnd = timeToMin(slotEnd)
+
+      days.forEach((dayName, idx) => {
+        const currD = new Date(d); currD.setDate(currD.getDate() + idx)
+        const dateStr = formatLocalDate(currD)
+
+        if (cells[`${dayName}|HOLIDAY`]) return
+
+        const cellKey = `${dayName}|${slotKey}`
+
+        const eventEx = relevantEx.find(ex =>
+          ex.exception_date === dateStr && ex.exception_type === 'event' &&
+          ex.start_time && ex.end_time &&
+          (slotMinStart < timeToMin(ex.end_time.slice(0, 5)) && slotMinEnd > timeToMin(ex.start_time.slice(0, 5)))
+        )
+
+        if (eventEx) {
+          cells[cellKey] = { type: 'event', label: eventEx.exception_label }
+          return
+        }
+
+        const matching = parsedSlots.filter(r =>
+          r.timetable_day === dayName &&
+          r.minStart < slotMinEnd && r.minEnd > slotMinStart
+        )
+
+        if (matching.length === 0) {
+          cells[cellKey] = { type: 'empty' }
+          return
+        }
+
+        const earliestStart = Math.min(...matching.map(r => r.minStart))
+
+        if (earliestStart < slotMinStart) {
+          cells[cellKey] = { type: 'covered' }
+          return
+        }
+
+        const latestEnd = Math.max(...matching.map(r => r.minEnd))
+        let rowSpan = 0
+        for (let k = slotIdx; k < timeSlots.length; k++) {
+          const [kStart] = timeSlots[k].split('|')
+          if (timeToMin(kStart) < latestEnd) {
+            rowSpan++
+          } else {
+            break
+          }
+        }
+
+        const items = matching.map(matchSlot => {
+          if (matchSlot.custom_label) {
+            return {
+              subject: matchSlot.custom_label,
+              customColor: matchSlot.custom_color || 'F3E8FF',
+              objectives: '',
+              activities: '',
+              resources: '',
+            }
+          }
+          const dk = dkMap.get(matchSlot.timetable_detail_kelas_id)
+          const subjectId = dk?.detail_kelas_subject_id
+          const subjectName = subjMap.get(subjectId) || '-'
+          const dateMatchWp = subjectId ? wpByDateAndSubject.get(`${dateStr}|${subjectId}`) : null
+          return {
+            subject: subjectName,
+            objectives: dateMatchWp?.week_objectives || '',
+            activities: dateMatchWp?.week_activities || '',
+            resources: dateMatchWp?.week_resources || '',
+          }
+        })
+
+        cells[cellKey] = {
+          type: 'normal',
+          subject: items[0].subject,
+          customColor: items[0].customColor || null,
+          objectives: items[0].objectives,
+          activities: items[0].activities,
+          resources: items[0].resources,
+          items,
+          rowSpan: rowSpan > 1 ? rowSpan : 1,
+        }
+      })
+    })
+
+    const finalCells = draftRes.data ? draftRes.data.draft_data.cells : cells
+
+    const yearId = targetKelas?.kelas_year_id || (yearIdVal ? parseInt(yearIdVal) : null)
+    const unitId = targetKelas?.kelas_unit_id || targetKelas?.unit_id
+
+    let reportSettings = null
+    const rsList = rsRes.data || []
+    const matchedRs = rsList.find(r => (unitId ? r.unit_id === unitId : true) && (yearId ? r.year_id === yearId : true)) || rsList[0]
+    if (matchedRs) {
+      reportSettings = {
+        principalName: matchedRs.principal_name,
+        principalTitle: matchedRs.principal_title,
+        signatureUrl: matchedRs.signature_principal_url,
+        stampUrl: matchedRs.stamp_url,
+      }
+    }
+
+    return { kelasNama, weekLabel, timeSlots, days, cells: finalCells, reportSettings }
+  }
+
+  const handlePreviewWo = async () => {
+    if (!woDocxKelasId || !woDocxDate) {
+      setWoDocxError('Please select class and week date')
+      return
+    }
+    setWoDocxLoading(true)
+    setWoPreviewLoading(true)
+    setWoDocxError('')
+    try {
+      const data = await fetchWeeklyOverviewData(woDocxKelasId, woDocxDate, woDocxYearId)
+      setWoPreviewData(data)
+      setWoPreviewModalOpen(true)
+    } catch (err) {
+      setWoDocxError(err.message || 'Failed to generate Preview')
+    } finally {
+      setWoDocxLoading(false)
+      setWoPreviewLoading(false)
+    }
+  }
+
   const handleDownloadWoDocx = async () => {
     if (!woDocxKelasId || !woDocxDate) {
       setWoDocxError('Please select class and week date')
@@ -701,261 +974,11 @@ export default function TopicNewPage() {
     setWoDocxLoading(true)
     setWoDocxError('')
     try {
-      const formatLocalDate = (dateObj) => {
-        const yyyy = dateObj.getFullYear()
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0')
-        const dd = String(dateObj.getDate()).padStart(2, '0')
-        return `${yyyy}-${mm}-${dd}`
-      }
-
-      const kelasId = parseInt(woDocxKelasId)
-      const d = new Date(woDocxDate + 'T00:00:00')
-      const dayIdx = d.getDay()
-      const diff = dayIdx === 0 ? -6 : 1 - dayIdx
-      d.setDate(d.getDate() + diff)
-      const monday = formatLocalDate(d)
-      const fridayObj = new Date(d); fridayObj.setDate(d.getDate() + 4)
-      const friday = formatLocalDate(fridayObj)
-
-      const monD = d.toLocaleDateString('en-GB', { day: 'numeric' })
-      const friD = fridayObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-      const weekLabel = `${monD} - ${friD}`
-
-      const targetKelas = allKelasRaw.find(k => k.kelas_id === kelasId)
-      const kelasNama = targetKelas?.kelas_nama || 'Class'
-
-      const [ttRes, dkRes, subjRes, exRes, wpRes, draftRes, rsRes] = await Promise.all([
-        supabase.from('timetable').select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time, custom_label, kelas_id, custom_color'),
-        supabase.from('detail_kelas').select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id').eq('detail_kelas_kelas_id', kelasId),
-        supabase.from('subject').select('subject_id, subject_name'),
-        supabase.from('timetable_exception').select('*').gte('exception_date', monday).lte('exception_date', friday),
-        supabase.from('topic_weekly_plan').select('id, topic_id, week_number, week_date, week_objectives, week_activities, week_resources, topic:topic_id(topic_id, topic_kelas_id, topic_subject_id)').gte('week_date', monday).lte('week_date', friday),
-        supabase.from('weekly_overview_draft').select('draft_data').eq('kelas_id', kelasId).eq('week_date', monday).maybeSingle(),
-        supabase.from('report_settings').select('principal_name, principal_title, signature_principal_url, stamp_url, unit_id, year_id'),
-      ])
-
-      const dkData = dkRes.data || []
-      const dkIds = new Set(dkData.map(d => d.detail_kelas_id))
-      const dkMap = new Map(dkData.map(d => [d.detail_kelas_id, d]))
-      const subjMap = new Map((subjRes.data || []).map(s => [s.subject_id, s.subject_name]))
-      const slots = (ttRes.data || []).filter(r => dkIds.has(r.timetable_detail_kelas_id) || r.kelas_id === kelasId)
-
-      const parseRangeTime = (pgRange) => {
-        if (!pgRange) return { start: '', end: '' }
-        const m = pgRange.match(/^[\[(](.*),(.*)[)\]]$/)
-        if (!m) return { start: '', end: '' }
-        const clean = (raw) => raw.trim().replace(/^"|"$/g, '').slice(11, 16)
-        return { start: clean(m[1]), end: clean(m[2]) }
-      }
-
-      const relevantEx = (exRes.data || []).filter(ex =>
-        ex.affects_all_kelas || (ex.affected_kelas_ids && ex.affected_kelas_ids.includes(kelasId))
-      )
-
-      const relevantWP = (wpRes.data || []).filter(wp => wp.topic?.topic_kelas_id === kelasId)
-      const wpByDateAndSubject = new Map()
-      const wpBySubject = new Map()
-
-      relevantWP.forEach(wp => {
-        if (wp.topic?.topic_subject_id) {
-          const subjId = wp.topic.topic_subject_id
-          wpBySubject.set(subjId, wp)
-
-          if (wp.week_objectives && wp.week_objectives.trim().startsWith('[')) {
-            try {
-              const sessionList = JSON.parse(wp.week_objectives)
-              if (Array.isArray(sessionList)) {
-                sessionList.forEach(s => {
-                  if (s.week_date) {
-                    wpByDateAndSubject.set(`${s.week_date}|${subjId}`, {
-                      ...wp,
-                      week_date: s.week_date,
-                      week_objectives: s.week_objectives,
-                      week_activities: s.week_activities,
-                      week_resources: s.week_resources,
-                      week_reflection: s.week_reflection,
-                    })
-                  }
-                })
-                return
-              }
-            } catch (e) {}
-          }
-
-          if (wp.week_date) {
-            wpByDateAndSubject.set(`${wp.week_date}|${subjId}`, wp)
-          }
-        }
-      })
-
-      const timeToMin = (tStr) => {
-        if (!tStr) return 0
-        const parts = tStr.split(':')
-        return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0)
-      }
-
-      const minToTime = (m) => {
-        const hh = String(Math.floor(m / 60)).padStart(2, '0')
-        const mm = String(m % 60).padStart(2, '0')
-        return `${hh}:${mm}`
-      }
-
-      const parsedSlots = slots.map(r => {
-        const { start, end } = parseRangeTime(r.timetable_time)
-        return {
-          ...r,
-          startStr: start,
-          endStr: end,
-          minStart: timeToMin(start),
-          minEnd: timeToMin(end),
-        }
-      }).filter(r => r.minStart < r.minEnd)
-
-      const pointSet = new Set()
-      parsedSlots.forEach(r => {
-        pointSet.add(r.minStart)
-        pointSet.add(r.minEnd)
-      })
-      const points = Array.from(pointSet).sort((a, b) => a - b)
-
-      const timeSlots = []
-      for (let i = 0; i < points.length - 1; i++) {
-        const pStart = points[i]
-        const pEnd = points[i + 1]
-        const hasOverlap = parsedSlots.some(r => r.minStart < pEnd && r.minEnd > pStart)
-        if (hasOverlap) {
-          timeSlots.push(`${minToTime(pStart)}|${minToTime(pEnd)}`)
-        }
-      }
-
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-      const cells = {}
-
-      days.forEach((dayName, idx) => {
-        const currD = new Date(d); currD.setDate(currD.getDate() + idx)
-        const dateStr = formatLocalDate(currD)
-
-        const holidayEx = relevantEx.find(ex => ex.exception_date === dateStr && ex.exception_type === 'holiday')
-        if (holidayEx) {
-          cells[`${dayName}|HOLIDAY`] = { type: 'holiday', label: holidayEx.exception_label }
-        }
-      })
-
-      timeSlots.forEach((slotKey, slotIdx) => {
-        const [slotStart, slotEnd] = slotKey.split('|')
-        const slotMinStart = timeToMin(slotStart)
-        const slotMinEnd = timeToMin(slotEnd)
-
-        days.forEach((dayName, idx) => {
-          const currD = new Date(d); currD.setDate(currD.getDate() + idx)
-          const dateStr = formatLocalDate(currD)
-
-          if (cells[`${dayName}|HOLIDAY`]) return
-
-          const cellKey = `${dayName}|${slotKey}`
-
-          const eventEx = relevantEx.find(ex =>
-            ex.exception_date === dateStr && ex.exception_type === 'event' &&
-            ex.start_time && ex.end_time &&
-            (slotMinStart < timeToMin(ex.end_time.slice(0, 5)) && slotMinEnd > timeToMin(ex.start_time.slice(0, 5)))
-          )
-
-          if (eventEx) {
-            cells[cellKey] = { type: 'event', label: eventEx.exception_label }
-            return
-          }
-
-          const matching = parsedSlots.filter(r =>
-            r.timetable_day === dayName &&
-            r.minStart < slotMinEnd && r.minEnd > slotMinStart
-          )
-
-          if (matching.length === 0) {
-            cells[cellKey] = { type: 'empty' }
-            return
-          }
-
-          const earliestStart = Math.min(...matching.map(r => r.minStart))
-
-          if (earliestStart < slotMinStart) {
-            cells[cellKey] = { type: 'covered' }
-            return
-          }
-
-          const latestEnd = Math.max(...matching.map(r => r.minEnd))
-          let rowSpan = 0
-          for (let k = slotIdx; k < timeSlots.length; k++) {
-            const [kStart] = timeSlots[k].split('|')
-            if (timeToMin(kStart) < latestEnd) {
-              rowSpan++
-            } else {
-              break
-            }
-          }
-
-          const items = matching.map(matchSlot => {
-            if (matchSlot.custom_label) {
-              return {
-                subject: matchSlot.custom_label,
-                customColor: matchSlot.custom_color || 'F3E8FF',
-                objectives: '',
-                activities: '',
-                resources: '',
-              }
-            }
-            const dk = dkMap.get(matchSlot.timetable_detail_kelas_id)
-            const subjectId = dk?.detail_kelas_subject_id
-            const subjectName = subjMap.get(subjectId) || '-'
-            const dateMatchWp = subjectId ? wpByDateAndSubject.get(`${dateStr}|${subjectId}`) : null
-            return {
-              subject: subjectName,
-              objectives: dateMatchWp?.week_objectives || '',
-              activities: dateMatchWp?.week_activities || '',
-              resources: dateMatchWp?.week_resources || '',
-            }
-          })
-
-          cells[cellKey] = {
-            type: 'normal',
-            subject: items[0].subject,
-            customColor: items[0].customColor || null,
-            objectives: items[0].objectives,
-            activities: items[0].activities,
-            resources: items[0].resources,
-            items,
-            rowSpan: rowSpan > 1 ? rowSpan : 1,
-          }
-        })
-      })
-
-      const finalCells = draftRes.data ? draftRes.data.draft_data.cells : cells
-
-      const yearId = targetKelas?.kelas_year_id || (woDocxYearId ? parseInt(woDocxYearId) : null)
-      const unitId = targetKelas?.kelas_unit_id || targetKelas?.unit_id
-
-      let reportSettings = null
-      const rsList = rsRes.data || []
-      const matchedRs = rsList.find(r => (unitId ? r.unit_id === unitId : true) && (yearId ? r.year_id === yearId : true)) || rsList[0]
-      if (matchedRs) {
-        reportSettings = {
-          principalName: matchedRs.principal_name,
-          principalTitle: matchedRs.principal_title,
-          signatureUrl: matchedRs.signature_principal_url,
-          stampUrl: matchedRs.stamp_url,
-        }
-      }
-
+      const data = await fetchWeeklyOverviewData(woDocxKelasId, woDocxDate, woDocxYearId)
       const res = await fetch('/api/weekly-overview-docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kelasNama,
-          weekLabel,
-          timeSlots,
-          days,
-          cells: finalCells,
-          reportSettings,
-        }),
+        body: JSON.stringify(data),
       })
 
       if (!res.ok) {
@@ -967,7 +990,7 @@ export default function TopicNewPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Weekly_Overview_${kelasNama.replace(/[^a-zA-Z0-9]/g, '_')}_${weekLabel.replace(/[^a-zA-Z0-9]/g, '_')}.docx`
+      a.download = `Weekly_Overview_${data.kelasNama.replace(/[^a-zA-Z0-9]/g, '_')}_${data.weekLabel.replace(/[^a-zA-Z0-9]/g, '_')}.docx`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -5461,7 +5484,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all"
           >
             <FontAwesomeIcon icon={faFileWord} />
-            Weekly Overview (DOCX)
+            Weekly Overview
           </button>
         </div>
       </div>
@@ -5538,115 +5561,144 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
             <div className="w-full min-w-0">
               {activeSubMenu === 'overview' && (
                 <div>
-                  <div className="flex items-center justify-end mb-5">
-                    <div className="flex items-center gap-1 p-1" style={{ background: theme.subtleBg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
-                      <button
-                        onClick={() => { setPlanningView('card'); localStorage.setItem('planning_view', 'card') }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors"
-                        style={{ borderRadius: '4px', background: planningView === 'card' ? theme.cardBg : 'transparent', color: planningView === 'card' ? theme.textPrimary : theme.textSecondary, boxShadow: planningView === 'card' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}
-                        title="Card View"
-                      >
-                        <FontAwesomeIcon icon={faTableCells} className="w-3 h-3" />
-                        Card
-                      </button>
-                      <button
-                        onClick={() => { setPlanningView('list'); localStorage.setItem('planning_view', 'list') }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors"
-                        style={{ borderRadius: '4px', background: planningView === 'list' ? theme.cardBg : 'transparent', color: planningView === 'list' ? theme.textPrimary : theme.textSecondary, boxShadow: planningView === 'list' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}
-                        title="List View"
-                      >
-                        <FontAwesomeIcon icon={faListUl} className="w-3 h-3" />
-                        List
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Filters */}
-                  <div className="mb-5 flex gap-3 items-end flex-wrap">
-                    {/* Year filter */}
-                    <div className="flex-1 min-w-[140px]">
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                        {t('topicNew.filters.year')}
-                      </label>
-                      <select
-                        value={filters.year}
-                        onChange={(e) => {
-                          const yr = e.target.value
-                          const filtered = yr ? allKelasRaw.filter(k => String(k.kelas_year_id) === String(yr)) : allKelasRaw
-                          setAllKelas(filtered)
-                          setFilters({ ...filters, year: yr, kelas: '', subject: '' })
-                        }}
-                        className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                      >
-                        <option value="">{t('topicNew.weeklyPlanTab.allYears')}</option>
-                        {yearOptions.map(y => (
-                          <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {/* Kelas filter */}
-                    <div className="flex-1 min-w-[140px]">
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                        {t('topicNew.filters.class')}
-                      </label>
-                      <select
-                        value={filters.kelas}
-                        onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
-                        className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                      >
-                        <option value="">{t('topicNew.filters.allClasses')}</option>
-                        {allKelas.map(k => (
-                          <option key={k.kelas_id} value={k.kelas_id}>
-                            {k.kelas_nama}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1 min-w-[140px]">
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                        {t('topicNew.filters.subject')}
-                      </label>
-                      <select
-                        value={filters.subject}
-                        onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
-                        className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                      >
-                        <option value="">{t('topicNew.filters.allSubjects')}</option>
-                        {subjects.map(s => (
-                          <option key={s.subject_id} value={s.subject_id}>
-                            {s.subject_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {/* Search */}
-                    <div className="flex-1 min-w-[140px]">
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                        {t('topicNew.filters.search')}
-                      </label>
-                      <input
-                        type="text"
-                        value={filters.search}
-                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                        placeholder={t('topicNew.filters.search')}
-                        className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                      />
+                  {/* Unified Minimalist Control Bar (Search, Filters, View Switcher) */}
+                  <div 
+                    className="mb-6 p-4 rounded-2xl border shadow-2xs transition-all duration-200"
+                    style={{ 
+                      background: theme.cardBg, 
+                      borderColor: theme.border 
+                    }}
+                  >
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                      {/* Filter Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
+                        {/* Year filter */}
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
+                            {t('topicNew.filters.year')}
+                          </label>
+                          <select
+                            value={filters.year}
+                            onChange={(e) => {
+                              const yr = e.target.value
+                              const filtered = yr ? allKelasRaw.filter(k => String(k.kelas_year_id) === String(yr)) : allKelasRaw
+                              setAllKelas(filtered)
+                              setFilters({ ...filters, year: yr, kelas: '', subject: '' })
+                            }}
+                            className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
+                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
+                          >
+                            <option value="">{t('topicNew.weeklyPlanTab.allYears')}</option>
+                            {yearOptions.map(y => (
+                              <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Kelas filter */}
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
+                            {t('topicNew.filters.class')}
+                          </label>
+                          <select
+                            value={filters.kelas}
+                            onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
+                            className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
+                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
+                          >
+                            <option value="">{t('topicNew.filters.allClasses')}</option>
+                            {allKelas.map(k => (
+                              <option key={k.kelas_id} value={k.kelas_id}>
+                                {k.kelas_nama}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Subject filter */}
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
+                            {t('topicNew.filters.subject')}
+                          </label>
+                          <select
+                            value={filters.subject}
+                            onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+                            className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
+                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
+                          >
+                            <option value="">{t('topicNew.filters.allSubjects')}</option>
+                            {subjects.map(s => (
+                              <option key={s.subject_id} value={s.subject_id}>
+                                {s.subject_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Search input */}
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
+                            {t('topicNew.filters.search')}
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={filters.search}
+                              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                              placeholder={t('topicNew.filters.search')}
+                              className="w-full pl-8 pr-3 py-2 text-xs font-medium focus:outline-none transition-colors"
+                              style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
+                            />
+                            <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-2.5 w-3 h-3 text-gray-400" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* View Switcher Toggle */}
+                      <div className="flex items-center justify-end self-end">
+                        <div className="flex items-center gap-1 p-1" style={{ background: theme.subtleBg, borderRadius: '8px', border: `1px solid ${theme.border}` }}>
+                          <button
+                            onClick={() => { setPlanningView('card'); localStorage.setItem('planning_view', 'card') }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all duration-150"
+                            style={{ 
+                              borderRadius: '6px', 
+                              background: planningView === 'card' ? theme.cardBg : 'transparent', 
+                              color: planningView === 'card' ? theme.textPrimary : theme.textSecondary, 
+                              boxShadow: planningView === 'card' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' 
+                            }}
+                            title="Card View"
+                          >
+                            <FontAwesomeIcon icon={faTableCells} className="w-3 h-3" />
+                            Card
+                          </button>
+                          <button
+                            onClick={() => { setPlanningView('list'); localStorage.setItem('planning_view', 'list') }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all duration-150"
+                            style={{ 
+                              borderRadius: '6px', 
+                              background: planningView === 'list' ? theme.cardBg : 'transparent', 
+                              color: planningView === 'list' ? theme.textPrimary : theme.textSecondary, 
+                              boxShadow: planningView === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' 
+                            }}
+                            title="List View"
+                          >
+                            <FontAwesomeIcon icon={faListUl} className="w-3 h-3" />
+                            List
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   {/* Loading State */}
                   {loading ? (
-                    <div className="flex justify-center items-center py-12">
+                    <div className="flex justify-center items-center py-16">
                       <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
                     </div>
                   ) : planningView === 'card' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                       {filteredTopics.length === 0 && (
-                        <div className="col-span-full text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
+                        <div className="col-span-full text-center py-16 text-xs font-medium" style={{ color: theme.textSecondary }}>
                           {t('topicNew.table.noUnits')}
                         </div>
                       )}
@@ -5661,26 +5713,27 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           return (
                           <div 
                             key={topic.topic_id}
-                            className="group relative overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col justify-between rounded-xl p-4"
+                            className="group relative cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between rounded-2xl p-5"
                             style={{
                               background: isDraft ? theme.yellowBg : theme.cardBg,
-                              border: `1px solid ${isDraft ? theme.yellowText + '55' : theme.border}`
+                              border: `1.5px solid ${isDraft ? 'rgba(245, 158, 11, 0.35)' : theme.border}`,
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
                             }}
                             onClick={() => handleTopicOpen(topic)}
                           >
-                            {/* Layer 1: Top Bar (Unit Badge, Status Capsule, Action Buttons) */}
+                            {/* Layer 1: Top Bar (Unit Badge, Status Capsule, Action Menu Button) */}
                             <div 
-                              className="flex items-center justify-between gap-2 pb-2.5"
-                              style={{ borderBottom: `1px solid ${isDraft ? theme.yellowText + '33' : theme.border}` }}
+                              className="flex items-center justify-between gap-2 pb-3"
+                              style={{ borderBottom: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.2)' : theme.border}` }}
                             >
                               <div className="flex items-center gap-2 flex-wrap">
                                 {/* Unit Badge */}
                                 <span 
-                                  className="text-xs font-black px-2.5 py-0.5 rounded-md shadow-2xs"
+                                  className="text-[11px] font-black px-2.5 py-0.5 rounded-md"
                                   style={{
-                                    background: isDraft ? theme.cardBg : theme.blueBg,
-                                    color: isDraft ? theme.textPrimary : theme.blueText,
-                                    border: `1px solid ${isDraft ? theme.yellowText + '44' : theme.border}`
+                                    background: isDraft ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.12)',
+                                    color: isDraft ? '#b45309' : '#2563eb',
+                                    border: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.3)' : 'rgba(59, 130, 246, 0.25)'}`
                                   }}
                                 >
                                   Unit {topic.topic_urutan || '-'}
@@ -5689,11 +5742,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 {/* Status Capsule Pill */}
                                 {isDraft ? (
                                   <span 
-                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-full"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold rounded-full"
                                     style={{
-                                      background: theme.cardBg,
-                                      color: theme.yellowText,
-                                      border: `1px solid ${theme.yellowText}55`
+                                      background: 'rgba(245, 158, 11, 0.12)',
+                                      color: '#b45309',
+                                      border: '1px solid rgba(245, 158, 11, 0.3)'
                                     }}
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -5701,11 +5754,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   </span>
                                 ) : (
                                   <span 
-                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-full"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold rounded-full"
                                     style={{
-                                      background: theme.greenBg,
-                                      color: theme.greenText,
-                                      border: `1px solid ${theme.border}`
+                                      background: 'rgba(16, 185, 129, 0.12)',
+                                      color: '#047857',
+                                      border: '1px solid rgba(16, 185, 129, 0.25)'
                                     }}
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -5722,7 +5775,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                     e.stopPropagation()
                                     setActiveCardMenuId(prev => (prev === topic.topic_id ? null : topic.topic_id))
                                   }}
-                                  className="w-7 h-7 flex items-center justify-center rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400"
                                   title="Actions"
                                 >
                                   <FontAwesomeIcon icon={faEllipsisV} className="text-xs" />
@@ -5730,7 +5783,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                                 {activeCardMenuId === topic.topic_id && (
                                   <div 
-                                    className="absolute right-0 top-8 z-30 w-52 py-1.5 rounded-lg shadow-xl border outline-none animate-fadeIn"
+                                    className="absolute right-0 top-8 z-30 w-52 py-1.5 rounded-xl shadow-xl border outline-none animate-fadeIn"
                                     style={{
                                       background: theme.cardBg,
                                       borderColor: theme.border,
@@ -5804,36 +5857,43 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               </div>
                             </div>
 
-                            {/* Layer 2: Unit Title with Consistent Min-Height */}
-                            <div className="my-3 min-h-[2.5rem] flex items-center">
+                            {/* Layer 2: Unit Title with Prescisely Clamped Height */}
+                            <div className="my-3.5 min-h-[2.75rem] flex items-center">
                               <h3 
-                                className="text-sm font-bold line-clamp-2 leading-snug"
-                                style={{
-                                  color: theme.textPrimary,
-                                  fontFamily: "'Helvetica Neue', sans-serif"
-                                }}
+                                className="text-sm font-bold line-clamp-2 leading-snug tracking-tight"
+                                style={{ color: theme.textPrimary }}
                               >
                                 {topic.topic_nama}
                               </h3>
                             </div>
 
-                            {/* Layer 3: Footer Meta (Subject, Class, Grade Tag, MYP Year, Duration) */}
+                            {/* Layer 3: Footer Meta (Subject Tag, Grade/MYP Pill, Duration) */}
                             <div 
-                              className="flex items-center justify-between gap-2 pt-2.5"
-                              style={{ borderTop: `1px solid ${isDraft ? theme.yellowText + '33' : theme.border}` }}
+                              className="flex items-center justify-between gap-2 pt-3 mt-auto"
+                              style={{ borderTop: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.2)' : theme.border}` }}
                             >
                               <div className="flex items-center gap-1.5 flex-wrap">
+                                {/* Subject Badge */}
                                 <span 
                                   className="text-[10px] px-2 py-0.5 font-bold rounded-md"
-                                  style={{ background: theme.blueBg, color: theme.blueText }}
+                                  style={{
+                                    background: 'rgba(99, 102, 241, 0.12)',
+                                    color: '#4f46e5',
+                                    border: '1px solid rgba(99, 102, 241, 0.2)'
+                                  }}
                                 >
                                   {subjectMap.get(topic.topic_subject_id) || 'N/A'}
                                 </span>
 
+                                {/* Class / Grade Badge */}
                                 {topic.topic_kelas_id ? (
                                   <span 
                                     className="text-[10px] px-2 py-0.5 font-bold rounded-md"
-                                    style={{ background: theme.greenBg, color: theme.greenText }}
+                                    style={{
+                                      background: 'rgba(16, 185, 129, 0.12)',
+                                      color: '#047857',
+                                      border: '1px solid rgba(16, 185, 129, 0.2)'
+                                    }}
                                   >
                                     {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
                                   </span>
@@ -5850,6 +5910,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                   </span>
                                 ) : null}
 
+                                {/* MYP Year Badge */}
                                 {topic.topic_year && (
                                   <span 
                                     className="text-[10px] px-2 py-0.5 font-bold rounded-md"
@@ -5864,6 +5925,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 )}
                               </div>
 
+                              {/* Duration Pill */}
                               <div 
                                 className="flex items-center gap-1 text-xs font-semibold flex-shrink-0"
                                 style={{ color: theme.textSecondary }}
@@ -5980,177 +6042,185 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
             {activeSubMenu === 'weekly-plan' && (
               <div>
-                <div className="mb-5">
-                  <h2 className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>{t('topicNew.weeklyPlanTab.title')}</h2>
-                  <p className="text-xs mb-4" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.subtitle')}</p>
+                <div className="mb-6">
+                  {/* Cascade Filter Panel: Year → Kelas → Subject → Topic */}
+                  <div 
+                    className="p-4 sm:p-5 rounded-2xl border shadow-2xs mb-6 transition-all duration-200"
+                    style={{ background: theme.cardBg, borderColor: theme.border }}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                      {/* 1. Tahun Ajaran */}
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
+                          {t('topicNew.weeklyPlanTab.filterYear')}
+                        </label>
+                        <select
+                          value={wpYear}
+                          onChange={e => {
+                            const val = e.target.value
+                            handleGuardedAction(() => {
+                              setWpYear(val)
+                              setWpKelas('')
+                              setWpSubject('')
+                              setSelectedTopicForWeekly(null)
+                              setWeeklyPlans([])
+                              initialWeeklyPlansRef.current = null
+                              setIsWeeklyPlanDirty(false)
+                            })
+                          }}
+                          className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
+                          style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
+                        >
+                          <option value="">{t('topicNew.weeklyPlanTab.allYears')}</option>
+                          {yearOptions.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
+                        </select>
+                      </div>
 
-                  {/* Cascade Filter: Year → Kelas → Subject → Topic */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4" style={{ background: theme.subtleBg, borderRadius: '8px', border: `1px solid ${theme.border}` }}>
-                    {/* 1. Tahun Ajaran */}
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterYear')}</label>
-                      <select
-                        value={wpYear}
-                        onChange={e => {
-                          const val = e.target.value
-                          handleGuardedAction(() => {
-                            setWpYear(val)
-                            setWpKelas('')
-                            setWpSubject('')
-                            setSelectedTopicForWeekly(null)
-                            setWeeklyPlans([])
-                            initialWeeklyPlansRef.current = null
-                            setIsWeeklyPlanDirty(false)
-                          })
-                        }}
-                        className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                      >
-                        <option value="">{t('topicNew.weeklyPlanTab.allYears')}</option>
-                        {yearOptions.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
-                      </select>
-                    </div>
+                      {/* 2. Kelas */}
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
+                          {t('topicNew.weeklyPlanTab.filterClass')}
+                        </label>
+                        <select
+                          value={wpKelas}
+                          disabled={!wpYear}
+                          onChange={e => {
+                            const val = e.target.value
+                            handleGuardedAction(() => {
+                              setWpKelas(val)
+                              setWpSubject('')
+                              setSelectedTopicForWeekly(null)
+                              setWeeklyPlans([])
+                              initialWeeklyPlansRef.current = null
+                              setIsWeeklyPlanDirty(false)
+                            })
+                          }}
+                          className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
+                          style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: !wpYear ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpYear ? 0.6 : 1 }}
+                        >
+                          <option value="">{!wpYear ? t('topicNew.weeklyPlanTab.selectYearFirst') : t('topicNew.weeklyPlanTab.allClasses')}</option>
+                          {[...allKelasRaw]
+                            .filter(k => !wpYear || String(k.kelas_year_id) === String(wpYear))
+                            .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama, 'id'))
+                            .map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)
+                          }
+                        </select>
+                      </div>
 
-                    {/* 2. Kelas — same source as Overview: allKelasRaw filtered by year */}
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterClass')}</label>
-                      <select
-                        value={wpKelas}
-                        disabled={!wpYear}
-                        onChange={e => {
-                          const val = e.target.value
-                          handleGuardedAction(() => {
-                            setWpKelas(val)
-                            setWpSubject('')
-                            setSelectedTopicForWeekly(null)
-                            setWeeklyPlans([])
-                            initialWeeklyPlansRef.current = null
-                            setIsWeeklyPlanDirty(false)
-                          })
-                        }}
-                        className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: !wpYear ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpYear ? 0.6 : 1 }}
-                      >
-                        <option value="">{!wpYear ? t('topicNew.weeklyPlanTab.selectYearFirst') : t('topicNew.weeklyPlanTab.allClasses')}</option>
-                        {[...allKelasRaw]
-                          .filter(k => !wpYear || String(k.kelas_year_id) === String(wpYear))
-                          .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama, 'id'))
-                          .map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)
-                        }
-                      </select>
-                    </div>
+                      {/* 3. Subject */}
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
+                          {t('topicNew.weeklyPlanTab.filterSubject')}
+                        </label>
+                        <select
+                          value={wpSubject}
+                          onChange={e => {
+                            const val = e.target.value
+                            handleGuardedAction(() => {
+                              setWpSubject(val)
+                              setSelectedTopicForWeekly(null)
+                              setWeeklyPlans([])
+                              initialWeeklyPlansRef.current = null
+                              setIsWeeklyPlanDirty(false)
+                            })
+                          }}
+                          className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
+                          style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
+                        >
+                          <option value="">{t('topicNew.weeklyPlanTab.allSubjects')}</option>
+                          {subjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)}
+                        </select>
+                      </div>
 
-                    {/* 3. Subject — identical to Overview: show ALL subjects from subjects state, no kelas filter */}
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterSubject')}</label>
-                      <select
-                        value={wpSubject}
-                        onChange={e => {
-                          const val = e.target.value
-                          handleGuardedAction(() => {
-                            setWpSubject(val)
-                            setSelectedTopicForWeekly(null)
-                            setWeeklyPlans([])
-                            initialWeeklyPlansRef.current = null
-                            setIsWeeklyPlanDirty(false)
-                          })
-                        }}
-                        className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                      >
-                        <option value="">{t('topicNew.weeklyPlanTab.allSubjects')}</option>
-                        {subjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)}
-                      </select>
-                    </div>
-
-                    {/* 4. Topic/Unit — filter uses parseInt() matching Overview's filteredTopics logic */}
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.filterUnit')}</label>
-                      <select
-                        value={selectedTopicForWeekly?.topic_id || ''}
-                        onChange={e => handleTopicSelectionForWeekly(e.target.value)}
-                        className="w-full px-3 py-2 text-xs focus:outline-none"
-                        style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                      >
-                        <option value="">{t('topicNew.fields.chooseTopic')}</option>
-                        {topics
-                          .filter(t => {
-                            const matchYear    = !wpYear    || (allKelasRaw.find(k => k.kelas_id === t.topic_kelas_id)?.kelas_year_id?.toString() === wpYear)
-                            const matchKelas   = !wpKelas   || t.topic_kelas_id   === parseInt(wpKelas)
-                            const matchSubject = !wpSubject || t.topic_subject_id === parseInt(wpSubject)
-                            return matchYear && matchKelas && matchSubject
-                          })
-                          .sort((a, b) => (a.topic_urutan || 0) - (b.topic_urutan || 0) || (a.topic_nama || '').localeCompare(b.topic_nama || ''))
-                          .map(topic => (
-                            <option key={topic.topic_id} value={topic.topic_id}>
-                              Unit {topic.topic_urutan} — {topic.topic_nama}
-                            </option>
-                          ))
-                        }
-                      </select>
+                      {/* 4. Topic/Unit */}
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
+                          {t('topicNew.weeklyPlanTab.filterUnit')}
+                        </label>
+                        <select
+                          value={selectedTopicForWeekly?.topic_id || ''}
+                          onChange={e => handleTopicSelectionForWeekly(e.target.value)}
+                          className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
+                          style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
+                        >
+                          <option value="">{t('topicNew.fields.chooseTopic')}</option>
+                          {topics
+                            .filter(t => {
+                              const matchYear    = !wpYear    || (allKelasRaw.find(k => k.kelas_id === t.topic_kelas_id)?.kelas_year_id?.toString() === wpYear)
+                              const matchKelas   = !wpKelas   || t.topic_kelas_id   === parseInt(wpKelas)
+                              const matchSubject = !wpSubject || t.topic_subject_id === parseInt(wpSubject)
+                              return matchYear && matchKelas && matchSubject
+                            })
+                            .sort((a, b) => (a.topic_urutan || 0) - (b.topic_urutan || 0) || (a.topic_nama || '').localeCompare(b.topic_nama || ''))
+                            .map(topic => (
+                              <option key={topic.topic_id} value={topic.topic_id}>
+                                Unit {topic.topic_urutan} — {topic.topic_nama}
+                              </option>
+                            ))
+                          }
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Weekly Plans Display */}
                 {loadingWeeklyPlans ? (
-                  <div className="flex justify-center py-12">
+                  <div className="flex justify-center py-16">
                     <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
                   </div>
                 ) : selectedTopicForWeekly && weeklyPlans.length > 0 ? (
                   <div>
                     {/* Topic Info and Actions */}
-                    <div className="p-4 mb-4" style={{ background: theme.blueBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-sm mb-1" style={{ color: theme.textPrimary }}>{selectedTopicForWeekly.topic_nama}</h3>
-                          <div className="text-xs" style={{ color: theme.textSecondary }}>
-                            <span>{t('topicNew.weeklyPlanTab.duration')}: {selectedTopicForWeekly.topic_duration} weeks</span>
-                            <span className="mx-2">·</span>
-                            <span>{t('topicNew.weeklyPlanTab.hoursPerWeek')}: {selectedTopicForWeekly.topic_hours_per_week || t('topicNew.weeklyPlanTab.notAvailable')}</span>
-                          </div>
+                    <div className="p-4 sm:p-5 mb-5 rounded-2xl border shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ background: theme.blueBg, borderColor: theme.border }}>
+                      <div>
+                        <h3 className="font-bold text-sm sm:text-base mb-0.5" style={{ color: theme.textPrimary }}>{selectedTopicForWeekly.topic_nama}</h3>
+                        <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: theme.textSecondary }}>
+                          <span className="font-semibold">{t('topicNew.weeklyPlanTab.duration')}: {selectedTopicForWeekly.topic_duration} weeks</span>
+                          <span>·</span>
+                          <span className="font-semibold">{t('topicNew.weeklyPlanTab.hoursPerWeek')}: {selectedTopicForWeekly.topic_hours_per_week || t('topicNew.weeklyPlanTab.notAvailable')}</span>
                         </div>
-                        <button
-                          className="px-3 py-2 text-xs font-medium flex items-center gap-2"
-                          style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '6px', color: theme.textPrimary }}
-                          onClick={() => {
-                            setWeeklyAiInput({ assessmentDuration: '', specialRequests: '' })
-                            setWeeklyAiModalOpen(true)
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faLightbulb} />
-                          {t('topicNew.weeklyPlanTab.aiHelp')}
-                        </button>
                       </div>
+                      <button
+                        className="px-3.5 py-2 text-xs font-bold flex items-center gap-2 rounded-xl border shadow-2xs hover:opacity-90 transition-all self-stretch sm:self-auto justify-center"
+                        style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}
+                        onClick={() => {
+                          setWeeklyAiInput({ assessmentDuration: '', specialRequests: '' })
+                          setWeeklyAiModalOpen(true)
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faLightbulb} className="text-amber-500" />
+                        {t('topicNew.weeklyPlanTab.aiHelp')}
+                      </button>
                     </div>
 
                     {/* Schedule Helper Banner: Upcoming Class Dates */}
-                    <div className="mb-5 p-4 rounded-xl border-2 shadow-sm text-xs space-y-3 bg-gradient-to-br from-indigo-50/90 via-blue-50/80 to-sky-50/90 dark:from-indigo-950/60 dark:via-blue-950/50 dark:to-slate-900/80 border-indigo-300 dark:border-indigo-700">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 dark:border-indigo-800 pb-2.5">
-                        <div className="font-bold flex items-center gap-2 text-xs sm:text-sm text-indigo-950 dark:text-indigo-100">
-                          <FontAwesomeIcon icon={faClock} className="text-amber-500 text-base" />
+                    <div className="mb-5 p-3.5 sm:p-4 rounded-2xl border-2 shadow-2xs text-xs space-y-2.5 bg-gradient-to-br from-indigo-50/90 via-blue-50/80 to-sky-50/90 dark:from-indigo-950/60 dark:via-blue-950/50 dark:to-slate-900/80 border-indigo-300 dark:border-indigo-700">
+                      <div className="flex items-center justify-between gap-2 border-b border-indigo-200 dark:border-indigo-800 pb-2">
+                        <div className="font-extrabold flex items-center gap-2 text-xs sm:text-sm text-indigo-950 dark:text-indigo-100">
+                          <FontAwesomeIcon icon={faClock} className="text-amber-500 text-sm" />
                           <span>Schedule</span>
                         </div>
                         {subjectTimetableInfo.routineDays.length > 0 && (
-                          <span className="px-3 py-1 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-2xs">
                             {subjectTimetableInfo.routineDays.length} {subjectTimetableInfo.routineDays.length === 1 ? 'Day' : 'Days'} / Week
                           </span>
                         )}
                       </div>
 
                       {subjectTimetableInfo.loading ? (
-                        <div className="flex items-center gap-2 py-1 text-indigo-700 dark:text-indigo-300">
+                        <div className="flex items-center gap-2 py-1 text-indigo-700 dark:text-indigo-300 text-xs">
                           <FontAwesomeIcon icon={faSpinner} spin />
-                          <span>Loading timetable schedule...</span>
+                          <span>Loading schedule...</span>
                         </div>
                       ) : subjectTimetableInfo.routineDays.length > 0 && subjectTimetableInfo.nextDates.length > 0 ? (
-                        <div className="space-y-2">
-                          <span className="font-bold text-indigo-700 dark:text-indigo-300 block">Upcoming Class Dates:</span>
+                        <div className="space-y-1.5">
+                          <span className="font-bold text-indigo-800 dark:text-indigo-200 block text-[11px] uppercase tracking-wider">Upcoming Class Dates:</span>
                           <div className="flex flex-wrap items-center gap-2">
                             {subjectTimetableInfo.nextDates.slice(0, 4).map((nd, idx) => {
                               const timeSlotStr = nd.daySlots ? ` (${nd.daySlots})` : ''
                               return (
-                                <span key={idx} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-2 border-indigo-400 dark:border-indigo-600 shadow-sm flex items-center gap-1.5 hover:scale-102 transition-all">
+                                <span key={idx} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-indigo-300 dark:border-indigo-600 shadow-2xs flex items-center gap-1.5">
                                   📌 {nd.formatted}{timeSlotStr}
                                 </span>
                               )
@@ -6166,7 +6236,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                     {/* Unsaved Changes Warning Banner */}
                     {isWeeklyPlanDirty && (
-                      <div className="mb-4 p-3 text-xs font-semibold flex items-center justify-between bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-lg shadow-sm">
+                      <div className="mb-5 p-3.5 text-xs font-semibold flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-xl shadow-2xs">
                         <div className="flex items-center gap-2">
                           <span className="text-base">⚠️</span>
                           <span>Attention: You have unsaved changes in your Weekly Plan!</span>
@@ -6174,7 +6244,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         <button
                           onClick={saveWeeklyPlans}
                           disabled={savingWeeklyPlans}
-                          className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs flex items-center justify-center gap-1.5"
                         >
                           {savingWeeklyPlans ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faSave} />}
                           Save Now
@@ -6184,18 +6254,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                     {/* Notification */}
                     {weeklyPlanNotification.show && (
-                      <div className="mb-4 p-3 text-xs" style={{
+                      <div className="mb-5 p-3.5 text-xs rounded-xl border font-medium" style={{
                         background: weeklyPlanNotification.type === 'success' ? theme.greenBg : theme.redBg,
-                        border: `1px solid ${theme.border}`,
+                        borderColor: theme.border,
                         color: weeklyPlanNotification.type === 'success' ? theme.greenText : theme.redText,
-                        borderRadius: '6px'
                       }}>
                         {weeklyPlanNotification.message}
                       </div>
                     )}
 
-                    {/* Weekly Plan Forms */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Weekly Plan Forms Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {Array.from({ length: selectedTopicForWeekly?.topic_duration || 5 }).map((_, wIdx) => {
                         const weekNum = wIdx + 1
                         const weekSessions = weeklyPlans.filter(p => p.week_number === weekNum)
@@ -6211,10 +6280,15 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         }]
 
                         return (
-                          <div key={weekNum} className="space-y-3 p-4 border rounded-xl" style={{ background: theme.cardBg, borderColor: theme.border }}>
-                            <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: theme.border }}>
-                              <h3 className="text-xs font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                                <span className="flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full" style={{ background: theme.subtleBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }}>
+                          <div 
+                            key={weekNum} 
+                            className="space-y-4 p-4 sm:p-5 border rounded-2xl shadow-2xs transition-all duration-200" 
+                            style={{ background: theme.cardBg, borderColor: theme.border }}
+                          >
+                            {/* Week Header */}
+                            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: theme.border }}>
+                              <h3 className="text-xs sm:text-sm font-extrabold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                                <span className="flex items-center justify-center w-6 h-6 text-xs font-black rounded-lg" style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}` }}>
                                   {weekNum}
                                 </span>
                                 {t('topicNew.weeklyPlanTab.week')} {weekNum}
@@ -6222,22 +6296,29 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                               <button
                                 type="button"
                                 onClick={() => handleAddSessionToWeek(weekNum)}
-                                className="text-[11px] font-medium px-2 py-1 rounded flex items-center gap-1.5 hover:opacity-80 border"
+                                className="text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:opacity-80 border shadow-2xs transition-all"
                                 style={{ background: theme.subtleBg, color: theme.textPrimary, borderColor: theme.border }}
                               >
                                 <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
-                                Add Teaching Session
+                                <span className="hidden sm:inline">Add Teaching Session</span>
+                                <span className="inline sm:hidden">+ Session</span>
                               </button>
                             </div>
 
+                            {/* Sessions inside Week */}
                             {sessionsToRender.map((plan, sIdx) => (
-                              <div key={plan._tempId || (plan.id ? `${plan.id}_${sIdx}` : sIdx)} className="p-3 rounded-lg space-y-2.5 border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[11px] font-semibold" style={{ color: theme.textPrimary }}>
+                              <div 
+                                key={plan._tempId || (plan.id ? `${plan.id}_${sIdx}` : sIdx)} 
+                                className="p-3.5 sm:p-4 rounded-xl space-y-3 border-l-4 border-l-blue-500 border shadow-2xs transition-all" 
+                                style={{ background: theme.subtleBg, borderColor: theme.border }}
+                              >
+                                {/* Session Header & Date */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
+                                  <span className="text-xs font-extrabold" style={{ color: theme.textPrimary }}>
                                     {sessionsToRender.length > 1 ? `Session ${sIdx + 1}` : 'Main Teaching Session'}
                                   </span>
-                                  <div className="flex items-center gap-1.5">
-                                    <label className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>{t('topicNew.weeklyPlanTab.dateLabel')}</label>
+                                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('topicNew.weeklyPlanTab.dateLabel')}</label>
                                     <div
                                       onClick={(e) => {
                                         const input = e.currentTarget.querySelector('input[type="date"]')
@@ -6249,11 +6330,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                           }
                                         }
                                       }}
-                                      className="text-[10px] px-2 py-0.5 rounded border flex items-center justify-between gap-2 cursor-pointer font-bold shadow-2xs hover:border-indigo-500 transition-all min-w-[115px] relative"
+                                      className="text-xs px-2.5 py-1 rounded-lg border flex items-center justify-between gap-2 cursor-pointer font-bold shadow-2xs hover:border-indigo-500 transition-all min-w-[125px] relative"
                                       style={{ borderColor: theme.border, background: theme.inputBg, color: plan.week_date ? theme.textBody : theme.textSecondary }}
                                     >
                                       <span>{plan.week_date ? formatDateDDMMYYYY(plan.week_date) : 'dd/mm/yyyy'}</span>
-                                      <FontAwesomeIcon icon={faCalendar} className="text-slate-400 text-[10px]" />
+                                      <FontAwesomeIcon icon={faCalendar} className="text-slate-400 text-xs" />
                                       <input
                                         type="date"
                                         value={plan.week_date || ''}
@@ -6266,7 +6347,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                         type="button"
                                         onClick={() => handleRemoveSession(plan)}
                                         title="Remove Session"
-                                        className="text-red-500 hover:text-red-700 px-1 text-xs"
+                                        className="text-red-500 hover:text-red-700 p-1 text-xs"
                                       >
                                         <FontAwesomeIcon icon={faTrash} />
                                       </button>
@@ -6275,7 +6356,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 </div>
 
                                 {getDayWarningForDate(plan.week_date) && (
-                                  <div className="text-[10px] font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 p-1.5 rounded border border-red-300 dark:border-red-800 flex items-start gap-1">
+                                  <div className="text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 p-2 rounded-lg border border-red-300 dark:border-red-800 flex items-start gap-1.5">
                                     <span>⚠️</span>
                                     <span>{getDayWarningForDate(plan.week_date)}</span>
                                   </div>
@@ -6283,62 +6364,62 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
                                 {/* Objectives */}
                                 <div>
-                                  <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
+                                  <label className="block text-[11px] font-bold mb-1 tracking-wide" style={{ color: theme.textSecondary }}>
                                     {t('topicNew.weeklyPlanTab.objectives')}
                                   </label>
                                   <textarea
                                     value={plan.week_objectives || ''}
                                     onChange={(e) => handleWeeklyPlanChange(plan, 'week_objectives', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.objectivesPlaceholder')}
-                                    rows={2}
-                                    className="w-full px-2 py-1 text-xs focus:outline-none resize-none rounded border"
+                                    rows={3}
+                                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none resize-y rounded-xl border focus:ring-2 focus:ring-blue-500/20 min-h-[80px] transition-all"
                                     style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
                                   />
                                 </div>
 
                                 {/* Activities */}
                                 <div>
-                                  <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.activities')} (max 300 chars)
+                                  <label className="block text-[11px] font-bold mb-1 tracking-wide" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.activities')} <span className="text-[10px] font-normal text-slate-400">(Max 300 chars)</span>
                                   </label>
                                   <textarea
                                     value={plan.week_activities || ''}
                                     onChange={(e) => handleWeeklyPlanChange(plan, 'week_activities', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.activitiesPlaceholder')}
-                                    rows={2}
+                                    rows={4}
                                     maxLength={300}
-                                    className="w-full px-2 py-1 text-xs focus:outline-none resize-none rounded border"
+                                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none resize-y rounded-xl border focus:ring-2 focus:ring-blue-500/20 min-h-[100px] transition-all"
                                     style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
                                   />
                                 </div>
 
                                 {/* Resources */}
                                 <div>
-                                  <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
+                                  <label className="block text-[11px] font-bold mb-1 tracking-wide" style={{ color: theme.textSecondary }}>
                                     {t('topicNew.weeklyPlanTab.resources')}
                                   </label>
                                   <textarea
                                     value={plan.week_resources || ''}
                                     onChange={(e) => handleWeeklyPlanChange(plan, 'week_resources', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.resourcesPlaceholder')}
-                                    rows={1}
-                                    className="w-full px-2 py-1 text-xs focus:outline-none resize-none rounded border"
+                                    rows={3}
+                                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none resize-y rounded-xl border focus:ring-2 focus:ring-blue-500/20 min-h-[75px] transition-all"
                                     style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
                                   />
                                 </div>
 
                                 {/* Reflection */}
                                 <div>
-                                  <label className="block text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.reflection')} <span style={{ color: theme.textSecondary }}>({t('topicNew.weeklyPlanTab.reflectionDuring')})</span>
+                                  <label className="block text-[11px] font-bold mb-1 tracking-wide" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.reflection')} <span className="text-[10px] font-normal text-slate-400">(During Teaching)</span>
                                   </label>
                                   <textarea
                                     value={plan.week_reflection || ''}
                                     onChange={(e) => handleWeeklyPlanChange(plan, 'week_reflection', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.reflectionPlaceholder')}
-                                    rows={1}
-                                    className="w-full px-2 py-1 text-xs focus:outline-none resize-none rounded border"
-                                    style={{ borderColor: theme.border, background: theme.subtleBg, color: theme.textBody }}
+                                    rows={3}
+                                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none resize-y rounded-xl border focus:ring-2 focus:ring-blue-500/20 min-h-[75px] transition-all"
+                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
                                   />
                                 </div>
                               </div>
@@ -6349,12 +6430,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="mt-5 flex justify-end gap-2">
+                    <div className="mt-6 flex items-center justify-end gap-3">
                       <button
                         onClick={deleteAllWeeklyPlans}
                         disabled={savingWeeklyPlans || weeklyPlans.length === 0}
-                        className="px-4 py-2 text-xs font-medium flex items-center gap-2"
-                        style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}
+                        className="px-4 py-2 text-xs font-bold flex items-center justify-center gap-2 rounded-xl transition-all shadow-2xs"
+                        style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}` }}
                       >
                         <FontAwesomeIcon icon={faTrash} />
                         {t('topicNew.weeklyPlanTab.deleteAll')}
@@ -6362,8 +6443,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       <button
                         onClick={saveWeeklyPlans}
                         disabled={savingWeeklyPlans}
-                        className="px-4 py-2 text-xs font-medium flex items-center gap-2"
-                        style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}
+                        className="px-5 py-2 text-xs font-bold flex items-center justify-center gap-2 rounded-xl transition-all shadow-2xs"
+                        style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}` }}
                       >
                         {savingWeeklyPlans ? (
                           <><FontAwesomeIcon icon={faSpinner} spin />{t('topicNew.weeklyPlanTab.saving')}</>
@@ -6374,14 +6455,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </div>
                   </div>
                 ) : selectedTopicForWeekly ? (
-                  <div className="text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
+                  <div className="text-center py-16 text-xs font-medium" style={{ color: theme.textSecondary }}>
                     <p>{t('topicNew.weeklyPlanTab.noData')}</p>
-                    <p className="mt-2">{t('topicNew.weeklyPlanTab.noDataHint')}</p>
+                    <p className="mt-2 text-slate-400">{t('topicNew.weeklyPlanTab.noDataHint')}</p>
                   </div>
                 ) : (
-                  <div className="text-center py-12" style={{ color: theme.textSecondary }}>
+                  <div className="text-center py-16" style={{ color: theme.textSecondary }}>
                     <FontAwesomeIcon icon={faClipboardList} className="text-4xl mb-3 opacity-30" />
-                    <p className="text-xs">{t('topicNew.weeklyPlanTab.selectTopic')}</p>
+                    <p className="text-xs font-medium">{t('topicNew.weeklyPlanTab.selectTopic')}</p>
                   </div>
                 )}
               </div>
@@ -10060,15 +10141,15 @@ ${refineOriginal}`
         </div>
       )}
 
-      {/* Weekly Overview DOCX Export Modal */}
+      {/* Weekly Overview Export Modal */}
       <Modal
         isOpen={woDocxModalOpen}
         onClose={() => !woDocxLoading && setWoDocxModalOpen(false)}
-        title="Export Weekly Overview (DOCX)"
+        title="Export Weekly Overview"
       >
         <div className="space-y-4">
           <p className="text-xs text-gray-600">
-            Generate and download Microsoft Word (.docx) Weekly Overview for parents, compiling all subjects for the selected class and week.
+            Generate and download Microsoft Word Weekly Overview for parents, compiling all subjects for the selected class and week.
           </p>
 
           {woDocxError && (
@@ -10156,7 +10237,7 @@ ${refineOriginal}`
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
             <button
               onClick={() => setWoDocxModalOpen(false)}
               disabled={woDocxLoading}
@@ -10164,26 +10245,254 @@ ${refineOriginal}`
             >
               Cancel
             </button>
-            <button
-              onClick={handleDownloadWoDocx}
-              disabled={woDocxLoading}
-              className="px-4 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 font-medium"
-            >
-              {woDocxLoading ? (
-                <>
-                  <FontAwesomeIcon icon={faSpinner} spin />
-                  Generating DOCX...
-                </>
-              ) : (
-                <>
-                  <FontAwesomeIcon icon={faFileWord} />
-                  Download DOCX
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePreviewWo}
+                disabled={woDocxLoading}
+                className="px-4 py-2 text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-md disabled:opacity-50 flex items-center gap-1.5 font-semibold transition-all"
+              >
+                {woPreviewLoading ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                    Loading Preview...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faEye} />
+                    Preview
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadWoDocx}
+                disabled={woDocxLoading}
+                className="px-4 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5 font-semibold transition-all shadow-sm"
+              >
+                {woDocxLoading && !woPreviewLoading ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faFileWord} />
+                    Download
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>
+
+      {/* Weekly Overview Live Preview Modal */}
+      {woPreviewModalOpen && woPreviewData && (
+        <Modal
+          isOpen={woPreviewModalOpen}
+          onClose={() => setWoPreviewModalOpen(false)}
+          title={`Weekly Overview Preview — ${woPreviewData.kelasNama}`}
+          size="xl"
+        >
+          <div className="space-y-4">
+            {/* Modal Actions Bar */}
+            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex-wrap gap-2">
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[11px] font-bold">{woPreviewData.kelasNama}</span>
+                <span>Week: <strong>{woPreviewData.weekLabel}</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadWoDocx}
+                  disabled={woDocxLoading}
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-sm disabled:opacity-50 transition-all"
+                >
+                  <FontAwesomeIcon icon={faFileWord} />
+                  Download
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Preview Card */}
+            <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-x-auto text-slate-800 dark:text-slate-100 max-h-[70vh] overflow-y-auto">
+              {/* Document Header */}
+              <div className="text-center mb-6 border-b pb-4 border-slate-200 dark:border-slate-800">
+                <h2 className="text-xl font-bold tracking-wide text-slate-900 dark:text-white uppercase">WEEKLY OVERVIEW {woPreviewData.kelasNama}</h2>
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 mt-1">{woPreviewData.weekLabel}</p>
+              </div>
+
+              {/* Schedule Table */}
+              <table className="w-full text-xs border-collapse border border-slate-300 dark:border-slate-700">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold border-b border-slate-300 dark:border-slate-700">
+                    <th className="border border-slate-300 dark:border-slate-700 p-2.5 w-24 text-center">Time</th>
+                    {woPreviewData.days.map(d => (
+                      <th key={d} className="border border-slate-300 dark:border-slate-700 p-2.5 text-center min-w-[150px]">{d}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {woPreviewData.timeSlots.map((slotKey, slotIdx) => {
+                    const [startT, endT] = slotKey.split('|')
+                    return (
+                      <tr key={slotKey} className="align-top">
+                        <td className="border border-slate-300 dark:border-slate-700 p-2 font-mono text-[11px] text-center text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 font-medium whitespace-nowrap">
+                          {startT}<br /><span className="text-[10px] text-slate-400">–</span><br />{endT}
+                        </td>
+                        {woPreviewData.days.map(dayName => {
+                          // 1. Holiday cell (spans whole column height for this day)
+                          const holidayCell = woPreviewData.cells[`${dayName}|HOLIDAY`]
+                          if (holidayCell) {
+                            if (slotIdx === 0) {
+                              return (
+                                <td
+                                  key={dayName}
+                                  rowSpan={woPreviewData.timeSlots.length}
+                                  className="border border-slate-300 dark:border-slate-700 p-4 text-center align-middle font-bold text-sm"
+                                  style={{ backgroundColor: '#5A3333', color: '#FFFFFF' }}
+                                >
+                                  <div className="text-sm font-bold tracking-wide uppercase text-red-100">
+                                    [ {holidayCell.label || 'HOLIDAY'} ]
+                                  </div>
+                                  {holidayCell.note && (
+                                    <div className="text-xs font-normal italic mt-1 text-red-200">{holidayCell.note}</div>
+                                  )}
+                                </td>
+                              )
+                            }
+                            return null
+                          }
+
+                          // 2. Normal / Event / Covered cell for this slotKey
+                          const cellKey = `${dayName}|${slotKey}`
+                          const cell = woPreviewData.cells[cellKey]
+
+                          if (cell && cell.type === 'covered') {
+                            return null
+                          }
+
+                          if (!cell || cell.type === 'empty') {
+                            return (
+                              <td key={dayName} className="border border-slate-300 dark:border-slate-700 p-2 text-center text-slate-400 text-xs">
+                                -
+                              </td>
+                            )
+                          }
+
+                          if (cell.type === 'event') {
+                            return (
+                              <td key={dayName} className="border border-slate-300 dark:border-slate-700 p-2.5 bg-amber-100 text-amber-900 text-xs font-semibold text-center align-middle">
+                                📌 {cell.label}
+                              </td>
+                            )
+                          }
+
+                          const items = Array.isArray(cell.items) && cell.items.length > 0 ? cell.items : [cell]
+                          const customColor = cell.customColor || items.find(i => i.customColor)?.customColor
+
+                          let cellStyle = {}
+                          let textClass = "text-slate-800 dark:text-slate-200"
+                          let labelClass = "text-slate-500 dark:text-slate-400"
+                          let borderClass = "border-slate-200 dark:border-slate-700"
+
+                          if (customColor) {
+                            const hex = customColor.replace('#', '')
+                            cellStyle = { backgroundColor: `#${hex}` }
+
+                            const r = parseInt(hex.substring(0, 2), 16) || 0
+                            const g = parseInt(hex.substring(2, 4), 16) || 0
+                            const b = parseInt(hex.substring(4, 6), 16) || 0
+                            const brightness = (r * 299 + g * 587 + b * 114) / 1000
+                            if (brightness < 140) {
+                              textClass = "text-white"
+                              labelClass = "text-slate-200"
+                              borderClass = "border-white/20"
+                            }
+                          }
+
+                          return (
+                            <td
+                              key={dayName}
+                              rowSpan={cell.rowSpan && cell.rowSpan > 1 ? cell.rowSpan : undefined}
+                              style={cellStyle}
+                              className={`border border-slate-300 dark:border-slate-700 p-3 align-top ${!customColor ? 'bg-white dark:bg-slate-900' : ''}`}
+                            >
+                              <div className="space-y-3">
+                                {items.map((item, idx) => (
+                                  <div key={idx} className={idx > 0 ? `pt-2.5 border-t ${borderClass}` : ''}>
+                                    <div className={`font-bold text-xs mb-1.5 ${textClass}`}>
+                                      {item.subject}
+                                    </div>
+
+                                    {item.objectives && (
+                                      <div className="mb-1.5">
+                                        <div className={`text-[10px] font-semibold uppercase tracking-wide ${labelClass}`}>Learning Goals:</div>
+                                        <div className={`text-xs leading-relaxed whitespace-pre-wrap ${textClass}`}>{item.objectives}</div>
+                                      </div>
+                                    )}
+
+                                    {item.activities && (
+                                      <div className="mb-1.5">
+                                        <div className={`text-[10px] font-semibold uppercase tracking-wide ${labelClass}`}>Activity:</div>
+                                        <div className={`text-xs leading-relaxed whitespace-pre-wrap ${textClass}`}>{item.activities}</div>
+                                      </div>
+                                    )}
+
+                                    {item.resources && (
+                                      <div>
+                                        <div className={`text-[10px] font-semibold uppercase tracking-wide ${labelClass}`}>Resource:</div>
+                                        <div className={`text-xs leading-relaxed whitespace-pre-wrap ${textClass}`}>{item.resources}</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+
+              {/* Principal Signature Section */}
+              {woPreviewData.reportSettings && (
+                <div className="mt-8 flex justify-end">
+                  <div className="text-center min-w-[200px]">
+                    <p className="text-xs text-slate-500 mb-2">Approved by,</p>
+                    <div className="h-16 flex items-center justify-center relative my-1">
+                      {woPreviewData.reportSettings.signatureUrl && (
+                        <img
+                          src={woPreviewData.reportSettings.signatureUrl}
+                          alt="Signature"
+                          className="h-14 object-contain max-w-[160px]"
+                        />
+                      )}
+                      {woPreviewData.reportSettings.stampUrl && (
+                        <img
+                          src={woPreviewData.reportSettings.stampUrl}
+                          alt="Stamp"
+                          className="h-14 object-contain absolute opacity-85 pointer-events-none"
+                          style={{ right: '10%' }}
+                        />
+                      )}
+                    </div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white border-t border-slate-300 dark:border-slate-700 pt-1 mt-1">
+                      {woPreviewData.reportSettings.principalName || 'Principal'}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {woPreviewData.reportSettings.principalTitle || 'Principal'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Unsaved Weekly Plan Changes Confirmation Modal */}
       {unsavedModalOpen && (

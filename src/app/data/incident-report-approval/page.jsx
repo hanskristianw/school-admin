@@ -29,22 +29,36 @@ import {
   faPaperclip,
   faImage,
   faTrash,
-  faArrowsLeftRight
+  faArrowsLeftRight,
+  faVideo,
+  faFilm,
+  faCheckDouble,
+  faTimesCircle,
+  faInfoCircle,
+  faListCheck,
+  faCamera
 } from '@fortawesome/free-solid-svg-icons'
 
 export default function IncidentHandlingApprovalPage() {
   const router = useRouter()
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
 
-  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
-  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
+  // Dynamic Styles tied to useTheme() (100% Light & Dark Mode Compatible)
+  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
+  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
+  const btnPrimaryStyle = { background: theme.textPrimary, color: isDark ? '#18171A' : '#FFFFFF', border: 'none' }
+  const btnSecondaryStyle = { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }
+
+  // Main Page Tabs: 'incidents' | 'cctv'
+  const [activeTab, setActiveTab] = useState('incidents')
 
   const [loading, setLoading] = useState(true)
   const [reports, setReports] = useState([])
   const [units, setUnits] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
+  const [userRoleData, setUserRoleData] = useState(null)
 
-  // Search & Filter State
+  // Incident Search & Filter State
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('all')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
@@ -52,11 +66,27 @@ export default function IncidentHandlingApprovalPage() {
   // Notification Toast
   const [notif, setNotif] = useState({ isOpen: false, title: '', message: '', type: 'success' })
 
-  // Solution Handling Modal State
+  // Solution Handling Modal State for Incidents
   const [showHandlingModal, setShowHandlingModal] = useState(false)
   const [selectedReport, setSelectedReport] = useState(null)
   const [followups, setFollowups] = useState([])
   const [loadingFollowups, setLoadingFollowups] = useState(false)
+
+  // CCTV Requests State
+  const [cctvRequests, setCctvRequests] = useState([])
+  const [loadingCctv, setLoadingCctv] = useState(false)
+  const [cctvSearchQuery, setCctvSearchQuery] = useState('')
+  const [cctvUnitFilter, setCctvUnitFilter] = useState('all')
+  const [cctvStatusFilter, setCctvStatusFilter] = useState('all')
+
+  // CCTV Handling Modal State for Principal / Admin
+  const [showCctvModal, setShowCctvModal] = useState(false)
+  const [selectedCctv, setSelectedCctv] = useState(null)
+  const [cctvForm, setCctvForm] = useState({
+    status: 'approved',
+    reviewer_notes: ''
+  })
+  const [submittingCctv, setSubmittingCctv] = useState(false)
 
   // Follow-up Form State
   const getTodayDate = () => new Date().toISOString().split('T')[0]
@@ -80,6 +110,16 @@ export default function IncidentHandlingApprovalPage() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [filePreview, setFilePreview] = useState('')
   const [uploadingFile, setUploadingFile] = useState(false)
+
+  // Authorization Check for CCTV Tab (Only Principal & Admin)
+  const isAuthorizedForCctv = useMemo(() => {
+    if (!currentUser && !userRoleData) return false
+    if (currentUser?.is_admin || currentUser?.is_principal || currentUser?.isAdmin || currentUser?.isPrincipal) return true
+    if (userRoleData?.role?.is_admin || userRoleData?.role?.is_principal) return true
+    const rName = (currentUser?.role_name || userRoleData?.role?.role_name || '').toLowerCase()
+    if (rName.includes('admin') || rName.includes('principal') || rName.includes('kepala sekolah')) return true
+    return false
+  }, [currentUser, userRoleData])
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
@@ -131,11 +171,25 @@ export default function IncidentHandlingApprovalPage() {
     }
   }
 
-  // Fetch Current Logged-in User
+  // Fetch Current Logged-in User & Role Info
   useEffect(() => {
     try {
       const raw = localStorage.getItem('user_data')
-      if (raw) setCurrentUser(JSON.parse(raw))
+      if (raw) {
+        const u = JSON.parse(raw)
+        setCurrentUser(u)
+        const uId = u?.user_id || u?.id
+        if (uId) {
+          supabase
+            .from('users')
+            .select('user_id, user_unit_id, role:user_role_id(role_id, role_name, is_admin, is_principal)')
+            .eq('user_id', uId)
+            .single()
+            .then(({ data }) => {
+              if (data) setUserRoleData(data)
+            })
+        }
+      }
     } catch (e) {
       console.error('User data parse error:', e)
     }
@@ -176,11 +230,88 @@ export default function IncidentHandlingApprovalPage() {
     }
   }
 
+  // Fetch CCTV Footage Requests (Resilient multi-step fetch for users and units)
+  const fetchCctvData = async () => {
+    try {
+      setLoadingCctv(true)
+
+      // 1. Fetch raw CCTV requests
+      const { data: cctvRaw, error: cctvErr } = await supabase
+        .from('cctv_footage_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (cctvErr) throw cctvErr
+
+      if (!cctvRaw || cctvRaw.length === 0) {
+        setCctvRequests([])
+        return
+      }
+
+      // 2. Collect unique requester_user_ids & incident_report_ids
+      const userIds = Array.from(new Set(cctvRaw.map(r => r.requester_user_id).filter(Boolean)))
+      const incidentIds = Array.from(new Set(cctvRaw.map(r => r.incident_report_id).filter(Boolean)))
+
+      // 3. Fetch users and linked incident reports in parallel
+      const [usersRes, incidentsRes] = await Promise.all([
+        userIds.length > 0
+          ? supabase
+              .from('users')
+              .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_unit_id')
+              .in('user_id', userIds)
+          : Promise.resolve({ data: [] }),
+        incidentIds.length > 0
+          ? supabase
+              .from('incident_reports')
+              .select('id, incident_number, title, incident_date')
+              .in('id', incidentIds)
+          : Promise.resolve({ data: [] })
+      ])
+
+      const usersList = usersRes.data || []
+      const unitIds = Array.from(new Set(usersList.map(u => u.user_unit_id).filter(Boolean)))
+
+      // 4. Fetch units by unitIds
+      const unitsRes = unitIds.length > 0
+        ? await supabase.from('unit').select('unit_id, unit_name').in('unit_id', unitIds)
+        : { data: [] }
+
+      const unitsMap = new Map((unitsRes.data || []).map(u => [String(u.unit_id), u]))
+
+      // 5. Build usersMap with unit object attached
+      const usersMap = new Map(
+        usersList.map(u => [
+          String(u.user_id),
+          {
+            ...u,
+            unit: u.user_unit_id ? unitsMap.get(String(u.user_unit_id)) || null : null
+          }
+        ])
+      )
+
+      const incidentsMap = new Map((incidentsRes.data || []).map(i => [String(i.id), i]))
+
+      // 6. Combine and enrich CCTV requests
+      const enriched = cctvRaw.map(req => ({
+        ...req,
+        requester: usersMap.get(String(req.requester_user_id)) || null,
+        incident: incidentsMap.get(String(req.incident_report_id)) || null
+      }))
+
+      setCctvRequests(enriched)
+    } catch (err) {
+      console.error('Error fetching CCTV requests:', err)
+    } finally {
+      setLoadingCctv(false)
+    }
+  }
+
   useEffect(() => {
     fetchData()
+    fetchCctvData()
   }, [])
 
-  // Summary Metrics
+  // Summary Metrics for Incidents
   const metrics = useMemo(() => {
     let waiting = 0
     let onProgress = 0
@@ -195,18 +326,31 @@ export default function IncidentHandlingApprovalPage() {
     return { total: reports.length, waiting, onProgress, completed }
   }, [reports])
 
-  // Filtered Reports
+  // Summary Metrics for CCTV Requests
+  const cctvMetrics = useMemo(() => {
+    let pending = 0
+    let approved = 0
+    let inProgress = 0
+    let completed = 0
+    let rejected = 0
+
+    cctvRequests.forEach(r => {
+      const st = (r.status || 'pending').toLowerCase()
+      if (st === 'pending') pending++
+      else if (st === 'approved') approved++
+      else if (st === 'in_progress') inProgress++
+      else if (st === 'completed') completed++
+      else if (st === 'rejected') rejected++
+    })
+
+    return { total: cctvRequests.length, pending, approved, inProgress, completed, rejected }
+  }, [cctvRequests])
+
+  // Filtered Incident Reports
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
-      // Unit Filter
-      if (selectedUnitFilter !== 'all' && String(r.unit_id) !== String(selectedUnitFilter)) {
-        return false
-      }
-      // Status Filter
-      if (selectedStatusFilter !== 'all' && r.status !== selectedStatusFilter) {
-        return false
-      }
-      // Search Query
+      if (selectedUnitFilter !== 'all' && String(r.unit_id) !== String(selectedUnitFilter)) return false
+      if (selectedStatusFilter !== 'all' && r.status !== selectedStatusFilter) return false
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const titleMatch = (r.title || '').toLowerCase().includes(q)
@@ -220,37 +364,74 @@ export default function IncidentHandlingApprovalPage() {
     })
   }, [reports, selectedUnitFilter, selectedStatusFilter, searchQuery])
 
+  // Filtered CCTV Requests
+  const filteredCctvRequests = useMemo(() => {
+    return cctvRequests.filter(r => {
+      if (cctvUnitFilter !== 'all') {
+        const uId = r.requester?.user_unit_id
+        if (String(uId) !== String(cctvUnitFilter)) return false
+      }
+      if (cctvStatusFilter !== 'all' && r.status !== cctvStatusFilter) return false
+      if (cctvSearchQuery.trim()) {
+        const q = cctvSearchQuery.toLowerCase()
+        const codeMatch = (r.request_number || '').toLowerCase().includes(q)
+        const roomMatch = (r.room_name || '').toLowerCase().includes(q)
+        const reasonMatch = (r.reason || '').toLowerCase().includes(q)
+        const reqName = `${r.requester?.user_nama_depan || ''} ${r.requester?.user_nama_belakang || ''}`.toLowerCase()
+        return codeMatch || roomMatch || reasonMatch || reqName.includes(q)
+      }
+      return true
+    })
+  }, [cctvRequests, cctvUnitFilter, cctvStatusFilter, cctvSearchQuery])
+
   // Helper badge for Behaviour Level
   const getLevelBadge = (level) => {
     switch (level) {
       case 'Level 1':
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">Level 1</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.greenBg, color: theme.greenText }}>Level 1</span>
       case 'Level 2':
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">Level 2</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.yellowBg, color: theme.yellowText }}>Level 2</span>
       case 'Level 3':
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">Level 3</span>
       case 'Zero Tolerance':
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">Zero Tolerance</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.redBg, color: theme.redText }}>{level}</span>
       default:
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{level || 'Level 1'}</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.subtleBg, color: theme.textSecondary }}>{level || 'Level 1'}</span>
     }
   }
 
-  // Helper badge color for status
+  // Helper badge color for incident status
   const getStatusBadge = (status) => {
     switch (status) {
       case 'waiting':
-        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.yellowBg, color: theme.yellowText, borderColor: theme.border }}><FontAwesomeIcon icon={faClock} className="text-[10px]" /> Waiting</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.yellowBg, color: theme.yellowText }}><FontAwesomeIcon icon={faClock} className="text-[9px]" /> Waiting</span>
       case 'on_progress':
-        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.blueBg, color: theme.blueText, borderColor: theme.border }}><FontAwesomeIcon icon={faHourglassHalf} className="text-[10px]" /> On Progress</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.blueBg, color: theme.blueText }}><FontAwesomeIcon icon={faHourglassHalf} className="text-[9px]" /> On Progress</span>
       case 'completed':
-        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border" style={{ background: theme.greenBg, color: theme.greenText, borderColor: theme.border }}><FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" /> Completed</span>
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.greenBg, color: theme.greenText }}><FontAwesomeIcon icon={faCheckCircle} className="text-[9px]" /> Completed</span>
       default:
-        return <span className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded text-xs border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>{status}</span>
+        return <span className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.subtleBg, color: theme.textSecondary }}>{status}</span>
     }
   }
 
-  // Open Handling Modal
+  // Helper badge for CCTV Status (Minimalist UI Wash-out Pastels)
+  const getCctvStatusBadge = (status) => {
+    switch ((status || 'pending').toLowerCase()) {
+      case 'pending':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]"><FontAwesomeIcon icon={faClock} className="text-[9px]" /> Pending</span>
+      case 'approved':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]"><FontAwesomeIcon icon={faCheckCircle} className="text-[9px]" /> Approved</span>
+      case 'in_progress':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF]"><FontAwesomeIcon icon={faHourglassHalf} className="text-[9px]" /> In Progress</span>
+      case 'completed':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]"><FontAwesomeIcon icon={faCheckDouble} className="text-[9px]" /> Completed</span>
+      case 'rejected':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#FDEBEC] text-[#9F2F2D] border border-[#F8C9CC]"><FontAwesomeIcon icon={faTimesCircle} className="text-[9px]" /> Rejected</span>
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#F7F6F3] text-[#787774] border border-[#EAEAEA]">{status}</span>
+    }
+  }
+
+  // Open Incident Handling Modal
   const handleOpenHandlingModal = async (report) => {
     setSelectedReport(report)
     setShowHandlingModal(true)
@@ -281,7 +462,17 @@ export default function IncidentHandlingApprovalPage() {
     }
   }
 
-  // Handle Submit Followup Solution
+  // Open CCTV Handling Modal for Principal / Admin
+  const handleOpenCctvModal = (cctvReq) => {
+    setSelectedCctv(cctvReq)
+    setCctvForm({
+      status: cctvReq.status || 'approved',
+      reviewer_notes: cctvReq.reviewer_notes || ''
+    })
+    setShowCctvModal(true)
+  }
+
+  // Handle Submit Followup Solution for Incident
   const handleSubmitFollowup = async (e) => {
     e.preventDefault()
     if (!selectedReport || !currentUser) return
@@ -298,7 +489,7 @@ export default function IncidentHandlingApprovalPage() {
 
       const payload = {
         incident_id: selectedReport.id,
-        user_id: currentUser.user_id || currentUser.id,
+        user_id: currentUser.user_id || currentUser.id || currentUser.userID,
         followup_date: followupForm.followup_date,
         followup_time: followupForm.followup_time,
         location: followupForm.location.trim() || null,
@@ -307,741 +498,927 @@ export default function IncidentHandlingApprovalPage() {
         attachment_url: attachmentUrl
       }
 
-      // Insert Followup Entry
-      const { data: createdFol, error: folErr } = await supabase
+      const { data: newFol, error: insertErr } = await supabase
         .from('incident_followups')
         .insert([payload])
-        .select()
+        .select('*, user:user_id(user_id, user_nama_depan, user_nama_belakang)')
         .single()
 
-      if (folErr) throw folErr
+      if (insertErr) throw insertErr
 
-      // Update Incident Status
-      const { error: upErr } = await supabase
-        .from('incident_reports')
-        .update({
-          status: followupForm.resulting_status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedReport.id)
-
-      if (upErr) throw upErr
-
-      // Send Email & Google Chat Notification
-      try {
-        let allInvolvedStudents = `${selectedReport.student?.user_nama_depan || ''} ${selectedReport.student?.user_nama_belakang || ''}`.trim() || 'Student'
-        if (selectedReport.description?.includes('👥 All Involved Students:')) {
-          const matchSt = selectedReport.description.match(/👥 All Involved Students:\s*([^\n]+)/)
-          if (matchSt && matchSt[1]) {
-            allInvolvedStudents = matchSt[1].trim()
-          }
-        }
-
-        const handlerFullName = currentUser 
-          ? `${currentUser.user_nama_depan || currentUser.namaDepan || ''} ${currentUser.user_nama_belakang || currentUser.namaBelakang || ''}`.trim() 
-          : 'Staff/Counselor'
-
-        await fetch('/api/notifications/incident-report', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'followup_added',
-            incidentId: selectedReport.id,
-            followupId: createdFol?.id,
-            studentName: allInvolvedStudents,
-            unitId: selectedReport.unit_id,
-            actionDetails: followupForm.action_details.trim(),
-            resultingStatus: followupForm.resulting_status,
-            location: followupForm.location.trim(),
-            followupDate: followupForm.followup_date,
-            handlerName: handlerFullName || 'Staff/Counselor',
-            attachmentUrl: attachmentUrl
+      if (selectedReport.status !== followupForm.resulting_status) {
+        const { error: updateErr } = await supabase
+          .from('incident_reports')
+          .update({
+            status: followupForm.resulting_status,
+            updated_at: new Date().toISOString()
           })
-        })
-      } catch (notifErr) {
-        console.warn('Follow-up notification trigger failed:', notifErr)
+          .eq('id', selectedReport.id)
+
+        if (updateErr) throw updateErr
+
+        setSelectedReport(prev => ({ ...prev, status: followupForm.resulting_status }))
+        setReports(prev => prev.map(r => r.id === selectedReport.id ? { ...r, status: followupForm.resulting_status } : r))
       }
 
-      // Refresh followups list and clear form
-      setFollowups(prev => [...prev, createdFol || payload])
+      setFollowups(prev => [...prev, newFol])
+
+      // Trigger Email Notification to Pelapor (Reporter)
+      fetch('/api/notifications/incident-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'new_followup',
+          incidentId: selectedReport.id,
+          followupId: newFol.id
+        })
+      }).catch(nErr => console.warn('Notification trigger error:', nErr))
+
+      setFollowupForm({
+        followup_date: getTodayDate(),
+        followup_time: getCurrentTime(),
+        location: '',
+        action_details: '',
+        resulting_status: followupForm.resulting_status
+      })
       setSelectedFile(null)
       setFilePreview('')
-      setFollowupForm(p => ({
-        ...p,
-        action_details: '',
-        location: ''
-      }))
 
-      setNotif({ isOpen: true, title: 'Success', message: 'Solution & follow-up recorded successfully!', type: 'success' })
-      fetchData()
+      setNotif({ isOpen: true, title: 'Success', message: 'Action/Solution logged successfully!', type: 'success' })
+
     } catch (err) {
-      console.error('Submit followup error:', err)
-      setNotif({ isOpen: true, title: 'Error', message: err.message || 'Failed to save solution', type: 'error' })
+      console.error('Error submitting followup:', err)
+      setNotif({ isOpen: true, title: 'Submission Error', message: err.message || 'Failed to record followup action', type: 'error' })
     } finally {
       setSubmittingFollowup(false)
     }
   }
 
+  // Handle Save CCTV Request Review / Approval (Principal / Admin)
+  const handleSaveCctvHandling = async (e) => {
+    e.preventDefault()
+    if (!selectedCctv) return
+
+    try {
+      setSubmittingCctv(true)
+      const payload = {
+        status: cctvForm.status,
+        reviewer_notes: cctvForm.reviewer_notes.trim() || null,
+        updated_at: new Date().toISOString()
+      }
+
+      const { error } = await supabase
+        .from('cctv_footage_requests')
+        .update(payload)
+        .eq('id', selectedCctv.id)
+
+      if (error) throw error
+
+      // Trigger Email & Google Chat notifications for status update (Notify Requester)
+      try {
+        fetch('/api/notifications/cctv-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'status_updated',
+            requestNumber: selectedCctv.request_number || `CCTV/#${selectedCctv.id}`,
+            requesterUserId: selectedCctv.requester_user_id,
+            requesterName: selectedCctv.requester ? `${selectedCctv.requester.user_nama_depan || ''} ${selectedCctv.requester.user_nama_belakang || ''}`.trim() : null,
+            cctvDate: selectedCctv.cctv_date,
+            startTime: selectedCctv.start_time,
+            endTime: selectedCctv.end_time,
+            roomName: selectedCctv.room_name,
+            reason: selectedCctv.reason,
+            status: cctvForm.status,
+            reviewerNotes: cctvForm.reviewer_notes.trim() || null
+          })
+        }).catch(err => console.error('[CCTV Status Update Notification Error]:', err))
+      } catch (notifErr) {
+        console.warn('Failed to dispatch CCTV status update notification:', notifErr)
+      }
+
+      setShowCctvModal(false)
+      setNotif({ isOpen: true, title: 'Status Updated', message: `CCTV Request #${selectedCctv.request_number || selectedCctv.id} updated to ${cctvForm.status.toUpperCase()} successfully! Notification sent to requester.`, type: 'success' })
+      fetchCctvData()
+    } catch (err) {
+      console.error('Error updating CCTV request status:', err)
+      setNotif({ isOpen: true, title: 'Update Failed', message: err.message || 'Failed to update CCTV request', type: 'error' })
+    } finally {
+      setSubmittingCctv(false)
+    }
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+
+      {/* Header Title Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-            <FontAwesomeIcon icon={faClipboardCheck} className="text-indigo-600" />
-            Incident Report Handling & Solutions
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2" style={{ color: theme.textPrimary }}>
+            <FontAwesomeIcon icon={activeTab === 'incidents' ? faClipboardCheck : faVideo} className="text-blue-600 dark:text-blue-400" />
+            <span>Incident & CCTV Requests Approval</span>
           </h1>
-          <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-            Review incoming student incident reports, record follow-up solutions, and manage resolution statuses.
+          <p className="text-xs sm:text-sm mt-1" style={{ color: theme.textSecondary }}>
+            Review, investigate, log solutions, and approve CCTV footage requests across all school units.
           </p>
         </div>
       </div>
 
-      {/* Metric Cards Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card className="p-4 border-l-4 border-l-gray-400" style={{ background: theme.cardBg, borderColor: theme.border }}>
-          <div className="text-xs font-bold uppercase" style={{ color: theme.textSecondary }}>Total Reports</div>
-          <div className="text-2xl font-extrabold mt-1" style={{ color: theme.textPrimary }}>{metrics.total}</div>
-        </Card>
-        
-        <Card className="p-4 border-l-4 border-l-amber-500 border" style={{ background: theme.yellowBg, borderColor: theme.border }}>
-          <div className="text-xs font-bold uppercase flex items-center justify-between" style={{ color: theme.yellowText }}>
-            <span>Needs Action / Waiting</span>
-            <FontAwesomeIcon icon={faClock} />
-          </div>
-          <div className="text-2xl font-extrabold mt-1" style={{ color: theme.yellowText }}>{metrics.waiting}</div>
-        </Card>
+      {/* ============================================================================== */}
+      {/* METRICS CARDS SECTION (Dynamic based on Active Tab) */}
+      {/* ============================================================================== */}
+      {activeTab === 'incidents' ? (
+        /* Summary Metric Cards for Incidents */
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Total Cases</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: theme.textPrimary }}>{metrics.total}</p>
+              </div>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: theme.subtleBg }}>
+                <FontAwesomeIcon icon={faClipboardCheck} className="text-sm" style={{ color: theme.textSecondary }} />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="p-4 border-l-4 border-l-blue-500 border" style={{ background: theme.blueBg, borderColor: theme.border }}>
-          <div className="text-xs font-bold uppercase flex items-center justify-between" style={{ color: theme.blueText }}>
-            <span>On Progress</span>
-            <FontAwesomeIcon icon={faHourglassHalf} />
-          </div>
-          <div className="text-2xl font-extrabold mt-1" style={{ color: theme.blueText }}>{metrics.onProgress}</div>
-        </Card>
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: theme.yellowText }}>Waiting Review</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: theme.yellowText }}>{metrics.waiting}</p>
+              </div>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: theme.yellowBg }}>
+                <FontAwesomeIcon icon={faClock} className="text-sm" style={{ color: theme.yellowText }} />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="p-4 border-l-4 border-l-emerald-500 border" style={{ background: theme.greenBg, borderColor: theme.border }}>
-          <div className="text-xs font-bold uppercase flex items-center justify-between" style={{ color: theme.greenText }}>
-            <span>Completed</span>
-            <FontAwesomeIcon icon={faCheckCircle} />
-          </div>
-          <div className="text-2xl font-extrabold mt-1" style={{ color: theme.greenText }}>{metrics.completed}</div>
-        </Card>
-      </div>
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: theme.blueText }}>On Progress</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: theme.blueText }}>{metrics.onProgress}</p>
+              </div>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: theme.blueBg }}>
+                <FontAwesomeIcon icon={faHourglassHalf} className="text-sm" style={{ color: theme.blueText }} />
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Filter Controls Card */}
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: theme.greenText }}>Completed</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: theme.greenText }}>{metrics.completed}</p>
+              </div>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: theme.greenBg }}>
+                <FontAwesomeIcon icon={faCheckCircle} className="text-sm" style={{ color: theme.greenText }} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        /* Summary Metric Cards for CCTV Requests */
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary }}>Total Requests</p>
+                <p className="text-xl font-bold mt-0.5" style={{ color: theme.textPrimary }}>{cctvMetrics.total}</p>
+              </div>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-600">
+                <FontAwesomeIcon icon={faVideo} className="text-xs" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Pending</p>
+                <p className="text-xl font-bold mt-0.5 text-amber-700 dark:text-amber-400">{cctvMetrics.pending}</p>
+              </div>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-amber-100 text-amber-700">
+                <FontAwesomeIcon icon={faClock} className="text-xs" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">Approved</p>
+                <p className="text-xl font-bold mt-0.5 text-blue-700 dark:text-blue-400">{cctvMetrics.approved}</p>
+              </div>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 text-blue-700">
+                <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Completed</p>
+                <p className="text-xl font-bold mt-0.5 text-emerald-700 dark:text-emerald-400">{cctvMetrics.completed}</p>
+              </div>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-700">
+                <FontAwesomeIcon icon={faCheckDouble} className="text-xs" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <CardContent className="p-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400">Rejected</p>
+                <p className="text-xl font-bold mt-0.5 text-rose-700 dark:text-rose-400">{cctvMetrics.rejected}</p>
+              </div>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-rose-100 text-rose-700">
+                <FontAwesomeIcon icon={faTimesCircle} className="text-xs" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ============================================================================== */}
+      {/* SEARCH & FILTER TOOLBAR (Dynamic based on Active Tab) */}
+      {/* ============================================================================== */}
       <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Search Input */}
-            <div className="relative">
-              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-2.5 text-gray-400 text-xs" />
-              <Input
-                type="text"
-                placeholder="Search student, title, code, reporter..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-8 text-xs"
-                style={inputStyle}
-              />
-            </div>
+          {activeTab === 'incidents' ? (
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative w-full sm:flex-1">
+                <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: theme.textSecondary }} />
+                <Input
+                  type="text"
+                  placeholder="Search incident number, title, student name, reporter..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={inputStyle}
+                  className="pl-9 text-xs w-full"
+                />
+              </div>
 
-            {/* Unit Filter */}
-            <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faBuilding} className="text-gray-400 text-xs" />
-              <select
-                value={selectedUnitFilter}
-                onChange={e => setSelectedUnitFilter(e.target.value)}
-                className="w-full text-xs px-3 py-2 rounded-md focus:outline-none border"
-                style={selectStyle}
-              >
-                <option value="all">All Units</option>
-                {units.map(u => (
-                  <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
-                ))}
-              </select>
-            </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: theme.textSecondary }}>
+                  <FontAwesomeIcon icon={faBuilding} className="text-xs" />
+                  <span>Unit:</span>
+                </div>
+                <select
+                  value={selectedUnitFilter}
+                  onChange={(e) => setSelectedUnitFilter(e.target.value)}
+                  style={selectStyle}
+                  className="px-3 py-2 text-xs w-full sm:w-auto focus:outline-none"
+                >
+                  <option value="all">All Units</option>
+                  {units.map((u) => (
+                    <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
+                  ))}
+                </select>
 
-            {/* Status Filter */}
-            <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faFilter} className="text-gray-400 text-xs" />
-              <select
-                value={selectedStatusFilter}
-                onChange={e => setSelectedStatusFilter(e.target.value)}
-                className="w-full text-xs px-3 py-2 rounded-md focus:outline-none border font-semibold"
-                style={selectStyle}
-              >
-                <option value="all">All Statuses</option>
-                <option value="waiting">Waiting Solution (Needs Action)</option>
-                <option value="on_progress">On Progress</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Reports Table */}
-      <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-        <CardHeader className="pb-3 border-b" style={{ borderColor: theme.border }}>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold" style={{ color: theme.textPrimary }}>Incoming Incident Reports</CardTitle>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>
-              Filtered Total: {filteredReports.length}
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-4">
-          {loading ? (
-            <div className="py-12 text-center text-xs flex items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
-              <FontAwesomeIcon icon={faSpinner} spin />
-              <span>Loading incoming incident reports...</span>
-            </div>
-          ) : filteredReports.length === 0 ? (
-            <div className="py-12 text-center text-xs" style={{ color: theme.textSecondary }}>
-              No incident reports found for the selected filter.
+                <div className="flex items-center gap-1 text-xs whitespace-nowrap ml-2" style={{ color: theme.textSecondary }}>
+                  <FontAwesomeIcon icon={faSliders} className="text-xs" />
+                  <span>Status:</span>
+                </div>
+                <select
+                  value={selectedStatusFilter}
+                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                  style={selectStyle}
+                  className="px-3 py-2 text-xs w-full sm:w-auto focus:outline-none"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="waiting">Waiting Review</option>
+                  <option value="on_progress">On Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Mobile / Tablet Responsive Card View (Visible on screens < lg) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-3">
-                {filteredReports.map(rep => {
-                  const studentName = `${rep.student?.user_nama_depan || ''} ${rep.student?.user_nama_belakang || ''}`.trim() || 'Unknown Student'
-                  const reporterName = `${rep.reporter?.user_nama_depan || ''} ${rep.reporter?.user_nama_belakang || ''}`.trim() || 'Staff'
-                  const unitName = rep.unit?.unit_name || '-'
-
-                  let locationDisplay = '-'
-                  let extraStudentsCount = 0
-                  let casePreview = ''
-                  if (rep.description) {
-                    if (rep.description.includes('📍 Place of Incident:')) {
-                      const matchLoc = rep.description.match(/📍 Place of Incident:\s*([^\n]+)/)
-                      if (matchLoc && matchLoc[1]) locationDisplay = matchLoc[1].trim()
-                    }
-                    if (rep.description.includes('👥 All Involved Students:')) {
-                      const matchSt = rep.description.match(/👥 All Involved Students:\s*([^\n]+)/)
-                      if (matchSt && matchSt[1]) {
-                        const names = matchSt[1].split(',').map(n => n.trim()).filter(Boolean)
-                        if (names.length > 1) extraStudentsCount = names.length - 1
-                      }
-                    }
-                    casePreview = rep.description
-                      .replace(/📍 Place of Incident:[^\n]+\n?/, '')
-                      .replace(/👥 All Involved Students:[^\n]+\n?/, '')
-                      .trim()
-                    if (casePreview.length > 70) casePreview = casePreview.substring(0, 70) + '...'
-                  }
-
-                  return (
-                    <div
-                      key={rep.id}
-                      onClick={() => handleOpenHandlingModal(rep)}
-                      className="p-3.5 rounded-xl border transition-all hover:shadow-md cursor-pointer flex flex-col justify-between space-y-3"
-                      style={{ background: theme.cardBg, borderColor: theme.border }}
-                    >
-                      <div className="space-y-2">
-                        {/* Top Header: Title & Badges */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="font-bold text-xs leading-tight" style={{ color: theme.textPrimary }}>
-                              {rep.title}
-                            </h3>
-                            <span className="text-[10px]" style={{ color: theme.textSecondary }}>
-                              {rep.incident_number || `#${rep.id}`}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5 justify-end shrink-0">
-                            {getLevelBadge(rep.incident_record)}
-                            {getStatusBadge(rep.status)}
-                          </div>
-                        </div>
-
-                        {/* Case Preview */}
-                        {casePreview && (
-                          <p className="text-[11px] text-gray-500 italic line-clamp-2 bg-gray-50 dark:bg-gray-800/40 p-2 rounded border border-gray-100 dark:border-gray-800">
-                            "{casePreview}"
-                          </p>
-                        )}
-
-                        {/* Details Grid */}
-                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t" style={{ borderColor: theme.border }}>
-                          <div>
-                            <span className="block text-[10px] uppercase font-semibold" style={{ color: theme.textSecondary }}>Student</span>
-                            <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                              <span>{studentName}</span>
-                              {extraStudentsCount > 0 && (
-                                <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
-                                  +{extraStudentsCount}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div>
-                            <span className="block text-[10px] uppercase font-semibold" style={{ color: theme.textSecondary }}>Unit / Location</span>
-                            <span className="font-medium" style={{ color: theme.textBody }}>{unitName} • {locationDisplay}</span>
-                          </div>
-
-                          <div>
-                            <span className="block text-[10px] uppercase font-semibold" style={{ color: theme.textSecondary }}>Date & Time</span>
-                            <span className="font-medium" style={{ color: theme.textBody }}>{rep.incident_date} ({rep.incident_time})</span>
-                          </div>
-
-                          <div>
-                            <span className="block text-[10px] uppercase font-semibold" style={{ color: theme.textSecondary }}>Reported By</span>
-                            <span className="font-medium" style={{ color: theme.textBody }}>{reporterName}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Button */}
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleOpenHandlingModal(rep)
-                        }}
-                        className={`w-full text-xs py-1.5 flex items-center justify-center gap-1.5 font-semibold ${
-                          rep.status === 'waiting'
-                            ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                        }`}
-                      >
-                        <FontAwesomeIcon icon={faEye} />
-                        <span>{rep.status === 'waiting' ? 'Add Solution' : 'View & Update'}</span>
-                      </Button>
-                    </div>
-                  )
-                })}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative w-full sm:flex-1">
+                <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: theme.textSecondary }} />
+                <Input
+                  type="text"
+                  placeholder="Search CCTV code, room location, requester name, reason..."
+                  value={cctvSearchQuery}
+                  onChange={(e) => setCctvSearchQuery(e.target.value)}
+                  style={inputStyle}
+                  className="pl-9 text-xs w-full"
+                />
               </div>
 
-              {/* Desktop / Large Screen Table View (Visible on screens >= lg) */}
-              <div className="hidden lg:block space-y-2">
-                <div className="flex items-center justify-between text-[11px] px-1" style={{ color: theme.textSecondary }}>
-                  <div className="flex items-center gap-1.5 font-medium text-indigo-600 dark:text-indigo-400">
-                    <FontAwesomeIcon icon={faArrowsLeftRight} className="animate-pulse" />
-                    <span>Scroll table horizontally to view all columns</span>
-                  </div>
-                  <span className="text-[10px] italic" style={{ color: theme.textSecondary }}>💡 Click any row or action button to manage incident</span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: theme.textSecondary }}>
+                  <FontAwesomeIcon icon={faBuilding} className="text-xs" />
+                  <span>Unit:</span>
                 </div>
+                <select
+                  value={cctvUnitFilter}
+                  onChange={(e) => setCctvUnitFilter(e.target.value)}
+                  style={selectStyle}
+                  className="px-3 py-2 text-xs w-full sm:w-auto focus:outline-none"
+                >
+                  <option value="all">All Units</option>
+                  {units.map((u) => (
+                    <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
+                  ))}
+                </select>
 
-                <div className="overflow-x-auto rounded-lg border [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-gray-800/50 [&::-webkit-scrollbar-thumb]:bg-indigo-400/60 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-indigo-600" style={{ borderColor: theme.border }}>
-                  <table className="min-w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="text-left border-b font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: theme.textSecondary, borderColor: theme.border, background: theme.cardBgAlt }}>
-                      <th className="py-3 px-3 min-w-[200px]">Code / Title / Case Preview</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Student</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Unit</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Location</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Date & Time</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Incident Level</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Reported By</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Status</th>
-                      <th className="py-3 px-3 text-right whitespace-nowrap sticky right-0 z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.1)]" style={{ background: theme.cardBgAlt }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: theme.border }}>
-                    {filteredReports.map(rep => {
-                      const studentName = `${rep.student?.user_nama_depan || ''} ${rep.student?.user_nama_belakang || ''}`.trim() || 'Unknown Student'
-                      const reporterName = `${rep.reporter?.user_nama_depan || ''} ${rep.reporter?.user_nama_belakang || ''}`.trim() || 'Staff'
-                      const unitName = rep.unit?.unit_name || '-'
-
-                      let locationDisplay = '-'
-                      let extraStudentsCount = 0
-                      let casePreview = ''
-                      if (rep.description) {
-                        if (rep.description.includes('📍 Place of Incident:')) {
-                          const matchLoc = rep.description.match(/📍 Place of Incident:\s*([^\n]+)/)
-                          if (matchLoc && matchLoc[1]) locationDisplay = matchLoc[1].trim()
-                        }
-                        if (rep.description.includes('👥 All Involved Students:')) {
-                          const matchSt = rep.description.match(/👥 All Involved Students:\s*([^\n]+)/)
-                          if (matchSt && matchSt[1]) {
-                            const names = matchSt[1].split(',').map(n => n.trim()).filter(Boolean)
-                            if (names.length > 1) extraStudentsCount = names.length - 1
-                          }
-                        }
-                        casePreview = rep.description
-                          .replace(/📍 Place of Incident:[^\n]+\n?/, '')
-                          .replace(/👥 All Involved Students:[^\n]+\n?/, '')
-                          .trim()
-                        if (casePreview.length > 55) casePreview = casePreview.substring(0, 55) + '...'
-                      }
-
-                      return (
-                        <tr
-                          key={rep.id}
-                          onClick={() => handleOpenHandlingModal(rep)}
-                          className="transition-colors cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20"
-                          style={{ borderColor: theme.border }}
-                        >
-                          <td className="py-3 px-3 min-w-[200px]">
-                            <div className="font-bold hover:underline" style={{ color: theme.textPrimary }}>{rep.title}</div>
-                            <div className="text-[10px]" style={{ color: theme.textSecondary }}>{rep.incident_number || `#${rep.id}`}</div>
-                            {casePreview && (
-                              <div className="text-[11px] text-gray-500 italic mt-0.5 line-clamp-1">
-                                "{casePreview}"
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                              <span>{studentName}</span>
-                              {extraStudentsCount > 0 && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800" title="Multiple students involved">
-                                  +{extraStudentsCount}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <span className="px-2 py-0.5 rounded font-medium border inline-block whitespace-nowrap" style={{ background: theme.subtleBg, color: theme.textBody, borderColor: theme.border }}>
-                              {unitName}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 font-medium whitespace-nowrap" style={{ color: theme.textBody }}>
-                            {locationDisplay}
-                          </td>
-                          <td className="py-3 px-3 whitespace-nowrap" style={{ color: theme.textBody }}>
-                            <div>{rep.incident_date}</div>
-                            <div className="text-[10px]" style={{ color: theme.textSecondary }}>{rep.incident_time}</div>
-                          </td>
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            {getLevelBadge(rep.incident_record)}
-                          </td>
-                          <td className="py-3 px-3 whitespace-nowrap" style={{ color: theme.textBody }}>{reporterName}</td>
-                          <td className="py-3 px-3 whitespace-nowrap">{getStatusBadge(rep.status)}</td>
-                          <td className="py-3 px-3 text-right whitespace-nowrap sticky right-0 z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.1)]" style={{ background: theme.cardBg }}>
-                            <Button
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleOpenHandlingModal(rep)
-                              }}
-                              className={`text-xs px-2.5 py-1 inline-flex items-center gap-1 ml-auto font-semibold whitespace-nowrap ${
-                                rep.status === 'waiting'
-                                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                              }`}
-                            >
-                              <FontAwesomeIcon icon={faEye} />
-                              <span>{rep.status === 'waiting' ? 'Add Solution' : 'View & Update'}</span>
-                            </Button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                <div className="flex items-center gap-1 text-xs whitespace-nowrap ml-2" style={{ color: theme.textSecondary }}>
+                  <FontAwesomeIcon icon={faSliders} className="text-xs" />
+                  <span>Status:</span>
+                </div>
+                <select
+                  value={cctvStatusFilter}
+                  onChange={(e) => setCctvStatusFilter(e.target.value)}
+                  style={selectStyle}
+                  className="px-3 py-2 text-xs w-full sm:w-auto focus:outline-none"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="rejected">Rejected</option>
+                </select>
               </div>
             </div>
-          </div>
-        )}
+          )}
         </CardContent>
       </Card>
 
-      {/* Incident Handling & Solution Modal */}
+      {/* ============================================================================== */}
+      {/* TABLE CONTAINER CARD WITH INTEGRATED TABS AT THE TOP */}
+      {/* ============================================================================== */}
+      <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
+        {/* Tab Navigation Header on Top of List Table */}
+        <CardHeader className="p-0 border-b overflow-x-auto" style={{ borderColor: theme.border }}>
+          <div className="flex items-center">
+            {/* Tab 1: Incoming Incident Reports */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('incidents')}
+              className={`px-5 py-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'incidents'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/30'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40'
+              }`}
+            >
+              <FontAwesomeIcon icon={faClipboardCheck} />
+              <span>Incoming Incident Reports</span>
+              <span className="ml-1 px-2.5 py-0.5 text-[11px] rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-extrabold">
+                {metrics.total}
+              </span>
+            </button>
+
+            {/* Tab 2: Incoming CCTV Requests (Strictly for is_principal and is_admin) */}
+            {isAuthorizedForCctv && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('cctv')
+                  fetchCctvData()
+                }}
+                className={`px-5 py-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'cctv'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/30'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40'
+                }`}
+              >
+                <FontAwesomeIcon icon={faVideo} />
+                <span>Incoming CCTV Requests</span>
+                <span className="ml-1 px-2.5 py-0.5 text-[11px] rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-extrabold">
+                  {cctvMetrics.total}
+                </span>
+              </button>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0 overflow-x-auto">
+          {/* TAB 1: INCIDENT REPORTS TABLE BODY */}
+          {activeTab === 'incidents' && (
+            loading ? (
+              <div className="p-8 text-center" style={{ color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl mb-2 text-blue-500" />
+                <p className="text-xs font-medium">Loading incident queue...</p>
+              </div>
+            ) : filteredReports.length === 0 ? (
+              <div className="p-8 text-center" style={{ color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faClipboardCheck} className="text-3xl mb-2 opacity-40" />
+                <p className="text-xs font-medium">No incident reports found matching filter criteria.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b text-[11px] font-semibold uppercase tracking-wider" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                    <th className="p-3">Inc # / Date</th>
+                    <th className="p-3">Student & Unit</th>
+                    <th className="p-3">Incident Title</th>
+                    <th className="p-3">Level</th>
+                    <th className="p-3">Reporter</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                  {filteredReports.map((r) => {
+                    const studentName = r.student ? `${r.student.user_nama_depan || ''} ${r.student.user_nama_belakang || ''}`.trim() : 'N/A'
+                    const reporterName = r.reporter ? `${r.reporter.user_nama_depan || ''} ${r.reporter.user_nama_belakang || ''}`.trim() : 'Staff'
+                    const unitName = r.unit?.unit_name || '-'
+
+                    return (
+                      <tr key={r.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-bold" style={{ color: theme.textPrimary }}>{r.incident_number || `#${r.id}`}</div>
+                          <div className="text-[10px]" style={{ color: theme.textSecondary }}>{r.incident_date} {r.incident_time}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-semibold" style={{ color: theme.textPrimary }}>{studentName}</div>
+                          <div className="text-[10px] font-medium text-blue-600 dark:text-blue-400">{unitName}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-medium max-w-xs truncate" style={{ color: theme.textPrimary }}>{r.title}</div>
+                          <div className="text-[10px] truncate max-w-xs" style={{ color: theme.textSecondary }}>{r.place_of_incident || 'Unspecified location'}</div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {getLevelBadge(r.incident_record)}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-medium" style={{ color: theme.textPrimary }}>{reporterName}</div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {getStatusBadge(r.status)}
+                        </td>
+                        <td className="p-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => handleOpenHandlingModal(r)}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-md cursor-pointer transition-all inline-flex items-center gap-1 shadow-xs"
+                            style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}` }}
+                          >
+                            <FontAwesomeIcon icon={faEye} className="text-[10px]" />
+                            <span>Review & Handle</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )
+          )}
+
+          {/* TAB 2: CCTV REQUESTS TABLE BODY (Principal & Admin Only) */}
+          {activeTab === 'cctv' && isAuthorizedForCctv && (
+            loadingCctv ? (
+              <div className="p-8 text-center" style={{ color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl mb-2 text-blue-500" />
+                <p className="text-xs font-medium">Loading CCTV requests...</p>
+              </div>
+            ) : filteredCctvRequests.length === 0 ? (
+              <div className="p-8 text-center" style={{ color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faFilm} className="text-3xl mb-2 opacity-40" />
+                <p className="text-xs font-medium">No CCTV footage requests found matching filter criteria.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b text-[11px] font-semibold uppercase tracking-wider" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                    <th className="p-3">Code / Date</th>
+                    <th className="p-3">Time & Location</th>
+                    <th className="p-3">Requester & Unit</th>
+                    <th className="p-3">Reason / Purpose</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                  {filteredCctvRequests.map((r) => {
+                    const reqName = r.requester ? `${r.requester.user_nama_depan || ''} ${r.requester.user_nama_belakang || ''}`.trim() : 'Staff'
+                    const reqEmail = r.requester?.user_email || ''
+                    const unitName = r.requester?.unit?.unit_name || '-'
+
+                    return (
+                      <tr key={r.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-bold text-blue-600 dark:text-blue-400">{r.request_number || `CCTV/#${r.id}`}</div>
+                          <div className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>Req Date: {r.cctv_date}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold" style={{ color: theme.textPrimary }}>{r.room_name}</div>
+                          <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{r.start_time} - {r.end_time}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-semibold" style={{ color: theme.textPrimary }}>{reqName}</div>
+                          <div className="text-[10px] font-medium text-blue-600 dark:text-blue-400">{unitName}</div>
+                        </td>
+                        <td className="p-3 max-w-xs">
+                          <div className="font-medium line-clamp-2" style={{ color: theme.textPrimary }}>{r.reason}</div>
+                          {r.incident && (
+                            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+                              Linked: {r.incident.incident_number || `#${r.incident.id}`} — {r.incident.title}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {getCctvStatusBadge(r.status)}
+                        </td>
+                        <td className="p-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => handleOpenCctvModal(r)}
+                            className="px-3 py-1.5 text-xs font-bold rounded-md cursor-pointer transition-all inline-flex items-center gap-1 shadow-xs bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <FontAwesomeIcon icon={faSliders} className="text-[10px]" />
+                            <span>Process / Review</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ============================================================================== */}
+      {/* MODAL 1: INCIDENT HANDLING & SOLUTION LOG (Staff / Admin) */}
+      {/* ============================================================================== */}
       <Modal
         isOpen={showHandlingModal}
         onClose={() => setShowHandlingModal(false)}
-        title={selectedReport ? `Incident Handling: ${selectedReport.title}` : 'Incident Handling'}
+        title={selectedReport ? `Incident Handling: ${selectedReport.incident_number || `#${selectedReport.id}`}` : 'Incident Handling'}
         maxWidth="max-w-4xl"
       >
         {selectedReport && (() => {
-          let allStudentsText = `${selectedReport.student?.user_nama_depan || ''} ${selectedReport.student?.user_nama_belakang || ''}`.trim() || 'Student'
-          let locationText = selectedReport.place_of_incident || '-'
-          let cleanCaseDescription = selectedReport.description || ''
-
-          if (cleanCaseDescription.includes('👥 All Involved Students:')) {
-            const matchSt = cleanCaseDescription.match(/👥 All Involved Students:\s*([^\n]+)/)
-            if (matchSt && matchSt[1]) {
-              allStudentsText = matchSt[1].trim()
-            }
-            cleanCaseDescription = cleanCaseDescription.replace(/👥 All Involved Students:[^\n]+\n?/, '')
-          }
-          if (cleanCaseDescription.includes('📍 Place of Incident:')) {
-            const matchLoc = cleanCaseDescription.match(/📍 Place of Incident:\s*([^\n]+)/)
-            if (matchLoc && matchLoc[1]) {
-              locationText = matchLoc[1].trim()
-            }
-            cleanCaseDescription = cleanCaseDescription.replace(/📍 Place of Incident:[^\n]+\n?/, '')
-          }
-          cleanCaseDescription = cleanCaseDescription.trim()
-
-          const reporterDisplayName = (() => {
-            const r = selectedReport.reporter
-            if (r) {
-              const full = `${r.user_nama_depan || ''} ${r.user_nama_belakang || ''}`.trim()
-              if (full) return full
-              if (r.user_email) return r.user_email.split('@')[0]
-            }
-            if (currentUser) {
-              const cFull = `${currentUser.namaDepan || currentUser.user_nama_depan || ''} ${currentUser.namaBelakang || currentUser.user_nama_belakang || ''}`.trim()
-              if (cFull) return cFull
-              if (currentUser.username) return currentUser.username
-            }
-            return 'Staff'
-          })()
+          const studentName = selectedReport.student ? `${selectedReport.student.user_nama_depan || ''} ${selectedReport.student.user_nama_belakang || ''}`.trim() : 'N/A'
+          const reporterName = selectedReport.reporter ? `${selectedReport.reporter.user_nama_depan || ''} ${selectedReport.reporter.user_nama_belakang || ''}`.trim() : 'Staff'
 
           return (
             <div className="space-y-5 text-xs">
-              {/* Header Summary */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                <div>
-                  <span className="text-xs font-mono font-bold text-red-600 dark:text-red-400">
-                    {selectedReport.incident_number || `#${selectedReport.id}`}
-                  </span>
-                  <div className="text-xs text-gray-400">
-                    Reported by <strong>{reporterDisplayName}</strong> on {selectedReport.created_at ? new Date(selectedReport.created_at).toLocaleDateString('en-GB') : '-'}
-                  </div>
-                </div>
-                <div>{getStatusBadge(selectedReport.status)}</div>
-              </div>
-
-              {/* Metadata Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 p-3 rounded-lg border" style={{ background: theme.cardBgAlt, borderColor: theme.border }}>
-                <div className="sm:col-span-2">
-                  <div className="text-[10px] uppercase font-bold" style={{ color: theme.textSecondary }}>Involved Student(s)</div>
-                  <div className="font-bold text-blue-600 dark:text-blue-400 text-xs mt-0.5 flex items-start gap-1">
-                    <FontAwesomeIcon icon={faUser} className="text-[10px] text-indigo-500 mt-0.5" />
-                    <span>{allStudentsText}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-bold" style={{ color: theme.textSecondary }}>School Unit</div>
-                  <div className="font-semibold text-xs mt-0.5 flex items-center gap-1" style={{ color: theme.textPrimary }}>
-                    <FontAwesomeIcon icon={faBuilding} className="text-[10px] text-indigo-500" />
-                    {selectedReport.unit?.unit_name || '-'}
-                  </div>
-                  {locationText !== '-' && (
-                    <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-1">
-                      📍 {locationText}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-bold" style={{ color: theme.textSecondary }}>Date & Time</div>
-                  <div className="font-semibold text-xs mt-0.5 flex items-center gap-1" style={{ color: theme.textPrimary }}>
-                    <FontAwesomeIcon icon={faCalendar} className="text-[10px] text-indigo-500" />
-                    <span>
-                      {selectedReport.incident_date ? selectedReport.incident_date.split('-').reverse().join('/') : '-'}
-                      {selectedReport.incident_time ? ` • ${selectedReport.incident_time.slice(0, 5)}` : ''}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-bold mb-1" style={{ color: theme.textSecondary }}>Incident Level</div>
+              
+              {/* Top Case Overview Box */}
+              <div className="p-3.5 rounded-lg border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2" style={{ borderColor: theme.border }}>
                   <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                      {selectedReport.unit?.unit_name || 'General Unit'}
+                    </span>
+                    <h3 className="text-sm font-bold mt-0.5" style={{ color: theme.textPrimary }}>{selectedReport.title}</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
                     {getLevelBadge(selectedReport.incident_record)}
+                    {getStatusBadge(selectedReport.status)}
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div>
+                    <span style={{ color: theme.textSecondary }}>Student Involved:</span>
+                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{studentName}</p>
+                  </div>
+                  <div>
+                    <span style={{ color: theme.textSecondary }}>Reporter:</span>
+                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{reporterName}</p>
+                  </div>
+                  <div>
+                    <span style={{ color: theme.textSecondary }}>Date & Time:</span>
+                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedReport.incident_date} {selectedReport.incident_time}</p>
+                  </div>
+                  <div>
+                    <span style={{ color: theme.textSecondary }}>Location:</span>
+                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedReport.place_of_incident || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t text-[11px]" style={{ borderColor: theme.border }}>
+                  <span className="font-semibold block mb-0.5" style={{ color: theme.textPrimary }}>Chronology / Description:</span>
+                  <p className="whitespace-pre-wrap leading-relaxed" style={{ color: theme.textSecondary }}>{selectedReport.description}</p>
                 </div>
               </div>
 
-              {/* Case Description & Initial Action */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                  <div className="font-bold text-xs mb-1 text-red-600 dark:text-red-400">Describe the Case</div>
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: theme.textBody }}>
-                    {cleanCaseDescription || 'No case description provided.'}
-                  </p>
-                </div>
+              {/* Grid: Left = Timeline History, Right = Add Action Log */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                {/* Left Column: Solution & Action Timeline */}
+                <div className="space-y-3">
+                  <h4 className="font-bold text-xs uppercase tracking-wider flex items-center justify-between border-b pb-1.5" style={{ color: theme.textPrimary, borderColor: theme.border }}>
+                    <span>Investigation & Solution Log</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: theme.blueBg, color: theme.blueText }}>
+                      {followups.length} entries
+                    </span>
+                  </h4>
 
-                <div className="p-3 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                  <div className="font-bold text-xs mb-1 text-blue-600 dark:text-blue-400">Things Done by Teacher (Initial Action)</div>
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: theme.textBody }}>
-                    {selectedReport.action_taken || 'No initial action recorded.'}
-                  </p>
-                </div>
-              </div>
-
-            {/* Two Section Layout: Timeline History & Add Solution Form */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {/* Left Column: Follow-up Timeline */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                  <FontAwesomeIcon icon={faClock} className="text-indigo-500" />
-                  <span>Timeline History</span>
-                </h4>
-
-                {loadingFollowups ? (
-                  <div className="py-6 text-center text-xs flex items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
-                    <FontAwesomeIcon icon={faSpinner} spin />
-                    <span>Loading timeline...</span>
-                  </div>
-                ) : followups.length === 0 ? (
-                  <div className="py-6 text-center text-xs border rounded-lg border-dashed" style={{ color: theme.textSecondary, borderColor: theme.border }}>
-                    No follow-up actions logged yet.
-                  </div>
-                ) : (
-                  <div className="relative pl-5 space-y-3 max-h-64 overflow-y-auto pr-1 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-indigo-500/30">
-                    {followups.map((fol) => {
-                      const handler = `${fol.user?.user_nama_depan || ''} ${fol.user?.user_nama_belakang || ''}`.trim() || 'Staff/Counselor'
-                      const folDate = fol.followup_date ? fol.followup_date.split('-').reverse().join('/') : ''
-                      return (
-                        <div key={fol.id} className="relative">
-                          <div className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-indigo-600 ring-4 ring-indigo-500/20" />
-                          <div className="p-2.5 rounded-lg border space-y-1" style={{ background: theme.cardBgAlt, borderColor: theme.border }}>
-                            <div className="flex items-center justify-between border-b pb-1" style={{ borderColor: theme.border }}>
-                              <span className="font-bold" style={{ color: theme.textPrimary }}>{handler}</span>
-                              <span className="text-[10px]" style={{ color: theme.textSecondary }}>{folDate} {fol.followup_time ? fol.followup_time.slice(0, 5) : ''}</span>
+                  {loadingFollowups ? (
+                    <div className="p-6 text-center" style={{ color: theme.textSecondary }}>
+                      <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-1 text-blue-500" />
+                      <p className="text-[11px]">Loading solution logs...</p>
+                    </div>
+                  ) : followups.length === 0 ? (
+                    <div className="p-6 text-center border border-dashed rounded-lg" style={{ borderColor: theme.border, color: theme.textSecondary }}>
+                      <FontAwesomeIcon icon={faHourglassHalf} className="text-2xl mb-1 opacity-40" />
+                      <p className="text-[11px] font-medium">No actions logged yet.</p>
+                      <p className="text-[10px] opacity-75 mt-0.5">Use the form on the right to record actions taken by Vice Principal / Handling Staff.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                      {followups.map((f) => {
+                        const actorName = f.user ? `${f.user.user_nama_depan || ''} ${f.user.user_nama_belakang || ''}`.trim() : 'Staff'
+                        return (
+                          <div key={f.id} className="p-3 rounded-lg border text-xs space-y-1.5" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                            <div className="flex items-center justify-between font-semibold" style={{ color: theme.textPrimary }}>
+                              <span className="text-blue-600 dark:text-blue-400">{actorName}</span>
+                              <span className="text-[10px] font-normal" style={{ color: theme.textSecondary }}>{f.followup_date} {f.followup_time}</span>
                             </div>
-                            <p className="text-xs leading-relaxed" style={{ color: theme.textBody }}>{fol.action_details}</p>
-
-                            {fol.attachment_url && (
-                              <div className="mt-2 pt-1.5 border-t space-y-1" style={{ borderColor: theme.border }}>
-                                <a href={fol.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
-                                  <FontAwesomeIcon icon={faPaperclip} className="text-[10px]" />
-                                  <span>View Image Attachment</span>
+                            {f.location && (
+                              <div className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>
+                                Location: <span style={{ color: theme.textPrimary }}>{f.location}</span>
+                              </div>
+                            )}
+                            <p className="whitespace-pre-wrap leading-relaxed" style={{ color: theme.textPrimary }}>{f.action_details}</p>
+                            
+                            {f.attachment_url && (
+                              <div className="pt-1">
+                                <a
+                                  href={f.attachment_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  <FontAwesomeIcon icon={faPaperclip} className="text-[9px]" />
+                                  <span>View Attachment Image</span>
                                 </a>
-                                <div>
-                                  <a href={fol.attachment_url} target="_blank" rel="noopener noreferrer">
-                                    <img
-                                      src={fol.attachment_url}
-                                      alt="Follow-up Attachment"
-                                      className="max-h-36 rounded-md border object-cover shadow-sm hover:opacity-90 transition-opacity"
-                                    />
-                                  </a>
-                                </div>
                               </div>
                             )}
 
-                            <div className="flex items-center justify-between text-[10px] pt-1" style={{ color: theme.textSecondary }}>
-                              <span>Status: {fol.resulting_status}</span>
-                              {getStatusBadge(fol.resulting_status)}
+                            <div className="pt-1 flex items-center justify-between text-[10px] border-t mt-1" style={{ borderColor: theme.border }}>
+                              <span style={{ color: theme.textSecondary }}>Resulting Status:</span>
+                              {getStatusBadge(f.resulting_status)}
                             </div>
                           </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Add New Action / Solution */}
+                <div className="space-y-3">
+                  <h4 className="font-bold text-xs uppercase tracking-wider border-b pb-1.5" style={{ color: theme.textPrimary, borderColor: theme.border }}>
+                    Record Action / Solution
+                  </h4>
+
+                  <form onSubmit={handleSubmitFollowup} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs font-medium mb-1 block" style={{ color: theme.textPrimary }}>Action Date *</Label>
+                        <Input
+                          type="date"
+                          required
+                          value={followupForm.followup_date}
+                          onChange={e => setFollowupForm(p => ({ ...p, followup_date: e.target.value }))}
+                          style={inputStyle}
+                          className="w-full text-xs"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium mb-1 block" style={{ color: theme.textPrimary }}>Action Time *</Label>
+                        <Input
+                          type="time"
+                          required
+                          value={followupForm.followup_time}
+                          onChange={e => setFollowupForm(p => ({ ...p, followup_time: e.target.value }))}
+                          style={inputStyle}
+                          className="w-full text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block" style={{ color: theme.textPrimary }}>Action Location / Venue</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. Principal Office, Counseling Room..."
+                        value={followupForm.location}
+                        onChange={e => setFollowupForm(p => ({ ...p, location: e.target.value }))}
+                        style={inputStyle}
+                        className="w-full text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block" style={{ color: theme.textPrimary }}>Action / Investigation Details *</Label>
+                      <textarea
+                        required
+                        rows={4}
+                        placeholder="Describe investigation details, actions taken, parent meetings, student agreement, or solutions implemented..."
+                        value={followupForm.action_details}
+                        onChange={e => setFollowupForm(p => ({ ...p, action_details: e.target.value }))}
+                        className="w-full p-2.5 text-xs rounded-md border resize-y focus:outline-none"
+                        style={inputStyle}
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block" style={{ color: theme.textPrimary }}>Upload Proof Image (Optional)</Label>
+                      {!selectedFile ? (
+                        <label className="flex items-center gap-2 p-2 rounded-md border border-dashed cursor-pointer text-xs" style={{ borderColor: theme.border, background: theme.cardBg }}>
+                          <FontAwesomeIcon icon={faImage} style={{ color: theme.textSecondary }} className="text-xs" />
+                          <span style={{ color: theme.textSecondary }}>Choose image (PNG, JPG, WEBP)...</span>
+                          <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                        </label>
+                      ) : (
+                        <div className="flex items-center justify-between p-2 rounded-md border text-xs" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <img src={filePreview} alt="Attachment Preview" className="w-8 h-8 object-cover rounded border" />
+                            <span className="font-medium truncate" style={{ color: theme.textPrimary }}>{selectedFile.name}</span>
+                          </div>
+                          <button type="button" onClick={handleRemoveFile} className="px-2 py-1 text-xs font-semibold cursor-pointer" style={{ color: theme.redText }}>
+                            ✕
+                          </button>
                         </div>
-                      )
-                    })}
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block" style={{ color: theme.textPrimary }}>Update Case Status *</Label>
+                      <select
+                        value={followupForm.resulting_status}
+                        onChange={e => setFollowupForm(p => ({ ...p, resulting_status: e.target.value }))}
+                        className="w-full text-xs p-2 rounded-md border font-medium"
+                        style={selectStyle}
+                      >
+                        <option value="on_progress">On Progress (Active Case)</option>
+                        <option value="completed">Completed (Case Resolved)</option>
+                      </select>
+                    </div>
+
+                    <div className="pt-1">
+                      <button
+                        type="submit"
+                        disabled={submittingFollowup}
+                        className="w-full py-2 text-xs font-medium rounded-md cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                        style={btnPrimaryStyle}
+                      >
+                        {submittingFollowup ? (
+                          <>
+                            <FontAwesomeIcon icon={faSpinner} spin />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          'Save Solution & Update Status'
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
+                <button
+                  onClick={() => setShowHandlingModal(false)}
+                  className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
+                  style={btnSecondaryStyle}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
+
+      {/* ============================================================================== */}
+      {/* MODAL 2: CCTV REQUEST APPROVAL & REVIEW MODAL (Principal / Admin) */}
+      {/* ============================================================================== */}
+      <Modal
+        isOpen={showCctvModal}
+        onClose={() => setShowCctvModal(false)}
+        title={selectedCctv ? `Process CCTV Request: ${selectedCctv.request_number || `#${selectedCctv.id}`}` : 'Process CCTV Request'}
+        maxWidth="max-w-xl"
+      >
+        {selectedCctv && (() => {
+          const reqName = selectedCctv.requester ? `${selectedCctv.requester.user_nama_depan || ''} ${selectedCctv.requester.user_nama_belakang || ''}`.trim() : 'Staff'
+          const reqEmail = selectedCctv.requester?.user_email || ''
+          const unitName = selectedCctv.requester?.unit?.unit_name || '-'
+
+          return (
+            <form onSubmit={handleSaveCctvHandling} className="space-y-4 text-xs">
+              
+              {/* CCTV Overview Card */}
+              <div className="p-3.5 rounded-lg border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: theme.border }}>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                      Request Code: {selectedCctv.request_number || `#${selectedCctv.id}`}
+                    </span>
+                    <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                      Location: {selectedCctv.room_name}
+                    </h4>
+                  </div>
+                  <div>
+                    {getCctvStatusBadge(selectedCctv.status)}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span style={{ color: theme.textSecondary }}>Requester:</span>
+                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{reqName} ({unitName})</p>
+                    <p className="text-[10px]" style={{ color: theme.textSecondary }}>{reqEmail}</p>
+                  </div>
+                  <div>
+                    <span style={{ color: theme.textSecondary }}>Footage Date & Time:</span>
+                    <p className="font-semibold text-blue-600 dark:text-blue-400">{selectedCctv.cctv_date}</p>
+                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedCctv.start_time} - {selectedCctv.end_time}</p>
+                  </div>
+                </div>
+
+                {selectedCctv.incident && (
+                  <div className="pt-2 border-t text-[11px]" style={{ borderColor: theme.border }}>
+                    <span className="font-semibold block text-indigo-600 dark:text-indigo-400">Linked Incident Report:</span>
+                    <p className="font-medium" style={{ color: theme.textPrimary }}>
+                      {selectedCctv.incident.incident_number || `#${selectedCctv.incident.id}`} — {selectedCctv.incident.title} ({selectedCctv.incident.incident_date})
+                    </p>
                   </div>
                 )}
+
+                <div className="pt-2 border-t text-[11px]" style={{ borderColor: theme.border }}>
+                  <span className="font-semibold block mb-0.5" style={{ color: theme.textPrimary }}>Reason / Purpose:</span>
+                  <p className="whitespace-pre-wrap leading-relaxed" style={{ color: theme.textSecondary }}>{selectedCctv.reason}</p>
+                </div>
               </div>
 
-              {/* Right Column: Form Log New Follow-up & Solution */}
-              <div className="space-y-3 p-3 rounded-lg border" style={{ background: theme.cardBgAlt, borderColor: theme.border }}>
-                <h4 className="text-xs font-bold flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
-                  <FontAwesomeIcon icon={faPlus} className="text-indigo-500" />
-                  <span>Log New Solution / Action</span>
-                </h4>
-
-                <form onSubmit={handleSubmitFollowup} className="space-y-3 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs font-semibold mb-1 block" style={{ color: theme.textPrimary }}>Date *</Label>
-                      <input
-                        type="date"
-                        required
-                        value={followupForm.followup_date}
-                        onChange={e => setFollowupForm(p => ({ ...p, followup_date: e.target.value }))}
-                        className="w-full text-xs p-2.5 rounded-md focus:outline-none border font-medium cursor-pointer"
-                        style={inputStyle}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-semibold mb-1 block" style={{ color: theme.textPrimary }}>Time *</Label>
-                      <input
-                        type="time"
-                        required
-                        value={followupForm.followup_time}
-                        onChange={e => setFollowupForm(p => ({ ...p, followup_time: e.target.value }))}
-                        className="w-full text-xs p-2.5 rounded-md focus:outline-none border font-medium cursor-pointer"
-                        style={inputStyle}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs font-semibold mb-1 block" style={{ color: theme.textPrimary }}>Location</Label>
-                    <Input
-                      type="text"
-                      placeholder="e.g. Counseling Room / Principal Office"
-                      value={followupForm.location}
-                      onChange={e => setFollowupForm(p => ({ ...p, location: e.target.value }))}
-                      style={inputStyle}
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-xs font-semibold mb-1 block" style={{ color: theme.textPrimary }}>Action & Solution Details *</Label>
-                    <textarea
-                      required
-                      rows={3}
-                      placeholder="Describe follow-up action taken, counseling outcome, parent contacts..."
-                      value={followupForm.action_details}
-                      onChange={e => setFollowupForm(p => ({ ...p, action_details: e.target.value }))}
-                      className="w-full text-xs p-2 rounded-md focus:outline-none border"
-                      style={inputStyle}
-                    />
-                  </div>
-
-                  {/* Attachment Upload Field */}
-                  <div>
-                    <Label className="text-xs font-semibold mb-1 flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
-                      <FontAwesomeIcon icon={faPaperclip} className="text-indigo-500" />
-                      <span>Image Attachment (Optional)</span>
-                    </Label>
-                    
-                    {!selectedFile ? (
-                      <label className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" style={{ borderColor: theme.border }}>
-                        <FontAwesomeIcon icon={faImage} className="text-indigo-500 text-sm" />
-                        <span className="text-xs font-medium" style={{ color: theme.textSecondary }}>Choose image (PNG, JPG, WEBP)...</span>
-                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                      </label>
-                    ) : (
-                      <div className="flex items-center justify-between p-2 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <img src={filePreview} alt="Attachment Preview" className="w-9 h-9 object-cover rounded border" />
-                          <span className="text-xs font-medium truncate" style={{ color: theme.textPrimary }}>{selectedFile.name}</span>
-                        </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFile} className="text-red-500 hover:text-red-700 h-7 w-7 p-0">
-                          <FontAwesomeIcon icon={faTrash} className="text-xs" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label className="text-xs font-semibold mb-1 block" style={{ color: theme.textPrimary }}>Update Case Status *</Label>
-                    <select
-                      value={followupForm.resulting_status}
-                      onChange={e => setFollowupForm(p => ({ ...p, resulting_status: e.target.value }))}
-                      className="w-full text-xs p-2 rounded-md focus:outline-none border font-semibold"
-                      style={selectStyle}
-                    >
-                      <option value="on_progress">On Progress (Active Case)</option>
-                      <option value="completed">Completed (Case Resolved)</option>
-                    </select>
-                  </div>
-
-                  <div className="pt-1">
-                    <Button
-                      type="submit"
-                      disabled={submittingFollowup}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2"
-                    >
-                      {submittingFollowup ? (
-                        <span className="flex items-center justify-center gap-1.5">
-                          <FontAwesomeIcon icon={faSpinner} spin />
-                          Saving...
-                        </span>
-                      ) : (
-                        'Save Solution & Update Status'
-                      )}
-                    </Button>
-                  </div>
-                </form>
+              {/* Status Selector */}
+              <div>
+                <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
+                  Update Approval Status <span className="text-red-500">*</span>
+                </Label>
+                <select
+                  value={cctvForm.status}
+                  onChange={e => setCctvForm(p => ({ ...p, status: e.target.value }))}
+                  style={selectStyle}
+                  className="w-full px-3 py-2 text-xs font-bold focus:outline-none"
+                >
+                  <option value="approved">Approved (Principal Approved Request)</option>
+                  <option value="in_progress">In Progress (Security / IT Exporting Footage)</option>
+                  <option value="completed">Completed (Footage Exported & Provided to Requester)</option>
+                  <option value="rejected">Rejected (Request Declined / Camera Unavailable)</option>
+                  <option value="pending">Pending (Under Review)</option>
+                </select>
               </div>
-            </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
-              <Button variant="outline" onClick={() => setShowHandlingModal(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        )
-      })()}
+              {/* Reviewer Notes / Footage Reference Link */}
+              <div>
+                <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
+                  Reviewer Notes / Footage Link (Optional)
+                </Label>
+                <textarea
+                  rows={4}
+                  placeholder="Enter approval notes, footage Google Drive link, export instructions, or rejection reason..."
+                  value={cctvForm.reviewer_notes}
+                  onChange={e => setCctvForm(p => ({ ...p, reviewer_notes: e.target.value }))}
+                  className="w-full p-2.5 text-xs rounded-md border resize-y focus:outline-none"
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCctvModal(false)}
+                  className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
+                  style={btnSecondaryStyle}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingCctv}
+                  className="px-4 py-2 text-xs font-bold rounded-md cursor-pointer bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
+                >
+                  {submittingCctv ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} spin />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faCheckCircle} />
+                      <span>Save Status & Notes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )
+        })()}
       </Modal>
 
       {/* Notification Modal */}

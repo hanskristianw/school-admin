@@ -4,23 +4,67 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import ImageCropModal from '@/components/ImageCropModal';
-import { supabase, createSupabaseWithAuth } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import ImageCropUploader from '@/components/ui/image-crop-uploader';
 import { useTheme } from '@/lib/theme';
 import { useI18n } from '@/lib/i18n';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash, faExclamationTriangle, faSpinner, faShieldAlt, faBan, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
+import {
+  faTrash,
+  faExclamationTriangle,
+  faSpinner,
+  faBan,
+  faSearch,
+  faPlus,
+  faFileImport,
+  faColumns,
+  faUsers,
+  faUserCheck,
+  faUserTimes,
+  faUserShield
+} from '@fortawesome/free-solid-svg-icons';
 
+// Bulletproof User Avatar Component with automatic fallback on broken image URLs
+function UserAvatar({ user, theme, size = "w-7 h-7" }) {
+  const [imgError, setImgError] = useState(false);
+  const initials = `${user.user_nama_depan?.[0] || ''}${user.user_nama_belakang?.[0] || ''}`.toUpperCase();
+  const pic = user.user_manual_picture || user.user_profile_picture;
+
+  if (pic && !imgError) {
+    return (
+      <img
+        src={pic}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+        className={`${size} rounded-full object-cover border shrink-0`}
+        style={{ borderColor: theme.border }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${size} rounded-full flex items-center justify-center font-mono text-[10px] font-semibold border shrink-0`}
+      style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}
+    >
+      {initials || '?'}
+    </div>
+  );
+}
 
 export default function UserManagement() {
-  const { theme } = useTheme()
-  const { t } = useI18n()
-  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
-  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
+  const { theme, isDark } = useTheme();
+  const { t } = useI18n();
+
+  // Dynamic Styles tied to useTheme() (Works 100% in Light & Dark mode)
+  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' };
+  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' };
+  const btnPrimaryStyle = { background: theme.textPrimary, color: isDark ? '#18171A' : '#FFFFFF', border: 'none' };
+  const btnSecondaryStyle = { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` };
 
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -28,7 +72,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [formTab, setFormTab] = useState('info'); // 'info' | 'media' | 'mesin'
+  const [formTab, setFormTab] = useState('info'); // 'info' | 'media' | 'mesin' | 'posisi'
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
     user_nama_depan: '',
@@ -52,22 +96,22 @@ export default function UserManagement() {
   const [tempImageSrc, setTempImageSrc] = useState(null);
 
   // Signature state
-  const [signatureBlob, setSignatureBlob] = useState(null);   // pending blob before save
-  const [signaturePreview, setSignaturePreview] = useState(''); // preview URL
+  const [signatureBlob, setSignatureBlob] = useState(null);
+  const [signaturePreview, setSignaturePreview] = useState('');
   const [uploadingSignature, setUploadingSignature] = useState(false);
-  const signatureInputRef = { current: null }; // will be passed to ImageCropUploader
+  const signatureInputRef = { current: null };
 
   // Position history state
   const [positionHistory, setPositionHistory] = useState([]);
-  const [posHistLoading, setPosHistLoading]   = useState(false);
-  const [posHistMsg, setPosHistMsg]           = useState('');
-  const [editingPosId, setEditingPosId]       = useState(null); // id being edited
-  const [newPosTitle, setNewPosTitle]         = useState('');
-  const [newPosStart, setNewPosStart]         = useState('');
-  const [newPosEnd, setNewPosEnd]             = useState('');
-  const [newPosNotes, setNewPosNotes]         = useState('');
-  const [showAddPos, setShowAddPos]           = useState(false);
-  
+  const [posHistLoading, setPosHistLoading] = useState(false);
+  const [posHistMsg, setPosHistMsg] = useState('');
+  const [editingPosId, setEditingPosId] = useState(null);
+  const [newPosTitle, setNewPosTitle] = useState('');
+  const [newPosStart, setNewPosStart] = useState('');
+  const [newPosEnd, setNewPosEnd] = useState('');
+  const [newPosNotes, setNewPosNotes] = useState('');
+  const [showAddPos, setShowAddPos] = useState(false);
+
   // Notification modal states
   const [notification, setNotification] = useState({
     isOpen: false,
@@ -86,157 +130,6 @@ export default function UserManagement() {
     isDeleting: false
   });
 
-  // Start Delete User Process with Multi-Table Safety Checks
-  const handleStartDeleteUser = async (userToDelete) => {
-    if (!userToDelete) return;
-    setDeleteModal({
-      isOpen: true,
-      user: userToDelete,
-      isChecking: true,
-      canDelete: false,
-      blockers: [],
-      isDeleting: false
-    });
-
-    const userId = userToDelete.user_id;
-    const blockers = [];
-
-    // 1. Check uniform_sale (Pembelian Seragam)
-    try {
-      const { count } = await supabase
-        .from('uniform_sale')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
-
-      if (count && count > 0) {
-        blockers.push(`Riwayat Penjualan Seragam (${count} transaksi)`);
-      }
-    } catch (e) {}
-
-    // 2. Check detail_siswa (Profile Siswa & Rapor)
-    try {
-      const { count } = await supabase
-        .from('detail_siswa')
-        .select('*', { count: 'exact', head: true })
-        .eq('detail_siswa_user_id', userId);
-
-      if (count && count > 0) {
-        blockers.push(`Profile Siswa & Keanggotaan Kelas/Rapor (${count} kelas/rapor)`);
-      }
-    } catch (e) {}
-
-    // 3. Check assessment (Catatan Asesmen)
-    try {
-      const { count } = await supabase
-        .from('assessment')
-        .select('*', { count: 'exact', head: true })
-        .eq('assessment_user_id', userId);
-
-      if (count && count > 0) {
-        blockers.push(`Catatan Asesmen (${count} asesmen)`);
-      }
-    } catch (e) {}
-
-    // 4. Check incident_reports (Laporan Insiden)
-    try {
-      const { count } = await supabase
-        .from('incident_reports')
-        .select('*', { count: 'exact', head: true })
-        .or(`student_user_id.eq.${userId},reporter_user_id.eq.${userId}`);
-
-      if (count && count > 0) {
-        blockers.push(`Laporan Insiden (${count} laporan)`);
-      }
-    } catch (e) {}
-
-    // 5. Check fpb (Form Pengajuan Biaya)
-    try {
-      const { count } = await supabase
-        .from('fpb')
-        .select('*', { count: 'exact', head: true })
-        .eq('requested_by_user_id', userId);
-
-      if (count && count > 0) {
-        blockers.push(`Form Pengajuan Biaya / FPB (${count} pengajuan)`);
-      }
-    } catch (e) {}
-
-    // 6. Check consultation (Catatan Konsultasi)
-    try {
-      const { count } = await supabase
-        .from('consultation')
-        .select('*', { count: 'exact', head: true })
-        .or(`consultation_counselor_user_id.eq.${userId},created_by_user_id.eq.${userId}`);
-
-      if (count && count > 0) {
-        blockers.push(`Catatan Konsultasi (${count} catatan)`);
-      }
-    } catch (e) {}
-
-    // 7. Check kelas_attendance (Presensi Kehadiran)
-    try {
-      const { count } = await supabase
-        .from('kelas_attendance')
-        .select('*', { count: 'exact', head: true })
-        .eq('created_by', userId);
-
-      if (count && count > 0) {
-        blockers.push(`Catatan Presensi Kehadiran (${count} presensi)`);
-      }
-    } catch (e) {}
-
-    setDeleteModal({
-      isOpen: true,
-      user: userToDelete,
-      isChecking: false,
-      canDelete: blockers.length === 0,
-      blockers,
-      isDeleting: false
-    });
-  };
-
-  // Confirm Delete User
-  const handleConfirmDeleteUser = async () => {
-    if (!deleteModal.user || !deleteModal.canDelete) return;
-    try {
-      setDeleteModal(prev => ({ ...prev, isDeleting: true }));
-
-      // Delete position history first if any
-      await supabase.from('user_position_history').delete().eq('user_id', deleteModal.user.user_id);
-
-      // Delete user
-      const { error } = await supabase.from('users').delete().eq('user_id', deleteModal.user.user_id);
-      if (error) throw error;
-
-      setNotification({
-        isOpen: true,
-        title: 'Berhasil',
-        message: `Pengguna "${deleteModal.user.user_nama_depan} ${deleteModal.user.user_nama_belakang || ''}" berhasil dihapus.`,
-        type: 'success'
-      });
-
-      setDeleteModal({ isOpen: false, user: null, isChecking: false, canDelete: false, blockers: [], isDeleting: false });
-      await fetchUsers();
-    } catch (err) {
-      console.error('Error deleting user:', err);
-      setNotification({
-        isOpen: true,
-        title: 'Gagal',
-        message: err.message || 'Gagal menghapus pengguna',
-        type: 'error'
-      });
-    } finally {
-      setDeleteModal(prev => ({ ...prev, isDeleting: false }));
-    }
-  };
-
-  // Helper check if user is Student
-  const isStudentUser = (user) => {
-    if (!user) return false;
-    const roleName = (user.role_name || '').toLowerCase();
-    return roleName.includes('student') || roleName.includes('siswa') || roleName.includes('murid') || user.user_role_id === 3;
-  };
-
   // Filter states
   const [filters, setFilters] = useState({
     search: '',
@@ -245,16 +138,16 @@ export default function UserManagement() {
     unit: ''
   });
 
-  // â”€â”€ Column visibility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Column visibility
   const ALL_COLUMNS = [
-    { key: 'id',            label: 'ID' },
-    { key: 'nama',          label: 'Nama Lengkap' },
-    { key: 'email',         label: 'Email' },
-    { key: 'tanggal_lahir', label: 'Tanggal Lahir' },
-    { key: 'role',          label: 'Role' },
-    { key: 'unit',          label: 'Unit' },
-    { key: 'status',        label: 'Status' },
-    { key: 'pin',           label: 'PIN Mesin' },
+    { key: 'id', label: 'ID' },
+    { key: 'nama', label: 'Full Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'tanggal_lahir', label: 'Birth Date' },
+    { key: 'role', label: 'Role' },
+    { key: 'unit', label: 'Unit' },
+    { key: 'status', label: 'Status' },
+    { key: 'pin', label: 'Machine PIN' },
   ];
   const DEFAULT_COLUMNS = new Set(['id', 'nama', 'email', 'role', 'unit', 'status']);
 
@@ -278,7 +171,6 @@ export default function UserManagement() {
     });
   };
 
-  // Close column selector when clicking outside
   useEffect(() => {
     if (!showColumnSelector) return;
     const handler = (e) => {
@@ -290,7 +182,21 @@ export default function UserManagement() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showColumnSelector]);
 
-  // â”€â”€ Date helpers: DD/MM/YYYY â†” ISO YYYY-MM-DD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Import states
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importData, setImportData] = useState([]);
+  const [importPreview, setImportPreview] = useState([]);
+  const [importErrors, setImportErrors] = useState([]);
+  const [isImporting, setIsImporting] = useState(false);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchRoles();
+    fetchUnits();
+  }, []);
+
+  // Date helpers
   const toDisplayDate = (iso) => {
     if (!iso) return '';
     const [y, m, d] = iso.split('-');
@@ -307,480 +213,147 @@ export default function UserManagement() {
     return iso;
   };
 
-  // Import states
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importFile, setImportFile] = useState(null);
-  const [importData, setImportData] = useState([]);
-  const [importPreview, setImportPreview] = useState([]);
-  const [importErrors, setImportErrors] = useState([]);
-  const [isImporting, setIsImporting] = useState(false);
-
-  useEffect(() => {
-    fetchUsers();
-    fetchRoles();
-    fetchUnits();
-  }, []);
-
-  // Show notification helper
   const showNotification = (title, message, type = 'success') => {
-    setNotification({
-      isOpen: true,
-      title,
-      message,
-      type
-    });
+    setNotification({ isOpen: true, title, message, type });
   };
-
   const closeNotification = () => {
     setNotification(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Process error message to be more user-friendly
   const processErrorMessage = (errorMessage) => {
-    if (!errorMessage) return 'Terjadi kesalahan yang tidak diketahui';
-    
+    if (!errorMessage) return 'An unknown error occurred';
     const message = errorMessage.toLowerCase();
-    
-    // Handle duplicate username error
     if (message.includes('duplicate key value violates unique constraint')) {
-      return 'Data yang dimasukkan sudah ada dalam sistem. Silakan periksa kembali.';
+      return 'The entered data already exists in the system. Please check again.';
     }
-    
-    // Handle invalid JSON responses
     if (message.includes('invalid json') || message.includes('unexpected token')) {
-      return 'Server mengembalikan response yang tidak valid. Silakan coba lagi atau hubungi administrator.';
+      return 'Server returned an invalid response. Please try again.';
     }
-    
-    // Handle role-related errors
     if (message.includes('role') && (message.includes('not found') || message.includes('invalid'))) {
-      return 'Role yang dipilih tidak valid. Silakan pilih role yang tersedia.';
+      return 'The selected role is invalid.';
     }
-    
-    // Handle admin restriction errors
     if (message.includes('cannot') && message.includes('admin') && message.includes('last')) {
-      return 'Tidak dapat mengubah role atau menonaktifkan admin terakhir yang aktif.';
+      return 'Cannot change the role or deactivate the last active admin.';
     }
-    
-    // Handle password validation errors
     if (message.includes('password must be at least')) {
-      return 'Password minimal harus 6 karakter.';
+      return 'Password must be at least 6 characters.';
     }
-    
-    // Handle required field errors
     if (message.includes('all fields are required')) {
-      return 'Semua field wajib diisi.';
+      return 'All required fields must be filled.';
     }
-    
-    // Handle last admin error
-    if (message.includes('tidak dapat mengubah role atau menonaktifkan admin terakhir')) {
-      return 'Tidak dapat mengubah role atau menonaktifkan admin terakhir yang aktif.';
-    }
-    
-    // Handle connection errors
     if (message.includes('connection') || message.includes('network')) {
-      return 'Koneksi ke server bermasalah. Silakan coba lagi.';
+      return 'Server connection issue. Please try again.';
     }
-    
-    // Handle server errors
-    if (message.includes('server error') || message.includes('internal server error')) {
-      return 'Terjadi kesalahan di server. Silakan coba lagi atau hubungi administrator.';
-    }
-    
-    // Return original message if no specific pattern matches
     return errorMessage;
   };
 
-  // Filter users based on selected filters
-  const getFilteredUsers = () => {
-    return users.filter(user => {
-      const q = (filters.search || '').toLowerCase().trim();
-      const fullName = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.toLowerCase();
-      const searchMatch = !q ||
-        fullName.includes(q) ||
-        (user.user_email || '').toLowerCase().includes(q) ||
-        (user.role_name || '').toLowerCase().includes(q);
-      const roleMatch = !filters.role || user.role_name === filters.role;
-      const statusMatch = !filters.status ||
-        (filters.status === 'active' && user.is_active) ||
-        (filters.status === 'inactive' && !user.is_active);
-      const unitMatch = !filters.unit || user.unit_name === filters.unit;
-      return searchMatch && roleMatch && statusMatch && unitMatch;
-    });
-  };
-
-  // Get unique roles from users for filter dropdown
-  const getUniqueRoles = () => {
-    const roleSet = new Set(users.map(user => user.role_name));
-    return Array.from(roleSet).sort();
-  };
-
-  // Get unique units from users for filter dropdown
-  const getUniqueUnits = () => {
-    const unitSet = new Set(users.map(user => user.unit_name).filter(Boolean));
-    return Array.from(unitSet).sort();
-  };
-
-  // Handle filter changes
-  const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
-  };
-
-  // Clear all filters
-  const clearFilters = () => {
-    setFilters({
-      search: '',
-      role: '',
-      status: '',
-      unit: ''
-    });
-  };
-
-  // Parse CSV content
-  const parseCSV = (csvText) => {
-    const lines = csvText.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return [];
-
-    // Try to detect delimiter (comma or semicolon)
-    const firstLine = lines[0];
-    const commaCount = (firstLine.match(/,/g) || []).length;
-    const semicolonCount = (firstLine.match(/;/g) || []).length;
-    const delimiter = semicolonCount > commaCount ? ';' : ',';
-
-    const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
-    const data = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue; // Skip empty lines
-      
-      const values = line.split(delimiter).map(v => v.trim().replace(/"/g, ''));
-      
-      if (values.length >= headers.length) {
-        const row = {};
-        headers.forEach((header, index) => {
-          const normalizedHeader = header.toLowerCase().replace(/ /g, '_');
-          row[normalizedHeader] = values[index] || ''; // Ensure we have a value
-        });
-        data.push(row);
-      }
-    }
-    
-    return data;
-  };
-
-  // Validate import data
-  const validateImportData = (data) => {
-    const errors = [];
-    const validData = [];
-
-  data.forEach((row, index) => {
-      const rowErrors = [];
-      const validRow = {
-        user_nama_depan: '',
-        user_nama_belakang: '',
-        user_email: '',
-        user_role_id: '',
-        user_unit_id: '',
-        is_active: true
-      };
-
-      // Validate required fields
-      if (!row.nama_depan && !row.user_nama_depan && !row.first_name) {
-        rowErrors.push('Nama depan is required');
-      } else {
-        validRow.user_nama_depan = (row.nama_depan || row.user_nama_depan || row.first_name || '').trim();
-      }
-
-      if (!row.nama_belakang && !row.user_nama_belakang && !row.last_name) {
-        rowErrors.push('Nama belakang is required');
-      } else {
-        validRow.user_nama_belakang = (row.nama_belakang || row.user_nama_belakang || row.last_name || '').trim();
-      }
-
-      // Username column dropped - skip any username from CSV
-
-      const emailValue = (row.email || row.user_email || '').trim();
-      if (emailValue) {
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailPattern.test(emailValue)) {
-          rowErrors.push('Invalid email format');
-        } else {
-          validRow.user_email = emailValue;
-        }
-      }
-
-      // Find role ID by role name
-      const roleName = (row.role || row.role_name || row.user_role || '').trim();
-      if (!roleName) {
-        rowErrors.push('Role is required');
-      } else {
-        const role = roles.find(r => r.role_name.toLowerCase() === roleName.toLowerCase());
-        if (!role) {
-          rowErrors.push(`Role "${roleName}" not found. Available roles: ${roles.map(r => r.role_name).join(', ')}`);
-        } else {
-          validRow.user_role_id = role.role_id;
-        }
-      }
-
-      // Find unit ID by unit name
-      const unitName = (row.unit || row.unit_name || row.user_unit || '').trim();
-      if (unitName) {
-        const unit = units.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
-        if (!unit) {
-          rowErrors.push(`Unit "${unitName}" not found. Available units: ${units.map(u => u.unit_name).join(', ')}`);
-        } else {
-          validRow.user_unit_id = unit.unit_id;
-        }
-      } else {
-        // Unit is optional, set to null if not provided
-        validRow.user_unit_id = null;
-      }
-
-      // Handle status
-      const status = (row.status || row.is_active || row.active || '').trim().toLowerCase();
-      if (status) {
-        validRow.is_active = status === 'true' || status === 'active' || status === '1';
-      }
-
-      if (rowErrors.length > 0) {
-        errors.push({ row: index + 2, errors: rowErrors, data: row });
-      } else {
-        validData.push(validRow);
-      }
+  const handleStartDeleteUser = async (userToDelete) => {
+    if (!userToDelete) return;
+    setDeleteModal({
+      isOpen: true,
+      user: userToDelete,
+      isChecking: true,
+      canDelete: false,
+      blockers: [],
+      isDeleting: false
     });
 
-    return { validData, errors };
-  };
-
-  // Handle file upload
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setImportFile(file);
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      const content = e.target.result;
-      let parsedData = [];
-
-      if (file.name.endsWith('.csv')) {
-        parsedData = parseCSV(content);
-      } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-        // For Excel files, we'd need a library like xlsx
-        // For now, show an error message
-        setImportErrors([{ row: 1, errors: ['Excel files not supported yet. Please use CSV format.'], data: {} }]);
-        return;
-      }
-
-      setImportData(parsedData);
-      const { validData, errors } = validateImportData(parsedData);
-      setImportPreview(validData);
-      setImportErrors(errors);
-    };
-
-    reader.readAsText(file);
-  };
-
-  // Process bulk import
-  const processBulkImport = async () => {
-    if (importPreview.length === 0) return;
-
-    setIsImporting(true);
-    const results = {
-      success: 0,
-      failed: 0,
-      errors: []
-    };
-
-    for (const userData of importPreview) {
-      try {
-        // Ensure all required fields are strings and not empty
-        const cleanedUserData = {
-          user_nama_depan: String(userData.user_nama_depan || '').trim(),
-          user_nama_belakang: String(userData.user_nama_belakang || '').trim(),
-          user_email: String(userData.user_email || '').trim(),
-          user_role_id: Number(userData.user_role_id),
-          user_unit_id: userData.user_unit_id ? Number(userData.user_unit_id) : null,
-          is_active: Boolean(userData.is_active)
-        };
-
-        // Additional validation before sending
-    if (!cleanedUserData.user_nama_depan || !cleanedUserData.user_nama_belakang || 
-            !cleanedUserData.user_role_id) {
-          throw new Error('Missing required fields after cleaning');
-        }
-
-        const result = await supabase
-          .from('users')
-          .insert([{ 
-            user_nama_depan: cleanedUserData.user_nama_depan,
-            user_nama_belakang: cleanedUserData.user_nama_belakang,
-            user_email: cleanedUserData.user_email || null,
-            user_role_id: cleanedUserData.user_role_id,
-            user_unit_id: cleanedUserData.user_unit_id,
-            is_active: cleanedUserData.is_active
-          }])
-          .select('user_id')
-          .single();
-
-        if (result.error) throw new Error(result.error.message);
-
-        const createdId = result.data?.user_id;
-        if (!createdId) throw new Error('Gagal membuat user');
-
-        results.success++;
-      } catch (err) {
-        results.failed++;
-        let errorMsg = err.message;
-        
-        // Process error message to be more user-friendly
-        errorMsg = processErrorMessage(errorMsg);
-        
-        results.errors.push({
-          username: userData.user_nama_depan || 'Unknown',
-          email: userData.user_email || '',
-          error: errorMsg
-        });
-      }
-    }
-
-    setIsImporting(false);
-    
-    // Show results
-    let message = `Import completed! ${results.success} users imported successfully.`;
-    if (results.failed > 0) {
-      message += ` ${results.failed} failed.`;
-      if (results.errors.length > 0) {
-        message += `\n\nErrors:\n${results.errors.map(e => `${e.username}${e.email ? ` (${e.email})` : ''}: ${e.error}`).join('\n')}`;
-      }
-    }
-    
-    showNotification(
-      results.failed > 0 ? 'Import Completed with Errors' : 'Import Successful!',
-      message,
-      results.failed > 0 ? 'warning' : 'success'
-    );
-
-    if (results.success > 0) {
-      await fetchUsers(); // Refresh the list
-    }
-
-    // Reset import state
-    resetImportModal();
-  };
-
-  // Reset import modal
-  const resetImportModal = () => {
-    setShowImportModal(false);
-    setImportFile(null);
-    setImportData([]);
-    setImportPreview([]);
-    setImportErrors([]);
-    setIsImporting(false);
-  };
-
-  // Download CSV template
-  const downloadTemplate = (withSemicolon = false) => {
-    const delimiter = withSemicolon ? ';' : ',';
-    
-    // Get available roles and units for template
-    const availableRoles = roles.length > 0 ? roles.map(r => r.role_name) : ['Admin', 'User'];
-    const availableUnits = units.length > 0 ? units.map(u => u.unit_name) : ['PYP', 'MYP'];
-    const sampleRole1 = availableRoles[0] || 'Admin';
-    const sampleRole2 = availableRoles.length > 1 ? availableRoles[1] : availableRoles[0] || 'User';
-    const sampleUnit1 = availableUnits[0] || 'PYP';
-    const sampleUnit2 = availableUnits.length > 1 ? availableUnits[1] : availableUnits[0] || 'MYP';
-    
-  const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}email${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}john@ccs.sch.id${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}jane@ccs.sch.id${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `user_import_template_${withSemicolon ? 'semicolon' : 'comma'}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  const uploadImage = async (userId) => {
-    if (!imageFile) return null;
+    const userId = userToDelete.user_id;
+    const blockers = [];
 
     try {
-      setUploadingImage(true);
-      const file = imageFile;
-      const ext = file.name.split('.').pop();
-      const path = `user-profiles/${userId}/${Date.now()}.${ext}`;
+      const { count } = await supabase.from('uniform_sale').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+      if (count && count > 0) blockers.push(`Uniform Sales History (${count} transactions)`);
+    } catch (e) {}
 
-      const { error: uploadError } = await supabase.storage
-        .from('uniform-receipts')
-        .upload(path, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+    try {
+      const { count } = await supabase.from('detail_siswa').select('*', { count: 'exact', head: true }).eq('detail_siswa_user_id', userId);
+      if (count && count > 0) blockers.push(`Student Profile & Class Membership (${count} classes/reports)`);
+    } catch (e) {}
 
-      if (uploadError) throw uploadError;
+    try {
+      const { count } = await supabase.from('assessment').select('*', { count: 'exact', head: true }).eq('assessment_user_id', userId);
+      if (count && count > 0) blockers.push(`Assessment Records (${count} assessments)`);
+    } catch (e) {}
 
-      const { data: publicUrlData } = supabase.storage
-        .from('uniform-receipts')
-        .getPublicUrl(path);
+    try {
+      const { count } = await supabase.from('incident_reports').select('*', { count: 'exact', head: true }).or(`student_user_id.eq.${userId},reporter_user_id.eq.${userId}`);
+      if (count && count > 0) blockers.push(`Incident Reports (${count} reports)`);
+    } catch (e) {}
 
-      return publicUrlData?.publicUrl || null;
+    try {
+      const { count } = await supabase.from('fpb').select('*', { count: 'exact', head: true }).eq('requested_by_user_id', userId);
+      if (count && count > 0) blockers.push(`Form Expense Requests / FPB (${count} requests)`);
+    } catch (e) {}
+
+    try {
+      const { count } = await supabase.from('consultation').select('*', { count: 'exact', head: true }).or(`consultation_counselor_user_id.eq.${userId},created_by_user_id.eq.${userId}`);
+      if (count && count > 0) blockers.push(`Consultation Notes (${count} notes)`);
+    } catch (e) {}
+
+    try {
+      const { count } = await supabase.from('kelas_attendance').select('*', { count: 'exact', head: true }).eq('created_by', userId);
+      if (count && count > 0) blockers.push(`Attendance Session Records (${count} sessions)`);
+    } catch (e) {}
+
+    setDeleteModal({
+      isOpen: true,
+      user: userToDelete,
+      isChecking: false,
+      canDelete: blockers.length === 0,
+      blockers,
+      isDeleting: false
+    });
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!deleteModal.user || !deleteModal.canDelete) return;
+    try {
+      setDeleteModal(prev => ({ ...prev, isDeleting: true }));
+      await supabase.from('user_position_history').delete().eq('user_id', deleteModal.user.user_id);
+      const { error } = await supabase.from('users').delete().eq('user_id', deleteModal.user.user_id);
+      if (error) throw error;
+
+      showNotification('Success', `User "${deleteModal.user.user_nama_depan} ${deleteModal.user.user_nama_belakang || ''}" has been deleted successfully.`, 'success');
+      setDeleteModal({ isOpen: false, user: null, isChecking: false, canDelete: false, blockers: [], isDeleting: false });
+      await fetchUsers();
     } catch (err) {
-      console.error('Error uploading image:', err);
-      throw err;
+      console.error('Error deleting user:', err);
+      showNotification('Failed', err.message || 'Failed to delete user', 'error');
     } finally {
-      setUploadingImage(false);
+      setDeleteModal(prev => ({ ...prev, isDeleting: false }));
     }
   };
 
-  const handleCropComplete = (croppedFile) => {
-    setImageFile(croppedFile);
-    setTempImageSrc(null);
-    setShowCropModal(false);
+  const isStudentUser = (user) => {
+    if (!user) return false;
+    const roleName = (user.role_name || '').toLowerCase();
+    return roleName.includes('student') || roleName.includes('siswa') || roleName.includes('murid') || user.user_role_id === 3;
   };
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError('');
-      
-      // Fetch users terlebih dahulu
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out');
 
+      if (usersError) throw new Error(usersError.message);
 
-      if (usersError) {
-        throw new Error(usersError.message);
-      }
-
-      // Fetch roles untuk mendapatkan nama role dan info admin
       const { data: rolesData, error: rolesError } = await supabase
         .from('role')
         .select('role_id, role_name, is_admin');
+      if (rolesError) throw new Error(rolesError.message);
 
-      if (rolesError) {
-        throw new Error(rolesError.message);
-      }
-
-      // Fetch units untuk mendapatkan nama unit
       const { data: unitsData, error: unitsError } = await supabase
         .from('unit')
         .select('unit_id, unit_name');
+      if (unitsError) throw new Error(unitsError.message);
 
-      if (unitsError) {
-        throw new Error(unitsError.message);
-      }
-
-      // Transform data dengan menggabungkan informasi dari ketiga tabel
       const transformedData = usersData.map(user => {
         const role = rolesData.find(r => r.role_id === user.user_role_id);
         const unit = unitsData.find(u => u.unit_id === user.user_unit_id);
-        
         return {
           user_id: user.user_id,
           user_nama_depan: user.user_nama_depan,
@@ -803,14 +376,12 @@ export default function UserManagement() {
         };
       });
 
-      // Sort by role_id first, then by nama_depan
       transformedData.sort((a, b) => {
         const roleCompare = (a.user_role_id || 0) - (b.user_role_id || 0);
         if (roleCompare !== 0) return roleCompare;
         return (a.user_nama_depan || '').localeCompare(b.user_nama_depan || '');
       });
 
-      console.log('Fetched users from Supabase:', transformedData);
       setUsers(transformedData);
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -823,16 +394,8 @@ export default function UserManagement() {
 
   const fetchRoles = async () => {
     try {
-      // Menggunakan Supabase untuk fetch roles
-      const { data, error } = await supabase
-        .from('role')
-        .select('role_id, role_name, is_admin')
-        .order('role_id');
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
+      const { data, error } = await supabase.from('role').select('role_id, role_name, is_admin').order('role_id');
+      if (error) throw new Error(error.message);
       setRoles(data || []);
     } catch (err) {
       console.error('Error fetching roles:', err);
@@ -841,119 +404,316 @@ export default function UserManagement() {
 
   const fetchUnits = async () => {
     try {
-      // Menggunakan Supabase untuk fetch units
-      const { data, error } = await supabase
-        .from('unit')
-        .select('unit_id, unit_name')
-        .order('unit_name');
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
+      const { data, error } = await supabase.from('unit').select('unit_id, unit_name').order('unit_name');
+      if (error) throw new Error(error.message);
       setUnits(data || []);
     } catch (err) {
       console.error('Error fetching units:', err);
     }
   };
 
+  const getFilteredUsers = () => {
+    return users.filter(user => {
+      const q = (filters.search || '').toLowerCase().trim();
+      const fullName = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.toLowerCase();
+      const searchMatch = !q ||
+        fullName.includes(q) ||
+        (user.user_email || '').toLowerCase().includes(q) ||
+        (user.role_name || '').toLowerCase().includes(q);
+      const roleMatch = !filters.role || user.role_name === filters.role;
+      const statusMatch = !filters.status ||
+        (filters.status === 'active' && user.is_active) ||
+        (filters.status === 'inactive' && !user.is_active);
+      const unitMatch = !filters.unit || user.unit_name === filters.unit;
+      return searchMatch && roleMatch && statusMatch && unitMatch;
+    });
+  };
+
+  const getUniqueRoles = () => {
+    const roleSet = new Set(users.map(user => user.role_name));
+    return Array.from(roleSet).sort();
+  };
+
+  const getUniqueUnits = () => {
+    const unitSet = new Set(users.map(user => user.unit_name).filter(Boolean));
+    return Array.from(unitSet).sort();
+  };
+
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({ ...prev, [filterType]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({ search: '', role: '', status: '', unit: '' });
+  };
+
+  // CSV Parsing & Validation
+  const parseCSV = (csvText) => {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    const firstLine = lines[0];
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semicolonCount = (firstLine.match(/;/g) || []).length;
+    const delimiter = semicolonCount > commaCount ? ';' : ',';
+    const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
+    const data = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const values = line.split(delimiter).map(v => v.trim().replace(/"/g, ''));
+      if (values.length >= headers.length) {
+        const row = {};
+        headers.forEach((header, index) => {
+          const normalizedHeader = header.toLowerCase().replace(/ /g, '_');
+          row[normalizedHeader] = values[index] || '';
+        });
+        data.push(row);
+      }
+    }
+    return data;
+  };
+
+  const validateImportData = (data) => {
+    const errors = [];
+    const validData = [];
+    data.forEach((row, index) => {
+      const rowErrors = [];
+      const validRow = { user_nama_depan: '', user_nama_belakang: '', user_email: '', user_role_id: '', user_unit_id: '', is_active: true };
+
+      if (!row.nama_depan && !row.user_nama_depan && !row.first_name) {
+        rowErrors.push('First name is required');
+      } else {
+        validRow.user_nama_depan = (row.nama_depan || row.user_nama_depan || row.first_name || '').trim();
+      }
+
+      if (!row.nama_belakang && !row.user_nama_belakang && !row.last_name) {
+        rowErrors.push('Last name is required');
+      } else {
+        validRow.user_nama_belakang = (row.nama_belakang || row.user_nama_belakang || row.last_name || '').trim();
+      }
+
+      const emailValue = (row.email || row.user_email || '').trim();
+      if (emailValue) {
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(emailValue)) {
+          rowErrors.push('Invalid email format');
+        } else {
+          validRow.user_email = emailValue;
+        }
+      }
+
+      const roleName = (row.role || row.role_name || row.user_role || '').trim();
+      if (!roleName) {
+        rowErrors.push('Role is required');
+      } else {
+        const role = roles.find(r => r.role_name.toLowerCase() === roleName.toLowerCase());
+        if (!role) {
+          rowErrors.push(`Role "${roleName}" not found.`);
+        } else {
+          validRow.user_role_id = role.role_id;
+        }
+      }
+
+      const unitName = (row.unit || row.unit_name || row.user_unit || '').trim();
+      if (unitName) {
+        const unit = units.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
+        if (!unit) {
+          rowErrors.push(`Unit "${unitName}" not found.`);
+        } else {
+          validRow.user_unit_id = unit.unit_id;
+        }
+      } else {
+        validRow.user_unit_id = null;
+      }
+
+      const status = (row.status || row.is_active || row.active || '').trim().toLowerCase();
+      if (status) {
+        validRow.is_active = status === 'true' || status === 'active' || status === '1';
+      }
+
+      if (rowErrors.length > 0) {
+        errors.push({ row: index + 2, errors: rowErrors, data: row });
+      } else {
+        validData.push(validRow);
+      }
+    });
+    return { validData, errors };
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setImportFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      let parsedData = [];
+      if (file.name.endsWith('.csv')) {
+        parsedData = parseCSV(content);
+      } else {
+        setImportErrors([{ row: 1, errors: ['Excel files not supported yet. Please use CSV format.'], data: {} }]);
+        return;
+      }
+      setImportData(parsedData);
+      const { validData, errors } = validateImportData(parsedData);
+      setImportPreview(validData);
+      setImportErrors(errors);
+    };
+    reader.readAsText(file);
+  };
+
+  const processBulkImport = async () => {
+    if (importPreview.length === 0) return;
+    setIsImporting(true);
+    const results = { success: 0, failed: 0, errors: [] };
+
+    for (const userData of importPreview) {
+      try {
+        const cleanedUserData = {
+          user_nama_depan: String(userData.user_nama_depan || '').trim(),
+          user_nama_belakang: String(userData.user_nama_belakang || '').trim(),
+          user_email: String(userData.user_email || '').trim(),
+          user_role_id: Number(userData.user_role_id),
+          user_unit_id: userData.user_unit_id ? Number(userData.user_unit_id) : null,
+          is_active: Boolean(userData.is_active)
+        };
+
+        if (!cleanedUserData.user_nama_depan || !cleanedUserData.user_nama_belakang || !cleanedUserData.user_role_id) {
+          throw new Error('Missing required fields after cleaning');
+        }
+
+        const result = await supabase
+          .from('users')
+          .insert([{
+            user_nama_depan: cleanedUserData.user_nama_depan,
+            user_nama_belakang: cleanedUserData.user_nama_belakang,
+            user_email: cleanedUserData.user_email || null,
+            user_role_id: cleanedUserData.user_role_id,
+            user_unit_id: cleanedUserData.user_unit_id,
+            is_active: cleanedUserData.is_active
+          }])
+          .select('user_id')
+          .single();
+
+        if (result.error) throw new Error(result.error.message);
+        results.success++;
+      } catch (err) {
+        results.failed++;
+        results.errors.push({
+          username: userData.user_nama_depan || 'Unknown',
+          email: userData.user_email || '',
+          error: processErrorMessage(err.message)
+        });
+      }
+    }
+
+    setIsImporting(false);
+    let message = `Import completed! ${results.success} users successfully imported.`;
+    if (results.failed > 0) message += ` ${results.failed} failed.`;
+
+    showNotification(
+      results.failed > 0 ? 'Import Completed with Issues' : 'Import Successful!',
+      message,
+      results.failed > 0 ? 'warning' : 'success'
+    );
+
+    if (results.success > 0) await fetchUsers();
+    resetImportModal();
+  };
+
+  const resetImportModal = () => {
+    setShowImportModal(false);
+    setImportFile(null);
+    setImportData([]);
+    setImportPreview([]);
+    setImportErrors([]);
+    setIsImporting(false);
+  };
+
+  const downloadTemplate = (withSemicolon = false) => {
+    const delimiter = withSemicolon ? ';' : ',';
+    const sampleRole1 = roles[0]?.role_name || 'Admin';
+    const sampleRole2 = roles[1]?.role_name || 'Teacher';
+    const sampleUnit1 = units[0]?.unit_name || 'PYP';
+    const sampleUnit2 = units[1]?.unit_name || 'MYP';
+
+    const csvContent = `nama_depan${delimiter}nama_belakang${delimiter}email${delimiter}role${delimiter}unit${delimiter}status\nJohn${delimiter}Doe${delimiter}john@ccs.sch.id${delimiter}${sampleRole1}${delimiter}${sampleUnit1}${delimiter}active\nJane${delimiter}Smith${delimiter}jane@ccs.sch.id${delimiter}${sampleRole2}${delimiter}${sampleUnit2}${delimiter}active`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `user_import_template_${withSemicolon ? 'semicolon' : 'comma'}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const uploadImage = async (userId) => {
+    if (!imageFile) return null;
+    try {
+      setUploadingImage(true);
+      const ext = imageFile.name.split('.').pop();
+      const path = `user-profiles/${userId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('uniform-receipts').upload(path, imageFile, { cacheControl: '3600', upsert: false });
+      if (uploadError) throw uploadError;
+      const { data: publicUrlData } = supabase.storage.from('uniform-receipts').getPublicUrl(path);
+      return publicUrlData?.publicUrl || null;
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      throw err;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleCropComplete = (croppedFile) => {
+    setImageFile(croppedFile);
+    setTempImageSrc(null);
+    setShowCropModal(false);
+  };
+
   const validateForm = () => {
     const errors = {};
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (!formData.user_nama_depan.trim()) {
-      errors.user_nama_depan = 'Nama depan wajib diisi';
-    }
-    
-    if (!formData.user_nama_belakang.trim()) {
-      errors.user_nama_belakang = 'Nama belakang wajib diisi';
-    }
-    
-    // Username and password validation removed - using Google login only
-    
-    if (formData.user_email && !emailPattern.test(formData.user_email.trim())) {
-      errors.user_email = 'Email tidak valid';
-    }
-
-    if (!formData.user_role_id) {
-      errors.user_role_id = 'Role wajib dipilih';
-    }
-
-    if (!formData.user_unit_id) {
-      errors.user_unit_id = 'Unit wajib dipilih';
-    }
-
+    if (!formData.user_nama_depan.trim()) errors.user_nama_depan = 'First name is required';
+    if (!formData.user_nama_belakang.trim()) errors.user_nama_belakang = 'Last name is required';
+    if (formData.user_email && !emailPattern.test(formData.user_email.trim())) errors.user_email = 'Invalid email address';
+    if (!formData.user_role_id) errors.user_role_id = 'Role is required';
+    if (!formData.user_unit_id) errors.user_unit_id = 'Unit is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // Upload signature blob using Supabase storage client (auth handled automatically)
   const uploadSignature = async (userId, blob) => {
     const path = `user-signatures/${userId}/signature.png`;
-    const { error: uploadError } = await supabase.storage
-      .from('report-assets')
-      .upload(path, blob, { contentType: 'image/png', upsert: true });
+    const { error: uploadError } = await supabase.storage.from('report-assets').upload(path, blob, { contentType: 'image/png', upsert: true });
     if (uploadError) throw uploadError;
-    const { data: publicUrlData } = supabase.storage
-      .from('report-assets')
-      .getPublicUrl(path);
+    const { data: publicUrlData } = supabase.storage.from('report-assets').getPublicUrl(path);
     return `${publicUrlData.publicUrl}?t=${Date.now()}`;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setSubmitting(true);
     try {
-    const submitData = { ...formData };
-      
-      // Ensure role_id is a number
-      if (submitData.user_role_id) {
-        submitData.user_role_id = Number(submitData.user_role_id);
-      }
+      const submitData = { ...formData };
+      submitData.user_role_id = submitData.user_role_id ? Number(submitData.user_role_id) : null;
+      submitData.user_unit_id = submitData.user_unit_id ? Number(submitData.user_unit_id) : null;
+      submitData.user_email = submitData.user_email ? submitData.user_email.trim() : null;
 
-      // Ensure unit_id is a number or null
-      if (submitData.user_unit_id) {
-        submitData.user_unit_id = Number(submitData.user_unit_id);
-      } else {
-        submitData.user_unit_id = null;
-      }
-
-      submitData.user_email = submitData.user_email ? submitData.user_email.trim() : '';
-      if (!submitData.user_email) {
-        submitData.user_email = null;
-      }
-
-      let result;
       const baseData = { ...submitData };
-      // Convert tanggal_lahir DD/MM/YYYY → ISO YYYY-MM-DD before saving
-      if (baseData.user_tanggal_lahir) {
-        baseData.user_tanggal_lahir = toIsoDate(baseData.user_tanggal_lahir) || null;
-      } else {
-        baseData.user_tanggal_lahir = null;
-      }
-
-      // Convert empty time strings to null
+      baseData.user_tanggal_lahir = baseData.user_tanggal_lahir ? toIsoDate(baseData.user_tanggal_lahir) : null;
       if (!baseData.expected_check_in) baseData.expected_check_in = null;
       if (!baseData.expected_check_out) baseData.expected_check_out = null;
-      // Convert empty join_date to null
       if (!baseData.join_date) baseData.join_date = null;
-
-      // user_pin has UNIQUE constraint — convert empty string to null so multiple
-      // users without a PIN don't trigger "duplicate key value violates unique constraint"
       if (!baseData.user_pin) baseData.user_pin = null;
 
       if (editingUser) {
-        // Upload profile image if new file selected
         if (imageFile) {
           const imageUrl = await uploadImage(editingUser.user_id);
           if (imageUrl) baseData.user_manual_picture = imageUrl;
         }
-        // Upload signature if new blob selected
         if (signatureBlob) {
           setUploadingSignature(true);
           try {
@@ -962,27 +722,16 @@ export default function UserManagement() {
             setSignaturePreview(sigUrl);
           } finally { setUploadingSignature(false); }
         }
-        // Update existing user
-        result = await supabase.from('users').update(baseData).eq('user_id', editingUser.user_id);
+        const result = await supabase.from('users').update(baseData).eq('user_id', editingUser.user_id);
         if (result.error) throw new Error(result.error.message);
-
       } else {
-        // Create new user first to get user_id
-        const insertRes = await supabase
-          .from('users')
-          .insert([baseData])
-          .select('user_id')
-          .single();
+        const insertRes = await supabase.from('users').insert([baseData]).select('user_id').single();
         if (insertRes.error) throw new Error(insertRes.error.message);
 
-        // Upload image if file selected
         if (imageFile && insertRes.data) {
           const imageUrl = await uploadImage(insertRes.data.user_id);
-          if (imageUrl) {
-            await supabase.from('users').update({ user_manual_picture: imageUrl }).eq('user_id', insertRes.data.user_id);
-          }
+          if (imageUrl) await supabase.from('users').update({ user_manual_picture: imageUrl }).eq('user_id', insertRes.data.user_id);
         }
-        // Upload signature if blob selected
         if (signatureBlob && insertRes.data) {
           setUploadingSignature(true);
           try {
@@ -993,14 +742,12 @@ export default function UserManagement() {
         }
       }
 
-      // Success
-      await fetchUsers(); // Refresh the list
+      await fetchUsers();
       resetForm();
       setError('');
-      showNotification('Berhasil!', editingUser ? `Data user berhasil diupdate!` : `User baru berhasil ditambahkan!`, 'success');
+      showNotification('Success!', editingUser ? `User data updated successfully.` : `New user added successfully.`, 'success');
     } catch (err) {
-      const errorMessage = processErrorMessage(err.message);
-      setError('Error: ' + errorMessage);
+      setError('Error: ' + processErrorMessage(err.message));
     } finally {
       setSubmitting(false);
     }
@@ -1018,7 +765,7 @@ export default function UserManagement() {
       user_unit_id: user.user_unit_id || '',
       is_active: user.is_active,
       user_pin: user.user_pin || '',
-      expected_check_in:  user.expected_check_in  ? user.expected_check_in.slice(0, 5)  : '',
+      expected_check_in: user.expected_check_in ? user.expected_check_in.slice(0, 5) : '',
       expected_check_out: user.expected_check_out ? user.expected_check_out.slice(0, 5) : '',
       join_date: user.join_date || ''
     });
@@ -1027,18 +774,12 @@ export default function UserManagement() {
     setSignaturePreview(user.signature_url || '');
     setShowForm(true);
     setFormErrors({});
-    // Load position history for this user
     loadPositionHistory(user.user_id);
   };
 
-  // ── Position History Helpers ─────────────────────────────────────────────────
   const loadPositionHistory = async (uid) => {
     setPosHistLoading(true);
-    const { data } = await supabase
-      .from('user_position_history')
-      .select('*')
-      .eq('user_id', uid)
-      .order('start_date', { ascending: false });
+    const { data } = await supabase.from('user_position_history').select('*').eq('user_id', uid).order('start_date', { ascending: false });
     setPositionHistory(data || []);
     setPosHistLoading(false);
   };
@@ -1050,20 +791,20 @@ export default function UserManagement() {
 
   const handleSavePosition = async () => {
     if (!newPosTitle.trim() || !newPosStart) {
-      setPosHistMsg('❌ Nama posisi dan tanggal mulai wajib diisi');
+      setPosHistMsg('Position title and start date are required');
       return;
     }
     if (newPosEnd && newPosEnd < newPosStart) {
-      setPosHistMsg('❌ Tanggal selesai tidak boleh sebelum tanggal mulai');
+      setPosHistMsg('End date cannot be before start date');
       return;
     }
     setPosHistMsg('');
     const payload = {
-      user_id:        editingUser.user_id,
+      user_id: editingUser.user_id,
       position_title: newPosTitle.trim(),
-      start_date:     newPosStart,
-      end_date:       newPosEnd || null,
-      notes:          newPosNotes.trim() || null,
+      start_date: newPosStart,
+      end_date: newPosEnd || null,
+      notes: newPosNotes.trim() || null,
     };
     let error;
     if (editingPosId) {
@@ -1071,15 +812,15 @@ export default function UserManagement() {
     } else {
       ({ error } = await supabase.from('user_position_history').insert([payload]));
     }
-    if (error) { setPosHistMsg('❌ ' + error.message); return; }
+    if (error) { setPosHistMsg(error.message); return; }
     resetPosForm();
     loadPositionHistory(editingUser.user_id);
   };
 
   const handleDeletePosition = async (id) => {
-    if (!confirm('Hapus riwayat posisi ini?')) return;
+    if (!confirm('Delete this position history record?')) return;
     const { error } = await supabase.from('user_position_history').delete().eq('id', id);
-    if (error) { setPosHistMsg('❌ ' + error.message); return; }
+    if (error) { setPosHistMsg(error.message); return; }
     loadPositionHistory(editingUser.user_id);
   };
 
@@ -1092,9 +833,6 @@ export default function UserManagement() {
     setShowAddPos(true);
     setPosHistMsg('');
   };
-
-
-
 
   const resetForm = () => {
     setFormData({
@@ -1121,11 +859,9 @@ export default function UserManagement() {
     setFormErrors({});
     setError('');
     setFormTab('info');
-    // Reset position state
     setPositionHistory([]);
     resetPosForm();
   };
-
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -1133,972 +869,438 @@ export default function UserManagement() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    
-    // Clear error when user starts typing
     if (formErrors[name]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   if (loading) {
     return (
-      <div className="p-4 md:p-6" style={{ background: theme.pageBg }}>
-        <div className="text-center" style={{ color: theme.textSecondary }}>Loading...</div>
+      <div className="min-h-screen p-6 flex items-center justify-center font-sans" style={{ background: theme.pageBg }}>
+        <div className="flex items-center gap-3 text-sm font-medium tracking-tight" style={{ color: theme.textSecondary }}>
+          <FontAwesomeIcon icon={faSpinner} spin style={{ color: theme.textPrimary }} />
+          <span>Loading user data...</span>
+        </div>
       </div>
     );
   }
 
   const filteredUsers = getFilteredUsers();
 
+  // Summary counts for bento cards
+  const totalUserCount = users.length;
+  const activeUserCount = users.filter(u => u.is_active).length;
+  const inactiveUserCount = totalUserCount - activeUserCount;
+  const adminRoleCount = users.filter(u => u.is_admin).length;
+
   return (
-    <div className="p-3" style={{ background: theme.pageBg, minHeight: '100%' }}>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: theme.textPrimary }}>User Management</h1>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button 
-            onClick={() => setShowForm(true)}
-            className=""
-            style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
-          >
-            Add New User
-          </Button>
-          <Button 
-            onClick={() => setShowImportModal(true)}
-            className=""
-            style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
-          >
-            Import Users
-          </Button>
-          <div className="flex gap-1">
-            <Button 
-              onClick={() => downloadTemplate(false)}
-              variant="outline"
-              className="text-xs px-2 py-1 h-auto"
-              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
-              title="Download CSV template with comma separator"
-            >
-              Template (,)
-            </Button>
-            <Button 
-              onClick={() => downloadTemplate(true)}
-              variant="outline"
-              className="text-xs px-2 py-1 h-auto"
-              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
-              title="Download CSV template with semicolon separator"
-            >
-              Template (;)
-            </Button>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen p-4 sm:p-6 md:p-8 font-sans antialiased" style={{ background: theme.pageBg, color: theme.textPrimary }}>
+      <div className="max-w-7xl mx-auto space-y-6">
 
-      {/* User Form Modal */}
-      <Modal
-        isOpen={showForm}
-        onClose={resetForm}
-        title={editingUser ? t('userMgmt.editUser') : t('userMgmt.addUser')}
-        size="md"
-        disableBackdropClose
-        containerStyle={{ background: theme.cardBg }}
-        headerStyle={{ borderColor: theme.border }}
-        titleStyle={{ color: theme.textPrimary }}
-      >
-        {error && (
-          <div className="px-3 py-2 rounded mb-3" style={{ background: theme.redBg, border: `1px solid ${theme.redText}`, color: theme.redText }}>
-            {error}
-          </div>
-        )}
-        <form onSubmit={handleSubmit} className="space-y-3">
-
-          {/* ─── Tab Navigation ─── */}
-          <div className="flex rounded-lg overflow-hidden text-xs font-medium" style={{ border: `1px solid ${theme.border}` }}>
-            {[
-              { key: 'info',  label: t('userMgmt.tabInfo')  },
-              { key: 'media', label: t('userMgmt.tabMedia') },
-              { key: 'mesin', label: t('userMgmt.tabMesin') },
-              ...(editingUser ? [{ key: 'posisi', label: '📋 Posisi' }] : []),
-            ].map(tab => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setFormTab(tab.key)}
-                className="flex-1 py-2 px-1 transition-colors"
-                style={{
-                  background: formTab === tab.key ? theme.textPrimary : theme.subtleBg,
-                  color:      formTab === tab.key ? theme.cardBg      : theme.textSecondary,
-                  cursor: 'pointer',
-                  borderRight: `1px solid ${theme.border}`,
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* ─── Tab: Data Diri ─── */}
-          {formTab === 'info' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="user_nama_depan" style={{ color: theme.textBody }}>{t('userMgmt.firstName')} <span style={{ color: theme.redText }}>*</span></Label>
-              <Input
-                id="user_nama_depan"
-                name="user_nama_depan"
-                value={formData.user_nama_depan}
-                onChange={handleInputChange}
-                style={{ ...inputStyle, ...(formErrors.user_nama_depan ? { borderColor: theme.redText } : {}) }}
-                disabled={submitting}
-              />
-              {formErrors.user_nama_depan && (
-                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_nama_depan}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="user_nama_belakang" style={{ color: theme.textBody }}>{t('userMgmt.lastName')} <span style={{ color: theme.redText }}>*</span></Label>
-              <Input
-                id="user_nama_belakang"
-                name="user_nama_belakang"
-                value={formData.user_nama_belakang}
-                onChange={handleInputChange}
-                style={{ ...inputStyle, ...(formErrors.user_nama_belakang ? { borderColor: theme.redText } : {}) }}
-                disabled={submitting}
-              />
-              {formErrors.user_nama_belakang && (
-                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_nama_belakang}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="user_email" style={{ color: theme.textBody }}>{t('userMgmt.email')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></Label>
-              <Input
-                id="user_email"
-                name="user_email"
-                type="email"
-                value={formData.user_email}
-                onChange={handleInputChange}
-                style={{ ...inputStyle, ...(formErrors.user_email ? { borderColor: theme.redText } : {}) }}
-                disabled={submitting}
-              />
-              {formErrors.user_email && (
-                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_email}</p>
-              )}
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-                Login menggunakan Google OAuth (@ccs.sch.id). Password tidak diperlukan.
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="user_tanggal_lahir" style={{ color: theme.textBody }}>{t('userMgmt.dob')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></Label>
-              <Input
-                id="user_tanggal_lahir"
-                name="user_tanggal_lahir"
-                type="text"
-                value={formData.user_tanggal_lahir || ''}
-                onChange={(e) => {
-                  let v = e.target.value.replace(/[^0-9/]/g, '');
-                  // Auto-insert slashes
-                  if (v.length === 2 && !v.includes('/')) v += '/';
-                  if (v.length === 5 && v.lastIndexOf('/') === 2) v += '/';
-                  handleInputChange({ target: { name: 'user_tanggal_lahir', value: v } });
-                }}
-                disabled={submitting}
-                placeholder="DD/MM/YYYY"
-                maxLength={10}
-                style={inputStyle}
-              />
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('userMgmt.dobFormat')}</p>
-            </div>
-
-
-            <div>
-              <Label htmlFor="user_role_id" style={{ color: theme.textBody }}>{t('userMgmt.role')} <span style={{ color: theme.redText }}>*</span></Label>
-              <select
-                id="user_role_id"
-                name="user_role_id"
-                value={formData.user_role_id}
-                onChange={handleInputChange}
-                disabled={submitting}
-                className="w-full px-3 py-2 rounded-md"
-                style={{ ...selectStyle, ...(formErrors.user_role_id ? { borderColor: theme.redText } : {}) }}
-              >
-                <option value="">Pilih Role</option>
-                {roles.map(role => (
-                  <option key={role.role_id} value={role.role_id}>
-                    {role.role_name} {role.is_admin ? '(Admin)' : ''}
-                  </option>
-                ))}
-              </select>
-              {formErrors.user_role_id && (
-                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_role_id}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="user_unit_id" style={{ color: theme.textBody }}>{t('userMgmt.unit')} <span style={{ color: theme.redText }}>*</span></Label>
-              <select
-                id="user_unit_id"
-                name="user_unit_id"
-                value={formData.user_unit_id}
-                onChange={handleInputChange}
-                disabled={submitting}
-                className="w-full px-3 py-2 rounded-md"
-                style={{ ...selectStyle, ...(formErrors.user_unit_id ? { borderColor: theme.redText } : {}) }}
-              >
-                <option value="">Pilih Unit</option>
-                {units.map(unit => (
-                  <option key={unit.unit_id} value={unit.unit_id}>
-                    {unit.unit_name}
-                  </option>
-                ))}
-              </select>
-              {formErrors.user_unit_id && (
-                <p className="text-sm mt-1" style={{ color: theme.redText }}>{formErrors.user_unit_id}</p>
-              )}
-            </div>
-
-            {editingUser && (
-              <div className="flex items-center space-x-2 md:col-span-2">
-                <input
-                  id="is_active"
-                  name="is_active"
-                  type="checkbox"
-                  checked={formData.is_active}
-                  onChange={handleInputChange}
-                  disabled={submitting}
-                />
-                <Label htmlFor="is_active" style={{ color: theme.textBody }}>{t('userMgmt.active')}</Label>
-              </div>
-            )}
-          </div>
-          )}
-
-          {/* ─── Tab: Foto & TTD ─── */}
-          {formTab === 'media' && (
-          <div className="space-y-4">
-            {/* Profile Picture */}
-            <div>
-              <p className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary }}>{t('userMgmt.profilePicture')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></p>
-              <Input
-                id="user_manual_picture"
-                name="user_manual_picture"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = () => { setTempImageSrc(reader.result); setShowCropModal(true); };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                disabled={submitting || uploadingImage}
-                className="cursor-pointer"
-                style={inputStyle}
-              />
-              {imageFile && (
-                <div className="mt-2 space-y-1">
-                  <p className="text-sm font-medium" style={{ color: theme.textBody }}>Preview:</p>
-                  <img src={URL.createObjectURL(imageFile)} alt="Preview" className="w-20 h-20 object-cover rounded-full border" />
-                  <p className="text-xs" style={{ color: theme.textSecondary }}>Size: {(imageFile.size / 1024).toFixed(1)} KB</p>
-                </div>
-              )}
-              {!imageFile && formData.user_manual_picture && (
-                <div className="mt-2">
-                  <p className="text-sm font-medium mb-1" style={{ color: theme.textBody }}>Foto saat ini:</p>
-                  <img src={formData.user_manual_picture} alt="Current" className="w-20 h-20 object-cover rounded-full border" />
-                </div>
-              )}
-            </div>
-
-            {/* Signature */}
-            <div className="border-t pt-3">
-              <p className="text-sm font-semibold mb-1" style={{ color: theme.textPrimary }}>{t('userMgmt.signature')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></p>
-              <p className="text-xs mb-2" style={{ color: theme.textSecondary }}>{t('userMgmt.signatureDesc')}</p>
-              <ImageCropUploader
-                label="Upload Tanda Tangan"
-                previewUrl={signaturePreview}
-                uploading={uploadingSignature}
-                inputRef={signatureInputRef}
-                onCropped={(blob) => { setSignatureBlob(blob); setSignaturePreview(URL.createObjectURL(blob)); }}
-                onRemove={() => { setSignatureBlob(null); setSignaturePreview(''); }}
-              />
-              {signatureBlob && (
-                <p className="text-xs text-amber-600 mt-1">{t('userMgmt.signatureUnsaved')}</p>
-              )}
-            </div>
-          </div>
-          )}
-
-          {/* ─── Tab: Mesin Absensi ─── */}
-          {formTab === 'mesin' && (
-          <div className="space-y-4">
-            <div className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-              <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>🖐 {t('userMgmt.pinMachine')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></p>
-              <p className="text-xs" style={{ color: theme.textSecondary }}>{t('userMgmt.pinDesc')}</p>
-              <Input
-                id="user_pin"
-                name="user_pin"
-                type="text"
-                value={formData.user_pin || ''}
-                onChange={handleInputChange}
-                disabled={submitting}
-                placeholder="Contoh: 155 atau GURU-01"
-                style={inputStyle}
-              />
-              {formData.user_pin && (
-                <p className="text-xs" style={{ color: theme.greenText }}>
-                  ✓ {t('userMgmt.pinConfirm').replace('{pin}', formData.user_pin)}
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-lg p-3 space-y-3" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-              <div>
-                <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>🕐 {t('userMgmt.schedule')} <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>({t('userMgmt.optional')})</span></p>
-                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>{t('userMgmt.scheduleDesc')}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>{t('userMgmt.expectedCheckin')}</label>
-                  <Input type="time" name="expected_check_in" value={formData.expected_check_in || ''} onChange={handleInputChange} disabled={submitting} style={inputStyle} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>{t('userMgmt.expectedCheckout')}</label>
-                  <Input type="time" name="expected_check_out" value={formData.expected_check_out || ''} onChange={handleInputChange} disabled={submitting} style={inputStyle} />
-                </div>
-              </div>
-            </div>
-
-            {/* Join Date */}
-            <div className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-              <div>
-                <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>📅 Tanggal Bergabung <span className="text-xs font-normal" style={{ color: theme.textSecondary }}>(opsional)</span></p>
-                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
-                  Karyawan tidak akan dihitung absen sebelum tanggal ini. Kosongkan jika sudah lama bergabung.
-                </p>
-              </div>
-              <Input
-                type="date"
-                name="join_date"
-                value={formData.join_date || ''}
-                onChange={handleInputChange}
-                disabled={submitting}
-                style={inputStyle}
-              />
-              {formData.join_date && (
-                <p className="text-xs" style={{ color: theme.greenText }}>
-                  ✓ Mulai dihitung absen dari: {formData.join_date}
-                </p>
-              )}
-            </div>
-          </div>
-          )}
-
-          {/* ─── Tab: Riwayat Posisi ─── */}
-          {formTab === 'posisi' && editingUser && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium" style={{ color: theme.textPrimary }}>Riwayat Posisi / Jabatan</p>
-              {!showAddPos && (
-                <button type="button"
-                  onClick={() => { setShowAddPos(true); setEditingPosId(null); setNewPosTitle(''); setNewPosStart(''); setNewPosEnd(''); setNewPosNotes(''); }}
-                  className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                  style={{ background: theme.blueText || '#2563eb', color: '#fff' }}>
-                  + Tambah Posisi
-                </button>
-              )}
-            </div>
-
-            {/* Add/Edit form */}
-            {showAddPos && (
-              <div className="p-3 rounded-xl space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-                <p className="text-xs font-semibold" style={{ color: theme.textPrimary }}>
-                  {editingPosId ? '✏️ Edit Posisi' : '➕ Tambah Posisi Baru'}
-                </p>
-                <div>
-                  <label className="text-xs" style={{ color: theme.textSecondary }}>Nama Posisi / Jabatan <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input type="text" value={newPosTitle} onChange={e => setNewPosTitle(e.target.value)}
-                    placeholder="Contoh: Mathematic Teacher, Vice Principal..."
-                    className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
-                    style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs" style={{ color: theme.textSecondary }}>Mulai Berlaku <span style={{ color: '#ef4444' }}>*</span></label>
-                    <input type="date" value={newPosStart} onChange={e => setNewPosStart(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
-                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
-                  </div>
-                  <div>
-                    <label className="text-xs" style={{ color: theme.textSecondary }}>Selesai (kosong = masih aktif)</label>
-                    <input type="date" value={newPosEnd} onChange={e => setNewPosEnd(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
-                      style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs" style={{ color: theme.textSecondary }}>Catatan (opsional)</label>
-                  <input type="text" value={newPosNotes} onChange={e => setNewPosNotes(e.target.value)}
-                    placeholder="Keterangan tambahan..."
-                    className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
-                    style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }} />
-                </div>
-                {posHistMsg && <p className="text-xs" style={{ color: posHistMsg.startsWith('❌') ? '#ef4444' : '#16a34a' }}>{posHistMsg}</p>}
-                <div className="flex gap-2 pt-1">
-                  <button type="button" onClick={handleSavePosition}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                    style={{ background: theme.blueText || '#2563eb', color: '#fff' }}>
-                    {editingPosId ? 'Simpan Perubahan' : 'Simpan'}
-                  </button>
-                  <button type="button" onClick={resetPosForm}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                    style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-                    Batal
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* List */}
-            {posHistLoading ? (
-              <p className="text-xs text-center py-3" style={{ color: theme.textSecondary }}>Memuat...</p>
-            ) : positionHistory.length === 0 ? (
-              <p className="text-xs text-center py-4" style={{ color: theme.textSecondary }}>Belum ada riwayat posisi.</p>
-            ) : (
-              <div className="space-y-2">
-                {positionHistory.map(pos => (
-                  <div key={pos.id} className="flex items-start justify-between gap-2 p-3 rounded-lg"
-                    style={{ border: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: theme.textPrimary }}>{pos.position_title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
-                        {pos.start_date} → {pos.end_date || <span style={{ color: theme.blueText || '#2563eb' }}>sekarang</span>}
-                      </p>
-                      {pos.notes && <p className="text-xs mt-0.5 italic" style={{ color: theme.textSecondary }}>{pos.notes}</p>}
-                    </div>
-                    <div className="flex gap-1 flex-shrink-0">
-                      <button type="button" onClick={() => handleEditPosition(pos)}
-                        className="text-xs px-2 py-1 rounded"
-                        style={{ background: '#eff6ff', color: '#2563eb' }}>✏️</button>
-                      <button type="button" onClick={() => handleDeletePosition(pos.id)}
-                        className="text-xs px-2 py-1 rounded"
-                        style={{ background: '#fef2f2', color: '#ef4444' }}>🗑️</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          )}
-
-          {/* ─── Buttons — selalu tampil ─── */}
-          <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t" style={{ borderColor: theme.border }}>
-            <Button
-              type="submit"
-              className="flex-1"
-              style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
-              disabled={submitting}
-            >
-              {submitting ? t('userMgmt.saving') : (editingUser ? t('userMgmt.update') : t('userMgmt.save'))}
-            </Button>
-            <Button
-              type="button"
-              onClick={resetForm}
-              variant="outline"
-              className="flex-1"
-              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
-              disabled={submitting}
-            >
-              {t('userMgmt.cancel')}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-      {/* Import Users Modal */}
-      <Modal
-        isOpen={showImportModal}
-        onClose={resetImportModal}
-        title="Import Users from CSV"
-        size="lg"
-        containerStyle={{ background: theme.cardBg }}
-        headerStyle={{ borderColor: theme.border }}
-        titleStyle={{ color: theme.textPrimary }}
-      >
-        <div className="space-y-4">
-          {/* File Upload */}
+        {/* ─── Minimalist Editorial Header Section ─── */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b" style={{ borderColor: theme.border }}>
           <div>
-            <Label htmlFor="csv-file" className="text-sm font-medium" style={{ color: theme.textBody }}>
-              Select CSV File
-            </Label>
-            <input
-              id="csv-file"
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleFileUpload}
-              className="w-full px-3 py-2 rounded-md text-sm"
-              style={inputStyle}
-            />
-            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-              Supported formats: CSV (.csv) with comma (,) or semicolon (;) separators. Excel files (.xlsx, .xls) coming soon.
-            </p>
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase mb-2" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+              <span>User Management System</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: theme.textPrimary }}>
+              User Accounts
+            </h1>
           </div>
-
-          {/* Template Info */}
-          <div className="rounded-lg p-3" style={{ background: theme.blueBg, border: `1px solid ${theme.border}` }}>
-            <h4 className="font-medium mb-2" style={{ color: theme.blueText }}>CSV Format Required:</h4>
-            <p className="text-sm mb-2" style={{ color: theme.blueText }}>
-              Your CSV should have these columns (case-insensitive). Use comma (,) or semicolon (;) as separator:
-            </p>
-            <ul className="text-xs space-y-1" style={{ color: theme.blueText }}>
-              <li>â€¢ <strong>nama_depan</strong> or <strong>first_name</strong> (required)</li>
-              <li>â€¢ <strong>nama_belakang</strong> or <strong>last_name</strong> (required)</li>
-              <li>â€¢ <strong>email</strong> (optional, @ccs.sch.id for Google OAuth)</li>
-              <li>â€¢ <strong>role</strong> (required, available: {roles.map(r => r.role_name).join(', ') || 'Loading...'})</li>
-              <li>â€¢ <strong>unit</strong> (optional, available: {units.map(u => u.unit_name).join(', ') || 'Loading...'})</li>
-              <li>â€¢ <strong>status</strong> (optional: active/inactive, default: active)</li>
-            </ul>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button 
-                onClick={() => downloadTemplate(false)}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
-              >
-                Download Template (Comma)
-              </Button>
-              <Button 
-                onClick={() => downloadTemplate(true)}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
-              >
-                Download Template (Semicolon)
-              </Button>
-            </div>
-          </div>
-
-          {/* Import Errors */}
-          {importErrors.length > 0 && (
-            <div className="rounded-lg p-3" style={{ background: theme.redBg, border: `1px solid ${theme.border}` }}>
-              <h4 className="font-medium mb-2" style={{ color: theme.redText }}>
-                Validation Errors ({importErrors.length} rows):
-              </h4>
-              <div className="max-h-32 overflow-y-auto space-y-1">
-                {importErrors.map((error, index) => (
-                  <div key={index} className="text-sm" style={{ color: theme.redText }}>
-                    <strong>Row {error.row}:</strong> {error.errors.join(', ')}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Import Preview */}
-          {importPreview.length > 0 && (
-            <div className="rounded-lg p-3" style={{ background: theme.greenBg, border: `1px solid ${theme.border}` }}>
-              <h4 className="font-medium mb-2" style={{ color: theme.greenText }}>
-                Valid Users Ready to Import ({importPreview.length}):
-              </h4>
-              <div className="max-h-32 overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                      <th className="text-left py-1" style={{ color: theme.greenText }}>Name</th>
-                      <th className="text-left py-1" style={{ color: theme.greenText }}>Email</th>
-                      <th className="text-left py-1" style={{ color: theme.greenText }}>Role</th>
-                      <th className="text-left py-1" style={{ color: theme.greenText }}>Unit</th>
-                      <th className="text-left py-1" style={{ color: theme.greenText }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {importPreview.slice(0, 5).map((user, index) => (
-                      <tr key={index} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                        <td className="py-1" style={{ color: theme.textBody }}>{user.user_nama_depan} {user.user_nama_belakang}</td>
-                        <td className="py-1" style={{ color: theme.textBody }}>{user.user_email || '-'}</td>
-                        <td className="py-1" style={{ color: theme.textBody }}>
-                          {roles.find(r => r.role_id === user.user_role_id)?.role_name || '-'}
-                        </td>
-                        <td className="py-1" style={{ color: theme.textBody }}>
-                          {user.user_unit_id ? units.find(u => u.unit_id === user.user_unit_id)?.unit_name || '-' : '-'}
-                        </td>
-                        <td className="py-1" style={{ color: theme.textBody }}>{user.is_active ? 'Active' : 'Inactive'}</td>
-                      </tr>
-                    ))}
-                    {importPreview.length > 5 && (
-                      <tr>
-                        <td colSpan="6" className="py-1 text-center" style={{ color: theme.textSecondary }}>
-                          ... and {importPreview.length - 5} more users
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-2 pt-3">
-            <Button 
-              onClick={processBulkImport}
-              className="flex-1 sm:flex-none"
-              style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
-              disabled={importPreview.length === 0 || isImporting}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium px-4 py-2.5 rounded-md transition-all duration-200 cursor-pointer active:scale-[0.98]"
+              style={btnPrimaryStyle}
             >
-              {isImporting ? 'Importing...' : `Import ${importPreview.length} Users`}
-            </Button>
-            <div className="flex gap-1">
-              <Button 
+              <FontAwesomeIcon icon={faPlus} className="text-xs" />
+              <span>Add User</span>
+            </button>
+
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium px-3.5 py-2.5 rounded-md transition-all duration-200 cursor-pointer"
+              style={btnSecondaryStyle}
+            >
+              <FontAwesomeIcon icon={faFileImport} className="text-xs" style={{ color: theme.textSecondary }} />
+              <span>Import CSV</span>
+            </button>
+
+            <div className="inline-flex items-center rounded-md border p-0.5" style={{ background: theme.cardBg, borderColor: theme.border }}>
+              <button
                 onClick={() => downloadTemplate(false)}
-                variant="outline"
-                className="text-xs px-2"
-                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
-                disabled={isImporting}
-                title="Download CSV template with comma separator"
+                className="px-2.5 py-1.5 text-xs font-mono rounded transition-colors"
+                style={{ color: theme.textSecondary }}
+                title="Download CSV template (comma ,)"
               >
                 Template (,)
-              </Button>
-              <Button 
+              </button>
+              <span className="w-px h-4" style={{ background: theme.border }}></span>
+              <button
                 onClick={() => downloadTemplate(true)}
-                variant="outline"
-                className="text-xs px-2"
-                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
-                disabled={isImporting}
-                title="Download CSV template with semicolon separator"
+                className="px-2.5 py-1.5 text-xs font-mono rounded transition-colors"
+                style={{ color: theme.textSecondary }}
+                title="Download CSV template (semicolon ;)"
               >
                 Template (;)
-              </Button>
+              </button>
             </div>
-            <Button 
-              onClick={resetImportModal}
-              variant="outline"
-              className="flex-1 sm:flex-none"
-              style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
-              disabled={isImporting}
-            >
-              Cancel
-            </Button>
           </div>
         </div>
-      </Modal>
 
-      {/* Filters */}
-      <Card className="mb-4" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-        <CardContent className="pt-4">
-          {/* Search bar */}
-          <div className="mb-3">
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: theme.textSecondary }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-              </svg>
-              <input
-                id="user-search"
-                type="text"
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                placeholder="Cari nama, email, atau role..."
-                className="w-full pl-9 pr-9 py-2 rounded-md text-sm focus:outline-none"
-                style={inputStyle}
-              />
-              {filters.search && (
-                <button
-                  onClick={() => handleFilterChange('search', '')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                  style={{ color: theme.textSecondary }}
-                  aria-label="Clear search"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
+        {/* ─── Bento Summary Grid Cards ─── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <div className="p-4 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>
+              <span>Total Users</span>
+              <FontAwesomeIcon icon={faUsers} style={{ color: theme.textSecondary }} />
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-semibold font-mono tracking-tight" style={{ color: theme.textPrimary }}>{totalUserCount}</span>
+              <span className="text-xs" style={{ color: theme.textSecondary }}>registered</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Role Filter */}
+          <div className="p-4 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>
+              <span>Active Users</span>
+              <FontAwesomeIcon icon={faUserCheck} style={{ color: theme.greenText }} />
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-semibold font-mono tracking-tight" style={{ color: theme.greenText }}>{activeUserCount}</span>
+              <span className="text-xs" style={{ color: theme.textSecondary }}>active</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>
+              <span>Inactive Users</span>
+              <FontAwesomeIcon icon={faUserTimes} style={{ color: theme.redText }} />
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-semibold font-mono tracking-tight" style={{ color: theme.redText }}>{inactiveUserCount}</span>
+              <span className="text-xs" style={{ color: theme.textSecondary }}>inactive</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
+            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>
+              <span>Admin Access</span>
+              <FontAwesomeIcon icon={faUserShield} style={{ color: theme.blueText }} />
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-semibold font-mono tracking-tight" style={{ color: theme.blueText }}>{adminRoleCount}</span>
+              <span className="text-xs" style={{ color: theme.textSecondary }}>administrators</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Search & Filter Controls ─── */}
+        <div className="rounded-lg p-4 border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border }}>
+          {/* Search Input with Keyboard Shortcut Hint */}
+          <div className="relative">
+            <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: theme.textSecondary }} />
+            <input
+              id="user-search"
+              type="text"
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              placeholder="Search by user name, email, or role..."
+              className="w-full pl-9 pr-16 py-2 rounded-md text-xs sm:text-sm focus:outline-none transition-colors"
+              style={inputStyle}
+            />
+            {filters.search ? (
+              <button
+                onClick={() => handleFilterChange('search', '')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+                style={{ color: theme.textSecondary }}
+              >
+                ✕
+              </button>
+            ) : (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-block">
+                <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>⌘F</kbd>
+              </span>
+            )}
+          </div>
+
+          {/* Filter Dropdowns Row */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 border-t" style={{ borderColor: theme.border }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 flex-1">
               <div>
-                <Label htmlFor="role-filter" className="text-sm font-medium" style={{ color: theme.textBody }}>
-                  Filter by Role
-                </Label>
                 <select
                   id="role-filter"
                   value={filters.role}
                   onChange={(e) => handleFilterChange('role', e.target.value)}
-                  className="w-full px-3 py-2 rounded-md text-sm"
+                  className="w-full px-3 py-1.5 text-xs rounded-md"
                   style={selectStyle}
                 >
-                  <option value="">Semua Role</option>
+                  <option value="">All Roles</option>
                   {getUniqueRoles().map(role => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
+                    <option key={role} value={role}>{role}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Unit Filter */}
               <div>
-                <Label htmlFor="unit-filter" className="text-sm font-medium" style={{ color: theme.textBody }}>
-                  Filter by Unit
-                </Label>
                 <select
                   id="unit-filter"
                   value={filters.unit}
                   onChange={(e) => handleFilterChange('unit', e.target.value)}
-                  className="w-full px-3 py-2 rounded-md text-sm"
+                  className="w-full px-3 py-1.5 text-xs rounded-md"
                   style={selectStyle}
                 >
-                  <option value="">Semua Unit</option>
+                  <option value="">All Units</option>
                   {getUniqueUnits().map(unit => (
-                    <option key={unit} value={unit}>
-                      {unit}
-                    </option>
+                    <option key={unit} value={unit}>{unit}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Status Filter */}
               <div>
-                <Label htmlFor="status-filter" className="text-sm font-medium" style={{ color: theme.textBody }}>
-                  Filter by Status
-                </Label>
                 <select
                   id="status-filter"
                   value={filters.status}
                   onChange={(e) => handleFilterChange('status', e.target.value)}
-                  className="w-full px-3 py-2 rounded-md text-sm"
+                  className="w-full px-3 py-1.5 text-xs rounded-md"
                   style={selectStyle}
                 >
-                  <option value="">Semua Status</option>
+                  <option value="">All Statuses</option>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
               </div>
             </div>
 
-            {/* Clear Filters Button */}
+            {/* Clear Button */}
             {(filters.search || filters.role || filters.status || filters.unit) && (
-              <Button 
+              <button
                 onClick={clearFilters}
-                variant="outline"
-                size="sm"
-                className="whitespace-nowrap"
-                style={{ background: theme.cardBg, color: theme.textPrimary, borderColor: theme.border }}
+                className="px-3 py-1.5 text-xs font-medium border rounded-md transition-colors"
+                style={btnSecondaryStyle}
               >
-                Clear Filters
-              </Button>
+                Reset Filters
+              </button>
             )}
           </div>
 
-          {/* Filter Summary */}
+          {/* Filter Badges Active */}
           {(filters.role || filters.status || filters.unit) && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="text-sm" style={{ color: theme.textSecondary }}>Active filters:</span>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px]" style={{ color: theme.textSecondary }}>Active filters:</span>
               {filters.role && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.blueBg, color: theme.blueText }}>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono" style={{ background: theme.blueBg, color: theme.blueText }}>
                   Role: {filters.role}
-                  <button onClick={() => handleFilterChange('role', '')} className="ml-1" style={{ color: theme.blueText }}>Ã—</button>
+                  <button onClick={() => handleFilterChange('role', '')} className="hover:opacity-75">✕</button>
                 </span>
               )}
               {filters.unit && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono" style={{ background: theme.yellowBg, color: theme.yellowText }}>
                   Unit: {filters.unit}
-                  <button onClick={() => handleFilterChange('unit', '')} className="ml-1" style={{ color: theme.textSecondary }}>Ã—</button>
+                  <button onClick={() => handleFilterChange('unit', '')} className="hover:opacity-75">✕</button>
                 </span>
               )}
               {filters.status && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs" style={{ background: theme.greenBg, color: theme.greenText }}>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono" style={{ background: theme.greenBg, color: theme.greenText }}>
                   Status: {filters.status === 'active' ? 'Active' : 'Inactive'}
-                  <button onClick={() => handleFilterChange('status', '')} className="ml-1" style={{ color: theme.greenText }}>Ã—</button>
+                  <button onClick={() => handleFilterChange('status', '')} className="hover:opacity-75">✕</button>
                 </span>
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Users Table */}
-      <Card style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-        <CardHeader style={{ borderBottom: `1px solid ${theme.border}` }}>
-          <div className="flex items-center justify-between">
-            <CardTitle style={{ color: theme.textPrimary }}>
-              Users List ({filteredUsers.length} of {users.length} users)
+        {/* ─── Main User Table Card ─── */}
+        <div className="rounded-lg border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border }}>
+          {/* Card Table Header Toolbar */}
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
+                User List ({filteredUsers.length} of {users.length})
+              </h2>
               {(filters.search || filters.role || filters.status || filters.unit) && (
-                <span className="text-sm font-normal ml-2" style={{ color: theme.textSecondary }}>(filtered)</span>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+                  filtered
+                </span>
               )}
-            </CardTitle>
-            {/* Column selector â€” desktop only */}
+            </div>
+
+            {/* Desktop Column Selector */}
             <div className="relative hidden md:block" ref={columnSelectorRef}>
               <button
                 onClick={() => setShowColumnSelector(v => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors"
-                style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, color: theme.textSecondary }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors cursor-pointer"
+                style={btnSecondaryStyle}
               >
-                <svg className="w-4 h-4" style={{ color: theme.textSecondary }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Columns
+                <FontAwesomeIcon icon={faColumns} className="text-xs" style={{ color: theme.textSecondary }} />
+                <span>Columns</span>
               </button>
+
               {showColumnSelector && (
-                <div className="absolute right-0 top-full mt-1 rounded-lg z-30 p-3 min-w-[180px]" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: theme.textSecondary }}>Tampilkan Kolom</p>
-                  {ALL_COLUMNS.map(col => (
-                    <label key={col.key} className="flex items-center gap-2 py-1 px-1 text-sm cursor-pointer rounded" style={{ color: theme.textBody }}>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.has(col.key)}
-                        onChange={() => toggleColumn(col.key)}
-                        className="rounded"
-                      />
-                      <span>{col.label}</span>
-                    </label>
-                  ))}
-                  <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${theme.border}` }}>
+                <div className="absolute right-0 top-full mt-1 border rounded-md shadow-sm z-30 p-3 min-w-[190px]" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                  <p className="text-[10px] font-semibold tracking-wider uppercase mb-2" style={{ color: theme.textSecondary }}>Show Columns</p>
+                  <div className="space-y-1">
+                    {ALL_COLUMNS.map(col => (
+                      <label key={col.key} className="flex items-center gap-2 py-1 text-xs cursor-pointer px-1 rounded" style={{ color: theme.textPrimary }}>
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns.has(col.key)}
+                          onChange={() => toggleColumn(col.key)}
+                          className="rounded"
+                        />
+                        <span>{col.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t" style={{ borderColor: theme.border }}>
                     <button
                       onClick={() => {
                         setVisibleColumns(DEFAULT_COLUMNS);
                         try { localStorage.removeItem('user_table_columns'); } catch(e) {}
                       }}
-                      className="text-xs w-full text-left"
+                      className="text-[11px] hover:underline"
                       style={{ color: theme.blueText }}
                     >
-                      Reset ke default
+                      Reset to default
                     </button>
                   </div>
                 </div>
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {/* Mobile View */}
-          <div className="block md:hidden space-y-3">
-            {filteredUsers.length === 0 ? (
-              <div className="text-center py-6" style={{ color: theme.textSecondary }}>
-                {(filters.search || filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
-              </div>
-            ) : (
-              filteredUsers.map(user => (
-                <div key={user.user_id} className="rounded-lg p-3 space-y-2" style={{ border: `1px solid ${theme.border}`, background: theme.cardBgAlt }}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold" style={{ color: theme.textPrimary }}>
-                        {user.user_nama_depan} {user.user_nama_belakang}
-                      </h3>
-                      <p className="text-sm" style={{ color: theme.textBody }}>{user.user_email || '-'}</p>
-                      <p className="text-sm" style={{ color: theme.textSecondary }}>Email: {user.user_email || '-'}</p>
-                    </div>
-                    <span className="text-xs" style={{ color: theme.textSecondary }}>ID: {user.user_id}</span>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    <span className="px-2 py-1 rounded text-xs" style={user.is_admin ? { background: theme.redBg, color: theme.redText } : { background: theme.blueBg, color: theme.blueText }}>
-                      {user.role_name}
-                    </span>
-                    {user.unit_name && (
-                      <span className="px-2 py-1 rounded text-xs" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                        {user.unit_name}
-                      </span>
-                    )}
-                    <span className="px-2 py-1 rounded text-xs" style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.subtleBg, color: theme.textSecondary }}>
-                      {user.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex gap-2 pt-1">
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleEdit(user)}
-                      className="flex-1"
-                      style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}
-                    >
-                      Edit
-                    </Button>
-                    {isStudentUser(user) && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleStartDeleteUser(user)}
-                        className="bg-red-600 hover:bg-red-700 text-white border-none px-3"
-                      >
-                        <FontAwesomeIcon icon={faTrash} className="mr-1" /> Hapus
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
 
-          {/* Desktop View */}
+          {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+            <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr style={{ background: theme.subtleBg }}>
-                  {visibleColumns.has('id') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>ID</th>}
-                  {visibleColumns.has('nama') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Nama Lengkap</th>}
-                  {visibleColumns.has('email') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Email</th>}
-                  {visibleColumns.has('tanggal_lahir') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Tanggal Lahir</th>}
-                  {visibleColumns.has('role') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Role</th>}
-                  {visibleColumns.has('unit') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Unit</th>}
-                  {visibleColumns.has('status') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Status</th>}
-                  {visibleColumns.has('pin') && <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>PIN Mesin</th>}
-                  <th className="px-4 py-2 text-left" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>Actions</th>
+                <tr className="border-b font-medium tracking-wider uppercase text-[10px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                  {visibleColumns.has('id') && <th className="px-4 py-3 font-mono">ID</th>}
+                  {visibleColumns.has('nama') && <th className="px-4 py-3">Full Name</th>}
+                  {visibleColumns.has('email') && <th className="px-4 py-3">Email</th>}
+                  {visibleColumns.has('tanggal_lahir') && <th className="px-4 py-3">Birth Date</th>}
+                  {visibleColumns.has('role') && <th className="px-4 py-3">Role</th>}
+                  {visibleColumns.has('unit') && <th className="px-4 py-3">Unit</th>}
+                  {visibleColumns.has('status') && <th className="px-4 py-3">Status</th>}
+                  {visibleColumns.has('pin') && <th className="px-4 py-3 font-mono">Machine PIN</th>}
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y" style={{ borderColor: theme.border }}>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={visibleColumns.size + 1} className="px-4 py-6 text-center" style={{ border: `1px solid ${theme.border}`, color: theme.textSecondary }}>
-                      {(filters.search || filters.role || filters.status || filters.unit) ? 'No users match the selected filters' : 'No users found'}
+                    <td colSpan={visibleColumns.size + 1} className="px-4 py-8 text-center text-xs" style={{ color: theme.textSecondary }}>
+                      No users match the selected filters.
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map(user => (
-                    <tr key={user.user_id}
+                    <tr
+                      key={user.user_id}
+                      className="transition-colors duration-150"
                       onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                     >
-                      {visibleColumns.has('id') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_id}</td>}
-                      {visibleColumns.has('nama') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_nama_depan} {user.user_nama_belakang}</td>}
-                      {visibleColumns.has('email') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_email || '-'}</td>}
-                      {visibleColumns.has('tanggal_lahir') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.user_tanggal_lahir ? toDisplayDate(user.user_tanggal_lahir) : '-'}</td>}
+                      {visibleColumns.has('id') && (
+                        <td className="px-4 py-3 font-mono" style={{ color: theme.textSecondary }}>
+                          #{user.user_id}
+                        </td>
+                      )}
+
+                      {visibleColumns.has('nama') && (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <UserAvatar user={user} theme={theme} size="w-7 h-7" />
+                            <span className="font-medium" style={{ color: theme.textPrimary }}>
+                              {user.user_nama_depan} {user.user_nama_belakang}
+                            </span>
+                          </div>
+                        </td>
+                      )}
+
+                      {visibleColumns.has('email') && (
+                        <td className="px-4 py-3 font-mono text-[11px]" style={{ color: theme.textSecondary }}>
+                          {user.user_email || <span className="italic opacity-60">—</span>}
+                        </td>
+                      )}
+
+                      {visibleColumns.has('tanggal_lahir') && (
+                        <td className="px-4 py-3" style={{ color: theme.textSecondary }}>
+                          {user.user_tanggal_lahir ? toDisplayDate(user.user_tanggal_lahir) : <span className="italic opacity-60">—</span>}
+                        </td>
+                      )}
 
                       {visibleColumns.has('role') && (
-                        <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
-                          <span className="px-2 py-1 rounded text-xs" style={user.is_admin ? { background: theme.redBg, color: theme.redText } : { background: theme.blueBg, color: theme.blueText }}>
+                        <td className="px-4 py-3">
+                          <span
+                            className="inline-block px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider"
+                            style={
+                              user.is_admin
+                                ? { background: theme.redBg, color: theme.redText }
+                                : isStudentUser(user)
+                                ? { background: theme.yellowBg, color: theme.yellowText }
+                                : { background: theme.blueBg, color: theme.blueText }
+                            }
+                          >
                             {user.role_name}
                           </span>
                         </td>
                       )}
-                      {visibleColumns.has('unit') && <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}`, color: theme.textBody }}>{user.unit_name || '-'}</td>}
+
+                      {visibleColumns.has('unit') && (
+                        <td className="px-4 py-3">
+                          {user.unit_name ? (
+                            <span className="inline-block px-2 py-0.5 rounded text-[11px]" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+                              {user.unit_name}
+                            </span>
+                          ) : (
+                            <span className="italic opacity-60">—</span>
+                          )}
+                        </td>
+                      )}
+
                       {visibleColumns.has('status') && (
-                        <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
-                          <span className="px-2 py-1 rounded text-xs" style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.subtleBg, color: theme.textSecondary }}>
+                        <td className="px-4 py-3">
+                          <span
+                            className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider"
+                            style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.redBg, color: theme.redText }}
+                          >
                             {user.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                       )}
+
                       {visibleColumns.has('pin') && (
-                        <td className="px-4 py-2 font-mono text-xs" style={{ border: `1px solid ${theme.border}`, color: user.user_pin ? theme.textPrimary : theme.textSecondary }}>
-                          {user.user_pin || <span className="italic">—</span>}
+                        <td className="px-4 py-3 font-mono text-[11px]">
+                          {user.user_pin ? (
+                            <span className="px-1.5 py-0.5 rounded border" style={{ background: theme.subtleBg, color: theme.textPrimary, borderColor: theme.border }}>
+                              {user.user_pin}
+                            </span>
+                          ) : (
+                            <span className="italic opacity-60">—</span>
+                          )}
                         </td>
                       )}
-                      <td className="px-4 py-2" style={{ border: `1px solid ${theme.border}` }}>
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" onClick={() => handleEdit(user)} style={{ background: theme.textPrimary, color: theme.cardBg, border: 'none' }}>
+
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleEdit(user)}
+                            className="px-2.5 py-1 text-xs font-medium rounded transition-colors cursor-pointer"
+                            style={btnSecondaryStyle}
+                          >
                             Edit
-                          </Button>
+                          </button>
                           {isStudentUser(user) && (
-                            <Button size="sm" onClick={() => handleStartDeleteUser(user)} className="bg-red-600 hover:bg-red-700 text-white border-none">
-                              <FontAwesomeIcon icon={faTrash} className="mr-1" /> Hapus
-                            </Button>
+                            <button
+                              onClick={() => handleStartDeleteUser(user)}
+                              className="px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer"
+                              style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.redBg}` }}
+                              title="Delete user"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
                           )}
                         </div>
                       </td>
@@ -2108,8 +1310,605 @@ export default function UserManagement() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Mobile Table/Cards View */}
+          <div className="block md:hidden divide-y" style={{ borderColor: theme.border }}>
+            {filteredUsers.length === 0 ? (
+              <div className="p-6 text-center text-xs" style={{ color: theme.textSecondary }}>
+                No users match the selected filters.
+              </div>
+            ) : (
+              filteredUsers.map(user => (
+                <div key={user.user_id} className="p-4 space-y-2.5" style={{ background: theme.cardBg }}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <UserAvatar user={user} theme={theme} size="w-8 h-8" />
+                      <div>
+                        <h3 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
+                          {user.user_nama_depan} {user.user_nama_belakang}
+                        </h3>
+                        <p className="text-xs font-mono" style={{ color: theme.textSecondary }}>{user.user_email || '-'}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono opacity-60">#{user.user_id}</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold" style={user.is_admin ? { background: theme.redBg, color: theme.redText } : { background: theme.blueBg, color: theme.blueText }}>
+                      {user.role_name}
+                    </span>
+                    {user.unit_name && (
+                      <span className="px-2 py-0.5 rounded text-[10px]" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+                        {user.unit_name}
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold" style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.redBg, color: theme.redText }}>
+                      {user.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t" style={{ borderColor: theme.border }}>
+                    <button
+                      onClick={() => handleEdit(user)}
+                      className="flex-1 py-1.5 text-xs font-medium rounded border cursor-pointer"
+                      style={btnSecondaryStyle}
+                    >
+                      Edit User
+                    </button>
+                    {isStudentUser(user) && (
+                      <button
+                        onClick={() => handleStartDeleteUser(user)}
+                        className="px-3 py-1.5 text-xs font-medium rounded border cursor-pointer"
+                        style={{ background: theme.redBg, color: theme.redText, borderColor: theme.redBg }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* ─── User Form Modal ─── */}
+      <Modal
+        isOpen={showForm}
+        onClose={resetForm}
+        title={editingUser ? `Edit User #${editingUser.user_id}` : 'Add New User'}
+        size="md"
+        disableBackdropClose
+        containerStyle={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}
+        headerStyle={{ borderBottom: `1px solid ${theme.border}` }}
+        titleStyle={{ color: theme.textPrimary, fontSize: '16px', fontWeight: '600' }}
+      >
+        {error && (
+          <div className="p-3 rounded-md mb-4 text-xs" style={{ background: theme.redBg, border: `1px solid ${theme.redBg}`, color: theme.redText }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Minimalist Tab Navigation Bar */}
+          <div className="flex border rounded-md overflow-hidden p-0.5 text-xs font-medium" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+            {[
+              { key: 'info', label: 'Account Info' },
+              { key: 'media', label: 'Photo & Signature' },
+              { key: 'mesin', label: 'Attendance Machine' },
+              ...(editingUser ? [{ key: 'posisi', label: 'Position History' }] : []),
+            ].map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setFormTab(tab.key)}
+                className="flex-1 py-1.5 px-2 rounded text-center transition-all cursor-pointer"
+                style={{
+                  background: formTab === tab.key ? theme.textPrimary : 'transparent',
+                  color: formTab === tab.key ? (isDark ? '#18171A' : '#FFFFFF') : theme.textSecondary,
+                  fontWeight: formTab === tab.key ? '600' : '400'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab 1: Info Data Diri */}
+          {formTab === 'info' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
+              <div>
+                <Label htmlFor="user_nama_depan" style={{ color: theme.textPrimary }} className="font-medium">First Name <span style={{ color: theme.redText }}>*</span></Label>
+                <Input
+                  id="user_nama_depan"
+                  name="user_nama_depan"
+                  value={formData.user_nama_depan}
+                  onChange={handleInputChange}
+                  style={inputStyle}
+                  disabled={submitting}
+                  className="mt-1"
+                />
+                {formErrors.user_nama_depan && (
+                  <p className="text-[11px] mt-1" style={{ color: theme.redText }}>{formErrors.user_nama_depan}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="user_nama_belakang" style={{ color: theme.textPrimary }} className="font-medium">Last Name <span style={{ color: theme.redText }}>*</span></Label>
+                <Input
+                  id="user_nama_belakang"
+                  name="user_nama_belakang"
+                  value={formData.user_nama_belakang}
+                  onChange={handleInputChange}
+                  style={inputStyle}
+                  disabled={submitting}
+                  className="mt-1"
+                />
+                {formErrors.user_nama_belakang && (
+                  <p className="text-[11px] mt-1" style={{ color: theme.redText }}>{formErrors.user_nama_belakang}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="user_email" style={{ color: theme.textPrimary }} className="font-medium">Google OAuth Email <span className="font-normal" style={{ color: theme.textSecondary }}>(optional)</span></Label>
+                <Input
+                  id="user_email"
+                  name="user_email"
+                  type="email"
+                  value={formData.user_email}
+                  onChange={handleInputChange}
+                  style={inputStyle}
+                  disabled={submitting}
+                  className="mt-1 font-mono text-xs"
+                  placeholder="name@ccs.sch.id"
+                />
+                {formErrors.user_email && (
+                  <p className="text-[11px] mt-1" style={{ color: theme.redText }}>{formErrors.user_email}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="user_tanggal_lahir" style={{ color: theme.textPrimary }} className="font-medium">Birth Date <span className="font-normal" style={{ color: theme.textSecondary }}>(DD/MM/YYYY)</span></Label>
+                <Input
+                  id="user_tanggal_lahir"
+                  name="user_tanggal_lahir"
+                  type="text"
+                  value={formData.user_tanggal_lahir || ''}
+                  onChange={(e) => {
+                    let v = e.target.value.replace(/[^0-9/]/g, '');
+                    if (v.length === 2 && !v.includes('/')) v += '/';
+                    if (v.length === 5 && v.lastIndexOf('/') === 2) v += '/';
+                    handleInputChange({ target: { name: 'user_tanggal_lahir', value: v } });
+                  }}
+                  disabled={submitting}
+                  placeholder="DD/MM/YYYY"
+                  maxLength={10}
+                  style={inputStyle}
+                  className="mt-1 font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="user_role_id" style={{ color: theme.textPrimary }} className="font-medium">Account Role <span style={{ color: theme.redText }}>*</span></Label>
+                <select
+                  id="user_role_id"
+                  name="user_role_id"
+                  value={formData.user_role_id}
+                  onChange={handleInputChange}
+                  disabled={submitting}
+                  className="w-full mt-1 px-3 py-2 text-xs"
+                  style={selectStyle}
+                >
+                  <option value="">Select Role</option>
+                  {roles.map(role => (
+                    <option key={role.role_id} value={role.role_id}>
+                      {role.role_name} {role.is_admin ? '(Admin)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.user_role_id && (
+                  <p className="text-[11px] mt-1" style={{ color: theme.redText }}>{formErrors.user_role_id}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="user_unit_id" style={{ color: theme.textPrimary }} className="font-medium">Work Unit <span style={{ color: theme.redText }}>*</span></Label>
+                <select
+                  id="user_unit_id"
+                  name="user_unit_id"
+                  value={formData.user_unit_id}
+                  onChange={handleInputChange}
+                  disabled={submitting}
+                  className="w-full mt-1 px-3 py-2 text-xs"
+                  style={selectStyle}
+                >
+                  <option value="">Select Unit</option>
+                  {units.map(unit => (
+                    <option key={unit.unit_id} value={unit.unit_id}>
+                      {unit.unit_name}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.user_unit_id && (
+                  <p className="text-[11px] mt-1" style={{ color: theme.redText }}>{formErrors.user_unit_id}</p>
+                )}
+              </div>
+
+              {editingUser && (
+                <div className="flex items-center space-x-2 md:col-span-2 pt-1">
+                  <input
+                    id="is_active"
+                    name="is_active"
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={handleInputChange}
+                    disabled={submitting}
+                    className="rounded"
+                  />
+                  <Label htmlFor="is_active" className="text-xs font-medium" style={{ color: theme.textPrimary }}>Active Account Status</Label>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Foto & Tanda Tangan */}
+          {formTab === 'media' && (
+            <div className="space-y-4 text-xs">
+              <div>
+                <p className="font-medium mb-1" style={{ color: theme.textPrimary }}>Profile Picture <span className="font-normal" style={{ color: theme.textSecondary }}>(optional)</span></p>
+                <input
+                  id="user_manual_picture"
+                  name="user_manual_picture"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => { setTempImageSrc(reader.result); setShowCropModal(true); };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  disabled={submitting || uploadingImage}
+                  className="w-full px-3 py-1.5 text-xs rounded border"
+                  style={inputStyle}
+                />
+                {imageFile && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <img src={URL.createObjectURL(imageFile)} alt="Preview" className="w-14 h-14 object-cover rounded-full border" style={{ borderColor: theme.border }} />
+                    <span className="text-[11px]" style={{ color: theme.textSecondary }}>Preview new picture ready to upload</span>
+                  </div>
+                )}
+                {!imageFile && formData.user_manual_picture && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <img src={formData.user_manual_picture} alt="Current" className="w-14 h-14 object-cover rounded-full border" style={{ borderColor: theme.border }} />
+                    <span className="text-[11px]" style={{ color: theme.textSecondary }}>Current active picture</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t pt-3" style={{ borderColor: theme.border }}>
+                <p className="font-medium mb-1" style={{ color: theme.textPrimary }}>Digital Signature <span className="font-normal" style={{ color: theme.textSecondary }}>(optional)</span></p>
+                <p className="text-[11px] mb-2" style={{ color: theme.textSecondary }}>Used for official documents such as report cards & certificates.</p>
+                <ImageCropUploader
+                  label="Upload Signature"
+                  previewUrl={signaturePreview}
+                  uploading={uploadingSignature}
+                  inputRef={signatureInputRef}
+                  onCropped={(blob) => { setSignatureBlob(blob); setSignaturePreview(URL.createObjectURL(blob)); }}
+                  onRemove={() => { setSignatureBlob(null); setSignaturePreview(''); }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Tab 3: Mesin Absensi & Jadwal */}
+          {formTab === 'mesin' && (
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <p className="font-semibold" style={{ color: theme.textPrimary }}>Attendance Machine PIN</p>
+                <p className="text-[11px]" style={{ color: theme.textSecondary }}>Unique PIN to match with fingerprint/attendance machine.</p>
+                <Input
+                  id="user_pin"
+                  name="user_pin"
+                  type="text"
+                  value={formData.user_pin || ''}
+                  onChange={handleInputChange}
+                  disabled={submitting}
+                  placeholder="Example: 155"
+                  style={inputStyle}
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <p className="font-semibold" style={{ color: theme.textPrimary }}>Expected Work Schedule</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px]" style={{ color: theme.textSecondary }}>Expected Check-in Time</label>
+                    <Input type="time" name="expected_check_in" value={formData.expected_check_in || ''} onChange={handleInputChange} disabled={submitting} style={inputStyle} className="mt-1 font-mono text-xs" />
+                  </div>
+                  <div>
+                    <label className="text-[11px]" style={{ color: theme.textSecondary }}>Expected Check-out Time</label>
+                    <Input type="time" name="expected_check_out" value={formData.expected_check_out || ''} onChange={handleInputChange} disabled={submitting} style={inputStyle} className="mt-1 font-mono text-xs" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <p className="font-semibold" style={{ color: theme.textPrimary }}>Join Date</p>
+                <Input
+                  type="date"
+                  name="join_date"
+                  value={formData.join_date || ''}
+                  onChange={handleInputChange}
+                  disabled={submitting}
+                  style={inputStyle}
+                  className="font-mono text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Tab 4: Posisi History */}
+          {formTab === 'posisi' && editingUser && (
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold" style={{ color: theme.textPrimary }}>Position History</p>
+                {!showAddPos && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddPos(true); setEditingPosId(null); setNewPosTitle(''); setNewPosStart(''); setNewPosEnd(''); setNewPosNotes(''); }}
+                    className="px-2.5 py-1 rounded text-xs font-medium cursor-pointer"
+                    style={btnPrimaryStyle}
+                  >
+                    + Add Position
+                  </button>
+                )}
+              </div>
+
+              {showAddPos && (
+                <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                  <p className="font-medium" style={{ color: theme.textPrimary }}>{editingPosId ? 'Edit Position' : 'Add Position'}</p>
+                  <input
+                    type="text"
+                    value={newPosTitle}
+                    onChange={e => setNewPosTitle(e.target.value)}
+                    placeholder="Position title..."
+                    className="w-full px-3 py-1.5 rounded border text-xs"
+                    style={inputStyle}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="date" value={newPosStart} onChange={e => setNewPosStart(e.target.value)} className="px-2 py-1 rounded border text-xs font-mono" style={inputStyle} />
+                    <input type="date" value={newPosEnd} onChange={e => setNewPosEnd(e.target.value)} className="px-2 py-1 rounded border text-xs font-mono" style={inputStyle} />
+                  </div>
+                  {posHistMsg && <p className="text-[11px]" style={{ color: theme.redText }}>{posHistMsg}</p>}
+                  <div className="flex gap-2 pt-1">
+                    <button type="button" onClick={handleSavePosition} className="px-3 py-1 rounded text-xs cursor-pointer" style={btnPrimaryStyle}>Save</button>
+                    <button type="button" onClick={resetPosForm} className="px-3 py-1 rounded text-xs cursor-pointer" style={btnSecondaryStyle}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {posHistLoading ? (
+                <p className="text-center py-3 text-xs" style={{ color: theme.textSecondary }}>Loading history...</p>
+              ) : positionHistory.length === 0 ? (
+                <p className="text-center py-3 text-xs" style={{ color: theme.textSecondary }}>No position history found.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {positionHistory.map(pos => (
+                    <div key={pos.id} className="p-2.5 rounded border flex items-center justify-between gap-2" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                      <div>
+                        <p className="font-medium" style={{ color: theme.textPrimary }}>{pos.position_title}</p>
+                        <p className="text-[11px] font-mono" style={{ color: theme.textSecondary }}>{pos.start_date} → {pos.end_date || 'present'}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => handleEditPosition(pos)} className="px-2 py-0.5 text-[11px] border rounded cursor-pointer" style={btnSecondaryStyle}>Edit</button>
+                        <button type="button" onClick={() => handleDeletePosition(pos.id)} className="px-2 py-0.5 text-[11px] rounded cursor-pointer" style={{ background: theme.redBg, color: theme.redText }}>Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Form Action Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
+            <button
+              type="button"
+              onClick={resetForm}
+              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
+              style={btnSecondaryStyle}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer disabled:opacity-50"
+              style={btnPrimaryStyle}
+              disabled={submitting}
+            >
+              {submitting ? 'Saving...' : (editingUser ? 'Update User' : 'Save User')}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ─── Import Users Modal ─── */}
+      <Modal
+        isOpen={showImportModal}
+        onClose={resetImportModal}
+        title="Import Users from CSV File"
+        size="lg"
+        containerStyle={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}
+        headerStyle={{ borderBottom: `1px solid ${theme.border}` }}
+        titleStyle={{ color: theme.textPrimary, fontSize: '16px', fontWeight: '600' }}
+      >
+        <div className="space-y-4 text-xs">
+          <div>
+            <Label htmlFor="csv-file" className="text-xs font-medium" style={{ color: theme.textPrimary }}>
+              Select CSV File
+            </Label>
+            <input
+              id="csv-file"
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="w-full mt-1 px-3 py-2 rounded border text-xs"
+              style={inputStyle}
+            />
+          </div>
+
+          <div className="p-3.5 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+            <h4 className="font-semibold mb-1" style={{ color: theme.textPrimary }}>CSV Column Format:</h4>
+            <p className="mb-2 text-[11px]" style={{ color: theme.textSecondary }}>Use comma (,) or semicolon (;) delimiter:</p>
+            <ul className="text-[11px] font-mono space-y-1 list-disc list-inside" style={{ color: theme.textSecondary }}>
+              <li>nama_depan (required)</li>
+              <li>nama_belakang (required)</li>
+              <li>email (optional, @ccs.sch.id)</li>
+              <li>role (required: {roles.map(r => r.role_name).join(', ') || 'Loading...'})</li>
+              <li>unit (optional: {units.map(u => u.unit_name).join(', ') || 'Loading...'})</li>
+              <li>status (optional: active / inactive)</li>
+            </ul>
+          </div>
+
+          {importErrors.length > 0 && (
+            <div className="p-3 rounded border text-xs" style={{ background: theme.redBg, borderColor: theme.redBg, color: theme.redText }}>
+              <h4 className="font-semibold mb-1">Validation Errors ({importErrors.length} rows):</h4>
+              <div className="max-h-28 overflow-y-auto space-y-1">
+                {importErrors.map((err, idx) => (
+                  <p key={idx} className="text-[11px]">Row {err.row}: {err.errors.join(', ')}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {importPreview.length > 0 && (
+            <div className="p-3 rounded border text-xs" style={{ background: theme.greenBg, borderColor: theme.greenBg, color: theme.greenText }}>
+              <h4 className="font-semibold mb-1">Valid Users Ready to Import ({importPreview.length}):</h4>
+              <div className="max-h-28 overflow-y-auto font-mono text-[11px]">
+                {importPreview.slice(0, 5).map((u, i) => (
+                  <p key={i}>• {u.user_nama_depan} {u.user_nama_belakang} ({u.user_email || 'No email'})</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t" style={{ borderColor: theme.border }}>
+            <button
+              onClick={resetImportModal}
+              className="px-4 py-2 text-xs font-medium rounded cursor-pointer"
+              style={btnSecondaryStyle}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={processBulkImport}
+              disabled={importPreview.length === 0 || isImporting}
+              className="px-4 py-2 text-xs font-medium rounded cursor-pointer disabled:opacity-50"
+              style={btnPrimaryStyle}
+            >
+              {isImporting ? 'Importing...' : `Process Import (${importPreview.length} Users)`}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─── Delete Safety Verification Modal ─── */}
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onClose={() => {
+          if (!deleteModal.isDeleting) setDeleteModal(prev => ({ ...prev, isOpen: false }))
+        }}
+        title={deleteModal.canDelete ? "Confirm User Deletion" : "User Data Protection"}
+        size="md"
+        containerStyle={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}
+        headerStyle={{ borderBottom: `1px solid ${theme.border}` }}
+        titleStyle={{ color: theme.textPrimary, fontSize: '16px', fontWeight: '600' }}
+      >
+        <div className="space-y-4 text-xs">
+          {deleteModal.isChecking ? (
+            <div className="py-8 text-center space-y-3">
+              <FontAwesomeIcon icon={faSpinner} spin className="text-xl" style={{ color: theme.textPrimary }} />
+              <p className="font-medium" style={{ color: theme.textSecondary }}>Checking user data dependencies...</p>
+            </div>
+          ) : !deleteModal.canDelete ? (
+            <div className="space-y-3">
+              <div className="p-3.5 rounded border text-xs" style={{ background: theme.redBg, borderColor: theme.redBg, color: theme.redText }}>
+                <div className="flex items-start gap-2.5">
+                  <FontAwesomeIcon icon={faBan} className="text-sm mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-xs mb-1">User Cannot Be Deleted</h4>
+                    <p className="text-[11px] opacity-90">
+                      User <span className="font-bold">{deleteModal.user?.user_nama_depan} {deleteModal.user?.user_nama_belakang || ''}</span> (ID #{deleteModal.user?.user_id}) has active history records in the system:
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <h5 className="font-semibold mb-1.5 text-xs" style={{ color: theme.textPrimary }}>Data Dependency Details:</h5>
+                <ul className="space-y-1 list-disc list-inside text-[11px] font-mono" style={{ color: theme.redText }}>
+                  {deleteModal.blockers.map((b, idx) => (
+                    <li key={idx}>{b}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="p-2.5 rounded text-[11px]" style={{ background: theme.blueBg, color: theme.blueText }}>
+                Suggestion: You can change the account status to <strong>"Inactive"</strong> in the Edit menu.
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 text-xs font-medium rounded cursor-pointer"
+                  style={btnSecondaryStyle}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded border text-xs" style={{ background: theme.yellowBg, borderColor: theme.yellowBg, color: theme.yellowText }}>
+                <div className="flex items-start gap-2.5">
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="text-sm mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-xs mb-1">Confirm Account Deletion</h4>
+                    <p className="text-[11px]">
+                      Are you sure you want to permanently delete <span className="font-bold">{deleteModal.user?.user_nama_depan} {deleteModal.user?.user_nama_belakang || ''}</span> (ID #{deleteModal.user?.user_id})?
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  disabled={deleteModal.isDeleting}
+                  onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 text-xs font-medium rounded cursor-pointer"
+                  style={btnSecondaryStyle}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={deleteModal.isDeleting}
+                  onClick={handleConfirmDeleteUser}
+                  className="px-4 py-2 text-xs font-medium text-white rounded cursor-pointer disabled:opacity-50"
+                  style={{ background: theme.redText }}
+                >
+                  {deleteModal.isDeleting ? 'Deleting...' : 'Yes, Delete User'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Notification Modal */}
       <NotificationModal
@@ -2131,114 +1930,6 @@ export default function UserManagement() {
         onCropComplete={handleCropComplete}
         aspectRatio={1}
       />
-
-      {/* Delete User Safety Verification Modal */}
-      <Modal
-        isOpen={deleteModal.isOpen}
-        onClose={() => {
-          if (!deleteModal.isDeleting) setDeleteModal(prev => ({ ...prev, isOpen: false }))
-        }}
-        title={deleteModal.canDelete ? "🗑️ Konfirmasi Hapus Pengguna" : "🛡️ Proteksi Data Pengguna"}
-        size="md"
-      >
-        <div className="space-y-4 text-xs">
-          {deleteModal.isChecking ? (
-            <div className="py-8 text-center space-y-3">
-              <FontAwesomeIcon icon={faSpinner} spin className="text-3xl text-indigo-500" />
-              <p className="font-semibold" style={{ color: theme.textBody }}>Memeriksa keterkaitan data pengguna...</p>
-            </div>
-          ) : !deleteModal.canDelete ? (
-            <div className="space-y-3">
-              <div className="p-3.5 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-900 dark:text-red-200">
-                <div className="flex items-start gap-2.5">
-                  <FontAwesomeIcon icon={faBan} className="text-red-600 dark:text-red-400 text-base mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-sm mb-1">Pengguna Tidak Dapat Dihapus!</h4>
-                    <p className="text-xs opacity-90">
-                      Pengguna <span className="font-bold underline">{deleteModal.user?.user_nama_depan} {deleteModal.user?.user_nama_belakang || ''}</span> (ID #{deleteModal.user?.user_id}) memiliki keterkaitan data penting dalam sistem sehingga tidak dapat dihapus:
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-900/50" style={{ borderColor: theme.border }}>
-                <h5 className="font-bold mb-2 text-xs text-gray-700 dark:text-gray-300">Detail Keterkaitan Data:</h5>
-                <ul className="space-y-1.5 list-disc list-inside font-medium text-red-600 dark:text-red-400">
-                  {deleteModal.blockers.map((b, idx) => (
-                    <li key={idx}>{b}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="p-2.5 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-blue-900 dark:text-blue-200 text-[11px]">
-                💡 <strong>Saran:</strong> Jika pengguna sudah tidak aktif di sekolah, Anda dapat mengubah status akunnya menjadi <strong>"Inactive"</strong> pada tombol Edit.
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <Button
-                  size="sm"
-                  onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
-                  style={{ background: theme.subtleBg, color: theme.textBody, border: `1px solid ${theme.border}` }}
-                >
-                  Tutup
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-3.5 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200">
-                <div className="flex items-start gap-2.5">
-                  <FontAwesomeIcon icon={faExclamationTriangle} className="text-amber-600 dark:text-amber-400 text-base mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-sm mb-1">Konfirmasi Penghapusan Akun</h4>
-                    <p className="text-xs opacity-90">
-                      Apakah Anda yakin ingin menghapus pengguna <span className="font-bold">{deleteModal.user?.user_nama_depan} {deleteModal.user?.user_nama_belakang || ''}</span> (ID #{deleteModal.user?.user_id})?
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900/40 text-green-900 dark:text-green-200 text-xs">
-                <FontAwesomeIcon icon={faCheckCircle} className="text-green-600 mr-1.5" />
-                <span>Pemeriksaan aman: Pengguna ini tidak memiliki transaksi penjualan seragam, data rapor, asesmen, atau insiden terkait.</span>
-              </div>
-
-              <p className="text-xs text-red-500 dark:text-red-400 font-semibold italic">
-                ⚠️ Catatan: Tindakan penghapusan akun ini permanen dan tidak dapat dibatalkan.
-              </p>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  size="sm"
-                  disabled={deleteModal.isDeleting}
-                  onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
-                  style={{ background: theme.subtleBg, color: theme.textBody, border: `1px solid ${theme.border}` }}
-                >
-                  Batal
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={deleteModal.isDeleting}
-                  onClick={handleConfirmDeleteUser}
-                  className="bg-red-600 hover:bg-red-700 text-white border-none"
-                >
-                  {deleteModal.isDeleting ? (
-                    <>
-                      <FontAwesomeIcon icon={faSpinner} spin className="mr-1.5" />
-                      Menghapus...
-                    </>
-                  ) : (
-                    <>
-                      <FontAwesomeIcon icon={faTrash} className="mr-1.5" />
-                      Ya, Hapus Pengguna
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
     </div>
   );
 }

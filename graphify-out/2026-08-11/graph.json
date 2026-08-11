@@ -18019,21 +18019,10 @@
       "norm_label": "`incident_unit_recipients`"
     },
     {
-      "label": "`cctv_footage_requests`",
-      "file_type": "document",
-      "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1767",
-      "_origin": "ast",
-      "id": "database_schema_cctv_footage_requests",
-      "community": 143,
-      "community_name": "Module 143",
-      "norm_label": "`cctv_footage_requests`"
-    },
-    {
       "label": "12.2 ERD / Relationships (Incident Reports Domain)",
       "file_type": "document",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1786",
+      "source_location": "L1767",
       "_origin": "ast",
       "id": "database_schema_12_2_erd_relationships_incident_reports_domain",
       "community": 143,
@@ -41793,22 +41782,11 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1786",
+      "source_location": "L1767",
       "weight": 1.0,
       "_origin": "ast",
       "source": "database_schema_12_student_incident_reports_unit_notification_domain_data_incident_report_data_incident_report_approval_settings_incident_report",
       "target": "database_schema_12_2_erd_relationships_incident_reports_domain",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "DATABASE_SCHEMA.md",
-      "source_location": "L1767",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "database_schema_12_1_tables",
-      "target": "database_schema_cctv_footage_requests",
       "confidence_score": 1.0
     },
     {

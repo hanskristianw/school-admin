@@ -2352,7 +2352,8 @@ Respond in ${selectedLang}.`
             <textarea
               id="topic_inquiry_question"
               name="topic_inquiry_question"
-              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[80px]"
+              className="w-full px-3 py-2 border rounded-md border-gray-300 min-h-[180px] text-xs resize-y"
+              rows={8}
               value={formData.topic_inquiry_question || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, topic_inquiry_question: e.target.value }))}
               placeholder="Masukkan inquiry question..."

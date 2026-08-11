@@ -79,7 +79,11 @@ export default function GlobalActionCards() {
   const [attCount, setAttCount]       = useState(null)
   const [attLoading, setAttLoading]   = useState(false)
 
-  // Card 4: Duty & Devotion Schedule (duty_schedules)
+  // Card 4: Incident Reports needing follow-up / handling
+  const [incidentCount, setIncidentCount]     = useState(null)
+  const [incidentLoading, setIncidentLoading] = useState(false)
+
+  // Card 5: Duty & Devotion Schedule (duty_schedules)
   const [dutySchedules, setDutySchedules] = useState([])
   const [dutyIndex, setDutyIndex]         = useState(0)
   const [dutyLoading, setDutyLoading]     = useState(false)
@@ -299,7 +303,55 @@ export default function GlobalActionCards() {
     checkRoleAndFetch()
   }, [userId])
 
-  // ── Card 4: Fetch Duty & Devotion Schedule for this user ─────────────────
+  // ── Card 4: Count Incident Reports needing follow-up for configured recipient user ──
+  useEffect(() => {
+    if (!userId) return
+    setIncidentLoading(true)
+
+    const fetchIncidentCount = async () => {
+      try {
+        // 1. Check if this user is configured in /settings/incident-report (incident_unit_recipients)
+        const { data: recipientRows, error: recErr } = await supabase
+          .from('incident_unit_recipients')
+          .select('unit_id')
+          .eq('user_id', userId)
+
+        if (recErr || !recipientRows || recipientRows.length === 0) {
+          // User is not set in incident report settings recipient list -> do not show card
+          setIncidentCount(0)
+          return
+        }
+
+        const unitIds = recipientRows.map(r => r.unit_id).filter(Boolean)
+
+        let query = supabase
+          .from('incident_reports')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['waiting', 'on_progress'])
+
+        if (unitIds.length > 0) {
+          query = query.in('unit_id', unitIds)
+        }
+
+        const { count, error } = await query
+
+        if (!error && count !== null) {
+          setIncidentCount(count)
+        } else {
+          setIncidentCount(0)
+        }
+      } catch (err) {
+        console.error('Error fetching incident count for action card:', err)
+        setIncidentCount(0)
+      } finally {
+        setIncidentLoading(false)
+      }
+    }
+
+    fetchIncidentCount()
+  }, [userId])
+
+  // ── Card 5: Fetch Duty & Devotion Schedule for this user ─────────────────
   useEffect(() => {
     if (!userId) return
     setDutyLoading(true)
@@ -345,9 +397,10 @@ export default function GlobalActionCards() {
   const showFpb         = !fpbLoading && fpbCount !== null && fpbCount > 0
   const showAttApproval = !attApprovalLoading && attApprovalCount !== null && attApprovalCount > 0
   const showAtt         = !attLoading && attCount !== null && attCount > 0
+  const showIncident    = !incidentLoading && incidentCount !== null && incidentCount > 0
   const showDuty        = !dutyLoading && dutySchedules.length > 0
 
-  if (!showFpb && !showAttApproval && !showAtt && !showDuty) return null
+  if (!showFpb && !showAttApproval && !showAtt && !showIncident && !showDuty) return null
 
   return (
     <div
@@ -491,6 +544,52 @@ export default function GlobalActionCards() {
             </div>
             <div style={{ fontSize: '11px', color: theme.textSecondary, marginTop: '1px' }}>
               Click to fill out the form
+            </div>
+          </div>
+        </button>
+      )}
+
+      {/* ── Incident Reports to Follow Up Card ───────────────────────────── */}
+      {showIncident && (
+        <button
+          onClick={() => router.push('/data/incident-report-approval')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            padding: '14px 20px',
+            borderRadius: '14px',
+            border: `1.5px solid ${theme.border}`,
+            background: theme.cardBg,
+            cursor: 'pointer',
+            textAlign: 'left',
+            minWidth: '240px',
+            flex: '1',
+            maxWidth: '400px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            transition: 'box-shadow 0.18s, transform 0.18s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'translateY(0)' }}
+        >
+          {/* Icon badge */}
+          <div style={{
+            width: '44px', height: '44px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, #e11d48, #be123c)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, fontSize: '20px',
+          }}>
+            🚨
+          </div>
+          <div>
+            <div style={{ fontSize: '22px', fontWeight: '700', lineHeight: 1, color: '#e11d48' }}>
+              {incidentCount}
+            </div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textPrimary, marginTop: '2px' }}>
+              Incident Reports to Follow Up
+            </div>
+            <div style={{ fontSize: '11px', color: theme.textSecondary, marginTop: '1px' }}>
+              Click to review & process
             </div>
           </div>
         </button>

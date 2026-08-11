@@ -236,8 +236,8 @@ export default function WizardStepContent({
           <textarea
             value={selectedTopic.topic_inquiry_question || ''}
             onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: e.target.value }))}
-            className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            rows={3}
+            className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 min-h-[220px] resize-y"
+            rows={10}
             placeholder="e.g., How do energy transformations affect our daily lives and environment?"
           />
         </div>

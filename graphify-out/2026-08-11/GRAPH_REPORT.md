@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-08-11)
 
 ## Corpus Check
-- 347 files · ~510,734 words
+- 347 files · ~510,037 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2108 nodes · 2120 edges · 358 communities (253 shown, 105 thin omitted)
+- 2107 nodes · 2119 edges · 358 communities (253 shown, 105 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
@@ -555,8 +555,8 @@ Cohesion: 0.06
 Nodes (34): 1. Tab "Receive" (Terima Barang), 2. Modal: Tambah Item Baru, 2. Tab "History" (Riwayat Transaksi Selesai), 3. Step 2 - Item Yang Dipesan, After Migration, After (New Schema), Before Migration, Before (Old Schema) (+26 more)
 
 ### Community 143 - "Module 143"
-Cohesion: 0.25
-Nodes (8): 12.0 Dedicated Pages & Access Roles, 12.1 Tables, 12.2 ERD / Relationships (Incident Reports Domain), 12. Student Incident Reports & Unit Notification Domain (`/data/incident-report`, `/data/incident-report-approval`, `/settings/incident-report`), `cctv_footage_requests`, `incident_followups`, `incident_reports`, `incident_unit_recipients`
+Cohesion: 0.29
+Nodes (7): 12.0 Dedicated Pages & Access Roles, 12.1 Tables, 12.2 ERD / Relationships (Incident Reports Domain), 12. Student Incident Reports & Unit Notification Domain (`/data/incident-report`, `/data/incident-report-approval`, `/settings/incident-report`), `incident_followups`, `incident_reports`, `incident_unit_recipients`
 
 ### Community 146 - "Module 146"
 Cohesion: 0.06
@@ -891,7 +891,7 @@ Cohesion: 0.67
 Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure**
 
 ## Knowledge Gaps
-- **1105 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1100 more)
+- **1104 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1099 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -905,7 +905,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `Database Schema & Relationships` connect `Module 126` to `bcryptjs`, `7.1 Tables`, `3.1 Tables`, `4.1 Tables`, `1.1 Tables`, `2.1 Tables`, `Module 143`, `9.1 Tables`, `8.1 Tables`, `**3. Assessment System**`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1105 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1104 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.12307692307692308 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

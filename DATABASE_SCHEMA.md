@@ -1764,6 +1764,25 @@ Maps specific users per unit who receive Email and Google Chat notification aler
 | `user_id` | `INTEGER` | FK to `users(user_id)` ON DELETE CASCADE |
 | `(unit_id, user_id)` | `UNIQUE` | Unique constraint per unit and recipient user |
 
+#### `cctv_footage_requests`
+Stores security CCTV camera footage review requests submitted by staff and reviewed/approved by Unit Principals and School Admins.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `id` | `BIGINT` | Primary Key (Identity) |
+| `request_number` | `VARCHAR(50)` | Unique request identifier (e.g. `CCTV/20260811/001`) |
+| `requester_user_id` | `INTEGER` | FK to `users(user_id)` ON DELETE SET NULL |
+| `incident_report_id` | `INTEGER` | Optional FK to `incident_reports(id)` ON DELETE SET NULL |
+| `cctv_date` | `DATE` | Date of requested CCTV footage |
+| `start_time` | `TIME` | Start time of requested footage range |
+| `end_time` | `TIME` | End time of requested footage range |
+| `room_name` | `VARCHAR(255)` | Requested camera room / location |
+| `reason` | `TEXT` | Purpose / justification for requesting CCTV review |
+| `status` | `VARCHAR(30)` | Status: `'pending'`, `'approved'`, `'in_progress'`, `'completed'`, `'rejected'` |
+| `reviewer_notes` | `TEXT` | Approval notes or Google Drive footage link provided by Principal/Admin |
+| `created_at` | `TIMESTAMPTZ` | Timestamp when request was submitted |
+| `updated_at` | `TIMESTAMPTZ` | Timestamp when request was last updated |
+
 ### 12.2 ERD / Relationships (Incident Reports Domain)
 
 ```mermaid
@@ -1775,6 +1794,8 @@ erDiagram
     users ||--o{ incident_followups : "handled_by"
     unit ||--o{ incident_unit_recipients : "configures_recipients"
     users ||--o{ incident_unit_recipients : "notified_user"
+    users ||--o{ cctv_footage_requests : "requested_by"
+    incident_reports ||--o{ cctv_footage_requests : "links_to_incident"
 
     incident_reports {
         int id PK
@@ -1807,6 +1828,20 @@ erDiagram
         int id PK
         int unit_id FK
         int user_id FK
+    }
+
+    cctv_footage_requests {
+        bigint id PK
+        string request_number UK
+        int requester_user_id FK
+        int incident_report_id FK
+        date cctv_date
+        time start_time
+        time end_time
+        string room_name
+        text reason
+        string status
+        text reviewer_notes
     }
 ```
 

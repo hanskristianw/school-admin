@@ -26,10 +26,13 @@ import {
 
 export default function IncidentNotificationSettingsPage() {
   const router = useRouter()
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
 
-  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
-  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textBody }
+  // Dynamic Styles tied to useTheme() (100% Light & Dark Mode Compatible)
+  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
+  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
+  const btnPrimaryStyle = { background: theme.textPrimary, color: isDark ? '#18171A' : '#FFFFFF', border: 'none' }
+  const btnSecondaryStyle = { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }
 
   const [loading, setLoading] = useState(true)
   const [units, setUnits] = useState([])
@@ -182,59 +185,62 @@ export default function IncidentNotificationSettingsPage() {
   const selectedUnitObj = units.find(u => String(u.unit_id) === String(selectedUnitId))
 
   return (
-    <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="min-h-screen p-4 sm:p-6 md:p-8 font-sans antialiased space-y-6" style={{ background: theme.pageBg, color: theme.textPrimary }}>
+
+      {/* ─── Minimalist Editorial Header ─── */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b" style={{ borderColor: theme.border }}>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-            <FontAwesomeIcon icon={faSliders} className="text-indigo-500" />
-            Incident Report Unit Recipients
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase mb-2" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+            <FontAwesomeIcon icon={faSliders} className="text-xs" />
+            <span>Incident Notification Recipients</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: theme.textPrimary }}>
+            Incident Notification Settings
           </h1>
-          <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-            Configure specific users who receive Email and Google Chat alerts when an incident report or follow-up is logged for a school unit.
+          <p className="text-xs sm:text-sm mt-1" style={{ color: theme.textSecondary }}>
+            Configure staff members who receive Email and Google Chat alerts for each school unit.
           </p>
         </div>
       </div>
 
-      {/* Main Settings Card */}
-      <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-        <CardHeader className="pb-3 border-b" style={{ borderColor: theme.border }}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-              <FontAwesomeIcon icon={faBuilding} className="text-indigo-500" />
-              <span>Select Unit Configuration</span>
-            </CardTitle>
-
-            {/* Select Unit Dropdown */}
-            <div className="w-full sm:w-72">
-              <select
-                value={selectedUnitId}
-                onChange={e => setSelectedUnitId(e.target.value)}
-                className="w-full text-xs p-2 rounded-md font-bold border focus:outline-none"
-                style={selectStyle}
-              >
-                {units.map(u => (
-                  <option key={u.unit_id} value={u.unit_id}>
-                    Unit: {u.unit_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      {/* ─── Main Configuration Card ─── */}
+      <div className="rounded-lg border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border }}>
+        {/* Card Header & Unit Selector */}
+        <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: theme.border }}>
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faBuilding} className="text-xs" style={{ color: theme.textSecondary }} />
+            <h2 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>Select Unit Configuration</h2>
           </div>
-        </CardHeader>
 
-        <CardContent className="pt-4 space-y-6">
-          {/* Add Recipient Form */}
+          <div className="w-full sm:w-72">
+            <select
+              value={selectedUnitId}
+              onChange={e => setSelectedUnitId(e.target.value)}
+              className="w-full text-xs p-2 rounded-md font-semibold border cursor-pointer"
+              style={selectStyle}
+            >
+              {units.map(u => (
+                <option key={u.unit_id} value={u.unit_id}>
+                  Unit: {u.unit_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Card Content Body */}
+        <div className="p-4 space-y-6">
+          {/* Add Recipient Section */}
           <div className="p-4 rounded-lg border space-y-3" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-            <div className="text-xs font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-              <FontAwesomeIcon icon={faUserPlus} className="text-indigo-500" />
+            <div className="text-xs font-semibold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+              <FontAwesomeIcon icon={faUserPlus} className="text-xs" style={{ color: theme.textSecondary }} />
               <span>Add Specific Recipient for {selectedUnitObj?.unit_name || 'Unit'}</span>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-2">
               {/* Autocomplete Input */}
               <div className="relative flex-1 w-full" ref={userDropdownRef}>
-                <Input
+                <input
                   type="text"
                   placeholder="Search user by name or email to add..."
                   value={selectedUserToAdd ? `${selectedUserToAdd.user_nama_depan} ${selectedUserToAdd.user_nama_belakang} (${selectedUserToAdd.user_email})` : userSearchText}
@@ -246,7 +252,7 @@ export default function IncidentNotificationSettingsPage() {
                   onFocus={() => {
                     if (userSearchText.trim()) setShowUserDropdown(true)
                   }}
-                  className="text-xs"
+                  className="w-full text-xs px-3 py-2 rounded-md"
                   style={inputStyle}
                 />
                 {selectedUserToAdd && (
@@ -256,7 +262,8 @@ export default function IncidentNotificationSettingsPage() {
                       setSelectedUserToAdd(null)
                       setUserSearchText('')
                     }}
-                    className="absolute right-2.5 top-2 text-xs text-gray-400 hover:text-gray-600 font-bold"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold cursor-pointer"
+                    style={{ color: theme.textSecondary }}
                   >
                     ✕
                   </button>
@@ -265,11 +272,11 @@ export default function IncidentNotificationSettingsPage() {
                 {/* Dropdown Options */}
                 {showUserDropdown && !selectedUserToAdd && userSearchText.trim().length > 0 && (
                   <div
-                    className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-md shadow-lg border text-xs"
+                    className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-md border shadow-md text-xs"
                     style={{ background: theme.cardBg, borderColor: theme.border }}
                   >
                     {matchingUsers.length === 0 ? (
-                      <div className="p-3 text-gray-400 italic text-center">No user found matching "{userSearchText}"</div>
+                      <div className="p-3 italic text-center" style={{ color: theme.textSecondary }}>No user found matching "{userSearchText}"</div>
                     ) : (
                       matchingUsers.map(usr => {
                         const name = `${usr.user_nama_depan} ${usr.user_nama_belakang}`
@@ -280,14 +287,16 @@ export default function IncidentNotificationSettingsPage() {
                               setSelectedUserToAdd(usr)
                               setShowUserDropdown(false)
                             }}
-                            className="p-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer flex items-center justify-between border-b last:border-b-0 transition-colors"
-                            style={{ borderColor: theme.border }}
+                            className="p-2.5 cursor-pointer flex items-center justify-between border-b last:border-b-0 transition-colors"
+                            style={{ borderColor: theme.border, color: theme.textPrimary }}
+                            onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                           >
                             <div>
-                              <div className="font-bold" style={{ color: theme.textBody }}>{name}</div>
-                              <div className="text-[10px] text-gray-400">{usr.user_email}</div>
+                              <div className="font-semibold">{name}</div>
+                              <div className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{usr.user_email}</div>
                             </div>
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-medium">
+                            <span className="text-[10px] px-2 py-0.5 rounded font-mono" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
                               {usr.role?.role_name || 'Staff'}
                             </span>
                           </div>
@@ -299,50 +308,53 @@ export default function IncidentNotificationSettingsPage() {
               </div>
 
               {/* Add Button */}
-              <Button
+              <button
                 disabled={!selectedUserToAdd || submitting}
                 onClick={handleAddRecipient}
-                className="w-full sm:w-auto text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-1.5"
+                className="w-full sm:w-auto text-xs font-medium px-4 py-2 rounded-md transition-all cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
+                style={btnPrimaryStyle}
               >
                 {submitting ? (
                   <FontAwesomeIcon icon={faSpinner} spin />
                 ) : (
                   <>
-                    <FontAwesomeIcon icon={faUserPlus} />
+                    <FontAwesomeIcon icon={faUserPlus} className="text-xs" />
                     <span>Add Recipient</span>
                   </>
                 )}
-              </Button>
+              </button>
             </div>
           </div>
 
-          {/* Current Recipients Table */}
+          {/* Configured Recipients List Table */}
           <div>
-            <h3 className="text-xs font-bold mb-3 uppercase tracking-wider flex items-center justify-between" style={{ color: theme.textSecondary }}>
-              <span>Configured Recipients ({recipients.length})</span>
-              <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold normal-case">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary }}>
+                Configured Recipients ({recipients.length})
+              </h3>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
                 Unit: {selectedUnitObj?.unit_name}
               </span>
-            </h3>
+            </div>
 
             {loading ? (
-              <div className="py-8 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
-                <FontAwesomeIcon icon={faSpinner} spin />
+              <div className="py-8 text-center text-xs flex items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} spin style={{ color: theme.textPrimary }} />
                 <span>Loading recipients...</span>
               </div>
             ) : recipients.length === 0 ? (
-              <div className="py-8 text-center text-xs text-gray-400 border rounded-lg border-dashed">
-                No notification recipients configured for <strong>{selectedUnitObj?.unit_name}</strong> unit yet. Use the search bar above to add specific users.
+              <div className="py-8 text-center text-xs border rounded-md" style={{ color: theme.textSecondary, borderColor: theme.border, background: theme.subtleBg }}>
+                No notification recipients configured for <strong>{selectedUnitObj?.unit_name}</strong> unit yet. Use the search bar above to add staff members.
               </div>
             ) : (
-              <div className="overflow-x-auto border rounded-lg" style={{ borderColor: theme.border }}>
-                <table className="min-w-full text-xs">
+              <div className="overflow-x-auto rounded-md border" style={{ borderColor: theme.border }}>
+                <table className="min-w-full text-xs border-collapse">
                   <thead>
-                    <tr className="text-left border-b bg-gray-50 dark:bg-gray-800/60 font-semibold text-gray-500" style={{ borderColor: theme.border }}>
-                      <th className="py-2.5 px-3">Name</th>
-                      <th className="py-2.5 px-3">Email Address</th>
-                      <th className="py-2.5 px-3">Role</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
+                    <tr className="text-left border-b font-semibold uppercase tracking-wider text-[10px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                      <th className="py-3 px-4">Name</th>
+                      <th className="py-3 px-4">Email Address</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y" style={{ borderColor: theme.border }}>
@@ -352,29 +364,36 @@ export default function IncidentNotificationSettingsPage() {
                       const roleName = r.user?.role?.role_name || 'Staff'
 
                       return (
-                        <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-                          <td className="py-2.5 px-3 font-bold" style={{ color: theme.textPrimary }}>
+                        <tr
+                          key={r.id}
+                          className="transition-colors duration-150"
+                          style={{ borderBottom: `1px solid ${theme.border}` }}
+                          onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                        >
+                          <td className="py-3 px-4 font-semibold" style={{ color: theme.textPrimary }}>
                             {name}
                           </td>
-                          <td className="py-2.5 px-3 flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
-                            <FontAwesomeIcon icon={faEnvelope} className="text-gray-400 text-[10px]" />
-                            <span>{email}</span>
+                          <td className="py-3 px-4 font-mono text-[11px]" style={{ color: theme.textSecondary }}>
+                            <div className="flex items-center gap-1.5">
+                              <FontAwesomeIcon icon={faEnvelope} className="text-[10px]" style={{ color: theme.textSecondary }} />
+                              <span>{email}</span>
+                            </div>
                           </td>
-                          <td className="py-2.5 px-3">
-                            <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-semibold text-[10px]">
+                          <td className="py-3 px-4">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.blueBg, color: theme.blueText }}>
                               {roleName}
                             </span>
                           </td>
-                          <td className="py-2.5 px-3 text-right">
-                            <Button
-                              size="sm"
-                              variant="destructive"
+                          <td className="py-3 px-4 text-right">
+                            <button
                               onClick={() => handleRemoveRecipient(r.id)}
-                              className="text-[11px] px-2 py-1 flex items-center gap-1 ml-auto"
+                              className="px-2.5 py-1 text-xs font-medium rounded transition-colors cursor-pointer inline-flex items-center gap-1"
+                              style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.redBg}` }}
                             >
                               <FontAwesomeIcon icon={faTrash} />
                               <span>Remove</span>
-                            </Button>
+                            </button>
                           </td>
                         </tr>
                       )
@@ -384,8 +403,8 @@ export default function IncidentNotificationSettingsPage() {
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Notification Toast */}
       <NotificationModal
