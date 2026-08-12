@@ -439,7 +439,10 @@ export default function IncidentReportListPage() {
         .single()
 
       const uCode = (uData?.unit_name || 'GEN').toUpperCase().replace(/[^A-Z0-9]/g, '')
-      const dCode = formData.incident_date.replace(/-/g, '').substring(2)
+      const dateParts = (formData.incident_date || '').split('-')
+      const dCode = dateParts.length === 3 
+        ? `${dateParts[2]}${dateParts[1]}${dateParts[0].slice(2)}` 
+        : formData.incident_date.replace(/-/g, '').substring(2)
       const seq = String((reports.length || 0) + 1).padStart(3, '0')
       const incidentNum = `INC/${uCode}/${dCode}/${seq}`
 
