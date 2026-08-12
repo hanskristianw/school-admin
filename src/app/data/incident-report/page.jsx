@@ -434,11 +434,11 @@ export default function IncidentReportListPage() {
 
       const { data: uData } = await supabase
         .from('unit')
-        .select('unit_code, unit_name')
+        .select('unit_name')
         .eq('unit_id', studentUnitId)
         .single()
 
-      const uCode = (uData?.unit_code || uData?.unit_name || 'GEN').toUpperCase().replace(/[^A-Z0-9]/g, '')
+      const uCode = (uData?.unit_name || 'GEN').toUpperCase().replace(/[^A-Z0-9]/g, '')
       const dCode = formData.incident_date.replace(/-/g, '').substring(2)
       const seq = String((reports.length || 0) + 1).padStart(3, '0')
       const incidentNum = `INC/${uCode}/${dCode}/${seq}`
