@@ -47,6 +47,7 @@ Defines the permissions and types of users in the system.
 | `is_principal` | `BOOLEAN` | Default `false` |
 | `is_student` | `BOOLEAN` | Default `false` |
 | `is_counselor` | `BOOLEAN` | Flag for counselor roles |
+| `is_pastoral_care` | `BOOLEAN` | Flag for Pastoral Care roles |
 | `is_curriculum` | `BOOLEAN` | Flag for curriculum roles |
 | `is_nurse` | `BOOLEAN` | Flag for nurse/clinic roles |
 | `is_vendor` | `BOOLEAN` | Flag for vendor roles |

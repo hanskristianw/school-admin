@@ -46,7 +46,7 @@ export async function POST(req) {
 
     // Fetch role & unit
     const [{ data: role }, { data: unit }] = await Promise.all([
-      admin.from('role').select('role_id, role_name, is_admin, is_counselor, is_teacher, is_student, is_principal, is_curriculum, can_void_transactions').eq('role_id', user.user_role_id).single(),
+      admin.from('role').select('role_id, role_name, is_admin, is_counselor, is_pastoral_care, is_teacher, is_student, is_principal, is_curriculum, can_void_transactions').eq('role_id', user.user_role_id).single(),
       user.user_unit_id ? admin.from('unit').select('unit_id, unit_name').eq('unit_id', user.user_unit_id).single() : Promise.resolve({ data: null })
     ])
 
@@ -54,19 +54,32 @@ export async function POST(req) {
       success: true,
       user: {
         userID: user.user_id,
+        user_id: user.user_id,
         username: user.user_nama_depan,
         namaDepan: user.user_nama_depan,
         namaBelakang: user.user_nama_belakang,
         roleID: user.user_role_id,
+        user_role_id: user.user_role_id,
         roleName: role?.role_name || '',
+        role_name: role?.role_name || '',
         isAdmin: role?.is_admin || false,
-  isCounselor: role?.is_counselor || false,
-  isTeacher: role?.is_teacher || false,
-  isStudent: role?.is_student || false,
+        is_admin: role?.is_admin || false,
+        isCounselor: role?.is_counselor || false,
+        is_counselor: role?.is_counselor || false,
+        isPastoralCare: role?.is_pastoral_care || false,
+        is_pastoral_care: role?.is_pastoral_care || false,
+        isTeacher: role?.is_teacher || false,
+        is_teacher: role?.is_teacher || false,
+        isStudent: role?.is_student || false,
+        is_student: role?.is_student || false,
         isPrincipal: role?.is_principal || false,
+        is_principal: role?.is_principal || false,
         isCurriculum: role?.is_curriculum || false,
+        is_curriculum: role?.is_curriculum || false,
         canVoidTransactions: role?.can_void_transactions || false,
         unitID: user.user_unit_id,
+        unit_id: user.user_unit_id,
+        user_unit_id: user.user_unit_id,
         unitName: unit?.unit_name || '',
         userTheme: user.user_theme || 'light'
       }

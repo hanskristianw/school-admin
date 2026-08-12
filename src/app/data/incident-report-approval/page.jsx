@@ -178,11 +178,11 @@ export default function IncidentHandlingApprovalPage() {
       if (raw) {
         const u = JSON.parse(raw)
         setCurrentUser(u)
-        const uId = u?.user_id || u?.id
+        const uId = u?.user_id || u?.userID || u?.id
         if (uId) {
           supabase
             .from('users')
-            .select('user_id, user_unit_id, role:user_role_id(role_id, role_name, is_admin, is_principal)')
+            .select('user_id, user_unit_id, role:user_role_id(role_id, role_name, is_admin, is_principal, is_pastoral_care)')
             .eq('user_id', uId)
             .single()
             .then(({ data }) => {
@@ -194,6 +194,21 @@ export default function IncidentHandlingApprovalPage() {
       console.error('User data parse error:', e)
     }
   }, [])
+
+  const canViewAll = useMemo(() => {
+    return Boolean(
+      userRoleData?.role?.is_admin || 
+      userRoleData?.role?.is_pastoral_care || 
+      currentUser?.is_admin || 
+      currentUser?.isAdmin || 
+      currentUser?.is_pastoral_care ||
+      currentUser?.isPastoralCare
+    )
+  }, [userRoleData, currentUser])
+
+  const userUnitId = useMemo(() => {
+    return userRoleData?.user_unit_id || currentUser?.user_unit_id || currentUser?.unit_id || currentUser?.unitID
+  }, [userRoleData, currentUser])
 
   // Fetch Incident Reports & Units
   const fetchData = async () => {
@@ -208,8 +223,8 @@ export default function IncidentHandlingApprovalPage() {
         .order('unit_name')
       setUnits(unitsData || [])
 
-      // Fetch All Incident Reports (For handling staff)
-      const { data: reportsData, error: repErr } = await supabase
+      // Base query
+      let query = supabase
         .from('incident_reports')
         .select(`
           *,
@@ -219,6 +234,12 @@ export default function IncidentHandlingApprovalPage() {
         `)
         .order('created_at', { ascending: false })
 
+      // Direct Query Scoping: Non-admin and non-pastoral-care users only see their assigned unit
+      if (!canViewAll && userUnitId) {
+        query = query.eq('unit_id', userUnitId)
+      }
+
+      const { data: reportsData, error: repErr } = await query
       if (repErr) throw repErr
       setReports(reportsData || [])
 
@@ -263,7 +284,7 @@ export default function IncidentHandlingApprovalPage() {
         incidentIds.length > 0
           ? supabase
               .from('incident_reports')
-              .select('id, incident_number, title, incident_date')
+              .select('id, incident_number, title, incident_date, unit_id')
               .in('id', incidentIds)
           : Promise.resolve({ data: [] })
       ])
@@ -292,11 +313,19 @@ export default function IncidentHandlingApprovalPage() {
       const incidentsMap = new Map((incidentsRes.data || []).map(i => [String(i.id), i]))
 
       // 6. Combine and enrich CCTV requests
-      const enriched = cctvRaw.map(req => ({
+      let enriched = cctvRaw.map(req => ({
         ...req,
         requester: usersMap.get(String(req.requester_user_id)) || null,
         incident: incidentsMap.get(String(req.incident_report_id)) || null
       }))
+
+      // Direct Query Scoping for CCTV: Non-admin and non-pastoral-care users only see CCTV requests for their unit
+      if (!canViewAll && userUnitId) {
+        enriched = enriched.filter(req => {
+          const reqUnitId = req.requester?.user_unit_id || req.incident?.unit_id
+          return String(reqUnitId) === String(userUnitId)
+        })
+      }
 
       setCctvRequests(enriched)
     } catch (err) {
@@ -309,7 +338,7 @@ export default function IncidentHandlingApprovalPage() {
   useEffect(() => {
     fetchData()
     fetchCctvData()
-  }, [])
+  }, [userRoleData, currentUser])
 
   // Summary Metrics for Incidents
   const metrics = useMemo(() => {
@@ -349,7 +378,6 @@ export default function IncidentHandlingApprovalPage() {
   // Filtered Incident Reports
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
-      if (selectedUnitFilter !== 'all' && String(r.unit_id) !== String(selectedUnitFilter)) return false
       if (selectedStatusFilter !== 'all' && r.status !== selectedStatusFilter) return false
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
@@ -362,15 +390,11 @@ export default function IncidentHandlingApprovalPage() {
       }
       return true
     })
-  }, [reports, selectedUnitFilter, selectedStatusFilter, searchQuery])
+  }, [reports, selectedStatusFilter, searchQuery])
 
   // Filtered CCTV Requests
   const filteredCctvRequests = useMemo(() => {
     return cctvRequests.filter(r => {
-      if (cctvUnitFilter !== 'all') {
-        const uId = r.requester?.user_unit_id
-        if (String(uId) !== String(cctvUnitFilter)) return false
-      }
       if (cctvStatusFilter !== 'all' && r.status !== cctvStatusFilter) return false
       if (cctvSearchQuery.trim()) {
         const q = cctvSearchQuery.toLowerCase()
@@ -382,7 +406,7 @@ export default function IncidentHandlingApprovalPage() {
       }
       return true
     })
-  }, [cctvRequests, cctvUnitFilter, cctvStatusFilter, cctvSearchQuery])
+  }, [cctvRequests, cctvStatusFilter, cctvSearchQuery])
 
   // Helper badge for Behaviour Level
   const getLevelBadge = (level) => {
@@ -764,22 +788,6 @@ export default function IncidentHandlingApprovalPage() {
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: theme.textSecondary }}>
-                  <FontAwesomeIcon icon={faBuilding} className="text-xs" />
-                  <span>Unit:</span>
-                </div>
-                <select
-                  value={selectedUnitFilter}
-                  onChange={(e) => setSelectedUnitFilter(e.target.value)}
-                  style={selectStyle}
-                  className="px-3 py-2 text-xs w-full sm:w-auto focus:outline-none"
-                >
-                  <option value="all">All Units</option>
-                  {units.map((u) => (
-                    <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
-                  ))}
-                </select>
-
-                <div className="flex items-center gap-1 text-xs whitespace-nowrap ml-2" style={{ color: theme.textSecondary }}>
                   <FontAwesomeIcon icon={faSliders} className="text-xs" />
                   <span>Status:</span>
                 </div>
@@ -812,22 +820,6 @@ export default function IncidentHandlingApprovalPage() {
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: theme.textSecondary }}>
-                  <FontAwesomeIcon icon={faBuilding} className="text-xs" />
-                  <span>Unit:</span>
-                </div>
-                <select
-                  value={cctvUnitFilter}
-                  onChange={(e) => setCctvUnitFilter(e.target.value)}
-                  style={selectStyle}
-                  className="px-3 py-2 text-xs w-full sm:w-auto focus:outline-none"
-                >
-                  <option value="all">All Units</option>
-                  {units.map((u) => (
-                    <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
-                  ))}
-                </select>
-
-                <div className="flex items-center gap-1 text-xs whitespace-nowrap ml-2" style={{ color: theme.textSecondary }}>
                   <FontAwesomeIcon icon={faSliders} className="text-xs" />
                   <span>Status:</span>
                 </div>
