@@ -111,7 +111,76 @@ export default function IncidentHandlingApprovalPage() {
   const [filePreview, setFilePreview] = useState('')
   const [uploadingFile, setUploadingFile] = useState(false)
 
-  // Authorization Check for CCTV Tab (Only Principal & Admin)
+  // Delete Incident State & Permission
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [reportToDelete, setReportToDelete] = useState(null)
+  const [deletingReport, setDeletingReport] = useState(false)
+
+  const canDelete = useMemo(() => {
+    return Boolean(
+      userRoleData?.role?.is_admin || 
+      userRoleData?.role?.is_pastoral_care || 
+      currentUser?.is_admin || 
+      currentUser?.isAdmin || 
+      currentUser?.is_pastoral_care ||
+      currentUser?.isPastoralCare
+    )
+  }, [userRoleData, currentUser])
+
+  const handlePromptDelete = (report) => {
+    if (!canDelete) return
+    setReportToDelete(report)
+    setShowDeleteModal(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!canDelete || !reportToDelete) return
+    try {
+      setDeletingReport(true)
+
+      // 1. Delete linked followups
+      const { error: fErr } = await supabase
+        .from('incident_followups')
+        .delete()
+        .eq('incident_id', reportToDelete.id)
+      if (fErr) console.warn('Error deleting incident followups:', fErr)
+
+      // 2. Clear incident_report_id on linked CCTV requests
+      await supabase
+        .from('cctv_footage_requests')
+        .update({ incident_report_id: null })
+        .eq('incident_report_id', reportToDelete.id)
+
+      // 3. Delete incident report
+      const { error: incErr } = await supabase
+        .from('incident_reports')
+        .delete()
+        .eq('id', reportToDelete.id)
+
+      if (incErr) throw incErr
+
+      setNotif({
+        isOpen: true,
+        title: 'Successfully Deleted',
+        message: `Incident report "${reportToDelete.incident_number || reportToDelete.title}" has been permanently deleted.`,
+        type: 'success'
+      })
+
+      setShowDeleteModal(false)
+      setReportToDelete(null)
+      fetchData()
+    } catch (err) {
+      console.error('Failed to delete incident report:', err)
+      setNotif({
+        isOpen: true,
+        title: 'Delete Failed',
+        message: err.message || 'An error occurred while deleting the incident report.',
+        type: 'error'
+      })
+    } finally {
+      setDeletingReport(false)
+    }
+  }
   const isAuthorizedForCctv = useMemo(() => {
     if (!currentUser && !userRoleData) return false
     if (currentUser?.is_admin || currentUser?.is_principal || currentUser?.isAdmin || currentUser?.isPrincipal) return true
@@ -946,14 +1015,26 @@ export default function IncidentHandlingApprovalPage() {
                           {getStatusBadge(r.status)}
                         </td>
                         <td className="p-3 text-right whitespace-nowrap">
-                          <button
-                            onClick={() => handleOpenHandlingModal(r)}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-md cursor-pointer transition-all inline-flex items-center gap-1 shadow-xs"
-                            style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}` }}
-                          >
-                            <FontAwesomeIcon icon={faEye} className="text-[10px]" />
-                            <span>Review & Handle</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenHandlingModal(r)}
+                              className="px-3 py-1.5 text-xs font-semibold rounded-md cursor-pointer transition-all inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs"
+                              style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}` }}
+                              title="Review & Handle Incident"
+                            >
+                              <FontAwesomeIcon icon={faEye} className="text-[11px]" />
+                              <span>Review</span>
+                            </button>
+                            {canDelete && (
+                              <button
+                                onClick={() => handlePromptDelete(r)}
+                                className="w-8 h-8 rounded-md flex items-center justify-center cursor-pointer transition-all bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/60 border border-rose-200/80 dark:border-rose-800/60 shrink-0 shadow-2xs hover:shadow-xs"
+                                title="Delete Incident Report"
+                              >
+                                <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -1271,7 +1352,22 @@ export default function IncidentHandlingApprovalPage() {
               </div>
 
               {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
+              <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: theme.border }}>
+                <div>
+                  {canDelete && selectedReport && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHandlingModal(false)
+                        handlePromptDelete(selectedReport)
+                      }}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-md cursor-pointer transition-all inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800"
+                    >
+                      <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                      <span>Hapus Insiden Ini</span>
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={() => setShowHandlingModal(false)}
                   className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
@@ -1411,6 +1507,72 @@ export default function IncidentHandlingApprovalPage() {
             </form>
           )
         })()}
+      </Modal>
+
+      {/* Delete Incident Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          if (!deletingReport) {
+            setShowDeleteModal(false)
+            setReportToDelete(null)
+          }
+        }}
+        title="Confirm Delete Incident Report"
+      >
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 flex items-start gap-3">
+            <FontAwesomeIcon icon={faExclamationTriangle} className="text-rose-600 dark:text-rose-400 text-lg mt-0.5" />
+            <div>
+              <h4 className="text-xs font-bold text-rose-800 dark:text-rose-300">Permanent Deletion Warning</h4>
+              <p className="text-xs text-rose-700 dark:text-rose-400 mt-1">
+                Deleted incident reports <strong>cannot be recovered</strong>! All linked follow-up history will also be permanently removed.
+              </p>
+            </div>
+          </div>
+
+          {reportToDelete && (
+            <div className="p-3 rounded-lg text-xs space-y-1.5" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
+              <div><span className="font-semibold text-gray-500 dark:text-gray-400">Incident Number:</span> <span className="font-bold ml-1">{reportToDelete.incident_number || `#${reportToDelete.id}`}</span></div>
+              <div><span className="font-semibold text-gray-500 dark:text-gray-400">Title:</span> <span className="font-medium ml-1">{reportToDelete.title}</span></div>
+              <div><span className="font-semibold text-gray-500 dark:text-gray-400">Student:</span> <span className="ml-1">{reportToDelete.student ? `${reportToDelete.student.user_nama_depan || ''} ${reportToDelete.student.user_nama_belakang || ''}`.trim() : '-'}</span></div>
+              <div><span className="font-semibold text-gray-500 dark:text-gray-400">Incident Date:</span> <span className="ml-1">{reportToDelete.incident_date}</span></div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowDeleteModal(false)
+                setReportToDelete(null)
+              }}
+              disabled={deletingReport}
+              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer disabled:opacity-50"
+              style={btnSecondaryStyle}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmDelete}
+              disabled={deletingReport}
+              className="px-4 py-2 text-xs font-bold rounded-md cursor-pointer bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5 shadow-2xs"
+            >
+              {deletingReport ? (
+                <>
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faTrash} />
+                  <span>Yes, Delete Permanently</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Notification Modal */}

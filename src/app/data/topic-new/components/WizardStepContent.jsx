@@ -475,6 +475,21 @@ export default function WizardStepContent({
                 </div>
               )
             })()}
+
+            {/* Connections with the Global Context */}
+            <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
+              <label className="block text-xs font-semibold text-gray-800 mb-1">
+                Connections with the Global Context
+                <span className="text-[11px] font-normal text-gray-500 ml-2">(Explain how this unit connects to the chosen Global Context)</span>
+              </label>
+              <textarea
+                value={selectedTopic.topic_connections_global_context || ''}
+                onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_connections_global_context: e.target.value }))}
+                rows={3}
+                placeholder="e.g. This unit connects to Identities and Relationships by encouraging students to reflect on..."
+                className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
+              />
+            </div>
           </div>
         </>
       )}
@@ -853,8 +868,42 @@ export default function WizardStepContent({
               value={selectedTopic.topic_formative_assessment || ''}
               onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_formative_assessment: e.target.value }))}
               className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={4}
+              rows={3}
               placeholder="Describe the formative assessments planned for this unit..."
+            />
+          </div>
+
+          {/* Content */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Content
+            </label>
+            <p className="text-xs text-gray-600 mb-2">
+              Specify the discipline-specific content, topics, text types, subject skills, or learning materials to be taught in this unit.
+            </p>
+            <textarea
+              value={selectedTopic.topic_content || ''}
+              onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_content: e.target.value }))}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              rows={4}
+              placeholder={`Text Types\n- TED Talks\n- Podcasts and interviews\n- Articles and opinion pieces\n- Infographics\n- Career advertisements\n\nIB Learner Profile Attributes + ATLs`}
+            />
+          </div>
+
+          {/* Differentiation */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Differentiation
+            </label>
+            <p className="text-xs text-gray-600 mb-2">
+              Describe differentiation strategies (content, process, product) according to student readiness, interest, or learning profile.
+            </p>
+            <textarea
+              value={selectedTopic.topic_differentiation || ''}
+              onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_differentiation: e.target.value }))}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              rows={3}
+              placeholder="Describe differentiation strategies for diverse learning needs..."
             />
           </div>
         </>

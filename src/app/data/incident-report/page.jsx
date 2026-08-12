@@ -883,16 +883,9 @@ export default function IncidentReportListPage() {
                   <span>Loading CCTV requests...</span>
                 </div>
               ) : filteredCctvRequests.length === 0 ? (
-                <div className="py-12 text-center text-xs space-y-2" style={{ color: theme.textSecondary }}>
-                  <FontAwesomeIcon icon={faFilm} className="text-3xl opacity-40" />
+                <div className="py-12 text-center text-xs space-y-1" style={{ color: theme.textSecondary }}>
+                  <FontAwesomeIcon icon={faFilm} className="text-3xl opacity-40 mb-1" />
                   <p className="font-medium">No CCTV footage requests found.</p>
-                  <button
-                    onClick={() => handleOpenCctvModal(null)}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                  >
-                    <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
-                    <span>Submit First CCTV Request</span>
-                  </button>
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-md border" style={{ borderColor: theme.border }}>

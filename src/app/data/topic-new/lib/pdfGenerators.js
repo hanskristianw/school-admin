@@ -12,10 +12,58 @@ import JSZip from 'jszip'
 
 // ─── Pure Helpers ────────────────────────────────────────────────────────────
 
+let cachedNormalFontBase64 = null;
+let cachedBoldFontBase64 = null;
+
 /**
- * Sanitizes text content for jsPDF Helvetica standard fonts.
- * Converts Unicode arrows, em-dashes, en-dashes, bullets, and smart quotes
- * into standard ASCII characters so jsPDF autoTable won't corrupt glyphs or explode letter spacing.
+ * Loads Arial TTF fonts (normal & bold) into jsPDF instance for full Unicode, math symbol, and superscript support.
+ */
+export const loadUnicodeFont = async (pdf) => {
+  try {
+    if (!cachedNormalFontBase64 || !cachedBoldFontBase64) {
+      const [resNormal, resBold] = await Promise.all([
+        fetch('/fonts/Arial.ttf'),
+        fetch('/fonts/Arial-Bold.ttf')
+      ]);
+
+      if (!resNormal.ok || !resBold.ok) return false;
+
+      const [bufNormal, bufBold] = await Promise.all([
+        resNormal.arrayBuffer(),
+        resBold.arrayBuffer()
+      ]);
+
+      const fontToBase64 = (arrayBuffer) => {
+        let binary = '';
+        const bytes = new Uint8Array(arrayBuffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      };
+
+      cachedNormalFontBase64 = fontToBase64(bufNormal);
+      cachedBoldFontBase64 = fontToBase64(bufBold);
+    }
+
+    pdf.addFileToVFS('Arial.ttf', cachedNormalFontBase64);
+    pdf.addFont('Arial.ttf', 'Arial', 'normal');
+
+    pdf.addFileToVFS('Arial-Bold.ttf', cachedBoldFontBase64);
+    pdf.addFont('Arial-Bold.ttf', 'Arial', 'bold');
+
+    pdf.setFont('Arial', 'normal');
+    return true;
+  } catch (e) {
+    console.warn('Could not load Arial font, falling back to Helvetica:', e);
+    return false;
+  }
+};
+
+/**
+ * Sanitizes text content for jsPDF while preserving full Unicode math symbols,
+ * superscript letters/digits (aᵐ ÷ aⁿ = aᵐ⁻ⁿ), subscripts, and Latin extensions.
  */
 export const cleanPdfText = (str) => {
   if (str === null || str === undefined) return '';
@@ -28,7 +76,7 @@ export const cleanPdfText = (str) => {
     .replace(/[“”]/g, '"')
     .replace(/[•▪●◦]/g, '*')
     .replace(/\u00A0/g, ' ')
-    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+    .replace(/[^\u0009\u000A\u000D\u0020-\u007E\u00A1-\u024F\u02B0-\u02FF\u1D00-\u1D7F\u2070-\u209F\u2200-\u22FF\u2100-\u214F]/g, '');
 };
 
 export const openAssessmentHtml = async (payload) => {
@@ -170,6 +218,13 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
     
     if (topicErr) throw new Error(topicErr.message);
 
+    // Load associated assessment record (if any) with criteria
+    const { data: assessmentData } = await supabase
+      .from("assessment")
+      .select("assessment_id, assessment_nama, assessment_keterangan, assessment_instructions, assessment_task_specific_description, assessment_criteria(criterion_id)")
+      .eq("assessment_topic_id", topic.topic_id)
+      .maybeSingle();
+
     // Load subject & teacher data (Priority: detail_kelas.teacher_user_id -> subject.subject_user_id -> currentUserId)
     let subject = null;
     let teacher = null;
@@ -258,10 +313,14 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       .from("topic_weekly_plan")
       .select("*")
       .eq("topic_id", topic.topic_id)
-      .order("week_number", { ascending: true });
+      .order("week_number", { ascending: true })
+      .order("id", { ascending: true });
 
     // Generate PDF
     const pdf = new jsPDF('landscape', 'mm', 'a4');
+    const hasUnicodeFont = await loadUnicodeFont(pdf);
+    const activeFont = hasUnicodeFont ? 'Arial' : 'helvetica';
+
     const pageWidth = pdf.internal.pageSize.getWidth();
     const margin = 14;
     let yPos = 10;
@@ -273,11 +332,24 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
 
     const availableWidth = pageWidth - (margin * 2);
 
-    // MYP unit planner title
-    pdf.setFontSize(13.5);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('MYP unit planner', margin, yPos);
-    yPos += 8;
+    // Helper for rendering empty field notices in bold red font with step reference
+    const formatEmptyField = (val, stepNum, colSpan = 1, forceBold = false) => {
+      const hasVal = val && String(val).trim() !== '' && String(val).trim() !== 'N/A';
+      if (hasVal) {
+        const text = cleanPdfText(val);
+        const styles = forceBold ? { fontStyle: 'bold' } : {};
+        return colSpan > 1 ? { content: text, colSpan, styles } : (forceBold ? { content: text, styles } : text);
+      }
+      const notice = (typeof stepNum === 'string' && !stepNum.startsWith('Step'))
+        ? `Not filled yet - You can fill this in ${stepNum}`
+        : `Not filled yet - You can fill this in Step ${stepNum}`;
+      const cellObj = {
+        content: notice,
+        styles: { fontStyle: 'bold', textColor: [220, 38, 38] }
+      };
+      if (colSpan > 1) cellObj.colSpan = colSpan;
+      return cellObj;
+    };
 
     // Header Table  
     autoTable(pdf, {
@@ -287,35 +359,49 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       body: [
         [
           { content: 'Teacher(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: cleanPdfText(teacher?.name || 'N/A'), colSpan: 2 },
-          { content: 'Subject group and discipline', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: cleanPdfText(subject?.subject_name || 'N/A'), colSpan: 2 },
+          formatEmptyField(teacher?.name, 1),
+          { content: 'Subject groups', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          formatEmptyField(subject?.subject_name, 1, 3),
         ],
         [
           { content: 'Unit title', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: cleanPdfText(topicData.topic_nama || 'N/A') },
+          formatEmptyField(topicData.topic_nama, 1, 1, true),
           { content: 'MYP year', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: topicData.topic_year ? `Year ${topicData.topic_year}` : 'N/A' },
-          { content: 'Unit duration (hrs)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: totalHours > 0 ? totalHours.toString() : (topicData.topic_duration || 'N/A') },
+          formatEmptyField(topicData.topic_year, 1),
+          { content: 'Unit duration', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          formatEmptyField(totalHours > 0 ? totalHours.toString() : topicData.topic_duration, 1),
         ],
       ],
       theme: 'grid',
-      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
+      styles: { font: activeFont, fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.25, textColor: [0, 0, 0] },
       columnStyles: {
         0: { cellWidth: availableWidth * 0.15 },
-        1: { cellWidth: availableWidth * 0.18 },
-        2: { cellWidth: availableWidth * 0.17 },
-        3: { cellWidth: availableWidth * 0.17 },
-        4: { cellWidth: availableWidth * 0.15 },
-        5: { cellWidth: availableWidth * 0.18 } } });
+        1: { cellWidth: availableWidth * 0.40 },
+        2: { cellWidth: availableWidth * 0.15 },
+        3: { cellWidth: availableWidth * 0.12 },
+        4: { cellWidth: availableWidth * 0.11 },
+        5: { cellWidth: availableWidth * 0.07 }
+      } });
 
     // Inquiry section
     yPos = pdf.lastAutoTable.finalY + 8;
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Inquiry: Establishing the purpose of the unit', margin, yPos);
-    yPos += 6;
+    pdf.setFontSize(10.5);
+    pdf.setFont(activeFont, 'normal');
+    const inquiryTitle = 'Inquiry: The "Inquiry" section of the MYP unit planner identifies the purpose of the unit to ensure its alignment with MYP philosophy and requirements';
+    const inquiryTitleLines = pdf.splitTextToSize(inquiryTitle, availableWidth);
+    pdf.text(inquiryTitleLines, margin, yPos);
+    yPos += (inquiryTitleLines.length * 4.5) + 3;
+
+    const gcVal = (topicData.topic_global_context || '').trim();
+    const gcExpl = (topicData.topic_gc_exploration || '').trim();
+    const gcConn = (topicData.topic_connections_global_context || '').trim();
+
+    let gcParts = [];
+    if (gcVal) gcParts.push(gcVal);
+    if (gcExpl) gcParts.push(`Possible exploration: ${gcExpl}`);
+    if (gcConn) gcParts.push(`Connections with the Global Context:\n${gcConn}`);
+
+    const gcText = gcParts.join('\n\n');
 
     autoTable(pdf, {
       startY: yPos,
@@ -324,79 +410,203 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       body: [
         [
           { content: 'Key concept', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: cleanPdfText(topicData.topic_key_concept || 'N/A') },
           { content: 'Related concept(s)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: cleanPdfText(topicData.topic_related_concept || 'N/A') },
-          { content: 'Global context', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: cleanPdfText((topicData.topic_global_context || 'N/A') + (topicData.topic_gc_exploration ? '\nExplorations: ' + topicData.topic_gc_exploration : '')) },
+          { content: 'Global context (and exploration)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
         ],
         [
-          { content: 'Statement of inquiry', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
+          formatEmptyField(topicData.topic_key_concept, 3),
+          formatEmptyField(topicData.topic_related_concept, 3),
+          formatEmptyField(gcText, 3),
         ],
         [
-          { content: cleanPdfText(topicData.topic_statement || 'N/A'), colSpan: 6, styles: { cellPadding: 3 } },
+          { content: 'Statement of inquiry', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 3 },
         ],
         [
-          { content: 'Inquiry questions', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 6 },
+          formatEmptyField(topicData.topic_statement, 4, 3),
         ],
         [
-          { content: cleanPdfText(topicData.topic_inquiry_question || 'N/A'), colSpan: 6, styles: { cellPadding: 3 } },
+          { content: 'Inquiry questions', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 3 },
+        ],
+        [
+          formatEmptyField(topicData.topic_inquiry_question, 2, 3),
         ],
       ],
       theme: 'grid',
-      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      styles: { font: activeFont, fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
       columnStyles: {
-        0: { cellWidth: availableWidth * 0.15 },
-        1: { cellWidth: availableWidth * 0.18 },
-        2: { cellWidth: availableWidth * 0.17 },
-        3: { cellWidth: availableWidth * 0.17 },
-        4: { cellWidth: availableWidth * 0.15 },
-        5: { cellWidth: availableWidth * 0.18 } } });
+        0: { cellWidth: availableWidth * 0.30 },
+        1: { cellWidth: availableWidth * 0.31 },
+        2: { cellWidth: availableWidth * 0.39 } } });
 
     // Add new page for remaining sections
     pdf.addPage();
     yPos = 10;
 
-    // Objectives section
-    if (topicData.topic_myp_objectives) {
-      autoTable(pdf, {
-        startY: yPos,
-        head: [],
-        body: [
-          [{ content: 'Objectives', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
-          [{ content: cleanPdfText(topicData.topic_myp_objectives || 'N/A'), styles: { cellPadding: 3 } }],
-        ],
-        theme: 'grid',
-        styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] } });
-      yPos = pdf.lastAutoTable.finalY + 5;
+    // MYP Objectives & Summative Assessment section
+    // 1. Dynamic MYP Objectives from Criteria & Strands
+    let assessedCriterionIds = [];
+    if (assessmentData?.assessment_criteria && Array.isArray(assessmentData.assessment_criteria)) {
+      assessedCriterionIds = assessmentData.assessment_criteria.map(ac => ac.criterion_id).filter(Boolean);
     }
 
-    // Summative assessment
+    let criteriaList = [];
+    if (assessedCriterionIds.length > 0) {
+      const { data: cData } = await supabase
+        .from("criteria")
+        .select("criterion_id, code, name")
+        .in("criterion_id", assessedCriterionIds)
+        .order("code", { ascending: true });
+      if (cData) criteriaList = cData;
+    } else if (topicData.topic_subject_id) {
+      const { data: cData } = await supabase
+        .from("criteria")
+        .select("criterion_id, code, name")
+        .eq("subject_id", topicData.topic_subject_id)
+        .order("code", { ascending: true });
+      if (cData) criteriaList = cData;
+    }
+
+    let dynamicMYPObjectives = '';
+    if (criteriaList.length > 0) {
+      const cIds = criteriaList.map(c => c.criterion_id);
+      const { data: strandsData } = await supabase
+        .from("strands")
+        .select("strand_id, criterion_id, year_level, label, content")
+        .in("criterion_id", cIds);
+
+      const topicYearNum = Number(topicData.topic_year) || 3;
+      const strandList = strandsData || [];
+
+      const blocks = [];
+      for (const criterion of criteriaList) {
+        const cStrands = strandList.filter(s => s.criterion_id === criterion.criterion_id);
+        let matchedStrands = cStrands.filter(s => Number(s.year_level) === topicYearNum);
+        if (matchedStrands.length === 0 && cStrands.length > 0) {
+          matchedStrands = cStrands;
+        }
+
+        if (matchedStrands.length > 0) {
+          let blockStr = `${criterion.code} - ${criterion.name}\n`;
+          blockStr += matchedStrands.map(s => `${s.label || ''} ${s.content}`.trim()).join('\n');
+          blocks.push(blockStr);
+        } else {
+          blocks.push(`${criterion.code} - ${criterion.name}`);
+        }
+      }
+
+      if (blocks.length > 0) {
+        dynamicMYPObjectives = blocks.join('\n\n');
+      }
+    }
+
+    const finalMYPObjectives = dynamicMYPObjectives.trim() || topicData.topic_myp_objectives || topicData.topic_objectives || '';
+
+    // 2. Summative Assessment instructions fallback
+    let summativeText = topicData.topic_summative_assessment || '';
+    if (!summativeText.trim() && assessmentData) {
+      const parts = [];
+      if (assessmentData.assessment_nama) parts.push(`Task: ${assessmentData.assessment_nama}`);
+      if (assessmentData.assessment_instructions) parts.push(assessmentData.assessment_instructions);
+      if (assessmentData.assessment_keterangan) parts.push(assessmentData.assessment_keterangan);
+      if (assessmentData.assessment_task_specific_description) parts.push(assessmentData.assessment_task_specific_description);
+      summativeText = parts.join('\n\n');
+    }
+
+    // 3. Connections with Global Context text (Step 3)
+    let connGcText = (topicData.topic_connections_global_context || '').trim();
+    if (connGcText) {
+      connGcText = connGcText.replace(/^Connections with the Global Context:\s*/i, '').trim();
+    }
+    const connGcCellContent = connGcText 
+      ? `Connections with the Global Context:\n\n${connGcText}` 
+      : 'Connections with the Global Context:\n\nNot filled yet - You can fill this in Step 3';
+
     autoTable(pdf, {
       startY: yPos,
       margin: { left: margin, right: margin },
       head: [],
       body: [
         [
-          { content: 'Objectives', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, rowSpan: 2 },
-          { content: 'Summative assessment', styles: { fontStyle: 'bold', fillColor: [232, 232, 232], halign: 'center' }, colSpan: 2 },
+          { content: 'MYP objectives', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
+          { content: 'Summative assessment', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 2 },
         ],
         [
-          { content: 'Outline of summative assessment task(s) including assessment criteria:', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-          { content: 'Relationship between summative assessment task(s) and statement of inquiry:', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
-        ],
-        [
-          { content: '', styles: { cellPadding: 3 }},
-          { content: cleanPdfText(topicData.topic_summative_assessment || 'N/A'), styles: { cellPadding: 3 }},
-          { content: cleanPdfText(topicData.topic_relationship_summative_assessment_statement_of_inquiry || 'N/A'), styles: { cellPadding: 3 }},
+          formatEmptyField(finalMYPObjectives, 7),
+          formatEmptyField(summativeText, 7),
+          connGcCellContent,
         ],
       ],
+      didDrawCell: function(data) {
+        if (data.section === 'body' && data.row.index === 1 && data.column.index === 0 && dynamicMYPObjectives.trim()) {
+          const cell = data.cell;
+          const docPdf = data.doc;
+          
+          docPdf.setFillColor(255, 255, 255);
+          docPdf.rect(cell.x + 0.2, cell.y + 0.2, cell.width - 0.4, cell.height - 0.4, 'F');
+          
+          const blocks = dynamicMYPObjectives.trim().split('\n\n');
+          let curY = cell.y + 4.5;
+          
+          blocks.forEach(block => {
+            const lines = block.split('\n');
+            const header = lines[0]; // e.g. A - Listening
+            const strands = lines.slice(1);
+            
+            docPdf.setFont(activeFont, 'bold');
+            docPdf.setFontSize(9.5);
+            docPdf.setTextColor(0, 0, 0);
+            docPdf.text(cleanPdfText(header), cell.x + 3, curY);
+            curY += 4.5;
+            
+            docPdf.setFont(activeFont, 'normal');
+            strands.forEach(s => {
+              const sWrapped = docPdf.splitTextToSize(cleanPdfText(s), cell.width - 6);
+              docPdf.text(sWrapped, cell.x + 3, curY);
+              curY += (sWrapped.length * 4);
+            });
+            
+            curY += 2;
+          });
+        }
+
+        if (data.section === 'body' && data.row.index === 1 && data.column.index === 2) {
+          const cell = data.cell;
+          const docPdf = data.doc;
+          
+          // White-out interior padding area
+          docPdf.setFillColor(255, 255, 255);
+          docPdf.rect(cell.x + 0.2, cell.y + 0.2, cell.width - 0.4, cell.height - 0.4, 'F');
+          
+          let currentY = cell.y + 4.5;
+          
+          // Draw bold title: "Connections with the Global Context:"
+          docPdf.setFont(activeFont, 'bold');
+          docPdf.setFontSize(9.5);
+          docPdf.setTextColor(0, 0, 0);
+          docPdf.text('Connections with the Global Context:', cell.x + 3, currentY);
+          currentY += 6;
+
+          // Draw normal body text or bold red notice
+          if (connGcText.trim()) {
+            docPdf.setFont(activeFont, 'normal');
+            docPdf.setFontSize(9.5);
+            docPdf.setTextColor(0, 0, 0);
+            const lines = docPdf.splitTextToSize(cleanPdfText(connGcText), cell.width - 6);
+            docPdf.text(lines, cell.x + 3, currentY);
+          } else {
+            docPdf.setFont(activeFont, 'bold');
+            docPdf.setFontSize(9.5);
+            docPdf.setTextColor(220, 38, 38);
+            docPdf.text('Not filled yet - You can fill this in Step 3', cell.x + 3, currentY);
+          }
+        }
+      },
       theme: 'grid',
-      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      styles: { font: activeFont, fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.25, valign: 'top', textColor: [0, 0, 0] },
       columnStyles: {
-        0: { cellWidth: availableWidth * 0.33 },
-        1: { cellWidth: availableWidth * 0.335 },
-        2: { cellWidth: availableWidth * 0.335 } } });
+        0: { cellWidth: availableWidth * 0.30 },
+        1: { cellWidth: availableWidth * 0.35 },
+        2: { cellWidth: availableWidth * 0.35 } } });
     yPos = pdf.lastAutoTable.finalY + 5;
 
     // ATL section
@@ -406,21 +616,111 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       head: [],
       body: [
         [{ content: 'Approaches to learning (ATL)', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
-        [{ content: cleanPdfText(topicData.topic_atl || 'No ATL skills defined'), styles: { cellPadding: 3 }}],
+        [formatEmptyField(topicData.topic_atl, 5)],
       ],
       theme: 'grid',
-      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
+      styles: { font: activeFont, fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
     yPos = pdf.lastAutoTable.finalY + 5;
 
-    // Content & Learning process
+    // Content & Learning process (Unpack JSON stringified rows if any)
+    const unpackedWeeklyPlans = [];
+    (weeklyPlans || []).forEach(row => {
+      if (row.week_objectives && String(row.week_objectives).trim().startsWith('[')) {
+        try {
+          const parsed = JSON.parse(row.week_objectives);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            parsed.forEach((item, idx) => {
+              unpackedWeeklyPlans.push({
+                id: row.id,
+                topic_id: row.topic_id,
+                week_number: row.week_number,
+                _sessionIndex: idx,
+                week_date: item.week_date !== undefined ? item.week_date : (idx === 0 ? (row.week_date || '') : ''),
+                week_objectives: item.week_objectives || '',
+                week_activities: item.week_activities || '',
+                week_resources: item.week_resources || '',
+                week_reflection: item.week_reflection || '',
+              });
+            });
+            return;
+          }
+        } catch (e) {}
+      }
+      unpackedWeeklyPlans.push(row);
+    });
+
+    const plansByWeek = {};
+    if (unpackedWeeklyPlans && unpackedWeeklyPlans.length > 0) {
+      unpackedWeeklyPlans.forEach(plan => {
+        const wNum = plan.week_number || 1;
+        if (!plansByWeek[wNum]) plansByWeek[wNum] = [];
+        plansByWeek[wNum].push(plan);
+      });
+    }
+
+    const formatDateDisplay = (dateStr) => {
+      if (!dateStr) return '';
+      const parts = String(dateStr).split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return dateStr;
+    };
+
     let learningProcessContent = '';
-    if (weeklyPlans && weeklyPlans.length > 0) {
-      learningProcessContent = weeklyPlans.map(week => {
-        let weekText = `Week ${week.week_number}\n`;
-        if (week.week_activities) weekText += week.week_activities;
-        return weekText;
+    const sortedWeekNumbers = Object.keys(plansByWeek).map(Number).sort((a, b) => a - b);
+    let globalMeetingNumber = 1;
+
+    if (sortedWeekNumbers.length > 0) {
+      learningProcessContent = sortedWeekNumbers.map(wNum => {
+        const sessions = plansByWeek[wNum];
+        let weekHeader = `Week ${wNum}`;
+
+        const sessionBlocks = sessions.map((sess) => {
+          const meetingLabel = `Meeting ${globalMeetingNumber++}`;
+          const dateStr = sess.week_date ? ` (${formatDateDisplay(sess.week_date)})` : '';
+          const headerLine = `${meetingLabel}${dateStr}`;
+
+          // Only display the clean Learning Objectives (or activities fallback)
+          let contentText = sess.week_objectives || sess.week_activities || '';
+
+          // Fallback parsing if contentText itself is JSON string
+          if (typeof contentText === 'string' && (contentText.trim().startsWith('{') || contentText.trim().startsWith('['))) {
+            try {
+              const obj = JSON.parse(contentText);
+              if (Array.isArray(obj)) {
+                contentText = obj.map(o => o.week_objectives || o.week_activities || '').filter(Boolean).join('\n');
+              } else if (typeof obj === 'object') {
+                contentText = obj.week_objectives || obj.week_activities || '';
+              }
+            } catch (e) {}
+          }
+
+          if (contentText && String(contentText).trim()) {
+            const rawLines = String(contentText).trim().split('\n').map(l => l.trim()).filter(Boolean);
+            const formattedBullets = rawLines.map(l => (l.startsWith('•') || l.startsWith('-') || l.startsWith('*')) ? `  ${l}` : `  - ${l}`).join('\n');
+            return `${headerLine}\n${formattedBullets}`;
+          }
+
+          return headerLine;
+        }).join('\n\n');
+
+        return `${weekHeader}\n${sessionBlocks}`;
       }).join('\n\n');
     }
+
+    const formativeContent = topicData.topic_formative_assessment 
+      ? `Formative Assessment\n${topicData.topic_formative_assessment}`
+      : 'Formative Assessment\nNot filled yet - You can fill this in Step 6';
+
+    const differentiationContent = topicData.topic_differentiation
+      ? `Differentiation\n${topicData.topic_differentiation}`
+      : 'Differentiation\nNot filled yet - You can fill this in Step 6';
+
+    const initialPageNum = pdf.getNumberOfPages();
+
+    const contentCell = formatEmptyField(topicData.topic_content, 6);
+    const contentCellObj = (typeof contentCell === 'object' && contentCell !== null) 
+      ? { ...contentCell, rowSpan: 3, styles: { cellPadding: 3, ...(contentCell.styles || {}) } }
+      : { content: contentCell, rowSpan: 3, styles: { cellPadding: 3 } };
 
     autoTable(pdf, {
       startY: yPos,
@@ -432,18 +732,113 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
           { content: 'Learning process', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
         ],
         [
-          { content: '', styles: { cellPadding: 3 }, rowSpan: 2 },
-          { content: cleanPdfText(learningProcessContent), styles: { cellPadding: 3 }},
+          contentCellObj,
+          formatEmptyField(learningProcessContent, 6),
         ],
         [
-          { content: cleanPdfText(`Formative assessment:\n\n${topicData.topic_formative_assessment || ''}`), styles: { cellPadding: 3 }},
+          { content: cleanPdfText(formativeContent), styles: { cellPadding: 3 }},
+        ],
+        [
+          { content: cleanPdfText(differentiationContent), styles: { cellPadding: 3 }},
         ],
       ],
       theme: 'grid',
-      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      styles: { font: activeFont, fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
       columnStyles: {
         0: { cellWidth: availableWidth * 0.33 },
-        1: { cellWidth: availableWidth * 0.67 } } });
+        1: { cellWidth: availableWidth * 0.67 } },
+      didDrawCell: (data) => {
+        if (data.section === 'body') {
+          const cell = data.cell;
+          if (data.row.index === 1 && data.column.index === 1 && learningProcessContent.trim()) { // Learning process
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(cell.x + 0.2, cell.y + 0.2, cell.width - 0.4, cell.height - 0.4, 'F');
+            
+            let currentY = cell.y + 4.5;
+            const textLines = Array.isArray(cell.text) ? cell.text : (cell.text ? [cell.text] : []);
+            
+            textLines.forEach(lineStr => {
+              if (currentY + 3.5 > cell.y + cell.height) return;
+              const trimmed = String(lineStr).trim();
+              if (/^(Week|Meeting)\b/i.test(trimmed)) {
+                pdf.setFont(activeFont, 'bold');
+                pdf.setFontSize(9.5);
+                pdf.setTextColor(0, 0, 0);
+              } else {
+                pdf.setFont(activeFont, 'normal');
+                pdf.setFontSize(9.5);
+                pdf.setTextColor(0, 0, 0);
+              }
+              pdf.text(lineStr, cell.x + 3, currentY);
+              currentY += 4.2;
+            });
+          } else if (data.row.index === 2) { // Formative Assessment
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(cell.x + 0.2, cell.y + 0.2, cell.width - 0.4, cell.height - 0.4, 'F');
+            
+            pdf.setFont(activeFont, 'bold');
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(0, 0, 0);
+            let currentY = cell.y + 4.5;
+            pdf.text('Formative Assessment', cell.x + 3, currentY);
+            
+            currentY += 5;
+            const bodyStr = topicData.topic_formative_assessment ? String(topicData.topic_formative_assessment).trim() : '';
+            if (bodyStr) {
+              pdf.setFont(activeFont, 'normal');
+              const lines = pdf.splitTextToSize(cleanPdfText(bodyStr), cell.width - 6);
+              pdf.text(lines, cell.x + 3, currentY);
+            } else {
+              pdf.setFont(activeFont, 'bold');
+              pdf.setTextColor(220, 38, 38);
+              pdf.text('Not filled yet - You can fill this in Step 6', cell.x + 3, currentY);
+            }
+          } else if (data.row.index === 3) { // Differentiation
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(cell.x + 0.2, cell.y + 0.2, cell.width - 0.4, cell.height - 0.4, 'F');
+            
+            pdf.setFont(activeFont, 'bold');
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(0, 0, 0);
+            let currentY = cell.y + 4.5;
+            pdf.text('Differentiation', cell.x + 3, currentY);
+            
+            currentY += 5;
+            const bodyStr = topicData.topic_differentiation ? String(topicData.topic_differentiation).trim() : '';
+            if (bodyStr) {
+              pdf.setFont(activeFont, 'normal');
+              const lines = pdf.splitTextToSize(cleanPdfText(bodyStr), cell.width - 6);
+              pdf.text(lines, cell.x + 3, currentY);
+            } else {
+              pdf.setFont(activeFont, 'bold');
+              pdf.setTextColor(220, 38, 38);
+              pdf.text('Not filled yet - You can fill this in Step 6', cell.x + 3, currentY);
+            }
+          }
+        }
+      } });
+
+    const totalPagesAfterTable = pdf.getNumberOfPages();
+    const tableFinalY = pdf.lastAutoTable.finalY;
+
+    if (totalPagesAfterTable > initialPageNum) {
+      for (let p = initialPageNum + 1; p <= totalPagesAfterTable; p++) {
+        pdf.setPage(p);
+        const pageTopY = margin;
+        const pageBottomY = (p === totalPagesAfterTable) ? tableFinalY : (pdf.internal.pageSize.getHeight() - margin);
+        const boxHeight = pageBottomY - pageTopY;
+
+        // Erase any internal horizontal lines inside Column 0 on page p
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(margin + 0.1, pageTopY + 0.1, availableWidth * 0.33 - 0.2, boxHeight - 0.2, 'F');
+
+        // Draw clean outer border for Column 0 on page p
+        pdf.setLineWidth(0.2);
+        pdf.setDrawColor(0, 0, 0);
+        pdf.rect(margin, pageTopY, availableWidth * 0.33, boxHeight);
+      }
+    }
+
     yPos = pdf.lastAutoTable.finalY + 5;
 
     // Resources section
@@ -453,17 +848,61 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       head: [],
       body: [
         [{ content: 'Resources', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }}],
-        [{ content: cleanPdfText(topicData.topic_resources || ''), styles: { cellPadding: 3 }}],
+        [formatEmptyField(topicData.topic_resources, 5)],
       ],
       theme: 'grid',
-      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
+      styles: { font: activeFont, fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
     yPos = pdf.lastAutoTable.finalY + 5;
 
     // Reflection section
     pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont(activeFont, 'normal');
     pdf.text('Reflection: Considering the planning, process and impact of the inquiry', margin, yPos);
     yPos += 6;
+
+    // Collect reflections from weekly plans grouped by week & meeting (matching Learning process format)
+    let weeklyReflectionsText = '';
+    if (plansByWeek && Object.keys(plansByWeek).length > 0) {
+      const sortedWNums = Object.keys(plansByWeek).map(Number).sort((a, b) => a - b);
+      let refMeetingNum = 1;
+      const weekBlocks = [];
+
+      sortedWNums.forEach(wNum => {
+        const sessions = plansByWeek[wNum];
+        const meetingBlocks = [];
+
+        sessions.forEach(sess => {
+          const mNum = refMeetingNum++;
+          const refStr = (sess.week_reflection || sess.week_reflection_during || '').trim();
+          if (refStr) {
+            const dateStr = sess.week_date ? ` (${formatDateDisplay(sess.week_date)})` : '';
+            meetingBlocks.push(`Meeting ${mNum}${dateStr}\n${refStr}`);
+          }
+        });
+
+        if (meetingBlocks.length > 0) {
+          weekBlocks.push(`Week ${wNum}\n${meetingBlocks.join('\n\n')}`);
+        }
+      });
+
+      weeklyReflectionsText = weekBlocks.join('\n\n');
+    } else if (unpackedWeeklyPlans && unpackedWeeklyPlans.length > 0) {
+      const refBlocks = [];
+      unpackedWeeklyPlans.forEach((plan, idx) => {
+        const refStr = (plan.week_reflection || plan.week_reflection_during || '').trim();
+        if (refStr) {
+          const dateStr = plan.week_date ? ` (${formatDateDisplay(plan.week_date)})` : '';
+          refBlocks.push(`Week ${plan.week_number || (idx + 1)}\nMeeting ${idx + 1}${dateStr}\n${refStr}`);
+        }
+      });
+      weeklyReflectionsText = refBlocks.join('\n\n');
+    }
+
+    const duringTeachingContent = (plansByWeek && Object.keys(plansByWeek).length > 0 && weeklyReflectionsText.trim())
+      ? weeklyReflectionsText
+      : (topicData.topic_reflection_during || weeklyReflectionsText || '');
+
+    const initialRefPage = pdf.getNumberOfPages();
 
     autoTable(pdf, {
       startY: yPos,
@@ -476,39 +915,44 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
           { content: 'After teaching the unit', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
         ],
         [
-          { content: cleanPdfText(topicData.topic_reflection_prior || ''), styles: { cellPadding: 3 }},
-          { content: cleanPdfText(topicData.topic_reflection_during || ''), styles: { cellPadding: 3 }},
-          { content: cleanPdfText(topicData.topic_reflection_after || ''), styles: { cellPadding: 3 }},
+          formatEmptyField(topicData.topic_reflection_prior, 9),
+          formatEmptyField(duringTeachingContent, 'Weekly Plan'),
+          formatEmptyField(topicData.topic_reflection_after, 10),
         ],
       ],
       theme: 'grid',
-      styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
+      styles: { font: activeFont, fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] },
       columnStyles: {
         0: { cellWidth: availableWidth * 0.33 },
         1: { cellWidth: availableWidth * 0.33 },
-        2: { cellWidth: availableWidth * 0.34 } } });
-    yPos = pdf.lastAutoTable.finalY + 5;
-
-    // Remaining sections
-    const sections = [
-      { label: 'Differentiation', content: topicData.topic_differentiation },
-    ];
-
-    sections.forEach((section) => {
-      if (section.content) {
-        autoTable(pdf, {
-          startY: yPos,
-          head: [],
-          body: [
-            [{ content: section.label, styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }, colSpan: 8 }],
-            [{ content: cleanPdfText(section.content), colSpan: 8, styles: { cellPadding: 3 } }],
-          ],
-          theme: 'grid',
-          styles: { fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] }
-        });
-        yPos = pdf.lastAutoTable.finalY + 5;
+        2: { cellWidth: availableWidth * 0.34 }
       }
     });
+
+    const totalPagesAfterRef = pdf.getNumberOfPages();
+    const refFinalY = pdf.lastAutoTable.finalY;
+
+    if (totalPagesAfterRef > initialRefPage) {
+      for (let p = initialRefPage + 1; p <= totalPagesAfterRef; p++) {
+        pdf.setPage(p);
+        const pageTopY = margin;
+        const pageBottomY = (p === totalPagesAfterRef) ? refFinalY : (pdf.internal.pageSize.getHeight() - margin);
+        const boxHeight = pageBottomY - pageTopY;
+
+        // Erase any internal lines inside Column 0 & Column 2 on page p
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(margin + 0.1, pageTopY + 0.1, availableWidth * 0.33 - 0.2, boxHeight - 0.2, 'F');
+        pdf.rect(margin + availableWidth * 0.66 + 0.1, pageTopY + 0.1, availableWidth * 0.34 - 0.2, boxHeight - 0.2, 'F');
+
+        // Draw clean outer borders for Column 0, 1, 2 on page p
+        pdf.setLineWidth(0.2);
+        pdf.setDrawColor(0, 0, 0);
+        pdf.rect(margin, pageTopY, availableWidth * 0.33, boxHeight);
+        pdf.rect(margin + availableWidth * 0.33, pageTopY, availableWidth * 0.33, boxHeight);
+        pdf.rect(margin + availableWidth * 0.66, pageTopY, availableWidth * 0.34, boxHeight);
+      }
+    }
+    yPos = pdf.lastAutoTable.finalY + 5;
 
     // Save PDF
     const fileName = `unit-planner-${topicData.topic_nama?.replace(/[^a-z0-9]/gi, '-') || 'topic'}.pdf`;
