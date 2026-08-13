@@ -97,7 +97,11 @@ export default function AccessGuard({ children }) {
         ]))
 
         // Linked paths: pages accessible from within another page share the same permission
-        const linkedPaths = { '/data/topic-new': ['/data/assessment_grading'] }
+        const linkedPaths = { 
+          '/data/topic-new': ['/data/assessment_grading', '/data/topic-pyp', '/data/pyp'],
+          '/data/pyp': ['/data/topic-pyp'],
+          '/data/topic-pyp': ['/data/pyp']
+        }
         for (const [parent, children] of Object.entries(linkedPaths)) {
           if (merged.includes(normalize(parent))) {
             children.forEach(c => merged.push(normalize(c)))
