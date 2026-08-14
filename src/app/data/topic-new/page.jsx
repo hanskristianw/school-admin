@@ -32,7 +32,10 @@ export default function TopicNewPage() {
   const commentImportRef = useRef(null)
   const mentorImportRef = useRef(null)
   const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('topic_active_tab') || 'planning'
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('topic_active_tab')
+      if (saved && saved !== 'assignment') return saved
+    }
     return 'planning'
   })
   const [activeSubMenu, setActiveSubMenu] = useState('overview')
@@ -5497,7 +5500,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
   const tabs = [
     { id: 'planning', label: t('topicNew.tabs.planning'), icon: faMap },
-    { id: 'assignment', label: t('topicNew.tabs.assignment'), icon: faClipboardList },
     { id: 'assessment', label: t('topicNew.tabs.assessment'), icon: faClipboardCheck },
     { id: 'comment', label: t('topicNew.tabs.comment'), icon: faComments },
     ...(isWaliKelas ? [{ id: 'mentor', label: t('topicNew.tabs.mentorComment'), icon: faHouseUser }] : []),
@@ -6522,12 +6524,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           </div>
         )}
 
-        {activeTab === 'assignment' && (
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Assignment</h2>
-            <p className="text-xs" style={{ color: theme.textSecondary }}>Assignment management content will be displayed here.</p>
-          </div>
-        )}
 
         {activeTab === 'assessment' && (
           <div className="p-6">
