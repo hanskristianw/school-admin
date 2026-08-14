@@ -54,7 +54,24 @@ import {
   faHandHoldingHeart,
   faHandsHoldingChild,
   faUserShield,
-  faHandsHolding
+  faHandsHolding,
+  // PYP & MYP Curriculum & Inquiry Icons
+  faShapes,
+  faPuzzlePiece,
+  faSeedling,
+  faChild,
+  faChildren,
+  faCubes,
+  faPalette,
+  faGlobe,
+  faEarthAmericas,
+  faCompass,
+  faFlask,
+  faDiagramProject,
+  faAtom,
+  faBrain,
+  faBookBookmark,
+  faBookOpen
 } from "@fortawesome/free-solid-svg-icons"
 import { faDoorOpen, faSignOutAlt } from "@fortawesome/free-solid-svg-icons"
 import { faQrcode } from "@fortawesome/free-solid-svg-icons"
@@ -220,6 +237,66 @@ const iconMap = {
   , 'faBoxOpen': require('@fortawesome/free-solid-svg-icons').faBoxOpen
   , 'fas fa-landmark': faLandmark
   , 'faLandmark': faLandmark
+  // PYP Icons
+  , 'fas fa-shapes': faShapes
+  , 'faShapes': faShapes
+  , 'shapes': faShapes
+  , 'fas fa-puzzle-piece': faPuzzlePiece
+  , 'faPuzzlePiece': faPuzzlePiece
+  , 'puzzle-piece': faPuzzlePiece
+  , 'fas fa-seedling': faSeedling
+  , 'faSeedling': faSeedling
+  , 'seedling': faSeedling
+  , 'fas fa-child': faChild
+  , 'faChild': faChild
+  , 'child': faChild
+  , 'fas fa-children': faChildren
+  , 'faChildren': faChildren
+  , 'children': faChildren
+  , 'fas fa-cubes': faCubes
+  , 'faCubes': faCubes
+  , 'cubes': faCubes
+  , 'fas fa-palette': faPalette
+  , 'faPalette': faPalette
+  , 'palette': faPalette
+  // MYP Icons
+  , 'fas fa-globe': faGlobe
+  , 'faGlobe': faGlobe
+  , 'globe': faGlobe
+  , 'fas fa-earth-americas': faEarthAmericas
+  , 'faEarthAmericas': faEarthAmericas
+  , 'earth-americas': faEarthAmericas
+  , 'fas fa-globe-americas': faEarthAmericas
+  , 'faGlobeAmericas': faEarthAmericas
+  , 'globe-americas': faEarthAmericas
+  , 'fas fa-compass': faCompass
+  , 'faCompass': faCompass
+  , 'compass': faCompass
+  , 'fas fa-flask': faFlask
+  , 'faFlask': faFlask
+  , 'flask': faFlask
+  , 'fas fa-diagram-project': faDiagramProject
+  , 'faDiagramProject': faDiagramProject
+  , 'diagram-project': faDiagramProject
+  , 'fas fa-project-diagram': faDiagramProject
+  , 'faProjectDiagram': faDiagramProject
+  , 'project-diagram': faDiagramProject
+  , 'fas fa-atom': faAtom
+  , 'faAtom': faAtom
+  , 'atom': faAtom
+  , 'fas fa-brain': faBrain
+  , 'faBrain': faBrain
+  , 'brain': faBrain
+  , 'fas fa-book-bookmark': faBookBookmark
+  , 'faBookBookmark': faBookBookmark
+  , 'book-bookmark': faBookBookmark
+  // Academic & Unit Icons
+  , 'fas fa-book-open': faBookOpen
+  , 'faBookOpen': faBookOpen
+  , 'book-open': faBookOpen
+  , 'fas fa-school': faSchool
+  , 'faSchool': faSchool
+  , 'school': faSchool
 }
 
 const Sidebar = memo(({ isOpen, setIsOpen }) => {

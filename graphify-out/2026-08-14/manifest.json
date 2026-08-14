@@ -1245,9 +1245,9 @@
     "semantic_hash": "11a5580820137f123f4ab689cf17f0e1"
   },
   "src/components/ImprovedMenuManagement.jsx": {
-    "mtime": 1786676853.862517,
-    "ast_hash": "dc26573923e27903bcb47ec7661f1aa0",
-    "semantic_hash": ""
+    "mtime": 1784179362.4607437,
+    "ast_hash": "1b6730e5a87d8f6a467539e247e2ea5b",
+    "semantic_hash": "1b6730e5a87d8f6a467539e247e2ea5b"
   },
   "src/components/KwitansiModal.jsx": {
     "mtime": 1784179362.4607437,
@@ -1275,8 +1275,8 @@
     "semantic_hash": "104123e0baacb9dd57b2a1a1962da5d0"
   },
   "src/components/sidebar.jsx": {
-    "mtime": 1786676840.4462283,
-    "ast_hash": "b11eef24356df9bc49ad54cad7ac1249",
+    "mtime": 1785915933.8527553,
+    "ast_hash": "275c052fac0cf53f4829ab35334c9192",
     "semantic_hash": ""
   },
   "src/components/ui/button.jsx": {

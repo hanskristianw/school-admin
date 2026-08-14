@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 356,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 356,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 356,
+      "community_name": "bcryptjs",
       "norm_label": "driver.js"
     },
     {
@@ -3131,8 +3131,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 356,
+      "community_name": "bcryptjs",
       "norm_label": "driver.js"
     },
     {
@@ -9519,7 +9519,7 @@
       "label": "ImprovedMenuManagement()",
       "file_type": "code",
       "source_file": "src/components/ImprovedMenuManagement.jsx",
-      "source_location": "L35",
+      "source_location": "L28",
       "_origin": "ast",
       "id": "src_components_improvedmenumanagement_improvedmenumanagement",
       "community": 220,
@@ -9640,7 +9640,7 @@
       "label": "iconMap",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L85",
+      "source_location": "L68",
       "_origin": "ast",
       "id": "src_components_sidebar_iconmap",
       "community": 89,
@@ -9651,7 +9651,7 @@
       "label": "Sidebar",
       "file_type": "code",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L302",
+      "source_location": "L225",
       "_origin": "ast",
       "id": "src_components_sidebar_sidebar",
       "community": 89,
@@ -14725,8 +14725,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 149,
-      "community_name": "SKILL.md",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "skill.md"
     },
     {
@@ -14736,8 +14736,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 149,
-      "community_name": "SKILL.md",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -14747,8 +14747,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 149,
-      "community_name": "SKILL.md",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -33670,7 +33670,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/ImprovedMenuManagement.jsx",
-      "source_location": "L35",
+      "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_improvedmenumanagement",
@@ -33821,7 +33821,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L85",
+      "source_location": "L68",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -33832,7 +33832,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/sidebar.jsx",
-      "source_location": "L302",
+      "source_location": "L225",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_sidebar",
@@ -47027,5 +47027,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "0ccc04271f222324b6bfc2d58ecd2693a30376ff"
+  "built_at_commit": "aaa46cd69a9091159a8d96e3ef2771cd977ea62e"
 }

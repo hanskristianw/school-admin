@@ -21,7 +21,14 @@ import {
   faUsers,
   faUserGraduate,
   faChartBar,
-  faCog
+  faCog,
+  faShapes,
+  faPuzzlePiece,
+  faSeedling,
+  faGlobe,
+  faCompass,
+  faFlask,
+  faBookOpen
 } from '@fortawesome/free-solid-svg-icons'
 import { supabase } from '@/lib/supabase'
 
@@ -44,6 +51,15 @@ export default function ImprovedMenuManagement() {
 
   // Enhanced icon options with categories
   const iconCategories = {
+    'IB PYP & MYP': [
+      { value: 'shapes', label: 'Shapes (PYP)', icon: faShapes },
+      { value: 'puzzle-piece', label: 'Puzzle Piece (ATL)', icon: faPuzzlePiece },
+      { value: 'seedling', label: 'Seedling (Early Years)', icon: faSeedling },
+      { value: 'globe', label: 'Globe (MYP Global Contexts)', icon: faGlobe },
+      { value: 'compass', label: 'Compass (Inquiry)', icon: faCompass },
+      { value: 'flask', label: 'Flask (Sciences/Exploration)', icon: faFlask },
+      { value: 'book-open', label: 'Book Open (Units/Curriculum)', icon: faBookOpen },
+    ],
     'Navigation': [
       { value: 'home', label: 'Home', icon: faHome },
       { value: 'dashboard', label: 'Dashboard', icon: faLayerGroup },

@@ -1,16 +1,16 @@
-# Graph Report - school-admin  (2026-08-14)
+# Graph Report - school-admin  (2026-08-13)
 
 ## Corpus Check
-- 356 files · ~528,047 words
+- 356 files · ~527,741 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2118 nodes · 2132 edges · 360 communities (254 shown, 106 thin omitted)
+- 2118 nodes · 2132 edges · 359 communities (254 shown, 105 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0ccc0427`
+- Built from commit: `aaa46cd6`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -158,7 +158,6 @@
 - Module 146
 - Module 147
 - Module 148
-- SKILL.md
 - Module 150
 - Module 151
 - Module 152
@@ -298,7 +297,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (360 total, 106 thin omitted)
+## Communities (359 total, 105 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.12
@@ -366,7 +365,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): browser-image-compression, clsx, driver.js, googleapis, html5-qrcode, dependencies, browser-image-compression, clsx (+3 more)
+Nodes (11): bcryptjs, browser-image-compression, clsx, googleapis, html5-qrcode, dependencies, bcryptjs, browser-image-compression (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -745,8 +744,8 @@ Cohesion: 0.11
 Nodes (17): 1. Meta Information & Core Directive, 2. THE "ABSOLUTE ZERO" DIRECTIVE (STRICT ANTI-PATTERNS), 3. THE CREATIVE VARIANCE ENGINE, 4. HAPTIC MICRO-AESTHETICS (COMPONENT MASTERY), 5. MOTION CHOREOGRAPHY (FLUID DYNAMICS), 6. PERFORMANCE GUARDRAILS, 7. EXECUTION PROTOCOL, 8. PRE-OUTPUT CHECKLIST (+9 more)
 
 ### Community 316 - "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION"
-Cohesion: 0.14
-Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
+Cohesion: 0.12
+Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
 
 ### Community 317 - "SKILL: Industrial Brutalism & Tactical Telemetry UI"
 Cohesion: 0.12
@@ -899,7 +898,7 @@ Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure*
 ## Knowledge Gaps
 - **1110 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1105 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **106 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
