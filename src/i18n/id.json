@@ -739,7 +739,8 @@
     }
   },
   "topicNew": {
-    "title": "Perencana Unit IB MYP",
+    "title": "Manajemen Unit",
+    "subtitle": "Kelola topik dan unit perencana IB Anda",
     "subMenu": {
       "overview": "Ringkasan",
       "weeklyPlan": "Rencana Mingguan",
@@ -860,6 +861,9 @@
       "noClassesAvailable": "Tidak ada kelas tersedia untuk mata pelajaran ini",
       "loadingClasses": "Memuat kelas...",
       "loading": "Memuat...",
+      "academicYear": "Tahun Ajaran",
+      "selectAcademicYear": "Pilih Tahun Ajaran",
+      "selectYearFirst": "Pilih tahun ajaran dulu",
       "chooseTopic": "-- Pilih Topik --",
       "selectMypYear": "Pilih MYP Year...",
       "selectSemester": "Pilih Semester...",
@@ -928,12 +932,22 @@
       "downloadAllButton": "Download Semua Report (ZIP)",
       "infoText": "Pilih tahun ajaran, semester, kelas, dan siswa kemudian klik tombol \"Preview Report\" untuk melihat dan mencetak laporan progress siswa."
     },
+    "assessmentTab": {
+      "title": "Manajemen Asesmen",
+      "subtitle": "Kelola asesmen formatif & sumatif, tentukan kriteria IB, dan catat nilai siswa."
+    },
     "mentorCommentTab": {
       "title": "Komentar Wali Kelas",
       "subtitle": "Tulis komentar wali kelas per semester untuk setiap siswa di kelas Anda.",
-      "classLabel": "1. Kelas",
+      "yearLabel": "Tahun Ajaran",
+      "selectYear": "Pilih Tahun Ajaran",
+      "selectYearFirst": "Pilih tahun ajaran dulu",
+      "subjectLabel": "Mata Pelajaran",
+      "selectSubject": "Pilih Mata Pelajaran",
+      "selectSubjectFirst": "Pilih mata pelajaran dulu",
+      "classLabel": "Kelas",
       "selectClass": "-- Pilih Kelas --",
-      "semesterLabel": "2. Semester",
+      "semesterLabel": "Semester",
       "saveAll": "Simpan Semua",
       "students": "siswa",
       "studentsPlural": "siswa",
@@ -982,6 +996,11 @@
       "dailyAttendance": {
         "title": "Absensi Harian",
         "beta": "Beta",
+        "subtitle": "Catat kehadiran harian siswa di kelas Anda. Pilih tahun ajaran dan kelas untuk mulai mencatat.",
+        "yearLabel": "Tahun Ajaran",
+        "selectYear": "Pilih Tahun Ajaran",
+        "selectYearFirst": "Pilih tahun ajaran dulu",
+        "selectClassFirst": "Pilih kelas untuk melihat absensi.",
         "hide": "▲ Sembunyikan",
         "show": "▼ Tampilkan",
         "yesterday": "← Kemarin",

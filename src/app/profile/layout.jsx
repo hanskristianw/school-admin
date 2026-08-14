@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Sidebar from "@/components/sidebar"
+import { useTheme } from "@/lib/theme"
 
 export default function ProfileLayout({ children }) {
   const router = useRouter()
+  const { theme } = useTheme()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export default function ProfileLayout({ children }) {
   }, [router])
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full" style={{ background: theme.pageBg }}>
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <main className="flex-1 overflow-y-auto">
         {children}

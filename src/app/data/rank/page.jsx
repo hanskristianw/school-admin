@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { 
+  faTrophy, faMedal, faAward, faUsers, faChartLine, faBook,
+  faSlidersH, faFilter, faSearch, faArrowUp, faArrowDown, faCheck,
+  faExclamationTriangle, faCalendarAlt, faGraduationCap, faLayerGroup
+} from '@fortawesome/free-solid-svg-icons'
 
 // ── IB boundary calculation (same as pdfGenerators) ─────────────────────────
 function calcIBScore(gradeRows, customBounds) {
@@ -35,91 +39,147 @@ function calcIBScore(gradeRows, customBounds) {
   return 7
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
-function RankBadge({ rank }) {
-  if (rank === 1) return <span style={{ fontSize: 22 }}>🥇</span>
-  if (rank === 2) return <span style={{ fontSize: 22 }}>🥈</span>
-  if (rank === 3) return <span style={{ fontSize: 22 }}>🥉</span>
-  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: '#f3f4f6', fontWeight: 700, fontSize: 13, color: '#6b7280' }}>{rank}</span>
+// ── Minimalist Sub-components ────────────────────────────────────────────────
+function RankBadge({ rank, isDark }) {
+  if (rank === 1) {
+    return (
+      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded border inline-flex items-center gap-1"
+        style={{ background: isDark ? '#2A2618' : '#FBF3DB', color: isDark ? '#C4A24A' : '#956400', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#EAEAEA' }}>
+        <FontAwesomeIcon icon={faTrophy} className="text-[10px]" />
+        <span>1ST</span>
+      </span>
+    )
+  }
+  if (rank === 2) {
+    return (
+      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded border inline-flex items-center gap-1"
+        style={{ background: isDark ? '#1D1C21' : '#F7F6F3', color: isDark ? '#F0EFE9' : '#2F3437', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#EAEAEA' }}>
+        <FontAwesomeIcon icon={faMedal} className="text-[10px]" />
+        <span>2ND</span>
+      </span>
+    )
+  }
+  if (rank === 3) {
+    return (
+      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded border inline-flex items-center gap-1"
+        style={{ background: isDark ? '#3A281E' : '#FDF2E9', color: isDark ? '#E59866' : '#B9770E', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#EAEAEA' }}>
+        <FontAwesomeIcon icon={faAward} className="text-[10px]" />
+        <span>3RD</span>
+      </span>
+    )
+  }
+  return (
+    <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded border text-zinc-500"
+      style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#EAEAEA', background: isDark ? 'transparent' : '#FAFAFA' }}>
+      #{rank}
+    </span>
+  )
 }
 
-function ScorePill({ score, theme }) {
-  if (score === null || score === undefined) return <span style={{ color: theme.textSecondary, fontSize: 12 }}>—</span>
-  const colors = [null,
-    { bg: '#fef2f2', text: '#dc2626' },
-    { bg: '#fff7ed', text: '#ea580c' },
-    { bg: '#fefce8', text: '#ca8a04' },
-    { bg: '#f0fdf4', text: '#16a34a' },
-    { bg: '#eff6ff', text: '#2563eb' },
-    { bg: '#f5f3ff', text: '#7c3aed' },
-    { bg: '#fdf4ff', text: '#a21caf' },
-  ]
-  const c = colors[score] || { bg: theme.subtleBg, text: theme.textBody }
-  return <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: c.bg, color: c.text, minWidth: 28, textAlign: 'center' }}>{score}</span>
+function ScorePill({ score, theme, isDark }) {
+  if (score === null || score === undefined) return <span className="font-mono text-xs text-gray-400">—</span>
+  
+  const getStyle = (s) => {
+    if (s >= 6) return { bg: isDark ? '#1E2E1E' : '#EDF3EC', text: isDark ? '#7BAF7B' : '#346538' }
+    if (s >= 4) return { bg: isDark ? '#1A2F3D' : '#E1F3FE', text: isDark ? '#7CB8DC' : '#1F6C9F' }
+    if (s === 3) return { bg: isDark ? '#2A2618' : '#FBF3DB', text: isDark ? '#C4A24A' : '#956400' }
+    return { bg: isDark ? '#3A1E1E' : '#FDEBEC', text: isDark ? '#DC8585' : '#9F2F2D' }
+  }
+
+  const c = getStyle(score)
+  return (
+    <span 
+      className="font-mono text-xs font-bold px-2 py-0.5 rounded border"
+      style={{ background: c.bg, color: c.text, borderColor: theme.border }}
+    >
+      {score}
+    </span>
+  )
 }
 
-function Avatar({ name, photo, size = 34 }) {
+function Avatar({ name, photo, size = 32, theme }) {
   const [imgError, setImgError] = useState(false)
   const initials = name ? name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : '?'
-  const palette = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ec4899','#8b5cf6','#14b8a6']
-  const bg = palette[(name?.charCodeAt(0) ?? 0) % palette.length]
+  
   if (photo && !imgError) {
     return (
       <img
         src={photo}
         alt={name || ''}
         onError={() => setImgError(true)}
-        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #e5e7eb' }}
+        style={{ width: size, height: size, borderRadius: '4px', objectFit: 'cover', flexShrink: 0, border: `1px solid ${theme.border}` }}
       />
     )
   }
-  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: size, height: size, borderRadius: '50%', background: bg, color: '#fff', fontWeight: 700, fontSize: size * 0.38, flexShrink: 0 }}>{initials}</span>
+  return (
+    <span 
+      className="font-mono font-bold flex items-center justify-center rounded border flex-shrink-0"
+      style={{ 
+        width: size, 
+        height: size, 
+        borderRadius: '4px', 
+        background: theme.subtleBg, 
+        color: theme.textPrimary,
+        borderColor: theme.border,
+        fontSize: size * 0.38 
+      }}
+    >
+      {initials}
+    </span>
+  )
 }
 
-function StatCard({ label, value, icon, color, theme }) {
+function StatCard({ label, value, icon, theme, isDark }) {
   return (
-    <Card style={{ background: theme.cardBg, borderColor: theme.border, flex: 1, minWidth: 140 }}>
-      <CardContent className="pt-4 pb-4">
-        <div className="flex items-center gap-3">
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{icon}</div>
-          <div>
-            <p style={{ fontSize: 10, color: theme.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>
-            <p style={{ fontSize: 20, fontWeight: 800, color: theme.textPrimary, lineHeight: 1.2 }}>{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div 
+      className="p-4 rounded border flex-1 min-w-[150px] transition-all"
+      style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '6px' }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-mono text-[10px] uppercase tracking-wider font-semibold" style={{ color: theme.textSecondary }}>
+          {label}
+        </span>
+        <span className="text-xs" style={{ color: theme.textSecondary }}>
+          <FontAwesomeIcon icon={icon} />
+        </span>
+      </div>
+      <p className="font-mono text-2xl font-bold tracking-tight" style={{ color: theme.textPrimary }}>
+        {value}
+      </p>
+    </div>
   )
 }
 
 function FilterSelect({ label, value, onChange, disabled, children, theme }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ color: theme.textSecondary, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)} disabled={disabled}
-        style={{ background: theme.inputBg, border: `1px solid ${theme.border}`, color: value ? theme.textBody : theme.textSecondary, borderRadius: 8, padding: '7px 10px', fontSize: 13, minWidth: 155, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
+    <div className="flex flex-col gap-1.5">
+      <label className="font-mono text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.textSecondary }}>
+        {label}
+      </label>
+      <select 
+        value={value} 
+        onChange={e => onChange(e.target.value)} 
+        disabled={disabled}
+        className="font-mono text-xs rounded border px-3 py-1.5 outline-none transition-colors"
+        style={{ 
+          background: theme.inputBg, 
+          borderColor: theme.border, 
+          color: value ? theme.textPrimary : theme.textSecondary, 
+          borderRadius: '4px',
+          minWidth: 155, 
+          cursor: disabled ? 'not-allowed' : 'pointer', 
+          opacity: disabled ? 0.5 : 1 
+        }}
+      >
         {children}
       </select>
     </div>
   )
 }
 
-function PodiumBlock({ rank, entry, theme, height }) {
-  const color = { 1: '#f59e0b', 2: '#9ca3af', 3: '#f97316' }[rank]
-  const medal = { 1: '🥇', 2: '🥈', 3: '🥉' }[rank]
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, minWidth: 110 }}>
-      <Avatar name={entry?.nama} photo={entry?.photo} size={38} />
-      <p style={{ fontWeight: 700, fontSize: 12, color: theme.textPrimary, textAlign: 'center', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry?.nama || '—'}</p>
-      <p style={{ fontWeight: 800, fontSize: 15, color }}>{entry?.avg?.toFixed(2) ?? '—'}</p>
-      <div style={{ width: '100%', height, borderRadius: '8px 8px 0 0', background: `linear-gradient(180deg,${color}55,${color}22)`, border: `2px solid ${color}77`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>{medal}</div>
-    </div>
-  )
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 export default function RankPage() {
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
   const { t } = useI18n()
 
   const [years, setYears]           = useState([])
@@ -131,11 +191,12 @@ export default function RankPage() {
   const [subjects, setSubjects]         = useState([])
   const [loading, setLoading]           = useState(false)
   const [errorMsg, setErrorMsg]         = useState('')
-  const [criteriaData, setCriteriaData]     = useState({})        // per-subject criteria avg for selected class
-  const [classCritDist, setClassCritDist]   = useState(null)      // distribution {A:{1:n,...}, B:...} for selected class
-  const [schoolCriteria, setSchoolCriteria] = useState({})    // school-wide criteria avg
+  const [criteriaData, setCriteriaData]     = useState({})
+  const [classCritDist, setClassCritDist]   = useState(null)
+  const [schoolCriteria, setSchoolCriteria] = useState({})
   const [schoolLoading, setSchoolLoading]   = useState(false)
   const [schoolLoaded, setSchoolLoaded]     = useState(false)
+  const [viewMode, setViewMode] = useState('overall') // 'overall' | 'subject' | 'stats'
 
   useEffect(() => {
     supabase.from('year').select('year_id, year_name').order('year_name', { ascending: false })
@@ -148,7 +209,15 @@ export default function RankPage() {
       .then(({ data }) => { setKelasOptions(data || []); setSelKelas('') })
   }, [selYear])
 
-  useEffect(() => { setRankData([]); setSubjects([]); setErrorMsg(''); setCriteriaData({}); setClassCritDist(null); setSchoolCriteria({}); setSchoolLoaded(false) }, [selYear, selSem, selKelas])
+  useEffect(() => { 
+    setRankData([])
+    setSubjects([])
+    setErrorMsg('')
+    setCriteriaData({})
+    setClassCritDist(null)
+    setSchoolCriteria({})
+    setSchoolLoaded(false) 
+  }, [selYear, selSem, selKelas])
 
   const canGenerate = selYear && selSem && selKelas
   const yearName  = years.find(y => String(y.year_id) === String(selYear))?.year_name || ''
@@ -162,7 +231,7 @@ export default function RankPage() {
         .from('detail_siswa').select('detail_siswa_id, detail_siswa_user_id')
         .eq('detail_siswa_kelas_id', selKelas)
       if (e1) throw e1
-      if (!siswaData?.length) { setErrorMsg(t('rank.errors.noStudents')); return }
+      if (!siswaData?.length) { setErrorMsg('No students registered in this class cohort.'); return }
 
       const userIds  = siswaData.map(d => d.detail_siswa_user_id).filter(Boolean)
       const siswaIdMap = Object.fromEntries(siswaData.map(d => [d.detail_siswa_user_id, d.detail_siswa_id]))
@@ -171,7 +240,6 @@ export default function RankPage() {
       const { data: usersData } = await supabase
         .from('users').select('user_id, user_nama_depan, user_nama_belakang, user_profile_picture, user_manual_picture').in('user_id', userIds)
       const nameMap  = Object.fromEntries((usersData || []).map(u => [u.user_id, `${u.user_nama_depan} ${u.user_nama_belakang}`.trim()]))
-      // Prefer manually uploaded picture, fallback to Google OAuth picture
       const photoMap = Object.fromEntries((usersData || []).map(u => [u.user_id, u.user_manual_picture || u.user_profile_picture || null]))
 
       // 3. Subjects (detail_kelas)
@@ -193,7 +261,7 @@ export default function RankPage() {
           if (a.subject.core_subject !== b.subject.core_subject) return a.subject.core_subject ? -1 : 1
           return (a.subject.print_order ?? 0) - (b.subject.print_order ?? 0)
         })
-      if (!printable.length) { setErrorMsg(t('rank.errors.noSubjects')); return }
+      if (!printable.length) { setErrorMsg('No active printable subjects configured.'); return }
 
       const dkIds = printable.map(dk => dk.detail_kelas_id)
       const subjectList = printable.map(dk => ({ id: dk.subject.subject_id, name: dk.subject.subject_name }))
@@ -250,7 +318,7 @@ export default function RankPage() {
         }
         const avg = arr => arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2) : null
         critMap[sid] = { name: dk.subject.subject_name, avgA: avg(mA), avgB: avg(mB), avgC: avg(mC), avgD: avg(mD), hasA: mA.length>0, hasB: mB.length>0, hasC: mC.length>0, hasD: mD.length>0 }
-        // Accumulate distribution using max-per-student values
+        
         for (const v of mA) distAcc.A[v] = (distAcc.A[v]||0)+1
         for (const v of mB) distAcc.B[v] = (distAcc.B[v]||0)+1
         for (const v of mC) distAcc.C[v] = (distAcc.C[v]||0)+1
@@ -297,7 +365,7 @@ export default function RankPage() {
       setSchoolLoaded(false)
     } catch (e) {
       console.error(e)
-      setErrorMsg(t('rank.errors.load') + (e.message || e))
+      setErrorMsg('Computation error: ' + (e.message || e))
     } finally {
       setLoading(false)
     }
@@ -354,20 +422,18 @@ export default function RankPage() {
     } catch(e){console.error(e)} finally{setSchoolLoading(false)}
   }
 
-  const [viewMode, setViewMode] = useState('overall') // 'overall' | 'subject' | 'stats'
-
-  // Auto-load school stats when switching to stats tab
+  // Auto-load school stats on stats tab
   useEffect(() => {
-    if (viewMode === 'stats' && hasData && !schoolLoaded && !schoolLoading) {
+    if (viewMode === 'stats' && rankData.length > 0 && !schoolLoaded && !schoolLoading) {
       loadSchoolStats()
     }
-  }, [viewMode])
+  }, [viewMode, rankData.length])
 
   const hasData = rankData.length > 0
   const topAvg  = hasData ? (rankData[0]?.avg?.toFixed(2) ?? '—') : '—'
   const avgAll  = hasData ? (rankData.reduce((s, r) => s + (r.avg ?? 0), 0) / rankData.length).toFixed(2) : '—'
 
-  // Build per-subject rankings from existing rankData
+  // Per-subject rankings
   const subjectRankings = subjects.map(s => {
     const rows = rankData
       .map(r => ({ user_id: r.user_id, nama: r.nama, photo: r.photo, score: r.scores?.[s.id] ?? null }))
@@ -384,410 +450,467 @@ export default function RankPage() {
   })
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', background: theme.pageBg }}>
-      <div style={{ padding: '24px 24px 40px' }} className="space-y-5">
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>🏆 {t('rank.title')}</h1>
-            <p style={{ fontSize: 13, color: theme.textSecondary, marginTop: 3 }}>{t('rank.subtitle')}</p>
+    <div 
+      className="min-h-full py-6 px-4 sm:px-8 max-w-7xl mx-auto space-y-6"
+      style={{ 
+        fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif",
+        color: theme.textBody 
+      }}
+    >
+      {/* Editorial Document Header */}
+      <div className="border-b pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4" style={{ borderColor: theme.border }}>
+        <div>
+          <div className="flex items-center gap-2 mb-2 font-mono text-[11px] uppercase tracking-widest" style={{ color: theme.textSecondary }}>
+            <span>WORKSPACE</span>
+            <span>/</span>
+            <span>ACADEMICS</span>
+            <span>/</span>
+            <span style={{ color: theme.textPrimary }}>COHORT RANKINGS</span>
           </div>
-          {hasData && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 99, background: theme.subtleBg, border: `1px solid ${theme.border}`, fontSize: 12, color: theme.textSecondary }}>
-              {t('rank.badge').replace('{class}', kelasName).replace('{year}', yearName).replace('{sem}', selSem)}
-            </div>
-          )}
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: theme.textPrimary, letterSpacing: '-0.02em' }}>
+            Academic Cohort & IB Performance
+          </h1>
+          <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
+            Comprehensive IB criterion synthesis, cohort grade averages, and comparative analytics.
+          </p>
         </div>
 
-        {/* Filter Card */}
-        <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-          <CardContent className="pt-5 pb-5">
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 16 }}>
-              <FilterSelect label={t('rank.filters.academicYear')} value={selYear} onChange={setSelYear} theme={theme}>
-                <option value="">{t('rank.filters.selectYear')}</option>
-                {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
-              </FilterSelect>
-              <FilterSelect label={t('rank.filters.semester')} value={selSem} onChange={setSelSem} theme={theme}>
-                <option value="">{t('rank.filters.selectSemester')}</option>
-                <option value="1">{t('rank.filters.semester1')}</option>
-                <option value="2">{t('rank.filters.semester2')}</option>
-              </FilterSelect>
-              <FilterSelect label={t('rank.filters.class')} value={selKelas} onChange={setSelKelas} disabled={!selYear} theme={theme}>
-                <option value="">{t('rank.filters.selectClass')}</option>
-                {kelasOptions.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
-              </FilterSelect>
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerate || loading}
+        {hasData && (
+          <div 
+            className="px-3 py-1.5 rounded border font-mono text-xs flex items-center gap-2"
+            style={{ borderColor: theme.border, background: theme.cardBg }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="font-semibold" style={{ color: theme.textPrimary }}>{kelasName}</span>
+            <span style={{ color: theme.textSecondary }}>• {yearName} Sem {selSem}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Filter Parameters Bento Card */}
+      <div 
+        className="p-5 rounded-lg border space-y-4"
+        style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}
+      >
+        <div className="flex flex-wrap items-end gap-4">
+          <FilterSelect label="Academic Year" value={selYear} onChange={setSelYear} theme={theme}>
+            <option value="">Select Year...</option>
+            {years.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
+          </FilterSelect>
+
+          <FilterSelect label="Semester" value={selSem} onChange={setSelSem} theme={theme}>
+            <option value="">Select Semester...</option>
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+          </FilterSelect>
+
+          <FilterSelect label="Target Class" value={selKelas} onChange={setSelKelas} disabled={!selYear} theme={theme}>
+            <option value="">Select Class...</option>
+            {kelasOptions.map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)}
+          </FilterSelect>
+
+          <button
+            onClick={handleGenerate}
+            disabled={!canGenerate || loading}
+            className="px-5 py-2 text-xs font-semibold rounded border transition-all active:scale-[0.98] cursor-pointer"
+            style={{
+              background: canGenerate && !loading ? theme.textPrimary : theme.subtleBg,
+              color: canGenerate && !loading ? (isDark ? '#111111' : '#FFFFFF') : theme.textSecondary,
+              borderColor: theme.border,
+              borderRadius: '4px',
+              cursor: canGenerate && !loading ? 'pointer' : 'not-allowed'
+            }}
+          >
+            {loading ? 'Synthesizing...' : 'Generate Analysis'}
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div className="p-3 rounded border text-xs font-mono" style={{ background: theme.redBg, color: theme.redText, borderColor: theme.border }}>
+            {errorMsg}
+          </div>
+        )}
+      </div>
+
+      {/* Loading Skeletons */}
+      {loading && (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-12 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border }} />
+          ))}
+        </div>
+      )}
+
+      {/* Key Metric Bento Cards */}
+      {hasData && !loading && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard label="Cohort Size" value={rankData.length} icon={faUsers} theme={theme} isDark={isDark} />
+          <StatCard label="Top IB Average" value={topAvg} icon={faTrophy} theme={theme} isDark={isDark} />
+          <StatCard label="Class Mean Average" value={avgAll} icon={faChartLine} theme={theme} isDark={isDark} />
+          <StatCard label="Graded Subjects" value={subjects.length} icon={faBook} theme={theme} isDark={isDark} />
+        </div>
+      )}
+
+      {/* View Mode Switcher */}
+      {hasData && !loading && (
+        <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: theme.border }}>
+          <div className="flex items-center gap-1 font-mono text-xs">
+            {[
+              { key: 'overall', label: '01. OVERALL COHORT' },
+              { key: 'subject', label: '02. PER-SUBJECT' },
+              { key: 'stats', label: '03. IB & CRITERIA METRICS' }
+            ].map(tab => (
+              <button 
+                key={tab.key} 
+                onClick={() => setViewMode(tab.key)}
+                className="px-3.5 py-1.5 rounded border transition-colors cursor-pointer"
                 style={{
-                  padding: '8px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: canGenerate && !loading ? 'pointer' : 'not-allowed', transition: 'all 0.2s',
-                  background: canGenerate && !loading ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : theme.subtleBg,
-                  color: canGenerate && !loading ? '#fff' : theme.textSecondary,
-                  boxShadow: canGenerate && !loading ? '0 2px 12px rgba(99,102,241,0.35)' : 'none',
+                  background: viewMode === tab.key ? theme.textPrimary : 'transparent',
+                  color: viewMode === tab.key ? (isDark ? '#111111' : '#FFFFFF') : theme.textSecondary,
+                  borderColor: viewMode === tab.key ? theme.textPrimary : theme.border,
+                  borderRadius: '4px',
+                  fontWeight: viewMode === tab.key ? 700 : 500
                 }}
               >
-                {loading ? t('rank.generating') : t('rank.generate')}
-              </button>
-            </div>
-            {errorMsg && <p style={{ marginTop: 10, fontSize: 13, color: '#dc2626', fontWeight: 500 }}>⚠ {errorMsg}</p>}
-          </CardContent>
-        </Card>
-
-        {/* Loading skeleton */}
-        {loading && (
-          <div className="space-y-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} style={{ height: 50, borderRadius: 10, background: theme.subtleBg, opacity: 0.7 - i * 0.08 }} />
-            ))}
-          </div>
-        )}
-
-        {/* Stats */}
-        {hasData && !loading && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            <StatCard label={t('rank.stats.totalStudents')} value={rankData.length} icon="👥" color="#6366f1" theme={theme} />
-            <StatCard label={t('rank.stats.topScore')}      value={topAvg}          icon="🥇" color="#f59e0b" theme={theme} />
-            <StatCard label={t('rank.stats.classAverage')}  value={avgAll}          icon="📈" color="#10b981" theme={theme} />
-            <StatCard label={t('rank.stats.subjects')}      value={subjects.length} icon="📚" color="#0ea5e9" theme={theme} />
-          </div>
-        )}
-
-        {/* View Mode Tabs */}
-        {hasData && !loading && (
-          <div style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 10, background: theme.subtleBg, border: `1px solid ${theme.border}`, width: 'fit-content' }}>
-            {[{ key: 'overall', label: t('rank.tabs.overall') }, { key: 'subject', label: t('rank.tabs.subject') }, { key: 'stats', label: t('rank.tabs.statistics') }].map(tab => (
-              <button key={tab.key} onClick={() => setViewMode(tab.key)}
-                style={{
-                  padding: '7px 18px', borderRadius: 7, border: 'none', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
-                  background: viewMode === tab.key ? '#6366f1' : 'transparent',
-                  color: viewMode === tab.key ? '#fff' : theme.textSecondary,
-                  boxShadow: viewMode === tab.key ? '0 2px 8px rgba(99,102,241,0.3)' : 'none',
-                }}>
                 {tab.label}
               </button>
             ))}
           </div>
-        )}
 
-        {/* ── OVERALL VIEW ── */}
-        {hasData && !loading && viewMode === 'overall' && (
-          <>
-            {/* Podium */}
-            {rankData.length >= 3 && (
-              <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-                <CardContent className="pt-5 pb-2">
-                  <p style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>{t('rank.podium')}</p>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 16 }}>
-                    <PodiumBlock rank={2} entry={rankData[1]} theme={theme} height={80} />
-                    <PodiumBlock rank={1} entry={rankData[0]} theme={theme} height={110} />
-                    <PodiumBlock rank={3} entry={rankData[2]} theme={theme} height={60} />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          <span className="text-[11px] font-mono text-gray-400 hidden sm:inline">
+            COHORT SYNTHESIS
+          </span>
+        </div>
+      )}
 
-            {/* Full table */}
-            <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-              <CardHeader className="pb-2">
-                <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>{t('rank.fullRankings')} — {kelasName}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      {/* ── 01. OVERALL VIEW ── */}
+      {hasData && !loading && viewMode === 'overall' && (
+        <div className="space-y-6">
+          {/* Minimalist Top 3 Leaderboard Strip */}
+          {rankData.length >= 3 && (
+            <div 
+              className="p-5 rounded-lg border"
+              style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}
+            >
+              <div className="flex items-center justify-between border-b pb-3 mb-4" style={{ borderColor: theme.border }}>
+                <span className="font-mono text-[10px] uppercase tracking-wider font-bold" style={{ color: theme.textSecondary }}>
+                  TOP ACADEMIC ACHIEVERS
+                </span>
+                <span className="font-mono text-[10px] text-gray-400">IB SCORE AVERAGE</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[1, 0, 2].map((idx, pos) => {
+                  const entry = rankData[idx]
+                  if (!entry) return null
+                  const isFirst = idx === 0
+                  return (
+                    <div 
+                      key={entry.user_id}
+                      className="p-4 rounded border flex items-center justify-between transition-all"
+                      style={{ 
+                        background: isFirst ? (isDark ? '#232228' : '#F7F6F3') : 'transparent',
+                        borderColor: isFirst ? theme.textPrimary : theme.border,
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar name={entry.nama} photo={entry.photo} size={36} theme={theme} />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold truncate" style={{ color: theme.textPrimary }}>
+                            {entry.nama}
+                          </p>
+                          <RankBadge rank={idx + 1} isDark={isDark} />
+                        </div>
+                      </div>
+
+                      <div className="text-right pl-2">
+                        <span className="font-mono text-base font-bold" style={{ color: theme.textPrimary }}>
+                          {entry.avg?.toFixed(2) ?? '—'}
+                        </span>
+                        <span className="block font-mono text-[9px] text-gray-400 uppercase">AVG</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Full Cohort Matrix Table */}
+          <div 
+            className="rounded-lg border overflow-hidden"
+            style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}
+          >
+            <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
+              <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: theme.textPrimary }}>
+                Cohort Register Matrix ({kelasName})
+              </span>
+              <span className="font-mono text-[10px] text-gray-400">
+                TOTAL: {rankData.length} STUDENTS
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse font-mono text-xs">
+                <thead>
+                  <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+                    <th className="py-2.5 px-3 text-center w-16 text-[10px] font-semibold text-gray-400 uppercase">Rank</th>
+                    <th className="py-2.5 px-4 min-w-[180px] text-[10px] font-semibold text-gray-400 uppercase">Student Name</th>
+                    {subjects.map(s => (
+                      <th key={s.id} className="py-2.5 px-2 text-center text-[10px] font-semibold text-gray-400 uppercase max-w-[80px] truncate" title={s.name}>
+                        {s.name.length > 8 ? s.name.slice(0, 8) + '..' : s.name}
+                      </th>
+                    ))}
+                    <th className="py-2.5 px-4 text-center text-[10px] font-bold uppercase" style={{ color: theme.blueText, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(31,108,159,0.05)' }}>
+                      Overall Avg
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankData.map((row, i) => (
+                    <tr 
+                      key={row.user_id}
+                      className="border-b transition-colors"
+                      style={{ 
+                        borderColor: theme.border,
+                        background: i < 3 ? (isDark ? 'rgba(255,255,255,0.02)' : '#FAFAFA') : 'transparent' 
+                      }}
+                    >
+                      <td className="py-2.5 px-3 text-center">
+                        <RankBadge rank={row.rank} isDark={isDark} />
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={row.nama} photo={row.photo} size={24} theme={theme} />
+                          <span className="font-sans font-semibold text-xs truncate" style={{ color: theme.textPrimary }}>
+                            {row.nama}
+                          </span>
+                        </div>
+                      </td>
+                      {subjects.map(s => (
+                        <td key={s.id} className="py-2.5 px-2 text-center">
+                          <ScorePill score={row.scores?.[s.id] ?? null} theme={theme} isDark={isDark} />
+                        </td>
+                      ))}
+                      <td className="py-2.5 px-4 text-center font-bold" style={{ background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(31,108,159,0.04)' }}>
+                        <span style={{ color: theme.textPrimary }}>
+                          {row.avg !== null ? row.avg.toFixed(2) : '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 02. PER SUBJECT BREAKDOWN ── */}
+      {hasData && !loading && viewMode === 'subject' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {subjectRankings.map(({ subject, rows, topScore, avg }) => (
+            <div 
+              key={subject.id}
+              className="rounded-lg border overflow-hidden flex flex-col justify-between"
+              style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}
+            >
+              <div className="p-3.5 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
+                <span className="text-xs font-bold truncate" style={{ color: theme.textPrimary }}>
+                  {subject.name}
+                </span>
+                <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                  <span className="px-1.5 py-0.2 rounded border font-semibold" style={{ background: theme.yellowBg, color: theme.yellowText, borderColor: theme.border }}>
+                    MAX: {topScore ?? '—'}
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.textSecondary }}>
+                    AVG: {avg}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-0 max-h-[320px] overflow-y-auto custom-scrollbar">
+                {rows.length === 0 ? (
+                  <p className="p-4 text-xs font-mono text-gray-400 text-center">No grades logged.</p>
+                ) : (
+                  <table className="w-full text-left border-collapse font-mono text-xs">
                     <thead>
-                      <tr style={{ background: theme.subtleBg, borderBottom: `2px solid ${theme.border}` }}>
-                        <th style={{ padding: '10px 12px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 11, width: 56 }}>{t('rank.table.rank')}</th>
-                        <th style={{ padding: '10px 14px', textAlign: 'left', color: theme.textSecondary, fontWeight: 600, fontSize: 11, minWidth: 170 }}>{t('rank.table.student')}</th>
-                        {subjects.map(s => (
-                          <th key={s.id} title={s.name} style={{ padding: '10px 6px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 10, maxWidth: 72 }}>
-                            {s.name.length > 9 ? s.name.slice(0, 9) + '…' : s.name}
-                          </th>
-                        ))}
-                        <th style={{ padding: '10px 14px', textAlign: 'center', color: '#6366f1', fontWeight: 700, fontSize: 11, background: 'rgba(99,102,241,0.07)', minWidth: 60 }}>{t('rank.table.avg')}</th>
+                      <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
+                        <th className="py-2 px-3 text-center w-12 text-[10px] text-gray-400">#</th>
+                        <th className="py-2 px-3 text-[10px] text-gray-400">Student</th>
+                        <th className="py-2 px-3 text-center w-16 text-[10px] text-gray-400">Grade</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {rankData.map((row, i) => (
-                        <tr key={row.user_id}
-                          style={{ borderBottom: `1px solid ${theme.border}`, background: i < 3 ? `rgba(99,102,241,${0.04 - i * 0.01})` : 'transparent', transition: 'background 0.12s' }}
-                          onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
-                          onMouseLeave={e => e.currentTarget.style.background = i < 3 ? `rgba(99,102,241,${0.04 - i * 0.01})` : 'transparent'}
-                        >
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}><RankBadge rank={row.rank} /></td>
-                          <td style={{ padding: '10px 14px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <Avatar name={row.nama} photo={row.photo} />
-                              <span style={{ fontWeight: 600, color: theme.textPrimary }}>{row.nama}</span>
-                            </div>
+                      {rows.map((row, i) => (
+                        <tr key={row.user_id} className="border-b" style={{ borderColor: theme.border }}>
+                          <td className="py-2 px-3 text-center">
+                            <span className="font-mono text-[10px] text-gray-400">#{row.rank}</span>
                           </td>
-                          {subjects.map(s => (
-                            <td key={s.id} style={{ padding: '10px 6px', textAlign: 'center' }}>
-                              <ScorePill score={row.scores?.[s.id] ?? null} theme={theme} />
-                            </td>
-                          ))}
-                          <td style={{ padding: '10px 14px', textAlign: 'center', background: 'rgba(99,102,241,0.05)' }}>
-                            <span style={{ fontWeight: 800, fontSize: 14, color: '#6366f1' }}>{row.avg !== null ? row.avg.toFixed(2) : '—'}</span>
+                          <td className="py-2 px-3 truncate">
+                            <span className="font-sans font-medium text-xs" style={{ color: theme.textPrimary }}>
+                              {row.nama}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <ScorePill score={row.score} theme={theme} isDark={isDark} />
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {/* ── PER SUBJECT VIEW ── */}
-        {hasData && !loading && viewMode === 'subject' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-            {subjectRankings.map(({ subject, rows, topScore, avg }) => (
-              <Card key={subject.id} style={{ background: theme.cardBg, borderColor: theme.border }}>
-                <CardHeader className="pb-2 pt-4">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                    <CardTitle style={{ color: theme.textPrimary, fontSize: 14 }}>📖 {subject.name}</CardTitle>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 99, background: '#fef9c3', color: '#a16207', fontWeight: 700 }}>{t('rank.top')}: {topScore ?? '—'}</span>
-                      <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 99, background: theme.subtleBg, color: theme.textSecondary, fontWeight: 600 }}>Avg: {avg}</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {rows.length === 0 ? (
-                    <p style={{ padding: '14px 16px', fontSize: 12, color: theme.textSecondary }}>{t('rank.noGrades')}</p>
-                  ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                      <thead>
-                        <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-                          <th style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 10, width: 44 }}>{t('rank.table.rank')}</th>
-                          <th style={{ padding: '7px 10px', textAlign: 'left',   color: theme.textSecondary, fontWeight: 600, fontSize: 10 }}>{t('rank.table.student')}</th>
-                          <th style={{ padding: '7px 10px', textAlign: 'center', color: theme.textSecondary, fontWeight: 600, fontSize: 10, width: 60 }}>{t('rank.table.score')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((row, i) => (
-                          <tr key={row.user_id}
-                            style={{ borderBottom: `1px solid ${theme.border}`, background: i < 3 ? `rgba(99,102,241,${0.04 - i * 0.01})` : 'transparent', transition: 'background 0.12s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
-                            onMouseLeave={e => e.currentTarget.style.background = i < 3 ? `rgba(99,102,241,${0.04 - i * 0.01})` : 'transparent'}
-                          >
-                            <td style={{ padding: '8px 10px', textAlign: 'center' }}><RankBadge rank={row.rank} /></td>
-                            <td style={{ padding: '8px 10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Avatar name={row.nama} photo={row.photo} size={28} />
-                                <span style={{ fontWeight: 600, color: theme.textPrimary, fontSize: 12 }}>{row.nama}</span>
-                              </div>
-                            </td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                              <ScorePill score={row.score} theme={theme} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* ── STATISTICS VIEW ── */}
-        {hasData && !loading && viewMode === 'stats' && (() => {
-          // IB distribution: count student×subject pairs per IB level
-          const ibDist = {1:0,2:0,3:0,4:0,5:0,6:0,7:0}
-          let totalPairs = 0
-          for (const row of rankData) {
-            for (const s of subjects) {
-              const sc = row.scores?.[s.id]
-              if (sc !== null && sc !== undefined) { ibDist[sc] = (ibDist[sc]||0)+1; totalPairs++ }
-            }
-          }
-          const belowAvg3 = rankData.filter(r => r.avg !== null && r.avg < 3)
-          const critEntries = Object.entries(criteriaData)
-          const schoolEntries = Object.entries(schoolCriteria)
-          const CRIT_MAX = 8
-          const barColor = (v) => v === null ? '#e5e7eb' : v < 3 ? '#ef4444' : v < 5 ? '#f59e0b' : '#22c55e'
-          const ibColor = (lv) => lv <= 2 ? '#ef4444' : lv === 3 ? '#f59e0b' : '#22c55e'
-          const maxIBCount = Math.max(...Object.values(ibDist), 1)
-          const CritRow = ({ label, val, show }) => !show ? null : (
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-              <span style={{ width:22, fontSize:11, fontWeight:700, color: barColor(val) }}>{label}</span>
-              <div style={{ flex:1, background:'#f3f4f6', borderRadius:4, overflow:'hidden', height:16 }}>
-                <div style={{ width:`${val===null?0:(val/CRIT_MAX)*100}%`, background: barColor(val), height:'100%', borderRadius:4, transition:'width 0.4s', minWidth: val>0?4:0 }} />
+                )}
               </div>
-              <span style={{ width:32, fontSize:11, fontWeight:700, color: barColor(val), textAlign:'right' }}>{val??'—'}</span>
             </div>
-          )
-          return (
-            <div className="space-y-5">
-              {/* IB Distribution */}
-              <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-                <CardHeader className="pb-2">
-                  <CardTitle style={{ color: theme.textPrimary, fontSize: 15 }}>{t('rank.statistics.ibDistTitle')} — {kelasName}</CardTitle>
-                  <p style={{ fontSize:12, color: theme.textSecondary, marginTop:2 }}>
-                    {belowAvg3.length > 0
-                      ? t('rank.statistics.belowAvg3Warning').replace('{count}', belowAvg3.length)
-                      : t('rank.statistics.allAbove3')}
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div style={{ display:'flex', gap:8, alignItems:'flex-end', height:120 }}>
-                    {[1,2,3,4,5,6,7].map(lv => (
-                      <div key={lv} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-                        <span style={{ fontSize:10, fontWeight:700, color: ibColor(lv) }}>{ibDist[lv]||0}</span>
-                        <div style={{ width:'100%', background:'#f3f4f6', borderRadius:'4px 4px 0 0', height:90, display:'flex', alignItems:'flex-end' }}>
-                          <div style={{ width:'100%', background: ibColor(lv), borderRadius:'4px 4px 0 0', height:`${((ibDist[lv]||0)/maxIBCount)*90}px`, transition:'height 0.4s' }} />
-                        </div>
-                        <span style={{ fontSize:11, fontWeight:700, color: lv<=2?'#ef4444':lv===3?'#f59e0b':theme.textSecondary }}>IB {lv}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p style={{ fontSize:11, color: theme.textSecondary, marginTop:10 }}>{rankData.length * subjects.length} {t('rank.statistics.ibDistSubtitle').replace('{students}', rankData.length).replace('{subjects}', subjects.length)}</p>
-                </CardContent>
-              </Card>
+          ))}
+        </div>
+      )}
 
-              {/* Students below avg 3 */}
-              {belowAvg3.length > 0 && (
-                <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-                  <CardHeader className="pb-2">
-                    <CardTitle style={{ color:'#dc2626', fontSize:15 }}>{t('rank.statistics.needsAttentionTitle')}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-                      <thead>
-                        <tr style={{ background: theme.subtleBg, borderBottom:`1px solid ${theme.border}` }}>
-                          <th style={{ padding:'8px 14px', textAlign:'left', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>{t('rank.statistics.colStudent')}</th>
-                          <th style={{ padding:'8px 14px', textAlign:'center', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>{t('rank.statistics.colAvgIB')}</th>
-                          <th style={{ padding:'8px 14px', textAlign:'center', color: theme.textSecondary, fontWeight:600, fontSize:11 }}>{t('rank.statistics.colRank')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {belowAvg3.map((row,i) => (
-                          <tr key={row.user_id} style={{ borderBottom:`1px solid ${theme.border}` }}>
-                            <td style={{ padding:'8px 14px' }}>
-                              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                                <Avatar name={row.nama} photo={row.photo} size={28} />
-                                <span style={{ fontWeight:600, color: theme.textPrimary }}>{row.nama}</span>
-                              </div>
-                            </td>
-                            <td style={{ padding:'8px 14px', textAlign:'center' }}>
-                              <span style={{ fontWeight:800, color:'#dc2626', fontSize:14 }}>{row.avg?.toFixed(2)}</span>
-                            </td>
-                            <td style={{ padding:'8px 14px', textAlign:'center' }}><RankBadge rank={row.rank} /></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
+      {/* ── 03. STATISTICS & CRITERIA METRICS ── */}
+      {hasData && !loading && viewMode === 'stats' && (() => {
+        const ibDist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 }
+        let totalPairs = 0
+        for (const row of rankData) {
+          for (const s of subjects) {
+            const sc = row.scores?.[s.id]
+            if (sc !== null && sc !== undefined) { ibDist[sc] = (ibDist[sc]||0)+1; totalPairs++ }
+          }
+        }
+        const belowAvg3 = rankData.filter(r => r.avg !== null && r.avg < 3)
+        const schoolEntries = Object.entries(schoolCriteria)
+        const maxIBCount = Math.max(...Object.values(ibDist), 1)
+
+        const barColor = (v) => v === null ? '#EAEAEA' : v < 3 ? '#9F2F2D' : v < 5 ? '#956400' : '#346538'
+        const CritBar = ({ label, val, show }) => !show ? null : (
+          <div className="flex items-center gap-2 mb-1.5 font-mono text-xs">
+            <span className="w-4 font-bold text-[10px]" style={{ color: theme.textSecondary }}>{label}</span>
+            <div className="flex-1 h-3 rounded overflow-hidden" style={{ background: theme.subtleBg }}>
+              <div 
+                className="h-full rounded transition-all duration-300"
+                style={{ 
+                  width: `${val === null ? 0 : (val / 8) * 100}%`, 
+                  background: isDark ? '#7CB8DC' : '#1F6C9F' 
+                }} 
+              />
+            </div>
+            <span className="w-8 font-bold text-[10px] text-right" style={{ color: theme.textPrimary }}>
+              {val ?? '—'}
+            </span>
+          </div>
+        )
+
+        return (
+          <div className="space-y-6">
+            {/* IB Distribution Chart */}
+            <div 
+              className="p-5 rounded-lg border"
+              style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}
+            >
+              <div className="flex items-center justify-between border-b pb-3 mb-4" style={{ borderColor: theme.border }}>
+                <div>
+                  <span className="font-mono text-xs font-bold uppercase tracking-wider block" style={{ color: theme.textPrimary }}>
+                    IB Final Grade Frequency Distribution
+                  </span>
+                  <span className="font-mono text-[10px] text-gray-400">
+                    Total sample size: {totalPairs} student-subject data points
+                  </span>
+                </div>
+                {belowAvg3.length > 0 && (
+                  <span className="font-mono text-[10px] px-2 py-0.5 rounded border text-red-600 dark:text-red-400" style={{ background: theme.redBg, borderColor: theme.border }}>
+                    {belowAvg3.length} students &lt; IB 3.0
+                  </span>
+                )}
+              </div>
+
+              {/* Bar distribution */}
+              <div className="flex items-end gap-3 h-28 pt-4">
+                {[1, 2, 3, 4, 5, 6, 7].map(lv => {
+                  const count = ibDist[lv] || 0
+                  const pct = (count / maxIBCount) * 80
+                  return (
+                    <div key={lv} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                      <span className="font-mono text-[10px] font-bold text-gray-400">{count}</span>
+                      <div className="w-full flex items-end justify-center h-20 rounded" style={{ background: theme.subtleBg }}>
+                        <div 
+                          className="w-full rounded transition-all duration-300" 
+                          style={{ 
+                            height: `${pct}%`, 
+                            background: lv >= 6 ? (isDark ? '#7BAF7B' : '#346538') : lv >= 4 ? (isDark ? '#7CB8DC' : '#1F6C9F') : (isDark ? '#DC8585' : '#9F2F2D')
+                          }} 
+                        />
+                      </div>
+                      <span className="font-mono text-[10px] font-bold" style={{ color: theme.textPrimary }}>
+                        IB {lv}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* School-Wide Benchmark Comparison */}
+            <div 
+              className="p-5 rounded-lg border"
+              style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}
+            >
+              <div className="flex items-center justify-between border-b pb-3 mb-4" style={{ borderColor: theme.border }}>
+                <div>
+                  <span className="font-mono text-xs font-bold uppercase tracking-wider block" style={{ color: theme.textPrimary }}>
+                    School-Wide Subject Criteria Benchmarks ({yearName} Sem {selSem})
+                  </span>
+                  <span className="font-mono text-[10px] text-gray-400">
+                    Averaged across all class sections
+                  </span>
+                </div>
+                {schoolLoading && <span className="font-mono text-[10px] text-gray-400">Synthesizing...</span>}
+              </div>
+
+              {schoolLoaded && schoolEntries.length === 0 && (
+                <p className="font-mono text-xs text-gray-400 p-4 text-center">No school-wide comparative data available.</p>
               )}
 
-              {/* Criteria Distribution Charts — 4 charts, one per criterion */}
-              {classCritDist && (['A','B','C','D'].some(k => Object.keys(classCritDist[k]).length > 0)) && (() => {
-                const critColor = (score) => score <= 2 ? '#ef4444' : score <= 4 ? '#f59e0b' : '#22c55e'
-                const CritChart = ({ letter, dist }) => {
-                  const scores = [1,2,3,4,5,6,7,8]
-                  const counts = scores.map(s => dist[s] || 0)
-                  const maxCount = Math.max(...counts, 1)
-                  const total = counts.reduce((a,b)=>a+b,0)
-                  if (total === 0) return null
-                  return (
-                    <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-                      <CardHeader className="pb-2">
-                        <CardTitle style={{ color: theme.textPrimary, fontSize:14 }}>{t('rank.statistics.criteriaChartTitle').replace('{letter}', letter)}</CardTitle>
-                        <p style={{ fontSize:11, color: theme.textSecondary, marginTop:2 }}>{total} {t('rank.statistics.criteriaDataCount')} · {kelasName}</p>
-                      </CardHeader>
-                      <CardContent>
-                        <div style={{ display:'flex', gap:6, alignItems:'flex-end', height:110 }}>
-                          {scores.map(sc => {
-                            const cnt = dist[sc] || 0
-                            const pct = (cnt / maxCount) * 90
-                            return (
-                              <div key={sc} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
-                                <span style={{ fontSize:10, fontWeight:700, color: critColor(sc), minHeight:14 }}>{cnt > 0 ? cnt : ''}</span>
-                                <div style={{ width:'100%', background: theme.subtleBg, borderRadius:'4px 4px 0 0', height:90, display:'flex', alignItems:'flex-end', border:`1px solid ${theme.border}`, borderBottom:'none' }}>
-                                  <div style={{ width:'100%', background: critColor(sc), borderRadius:'4px 4px 0 0', height:`${pct}px`, transition:'height 0.4s', opacity: cnt===0?0:1 }} />
-                                </div>
-                                <span style={{ fontSize:11, fontWeight:600, color: theme.textSecondary }}>{sc}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                        <div style={{ display:'flex', gap:12, marginTop:10, flexWrap:'wrap' }}>
-                          {[{label:t('rank.statistics.legendLow'), color:'#ef4444'},{label:t('rank.statistics.legendMid'), color:'#f59e0b'},{label:t('rank.statistics.legendHigh'), color:'#22c55e'}].map(l => (
-                            <span key={l.label} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color: theme.textSecondary }}>
-                              <span style={{ width:10, height:10, borderRadius:2, background:l.color, display:'inline-block' }} />{l.label}
-                            </span>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                }
-                return (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))', gap:16 }}>
-                    {['A','B','C','D'].map(k => <CritChart key={k} letter={k} dist={classCritDist[k]} />)}
-                  </div>
-                )
-              })()}
-
-              {/* School-wide criteria */}
-              <Card style={{ background: theme.cardBg, borderColor: theme.border }}>
-                <CardHeader className="pb-2">
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
-                    <div>
-                      <CardTitle style={{ color: theme.textPrimary, fontSize:15 }}>{t('rank.statistics.schoolTitle').replace('{year}', yearName).replace('{sem}', selSem)}</CardTitle>
-                      <p style={{ fontSize:12, color: theme.textSecondary, marginTop:2 }}>{t('rank.statistics.schoolSubtitle')}</p>
+              {schoolLoaded && schoolEntries.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {schoolEntries.map(([sid, c]) => (
+                    <div 
+                      key={sid} 
+                      className="p-3.5 rounded border"
+                      style={{ borderColor: theme.border, background: theme.subtleBg, borderRadius: '6px' }}
+                    >
+                      <p className="font-sans font-bold text-xs mb-2.5 truncate" style={{ color: theme.textPrimary }}>
+                        {c.name}
+                      </p>
+                      <CritBar label="A" val={c.avgA} show={c.hasA} />
+                      <CritBar label="B" val={c.avgB} show={c.hasB} />
+                      <CritBar label="C" val={c.avgC} show={c.hasC} />
+                      <CritBar label="D" val={c.avgD} show={c.hasD} />
                     </div>
-                    {schoolLoading && (
-                      <span style={{ fontSize:12, color: theme.textSecondary }}>⏳ {t('rank.statistics.schoolLoading')}</span>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {schoolLoading && (
-                    <div style={{ display:'flex', gap:8, flexDirection:'column', paddingBottom:8 }}>
-                      {[...Array(3)].map((_,i) => <div key={i} style={{ height:18, borderRadius:6, background: theme.subtleBg, opacity:0.7-i*0.15 }} />)}
-                    </div>
-                  )}
-                  {schoolLoaded && schoolEntries.length === 0 && (
-                    <p style={{ fontSize:13, color: theme.textSecondary }}>{t('rank.statistics.schoolNoData')}</p>
-                  )}
-                  {schoolLoaded && schoolEntries.length > 0 && (
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:16 }}>
-                      {schoolEntries.map(([sid, c]) => (
-                        <div key={sid} style={{ padding:14, borderRadius:8, border:`1px solid ${theme.border}`, background: theme.subtleBg }}>
-                          <p style={{ fontWeight:700, fontSize:13, color: theme.textPrimary, marginBottom:10 }}>{c.name}</p>
-                          <CritRow label="A" val={c.avgA} show={c.hasA} />
-                          <CritRow label="B" val={c.avgB} show={c.hasB} />
-                          <CritRow label="C" val={c.avgC} show={c.hasC} />
-                          <CritRow label="D" val={c.avgD} show={c.hasD} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  ))}
+                </div>
+              )}
             </div>
-          )
-        })()}
-
-        {/* Empty state */}
-        {!loading && !hasData && (
-          <div style={{ textAlign: 'center', padding: '64px 20px' }}>
-            <div style={{ fontSize: 60, marginBottom: 16 }}>🏆</div>
-            <p style={{ fontSize: 16, fontWeight: 700, color: theme.textPrimary, marginBottom: 6 }}>
-              {canGenerate ? t('rank.empty.titleReady') : t('rank.empty.titleNotReady')}
-            </p>
-            <p style={{ fontSize: 13, color: theme.textSecondary }}>
-              {canGenerate ? t('rank.empty.subtitleReady') : t('rank.empty.subtitleNotReady')}
-            </p>
           </div>
-        )}
+        )
+      })()}
 
-      </div>
+      {/* Empty Placeholder */}
+      {!loading && !hasData && (
+        <div className="p-16 text-center border rounded-lg" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+          <div className="w-10 h-10 mx-auto mb-3 rounded border flex items-center justify-center font-mono" style={{ borderColor: theme.border, background: theme.subtleBg }}>
+            <FontAwesomeIcon icon={faTrophy} className="text-gray-400" />
+          </div>
+          <h3 className="text-sm font-bold tracking-tight mb-1" style={{ color: theme.textPrimary }}>
+            {canGenerate ? 'Cohort Parameters Configured' : 'Select Cohort Parameters'}
+          </h3>
+          <p className="font-mono text-xs max-w-sm mx-auto" style={{ color: theme.textSecondary }}>
+            {canGenerate 
+              ? 'Click "Generate Analysis" above to calculate IB scores and cohort standings.' 
+              : 'Choose Academic Year, Semester, and Target Class to load the cohort matrix.'}
+          </p>
+        </div>
+      )}
+
     </div>
   )
 }

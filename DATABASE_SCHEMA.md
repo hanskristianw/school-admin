@@ -1732,12 +1732,12 @@ Main header table storing student incident report submissions.
 | `incident_record` | `VARCHAR(255)` | Manual text entry describing record category/type |
 | `description` | `TEXT` | **Describe the case** (Detailed case description) |
 | `action_taken` | `TEXT` | **Things done by teacher** (Initial teacher response) |
-| `status` | `VARCHAR(30)` | Case status: `'waiting'` (initial), `'on_progress'`, or `'completed'` |
+| `status` | `VARCHAR(30)` | Case status: `'waiting'` (initial), `'on_progress'` / `'in_progress'` (displayed as **"In Progress"**), or `'completed'` |
 | `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
 | `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
 
 > [!NOTE]
-> **Status Lifecycle:** Initial reports start in `'waiting'` status (editable). Once a follow-up action is logged in `incident_followups`, status automatically advances to `'on_progress'` (locking initial report edit). When fully resolved, it is marked `'completed'`.
+> **Status Lifecycle:** Initial reports start in `'waiting'` status (editable). Once a follow-up action is logged in `incident_followups`, status automatically advances to `'on_progress'` / `'in_progress'` (locking initial report edit, UI displays **"In Progress"**). When fully resolved, it is marked `'completed'`.
 
 #### `incident_followups`
 Stores the timeline history of follow-ups and feedback logged for an incident report.
@@ -1751,7 +1751,7 @@ Stores the timeline history of follow-ups and feedback logged for an incident re
 | `followup_time` | `TIME` | Time when follow-up occurred |
 | `location` | `VARCHAR(255)` | Location of action (e.g. "Counseling Room", "Classroom 8B") |
 | `action_details` | `TEXT` | Description of follow-up actions performed |
-| `resulting_status` | `VARCHAR(30)` | Resulting status update (`'on_progress'` or `'completed'`) |
+| `resulting_status` | `VARCHAR(30)` | Resulting status update (`'on_progress'` / `'in_progress'` or `'completed'`) |
 | `attachment_url` | `TEXT` | Optional URL of uploaded image attachment / evidence |
 | `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
 

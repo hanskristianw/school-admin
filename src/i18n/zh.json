@@ -738,7 +738,8 @@
     }
   },
   "topicNew": {
-    "title": "IB MYP 单元规划器",
+    "title": "单元管理",
+    "subtitle": "管理您的IB单元规划与主题",
     "subMenu": {
       "overview": "概览",
       "weeklyPlan": "每周计划",
@@ -859,6 +860,9 @@
       "noClassesAvailable": "此学科没有可用班级",
       "loadingClasses": "加载班级中...",
       "loading": "加载中...",
+      "academicYear": "学年",
+      "selectAcademicYear": "选择学年",
+      "selectYearFirst": "请先选择学年",
       "chooseTopic": "-- 选择主题 --",
       "selectMypYear": "选择MYP年级...",
       "selectSemester": "选择学期...",
@@ -927,12 +931,22 @@
       "downloadAllButton": "下载所有报告 (ZIP)",
       "infoText": "请选择学年、学期、班级和学生，然后点击\"预览报告\"按钮查看和打印学生进度报告。"
     },
+    "assessmentTab": {
+      "title": "评估管理",
+      "subtitle": "管理形成性与总结性评估，分配IB评估标准并录入学生成绩。"
+    },
     "mentorCommentTab": {
       "title": "班主任评语",
       "subtitle": "为班级每位学生填写学期班主任评语。",
-      "classLabel": "1. 班级",
+      "yearLabel": "学年",
+      "selectYear": "选择学年",
+      "selectYearFirst": "请先选择学年",
+      "subjectLabel": "科目",
+      "selectSubject": "选择科目",
+      "selectSubjectFirst": "请先选择科目",
+      "classLabel": "班级",
       "selectClass": "-- 选择班级 --",
-      "semesterLabel": "2. 学期",
+      "semesterLabel": "学期",
       "saveAll": "全部保存",
       "students": "名学生",
       "studentsPlural": "名学生",
@@ -977,6 +991,34 @@
         "step8Desc": "需要一次填写多条评语？点击下载模板获取Excel文件。填写评语列后，点击导入Excel即可一次加载所有内容。",
         "step9Title": "💾 保存评语",
         "step9Desc": "点击每位学生旁的保存按钮逐一保存。或使用工具栏中的全部保存一次性保存所有评语。未保存的评语将以黄色标注。"
+      },
+      "dailyAttendance": {
+        "title": "每日出勤",
+        "beta": "Beta",
+        "subtitle": "记录班级学生的每日出勤。请选择学年和班级以开始记录。",
+        "yearLabel": "学年",
+        "selectYear": "选择学年",
+        "selectYearFirst": "请先选择学年",
+        "selectClassFirst": "请选择班级以查看出勤记录。",
+        "hide": "▲ 隐藏",
+        "show": "▼ 显示",
+        "yesterday": "← 昨天",
+        "tomorrow": "明天 →",
+        "markAllPresent": "✓ 全员出勤",
+        "clearData": "清除当天数据",
+        "confirmClear": "确定要清除当天的所有出勤记录吗？",
+        "loading": "正在加载出勤数据...",
+        "noStudents": "该班级中没有学生。",
+        "colNo": "#",
+        "colName": "学生姓名",
+        "colStatus": "出勤状态",
+        "colNote": "备注",
+        "notePlaceholder": "选填...",
+        "statusHadir": "出勤",
+        "statusTidakHadir": "缺席",
+        "statusIjin": "请假",
+        "statusTerlambat": "迟到",
+        "statusPulangCepat": "早退"
       }
     },
     "aiHelp": {

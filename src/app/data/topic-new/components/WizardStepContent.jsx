@@ -45,17 +45,17 @@ export default function WizardStepContent({
       {currentStep === 0 && (
         <>
           <div className="grid grid-cols-2 gap-3">
-            {/* Tahun Ajaran — spans full width */}
+            {/* Academic Year — spans full width */}
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Tahun Ajaran <span className="text-red-500">*</span>
+                {t('topicNew.fields.academicYear') || 'Academic Year'} <span className="text-red-500">*</span>
               </label>
               <select
                 value={wizardYear || ''}
                 onChange={(e) => onWizardYearChange && onWizardYearChange(e.target.value)}
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
-                <option value="">Pilih Tahun Ajaran</option>
+                <option value="">{t('topicNew.fields.selectAcademicYear') || 'Select Academic Year'}</option>
                 {(yearOptions || []).map(y => (
                   <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
                 ))}
@@ -78,7 +78,7 @@ export default function WizardStepContent({
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={!wizardYear}
               >
-                <option value="">{!wizardYear ? 'Pilih tahun ajaran dulu' : t('topicNew.fields.selectClass')}</option>
+                <option value="">{!wizardYear ? (t('topicNew.fields.selectYearFirst') || 'Select academic year first') : t('topicNew.fields.selectClass')}</option>
                 {allKelas.map(kelas => (
                   <option key={kelas.kelas_id} value={kelas.kelas_id}>
                     {kelas.kelas_nama}

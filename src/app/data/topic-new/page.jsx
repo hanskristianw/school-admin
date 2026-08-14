@@ -1205,6 +1205,7 @@ export default function TopicNewPage() {
         const params = new URLSearchParams()
         if (!adminRole) params.set('user_id', String(currentUserId))
         if (mentorYear) params.set('year_id', String(mentorYear))
+        params.set('is_myp', 'true')
 
         const res = await fetch(`/api/class/list?${params}`)
         if (!res.ok) {
@@ -1214,10 +1215,10 @@ export default function TopicNewPage() {
         }
 
         const json = await res.json()
-        const data = json.data || []
+        const data = (json.data || []).sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
 
         if (adminRole) {
-          // Admin always sees tab; populate dropdown with all classes
+          // Admin always sees tab; populate dropdown with all MYP classes
           setMentorKelasOptions(data)
         } else {
           // Regular user: show tab only if they are wali kelas for ≥1 class
@@ -1343,6 +1344,8 @@ export default function TopicNewPage() {
         const e = new Date(y.end_date + 'T23:59:59')
         return s <= today && today <= e
       })
+      const defaultYearId = current ? String(current.year_id) : (yearData && yearData.length > 0 ? String(yearData[0].year_id) : '')
+
       if (current) {
         filteredForDropdown = kelasData.filter(k => String(k.kelas_year_id) === String(current.year_id))
         setAllKelas(filteredForDropdown)
@@ -1353,6 +1356,15 @@ export default function TopicNewPage() {
         if (yearData && yearData.length > 0) {
           setWpYear(prev => prev || String(yearData[0].year_id))
         }
+      }
+
+      // Automatically sync active academic year across Mentor Comment, Daily Attendance, Subject Comment, and Wizard
+      if (defaultYearId) {
+        setMentorYear(prev => prev || defaultYearId)
+        setCommentYear(prev => prev || defaultYearId)
+        setWizardYear(prev => prev || defaultYearId)
+        setAssessmentFilters(prev => ({ ...prev, year: prev.year || defaultYearId }))
+        setReportFilters(prev => ({ ...prev, year: prev.year || defaultYearId }))
       }
 
       // Compute allowedKelasRaw: kelas user is permitted to teach
@@ -5408,15 +5420,35 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   const getAssessmentStatusBadge = (status) => {
     switch (status) {
       case 0:
-        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>Waiting</span>
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+            Pending
+          </span>
+        )
       case 3:
-        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>Principal</span>
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+            Principal Review
+          </span>
+        )
       case 1:
-        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>Approved</span>
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+            Approved ✓
+          </span>
+        )
       case 2:
-        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.redBg, color: theme.redText, borderRadius: '4px' }}>Rejected</span>
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#FDEBEC] text-[#D44C47] border border-[#F7C5C4]">
+            Revision
+          </span>
+        )
       default:
-        return <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px' }}>Unknown</span>
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
+            Draft
+          </span>
+        )
     }
   }
 
@@ -5496,7 +5528,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
   }
 
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
 
   const tabs = [
     { id: 'planning', label: t('topicNew.tabs.planning'), icon: faMap },
@@ -5513,8 +5545,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif", letterSpacing: '-0.01em' }}>Topic Management</h1>
-          <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>Manage your IB unit planner topics</p>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif", letterSpacing: '-0.01em' }}>{t('topicNew.title') || 'Unit Management'}</h1>
+          <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>{t('topicNew.subtitle') || 'Manage your IB unit planner units'}</p>
         </div>
         <div>
           <button
@@ -6525,445 +6557,479 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         )}
 
 
+        {/* ── ASSESSMENT MANAGEMENT TAB (MINIMALIST-UI) ──────────────────────────── */}
         {activeTab === 'assessment' && (
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>Assessment Management</h2>
-              <div className="flex items-center gap-1 p-1" style={{ background: theme.subtleBg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
+          <div className="p-6 space-y-5" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
+            {/* Header */}
+            <div className="pb-4 border-b flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ borderColor: theme.border }}>
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1" style={{ color: theme.textSecondary }}>
+                  <span>[MYP PORTAL]</span>
+                  <span>/</span>
+                  <span>[IB ASSESSMENT]</span>
+                  <span>/</span>
+                  <span className="font-semibold" style={{ color: theme.blueText }}>[ASSESSMENT MANAGEMENT]</span>
+                </div>
+                <h2 className="text-lg font-bold tracking-tight" style={{ color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                  {t('topicNew.assessmentTab.title') || 'Assessment Management'}
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+                  {t('topicNew.assessmentTab.subtitle') || 'Manage formative & summative assessments, assign IB criteria, and record student grades.'}
+                </p>
+              </div>
+
+              {/* View Toggle */}
+              <div className="flex items-center gap-1 p-1 rounded border self-start sm:self-auto" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '6px' }}>
                 <button
+                  type="button"
                   onClick={() => { setAssessmentView('card'); localStorage.setItem('assessment_view', 'card') }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors"
-                  style={{ borderRadius: '4px', background: assessmentView === 'card' ? theme.cardBg : 'transparent', color: assessmentView === 'card' ? theme.textPrimary : theme.textSecondary, boxShadow: assessmentView === 'card' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-semibold rounded transition-all cursor-pointer"
+                  style={{
+                    background: assessmentView === 'card' ? theme.textPrimary : 'transparent',
+                    color: assessmentView === 'card' ? theme.cardBg : theme.textSecondary,
+                    borderRadius: '4px'
+                  }}
                   title="Card View"
                 >
                   <FontAwesomeIcon icon={faTableCells} className="w-3 h-3" />
-                  Card
+                  <span>Card</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setAssessmentView('list'); localStorage.setItem('assessment_view', 'list') }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors"
-                  style={{ borderRadius: '4px', background: assessmentView === 'list' ? theme.cardBg : 'transparent', color: assessmentView === 'list' ? theme.textPrimary : theme.textSecondary, boxShadow: assessmentView === 'list' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-semibold rounded transition-all cursor-pointer"
+                  style={{
+                    background: assessmentView === 'list' ? theme.textPrimary : 'transparent',
+                    color: assessmentView === 'list' ? theme.cardBg : theme.textSecondary,
+                    borderRadius: '4px'
+                  }}
                   title="List View"
                 >
                   <FontAwesomeIcon icon={faListUl} className="w-3 h-3" />
-                  List
+                  <span>List</span>
                 </button>
               </div>
             </div>
-            
-            {/* Filters */}
-            <div className="mb-5 flex gap-3 items-end flex-wrap">
-              {/* Year filter */}
-              <div className="flex-1 min-w-[140px]">
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>Tahun Ajaran</label>
-                <select
-                  value={assessmentFilters.year}
-                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, year: e.target.value, kelas: '' })}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                >
-                  <option value="">Semua Tahun</option>
-                  {yearOptions.map(y => (
-                    <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                  {t('topicNew.filters.subject')}
-                </label>
-                <select
-                  value={assessmentFilters.subject}
-                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, subject: e.target.value })}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                >
-                  <option value="">{t('topicNew.filters.allSubjects')}</option>
-                  {subjects.map(s => (
-                    <option key={s.subject_id} value={s.subject_id}>
-                      {s.subject_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                  {t('topicNew.filters.class')}
-                </label>
-                <select
-                  value={assessmentFilters.kelas}
-                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, kelas: e.target.value })}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                >
-                  <option value="">{t('topicNew.filters.allClasses')}</option>
-                  {(assessmentFilters.year
-                    ? assessmentKelasOptions.filter(k => {
-                        const match = allKelasRaw.find(ak => ak.kelas_id === k.kelas_id)
-                        return match && String(match.kelas_year_id) === String(assessmentFilters.year)
-                      })
-                    : assessmentKelasOptions
-                  ).map(k => (
-                    <option key={k.kelas_id} value={k.kelas_id}>
-                      {k.kelas_nama}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                  {t('topicNew.filters.status')}
-                </label>
-                <select
-                  value={assessmentFilters.status}
-                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, status: e.target.value })}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                >
-                  <option value="">{t('topicNew.filters.allStatus')}</option>
-                  <option value="0">{t('topicNew.filters.statusWaiting')}</option>
-                  <option value="3">{t('topicNew.filters.statusWaitingPrincipal')}</option>
-                  <option value="1">{t('topicNew.filters.statusApproved')}</option>
-                  <option value="2">{t('topicNew.filters.statusRejected')}</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>
-                  {t('topicNew.filters.search')}
-                </label>
-                <input
-                  type="text"
-                  value={assessmentFilters.search}
-                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, search: e.target.value })}
-                  placeholder="Search by name..."
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                />
-              </div>
-            </div>
 
-            {/* Additional Filters */}
-            <div className="mb-4 flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: theme.textBody }}>
-                <input
-                  type="checkbox"
-                  checked={assessmentFilters.noCriteria}
-                  onChange={(e) => setAssessmentFilters({ ...assessmentFilters, noCriteria: e.target.checked })}
-                  className="w-3.5 h-3.5"
-                />
-                <span>Show only assessments without criteria</span>
-                {assessmentFilters.noCriteria && (
-                  <span className="text-[10px] font-medium" style={{ color: theme.yellowText }}>
-                    ({filteredAssessments.length} found)
-                  </span>
-                )}
-              </label>
+            {/* Filter Bento Card */}
+            <div className="p-3.5 rounded border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {/* 1. Academic Year */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    1. {t('topicNew.fields.academicYear') || 'Academic Year'}
+                  </label>
+                  <select
+                    value={assessmentFilters.year}
+                    onChange={(e) => setAssessmentFilters({ ...assessmentFilters, year: e.target.value, kelas: '' })}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  >
+                    <option value="">All Years</option>
+                    {yearOptions.map(y => (
+                      <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Subject */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    2. {t('topicNew.filters.subject') || 'Subject'}
+                  </label>
+                  <select
+                    value={assessmentFilters.subject}
+                    onChange={(e) => setAssessmentFilters({ ...assessmentFilters, subject: e.target.value })}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  >
+                    <option value="">{t('topicNew.filters.allSubjects') || 'All Subjects'}</option>
+                    {subjects.map(s => (
+                      <option key={s.subject_id} value={s.subject_id}>
+                        {s.subject_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Class */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    3. {t('topicNew.filters.class') || 'Class'}
+                  </label>
+                  <select
+                    value={assessmentFilters.kelas}
+                    onChange={(e) => setAssessmentFilters({ ...assessmentFilters, kelas: e.target.value })}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  >
+                    <option value="">{t('topicNew.filters.allClasses') || 'All Classes'}</option>
+                    {(assessmentFilters.year
+                      ? assessmentKelasOptions.filter(k => {
+                          const match = allKelasRaw.find(ak => ak.kelas_id === k.kelas_id)
+                          return match && String(match.kelas_year_id) === String(assessmentFilters.year)
+                        })
+                      : assessmentKelasOptions
+                    ).map(k => (
+                      <option key={k.kelas_id} value={k.kelas_id}>
+                        {k.kelas_nama}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 4. Status */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    4. {t('topicNew.filters.status') || 'Status'}
+                  </label>
+                  <select
+                    value={assessmentFilters.status}
+                    onChange={(e) => setAssessmentFilters({ ...assessmentFilters, status: e.target.value })}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  >
+                    <option value="">{t('topicNew.filters.allStatus') || 'All Status'}</option>
+                    <option value="0">{t('topicNew.filters.statusWaiting') || 'Pending'}</option>
+                    <option value="3">{t('topicNew.filters.statusWaitingPrincipal') || 'Principal Review'}</option>
+                    <option value="1">{t('topicNew.filters.statusApproved') || 'Approved'}</option>
+                    <option value="2">{t('topicNew.filters.statusRejected') || 'Revision'}</option>
+                  </select>
+                </div>
+
+                {/* 5. Search */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    5. {t('topicNew.filters.search') || 'Search'}
+                  </label>
+                  <input
+                    type="text"
+                    value={assessmentFilters.search}
+                    onChange={(e) => setAssessmentFilters({ ...assessmentFilters, search: e.target.value })}
+                    placeholder="Search assessment..."
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  />
+                </div>
+              </div>
+
+              {/* Sub-filter & Counts */}
+              <div className="pt-2 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2" style={{ borderColor: theme.border }}>
+                <label className="flex items-center gap-2 text-xs font-mono cursor-pointer" style={{ color: theme.textBody }}>
+                  <input
+                    type="checkbox"
+                    checked={assessmentFilters.noCriteria}
+                    onChange={(e) => setAssessmentFilters({ ...assessmentFilters, noCriteria: e.target.checked })}
+                    className="w-3.5 h-3.5 rounded"
+                  />
+                  <span>Show only assessments without criteria</span>
+                  {assessmentFilters.noCriteria && (
+                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+                      {filteredAssessments.length} found
+                    </span>
+                  )}
+                </label>
+
+                <span className="text-[11px] font-mono font-bold" style={{ color: theme.textSecondary }}>
+                  {filteredAssessments.length} assessment{filteredAssessments.length !== 1 ? 's' : ''} found
+                </span>
+              </div>
             </div>
 
             {/* Loading State */}
             {loadingAssessments ? (
-              <div className="flex justify-center items-center py-12">
-                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
+              <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2" />
+                <p className="text-xs font-mono uppercase tracking-wider">LOADING ASSESSMENTS...</p>
               </div>
             ) : assessmentView === 'card' ? (
+              /* ── CARD VIEW ────────────────────────────────────────────────────────── */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredAssessments.length === 0 && (
-                  <div className="col-span-full text-center py-12 text-sm" style={{ color: theme.textSecondary }}>
-                    No assessments found
+                  <div className="col-span-full p-12 text-center border border-dashed rounded" style={{ borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                    <p className="text-xs font-mono uppercase tracking-wider">// NO ASSESSMENTS FOUND MATCHING THE FILTERS</p>
                   </div>
                 )}
-                
+
                 {filteredAssessments.map((assessment) => {
                   const kelasName = assessment.kelas_nama || ''
                   const gradeMatch = kelasName.match(/(\d{1,2})/)
                   const gradeNumber = gradeMatch ? gradeMatch[1] : ''
-                  
-                  // Can edit if: pending (0/3) OR no criteria assigned yet (for backward compatibility)
+
                   const hasCriteria = assessment.criteria && assessment.criteria.length > 0
                   const isPending = assessment.assessment_status === 0 || assessment.assessment_status === 3
                   const canEdit = (isPending || !hasCriteria) && assessment.assessment_user_id === currentUserId
-                  
+                  const isFullyGraded = assessment.total_students > 0 && assessment.graded_count === assessment.total_students
+
                   return (
-                  <div 
-                    key={assessment.assessment_id}
-                    className="relative overflow-hidden flex flex-col transition-all"
-                    style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '20px', background: theme.cardBg, cursor: canEdit ? 'pointer' : 'default' }}
-                    onClick={() => canEdit && handleEditAssessment(assessment)}
-                    onMouseEnter={e => { if (canEdit) e.currentTarget.style.borderColor = theme.borderHover }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border }}
-                  >
-                    {/* Grade Watermark */}
-                    {gradeNumber && (
-                      <div className="absolute top-0 right-0 font-black leading-none pointer-events-none select-none" style={{ fontSize: '120px', color: theme.border, transform: 'translate(20%, -20%)' }}>
-                        {gradeNumber}
-                      </div>
-                    )}
-                    
-                    {/* Content Container */}
-                    <div className="flex-grow flex flex-col">
-                    
-                    {/* Header */}
-                    <div className="mb-3 pb-3 relative z-10" style={{ borderBottom: `1px solid ${theme.border}` }}>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex items-start gap-2 flex-1">
-                          {assessment.topic_urutan && assessment.topic_urutan !== 999 && (
-                            <div className="text-[10px] font-bold px-1.5 py-0.5 flex-shrink-0" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
-                              Unit {assessment.topic_urutan}
-                            </div>
-                          )}
-                          <h3 className="text-sm font-semibold line-clamp-2 flex-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
-                            {assessment.assessment_nama}
-                          </h3>
+                    <div
+                      key={assessment.assessment_id}
+                      className="relative overflow-hidden flex flex-col justify-between p-4 rounded border transition-all"
+                      style={{
+                        borderColor: theme.border,
+                        borderRadius: '8px',
+                        background: theme.cardBg,
+                        cursor: canEdit ? 'pointer' : 'default'
+                      }}
+                      onClick={() => canEdit && handleEditAssessment(assessment)}
+                      onMouseEnter={e => { if (canEdit) e.currentTarget.style.borderColor = theme.textSecondary }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border }}
+                    >
+                      {/* Grade Watermark */}
+                      {gradeNumber && (
+                        <div className="absolute top-0 right-0 font-black leading-none pointer-events-none select-none opacity-5" style={{ fontSize: '100px', color: theme.textPrimary, transform: 'translate(15%, -15%)' }}>
+                          {gradeNumber}
                         </div>
-                        {getAssessmentStatusBadge(assessment.assessment_status)}
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
-                          {assessment.subject_name || 'N/A'}
-                        </span>
-                        {assessment.kelas_nama && (
-                          <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>
-                            {assessment.kelas_nama}
-                          </span>
-                        )}
-                        {assessment.assessment_semester && (
-                          <span className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>
-                            Sem {assessment.assessment_semester}
-                          </span>
-                        )}
-                        {assessment.criteria && assessment.criteria.length > 0 ? (
-                          assessment.criteria.map(c => (
-                            <span key={c.code} className="text-[10px] px-1.5 py-0.5 font-bold" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
-                              {c.code}
+                      )}
+
+                      <div className="relative z-10 flex flex-col flex-grow">
+                        {/* Header metadata row */}
+                        <div className="flex items-start justify-between gap-2 mb-2 pb-2 border-b" style={{ borderColor: theme.border }}>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {assessment.topic_urutan && assessment.topic_urutan !== 999 && (
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                                UNIT {assessment.topic_urutan}
+                              </span>
+                            )}
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                              {assessment.subject_name || 'N/A'}
                             </span>
-                          ))
-                        ) : (
-                          <span className="text-[10px] px-1.5 py-0.5 font-bold" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>
-                            No Criteria
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                            {assessment.kelas_nama && (
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                                {assessment.kelas_nama}
+                              </span>
+                            )}
+                            {assessment.assessment_semester && (
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+                                S{assessment.assessment_semester}
+                              </span>
+                            )}
+                          </div>
+                          {getAssessmentStatusBadge(assessment.assessment_status)}
+                        </div>
 
-                    {/* Criteria Names or Warning */}
-                    {assessment.criteria && assessment.criteria.length > 0 ? (
-                      <div className="mb-2 relative z-10">
-                        <p className="text-[10px] font-medium mb-1 uppercase tracking-wide" style={{ color: theme.blueText }}>IB MYP Criteria</p>
-                        <div className="flex flex-wrap gap-1">
-                          {assessment.criteria.map(c => (
-                            <div key={c.code} className="text-[10px] px-1.5 py-0.5 font-medium" style={{ background: theme.subtleBg, color: theme.textBody, borderRadius: '4px', border: `1px solid ${theme.border}` }}>
-                              {c.code}: {c.name}
+                        {/* Title */}
+                        <h3 className="text-sm font-bold tracking-tight mb-2" style={{ color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                          {assessment.assessment_nama}
+                        </h3>
+
+                        {/* Criteria tags */}
+                        <div className="mb-3">
+                          {hasCriteria ? (
+                            <div className="flex flex-wrap gap-1">
+                              {assessment.criteria.map(c => (
+                                <span key={c.code} className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }} title={c.name}>
+                                  {c.code}
+                                </span>
+                              ))}
                             </div>
-                          ))}
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+                              No Criteria Assigned
+                            </span>
+                          )}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="mb-2 relative z-10">
-                        <div className="p-2" style={{ background: theme.yellowBg, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
-                          <p className="text-xs font-medium" style={{ color: theme.yellowText }}>No criteria assigned. Click to add criteria.</p>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Date */}
-                    <div className="mb-2 flex items-center gap-1.5 relative z-10">
-                      <FontAwesomeIcon icon={faCalendar} className="w-3 h-3" style={{ color: theme.textSecondary }} />
-                      <span className="text-xs" style={{ color: theme.textBody }}>
-                        {assessment.assessment_tanggal ? (
-                          new Date(assessment.assessment_tanggal).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })
-                        ) : (
-                          <span className="text-gray-400 italic">No date set (Draft)</span>
-                        )}
-                      </span>
-                    </div>
+                        {/* Details grid */}
+                        <div className="space-y-1.5 text-xs mb-3 font-mono" style={{ color: theme.textSecondary }}>
+                          {assessment.topic_nama && (
+                            <div className="text-[11px] truncate" title={assessment.topic_nama}>
+                              <span className="font-semibold" style={{ color: theme.textPrimary }}>Topic:</span> {assessment.topic_nama}
+                            </div>
+                          )}
 
-                    {/* Teacher */}
-                    <div className="mb-2 flex items-center gap-1.5 relative z-10">
-                      <FontAwesomeIcon icon={faBook} className="w-3 h-3" style={{ color: theme.textSecondary }} />
-                      <span className="text-xs" style={{ color: theme.textBody }}>
-                        {assessment.teacher_name || 'Unknown Teacher'}
-                      </span>
-                    </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="flex items-center gap-1.5">
+                              <FontAwesomeIcon icon={faCalendar} className="text-[10px]" />
+                              {assessment.assessment_tanggal
+                                ? new Date(assessment.assessment_tanggal).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                                : 'No date (Draft)'}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <FontAwesomeIcon icon={faBook} className="text-[10px]" />
+                              {assessment.teacher_name || '–'}
+                            </span>
+                          </div>
 
-                    {/* Graded count */}
-                    <div className="mb-2 flex items-center gap-1.5 relative z-10">
-                      <FontAwesomeIcon icon={faChartBar} className="w-3 h-3" style={{ color: theme.textSecondary }} />
-                      <span className="text-xs font-medium" style={{ color: assessment.total_students > 0 && assessment.graded_count === assessment.total_students ? theme.greenText : theme.textBody }}>
-                        {assessment.graded_count}/{assessment.total_students} siswa dinilai
-                      </span>
-                    </div>
-
-                    {/* Topic */}
-                    {assessment.topic_nama && (
-                      <div className="mb-2 relative z-10">
-                        <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Linked Topic</p>
-                        <p className="text-xs line-clamp-2" style={{ color: theme.textBody }}>
-                          {assessment.topic_nama}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Description */}
-                    {assessment.assessment_keterangan && (
-                      <div className="mb-2 relative z-10">
-                        <p className="text-[10px] font-medium mb-0.5 uppercase tracking-wide" style={{ color: theme.blueText }}>Note</p>
-                        <p className="text-xs line-clamp-3" style={{ color: theme.textBody }}>
-                          {assessment.assessment_keterangan}
-                        </p>
-                      </div>
-                    )}
-                    
-                    </div>
-                    {/* End Content Container */}
-
-                    {/* Action Buttons */}
-                    <div className="relative z-10 pt-3 mt-auto" style={{ borderTop: `1px solid ${theme.border}` }}>
-                      {hasCriteria && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            router.push(`/data/assessment_grading/${assessment.assessment_id}`)
-                          }}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-xs font-medium"
-                          style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '6px', border: `1px solid ${theme.border}` }}
-                        >
-                          <FontAwesomeIcon icon={faPaperPlane} />
-                          {t('topicNew.buttons.inputGrades')}
-                        </button>
-                      )}
-                      
-                      {(canEdit || isAdmin) && (
-                        <div className="flex gap-2">
-                          {(isPending || isAdmin) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)
-                              }}
-                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium"
-                              style={{ background: theme.redBg, color: theme.redText, borderRadius: '6px', border: `1px solid ${theme.border}` }}
+                          {/* Graded pill */}
+                          <div className="pt-1 flex items-center justify-between">
+                            <span className="text-[10px] uppercase">Grading Progress:</span>
+                            <span
+                              className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded border ${
+                                isFullyGraded
+                                  ? 'bg-[#EDF3EC] text-[#346538] border-[#D5E6D3]'
+                                  : assessment.graded_count > 0
+                                  ? 'bg-[#FBF3DB] text-[#956400] border-[#F5E6B3]'
+                                  : 'bg-transparent text-gray-500 border-gray-300'
+                              }`}
                             >
-                              <FontAwesomeIcon icon={faTrash} />
-                              Delete
-                            </button>
-                          )}
-                          {canEdit && (
-                            <div className="flex items-center text-[10px] px-2" style={{ color: theme.textSecondary }}>
-                              {!hasCriteria ? 'Click to add criteria' : 'Click card to edit'}
-                            </div>
-                          )}
+                              {assessment.graded_count || 0}/{assessment.total_students || 0} Graded
+                            </span>
+                          </div>
                         </div>
-                      )}
+                      </div>
+
+                      {/* Action Footer */}
+                      <div className="relative z-10 pt-3 border-t flex flex-col gap-2" style={{ borderColor: theme.border }}>
+                        {hasCriteria && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/data/assessment_grading/${assessment.assessment_id}`)
+                            }}
+                            className="w-full py-1.5 px-3 text-xs font-mono font-semibold rounded border flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            style={{
+                              background: theme.textPrimary,
+                              color: theme.cardBg,
+                              borderColor: theme.textPrimary,
+                              borderRadius: '4px'
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faPaperPlane} className="text-[10px]" />
+                            <span>{t('topicNew.buttons.inputGrades') || 'Input Grades'}</span>
+                          </button>
+                        )}
+
+                        {canEdit && (
+                          <div className="text-center text-[10px] font-mono" style={{ color: theme.textSecondary }}>
+                            {!hasCriteria ? '// CLICK CARD TO ADD CRITERIA' : '// CLICK CARD TO EDIT'}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )})}
+                  )
+                })}
               </div>
-            ) : filteredAssessments.length === 0 ? (
-              <div className="text-center py-12 text-sm" style={{ color: theme.textSecondary }}>No assessments found</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+              /* ── LIST / TABLE VIEW ─────────────────────────────────────────────────── */
+              <div className="overflow-x-auto rounded border" style={{ borderColor: theme.border, background: theme.cardBg, borderRadius: '8px' }}>
+                <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider w-10" style={{ color: theme.textSecondary }}>#</th>
-                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Assessment Name</th>
-                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Subject</th>
-                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Class</th>
-                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Criteria</th>
-                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Status</th>
-                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Date</th>
-                      <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Teacher</th>
-                      <th className="px-4 py-2.5 text-center font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Nilai</th>
-                      <th className="px-4 py-2.5 text-right font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Actions</th>
+                    <tr className="border-b text-[10px] font-mono uppercase" style={{ borderColor: theme.border, background: theme.subtleBg, color: theme.textSecondary }}>
+                      <th className="px-3 py-2 text-center w-10">#</th>
+                      <th className="px-3 py-2 text-left font-semibold">Assessment Title</th>
+                      <th className="px-3 py-2 text-left font-semibold">Subject</th>
+                      <th className="px-3 py-2 text-left font-semibold">Class</th>
+                      <th className="px-3 py-2 text-left font-semibold">Criteria</th>
+                      <th className="px-3 py-2 text-left font-semibold">Status</th>
+                      <th className="px-3 py-2 text-left font-semibold">Date</th>
+                      <th className="px-3 py-2 text-left font-semibold">Teacher</th>
+                      <th className="px-3 py-2 text-center font-semibold">Graded</th>
+                      <th className="px-3 py-2 text-right font-semibold">Action</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {filteredAssessments.map((assessment, idx) => {
-                      const hasCriteria = assessment.criteria && assessment.criteria.length > 0
-                      const isPending = assessment.assessment_status === 0 || assessment.assessment_status === 3
-                      const canEdit = (isPending || !hasCriteria) && assessment.assessment_user_id === currentUserId
-                      return (
-                        <tr
-                          key={assessment.assessment_id}
-                          className="transition-colors"
-                          style={{ borderBottom: `1px solid ${theme.border}`, cursor: canEdit ? 'pointer' : 'default' }}
-                          onClick={() => canEdit && handleEditAssessment(assessment)}
-                          onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <td className="px-4 py-3 text-center" style={{ color: theme.textSecondary }}>{idx + 1}</td>
-                          <td className="px-4 py-3">
-                            <div className="font-medium flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                              {assessment.topic_urutan && assessment.topic_urutan !== 999 && (
-                                <span className="text-[10px] px-1.5 py-0.5 font-bold" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>U{assessment.topic_urutan}</span>
-                              )}
-                              {assessment.assessment_nama}
-                            </div>
-                            {assessment.topic_nama && <div className="text-[10px] mt-0.5 line-clamp-1" style={{ color: theme.textSecondary }}>{assessment.topic_nama}</div>}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>{assessment.subject_name || 'N/A'}</span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>{assessment.kelas_nama || 'N/A'}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {hasCriteria ? (
-                              <div className="flex flex-wrap gap-1">
-                                {assessment.criteria.map(c => (
-                                  <span key={c.code} className="px-1.5 py-0.5 font-bold" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }}>{c.code}</span>
-                                ))}
+                  <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                    {filteredAssessments.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="px-4 py-8 text-center text-xs font-mono uppercase" style={{ color: theme.textSecondary }}>
+                          // No assessments found
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAssessments.map((assessment, idx) => {
+                        const hasCriteria = assessment.criteria && assessment.criteria.length > 0
+                        const isPending = assessment.assessment_status === 0 || assessment.assessment_status === 3
+                        const canEdit = (isPending || !hasCriteria) && assessment.assessment_user_id === currentUserId
+                        const isFullyGraded = assessment.total_students > 0 && assessment.graded_count === assessment.total_students
+
+                        return (
+                          <tr
+                            key={assessment.assessment_id}
+                            className="transition-colors"
+                            style={{ cursor: canEdit ? 'pointer' : 'default' }}
+                            onClick={() => canEdit && handleEditAssessment(assessment)}
+                            onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <td className="px-3 py-2.5 text-center font-mono font-bold" style={{ color: theme.textSecondary }}>
+                              {String(idx + 1).padStart(2, '0')}
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <div className="font-bold flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
+                                {assessment.topic_urutan && assessment.topic_urutan !== 999 && (
+                                  <span className="text-[9px] font-mono px-1 py-0.2 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                                    U{assessment.topic_urutan}
+                                  </span>
+                                )}
+                                {assessment.assessment_nama}
                               </div>
-                            ) : (
-                              <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>None</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">{getAssessmentStatusBadge(assessment.assessment_status)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap" style={{ color: theme.textBody }}>
-                            {assessment.assessment_tanggal
-                              ? new Date(assessment.assessment_tanggal).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-                              : <span className="italic" style={{ color: theme.textSecondary }}>Draft</span>}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap" style={{ color: theme.textBody }}>{assessment.teacher_name || '-'}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <span className="font-semibold px-1.5 py-0.5" style={{
-                              background: assessment.total_students > 0 && assessment.graded_count === assessment.total_students ? theme.greenBg : assessment.graded_count > 0 ? theme.yellowBg : theme.subtleBg,
-                              color: assessment.total_students > 0 && assessment.graded_count === assessment.total_students ? theme.greenText : assessment.graded_count > 0 ? theme.yellowText : theme.textSecondary,
-                              borderRadius: '4px'
-                            }}>
-                              {assessment.graded_count}/{assessment.total_students}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
+                              {assessment.topic_nama && (
+                                <div className="text-[10px] font-mono mt-0.5 line-clamp-1" style={{ color: theme.textSecondary }}>
+                                  {assessment.topic_nama}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                                {assessment.subject_name || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                                {assessment.kelas_nama || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              {hasCriteria ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {assessment.criteria.map(c => (
+                                    <span key={c.code} className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}>
+                                      {c.code}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+                                  None
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 whitespace-nowrap">
+                              {getAssessmentStatusBadge(assessment.assessment_status)}
+                            </td>
+                            <td className="px-3 py-2.5 whitespace-nowrap font-mono text-[11px]" style={{ color: theme.textBody }}>
+                              {assessment.assessment_tanggal
+                                ? new Date(assessment.assessment_tanggal).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                                : <span className="italic opacity-60">Draft</span>}
+                            </td>
+                            <td className="px-3 py-2.5 whitespace-nowrap font-mono text-[11px]" style={{ color: theme.textBody }}>
+                              {assessment.teacher_name || '–'}
+                            </td>
+                            <td className="px-3 py-2.5 whitespace-nowrap text-center">
+                              <span
+                                className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded border ${
+                                  isFullyGraded
+                                    ? 'bg-[#EDF3EC] text-[#346538] border-[#D5E6D3]'
+                                    : assessment.graded_count > 0
+                                    ? 'bg-[#FBF3DB] text-[#956400] border-[#F5E6B3]'
+                                    : 'bg-transparent text-gray-500 border-gray-300'
+                                }`}
+                              >
+                                {assessment.graded_count || 0}/{assessment.total_students || 0}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                               {hasCriteria && (
                                 <button
+                                  type="button"
                                   onClick={() => router.push(`/data/assessment_grading/${assessment.assessment_id}`)}
-                                  className="px-2 py-1 text-xs font-medium"
-                                  style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px', border: `1px solid ${theme.border}` }}
+                                  className="px-2.5 py-1 text-xs font-mono font-semibold rounded border transition-colors cursor-pointer"
+                                  style={{
+                                    background: theme.textPrimary,
+                                    color: theme.cardBg,
+                                    borderColor: theme.textPrimary,
+                                    borderRadius: '4px'
+                                  }}
                                 >
-                                  {t('topicNew.buttons.inputGrades')}
+                                  {t('topicNew.buttons.inputGrades') || 'Input Grades'}
                                 </button>
                               )}
-                              {(isAdmin || (canEdit && isPending)) && (
-                                <button
-                                  onClick={() => handleDeleteAssessment(assessment.assessment_id, assessment.assessment_nama)}
-                                  className="p-1.5 transition-colors"
-                                  style={{ color: theme.redText, borderRadius: '4px' }}
-                                  title={isAdmin ? 'Delete (Admin)' : 'Delete'}
-                                >
-                                  <FontAwesomeIcon icon={faTrash} className="text-xs" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -6971,418 +7037,584 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           </div>
         )}
 
+        {/* ── SUBJECT COMMENT TAB (MINIMALIST-UI) ─────────────────────────────────── */}
         {activeTab === 'comment' && (
-          <div className="p-6">
-            <div className="flex items-start justify-between mb-1">
-              <h2 className="text-base font-semibold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>Student Comments</h2>
+          <div className="p-6 space-y-5" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
+            {/* Header */}
+            <div className="pb-4 border-b flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ borderColor: theme.border }}>
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1" style={{ color: theme.textSecondary }}>
+                  <span>[MYP PORTAL]</span>
+                  <span>/</span>
+                  <span>[SUBJECT TEACHER]</span>
+                  <span>/</span>
+                  <span className="font-semibold" style={{ color: theme.blueText }}>[STUDENT COMMENTS]</span>
+                </div>
+                <h2 className="text-lg font-bold tracking-tight" style={{ color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                  {t('topicNew.tabs.comment') || 'Student Subject Comments'}
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+                  Write semester comments and review IB assessment criteria grades for each student per subject.
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={startCommentTour}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
-                style={{ border: '1px solid #c7d2fe', borderRadius: '6px', background: '#eef2ff', color: '#4338ca', cursor: 'pointer', flexShrink: 0 }}
+                className="px-2.5 py-1.5 text-xs font-mono font-semibold rounded border flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
+                style={{
+                  background: isDark ? '#1A2F3D' : '#E1F3FE',
+                  borderColor: isDark ? 'rgba(124, 184, 220, 0.3)' : '#BDE3FC',
+                  color: isDark ? '#7CB8DC' : '#1F6C9F',
+                  borderRadius: '4px'
+                }}
               >
-                <FontAwesomeIcon icon={faLightbulb} className="text-xs" />
-                {t('topicNew.mentorCommentTab.tourBtn')}
+                <FontAwesomeIcon icon={faLightbulb} className="text-[11px]" />
+                <span>{t('topicNew.mentorCommentTab.tourBtn') || 'How to use'}</span>
               </button>
             </div>
-            <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>Write semester comments for each student per subject.</p>
-            
-            {/* Filter row: Year → Subject → Kelas → Semester */}
-            <div id="comment-filter-section" className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
-              {/* Tahun Ajaran */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. Tahun Ajaran</label>
-                <select
-                  value={commentYear}
-                  onChange={(e) => {
-                    setCommentYear(e.target.value)
-                    // reset downstream
-                    setCommentSubject('')
-                    setCommentKelas('')
-                    setCommentSemester('')
-                    setCommentKelasOptions([])
-                    setCommentStudents([])
-                  }}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                >
-                  <option value="">Pilih Tahun Ajaran</option>
-                  {yearOptions.map(y => (
-                    <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
-                  ))}
-                </select>
-              </div>
 
-              {/* Subject */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. {t('topicNew.fields.subject')}</label>
-                <select
-                  id="comment-subject-select"
-                  value={commentSubject}
-                  onChange={(e) => handleCommentSubjectChange(e.target.value)}
-                  disabled={!commentYear}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: !commentYear ? 0.5 : 1 }}
-                >
-                  <option value="">{!commentYear ? 'Pilih tahun dulu' : t('topicNew.fields.selectSubject')}</option>
-                  {subjects.map(s => (
-                    <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Kelas */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. {t('topicNew.filters.class')}</label>
-                <select
-                  id="comment-kelas-select"
-                  value={commentKelas}
-                  onChange={(e) => handleCommentKelasChange(e.target.value)}
-                  disabled={!commentSubject || loadingCommentKelas}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: (!commentSubject || loadingCommentKelas) ? 0.5 : 1 }}
-                >
-                  <option value="">{loadingCommentKelas ? t('topicNew.fields.loading') : t('topicNew.fields.selectClass')}</option>
-                  {commentKelasOptions.map(k => (
-                    <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Semester */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>4. Semester</label>
-                <div id="comment-semester-row" className="flex gap-2">
-                  {[1, 2].map(sem => (
-                    <button
-                      key={sem}
-                      type="button"
-                      disabled={!commentKelas}
-                      onClick={() => handleCommentSemesterChange(String(sem))}
-                      className="flex-1 px-4 py-2 text-sm font-medium transition-colors"
-                      style={{
-                        borderRadius: '6px',
-                        background: commentSemester === String(sem) ? theme.textPrimary : theme.subtleBg,
-                        color: commentSemester === String(sem) ? theme.cardBg : theme.textSecondary,
-                        border: `1px solid ${theme.border}`,
-                        opacity: !commentKelas ? 0.5 : 1,
-                      }}
-                    >
-                      Semester {sem}
-                    </button>
-                  ))}
+            {/* Filter Bento Card (4 steps) */}
+            <div id="comment-filter-section" className="p-3.5 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {/* 1. Tahun Ajaran */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    1. {t('topicNew.mentorCommentTab.yearLabel') || 'Academic Year'}
+                  </label>
+                  <select
+                    value={commentYear}
+                    onChange={(e) => {
+                      setCommentYear(e.target.value)
+                      // reset downstream
+                      setCommentSubject('')
+                      setCommentKelas('')
+                      setCommentSemester('')
+                      setCommentKelasOptions([])
+                      setCommentStudents([])
+                    }}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  >
+                    <option value="">{t('topicNew.mentorCommentTab.selectYear') || 'Select Academic Year'}</option>
+                    {yearOptions.map(y => (
+                      <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Subject */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    2. {t('topicNew.fields.subject') || 'Subject'}
+                  </label>
+                  <select
+                    id="comment-subject-select"
+                    value={commentSubject}
+                    onChange={(e) => handleCommentSubjectChange(e.target.value)}
+                    disabled={!commentYear}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px', opacity: !commentYear ? 0.5 : 1 }}
+                  >
+                    <option value="">{!commentYear ? (t('topicNew.mentorCommentTab.selectYearFirst') || 'Select academic year first') : t('topicNew.fields.selectSubject')}</option>
+                    {subjects.map(s => (
+                      <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Kelas */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    3. {t('topicNew.filters.class') || 'Class'}
+                  </label>
+                  <select
+                    id="comment-kelas-select"
+                    value={commentKelas}
+                    onChange={(e) => handleCommentKelasChange(e.target.value)}
+                    disabled={!commentSubject || loadingCommentKelas}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px', opacity: (!commentSubject || loadingCommentKelas) ? 0.5 : 1 }}
+                  >
+                    <option value="">{loadingCommentKelas ? t('topicNew.fields.loading') : t('topicNew.fields.selectClass')}</option>
+                    {commentKelasOptions.map(k => (
+                      <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 4. Semester */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    4. {t('topicNew.mentorCommentTab.semesterLabel') || 'Semester'}
+                  </label>
+                  <div id="comment-semester-row" className="flex gap-2">
+                    {[1, 2].map(sem => {
+                      const isSelected = commentSemester === String(sem)
+                      return (
+                        <button
+                          key={sem}
+                          type="button"
+                          disabled={!commentKelas}
+                          onClick={() => handleCommentSemesterChange(String(sem))}
+                          className="flex-1 py-1.5 px-3 text-xs font-mono font-semibold rounded border transition-all cursor-pointer disabled:opacity-40"
+                          style={{
+                            background: isSelected ? theme.textPrimary : theme.subtleBg,
+                            color: isSelected ? theme.cardBg : theme.textSecondary,
+                            borderColor: isSelected ? theme.textPrimary : theme.border,
+                            borderRadius: '4px'
+                          }}
+                        >
+                          Semester {sem}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
-            
-            {/* Save All bar */}
+
+            {/* Save All & Actions Toolbar */}
             {commentStudents.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 mb-4" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
-                <span className="text-sm" style={{ color: theme.textBody }}>
-                  {commentStudents.length} student{commentStudents.length !== 1 ? 's' : ''}
-                  {commentStudents.filter(s => !s.saved).length > 0 && (
-                    <span className="ml-2 font-medium" style={{ color: theme.yellowText }}>
-                      — {commentStudents.filter(s => !s.saved).length} unsaved
+              <div className="p-3 rounded border flex flex-col sm:flex-row items-center justify-between gap-3" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-mono font-bold" style={{ color: theme.textPrimary }}>
+                    {commentStudents.length} student{commentStudents.length !== 1 ? 's' : ''}
+                  </span>
+                  {commentStudents.filter(s => !s.saved).length > 0 ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+                      {commentStudents.filter(s => !s.saved).length} unsaved
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                      all saved ✓
                     </span>
                   )}
-                </span>
-                <div className="flex items-center gap-2 flex-wrap">
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
                   <div className="ai-tooltip-wrap">
-                    <button type="button" onClick={downloadCommentTemplate} className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.cardBg, color: theme.blueText, cursor: 'pointer' }}>
-                      <FontAwesomeIcon icon={faFileAlt} />Download Template
+                    <button
+                      type="button"
+                      onClick={downloadCommentTemplate}
+                      className="px-2.5 py-1.5 text-xs font-semibold font-mono rounded border flex items-center gap-1.5 transition-colors cursor-pointer"
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.subtleBg, color: theme.blueText }}
+                    >
+                      <FontAwesomeIcon icon={faFileAlt} className="text-[11px]" />
+                      <span>Template</span>
                     </button>
                     <div className="ai-tooltip">{t('topicNew.mentorCommentTab.downloadTemplateTooltip')}</div>
                   </div>
+
                   <div className="ai-tooltip-wrap">
-                    <button type="button" onClick={() => commentImportRef.current?.click()} className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.cardBg, color: theme.textBody, cursor: 'pointer' }}>
-                      <FontAwesomeIcon icon={faPaperPlane} />Import Excel
+                    <button
+                      type="button"
+                      onClick={() => commentImportRef.current?.click()}
+                      className="px-2.5 py-1.5 text-xs font-semibold font-mono rounded border flex items-center gap-1.5 transition-colors cursor-pointer"
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.subtleBg, color: theme.textPrimary }}
+                    >
+                      <FontAwesomeIcon icon={faPaperPlane} className="text-[11px]" />
+                      <span>Import Excel</span>
                     </button>
                     <div className="ai-tooltip">{t('topicNew.mentorCommentTab.importExcelTooltip')}</div>
                   </div>
                   <input ref={commentImportRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCommentImport(file) }} />
-                  <button type="button" onClick={saveAllComments} disabled={commentStudents.every(s => s.saved) || savingCommentId !== null} className="px-4 py-1.5 text-sm font-medium" style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
-                    <FontAwesomeIcon icon={faSave} className="mr-1" />Save All
+
+                  <button
+                    type="button"
+                    onClick={saveAllComments}
+                    disabled={commentStudents.every(s => s.saved) || savingCommentId !== null}
+                    className="px-3 py-1.5 text-xs font-semibold rounded transition-all cursor-pointer disabled:opacity-40"
+                    style={{
+                      background: theme.textPrimary,
+                      color: theme.cardBg,
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faSave} className="mr-1.5 text-[11px]" />
+                    Save All
                   </button>
                 </div>
               </div>
             )}
-            
+
             {/* Loading */}
             {loadingComments && (
-              <div className="text-center py-12">
-                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
-                <p className="text-sm mt-2" style={{ color: theme.textSecondary }}>Loading students...</p>
+              <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2" />
+                <p className="text-xs font-mono">LOADING STUDENTS...</p>
               </div>
             )}
-            
+
             {/* Empty / prompt states */}
             {!loadingComments && !commentSemester && (
-              <div className="text-center py-12" style={{ color: theme.textSecondary }}>
-                <FontAwesomeIcon icon={faComments} className="text-4xl mb-2 opacity-30" />
-                <p className="text-sm">Select subject, class, and semester to start writing comments</p>
+              <div className="p-12 text-center border border-dashed rounded" style={{ borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                <FontAwesomeIcon icon={faComments} className="text-2xl mb-2 opacity-30" />
+                <p className="text-xs font-mono uppercase tracking-wider">Select subject, class, and semester to start writing comments.</p>
               </div>
             )}
-            
+
             {commentSemester && !loadingComments && commentStudents.length === 0 && (
-              <div className="text-center py-12 text-sm" style={{ color: theme.textSecondary }}>
-                <p>No students found in this class</p>
+              <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                <p className="text-xs font-mono uppercase tracking-wider">No students found in this class.</p>
               </div>
             )}
-            
+
             {/* Student list */}
             {!loadingComments && commentStudents.length > 0 && (
-              <div className="space-y-3">
-                {commentStudents.map((student, idx) => (
-                  <div key={student.user_id} style={{ border: `1px solid ${!student.saved ? theme.yellowText : theme.border}`, borderRadius: '8px', padding: '16px', background: !student.saved ? theme.yellowBg : theme.cardBg }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono w-5" style={{ color: theme.textSecondary }}>{idx + 1}.</span>
-                        <h3 className="font-medium text-sm" style={{ color: theme.textPrimary }}>{student.nama}</h3>
-                        {!student.saved && (
-                          <span className="text-[10px] px-1.5 py-0.5" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>unsaved</span>
-                        )}
-                        {student.saved && student.comment_id && (
-                          <span className="text-[10px] px-1.5 py-0.5" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>saved</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* AI Help button with custom tooltip */}
-                        <div className="ai-tooltip-wrap">
-                          <button
-                            type="button"
-                            onClick={() => { setCommentAiTarget({ user_id: student.user_id, nama: student.nama }); setCommentAiInput({ star1: '', star2: '', wish: '' }); setCommentAiResult(''); setCommentAiError(''); setCommentAiContradiction(null); setCommentAiModalOpen(true) }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium"
-                            style={{ border: '1px solid #ddd6fe', borderRadius: '6px', background: '#ede9fe', color: '#6d28d9', cursor: 'pointer' }}
-                          >
-                            <FontAwesomeIcon icon={faWandMagicSparkles} className="text-xs" />AI Help
-                          </button>
-                          <div className="ai-tooltip">{t('topicNew.mentorCommentTab.aiHelpTooltip')}</div>
+              <div className="space-y-4">
+                {commentStudents.map((student, idx) => {
+                  const isUnsaved = !student.saved
+                  return (
+                    <div
+                      key={student.user_id}
+                      className="p-4 rounded border transition-all"
+                      style={{
+                        borderColor: isUnsaved ? (isDark ? 'rgba(245, 158, 11, 0.35)' : '#F5E6B3') : theme.border,
+                        borderRadius: '8px',
+                        background: isUnsaved ? (isDark ? 'rgba(42, 38, 24, 0.4)' : '#FFFEFA') : theme.cardBg
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3 pb-2.5 border-b flex-wrap gap-2" style={{ borderColor: theme.border }}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-mono font-bold" style={{ color: theme.textSecondary }}>
+                            {String(idx + 1).padStart(2, '0')}.
+                          </span>
+                          <h3 className="font-bold text-sm tracking-tight" style={{ color: theme.textPrimary }}>
+                            {student.nama}
+                          </h3>
+                          {isUnsaved ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+                              unsaved
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                              saved ✓
+                            </span>
+                          )}
                         </div>
-                        {/* Refine button with custom tooltip */}
-                        <div className={`ai-tooltip-wrap ${!student.comment_text?.trim() ? 'opacity-40 pointer-events-none' : ''}`}>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* AI Help button with custom tooltip */}
+                          <div className="ai-tooltip-wrap">
+                            <button
+                              type="button"
+                              onClick={() => { setCommentAiTarget({ user_id: student.user_id, nama: student.nama }); setCommentAiInput({ star1: '', star2: '', wish: '' }); setCommentAiResult(''); setCommentAiError(''); setCommentAiContradiction(null); setCommentAiModalOpen(true) }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold uppercase rounded border transition-colors cursor-pointer"
+                              style={{
+                                background: isDark ? '#2D1B4E' : '#F3E8FF',
+                                borderColor: isDark ? 'rgba(196, 130, 255, 0.3)' : '#E9D5FF',
+                                color: isDark ? '#D8B4FE' : '#6B21A8',
+                                borderRadius: '4px'
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faWandMagicSparkles} className="text-[10px]" />
+                              <span>AI Help</span>
+                            </button>
+                            <div className="ai-tooltip">{t('topicNew.mentorCommentTab.aiHelpTooltip')}</div>
+                          </div>
+
+                          {/* Refine button with custom tooltip */}
+                          <div className={`ai-tooltip-wrap ${!student.comment_text?.trim() ? 'opacity-40 pointer-events-none' : ''}`}>
+                            <button
+                              type="button"
+                              disabled={!student.comment_text?.trim()}
+                              onClick={() => {
+                                setRefineModalTarget({ user_id: student.user_id, nama: student.nama })
+                                setRefineOriginal(student.comment_text || '')
+                                setRefineResult(null)
+                                setRefineError('')
+                                setRefineModalOpen(true)
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold uppercase rounded border transition-colors cursor-pointer"
+                              style={{
+                                background: isDark ? '#3D2514' : '#FFF7ED',
+                                borderColor: isDark ? 'rgba(254, 154, 75, 0.3)' : '#FED7AA',
+                                color: isDark ? '#FDBA74' : '#C2410C',
+                                borderRadius: '4px'
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faSliders} className="text-[10px]" />
+                              <span>Refine</span>
+                            </button>
+                            <div className="ai-tooltip">{t('topicNew.mentorCommentTab.refineTooltip')}</div>
+                          </div>
+
                           <button
                             type="button"
-                            disabled={!student.comment_text?.trim()}
-                            onClick={() => {
-                              setRefineModalTarget({ user_id: student.user_id, nama: student.nama })
-                              setRefineOriginal(student.comment_text || '')
-                              setRefineResult(null)
-                              setRefineError('')
-                              setRefineModalOpen(true)
+                            onClick={() => saveComment(student)}
+                            disabled={student.saved || savingCommentId === student.user_id}
+                            className="px-2.5 py-1 text-xs font-semibold rounded border transition-colors cursor-pointer disabled:opacity-40"
+                            style={{
+                              background: isUnsaved ? theme.textPrimary : theme.subtleBg,
+                              color: isUnsaved ? theme.cardBg : theme.textSecondary,
+                              borderColor: isUnsaved ? theme.textPrimary : theme.border,
+                              borderRadius: '4px'
                             }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium"
-                            style={{ border: '1px solid #fed7aa', borderRadius: '6px', background: '#fff7ed', color: '#c2410c', cursor: 'pointer' }}
                           >
-                            <FontAwesomeIcon icon={faSliders} className="text-xs" />Refine
+                            {savingCommentId === student.user_id ? 'Saving...' : 'Save'}
                           </button>
-                          <div className="ai-tooltip">{t('topicNew.mentorCommentTab.refineTooltip')}</div>
                         </div>
-                        <button type="button" onClick={() => saveComment(student)} disabled={student.saved || savingCommentId === student.user_id} className="px-3 py-1.5 text-sm font-medium" style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
-                          {savingCommentId === student.user_id ? 'Saving...' : 'Save'}
-                        </button>
+                      </div>
+
+                      {/* Grade Summary Bento Subcard */}
+                      {commentStudentGrades[student.user_id]?.length > 0 ? (
+                        <div className="mb-3.5 p-3 rounded border" style={{ borderRadius: '6px', border: `1px solid ${theme.border}`, background: theme.subtleBg }}>
+                          <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b" style={{ borderColor: theme.border }}>
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider" style={{ color: theme.blueText }}>
+                              [ASSESSMENT CRITERIA GRADES — SEMESTER {commentSemester}]
+                            </span>
+                            {(() => {
+                              const gs = commentStudentGrades[student.user_id]
+                              const criAvg = (key) => { const v = gs.map(g => g[key]).filter(v => v !== null); return v.length > 0 ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null }
+                              const vals = ['A','B','C','D'].map(k => criAvg(k)).filter(v => v !== null)
+                              if (vals.length === 0) return null
+                              const total = vals.reduce((a, b) => a + b, 0)
+                              const currentSubject = subjects.find(s => s.subject_id === selectedTopic?.topic_subject_id)
+                              const customBounds = currentSubject?.custom_grade_boundaries
+                              const scale = vals.length / 4
+                              const b = (customBounds && customBounds.length === 6)
+                                ? customBounds
+                                : [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
+                              let final = total <= b[0] ? 1 : total <= b[1] ? 2 : total <= b[2] ? 3 : total <= b[3] ? 4 : total <= b[4] ? 5 : total <= b[5] ? 6 : 7
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>IB Grade:</span>
+                                  <span className="px-2 py-0.5 text-xs font-mono font-bold rounded bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">{final}</span>
+                                  <span className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>(pts {total})</span>
+                                </div>
+                              )
+                            })()}
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="text-xs w-full border-collapse">
+                              <thead>
+                                <tr className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>
+                                  <th className="text-left py-1 pr-3 font-semibold">Assessment Title</th>
+                                  <th className="text-center py-1 px-2 font-semibold w-10">Crit A</th>
+                                  <th className="text-center py-1 px-2 font-semibold w-10">Crit B</th>
+                                  <th className="text-center py-1 px-2 font-semibold w-10">Crit C</th>
+                                  <th className="text-center py-1 px-2 font-semibold w-10">Crit D</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                                {commentStudentGrades[student.user_id].map((g, gi) => (
+                                  <tr key={gi}>
+                                    <td className="py-1.5 pr-3 max-w-[240px] truncate font-medium" style={{ color: theme.textPrimary }} title={g.name}>{g.name}</td>
+                                    <td className="text-center py-1.5 px-2 font-mono font-semibold" style={{ color: g.A !== null ? theme.blueText : theme.textSecondary }}>{g.A ?? '–'}</td>
+                                    <td className="text-center py-1.5 px-2 font-mono font-semibold" style={{ color: g.B !== null ? theme.blueText : theme.textSecondary }}>{g.B ?? '–'}</td>
+                                    <td className="text-center py-1.5 px-2 font-mono font-semibold" style={{ color: g.C !== null ? theme.blueText : theme.textSecondary }}>{g.C ?? '–'}</td>
+                                    <td className="text-center py-1.5 px-2 font-mono font-semibold" style={{ color: g.D !== null ? theme.blueText : theme.textSecondary }}>{g.D ?? '–'}</td>
+                                  </tr>
+                                ))}
+                                {/* Avg row */}
+                                {(() => {
+                                  const gs = commentStudentGrades[student.user_id]
+                                  const criAvg = (key) => { const v = gs.map(g => g[key]).filter(v => v !== null); return v.length > 0 ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null }
+                                  const avgA = criAvg('A')
+                                  const avgB = criAvg('B')
+                                  const avgC = criAvg('C')
+                                  const avgD = criAvg('D')
+                                  return (
+                                    <tr style={{ background: theme.cardBg }}>
+                                      <td className="py-1.5 pr-3 font-mono font-bold text-[11px]" style={{ color: theme.blueText }}>AVERAGE</td>
+                                      <td className="text-center py-1.5 px-2 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgA ?? '–'}</td>
+                                      <td className="text-center py-1.5 px-2 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgB ?? '–'}</td>
+                                      <td className="text-center py-1.5 px-2 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgC ?? '–'}</td>
+                                      <td className="text-center py-1.5 px-2 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgD ?? '–'}</td>
+                                    </tr>
+                                  )
+                                })()}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : commentSemester && commentStudentGrades[student.user_id] !== undefined ? (
+                        <div className="mb-3.5 px-3 py-2 text-[11px] font-mono rounded border" style={{ borderRadius: '6px', border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary }}>
+                          // NO ASSESSMENT GRADES RECORDED YET FOR THIS SEMESTER
+                        </div>
+                      ) : null}
+
+                      {/* Comment Textarea */}
+                      <div className="relative">
+                        <textarea
+                          value={student.comment_text}
+                          onChange={(e) => updateCommentText(student.user_id, e.target.value)}
+                          rows={4}
+                          maxLength={600}
+                          placeholder="Write your subject comment for this student..."
+                          className="w-full p-2.5 text-xs font-sans rounded border outline-none resize-y transition-colors"
+                          style={{
+                            borderColor: theme.border,
+                            borderRadius: '4px',
+                            background: theme.inputBg,
+                            color: theme.textPrimary,
+                            lineHeight: 1.5
+                          }}
+                        />
+                        <div className="text-[10px] font-mono text-right mt-1" style={{ color: theme.textSecondary }}>
+                          {(student.comment_text || '').length}/600
+                        </div>
                       </div>
                     </div>
-
-                    {/* Grade Summary */}
-                    {commentStudentGrades[student.user_id]?.length > 0 ? (
-                      <div className="mb-3 px-3 py-2" style={{ borderRadius: '6px', border: `1px solid ${theme.border}`, background: theme.blueBg }}>
-                        <p className="text-[11px] font-semibold mb-1.5" style={{ color: theme.blueText }}>Assessment Grades — Semester {commentSemester}</p>
-                        <div className="overflow-x-auto">
-                          <table className="text-[11px] w-full">
-                            <thead>
-                              <tr style={{ color: theme.textSecondary }}>
-                                <th className="text-left pr-3 pb-1 font-medium">Assessment</th>
-                                <th className="text-center px-2 pb-1 font-medium w-8">A</th>
-                                <th className="text-center px-2 pb-1 font-medium w-8">B</th>
-                                <th className="text-center px-2 pb-1 font-medium w-8">C</th>
-                                <th className="text-center px-2 pb-1 font-medium w-8">D</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {commentStudentGrades[student.user_id].map((g, gi) => (
-                                <tr key={gi} style={{ borderTop: `1px solid ${theme.border}` }}>
-                                  <td className="pr-3 py-1 max-w-[220px] truncate" style={{ color: theme.textBody }} title={g.name}>{g.name}</td>
-                                  <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.A !== null ? theme.blueText : theme.textSecondary }}>{g.A ?? '–'}</td>
-                                  <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.B !== null ? theme.blueText : theme.textSecondary }}>{g.B ?? '–'}</td>
-                                  <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.C !== null ? theme.blueText : theme.textSecondary }}>{g.C ?? '–'}</td>
-                                  <td className="text-center px-2 py-1 font-mono font-semibold" style={{ color: g.D !== null ? theme.blueText : theme.textSecondary }}>{g.D ?? '–'}</td>
-                                </tr>
-                              ))}
-                              {/* Avg row */}
-                              {(() => {
-                                const gs = commentStudentGrades[student.user_id]
-                                const criAvg = (key) => { const v = gs.map(g => g[key]).filter(v => v !== null); return v.length > 0 ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null }
-                                const avgA = criAvg('A')
-                                const avgB = criAvg('B')
-                                const avgC = criAvg('C')
-                                const avgD = criAvg('D')
-                                const vals = [avgA, avgB, avgC, avgD].filter(v => v !== null)
-                                const total = vals.reduce((a, b) => a + b, 0)
-                                const scale = vals.length / 4
-                                const b = [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
-                                let final = null
-                                if (vals.length > 0) {
-                                  if (total <= b[0]) final = 1
-                                  else if (total <= b[1]) final = 2
-                                  else if (total <= b[2]) final = 3
-                                  else if (total <= b[3]) final = 4
-                                  else if (total <= b[4]) final = 5
-                                  else if (total <= b[5]) final = 6
-                                  else final = 7
-                                }
-                                return (
-                                  <tr style={{ borderTop: `2px solid ${theme.border}`, background: theme.subtleBg }}>
-                                    <td className="pr-3 py-1 font-semibold" style={{ color: theme.blueText }}>Avg</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgA ?? '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgB ?? '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgC ?? '–'}</td>
-                                    <td className="text-center px-2 py-1 font-mono font-bold" style={{ color: theme.textPrimary }}>{avgD ?? '–'}</td>
-                                  </tr>
-                                )
-                              })()}
-                            </tbody>
-                          </table>
-                        </div>
-                        {/* Final grade badge — avg per criterion, sum, scaled boundary */}
-                        {(() => {
-                          const gs = commentStudentGrades[student.user_id]
-                          const criAvg = (key) => { const v = gs.map(g => g[key]).filter(v => v !== null); return v.length > 0 ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null }
-                          const vals = ['A','B','C','D'].map(k => criAvg(k)).filter(v => v !== null)
-                          if (vals.length === 0) return null
-                          const total = vals.reduce((a, b) => a + b, 0)
-                          // Match PDF generator: average per criterion, scale boundary by numCriteria/4
-                          const currentSubject = subjects.find(s => s.subject_id === selectedTopic?.topic_subject_id)
-                          const customBounds = currentSubject?.custom_grade_boundaries
-                          const scale = vals.length / 4
-                          const b = (customBounds && customBounds.length === 6)
-                            ? customBounds
-                            : [5, 9, 14, 18, 23, 27].map(v => Math.round(v * scale))
-                          let final = total <= b[0] ? 1 : total <= b[1] ? 2 : total <= b[2] ? 3 : total <= b[3] ? 4 : total <= b[4] ? 5 : total <= b[5] ? 6 : 7
-                          return (
-                            <div className="mt-1.5 flex items-center gap-2">
-                              <span className="text-[11px]" style={{ color: theme.textSecondary }}>IB Grade:</span>
-                              <span className="text-xs font-bold px-2 py-0.5" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>{final}</span>
-                              <span className="text-[10px]" style={{ color: theme.textSecondary }}>(total {total})</span>
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    ) : commentSemester && commentStudentGrades[student.user_id] !== undefined ? (
-                      <div className="mb-3 px-3 py-2 text-[11px]" style={{ borderRadius: '6px', border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary }}>
-                        No assessment grades yet for this semester.
-                      </div>
-                    ) : null}
-
-                    <textarea
-                      value={student.comment_text}
-                      onChange={(e) => updateCommentText(student.user_id, e.target.value)}
-                      rows={6}
-                      maxLength={600}
-                      placeholder="Write your comment for this student..."
-                      className="w-full px-3 py-2 text-sm focus:outline-none resize-y"
-                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                    />
-                    <p className="text-xs text-right mt-1" style={{ color: theme.textSecondary }}>{(student.comment_text || '').length}/600</p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 
+        {/* ── MENTOR COMMENT TAB (MINIMALIST-UI) ─────────────────────────────────── */}
         {activeTab === 'mentor' && isWaliKelas && (
-          <div className="p-6">
-            <h2 className="text-base font-semibold mb-1" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>{t('topicNew.mentorCommentTab.title')}</h2>
-            <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.subtitle')}</p>
-
-            {/* Filter row: Year → Kelas → Semester */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-              {/* Tahun Ajaran */}
+          <div className="p-6 space-y-5" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
+            {/* Header */}
+            <div className="pb-4 border-b flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ borderColor: theme.border }}>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. Tahun Ajaran</label>
-                <select
-                  value={mentorYear}
-                  onChange={(e) => setMentorYear(e.target.value)}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                >
-                  <option value="">Pilih Tahun Ajaran</option>
-                  {yearOptions.map(y => (
-                    <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1" style={{ color: theme.textSecondary }}>
+                  <span>[HOMEROOM]</span>
+                  <span>/</span>
+                  <span className="font-semibold" style={{ color: theme.blueText }}>[MENTOR COMMENT]</span>
+                </div>
+                <h2 className="text-lg font-bold tracking-tight" style={{ color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                  {t('topicNew.mentorCommentTab.title') || 'Homeroom Mentor Comments'}
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+                  {t('topicNew.mentorCommentTab.subtitle') || 'Write semester homeroom comments and record attendance summary for each student in your class.'}
+                </p>
               </div>
+            </div>
 
-              {/* Kelas */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. {t('topicNew.mentorCommentTab.classLabel')}</label>
-                <select
-                  value={mentorKelas}
-                  onChange={(e) => handleMentorKelasChange(e.target.value)}
-                  disabled={!mentorYear}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: !mentorYear ? 0.5 : 1 }}
-                >
-                  <option value="">{!mentorYear ? 'Pilih tahun ajaran dulu' : t('topicNew.mentorCommentTab.selectClass')}</option>
-                  {mentorKelasOptions.map(k => (
-                    <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
-                  ))}
-                </select>
-              </div>
+            {/* Filter Bento Card */}
+            <div className="p-3.5 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {/* 1. Tahun Ajaran */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    1. {t('topicNew.mentorCommentTab.yearLabel') || 'Academic Year'}
+                  </label>
+                  <select
+                    value={mentorYear}
+                    onChange={(e) => setMentorYear(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  >
+                    <option value="">{t('topicNew.mentorCommentTab.selectYear') || 'Select Academic Year'}</option>
+                    {yearOptions.map(y => (
+                      <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Semester */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>3. {t('topicNew.mentorCommentTab.semesterLabel')}</label>
-                <div className="flex gap-2">
-                  {[1, 2].map(sem => (
-                    <button
-                      key={sem}
-                      type="button"
-                      disabled={!mentorKelas}
-                      onClick={() => handleMentorSemesterChange(String(sem))}
-                      className="flex-1 px-4 py-2 text-sm font-medium transition-colors"
-                      style={{
-                        borderRadius: '6px',
-                        background: mentorSemester === String(sem) ? theme.textPrimary : theme.subtleBg,
-                        color: mentorSemester === String(sem) ? theme.cardBg : theme.textSecondary,
-                        border: `1px solid ${theme.border}`,
-                        opacity: !mentorKelas ? 0.5 : 1,
-                      }}
-                    >
-                      Semester {sem}
-                    </button>
-                  ))}
+                {/* 2. Kelas */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    2. {t('topicNew.mentorCommentTab.classLabel') || 'Class'}
+                  </label>
+                  <select
+                    value={mentorKelas}
+                    onChange={(e) => handleMentorKelasChange(e.target.value)}
+                    disabled={!mentorYear}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px', opacity: !mentorYear ? 0.5 : 1 }}
+                  >
+                    <option value="">{!mentorYear ? (t('topicNew.mentorCommentTab.selectYearFirst') || 'Select academic year first') : t('topicNew.mentorCommentTab.selectClass')}</option>
+                    {mentorKelasOptions.map(k => (
+                      <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Semester */}
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    3. {t('topicNew.mentorCommentTab.semesterLabel') || 'Semester'}
+                  </label>
+                  <div className="flex gap-2">
+                    {[1, 2].map(sem => {
+                      const isSelected = mentorSemester === String(sem)
+                      return (
+                        <button
+                          key={sem}
+                          type="button"
+                          disabled={!mentorKelas}
+                          onClick={() => handleMentorSemesterChange(String(sem))}
+                          className="flex-1 py-1.5 px-3 text-xs font-mono font-semibold rounded border transition-all cursor-pointer disabled:opacity-40"
+                          style={{
+                            background: isSelected ? theme.textPrimary : theme.subtleBg,
+                            color: isSelected ? theme.cardBg : theme.textSecondary,
+                            borderColor: isSelected ? theme.textPrimary : theme.border,
+                            borderRadius: '4px'
+                          }}
+                        >
+                          Semester {sem}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Save All bar */}
+            {/* Save All & Actions Toolbar */}
             {mentorStudents.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 mb-4" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, borderRadius: '8px' }}>
-                <span className="text-sm" style={{ color: theme.textBody }}>
-                  {mentorStudents.length} {mentorStudents.length !== 1 ? t('topicNew.mentorCommentTab.studentsPlural') : t('topicNew.mentorCommentTab.students')}
-                  {mentorStudents.filter(s => !s.saved).length > 0 && (
-                    <span className="ml-2 font-medium" style={{ color: theme.yellowText }}>
-                      — {mentorStudents.filter(s => !s.saved).length} {t('topicNew.mentorCommentTab.unsaved')}
+              <div className="p-3 rounded border flex flex-col sm:flex-row items-center justify-between gap-3" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-mono font-bold" style={{ color: theme.textPrimary }}>
+                    {mentorStudents.length} {mentorStudents.length !== 1 ? t('topicNew.mentorCommentTab.studentsPlural') : t('topicNew.mentorCommentTab.students')}
+                  </span>
+                  {mentorStudents.filter(s => !s.saved).length > 0 ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+                      {mentorStudents.filter(s => !s.saved).length} {t('topicNew.mentorCommentTab.unsaved')}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                      all saved ✓
                     </span>
                   )}
-                </span>
-                <div className="flex items-center gap-2 flex-wrap">
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
                   <div className="ai-tooltip-wrap">
-                    <button type="button" onClick={downloadMentorCommentTemplate} className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.cardBg, color: theme.blueText, cursor: 'pointer' }}>
-                      <FontAwesomeIcon icon={faFileAlt} />Download Template
+                    <button
+                      type="button"
+                      onClick={downloadMentorCommentTemplate}
+                      className="px-2.5 py-1.5 text-xs font-semibold font-mono rounded border flex items-center gap-1.5 transition-colors cursor-pointer"
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.subtleBg, color: theme.blueText }}
+                    >
+                      <FontAwesomeIcon icon={faFileAlt} className="text-[11px]" />
+                      <span>Template</span>
                     </button>
                     <div className="ai-tooltip">{t('topicNew.mentorCommentTab.downloadTemplateTooltip')}</div>
                   </div>
+
                   <div className="ai-tooltip-wrap">
-                    <button type="button" onClick={() => mentorImportRef.current?.click()} className="px-3 py-1.5 text-sm font-medium flex items-center gap-1.5" style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.cardBg, color: theme.textBody, cursor: 'pointer' }}>
-                      <FontAwesomeIcon icon={faPaperPlane} />Import Excel
+                    <button
+                      type="button"
+                      onClick={() => mentorImportRef.current?.click()}
+                      className="px-2.5 py-1.5 text-xs font-semibold font-mono rounded border flex items-center gap-1.5 transition-colors cursor-pointer"
+                      style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.subtleBg, color: theme.textPrimary }}
+                    >
+                      <FontAwesomeIcon icon={faPaperPlane} className="text-[11px]" />
+                      <span>Import Excel</span>
                     </button>
                     <div className="ai-tooltip">{t('topicNew.mentorCommentTab.importExcelTooltip')}</div>
                   </div>
                   <input ref={mentorImportRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleMentorCommentImport(file) }} />
-                  <button type="button" onClick={saveAllMentorComments} disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null} className="px-4 py-1.5 text-sm font-medium" style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
-                    <FontAwesomeIcon icon={faSave} className="mr-1" />{t('topicNew.mentorCommentTab.saveAll')}
+
+                  <button
+                    type="button"
+                    onClick={saveAllMentorComments}
+                    disabled={mentorStudents.every(s => s.saved) || savingMentorCommentId !== null}
+                    className="px-3 py-1.5 text-xs font-semibold rounded transition-all cursor-pointer disabled:opacity-40"
+                    style={{
+                      background: theme.textPrimary,
+                      color: theme.cardBg,
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faSave} className="mr-1.5 text-[11px]" />
+                    {t('topicNew.mentorCommentTab.saveAll')}
                   </button>
                 </div>
               </div>
@@ -7390,194 +7622,266 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
             {/* Loading */}
             {loadingMentorComments && (
-              <div className="text-center py-12">
-                <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
-                <p className="text-sm mt-2" style={{ color: theme.textSecondary }}>{t('topicNew.mentorCommentTab.loading')}</p>
+              <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2" />
+                <p className="text-xs font-mono">{t('topicNew.mentorCommentTab.loading') || 'LOADING STUDENTS...'}</p>
               </div>
             )}
 
             {/* Empty / prompt states */}
             {!loadingMentorComments && !mentorSemester && (
-              <div className="text-center py-12" style={{ color: theme.textSecondary }}>
-                <FontAwesomeIcon icon={faHouseUser} className="text-4xl mb-2 opacity-30" />
-                <p className="text-sm">{t('topicNew.mentorCommentTab.selectPrompt')}</p>
+              <div className="p-12 text-center border border-dashed rounded" style={{ borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                <FontAwesomeIcon icon={faHouseUser} className="text-2xl mb-2 opacity-30" />
+                <p className="text-xs font-mono uppercase tracking-wider">{t('topicNew.mentorCommentTab.selectPrompt') || 'Select class and semester to start writing mentor comments.'}</p>
               </div>
             )}
 
             {mentorSemester && !loadingMentorComments && mentorStudents.length === 0 && (
-              <div className="text-center py-12 text-sm" style={{ color: theme.textSecondary }}>
-                <p>{t('topicNew.mentorCommentTab.noStudents')}</p>
+              <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                <p className="text-xs font-mono uppercase tracking-wider">{t('topicNew.mentorCommentTab.noStudents') || 'No students found in this class.'}</p>
               </div>
             )}
 
             {/* Student list */}
             {!loadingMentorComments && mentorStudents.length > 0 && (
-              <div className="space-y-3">
-                {mentorStudents.map((student, idx) => (
-                  <div key={student.user_id} style={{ border: `1px solid ${!student.saved ? theme.yellowText : theme.border}`, borderRadius: '8px', padding: '16px', background: !student.saved ? theme.yellowBg : theme.cardBg }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono w-5" style={{ color: theme.textSecondary }}>{idx + 1}.</span>
-                        <h3 className="font-medium text-sm" style={{ color: theme.textPrimary }}>{student.nama}</h3>
-                        {!student.saved && (
-                          <span className="text-[10px] px-1.5 py-0.5" style={{ background: theme.yellowBg, color: theme.yellowText, borderRadius: '4px' }}>unsaved</span>
-                        )}
-                        {student.saved && student.comment_id && (
-                          <span className="text-[10px] px-1.5 py-0.5" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>saved</span>
-                        )}
-                      </div>
-                      <button type="button" onClick={() => saveMentorComment(student)} disabled={student.saved || savingMentorCommentId === student.user_id} className="px-3 py-1.5 text-sm font-medium" style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}`, borderRadius: '6px' }}>
-                        {savingMentorCommentId === student.user_id ? t('topicNew.mentorCommentTab.saving') : t('topicNew.mentorCommentTab.save')}
-                      </button>
-                    </div>
-                    {/* Attendance row */}
-                    <div className="grid grid-cols-5 gap-3 mb-3">
-                      {[
-                        { field: 'present', label: t('topicNew.mentorCommentTab.present') },
-                        { field: 'absent', label: t('topicNew.mentorCommentTab.absent') },
-                        { field: 'late', label: t('topicNew.mentorCommentTab.late') },
-                        { field: 'sick', label: t('topicNew.mentorCommentTab.sick') },
-                        { field: 'excused', label: t('topicNew.mentorCommentTab.excused') }
-                      ].map(({ field, label }) => (
-                        <div key={field}>
-                          <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>{label}</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={student[field]}
-                            onChange={(e) => updateMentorAttendance(student.user_id, field, e.target.value)}
-                            onFocus={(e) => e.target.select()}
-                            className="w-full px-2 py-1.5 text-sm text-center font-medium focus:outline-none"
-                            style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                          />
+              <div className="space-y-4">
+                {mentorStudents.map((student, idx) => {
+                  const isUnsaved = !student.saved
+                  return (
+                    <div
+                      key={student.user_id}
+                      className="p-4 rounded border transition-all"
+                      style={{
+                        borderColor: isUnsaved ? (isDark ? 'rgba(245, 158, 11, 0.35)' : '#F5E6B3') : theme.border,
+                        borderRadius: '8px',
+                        background: isUnsaved ? (isDark ? 'rgba(42, 38, 24, 0.4)' : '#FFFEFA') : theme.cardBg
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3 pb-2.5 border-b" style={{ borderColor: theme.border }}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-mono font-bold" style={{ color: theme.textSecondary }}>
+                            {String(idx + 1).padStart(2, '0')}.
+                          </span>
+                          <h3 className="font-bold text-sm tracking-tight" style={{ color: theme.textPrimary }}>
+                            {student.nama}
+                          </h3>
+                          {isUnsaved ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">
+                              unsaved
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                              saved ✓
+                            </span>
+                          )}
                         </div>
-                      ))}
+
+                        <button
+                          type="button"
+                          onClick={() => saveMentorComment(student)}
+                          disabled={student.saved || savingMentorCommentId === student.user_id}
+                          className="px-2.5 py-1 text-xs font-semibold rounded border transition-colors cursor-pointer disabled:opacity-40"
+                          style={{
+                            background: isUnsaved ? theme.textPrimary : theme.subtleBg,
+                            color: isUnsaved ? theme.cardBg : theme.textSecondary,
+                            borderColor: isUnsaved ? theme.textPrimary : theme.border,
+                            borderRadius: '4px'
+                          }}
+                        >
+                          {savingMentorCommentId === student.user_id ? t('topicNew.mentorCommentTab.saving') : t('topicNew.mentorCommentTab.save')}
+                        </button>
+                      </div>
+
+                      {/* Attendance 5-column Roster Grid */}
+                      <div className="grid grid-cols-5 gap-2 mb-3.5">
+                        {[
+                          { field: 'present', label: t('topicNew.mentorCommentTab.present') || 'Present', bg: '#EDF3EC', text: '#346538', border: '#D5E6D3' },
+                          { field: 'absent',  label: t('topicNew.mentorCommentTab.absent')  || 'Absent',  bg: '#FDEBEC', text: '#9F2F2D', border: '#F8C9CC' },
+                          { field: 'late',    label: t('topicNew.mentorCommentTab.late')    || 'Late',    bg: '#E1F3FE', text: '#1F6C9F', border: '#BDE3FC' },
+                          { field: 'sick',    label: t('topicNew.mentorCommentTab.sick')    || 'Sick',    bg: '#FBF3DB', text: '#956400', border: '#F5E6B3' },
+                          { field: 'excused', label: t('topicNew.mentorCommentTab.excused') || 'Excused', bg: '#F3E8FF', text: '#6B21A8', border: '#E9D5FF' }
+                        ].map(({ field, label, bg, text, border }) => (
+                          <div key={field} className="p-2 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '4px' }}>
+                            <label className="block text-[9px] font-mono font-bold uppercase tracking-wider mb-1 truncate text-center" style={{ color: theme.textSecondary }}>
+                              {label}
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={student[field]}
+                              onChange={(e) => updateMentorAttendance(student.user_id, field, e.target.value)}
+                              onFocus={(e) => e.target.select()}
+                              className="w-full py-1 text-xs text-center font-mono font-bold outline-none rounded border"
+                              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Comment Box */}
+                      <div className="relative">
+                        <textarea
+                          value={student.comment_text}
+                          onChange={(e) => updateMentorCommentText(student.user_id, e.target.value)}
+                          rows={4}
+                          maxLength={600}
+                          placeholder={t('topicNew.mentorCommentTab.commentPlaceholder') || 'Write your mentor comment for this student...'}
+                          className="w-full p-2.5 text-xs font-sans rounded border outline-none resize-y transition-colors"
+                          style={{
+                            borderColor: theme.border,
+                            borderRadius: '4px',
+                            background: theme.inputBg,
+                            color: theme.textPrimary,
+                            lineHeight: 1.5
+                          }}
+                        />
+                        <div className="text-[10px] font-mono text-right mt-1" style={{ color: theme.textSecondary }}>
+                          {(student.comment_text || '').length}/600
+                        </div>
+                      </div>
                     </div>
-                    <textarea
-                      value={student.comment_text}
-                      onChange={(e) => updateMentorCommentText(student.user_id, e.target.value)}
-                      rows={6}
-                      maxLength={600}
-                      placeholder={t('topicNew.mentorCommentTab.commentPlaceholder')}
-                      className="w-full px-3 py-2 text-sm focus:outline-none resize-y"
-                      style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                    />
-                    <p className="text-xs text-right mt-1" style={{ color: theme.textSecondary }}>{(student.comment_text || '').length}/600</p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* ── DAILY ATTENDANCE TAB ─────────────────────────────────── */}
+        {/* ── DAILY ATTENDANCE TAB (MINIMALIST-UI) ─────────────────────────────────── */}
         {activeTab === 'attendance' && isWaliKelas && (
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-1">
-              <FontAwesomeIcon icon={faCalendarCheck} style={{ color: theme.blueText }} />
-              <h2 className="text-base font-semibold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
-                {t('topicNew.tabs.dailyAttendance') || 'Daily Attendance'}
-              </h2>
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: theme.blueBg, color: theme.blueText }}>
-                {t('topicNew.mentorCommentTab.dailyAttendance.beta') || 'Beta'}
-              </span>
-            </div>
-            <p className="text-sm mb-5" style={{ color: theme.textSecondary }}>
-              Catat kehadiran harian siswa di kelas Anda. Pilih tahun ajaran dan kelas untuk mulai mencatat.
-            </p>
-
-            {/* Filter row: Year → Kelas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="p-6 space-y-5" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
+            {/* Header */}
+            <div className="pb-4 border-b flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ borderColor: theme.border }}>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>1. Tahun Ajaran</label>
-                <select
-                  value={mentorYear}
-                  onChange={(e) => setMentorYear(e.target.value)}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                >
-                  <option value="">Pilih Tahun Ajaran</option>
-                  {yearOptions.map(y => (
-                    <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1" style={{ color: theme.textSecondary }}>
+                  <span>[HOMEROOM]</span>
+                  <span>/</span>
+                  <span className="font-semibold" style={{ color: theme.blueText }}>[DAILY ATTENDANCE]</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold tracking-tight" style={{ color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                    {t('topicNew.tabs.dailyAttendance') || 'Daily Attendance Roster'}
+                  </h2>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                    {t('topicNew.mentorCommentTab.dailyAttendance.beta') || 'Beta'}
+                  </span>
+                </div>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+                  {t('topicNew.mentorCommentTab.dailyAttendance.subtitle') || 'Record daily student attendance for your class. Select academic year and class to begin.'}
+                </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textSecondary }}>2. {t('topicNew.mentorCommentTab.classLabel')}</label>
-                <select
-                  value={mentorKelas}
-                  onChange={(e) => handleMentorKelasChange(e.target.value)}
-                  disabled={!mentorYear}
-                  className="w-full px-3 py-2 text-sm focus:outline-none"
-                  style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, opacity: !mentorYear ? 0.5 : 1 }}
-                >
-                  <option value="">{!mentorYear ? 'Pilih tahun ajaran dulu' : t('topicNew.mentorCommentTab.selectClass')}</option>
-                  {mentorKelasOptions.map(k => (
-                    <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
-                  ))}
-                </select>
+            </div>
+
+            {/* Filter Bento Toolbar */}
+            <div className="p-3.5 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    1. {t('topicNew.mentorCommentTab.dailyAttendance.yearLabel') || t('topicNew.mentorCommentTab.yearLabel') || 'Academic Year'}
+                  </label>
+                  <select
+                    value={mentorYear}
+                    onChange={(e) => setMentorYear(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  >
+                    <option value="">{t('topicNew.mentorCommentTab.dailyAttendance.selectYear') || t('topicNew.mentorCommentTab.selectYear') || 'Select Academic Year'}</option>
+                    {yearOptions.map(y => (
+                      <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                    2. {t('topicNew.mentorCommentTab.classLabel') || 'Class'}
+                  </label>
+                  <select
+                    value={mentorKelas}
+                    onChange={(e) => handleMentorKelasChange(e.target.value)}
+                    disabled={!mentorYear}
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                    style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px', opacity: !mentorYear ? 0.5 : 1 }}
+                  >
+                    <option value="">{!mentorYear ? (t('topicNew.mentorCommentTab.dailyAttendance.selectYearFirst') || t('topicNew.mentorCommentTab.selectYearFirst') || 'Select academic year first') : t('topicNew.mentorCommentTab.selectClass')}</option>
+                    {mentorKelasOptions.map(k => (
+                      <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
             {!mentorKelas ? (
-              <div className="text-center py-12 text-sm" style={{ color: theme.textSecondary }}>
-                {t('topicNew.mentorCommentTab.dailyAttendance.selectClassFirst') || 'Select a class to view attendance.'}
+              <div className="p-12 text-center border border-dashed rounded" style={{ borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                <FontAwesomeIcon icon={faCalendarCheck} className="text-2xl mb-2 opacity-30" />
+                <p className="text-xs font-mono uppercase tracking-wider">{t('topicNew.mentorCommentTab.dailyAttendance.selectClassFirst') || 'Select a class to view attendance roster.'}</p>
               </div>
             ) : (
-              <div>
-                {/* Date navigation */}
-                <div className="flex items-center gap-2 mb-4 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const d = new Date(attendanceDate); d.setDate(d.getDate() - 1)
-                      setAttendanceDate(d.toLocaleDateString('en-CA'))
-                    }}
-                    className="px-3 py-1.5 text-sm"
-                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, cursor: 'pointer' }}
-                  >{t('topicNew.mentorCommentTab.dailyAttendance.yesterday') || '← Yesterday'}</button>
+              <div className="space-y-4">
+                {/* Date Navigation & Actions Toolbar */}
+                <div className="p-3 rounded border flex flex-col md:flex-row items-center justify-between gap-3" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+                  {/* Date Controls */}
+                  <div className="flex items-center gap-1.5 flex-wrap w-full md:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date(attendanceDate); d.setDate(d.getDate() - 1)
+                        setAttendanceDate(d.toLocaleDateString('en-CA'))
+                      }}
+                      className="px-2.5 py-1.5 text-xs font-mono rounded border transition-colors cursor-pointer"
+                      style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                    >
+                      {t('topicNew.mentorCommentTab.dailyAttendance.yesterday') || '← Yesterday'}
+                    </button>
 
-                  <input
-                    type="date"
-                    value={attendanceDate}
-                    onChange={e => setAttendanceDate(e.target.value)}
-                    className="px-3 py-1.5 text-sm"
-                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody }}
-                  />
+                    <input
+                      type="date"
+                      value={attendanceDate}
+                      onChange={e => setAttendanceDate(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none font-bold"
+                      style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                    />
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const d = new Date(attendanceDate); d.setDate(d.getDate() + 1)
-                      setAttendanceDate(d.toLocaleDateString('en-CA'))
-                    }}
-                    className="px-3 py-1.5 text-sm"
-                    style={{ border: `1px solid ${theme.border}`, borderRadius: '6px', background: theme.inputBg, color: theme.textBody, cursor: 'pointer' }}
-                  >{t('topicNew.mentorCommentTab.dailyAttendance.tomorrow') || 'Tomorrow →'}</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date(attendanceDate); d.setDate(d.getDate() + 1)
+                        setAttendanceDate(d.toLocaleDateString('en-CA'))
+                      }}
+                      className="px-2.5 py-1.5 text-xs font-mono rounded border transition-colors cursor-pointer"
+                      style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                    >
+                      {t('topicNew.mentorCommentTab.dailyAttendance.tomorrow') || 'Tomorrow →'}
+                    </button>
+                  </div>
 
-                  <div className="flex gap-2 ml-auto">
+                  {/* Summary Metric Chips & Quick Action Buttons */}
+                  <div className="flex items-center gap-2 flex-wrap justify-end w-full md:w-auto">
                     <button
                       type="button"
                       onClick={clearAttendance}
                       disabled={attendanceStudents.length === 0 || loadingAttendance || Object.keys(attendanceRecords).length === 0}
-                      className="px-3 py-1.5 text-sm font-medium"
+                      className="px-3 py-1.5 text-xs font-semibold rounded border transition-colors cursor-pointer disabled:opacity-40"
                       style={{
-                        border: `1px solid ${theme.border}`, borderRadius: '6px',
-                        background: theme.redBg, color: theme.redText, cursor: 'pointer',
-                        opacity: (attendanceStudents.length === 0 || Object.keys(attendanceRecords).length === 0) ? 0.4 : 1
+                        background: theme.redBg,
+                        borderColor: isDark ? 'rgba(220, 133, 133, 0.25)' : '#F8C9CC',
+                        color: theme.redText,
+                        borderRadius: '4px'
                       }}
                     >
                       {t('topicNew.mentorCommentTab.dailyAttendance.clearData') || 'Clear Date'}
                     </button>
+
                     <button
                       type="button"
                       onClick={markAllHadir}
                       disabled={attendanceStudents.length === 0 || loadingAttendance}
-                      className="px-3 py-1.5 text-sm font-medium"
+                      className="px-3 py-1.5 text-xs font-semibold rounded transition-all cursor-pointer disabled:opacity-40"
                       style={{
-                        border: `1px solid ${theme.border}`, borderRadius: '6px',
-                        background: theme.greenBg, color: theme.greenText, cursor: 'pointer',
-                        opacity: attendanceStudents.length === 0 ? 0.5 : 1
+                        background: theme.textPrimary,
+                        color: theme.cardBg,
+                        borderRadius: '4px'
                       }}
                     >
                       {t('topicNew.mentorCommentTab.dailyAttendance.markAllPresent') || '✓ All Present'}
@@ -7585,96 +7889,105 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </div>
                 </div>
 
-                {/* Student attendance table */}
+                {/* Student Attendance Table */}
                 {loadingAttendance ? (
-                  <div className="text-center py-6" style={{ color: theme.textSecondary }}>
-                    <FontAwesomeIcon icon={faSpinner} spin className="mr-2" />
-                    {t('topicNew.mentorCommentTab.dailyAttendance.loading') || 'Loading attendance data...'}
+                  <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                    <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2" />
+                    <p className="text-xs font-mono">{t('topicNew.mentorCommentTab.dailyAttendance.loading') || 'LOADING ATTENDANCE DATA...'}</p>
                   </div>
                 ) : attendanceStudents.length === 0 ? (
-                  <div className="text-center py-6 text-sm" style={{ color: theme.textSecondary }}>
-                    {t('topicNew.mentorCommentTab.dailyAttendance.noStudents') || 'No students in this class.'}
+                  <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                    <p className="text-xs font-mono">{t('topicNew.mentorCommentTab.dailyAttendance.noStudents') || 'NO STUDENTS IN THIS CLASS.'}</p>
                   </div>
                 ) : (
-                  <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-                          <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
-                            {t('topicNew.mentorCommentTab.dailyAttendance.colNo') || '#'}
-                          </th>
-                          <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
-                            {t('topicNew.mentorCommentTab.dailyAttendance.colName') || 'Student Name'}
-                          </th>
-                          <th className="py-2 px-3 text-center text-xs font-semibold" style={{ color: theme.textSecondary }}>
-                            {t('topicNew.mentorCommentTab.dailyAttendance.colStatus') || 'Status'}
-                          </th>
-                          <th className="py-2 px-3 text-left text-xs font-semibold" style={{ color: theme.textSecondary }}>
-                            {t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'Note'}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {attendanceStudents.map((student, idx) => {
-                          const rec = attendanceRecords[student.detail_siswa_id]
-                          const currentStatus = rec?.status || ''
-                          const isSaving = savingAttendanceId === student.detail_siswa_id
-                          const statusOptions = [
-                            { value: 'hadir',        label: t('topicNew.mentorCommentTab.dailyAttendance.statusHadir')        || 'Present',     bg: '#dcfce7', color: '#16a34a' },
-                            { value: 'tidak_hadir',  label: t('topicNew.mentorCommentTab.dailyAttendance.statusTidakHadir')  || 'Absent',      bg: '#fee2e2', color: '#dc2626' },
-                            { value: 'ijin',         label: t('topicNew.mentorCommentTab.dailyAttendance.statusIjin')         || 'Excused',     bg: '#fef3c7', color: '#d97706' },
-                            { value: 'terlambat',    label: t('topicNew.mentorCommentTab.dailyAttendance.statusTerlambat')    || 'Late',        bg: '#e0e7ff', color: '#4338ca' },
-                            { value: 'pulang_cepat', label: t('topicNew.mentorCommentTab.dailyAttendance.statusPulangCepat') || 'Early Leave',  bg: '#f3e8ff', color: '#7c3aed' },
-                          ]
-                          return (
-                            <tr key={student.detail_siswa_id} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                              <td className="py-2.5 px-3 text-xs font-mono" style={{ color: theme.textSecondary }}>{idx + 1}</td>
-                              <td className="py-2.5 px-3 font-medium" style={{ color: theme.textPrimary }}>
-                                {student.nama}
-                                {isSaving && <FontAwesomeIcon icon={faSpinner} spin className="ml-2 text-xs" style={{ color: theme.textSecondary }} />}
-                              </td>
-                              <td className="py-2 px-3">
-                                <div className="flex flex-wrap gap-1 justify-center">
-                                  {statusOptions.map(opt => (
-                                    <button
-                                      key={opt.value}
-                                      type="button"
-                                      disabled={isSaving}
-                                      onClick={() => saveSingleAttendance(student.detail_siswa_id, opt.value, rec?.keterangan || '')}
-                                      className="px-2 py-0.5 text-xs font-medium rounded-full transition-all"
-                                      style={{
-                                        background: currentStatus === opt.value ? opt.bg : theme.subtleBg,
-                                        color: currentStatus === opt.value ? opt.color : theme.textSecondary,
-                                        border: `1px solid ${currentStatus === opt.value ? opt.color : theme.border}`,
-                                        fontWeight: currentStatus === opt.value ? 700 : 400,
-                                        cursor: isSaving ? 'not-allowed' : 'pointer',
-                                        opacity: isSaving ? 0.6 : 1,
-                                      }}
-                                    >{opt.label}</button>
-                                  ))}
-                                </div>
-                              </td>
-                              <td className="py-2 px-3">
-                                <input
-                                  type="text"
-                                  value={rec?.keterangan || ''}
-                                  placeholder={t('topicNew.mentorCommentTab.dailyAttendance.notePlaceholder') || 'Optional...'}
-                                  onChange={e => setAttendanceRecords(prev => ({
-                                    ...prev,
-                                    [student.detail_siswa_id]: { ...(prev[student.detail_siswa_id] || {}), keterangan: e.target.value }
-                                  }))}
-                                  onBlur={e => {
-                                    if (currentStatus) saveSingleAttendance(student.detail_siswa_id, currentStatus, e.target.value)
-                                  }}
-                                  className="w-full px-2 py-1 text-xs focus:outline-none"
-                                  style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textBody, minWidth: '100px' }}
-                                />
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="rounded border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b text-[10px] font-mono font-bold uppercase tracking-wider" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                            <th className="py-3 px-4 w-12">{t('topicNew.mentorCommentTab.dailyAttendance.colNo') || '#'}</th>
+                            <th className="py-3 px-4">{t('topicNew.mentorCommentTab.dailyAttendance.colName') || 'STUDENT NAME'}</th>
+                            <th className="py-3 px-4 text-center">{t('topicNew.mentorCommentTab.dailyAttendance.colStatus') || 'STATUS'}</th>
+                            <th className="py-3 px-4">{t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'NOTE / DETAILS'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                          {attendanceStudents.map((student, idx) => {
+                            const rec = attendanceRecords[student.detail_siswa_id]
+                            const currentStatus = rec?.status || ''
+                            const isSaving = savingAttendanceId === student.detail_siswa_id
+                            const statusOptions = [
+                              { value: 'hadir',        label: t('topicNew.mentorCommentTab.dailyAttendance.statusHadir')        || 'Present',     bg: '#EDF3EC', color: '#346538', border: '#D5E6D3' },
+                              { value: 'tidak_hadir',  label: t('topicNew.mentorCommentTab.dailyAttendance.statusTidakHadir')  || 'Absent',      bg: '#FDEBEC', color: '#9F2F2D', border: '#F8C9CC' },
+                              { value: 'ijin',         label: t('topicNew.mentorCommentTab.dailyAttendance.statusIjin')         || 'Excused',     bg: '#FBF3DB', color: '#956400', border: '#F5E6B3' },
+                              { value: 'terlambat',    label: t('topicNew.mentorCommentTab.dailyAttendance.statusTerlambat')    || 'Late',        bg: '#E1F3FE', color: '#1F6C9F', border: '#BDE3FC' },
+                              { value: 'pulang_cepat', label: t('topicNew.mentorCommentTab.dailyAttendance.statusPulangCepat') || 'Early Leave',  bg: '#F3E8FF', color: '#6B21A8', border: '#E9D5FF' },
+                            ]
+
+                            return (
+                              <tr
+                                key={student.detail_siswa_id}
+                                className="transition-colors"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <td className="py-3 px-4 font-mono text-[11px]" style={{ color: theme.textSecondary }}>
+                                  {String(idx + 1).padStart(2, '0')}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="font-semibold flex items-center gap-2" style={{ color: theme.textPrimary }}>
+                                    <span>{student.nama}</span>
+                                    {isSaving && <FontAwesomeIcon icon={faSpinner} spin className="text-[10px]" style={{ color: theme.blueText }} />}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex flex-wrap gap-1 justify-center">
+                                    {statusOptions.map(opt => {
+                                      const isSelected = currentStatus === opt.value
+                                      return (
+                                        <button
+                                          key={opt.value}
+                                          type="button"
+                                          disabled={isSaving}
+                                          onClick={() => saveSingleAttendance(student.detail_siswa_id, opt.value, rec?.keterangan || '')}
+                                          className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
+                                          style={{
+                                            background: isSelected ? opt.bg : theme.subtleBg,
+                                            color: isSelected ? opt.color : theme.textSecondary,
+                                            border: `1px solid ${isSelected ? opt.border : theme.border}`,
+                                            borderRadius: '4px',
+                                            opacity: isSaving ? 0.6 : 1,
+                                          }}
+                                        >
+                                          {opt.label}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <input
+                                    type="text"
+                                    value={rec?.keterangan || ''}
+                                    placeholder={t('topicNew.mentorCommentTab.dailyAttendance.notePlaceholder') || 'Optional note...'}
+                                    onChange={e => setAttendanceRecords(prev => ({
+                                      ...prev,
+                                      [student.detail_siswa_id]: { ...(prev[student.detail_siswa_id] || {}), keterangan: e.target.value }
+                                    }))}
+                                    onBlur={e => {
+                                      if (currentStatus) saveSingleAttendance(student.detail_siswa_id, currentStatus, e.target.value)
+                                    }}
+                                    className="w-full px-2.5 py-1 text-xs font-mono rounded border outline-none transition-colors"
+                                    style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textPrimary, minWidth: '120px' }}
+                                  />
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -10207,7 +10520,7 @@ ${refineOriginal}`
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Academic Year / Tahun Ajaran
+              {t('topicNew.fields.academicYear') || 'Academic Year'}
             </label>
             <select
               value={woDocxYearId}
@@ -10216,7 +10529,7 @@ ${refineOriginal}`
               }}
               className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Academic Years</option>
+              <option value="">{t('topicNew.weeklyPlanTab.allYears') || 'All Academic Years'}</option>
               {yearOptions.map(y => (
                 <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
               ))}
@@ -10225,7 +10538,7 @@ ${refineOriginal}`
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Class / Kelas <span className="text-red-500">*</span>
+              {t('topicNew.fields.class') || 'Class'} <span className="text-red-500">*</span>
             </label>
             <select
               value={woDocxKelasId}

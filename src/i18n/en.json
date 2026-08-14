@@ -739,7 +739,8 @@
     }
   },
   "topicNew": {
-    "title": "IB MYP Unit Planner",
+    "title": "Unit Management",
+    "subtitle": "Manage your IB unit planner topics and units",
     "subMenu": {
       "overview": "Overview",
       "weeklyPlan": "Weekly Plan",
@@ -860,6 +861,9 @@
       "noClassesAvailable": "No classes available for this subject",
       "loadingClasses": "Loading classes...",
       "loading": "Loading...",
+      "academicYear": "Academic Year",
+      "selectAcademicYear": "Select Academic Year",
+      "selectYearFirst": "Select academic year first",
       "chooseTopic": "-- Choose a Topic --",
       "selectMypYear": "Select MYP Year...",
       "selectSemester": "Select Semester...",
@@ -928,12 +932,22 @@
       "downloadAllButton": "Download All Reports (ZIP)",
       "infoText": "Select academic year, semester, class, and student then click \"Preview Report\" to view and print the student progress report."
     },
+    "assessmentTab": {
+      "title": "Assessment Management",
+      "subtitle": "Manage formative & summative assessments, assign IB criteria, and record student grades."
+    },
     "mentorCommentTab": {
       "title": "Mentor Comment",
       "subtitle": "Write semester homeroom comments for each student in your class.",
-      "classLabel": "1. Class",
+      "yearLabel": "Academic Year",
+      "selectYear": "Select Academic Year",
+      "selectYearFirst": "Select academic year first",
+      "subjectLabel": "Subject",
+      "selectSubject": "Select Subject",
+      "selectSubjectFirst": "Select subject first",
+      "classLabel": "Class",
       "selectClass": "-- Select Class --",
-      "semesterLabel": "2. Semester",
+      "semesterLabel": "Semester",
       "saveAll": "Save All",
       "students": "student",
       "studentsPlural": "students",
@@ -982,6 +996,11 @@
       "dailyAttendance": {
         "title": "Daily Attendance",
         "beta": "Beta",
+        "subtitle": "Record daily student attendance for your class. Select academic year and class to begin.",
+        "yearLabel": "Academic Year",
+        "selectYear": "Select Academic Year",
+        "selectYearFirst": "Select academic year first",
+        "selectClassFirst": "Select a class to view attendance.",
         "hide": "▲ Hide",
         "show": "▼ Show",
         "yesterday": "← Yesterday",

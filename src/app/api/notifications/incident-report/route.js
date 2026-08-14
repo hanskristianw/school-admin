@@ -281,7 +281,8 @@ export async function POST(request) {
         ? `${followupInfo.user.user_nama_depan || ''} ${followupInfo.user.user_nama_belakang || ''}`.trim() 
         : (body.handlerName || 'Staff/Counselor')
 
-      const statusUpper = (body.resultingStatus || body.resulting_status || followupInfo?.resulting_status || incident.status || 'ON_PROGRESS').toUpperCase()
+      const rawStatus = body.resultingStatus || body.resulting_status || followupInfo?.resulting_status || incident.status || 'IN_PROGRESS'
+      const statusUpper = rawStatus.replace(/_/g, ' ').toUpperCase().replace('ON PROGRESS', 'IN PROGRESS')
 
       subject = `[INCIDENT FOLLOW-UP UPDATE] ${incident.title} - ${studentName}`
       

@@ -4,10 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useI18n } from '@/lib/i18n'
 import Modal from '@/components/ui/modal'
 import NotificationModal from '@/components/ui/notification-modal'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -20,7 +17,6 @@ import {
   faCalendar,
   faUser,
   faEye,
-  faEdit,
   faTrash,
   faSliders,
   faSpinner,
@@ -28,27 +24,19 @@ import {
   faHourglassHalf,
   faExternalLinkAlt,
   faBuilding,
-  faArrowsLeftRight,
-  faFileText,
-  faLayerGroup,
   faVideo,
   faFilm,
-  faListCheck,
-  faCamera,
   faCheckDouble,
   faTimesCircle,
-  faClipboardCheck
+  faLocationDot,
+  faPaperclip,
+  faImage
 } from '@fortawesome/free-solid-svg-icons'
 
 export default function IncidentReportListPage() {
   const router = useRouter()
   const { theme, isDark } = useTheme()
-
-  // Dynamic Styles tied to useTheme() (100% Light & Dark Mode Compatible)
-  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
-  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
-  const btnPrimaryStyle = { background: theme.textPrimary, color: isDark ? '#18171A' : '#FFFFFF', border: 'none' }
-  const btnSecondaryStyle = { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }
+  const { t } = useI18n()
 
   // Main Page Tabs: 'incidents' | 'cctv'
   const [activeTab, setActiveTab] = useState('incidents')
@@ -69,9 +57,12 @@ export default function IncidentReportListPage() {
   const [cctvSubmitting, setCctvSubmitting] = useState(false)
   const [cctvRequests, setCctvRequests] = useState([])
   const [cctvSearchQuery, setCctvSearchQuery] = useState('')
+  const [cctvStatusFilter, setCctvStatusFilter] = useState('all')
   
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState('all')
 
   // Form Modal State
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -116,6 +107,12 @@ export default function IncidentReportListPage() {
     reason: ''
   })
 
+  // Detail Modal State
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [selectedReportDetail, setSelectedReportDetail] = useState(null)
+  const [detailFollowups, setDetailFollowups] = useState([])
+  const [loadingFollowups, setLoadingFollowups] = useState(false)
+
   // Fetch initial logged in user info
   useEffect(() => {
     try {
@@ -145,24 +142,23 @@ export default function IncidentReportListPage() {
     try {
       setLoading(true)
 
-      // Fetch School Units
+      // 1. Fetch School Units
       const { data: unitsData } = await supabase
         .from('unit')
         .select('*')
         .eq('is_school', true)
         .order('unit_name')
       setUnits(unitsData || [])
-
       const unitMap = new Map((unitsData || []).map(u => [u.unit_id, u.unit_name]))
 
-      // Fetch Room Master Data
+      // 2. Fetch Room Master Data
       const { data: rData } = await supabase
         .from('room')
         .select('room_id, room_name, unit_id')
         .order('room_name')
       setRoomsList(rData || [])
 
-      // Fetch Students strictly
+      // 3. Fetch Students
       const { data: studentRoles } = await supabase
         .from('role')
         .select('role_id, role_name, is_student')
@@ -172,7 +168,7 @@ export default function IncidentReportListPage() {
 
       let studentsQuery = supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_unit_id, role:user_role_id(role_id, role_name, is_student)')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_unit_id, user_role_id')
         .order('user_nama_depan')
 
       if (studentRoleIds.length > 0) {
@@ -180,18 +176,13 @@ export default function IncidentReportListPage() {
       }
 
       const { data: rawStudents } = await studentsQuery
-      const formattedStudents = (rawStudents || [])
-        .filter(s =>
-          s.role?.is_student === true ||
-          (s.role?.role_name || '').toLowerCase() === 'student' ||
-          (s.role?.role_name || '').toLowerCase() === 'siswa'
-        )
-        .map(s => ({
-          ...s,
-          unit: { unit_id: s.user_unit_id, unit_name: unitMap.get(s.user_unit_id) || 'Unit' }
-        }))
+      const formattedStudents = (rawStudents || []).map(s => ({
+        ...s,
+        unit: { unit_id: s.user_unit_id, unit_name: unitMap.get(s.user_unit_id) || 'Unit' }
+      }))
       setStudents(formattedStudents)
 
+      // 4. Fetch Reports
       const rawKrId = typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null
       const targetUserId = overrideUserId || currentUser?.userID || currentUser?.user_id || currentUser?.id || rawKrId
       
@@ -213,7 +204,7 @@ export default function IncidentReportListPage() {
       if (repErr) throw repErr
       setReports(reportsData || [])
 
-      // Fetch CCTV Requests for this user
+      // 5. Fetch CCTV Requests for this user
       try {
         let cctvQuery = supabase
           .from('cctv_footage_requests')
@@ -227,7 +218,7 @@ export default function IncidentReportListPage() {
         const { data: cctvData } = await cctvQuery
         setCctvRequests(cctvData || [])
       } catch (cctvErr) {
-        console.warn('CCTV requests table not created yet:', cctvErr.message)
+        console.warn('CCTV requests query note:', cctvErr.message)
       }
 
     } catch (err) {
@@ -247,6 +238,21 @@ export default function IncidentReportListPage() {
     }
   }, [currentUser])
 
+  // Summary Metrics
+  const metrics = useMemo(() => {
+    let waiting = 0
+    let onProgress = 0
+    let completed = 0
+
+    reports.forEach(r => {
+      if (r.status === 'waiting') waiting++
+      else if (r.status === 'on_progress' || r.status === 'in_progress') onProgress++
+      else if (r.status === 'completed') completed++
+    })
+
+    return { total: reports.length, waiting, onProgress, completed }
+  }, [reports])
+
   // Filtered Students for Autocomplete
   const filteredStudentsForSearch = useMemo(() => {
     const q = studentSearchText.trim().toLowerCase()
@@ -259,29 +265,89 @@ export default function IncidentReportListPage() {
 
   // Filtered Reports Table
   const filteredReports = useMemo(() => {
-    if (!searchQuery.trim()) return reports
-    const q = searchQuery.toLowerCase()
     return reports.filter(r => {
-      const titleMatch = (r.title || '').toLowerCase().includes(q)
-      const recordMatch = (r.incident_record || '').toLowerCase().includes(q)
-      const studentName = `${r.student?.user_nama_depan || ''} ${r.student?.user_nama_belakang || ''}`.toLowerCase()
-      const studentMatch = studentName.includes(q)
-      const incNumMatch = (r.incident_number || '').toLowerCase().includes(q)
-      return titleMatch || recordMatch || studentMatch || incNumMatch
+      if (selectedStatusFilter !== 'all') {
+        if (selectedStatusFilter === 'on_progress' || selectedStatusFilter === 'in_progress') {
+          if (r.status !== 'on_progress' && r.status !== 'in_progress') return false
+        } else if (r.status !== selectedStatusFilter) {
+          return false
+        }
+      }
+      if (selectedLevelFilter !== 'all' && r.incident_record !== selectedLevelFilter) return false
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const titleMatch = (r.title || '').toLowerCase().includes(q)
+        const recordMatch = (r.incident_record || '').toLowerCase().includes(q)
+        const studentName = `${r.student?.user_nama_depan || ''} ${r.student?.user_nama_belakang || ''}`.toLowerCase()
+        const studentMatch = studentName.includes(q)
+        const incNumMatch = (r.incident_number || '').toLowerCase().includes(q)
+        return titleMatch || recordMatch || studentMatch || incNumMatch
+      }
+      return true
     })
-  }, [reports, searchQuery])
+  }, [reports, selectedStatusFilter, selectedLevelFilter, searchQuery])
 
   // Filtered CCTV Requests Table
   const filteredCctvRequests = useMemo(() => {
-    if (!cctvSearchQuery.trim()) return cctvRequests
-    const q = cctvSearchQuery.toLowerCase()
     return cctvRequests.filter(r => {
-      const codeMatch = (r.request_number || '').toLowerCase().includes(q)
-      const roomMatch = (r.room_name || '').toLowerCase().includes(q)
-      const reasonMatch = (r.reason || '').toLowerCase().includes(q)
-      return codeMatch || roomMatch || reasonMatch
+      if (cctvStatusFilter !== 'all' && r.status !== cctvStatusFilter) return false
+      if (cctvSearchQuery.trim()) {
+        const q = cctvSearchQuery.toLowerCase()
+        const codeMatch = (r.request_number || '').toLowerCase().includes(q)
+        const roomMatch = (r.room_name || '').toLowerCase().includes(q)
+        const reasonMatch = (r.reason || '').toLowerCase().includes(q)
+        return codeMatch || roomMatch || reasonMatch
+      }
+      return true
     })
-  }, [cctvRequests, cctvSearchQuery])
+  }, [cctvRequests, cctvStatusFilter, cctvSearchQuery])
+
+  // Minimalist Spot Pastel Status Badges
+  const getLevelBadge = (level) => {
+    switch (level) {
+      case 'Level 1':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]">Level 1</span>
+      case 'Level 2':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">Level 2</span>
+      case 'Level 3':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-[#FDF0E1] text-[#A25A1E] border border-[#F8DCB8]">Level 3</span>
+      case 'Zero Tolerance':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-[#FDEBEC] text-[#9F2F2D] border border-[#F8C9CC]">Zero Tolerance</span>
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>{level || 'Level 1'}</span>
+    }
+  }
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'waiting':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]"><FontAwesomeIcon icon={faClock} className="text-[9px]" /> Waiting</span>
+      case 'on_progress':
+      case 'in_progress':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]"><FontAwesomeIcon icon={faHourglassHalf} className="text-[9px]" /> In Progress</span>
+      case 'completed':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]"><FontAwesomeIcon icon={faCheckCircle} className="text-[9px]" /> Completed</span>
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>{status}</span>
+    }
+  }
+
+  const getCctvStatusBadge = (status) => {
+    switch ((status || 'pending').toLowerCase()) {
+      case 'pending':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold tracking-wider bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]"><FontAwesomeIcon icon={faClock} className="text-[9px]" /> Pending</span>
+      case 'approved':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold tracking-wider bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]"><FontAwesomeIcon icon={faCheckCircle} className="text-[9px]" /> Approved</span>
+      case 'in_progress':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold tracking-wider bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF]"><FontAwesomeIcon icon={faHourglassHalf} className="text-[9px]" /> In Progress</span>
+      case 'completed':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold tracking-wider bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]"><FontAwesomeIcon icon={faCheckDouble} className="text-[9px]" /> Completed</span>
+      case 'rejected':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold tracking-wider bg-[#FDEBEC] text-[#9F2F2D] border border-[#F8C9CC]"><FontAwesomeIcon icon={faTimesCircle} className="text-[9px]" /> Rejected</span>
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] font-bold tracking-wider" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>{status}</span>
+    }
+  }
 
   // Handle Open Create Modal
   const handleOpenCreateModal = () => {
@@ -381,7 +447,7 @@ export default function IncidentReportListPage() {
       }
 
       setShowCctvModal(false)
-      setNotif({ isOpen: true, title: 'Request Submitted', message: `CCTV Footage Request (${reqNumber}) submitted successfully! Notifications sent.`, type: 'success' })
+      setNotif({ isOpen: true, title: 'Request Submitted', message: `CCTV Footage Request (${reqNumber}) submitted successfully!`, type: 'success' })
       setActiveTab('cctv')
       fetchData()
     } catch (err) {
@@ -516,7 +582,7 @@ export default function IncidentReportListPage() {
       setNotif({
         isOpen: true,
         title: 'Success',
-        message: `Incident report ${incidentNum} created successfully! Notifications sent to unit recipients.`,
+        message: `Incident report ${incidentNum} created successfully! Notifications sent.`,
         type: 'success'
       })
       setShowCreateModal(false)
@@ -531,12 +597,6 @@ export default function IncidentReportListPage() {
     }
   }
 
-  // Detail Modal State
-  const [showDetailModal, setShowDetailModal] = useState(false)
-  const [selectedReportDetail, setSelectedReportDetail] = useState(null)
-  const [detailFollowups, setDetailFollowups] = useState([])
-  const [loadingFollowups, setLoadingFollowups] = useState(false)
-
   // Open Detail Modal
   const handleOpenDetailModal = async (report) => {
     setSelectedReportDetail(report)
@@ -545,7 +605,7 @@ export default function IncidentReportListPage() {
     try {
       const { data, error } = await supabase
         .from('incident_followups')
-        .select('*, user:user_id(user_id, user_nama_depan, user_nama_belakang)')
+        .select('*, user:users!user_id(user_id, user_nama_depan, user_nama_belakang)')
         .eq('incident_id', report.id)
         .order('created_at', { ascending: true })
 
@@ -589,383 +649,414 @@ export default function IncidentReportListPage() {
     }
   }
 
-  // Helper badge color for Level
-  const getLevelBadge = (level) => {
-    switch (level) {
-      case 'Level 1':
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.greenBg, color: theme.greenText }}>Level 1</span>
-      case 'Level 2':
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.yellowBg, color: theme.yellowText }}>Level 2</span>
-      case 'Level 3':
-      case 'Zero Tolerance':
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.redBg, color: theme.redText }}>{level}</span>
-      default:
-        return <span className="inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.subtleBg, color: theme.textSecondary }}>{level || 'Level 1'}</span>
-    }
-  }
-
-  // Helper badge color for status
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'waiting':
-        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.yellowBg, color: theme.yellowText }}><FontAwesomeIcon icon={faClock} className="text-[9px]" /> Waiting</span>
-      case 'on_progress':
-        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.blueBg, color: theme.blueText }}><FontAwesomeIcon icon={faHourglassHalf} className="text-[9px]" /> On Progress</span>
-      case 'completed':
-        return <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.greenBg, color: theme.greenText }}><FontAwesomeIcon icon={faCheckCircle} className="text-[9px]" /> Completed</span>
-      default:
-        return <span className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.subtleBg, color: theme.textSecondary }}>{status}</span>
-    }
-  }
-
-  // Helper badge for CCTV Status (Minimalist UI Wash-out Pastels)
-  const getCctvStatusBadge = (status) => {
-    switch ((status || 'pending').toLowerCase()) {
-      case 'pending':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3]"><FontAwesomeIcon icon={faClock} className="text-[9px]" /> Pending</span>
-      case 'approved':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]"><FontAwesomeIcon icon={faCheckCircle} className="text-[9px]" /> Approved</span>
-      case 'in_progress':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF]"><FontAwesomeIcon icon={faHourglassHalf} className="text-[9px]" /> In Progress</span>
-      case 'completed':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]"><FontAwesomeIcon icon={faCheckDouble} className="text-[9px]" /> Completed</span>
-      case 'rejected':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#FDEBEC] text-[#9F2F2D] border border-[#F8C9CC]"><FontAwesomeIcon icon={faTimesCircle} className="text-[9px]" /> Rejected</span>
-      default:
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#F7F6F3] text-[#787774] border border-[#EAEAEA]">{status}</span>
-    }
-  }
-
   return (
-    <div className="min-h-screen p-4 sm:p-6 md:p-8 font-sans antialiased space-y-6" style={{ background: theme.pageBg, color: theme.textPrimary }}>
-
-      {/* ─── Minimalist Editorial Header ─── */}
+    <div 
+      className="min-h-screen p-4 sm:p-8 space-y-6"
+      style={{
+        background: theme.pageBg,
+        color: theme.textPrimary,
+        fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif"
+      }}
+    >
+      {/* Editorial Document Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b" style={{ borderColor: theme.border }}>
         <div>
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase mb-2" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-            <FontAwesomeIcon icon={faExclamationTriangle} className="text-xs" />
-            <span>Incident & Security Portal</span>
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1.5" style={{ color: theme.textSecondary }}>
+            <span>[WORKSPACE]</span>
+            <span>/</span>
+            <span>[PASTORAL CARE]</span>
+            <span>/</span>
+            <span className="font-semibold" style={{ color: theme.blueText }}>[INCIDENT REPORTS]</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: theme.textPrimary }}>
-            Student Incident & CCTV Requests
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: theme.textPrimary, letterSpacing: '-0.02em' }}>
+            Student Incident & Security Portal
           </h1>
-          <p className="text-xs sm:text-sm mt-1" style={{ color: theme.textSecondary }}>
-            Record, track, and manage student incident cases and CCTV footage requests.
+          <p className="text-xs mt-1" style={{ color: theme.textSecondary, lineHeight: '1.6' }}>
+            Record student disciplinary incidents, monitor resolution progress, and request CCTV footage reviews.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
           <button
             onClick={() => handleOpenCctvModal(null)}
-            className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold px-4 py-2.5 rounded-lg transition-all cursor-pointer shadow-sm bg-blue-600 hover:bg-blue-700 text-white active:scale-[0.98]"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded border transition-colors cursor-pointer"
+            style={{
+              background: theme.cardBg,
+              borderColor: theme.border,
+              color: theme.textPrimary,
+              borderRadius: '4px'
+            }}
           >
-            <FontAwesomeIcon icon={faVideo} className="text-xs text-white" />
-            <span>Submit CCTV Request</span>
+            <FontAwesomeIcon icon={faVideo} className="text-[10px]" />
+            <span>Request CCTV</span>
           </button>
 
           <button
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium px-4 py-2.5 rounded-lg transition-all cursor-pointer active:scale-[0.98]"
-            style={btnPrimaryStyle}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded transition-all cursor-pointer"
+            style={{
+              background: theme.textPrimary,
+              color: isDark ? '#111111' : '#FFFFFF',
+              borderRadius: '4px'
+            }}
           >
-            <FontAwesomeIcon icon={faPlus} className="text-xs" />
+            <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
             <span>New Incident Report</span>
           </button>
         </div>
       </div>
 
-      {/* ─── Incident & CCTV Main Container Card with Integrated Tabs ─── */}
-      <div className="rounded-lg border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border }}>
-        
-        {/* Card Header Tab Navigation */}
-        <div className="border-b overflow-x-auto" style={{ borderColor: theme.border }}>
-          <div className="flex items-center">
-            {/* Tab 1: Incident Reports */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('incidents')}
-              className={`px-5 py-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-                activeTab === 'incidents'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/30'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40'
-              }`}
-            >
-              <FontAwesomeIcon icon={faExclamationTriangle} />
-              <span>Incident Reports</span>
-              <span className="ml-1 px-2.5 py-0.5 text-[11px] rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-extrabold">
-                {reports.length}
-              </span>
-            </button>
+      {/* Live Segmented Tabs */}
+      <div className="flex items-center p-1 rounded border gap-1 self-start" style={{ background: theme.cardBg, borderColor: theme.border, width: 'fit-content' }}>
+        <button
+          onClick={() => setActiveTab('incidents')}
+          className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer"
+          style={{
+            background: activeTab === 'incidents' ? (isDark ? '#232228' : theme.blueBg) : 'transparent',
+            color: activeTab === 'incidents' ? (isDark ? '#F0EFE9' : theme.blueText) : theme.textSecondary,
+            borderRadius: '4px'
+          }}
+        >
+          <span className="font-mono text-[10px] opacity-60">01.</span>
+          <span>Incident Reports</span>
+          <span className="font-mono text-[10px] px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border }}>
+            {reports.length}
+          </span>
+        </button>
 
-            {/* Tab 2: CCTV Footage Requests */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('cctv')}
-              className={`px-5 py-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-                activeTab === 'cctv'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/30'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/40'
-              }`}
-            >
-              <FontAwesomeIcon icon={faVideo} />
-              <span>CCTV Footage Requests</span>
-              <span className="ml-1 px-2.5 py-0.5 text-[11px] rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-extrabold">
-                {cctvRequests.length}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Card Content Body */}
-        <div className="p-4">
-          
-          {/* TAB 1: INCIDENT REPORTS LIST */}
-          {activeTab === 'incidents' && (
-            <div className="space-y-4">
-              {/* Search Box */}
-              <div className="relative">
-                <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: theme.textSecondary }} />
-                <input
-                  type="text"
-                  placeholder="Search reported incidents by student name, title, or code..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-md text-xs focus:outline-none transition-colors"
-                  style={inputStyle}
-                />
-              </div>
-
-              {loading ? (
-                <div className="py-12 text-center text-xs flex items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
-                  <FontAwesomeIcon icon={faSpinner} spin style={{ color: theme.textPrimary }} />
-                  <span>Loading incident reports...</span>
-                </div>
-              ) : filteredReports.length === 0 ? (
-                <div className="py-12 text-center text-xs" style={{ color: theme.textSecondary }}>
-                  No incident reports found matching your criteria.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[11px] px-1" style={{ color: theme.textSecondary }}>
-                    <span className="font-mono">Click any row to view complete incident details</span>
-                    <span className="font-mono">Filtered: {filteredReports.length}</span>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-md border" style={{ borderColor: theme.border }}>
-                    <table className="min-w-full text-xs border-collapse">
-                      <thead>
-                        <tr className="text-left border-b font-semibold uppercase tracking-wider text-[10px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
-                          <th className="py-3 px-4">Code / Title</th>
-                          <th className="py-3 px-4">Student</th>
-                          <th className="py-3 px-4">Unit</th>
-                          <th className="py-3 px-4">Location</th>
-                          <th className="py-3 px-4">Date & Time</th>
-                          <th className="py-3 px-4">Incident Level</th>
-                          <th className="py-3 px-4">Status</th>
-                          <th className="py-3 px-4 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y" style={{ borderColor: theme.border }}>
-                        {filteredReports.map(rep => {
-                          const studentName = `${rep.student?.user_nama_depan || ''} ${rep.student?.user_nama_belakang || ''}`.trim() || 'Unknown Student'
-                          const unitName = rep.unit?.unit_name || '-'
-
-                          let locationDisplay = '-'
-                          let extraStudentsCount = 0
-                          let casePreview = ''
-                          if (rep.description) {
-                            if (rep.description.includes('Place of Incident:')) {
-                              const matchLoc = rep.description.match(/Place of Incident:\s*([^\n]+)/)
-                              if (matchLoc && matchLoc[1]) locationDisplay = matchLoc[1].trim()
-                            }
-                            if (rep.description.includes('All Involved Students:')) {
-                              const matchSt = rep.description.match(/All Involved Students:\s*([^\n]+)/)
-                              if (matchSt && matchSt[1]) {
-                                const names = matchSt[1].split(',').map(n => n.trim()).filter(Boolean)
-                                if (names.length > 1) extraStudentsCount = names.length - 1
-                              }
-                            }
-                            casePreview = rep.description
-                              .replace(/Place of Incident:[^\n]+\n?/g, '')
-                              .replace(/All Involved Students:[^\n]+\n?/g, '')
-                              .trim()
-                          }
-
-                          return (
-                            <tr
-                              key={rep.id}
-                              onClick={() => handleOpenDetailModal(rep)}
-                              className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                            >
-                              <td className="py-3 px-4">
-                                <div className="font-bold text-blue-600 dark:text-blue-400 font-mono">
-                                  {rep.incident_number || `#${rep.id}`}
-                                </div>
-                                <div className="font-medium truncate max-w-xs" style={{ color: theme.textPrimary }}>
-                                  {rep.title}
-                                </div>
-                                {casePreview && (
-                                  <div className="text-[10px] truncate max-w-xs mt-0.5 opacity-70" style={{ color: theme.textSecondary }}>
-                                    {casePreview}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="font-semibold flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
-                                  <span>{studentName}</span>
-                                  {extraStudentsCount > 0 && (
-                                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
-                                      +{extraStudentsCount}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className="px-2 py-0.5 rounded text-[11px]" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                                  {unitName}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 font-medium" style={{ color: theme.textSecondary }}>
-                                {locationDisplay}
-                              </td>
-                              <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px]" style={{ color: theme.textSecondary }}>
-                                <div>{rep.incident_date}</div>
-                                <div className="text-[10px] opacity-75">{rep.incident_time}</div>
-                              </td>
-                              <td className="py-3 px-4">
-                                {getLevelBadge(rep.incident_record)}
-                              </td>
-                              <td className="py-3 px-4">{getStatusBadge(rep.status)}</td>
-                              <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                                {rep.status === 'waiting' ? (
-                                  <button
-                                    onClick={(e) => handlePromptDelete(e, rep)}
-                                    className="px-2.5 py-1 text-xs font-medium rounded transition-colors cursor-pointer inline-flex items-center gap-1"
-                                    style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.redBg}` }}
-                                  >
-                                    <FontAwesomeIcon icon={faTrash} />
-                                    <span>Delete</span>
-                                  </button>
-                                ) : (
-                                  <span className="text-xs italic opacity-40">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: CCTV FOOTAGE REQUESTS LIST */}
-          {activeTab === 'cctv' && (
-            <div className="space-y-4">
-              {/* Search Box */}
-              <div className="relative">
-                <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: theme.textSecondary }} />
-                <input
-                  type="text"
-                  placeholder="Search CCTV requests by code, room, or purpose..."
-                  value={cctvSearchQuery}
-                  onChange={e => setCctvSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-md text-xs focus:outline-none transition-colors"
-                  style={inputStyle}
-                />
-              </div>
-
-              {loading ? (
-                <div className="py-12 text-center text-xs flex items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
-                  <FontAwesomeIcon icon={faSpinner} spin style={{ color: theme.textPrimary }} />
-                  <span>Loading CCTV requests...</span>
-                </div>
-              ) : filteredCctvRequests.length === 0 ? (
-                <div className="py-12 text-center text-xs space-y-1" style={{ color: theme.textSecondary }}>
-                  <FontAwesomeIcon icon={faFilm} className="text-3xl opacity-40 mb-1" />
-                  <p className="font-medium">No CCTV footage requests found.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-md border" style={{ borderColor: theme.border }}>
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b text-[11px] font-semibold uppercase tracking-wider" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
-                        <th className="p-3">Request Code / Date</th>
-                        <th className="p-3">Time & Requested Location</th>
-                        <th className="p-3">Reason / Purpose</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Reviewer Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y" style={{ borderColor: theme.border }}>
-                      {filteredCctvRequests.map((r) => (
-                        <tr key={r.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                          <td className="p-3 whitespace-nowrap">
-                            <div className="font-bold text-blue-600 dark:text-blue-400 font-mono">{r.request_number || `CCTV/#${r.id}`}</div>
-                            <div className="text-[10px] font-medium" style={{ color: theme.textSecondary }}>Date: {r.cctv_date}</div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-bold" style={{ color: theme.textPrimary }}>{r.room_name}</div>
-                            <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{r.start_time} - {r.end_time}</div>
-                          </td>
-                          <td className="p-3 max-w-xs">
-                            <div className="font-medium line-clamp-2" style={{ color: theme.textPrimary }}>{r.reason}</div>
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            {getCctvStatusBadge(r.status)}
-                          </td>
-                          <td className="p-3">
-                            {r.reviewer_notes ? (
-                              <div className="text-[11px] font-medium p-2 rounded border max-w-xs bg-slate-50 dark:bg-slate-800/60" style={{ borderColor: theme.border, color: theme.textPrimary }}>
-                                {r.reviewer_notes}
-                              </div>
-                            ) : (
-                              <span className="text-[10px] italic" style={{ color: theme.textSecondary }}>No notes yet</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <button
+          onClick={() => setActiveTab('cctv')}
+          className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer"
+          style={{
+            background: activeTab === 'cctv' ? (isDark ? '#232228' : theme.blueBg) : 'transparent',
+            color: activeTab === 'cctv' ? (isDark ? '#F0EFE9' : theme.blueText) : theme.textSecondary,
+            borderRadius: '4px'
+          }}
+        >
+          <span className="font-mono text-[10px] opacity-60">02.</span>
+          <span>CCTV Requests</span>
+          <span className="font-mono text-[10px] px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border }}>
+            {cctvRequests.length}
+          </span>
+        </button>
       </div>
 
-      {/* ─── MODAL 1: CREATE NEW INCIDENT REPORT ─── */}
+      {/* Bento Metric Cards (Only for Incidents Tab) */}
+      {activeTab === 'incidents' && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-4 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+            <span className="font-mono text-[10px] uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>// TOTAL SUBMISSIONS</span>
+            <div className="text-2xl font-bold font-mono tracking-tight" style={{ color: theme.textPrimary }}>{metrics.total}</div>
+            <span className="text-[10px] font-mono mt-1 block" style={{ color: theme.textSecondary }}>Your recorded cases</span>
+          </div>
+
+          <div className="p-4 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+            <span className="font-mono text-[10px] uppercase tracking-wider block mb-1 text-[#956400]">// WAITING REVIEW</span>
+            <div className="text-2xl font-bold font-mono tracking-tight text-[#956400]">{metrics.waiting}</div>
+            <span className="text-[10px] font-mono mt-1 block" style={{ color: theme.textSecondary }}>Pending handler review</span>
+          </div>
+
+          <div className="p-4 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+            <span className="font-mono text-[10px] uppercase tracking-wider block mb-1 text-[#1F6C9F]">// IN PROGRESS</span>
+            <div className="text-2xl font-bold font-mono tracking-tight text-[#1F6C9F]">{metrics.onProgress}</div>
+            <span className="text-[10px] font-mono mt-1 block" style={{ color: theme.textSecondary }}>Active follow-up logs</span>
+          </div>
+
+          <div className="p-4 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+            <span className="font-mono text-[10px] uppercase tracking-wider block mb-1 text-[#346538]">// COMPLETED</span>
+            <div className="text-2xl font-bold font-mono tracking-tight text-[#346538]">{metrics.completed}</div>
+            <span className="text-[10px] font-mono mt-1 block" style={{ color: theme.textSecondary }}>Case resolved</span>
+          </div>
+        </div>
+      )}
+
+      {/* Filter Bento Toolbar */}
+      <div className="p-3 rounded border flex flex-col md:flex-row items-center justify-between gap-3" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+        {activeTab === 'incidents' ? (
+          <>
+            <div className="relative w-full md:w-80">
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3 h-3 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search incident number, student, title..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-4 py-1.5 text-xs font-mono rounded border outline-none transition-colors"
+                style={{
+                  background: theme.inputBg,
+                  borderColor: theme.border,
+                  color: theme.textPrimary,
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>Level:</span>
+                <select
+                  value={selectedLevelFilter}
+                  onChange={e => setSelectedLevelFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                  style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                >
+                  <option value="all">All Levels</option>
+                  <option value="Level 1">Level 1</option>
+                  <option value="Level 2">Level 2</option>
+                  <option value="Level 3">Level 3</option>
+                  <option value="Zero Tolerance">Zero Tolerance</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>Status:</span>
+                <select
+                  value={selectedStatusFilter}
+                  onChange={e => setSelectedStatusFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                  style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="waiting">Waiting</option>
+                  <option value="on_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="relative w-full md:w-80">
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3 h-3 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search CCTV code, room, reason..."
+                value={cctvSearchQuery}
+                onChange={e => setCctvSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-4 py-1.5 text-xs font-mono rounded border outline-none transition-colors"
+                style={{
+                  background: theme.inputBg,
+                  borderColor: theme.border,
+                  color: theme.textPrimary,
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>Status:</span>
+              <select
+                value={cctvStatusFilter}
+                onChange={e => setCctvStatusFilter(e.target.value)}
+                className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Main Register Table */}
+      <div className="rounded border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+        {activeTab === 'incidents' ? (
+          loading ? (
+            <div className="p-12 text-center" style={{ color: theme.textSecondary }}>
+              <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2" />
+              <p className="text-xs font-mono">LOADING INCIDENT REPORTS...</p>
+            </div>
+          ) : filteredReports.length === 0 ? (
+            <div className="p-12 text-center" style={{ color: theme.textSecondary }}>
+              <p className="text-xs font-mono">NO INCIDENT REPORTS RECORDED</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b text-[10px] font-mono font-bold uppercase tracking-wider" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                    <th className="py-3 px-4">INCIDENT # / DATE</th>
+                    <th className="py-3 px-4">STUDENT</th>
+                    <th className="py-3 px-4">UNIT</th>
+                    <th className="py-3 px-4">TITLE & VENUE</th>
+                    <th className="py-3 px-4">LEVEL</th>
+                    <th className="py-3 px-4">STATUS</th>
+                    <th className="py-3 px-4 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                  {filteredReports.map(rep => {
+                    const studentName = `${rep.student?.user_nama_depan || ''} ${rep.student?.user_nama_belakang || ''}`.trim() || 'Student'
+                    const unitName = rep.unit?.unit_name || '-'
+
+                    let locationDisplay = '-'
+                    let extraStudentsCount = 0
+                    if (rep.description) {
+                      if (rep.description.includes('Place of Incident:')) {
+                        const matchLoc = rep.description.match(/Place of Incident:\s*([^\n]+)/)
+                        if (matchLoc && matchLoc[1]) locationDisplay = matchLoc[1].trim()
+                      }
+                      if (rep.description.includes('All Involved Students:')) {
+                        const matchSt = rep.description.match(/All Involved Students:\s*([^\n]+)/)
+                        if (matchSt && matchSt[1]) {
+                          const names = matchSt[1].split(',').map(n => n.trim()).filter(Boolean)
+                          if (names.length > 1) extraStudentsCount = names.length - 1
+                        }
+                      }
+                    }
+
+                    return (
+                      <tr
+                        key={rep.id}
+                        onClick={() => handleOpenDetailModal(rep)}
+                        className="transition-colors cursor-pointer"
+                        style={{ background: 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="font-mono font-bold" style={{ color: theme.textPrimary }}>{rep.incident_number || `#${rep.id}`}</div>
+                          <div className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{rep.incident_date} {rep.incident_time}</div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
+                            <span>{studentName}</span>
+                            {extraStudentsCount > 0 && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.blueText }}>
+                                +{extraStudentsCount}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.textSecondary }}>{unitName}</span>
+                        </td>
+                        <td className="py-3 px-4 max-w-xs">
+                          <div className="font-medium truncate" style={{ color: theme.textPrimary }}>{rep.title}</div>
+                          <div className="text-[10px] font-mono truncate" style={{ color: theme.textSecondary }}>{locationDisplay !== '-' ? locationDisplay : (rep.place_of_incident || '-')}</div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {getLevelBadge(rep.incident_record)}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {getStatusBadge(rep.status)}
+                        </td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenDetailModal(rep)}
+                              className="px-2.5 py-1 text-xs font-semibold rounded border transition-colors cursor-pointer"
+                              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                            >
+                              <FontAwesomeIcon icon={faEye} className="mr-1 text-[10px]" />
+                              View
+                            </button>
+                            {rep.status === 'waiting' && (
+                              <button
+                                onClick={e => handlePromptDelete(e, rep)}
+                                className="w-6 h-6 rounded flex items-center justify-center transition-colors cursor-pointer"
+                                style={{ background: isDark ? '#3A1E1E' : '#FDEBEC', color: isDark ? '#DC8585' : '#9F2F2D', border: `1px solid ${theme.border}`, borderRadius: '4px' }}
+                                title="Delete Report"
+                              >
+                                <FontAwesomeIcon icon={faTrash} className="text-[9px]" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : (
+          loading ? (
+            <div className="p-12 text-center" style={{ color: theme.textSecondary }}>
+              <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2" />
+              <p className="text-xs font-mono">LOADING CCTV REQUESTS...</p>
+            </div>
+          ) : filteredCctvRequests.length === 0 ? (
+            <div className="p-12 text-center" style={{ color: theme.textSecondary }}>
+              <p className="text-xs font-mono">NO CCTV REQUESTS RECORDED</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b text-[10px] font-mono font-bold uppercase tracking-wider" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                    <th className="py-3 px-4">REQUEST CODE / DATE</th>
+                    <th className="py-3 px-4">TIME & ROOM</th>
+                    <th className="py-3 px-4">REASON</th>
+                    <th className="py-3 px-4">STATUS</th>
+                    <th className="py-3 px-4">REVIEWER NOTES</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                  {filteredCctvRequests.map(r => (
+                    <tr key={r.id} className="transition-colors" style={{ background: 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="font-mono font-bold" style={{ color: theme.blueText }}>{r.request_number || `CCTV/#${r.id}`}</div>
+                        <div className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{r.cctv_date}</div>
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="font-semibold" style={{ color: theme.textPrimary }}>{r.room_name}</div>
+                        <div className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{r.start_time} - {r.end_time}</div>
+                      </td>
+                      <td className="py-3 px-4 max-w-xs">
+                        <div className="font-medium truncate" style={{ color: theme.textPrimary }}>{r.reason}</div>
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {getCctvStatusBadge(r.status)}
+                      </td>
+                      <td className="py-3 px-4 max-w-xs">
+                        {r.reviewer_notes ? (
+                          <div className="text-[11px] font-mono p-1.5 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}>
+                            {r.reviewer_notes}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>Pending review</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+      </div>
+
+      {/* MODAL 1: CREATE NEW INCIDENT REPORT */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Report New Student Incident"
         maxWidth="max-w-2xl"
       >
-        <form onSubmit={handleSubmitReport} className="space-y-4 text-xs">
-          
-          {/* Incident Title */}
+        <form onSubmit={handleSubmitReport} className="space-y-3.5 text-xs" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
           <div>
-            <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
-              Incident Title <span className="text-red-500">*</span>
-            </Label>
-            <Input
+            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Incident Title *</label>
+            <input
               type="text"
               required
-              placeholder="e.g., Fighting during recess, Damaged school property..."
+              placeholder="e.g., Physical altercation during break, Damaged library asset..."
               value={formData.title}
               onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
-              style={inputStyle}
-              className="w-full text-xs"
+              className="w-full px-2.5 py-1.5 text-xs rounded border outline-none"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             />
           </div>
 
           {/* Student Autocomplete Selection */}
           <div className="relative" ref={studentDropdownRef}>
-            <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
-              Student(s) Involved <span className="text-red-500">*</span>
-            </Label>
+            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Student(s) Involved *</label>
             
             {/* Selected Chips */}
             {selectedStudents.length > 0 && (
@@ -973,15 +1064,15 @@ export default function IncidentReportListPage() {
                 {selectedStudents.map(st => (
                   <span
                     key={st.user_id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border shadow-2xs"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono text-[10px] border"
                     style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
                   >
                     <span>{st.user_nama_depan} {st.user_nama_belakang}</span>
-                    <span className="text-[10px] opacity-75">({st.unit?.unit_name || 'Unit'})</span>
+                    <span className="opacity-60">({st.unit?.unit_name || 'Unit'})</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveStudent(st.user_id)}
-                      className="ml-1 hover:text-red-500 text-xs font-bold cursor-pointer"
+                      className="ml-1 hover:text-red-500 font-bold cursor-pointer"
                     >
                       ✕
                     </button>
@@ -991,8 +1082,8 @@ export default function IncidentReportListPage() {
             )}
 
             <div className="relative">
-              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: theme.textSecondary }} />
-              <Input
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
+              <input
                 type="text"
                 placeholder="Type student name to search..."
                 value={studentSearchText}
@@ -1001,31 +1092,31 @@ export default function IncidentReportListPage() {
                   setShowStudentDropdown(true)
                 }}
                 onFocus={() => setShowStudentDropdown(true)}
-                style={inputStyle}
-                className="pl-9 text-xs w-full"
+                className="w-full pl-8 pr-3 py-1.5 text-xs font-mono rounded border outline-none"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
               />
             </div>
 
             {/* Dropdown Options */}
             {showStudentDropdown && filteredStudentsForSearch.length > 0 && (
               <div
-                className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-md border shadow-lg"
-                style={{ background: theme.cardBg, borderColor: theme.border }}
+                className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded border shadow-xl"
+                style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '4px' }}
               >
                 {filteredStudentsForSearch.map(st => (
                   <div
                     key={st.user_id}
                     onClick={() => handleSelectStudent(st)}
-                    className="p-2.5 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer flex items-center justify-between border-b last:border-b-0 text-xs"
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer flex items-center justify-between border-b last:border-b-0 text-xs"
                     style={{ borderColor: theme.border }}
                   >
                     <div>
-                      <div className="font-semibold" style={{ color: theme.textPrimary }}>
+                      <span className="font-semibold block" style={{ color: theme.textPrimary }}>
                         {st.user_nama_depan} {st.user_nama_belakang}
-                      </div>
-                      <div className="text-[10px]" style={{ color: theme.textSecondary }}>{st.user_email || 'No Email'}</div>
+                      </span>
+                      <span className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{st.user_email || 'No email'}</span>
                     </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.textSecondary }}>
                       {st.unit?.unit_name || 'Unit'}
                     </span>
                   </div>
@@ -1034,109 +1125,98 @@ export default function IncidentReportListPage() {
             )}
           </div>
 
-          {/* Date, Time, Level */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
-              <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>Date *</Label>
-              <Input
+              <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Incident Date *</label>
+              <input
                 type="date"
                 required
                 value={formData.incident_date}
                 onChange={e => setFormData(p => ({ ...p, incident_date: e.target.value }))}
-                style={inputStyle}
-                className="w-full text-xs"
+                className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
               />
             </div>
 
             <div>
-              <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>Time *</Label>
-              <Input
+              <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Incident Time *</label>
+              <input
                 type="time"
                 required
                 value={formData.incident_time}
                 onChange={e => setFormData(p => ({ ...p, incident_time: e.target.value }))}
-                style={inputStyle}
-                className="w-full text-xs"
+                className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
               />
             </div>
 
             <div>
-              <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>Behavior Level *</Label>
+              <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Behavior Level *</label>
               <select
                 value={formData.incident_record}
                 onChange={e => setFormData(p => ({ ...p, incident_record: e.target.value }))}
-                style={selectStyle}
-                className="w-full p-2 text-xs font-medium focus:outline-none"
+                className="w-full px-2.5 py-1.5 text-xs font-semibold rounded border outline-none cursor-pointer"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
               >
-                <option value="Level 1">Level 1 (Minor Disruptions)</option>
-                <option value="Level 2">Level 2 (Moderate Misbehavior)</option>
-                <option value="Level 3">Level 3 (Major Violations)</option>
+                <option value="Level 1">Level 1</option>
+                <option value="Level 2">Level 2</option>
+                <option value="Level 3">Level 3</option>
                 <option value="Zero Tolerance">Zero Tolerance</option>
               </select>
             </div>
           </div>
 
-          {/* Place of Incident */}
           <div>
-            <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
-              Place of Incident / Location
-            </Label>
-            <Input
+            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Place / Location</label>
+            <input
               type="text"
-              placeholder="e.g. Science Lab 2, Outdoor Canteen, Basketball Court..."
+              placeholder="e.g. Science Lab 2, Canteen, Basketball Court..."
               value={formData.place_of_incident}
               onChange={e => setFormData(p => ({ ...p, place_of_incident: e.target.value }))}
-              style={inputStyle}
-              className="w-full text-xs"
+              className="w-full px-2.5 py-1.5 text-xs rounded border outline-none"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             />
           </div>
 
-          {/* Description */}
           <div>
-            <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
-              Chronology / Description <span className="text-red-500">*</span>
-            </Label>
+            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Chronology / Description *</label>
             <textarea
               required
-              rows={4}
-              placeholder="Provide detailed description of what happened..."
+              rows={3}
+              placeholder="Detail what happened leading up to and during the incident..."
               value={formData.description}
               onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-              className="w-full p-2.5 text-xs rounded-md border resize-y focus:outline-none"
-              style={inputStyle}
+              className="w-full p-2.5 text-xs rounded border outline-none resize-y"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             />
           </div>
 
-          {/* Initial Action Taken */}
           <div>
-            <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
-              Initial Immediate Action Taken (Optional)
-            </Label>
-            <Input
+            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Initial Immediate Action Taken (Optional)</label>
+            <input
               type="text"
-              placeholder="e.g. Separated students, Sent to nurse, Called homeroom teacher..."
+              placeholder="e.g. Separated students, escorted to medical room, notified homeroom teacher..."
               value={formData.action_taken}
               onChange={e => setFormData(p => ({ ...p, action_taken: e.target.value }))}
-              style={inputStyle}
-              className="w-full text-xs"
+              className="w-full px-2.5 py-1.5 text-xs rounded border outline-none"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             />
           </div>
 
-          {/* Form Modal Actions */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
             <button
               type="button"
               onClick={() => setShowCreateModal(false)}
-              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
-              style={btnSecondaryStyle}
+              className="px-4 py-1.5 text-xs font-medium rounded border transition-colors cursor-pointer"
+              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
-              style={btnPrimaryStyle}
+              className="px-4 py-1.5 text-xs font-semibold rounded transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+              style={{ background: theme.textPrimary, color: isDark ? '#111111' : '#FFFFFF', borderRadius: '4px' }}
             >
               {submitting ? (
                 <>
@@ -1144,27 +1224,23 @@ export default function IncidentReportListPage() {
                   <span>Submitting...</span>
                 </>
               ) : (
-                'Submit Report'
+                'Submit Incident Report'
               )}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* ─── MODAL 2: SUBMIT CCTV REQUEST MODAL ─── */}
+      {/* MODAL 2: SUBMIT CCTV REQUEST MODAL */}
       <Modal
         isOpen={showCctvModal}
         onClose={() => setShowCctvModal(false)}
         title="Request CCTV Footage Review"
         maxWidth="max-w-lg"
       >
-        <form onSubmit={handleSubmitCctvRequest} className="space-y-4 text-xs">
-          
-          {/* Target Incident Selection */}
+        <form onSubmit={handleSubmitCctvRequest} className="space-y-3 text-xs" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
           <div>
-            <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
-              Link to Incident Report (Optional)
-            </Label>
+            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Link to Incident Report (Optional)</label>
             <select
               value={cctvFormData.incident_report_id}
               onChange={e => {
@@ -1179,8 +1255,8 @@ export default function IncidentReportListPage() {
                   reason: selectedInc ? `Reviewing CCTV footage for Incident #${selectedInc.incident_number || selectedInc.id}: ${selectedInc.title}` : p.reason
                 }))
               }}
-              style={selectStyle}
-              className="w-full p-2 text-xs font-medium focus:outline-none"
+              className="w-full px-2.5 py-1.5 text-xs font-semibold rounded border outline-none cursor-pointer"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             >
               <option value="">-- No Linked Incident (Standalone CCTV Request) --</option>
               {reports.map(r => (
@@ -1191,89 +1267,82 @@ export default function IncidentReportListPage() {
             </select>
           </div>
 
-          {/* Footage Date & Time */}
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>Footage Date *</Label>
-              <Input
+              <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Footage Date *</label>
+              <input
                 type="date"
                 required
                 value={cctvFormData.cctv_date}
                 onChange={e => setCctvFormData(p => ({ ...p, cctv_date: e.target.value }))}
-                style={inputStyle}
-                className="w-full text-xs"
+                className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
               />
             </div>
             <div>
-              <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>Start Time *</Label>
-              <Input
+              <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Start Time *</label>
+              <input
                 type="time"
                 required
                 value={cctvFormData.start_time}
                 onChange={e => setCctvFormData(p => ({ ...p, start_time: e.target.value }))}
-                style={inputStyle}
-                className="w-full text-xs"
+                className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
               />
             </div>
             <div>
-              <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>End Time *</Label>
-              <Input
+              <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>End Time *</label>
+              <input
                 type="time"
                 required
                 value={cctvFormData.end_time}
                 onChange={e => setCctvFormData(p => ({ ...p, end_time: e.target.value }))}
-                style={inputStyle}
-                className="w-full text-xs"
+                className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
               />
             </div>
           </div>
 
-          {/* Requested Room / Location */}
           <div>
-            <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
-              Requested Room / Location *
-            </Label>
-            <Input
+            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Requested Room / Camera Location *</label>
+            <input
               type="text"
               required
-              placeholder="e.g. Science Lab 2, Main Gate, Secondary Hallway 2F..."
+              placeholder="e.g. Science Lab 2, Corridor 3F, Cafeteria..."
               value={cctvFormData.room_name}
               onChange={e => setCctvFormData(p => ({ ...p, room_name: e.target.value }))}
-              style={inputStyle}
-              className="w-full text-xs"
+              className="w-full px-2.5 py-1.5 text-xs rounded border outline-none"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             />
           </div>
 
-          {/* Reason / Purpose */}
           <div>
-            <Label className="block text-xs font-semibold mb-1" style={{ color: theme.textPrimary }}>
-              Reason / Purpose for Request *
-            </Label>
+            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Reason / Purpose *</label>
             <textarea
               required
               rows={3}
-              placeholder="Describe why CCTV footage is required for investigation..."
+              placeholder="State the justification and context for reviewing camera footage..."
               value={cctvFormData.reason}
               onChange={e => setCctvFormData(p => ({ ...p, reason: e.target.value }))}
-              className="w-full p-2.5 text-xs rounded-md border resize-y focus:outline-none"
-              style={inputStyle}
+              className="w-full p-2.5 text-xs rounded border outline-none resize-y"
+              style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             />
           </div>
 
-          {/* Modal Actions */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
             <button
               type="button"
               onClick={() => setShowCctvModal(false)}
-              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
-              style={btnSecondaryStyle}
+              className="px-4 py-1.5 text-xs font-medium rounded border transition-colors cursor-pointer"
+              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={cctvSubmitting}
-              className="px-4 py-2 text-xs font-bold rounded-md cursor-pointer bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
+              className="px-4 py-1.5 text-xs font-semibold rounded transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+              style={{ background: theme.textPrimary, color: isDark ? '#111111' : '#FFFFFF', borderRadius: '4px' }}
             >
               {cctvSubmitting ? (
                 <>
@@ -1288,7 +1357,7 @@ export default function IncidentReportListPage() {
         </form>
       </Modal>
 
-      {/* ─── MODAL 3: INCIDENT REPORT DETAIL VIEW ─── */}
+      {/* MODAL 3: INCIDENT REPORT DETAIL VIEW */}
       <Modal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
@@ -1300,11 +1369,11 @@ export default function IncidentReportListPage() {
           const reporterName = `${selectedReportDetail.reporter?.user_nama_depan || ''} ${selectedReportDetail.reporter?.user_nama_belakang || ''}`.trim() || 'Staff'
 
           return (
-            <div className="space-y-4 text-xs">
-              <div className="p-3 rounded-lg border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+            <div className="space-y-3.5 text-xs" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
+              <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '6px' }}>
                 <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: theme.border }}>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                    <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: theme.blueText }}>
                       {selectedReportDetail.unit?.unit_name || 'Unit'}
                     </span>
                     <h3 className="text-sm font-bold mt-0.5" style={{ color: theme.textPrimary }}>{selectedReportDetail.title}</h3>
@@ -1315,60 +1384,66 @@ export default function IncidentReportListPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                   <div>
-                    <span style={{ color: theme.textSecondary }}>Student Involved:</span>
+                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>STUDENT:</span>
                     <p className="font-semibold" style={{ color: theme.textPrimary }}>{studentName}</p>
                   </div>
                   <div>
-                    <span style={{ color: theme.textSecondary }}>Reporter:</span>
+                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>REPORTER:</span>
                     <p className="font-semibold" style={{ color: theme.textPrimary }}>{reporterName}</p>
                   </div>
                   <div>
-                    <span style={{ color: theme.textSecondary }}>Date & Time:</span>
-                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedReportDetail.incident_date} {selectedReportDetail.incident_time}</p>
+                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>DATE & TIME:</span>
+                    <p className="font-mono font-semibold" style={{ color: theme.textPrimary }}>{selectedReportDetail.incident_date} {selectedReportDetail.incident_time}</p>
                   </div>
                   <div>
-                    <span style={{ color: theme.textSecondary }}>Location:</span>
+                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>LOCATION:</span>
                     <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedReportDetail.place_of_incident || '-'}</p>
                   </div>
                 </div>
 
                 <div className="pt-2 border-t text-[11px]" style={{ borderColor: theme.border }}>
-                  <span className="font-semibold block mb-0.5" style={{ color: theme.textPrimary }}>Chronology / Description:</span>
-                  <p className="whitespace-pre-wrap leading-relaxed" style={{ color: theme.textSecondary }}>{selectedReportDetail.description}</p>
+                  <span className="text-[10px] font-mono font-semibold block mb-0.5" style={{ color: theme.textSecondary }}>CHRONOLOGY / CASE DESCRIPTION:</span>
+                  <p className="whitespace-pre-wrap leading-relaxed" style={{ color: theme.textPrimary }}>{selectedReportDetail.description}</p>
                 </div>
               </div>
 
               {/* Action / Solution History */}
               <div className="space-y-2">
-                <h4 className="font-bold text-xs uppercase tracking-wider border-b pb-1" style={{ color: theme.textPrimary, borderColor: theme.border }}>
-                  Investigation & Solution Logs ({detailFollowups.length})
-                </h4>
+                <div className="flex items-center justify-between border-b pb-1" style={{ borderColor: theme.border }}>
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.textSecondary }}>
+                    // INVESTIGATION & SOLUTION LOGS
+                  </span>
+                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border }}>
+                    {detailFollowups.length}
+                  </span>
+                </div>
 
                 {loadingFollowups ? (
                   <div className="py-4 text-center text-xs" style={{ color: theme.textSecondary }}>
-                    <FontAwesomeIcon icon={faSpinner} spin className="mr-1 text-blue-500" />
-                    <span>Loading solution history...</span>
+                    <FontAwesomeIcon icon={faSpinner} spin className="mr-1.5" />
+                    <span className="font-mono text-[10px]">LOADING LOGS...</span>
                   </div>
                 ) : detailFollowups.length === 0 ? (
-                  <div className="p-4 text-center border border-dashed rounded text-xs" style={{ borderColor: theme.border, color: theme.textSecondary }}>
-                    No solution logs recorded yet. Vice Principal / Handling staff will update investigation progress.
+                  <div className="p-4 text-center border border-dashed rounded text-xs" style={{ borderColor: theme.border, color: theme.textSecondary, borderRadius: '6px' }}>
+                    <p className="font-mono text-[11px]">No solution logs recorded yet.</p>
+                    <p className="text-[10px] mt-0.5 opacity-75">Vice Principal / Handling staff will update investigation progress.</p>
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                     {detailFollowups.map(f => {
                       const actor = f.user ? `${f.user.user_nama_depan || ''} ${f.user.user_nama_belakang || ''}`.trim() : 'Staff'
                       return (
-                        <div key={f.id} className="p-2.5 rounded border text-xs space-y-1" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                        <div key={f.id} className="p-2.5 rounded border text-xs space-y-1" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '4px' }}>
                           <div className="flex items-center justify-between font-semibold">
                             <span className="text-blue-600 dark:text-blue-400">{actor}</span>
-                            <span className="text-[10px] font-normal" style={{ color: theme.textSecondary }}>{f.followup_date} {f.followup_time}</span>
+                            <span className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{f.followup_date} {f.followup_time}</span>
                           </div>
                           <p className="whitespace-pre-wrap leading-relaxed" style={{ color: theme.textPrimary }}>{f.action_details}</p>
                           {f.attachment_url && (
-                            <a href={f.attachment_url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline block pt-1">
-                              View Proof Attachment Image
+                            <a href={f.attachment_url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono underline hover:text-blue-500 block pt-1" style={{ color: theme.blueText }}>
+                              View Attachment Image
                             </a>
                           )}
                         </div>
@@ -1385,16 +1460,17 @@ export default function IncidentReportListPage() {
                     setShowDetailModal(false)
                     handleOpenCctvModal(selectedReportDetail)
                   }}
-                  className="px-3 py-1.5 text-xs font-bold rounded bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer inline-flex items-center gap-1.5"
+                  className="px-3 py-1.5 text-xs font-semibold rounded border transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                  style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
                 >
                   <FontAwesomeIcon icon={faVideo} className="text-[10px]" />
-                  <span>Request CCTV for this Case</span>
+                  <span>Request CCTV for Case</span>
                 </button>
 
                 <button
                   onClick={() => setShowDetailModal(false)}
-                  className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
-                  style={btnSecondaryStyle}
+                  className="px-4 py-1.5 text-xs font-medium rounded border transition-colors cursor-pointer"
+                  style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
                 >
                   Close
                 </button>
@@ -1404,34 +1480,39 @@ export default function IncidentReportListPage() {
         })()}
       </Modal>
 
-      {/* ─── MODAL 4: DELETE CONFIRMATION MODAL ─── */}
+      {/* MODAL 4: DELETE CONFIRMATION MODAL */}
       <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         title="Confirm Delete Incident Report"
         maxWidth="max-w-md"
       >
-        <div className="space-y-4 text-xs">
-          <p style={{ color: theme.textPrimary }}>
-            Are you sure you want to delete incident report <strong>{reportToDelete?.incident_number || `#${reportToDelete?.id}`}</strong>?
-          </p>
-          <div className="p-3 rounded border text-[11px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
-            <strong>Title:</strong> {reportToDelete?.title}<br />
-            <strong>Date:</strong> {reportToDelete?.incident_date}
+        <div className="space-y-3.5 text-xs" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
+          <div className="p-3.5 rounded border flex items-start gap-3" style={{ background: isDark ? '#3A1E1E' : '#FDEBEC', borderColor: theme.border, borderRadius: '6px' }}>
+            <FontAwesomeIcon icon={faExclamationTriangle} className="text-sm mt-0.5" style={{ color: isDark ? '#DC8585' : '#9F2F2D' }} />
+            <div>
+              <h4 className="font-bold uppercase font-mono tracking-wider" style={{ color: isDark ? '#DC8585' : '#9F2F2D' }}>
+                Confirm Deletion
+              </h4>
+              <p className="mt-1 leading-relaxed" style={{ color: theme.textPrimary }}>
+                Are you sure you want to remove report <strong>{reportToDelete?.incident_number || `#${reportToDelete?.id}`}</strong>?
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               onClick={() => setShowDeleteModal(false)}
-              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
-              style={btnSecondaryStyle}
+              className="px-4 py-1.5 text-xs font-medium rounded border transition-colors cursor-pointer"
+              style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
             >
               Cancel
             </button>
             <button
               onClick={handleConfirmDelete}
               disabled={deleting}
-              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+              className="px-4 py-1.5 text-xs font-semibold rounded transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+              style={{ background: isDark ? '#3A1E1E' : '#FDEBEC', color: isDark ? '#DC8585' : '#9F2F2D', border: `1px solid ${theme.border}`, borderRadius: '4px' }}
             >
               {deleting ? 'Deleting...' : 'Delete Report'}
             </button>
