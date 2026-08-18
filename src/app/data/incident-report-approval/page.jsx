@@ -110,16 +110,54 @@ export default function IncidentHandlingApprovalPage() {
   const [reportToDelete, setReportToDelete] = useState(null)
   const [deletingReport, setDeletingReport] = useState(false)
 
-  const canDelete = useMemo(() => {
+  const isAdmin = useMemo(() => {
     return Boolean(
       userRoleData?.role?.is_admin || 
-      userRoleData?.role?.is_pastoral_care || 
-      currentUser?.is_admin || 
       currentUser?.isAdmin || 
-      currentUser?.is_pastoral_care ||
-      currentUser?.isPastoralCare
+      currentUser?.is_admin ||
+      (userRoleData?.role?.role_name || currentUser?.roleName || '').toLowerCase().includes('admin')
     )
   }, [userRoleData, currentUser])
+
+  const isPastoralCare = useMemo(() => {
+    return Boolean(
+      userRoleData?.role?.is_pastoral_care ||
+      userRoleData?.role?.is_counselor ||
+      currentUser?.isPastoralCare ||
+      currentUser?.is_pastoral_care ||
+      currentUser?.isCounselor ||
+      currentUser?.is_counselor ||
+      (userRoleData?.role?.role_name || currentUser?.roleName || '').toLowerCase().includes('pastoral') ||
+      (userRoleData?.role?.role_name || currentUser?.roleName || '').toLowerCase().includes('counselor') ||
+      (userRoleData?.role?.role_name || currentUser?.roleName || '').toLowerCase().includes('bk')
+    )
+  }, [userRoleData, currentUser])
+
+  const isPrincipal = useMemo(() => {
+    return Boolean(
+      userRoleData?.role?.is_principal || 
+      currentUser?.isPrincipal || 
+      currentUser?.is_principal ||
+      (userRoleData?.role?.role_name || currentUser?.roleName || '').toLowerCase().includes('principal') ||
+      (userRoleData?.role?.role_name || currentUser?.roleName || '').toLowerCase().includes('kepala sekolah')
+    )
+  }, [userRoleData, currentUser])
+
+  const userUnitId = useMemo(() => {
+    return userRoleData?.user_unit_id || currentUser?.user_unit_id || currentUser?.unitID || currentUser?.unit_id || null
+  }, [userRoleData, currentUser])
+
+  // A Principal who is not a SuperAdmin is unit-scoped to their own school unit
+  const isUnitScopedPrincipal = useMemo(() => {
+    return isPrincipal && !isAdmin
+  }, [isPrincipal, isAdmin])
+
+  const canDelete = useMemo(() => {
+    return Boolean(
+      isAdmin || 
+      isPastoralCare
+    )
+  }, [isAdmin, isPastoralCare])
 
   const handlePromptDelete = (report) => {
     if (!canDelete) return
@@ -178,12 +216,8 @@ export default function IncidentHandlingApprovalPage() {
 
   const isAuthorizedForCctv = useMemo(() => {
     if (!currentUser && !userRoleData) return false
-    if (currentUser?.is_admin || currentUser?.is_principal || currentUser?.isAdmin || currentUser?.isPrincipal) return true
-    if (userRoleData?.role?.is_admin || userRoleData?.role?.is_principal) return true
-    const rName = (currentUser?.role_name || userRoleData?.role?.role_name || '').toLowerCase()
-    if (rName.includes('admin') || rName.includes('principal') || rName.includes('kepala sekolah')) return true
-    return false
-  }, [currentUser, userRoleData])
+    return isAdmin || isPrincipal
+  }, [currentUser, userRoleData, isAdmin, isPrincipal])
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
@@ -233,23 +267,56 @@ export default function IncidentHandlingApprovalPage() {
 
   // Load User Data & Permissions
   useEffect(() => {
-    const rawUser = localStorage.getItem('user_data')
-    if (rawUser) {
-      try {
+    try {
+      const rawUser = localStorage.getItem('user_data')
+      const krId = typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null
+      if (rawUser) {
         const u = JSON.parse(rawUser)
-        setCurrentUser(u)
-      } catch (e) {
-        console.error('Failed to parse user_data:', e)
+        const parsedId = u.userID || u.user_id || u.id || (krId ? parseInt(krId, 10) : null)
+        const parsedUnitId = u.unitID || u.user_unit_id || u.unit_id || null
+        const normalized = {
+          ...u,
+          id: parsedId,
+          user_id: parsedId,
+          userID: parsedId,
+          unit_id: parsedUnitId,
+          unitID: parsedUnitId,
+          user_unit_id: parsedUnitId,
+          role_name: u.roleName || u.role_name || '',
+          roleName: u.roleName || u.role_name || '',
+          isAdmin: u.isAdmin ?? u.is_admin ?? false,
+          is_admin: u.isAdmin ?? u.is_admin ?? false,
+          isPrincipal: u.isPrincipal ?? u.is_principal ?? false,
+          is_principal: u.isPrincipal ?? u.is_principal ?? false,
+          isCounselor: u.isCounselor ?? u.is_counselor ?? false,
+          is_counselor: u.isCounselor ?? u.is_counselor ?? false,
+          isPastoralCare: u.isPastoralCare ?? u.is_pastoral_care ?? false,
+          is_pastoral_care: u.isPastoralCare ?? u.is_pastoral_care ?? false,
+          user_nama_depan: u.user_nama_depan || u.namaDepan || u.username || '',
+          user_nama_belakang: u.user_nama_belakang || u.namaBelakang || '',
+        }
+        setCurrentUser(normalized)
+      } else if (krId) {
+        const parsedId = parseInt(krId, 10)
+        setCurrentUser({
+          id: parsedId,
+          user_id: parsedId,
+          userID: parsedId,
+          roleName: localStorage.getItem('user_role') || '',
+          role_name: localStorage.getItem('user_role') || '',
+        })
       }
+    } catch (e) {
+      console.error('Failed to parse user_data:', e)
     }
   }, [])
 
   useEffect(() => {
-    if (currentUser?.id || currentUser?.user_id) {
-      const uid = currentUser.id || currentUser.user_id
+    const uid = currentUser?.id || currentUser?.user_id || currentUser?.userID || (typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null)
+    if (uid) {
       supabase
         .from('users')
-        .select('user_id, user_role_id, role:role!user_role_id(role_id, role_name, is_admin, is_principal, is_counselor, is_pastoral_care)')
+        .select('user_id, user_unit_id, user_role_id, role:role!user_role_id(role_id, role_name, is_admin, is_principal, is_counselor, is_pastoral_care)')
         .eq('user_id', uid)
         .single()
         .then(({ data }) => {
@@ -257,6 +324,14 @@ export default function IncidentHandlingApprovalPage() {
         })
     }
   }, [currentUser])
+
+  // Automatically lock / set unit filter when user is a unit-scoped principal
+  useEffect(() => {
+    if (isUnitScopedPrincipal && userUnitId) {
+      setSelectedUnitFilter(String(userUnitId))
+      setCctvUnitFilter(String(userUnitId))
+    }
+  }, [isUnitScopedPrincipal, userUnitId])
 
   // Fetch Incident Reports Queue
   const fetchData = async () => {
@@ -344,7 +419,24 @@ export default function IncidentHandlingApprovalPage() {
     if (isAuthorizedForCctv) {
       fetchCctvData()
     }
-  }, [userRoleData, currentUser])
+  }, [userRoleData, currentUser, isAuthorizedForCctv])
+
+  // Available units for dropdown
+  const availableUnits = useMemo(() => {
+    if (isUnitScopedPrincipal && userUnitId) {
+      const matched = units.filter(u => String(u.unit_id) === String(userUnitId))
+      return matched.length > 0 ? matched : units
+    }
+    return units
+  }, [units, isUnitScopedPrincipal, userUnitId])
+
+  // Scoped Incident Reports (filtered strictly by unit if unit-scoped principal)
+  const scopedReports = useMemo(() => {
+    if (isUnitScopedPrincipal && userUnitId) {
+      return reports.filter(r => String(r.unit_id) === String(userUnitId))
+    }
+    return reports
+  }, [reports, isUnitScopedPrincipal, userUnitId])
 
   // Summary Metrics for Incidents
   const metrics = useMemo(() => {
@@ -352,14 +444,22 @@ export default function IncidentHandlingApprovalPage() {
     let onProgress = 0
     let completed = 0
 
-    reports.forEach(r => {
+    scopedReports.forEach(r => {
       if (r.status === 'waiting') waiting++
       else if (r.status === 'on_progress' || r.status === 'in_progress') onProgress++
       else if (r.status === 'completed') completed++
     })
 
-    return { total: reports.length, waiting, onProgress, completed }
-  }, [reports])
+    return { total: scopedReports.length, waiting, onProgress, completed }
+  }, [scopedReports])
+
+  // Scoped CCTV Requests (filtered strictly by unit if unit-scoped principal)
+  const scopedCctvRequests = useMemo(() => {
+    if (isUnitScopedPrincipal && userUnitId) {
+      return cctvRequests.filter(r => String(r.requester?.user_unit_id) === String(userUnitId))
+    }
+    return cctvRequests
+  }, [cctvRequests, isUnitScopedPrincipal, userUnitId])
 
   // Summary Metrics for CCTV Requests
   const cctvMetrics = useMemo(() => {
@@ -369,7 +469,7 @@ export default function IncidentHandlingApprovalPage() {
     let completed = 0
     let rejected = 0
 
-    cctvRequests.forEach(r => {
+    scopedCctvRequests.forEach(r => {
       const st = (r.status || 'pending').toLowerCase()
       if (st === 'pending') pending++
       else if (st === 'approved') approved++
@@ -378,12 +478,12 @@ export default function IncidentHandlingApprovalPage() {
       else if (st === 'rejected') rejected++
     })
 
-    return { total: cctvRequests.length, pending, approved, inProgress, completed, rejected }
-  }, [cctvRequests])
+    return { total: scopedCctvRequests.length, pending, approved, inProgress, completed, rejected }
+  }, [scopedCctvRequests])
 
   // Filtered Incident Reports
   const filteredReports = useMemo(() => {
-    return reports.filter(r => {
+    return scopedReports.filter(r => {
       if (selectedStatusFilter !== 'all') {
         if (selectedStatusFilter === 'on_progress' || selectedStatusFilter === 'in_progress') {
           if (r.status !== 'on_progress' && r.status !== 'in_progress') return false
@@ -391,7 +491,9 @@ export default function IncidentHandlingApprovalPage() {
           return false
         }
       }
-      if (selectedUnitFilter !== 'all' && String(r.unit_id) !== selectedUnitFilter) return false
+      if (!isUnitScopedPrincipal && selectedUnitFilter !== 'all' && String(r.unit_id) !== selectedUnitFilter) {
+        return false
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const titleMatch = (r.title || '').toLowerCase().includes(q)
@@ -403,13 +505,13 @@ export default function IncidentHandlingApprovalPage() {
       }
       return true
     })
-  }, [reports, selectedStatusFilter, selectedUnitFilter, searchQuery])
+  }, [scopedReports, selectedStatusFilter, selectedUnitFilter, searchQuery, isUnitScopedPrincipal])
 
   // Filtered CCTV Requests
   const filteredCctvRequests = useMemo(() => {
-    return cctvRequests.filter(r => {
+    return scopedCctvRequests.filter(r => {
       if (cctvStatusFilter !== 'all' && r.status !== cctvStatusFilter) return false
-      if (cctvUnitFilter !== 'all' && String(r.requester?.user_unit_id) !== cctvUnitFilter) return false
+      if (!isUnitScopedPrincipal && cctvUnitFilter !== 'all' && String(r.requester?.user_unit_id) !== cctvUnitFilter) return false
       if (cctvSearchQuery.trim()) {
         const q = cctvSearchQuery.toLowerCase()
         const codeMatch = (r.request_number || '').toLowerCase().includes(q)
@@ -420,7 +522,7 @@ export default function IncidentHandlingApprovalPage() {
       }
       return true
     })
-  }, [cctvRequests, cctvStatusFilter, cctvUnitFilter, cctvSearchQuery])
+  }, [scopedCctvRequests, cctvStatusFilter, cctvUnitFilter, cctvSearchQuery, isUnitScopedPrincipal])
 
   // Minimalist Spot Pastel Status Badges
   const getLevelBadge = (level) => {
@@ -527,7 +629,7 @@ export default function IncidentHandlingApprovalPage() {
     e.preventDefault()
     if (!selectedReport) return
 
-    const userId = currentUser?.id || currentUser?.user_id
+    const userId = currentUser?.userID || currentUser?.user_id || currentUser?.id || (typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null)
     if (!userId) {
       setNotif({ isOpen: true, title: 'Authentication Error', message: 'Current user session expired. Please re-login.', type: 'error' })
       return
@@ -546,7 +648,7 @@ export default function IncidentHandlingApprovalPage() {
         .from('incident_followups')
         .insert({
           incident_id: selectedReport.id,
-          user_id: userId,
+          user_id: parseInt(userId, 10),
           followup_date: followupForm.followup_date,
           followup_time: followupForm.followup_time,
           location: followupForm.location.trim() || null,
@@ -597,7 +699,7 @@ export default function IncidentHandlingApprovalPage() {
             followupTime: followupForm.followup_time,
             resultingStatus: followupForm.resulting_status,
             attachmentUrl: uploadedUrl,
-            handlerName: currentUser ? `${currentUser.user_nama_depan || currentUser.userName || ''} ${currentUser.user_nama_belakang || ''}`.trim() : 'Staff/Counselor'
+            handlerName: currentUser ? `${currentUser.user_nama_depan || currentUser.namaDepan || currentUser.userName || currentUser.username || ''} ${currentUser.user_nama_belakang || currentUser.namaBelakang || ''}`.trim() : 'Staff/Counselor'
           })
         }).catch(err => console.error('[Incident Notification Dispatch Error]:', err))
       } catch (notifErr) {
@@ -831,13 +933,22 @@ export default function IncidentHandlingApprovalPage() {
                 <span className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>Unit:</span>
                 <select
                   value={selectedUnitFilter}
+                  disabled={isUnitScopedPrincipal}
                   onChange={e => setSelectedUnitFilter(e.target.value)}
                   className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
-                  style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                  style={{ 
+                    background: isUnitScopedPrincipal ? theme.subtleBg : theme.inputBg, 
+                    borderColor: theme.border, 
+                    color: theme.textPrimary, 
+                    borderRadius: '4px',
+                    opacity: isUnitScopedPrincipal ? 0.9 : 1
+                  }}
                 >
-                  <option value="all">All Units</option>
-                  {units.map(u => (
-                    <option key={u.unit_id} value={String(u.unit_id)}>{u.unit_name}</option>
+                  {!isUnitScopedPrincipal && <option value="all">All Units</option>}
+                  {availableUnits.map(u => (
+                    <option key={u.unit_id} value={String(u.unit_id)}>
+                      {u.unit_name} {isUnitScopedPrincipal ? '(Your Unit)' : ''}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -877,21 +988,47 @@ export default function IncidentHandlingApprovalPage() {
               />
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>Status:</span>
-              <select
-                value={cctvStatusFilter}
-                onChange={e => setCctvStatusFilter(e.target.value)}
-                className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
-                style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
-              >
-                <option value="all">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="rejected">Rejected</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>Unit:</span>
+                <select
+                  value={cctvUnitFilter}
+                  disabled={isUnitScopedPrincipal}
+                  onChange={e => setCctvUnitFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                  style={{ 
+                    background: isUnitScopedPrincipal ? theme.subtleBg : theme.inputBg, 
+                    borderColor: theme.border, 
+                    color: theme.textPrimary, 
+                    borderRadius: '4px',
+                    opacity: isUnitScopedPrincipal ? 0.9 : 1
+                  }}
+                >
+                  {!isUnitScopedPrincipal && <option value="all">All Units</option>}
+                  {availableUnits.map(u => (
+                    <option key={u.unit_id} value={String(u.unit_id)}>
+                      {u.unit_name} {isUnitScopedPrincipal ? '(Your Unit)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>Status:</span>
+                <select
+                  value={cctvStatusFilter}
+                  onChange={e => setCctvStatusFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                  style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
             </div>
           </>
         )}
