@@ -1065,8 +1065,8 @@
     "semantic_hash": "ed62be15a684e4722d48de789ed2e4ba"
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1787020320.2467978,
-    "ast_hash": "503027d41cc74c882934da7e1b6a8d5a",
+    "mtime": 1786699622.7393746,
+    "ast_hash": "881c2da85e28169c1c9212679a6a6bda",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -1335,18 +1335,18 @@
     "semantic_hash": "a7c1c38cae37e55ea43d9bff76355a4c"
   },
   "src/i18n/en.json": {
-    "mtime": 1787020025.2246952,
-    "ast_hash": "a7bbae80cd3093ef2d34a72743cebfd7",
+    "mtime": 1786699605.9269412,
+    "ast_hash": "08a11bb437540099d96e607d0c075d1d",
     "semantic_hash": ""
   },
   "src/i18n/id.json": {
-    "mtime": 1787020028.3033159,
-    "ast_hash": "af1fc59f82e9c191d7dd975541fe0bdd",
+    "mtime": 1786699611.7322128,
+    "ast_hash": "fb93065ef438458b37a3157cce37a85e",
     "semantic_hash": ""
   },
   "src/i18n/zh.json": {
-    "mtime": 1787020031.6569295,
-    "ast_hash": "d94acca42e4fea32e67893f83f385fa9",
+    "mtime": 1786699617.3053567,
+    "ast_hash": "8151ef12ed8a5aec357f03a9847dff78",
     "semantic_hash": ""
   },
   "src/lib/auth.js": {

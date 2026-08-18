@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react'
 import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -2656,49 +2656,22 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   const validateAssessmentForm = () => {
     const errors = {}
     
-    // Check if editing approved assessment (only criteria can be changed)
-    const isEditingApproved = editingAssessment && editingAssessment.assessment_status === 1
-    
-    if (!isEditingApproved) {
-      // Full validation for new or pending assessments
-      if (!assessmentFormData.assessment_nama.trim()) {
-        errors.assessment_nama = 'Assessment name is required'
-      }
-      
-      if (!assessmentFormData.assessment_tanggal) {
-        errors.assessment_tanggal = 'Assessment date is required'
-      }
-      
-      if (!assessmentFormData.assessment_detail_kelas_id) {
-        errors.assessment_detail_kelas_id = 'Subject/Class is required'
-      }
-      
-      // Topic required
-      if (assessmentFormData.assessment_detail_kelas_id && topicsForAssessment.length === 0) {
-        errors.assessment_topic_id = 'No topics available for this subject/class'
-      } else if (!assessmentFormData.assessment_topic_id) {
-        errors.assessment_topic_id = 'Topic is required'
-      }
-      
-      // Date validation
-      if (assessmentFormData.assessment_tanggal) {
-        const selectedDate = new Date(assessmentFormData.assessment_tanggal)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        selectedDate.setHours(0, 0, 0, 0)
-        
-        if (selectedDate < today) {
-          errors.assessment_tanggal = 'Date cannot be in the past'
-        } else {
-          const daysDiff = getDaysDifference(today, selectedDate)
-          if (daysDiff === 1) {
-            errors.assessment_tanggal = 'Date cannot be tomorrow. Minimum 2 days ahead.'
-          }
-        }
-      }
+    if (!assessmentFormData.assessment_nama.trim()) {
+      errors.assessment_nama = 'Assessment name is required'
     }
     
-    // Criteria required (always, even for approved)
+    if (!assessmentFormData.assessment_detail_kelas_id) {
+      errors.assessment_detail_kelas_id = 'Subject/Class is required'
+    }
+    
+    // Topic required
+    if (assessmentFormData.assessment_detail_kelas_id && topicsForAssessment.length === 0) {
+      errors.assessment_topic_id = 'No topics available for this subject/class'
+    } else if (!assessmentFormData.assessment_topic_id) {
+      errors.assessment_topic_id = 'Topic is required'
+    }
+    
+    // Criteria required
     if (!assessmentFormData.selected_criteria || assessmentFormData.selected_criteria.length === 0) {
       errors.selected_criteria = 'At least one criterion is required'
     }
@@ -2836,37 +2809,14 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       
       // If editing, update the existing assessment
       if (editingAssessment) {
-        const isApproved = editingAssessment.assessment_status === 1
-        
-        // For approved assessments, only update name and description (not date/class/topic/status)
-        // For pending assessments, allow full update
-        let assessmentData
-        
-        if (isApproved) {
-          // Approved: only update name and description
-          assessmentData = {
-            assessment_nama: assessmentFormData.assessment_nama.trim(),
-            assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null
-          }
-        } else {
-          // Pending: full update
-          // TEMP: bypass approval — status set to 1 (approved) directly
-          // const selectedDate = new Date(assessmentFormData.assessment_tanggal)
-          // selectedDate.setHours(0, 0, 0, 0)
-          // const today = new Date()
-          // today.setHours(0, 0, 0, 0)
-          // const diffDays = getDaysDifference(today, selectedDate)
-          // const computedStatus = diffDays >= 2 && diffDays <= 6 ? 3 : 0
-          
-          assessmentData = {
-            assessment_nama: assessmentFormData.assessment_nama.trim(),
-            assessment_tanggal: assessmentFormData.assessment_tanggal,
-            assessment_keterangan: assessmentFormData.assessment_keterangan.trim() || null,
-            assessment_status: 1, // TEMP: auto-approved, no approval flow needed
-            assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
-            assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id),
-            assessment_semester: assessmentFormData.assessment_semester ? parseInt(assessmentFormData.assessment_semester) : null
-          }
+        const assessmentData = {
+          assessment_nama: assessmentFormData.assessment_nama.trim(),
+          assessment_tanggal: assessmentFormData.assessment_tanggal || null,
+          assessment_keterangan: assessmentFormData.assessment_keterangan?.trim() || null,
+          assessment_status: 1, // Auto-approved
+          assessment_detail_kelas_id: parseInt(assessmentFormData.assessment_detail_kelas_id),
+          assessment_topic_id: parseInt(assessmentFormData.assessment_topic_id),
+          assessment_semester: assessmentFormData.assessment_semester ? parseInt(assessmentFormData.assessment_semester) : null
         }
         
         const { error } = await supabase
@@ -4995,7 +4945,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           assessment_detail_kelas_id: dkData.detail_kelas_id,
           assessment_topic_id: selectedTopic.topic_id,
           assessment_semester: wizardAssessment.assessment_semester ? parseInt(wizardAssessment.assessment_semester) : null,
-          assessment_status: 0,
+          assessment_status: 1, // Auto-approved
           assessment_user_id: currentUserId
         }
         
@@ -5127,7 +5077,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
           assessment_tanggal: '',
           assessment_keterangan: '',
           assessment_semester: '',
-          assessment_status: 0,
+          assessment_status: 1, // Auto-approved
           selected_criteria: []
         })
       }
@@ -5347,6 +5297,40 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     return m ? parseInt(m[1], 10) : 9999
   }
   
+  // Deduplicated and strictly year-filtered kelas list for Planning Overview dropdown
+  const overviewFilterKelasOptions = useMemo(() => {
+    const list = (allKelasRaw || []).filter(k => !filters.year || String(k.kelas_year_id) === String(filters.year))
+    const seen = new Set()
+    return list.filter(k => {
+      if (seen.has(k.kelas_id)) return false
+      seen.add(k.kelas_id)
+      return true
+    }).sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+  }, [allKelasRaw, filters.year])
+
+  // Deduplicated and strictly year-filtered kelas list for Weekly Plan dropdown
+  const wpFilterKelasOptions = useMemo(() => {
+    const list = (allKelasRaw || []).filter(k => !wpYear || String(k.kelas_year_id) === String(wpYear))
+    const seen = new Set()
+    return list.filter(k => {
+      if (seen.has(k.kelas_id)) return false
+      seen.add(k.kelas_id)
+      return true
+    }).sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+  }, [allKelasRaw, wpYear])
+
+  // Deduplicated and strictly year-filtered kelas list for Wizard
+  const wizardKelasOptions = useMemo(() => {
+    const source = allowedKelasRaw && allowedKelasRaw.length > 0 ? allowedKelasRaw : (allKelasRaw || [])
+    const list = wizardYear ? source.filter(k => String(k.kelas_year_id) === String(wizardYear)) : source
+    const seen = new Set()
+    return list.filter(k => {
+      if (seen.has(k.kelas_id)) return false
+      seen.add(k.kelas_id)
+      return true
+    }).sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+  }, [allowedKelasRaw, allKelasRaw, wizardYear])
+
   // Filter and sort topics
   const kelasIdsForYear = filters.year
     ? new Set(allKelasRaw.filter(k => String(k.kelas_year_id) === String(filters.year)).map(k => k.kelas_id))
@@ -5379,6 +5363,43 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       const urutanB = b.topic_urutan != null ? b.topic_urutan : 9999
       return urutanA - urutanB
     })
+
+  // Group topics by class/grade for clear section dividers when All Classes is selected
+  const groupedFilteredTopics = useMemo(() => {
+    if (filters.kelas) {
+      const kId = parseInt(filters.kelas)
+      const kName = kelasNameMap.get(kId) || 'Selected Class'
+      return [{
+        kelasId: kId,
+        kelasName: kName,
+        topics: filteredTopics
+      }]
+    }
+
+    const groupsMap = new Map()
+    filteredTopics.forEach(topic => {
+      const kId = topic.topic_kelas_id || 0
+      if (!groupsMap.has(kId)) {
+        const kName = kelasNameMap.get(topic.topic_kelas_id) || (topic.topic_year ? `MYP Year ${topic.topic_year}` : 'Unassigned Class')
+        groupsMap.set(kId, {
+          kelasId: kId,
+          kelasName: kName,
+          topics: []
+        })
+      }
+      groupsMap.get(kId).topics.push(topic)
+    })
+
+    const groups = Array.from(groupsMap.values())
+    groups.sort((a, b) => {
+      const gradeA = gradeOf(a.kelasId)
+      const gradeB = gradeOf(b.kelasId)
+      if (gradeA !== gradeB) return gradeA - gradeB
+      return a.kelasName.localeCompare(b.kelasName, undefined, { numeric: true, sensitivity: 'base' })
+    })
+
+    return groups
+  }, [filteredTopics, filters.kelas, kelasNameMap])
 
   // Filter and sort assessments (same logic as topics)
   const filteredAssessments = assessments
@@ -5518,7 +5539,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       })
     }
     if (topic.topic_subject_id) {
-      await fetchKelasForSubject(topic.topic_subject_id)
       const { data: criteriaData } = await supabase
         .from('criteria')
         .select('criterion_id, code, name')
@@ -5584,19 +5604,36 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
       {/* Tab Content */}
       <div style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+        {/* ── PLANNING TAB (MINIMALIST-UI) ──────────────────────────────────────── */}
         {activeTab === 'planning' && (
-          <div className="p-6 w-full">
-            {/* Top Sub-Menu Segmented Control Header */}
-            <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100 dark:border-gray-700/60">
-              <h2 className="text-base font-bold" style={{ color: theme.textPrimary, fontFamily: "'Helvetica Neue', sans-serif" }}>
-                {activeSubMenu === 'overview' ? t('topicNew.subMenu.planningOverview') : t('topicNew.subMenu.weeklyPlan')}
-              </h2>
+          <div className="p-6 space-y-5" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
+            {/* Header */}
+            <div className="pb-4 border-b flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ borderColor: theme.border }}>
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1" style={{ color: theme.textSecondary }}>
+                  <span>[MYP PORTAL]</span>
+                  <span>/</span>
+                  <span>[IB UNIT PLANNER]</span>
+                  <span>/</span>
+                  <span className="font-semibold" style={{ color: theme.blueText }}>
+                    [{activeSubMenu === 'overview' ? 'PLANNING OVERVIEW' : 'WEEKLY TEACHING PLAN'}]
+                  </span>
+                </div>
+                <h2 className="text-lg font-bold tracking-tight" style={{ color: theme.textPrimary, letterSpacing: '-0.01em' }}>
+                  {activeSubMenu === 'overview' ? (t('topicNew.subMenu.planningOverview') || 'Planning Overview') : (t('topicNew.subMenu.weeklyPlan') || 'Weekly Plan')}
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+                  {activeSubMenu === 'overview'
+                    ? 'Design and manage IB MYP unit planners, statements of inquiry, and criteria.'
+                    : 'Plan weekly objectives, teaching activities, and session resources per unit.'}
+                </p>
+              </div>
 
-              {/* Segmented Pill Switcher */}
-              <div className="inline-flex p-1 rounded-xl bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 shadow-2xs">
+              {/* Segmented SubMenu Switcher */}
+              <div className="flex items-center gap-1 p-1 rounded border self-start sm:self-auto" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '6px' }}>
                 {[
-                  { id: 'overview', label: t('topicNew.subMenu.overview'), icon: faClipboardList },
-                  { id: 'weekly-plan', label: t('topicNew.subMenu.weeklyPlan'), icon: faCalendar }
+                  { id: 'overview', label: t('topicNew.subMenu.overview') || 'Overview', icon: faClipboardList },
+                  { id: 'weekly-plan', label: t('topicNew.subMenu.weeklyPlan') || 'Weekly Plan', icon: faCalendar }
                 ].map((item) => {
                   const isActive = activeSubMenu === item.id
                   return (
@@ -5610,16 +5647,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           setActiveSubMenu(item.id)
                         }
                       }}
-                      className={`relative flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all duration-150 ${
-                        isActive
-                          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
-                      }`}
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-semibold rounded transition-all cursor-pointer"
+                      style={{
+                        background: isActive ? theme.textPrimary : 'transparent',
+                        color: isActive ? theme.cardBg : theme.textSecondary,
+                        borderRadius: '4px'
+                      }}
                     >
-                      <FontAwesomeIcon icon={item.icon} className="w-3.5 h-3.5" />
+                      <FontAwesomeIcon icon={item.icon} className="text-[11px]" />
                       <span>{item.label}</span>
                       {item.id === 'weekly-plan' && isWeeklyPlanDirty && (
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" title="Unsaved changes" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" title="Unsaved changes" />
                       )}
                     </button>
                   )
@@ -5627,729 +5665,707 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
               </div>
             </div>
 
-            {/* Content Area */}
-            <div className="w-full min-w-0">
-              {activeSubMenu === 'overview' && (
-                <div>
-                  {/* Unified Minimalist Control Bar (Search, Filters, View Switcher) */}
-                  <div 
-                    className="mb-6 p-4 rounded-2xl border shadow-2xs transition-all duration-200"
-                    style={{ 
-                      background: theme.cardBg, 
-                      borderColor: theme.border 
-                    }}
-                  >
-                    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-                      {/* Filter Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
-                        {/* Year filter */}
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
-                            {t('topicNew.filters.year')}
-                          </label>
-                          <select
-                            value={filters.year}
-                            onChange={(e) => {
-                              const yr = e.target.value
-                              const filtered = yr ? allKelasRaw.filter(k => String(k.kelas_year_id) === String(yr)) : allKelasRaw
-                              setAllKelas(filtered)
-                              setFilters({ ...filters, year: yr, kelas: '', subject: '' })
-                            }}
-                            className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
-                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
-                          >
-                            <option value="">{t('topicNew.weeklyPlanTab.allYears')}</option>
-                            {yearOptions.map(y => (
-                              <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
-                            ))}
-                          </select>
-                        </div>
+            {/* SubMenu 1: Overview */}
+            {activeSubMenu === 'overview' && (
+              <div className="space-y-4">
+                {/* Bento Filter Card */}
+                <div className="p-3.5 rounded border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* 1. Academic Year */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                        1. {t('topicNew.filters.year') || 'Academic Year'}
+                      </label>
+                      <select
+                        value={filters.year}
+                        onChange={(e) => {
+                          const yr = e.target.value
+                          setFilters({ ...filters, year: yr, kelas: '', subject: '' })
+                        }}
+                        className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                        style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                      >
+                        <option value="">{t('topicNew.weeklyPlanTab.allYears') || 'All Years'}</option>
+                        {yearOptions.map(y => (
+                          <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                        {/* Kelas filter */}
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
-                            {t('topicNew.filters.class')}
-                          </label>
-                          <select
-                            value={filters.kelas}
-                            onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
-                            className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
-                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
-                          >
-                            <option value="">{t('topicNew.filters.allClasses')}</option>
-                            {allKelas.map(k => (
-                              <option key={k.kelas_id} value={k.kelas_id}>
-                                {k.kelas_nama}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                    {/* 2. Class */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                        2. {t('topicNew.filters.class') || 'Class'}
+                      </label>
+                      <select
+                        value={filters.kelas}
+                        onChange={(e) => setFilters({ ...filters, kelas: e.target.value })}
+                        className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                        style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                      >
+                        <option value="">{t('topicNew.filters.allClasses') || 'All Classes'}</option>
+                        {overviewFilterKelasOptions.map(k => (
+                          <option key={k.kelas_id} value={k.kelas_id}>
+                            {k.kelas_nama}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                        {/* Subject filter */}
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
-                            {t('topicNew.filters.subject')}
-                          </label>
-                          <select
-                            value={filters.subject}
-                            onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
-                            className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
-                            style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
-                          >
-                            <option value="">{t('topicNew.filters.allSubjects')}</option>
-                            {subjects.map(s => (
-                              <option key={s.subject_id} value={s.subject_id}>
-                                {s.subject_name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                    {/* 3. Subject */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                        3. {t('topicNew.filters.subject') || 'Subject'}
+                      </label>
+                      <select
+                        value={filters.subject}
+                        onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+                        className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                        style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                      >
+                        <option value="">{t('topicNew.filters.allSubjects') || 'All Subjects'}</option>
+                        {subjects.map(s => (
+                          <option key={s.subject_id} value={s.subject_id}>
+                            {s.subject_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                        {/* Search input */}
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
-                            {t('topicNew.filters.search')}
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={filters.search}
-                              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                              placeholder={t('topicNew.filters.search')}
-                              className="w-full pl-8 pr-3 py-2 text-xs font-medium focus:outline-none transition-colors"
-                              style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
-                            />
-                            <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-2.5 w-3 h-3 text-gray-400" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* View Switcher Toggle */}
-                      <div className="flex items-center justify-end self-end">
-                        <div className="flex items-center gap-1 p-1" style={{ background: theme.subtleBg, borderRadius: '8px', border: `1px solid ${theme.border}` }}>
-                          <button
-                            onClick={() => { setPlanningView('card'); localStorage.setItem('planning_view', 'card') }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all duration-150"
-                            style={{ 
-                              borderRadius: '6px', 
-                              background: planningView === 'card' ? theme.cardBg : 'transparent', 
-                              color: planningView === 'card' ? theme.textPrimary : theme.textSecondary, 
-                              boxShadow: planningView === 'card' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' 
-                            }}
-                            title="Card View"
-                          >
-                            <FontAwesomeIcon icon={faTableCells} className="w-3 h-3" />
-                            Card
-                          </button>
-                          <button
-                            onClick={() => { setPlanningView('list'); localStorage.setItem('planning_view', 'list') }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all duration-150"
-                            style={{ 
-                              borderRadius: '6px', 
-                              background: planningView === 'list' ? theme.cardBg : 'transparent', 
-                              color: planningView === 'list' ? theme.textPrimary : theme.textSecondary, 
-                              boxShadow: planningView === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' 
-                            }}
-                            title="List View"
-                          >
-                            <FontAwesomeIcon icon={faListUl} className="w-3 h-3" />
-                            List
-                          </button>
-                        </div>
-                      </div>
+                    {/* 4. Search */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                        4. {t('topicNew.filters.search') || 'Search'}
+                      </label>
+                      <input
+                        type="text"
+                        value={filters.search}
+                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                        placeholder="Search unit name or topic..."
+                        className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                        style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                      />
                     </div>
                   </div>
 
-                  {/* Loading State */}
-                  {loading ? (
-                    <div className="flex justify-center items-center py-16">
-                      <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
+                  {/* Sub-bar: Count & View Switcher */}
+                  <div className="pt-2 border-t flex items-center justify-between gap-2" style={{ borderColor: theme.border }}>
+                    <span className="text-[11px] font-mono font-bold" style={{ color: theme.textSecondary }}>
+                      {filteredTopics.length} unit{filteredTopics.length !== 1 ? 's' : ''} found
+                    </span>
+
+                    <div className="flex items-center gap-1 p-0.5 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setPlanningView('card'); localStorage.setItem('planning_view', 'card') }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-semibold rounded transition-all cursor-pointer"
+                        style={{
+                          background: planningView === 'card' ? theme.cardBg : 'transparent',
+                          color: planningView === 'card' ? theme.textPrimary : theme.textSecondary,
+                          borderRadius: '4px',
+                          border: planningView === 'card' ? `1px solid ${theme.border}` : '1px solid transparent'
+                        }}
+                        title="Card View"
+                      >
+                        <FontAwesomeIcon icon={faTableCells} className="text-[10px]" />
+                        <span>Card</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setPlanningView('list'); localStorage.setItem('planning_view', 'list') }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-semibold rounded transition-all cursor-pointer"
+                        style={{
+                          background: planningView === 'list' ? theme.cardBg : 'transparent',
+                          color: planningView === 'list' ? theme.textPrimary : theme.textSecondary,
+                          borderRadius: '4px',
+                          border: planningView === 'list' ? `1px solid ${theme.border}` : '1px solid transparent'
+                        }}
+                        title="List View"
+                      >
+                        <FontAwesomeIcon icon={faListUl} className="text-[10px]" />
+                        <span>List</span>
+                      </button>
                     </div>
-                  ) : planningView === 'card' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                      {filteredTopics.length === 0 && (
-                        <div className="col-span-full text-center py-16 text-xs font-medium" style={{ color: theme.textSecondary }}>
-                          {t('topicNew.table.noUnits')}
-                        </div>
-                      )}
-                      
-                      {filteredTopics.length > 0 && (
-                        filteredTopics.map((topic) => {
-                          const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
-                          const kelasName = kelasNameMap.get(topic.topic_kelas_id) || ''
-                          const gradeMatch = kelasName.match(/(\d{1,2})/)
-                          const gradeNumber = gradeMatch ? gradeMatch[1] : ''
+                  </div>
+                </div>
 
-                          // Duration formatting: "7 Weeks", "1 Week", or "-"
-                          const durationVal = topic.topic_duration
-                          const durationNum = parseInt(durationVal, 10)
-                          const formattedDuration = !isNaN(durationNum) && durationNum > 0
-                            ? `${durationNum} ${durationNum === 1 ? 'Week' : 'Weeks'}`
-                            : (durationVal && durationVal !== '0' && durationVal !== 0 ? `${durationVal} Weeks` : '-')
-
-                          // Secondary Info Snippet (Inquiry Question / Statement of Inquiry / Key Concept)
-                          const secondarySnippet = topic.topic_statement || topic.topic_inquiry_question || topic.topic_key_concept || ''
-
-                          // Redundant filter checks (Hide badge if globally filtered to avoid duplication)
-                          const isSubjectFiltered = Boolean(filters.subject && filters.subject !== '')
-                          const isKelasFiltered = Boolean(filters.kelas && filters.kelas !== '')
-
-                          return (
-                          <div 
-                            key={topic.topic_id}
-                            className="group relative cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between rounded-2xl p-4.5"
-                            style={{
-                              background: isDraft ? theme.yellowBg : theme.cardBg,
-                              border: `1.5px solid ${isDraft ? 'rgba(245, 158, 11, 0.35)' : theme.border}`,
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)'
-                            }}
-                            onClick={() => handleTopicOpen(topic)}
-                          >
-                            {/* Layer 1: Fixed Height Header with De-cluttered Badges (Max 3-4 Badges) & Action Menu */}
-                            <div 
-                              className="flex items-center justify-between gap-2 pb-2.5 mb-3"
-                              style={{ borderBottom: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.2)' : theme.border}` }}
-                            >
-                              <div className="flex items-center gap-1.5 flex-nowrap overflow-hidden flex-1 pr-1 min-h-[24px]">
-                                {/* 1. Unit Badge (Primary Identifier) */}
-                                <span 
-                                  className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0"
-                                  style={{
-                                    background: isDraft ? 'rgba(245, 158, 11, 0.12)' : 'rgba(59, 130, 246, 0.08)',
-                                    color: isDraft ? '#b45309' : '#2563eb',
-                                    border: `1px solid ${isDraft ? 'rgba(245, 158, 11, 0.25)' : 'rgba(59, 130, 246, 0.2)'}`
-                                  }}
-                                >
-                                  Unit {topic.topic_urutan || '-'}
-                                </span>
-
-                                {/* 2. Status Capsule Pill (Small & Distinct Dot) */}
-                                {isDraft ? (
-                                  <span 
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0"
-                                    style={{
-                                      background: 'rgba(245, 158, 11, 0.08)',
-                                      color: '#b45309',
-                                      border: '1px solid rgba(245, 158, 11, 0.25)'
-                                    }}
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                    Draft
-                                  </span>
-                                ) : (
-                                  <span 
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0"
-                                    style={{
-                                      background: 'rgba(16, 185, 129, 0.08)',
-                                      color: '#047857',
-                                      border: '1px solid rgba(16, 185, 129, 0.2)'
-                                    }}
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Published
-                                  </span>
-                                )}
-
-                                {/* 3. Subject Badge (Muted soft tone, hidden if subject filter is active) */}
-                                {!isSubjectFiltered && subjectMap.get(topic.topic_subject_id) && (
-                                  <span 
-                                    className="text-[10px] px-2 py-0.5 font-medium rounded-md truncate flex-shrink-0 max-w-[110px]"
-                                    style={{
-                                      background: 'rgba(99, 102, 241, 0.08)',
-                                      color: '#4f46e5',
-                                      border: '1px solid rgba(99, 102, 241, 0.15)'
-                                    }}
-                                    title={subjectMap.get(topic.topic_subject_id)}
-                                  >
-                                    {subjectMap.get(topic.topic_subject_id)}
-                                  </span>
-                                )}
-
-                                {/* 4. Class / Grade Badge (Soft tone, hidden if class filter is active) */}
-                                {!isKelasFiltered && (topic.topic_kelas_id ? (
-                                  <span 
-                                    className="text-[10px] px-2 py-0.5 font-medium rounded-md flex-shrink-0"
-                                    style={{
-                                      background: 'rgba(16, 185, 129, 0.08)',
-                                      color: '#047857',
-                                      border: '1px solid rgba(16, 185, 129, 0.15)'
-                                    }}
-                                  >
-                                    {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
-                                  </span>
-                                ) : gradeNumber ? (
-                                  <span 
-                                    className="text-[10px] px-2 py-0.5 font-medium rounded-md flex-shrink-0"
-                                    style={{
-                                      background: theme.subtleBg,
-                                      color: theme.textPrimary,
-                                      border: `1px solid ${theme.border}`
-                                    }}
-                                  >
-                                    Grade {gradeNumber}
-                                  </span>
-                                ) : null)}
-
-                                {/* 5. MYP Year Badge (Only shown if class badge not present & filters not active) */}
-                                {!isKelasFiltered && !kelasNameMap.get(topic.topic_kelas_id) && !gradeNumber && topic.topic_year && (
-                                  <span 
-                                    className="text-[10px] px-2 py-0.5 font-medium rounded-md flex-shrink-0"
-                                    style={{
-                                      background: theme.subtleBg,
-                                      color: theme.textSecondary,
-                                      border: `1px solid ${theme.border}`
-                                    }}
-                                  >
-                                    MYP Y{topic.topic_year}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Three-Dots Menu Dropdown */}
-                              <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setActiveCardMenuId(prev => (prev === topic.topic_id ? null : topic.topic_id))
-                                  }}
-                                  className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400"
-                                  title="Actions"
-                                >
-                                  <FontAwesomeIcon icon={faEllipsisV} className="text-xs" />
-                                </button>
-
-                                {activeCardMenuId === topic.topic_id && (
-                                  <div 
-                                    className="absolute right-0 top-8 z-30 w-52 py-1.5 rounded-xl shadow-xl border outline-none animate-fadeIn"
-                                    style={{
-                                      background: theme.cardBg,
-                                      borderColor: theme.border,
-                                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)'
-                                    }}
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setActiveCardMenuId(null)
-                                        handleGeneratePDF(topic, e)
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left font-semibold transition-colors"
-                                      style={{ color: theme.textPrimary }}
-                                      onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
-                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                      <FontAwesomeIcon icon={faPrint} className="w-3.5 text-blue-600 dark:text-blue-400" />
-                                      <span>Unit Planner (PDF)</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setActiveCardMenuId(null)
-                                        handleGenerateAssessmentPDFFromCard(topic, e)
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left font-medium transition-colors"
-                                      style={{ color: theme.textPrimary }}
-                                      onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
-                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                      <FontAwesomeIcon icon={faFileAlt} className="w-3.5 text-gray-500 dark:text-gray-400" />
-                                      <span>Assessment (PDF)</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setActiveCardMenuId(null)
-                                        handleExportAssessmentWordFromCard(topic, e)
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left font-medium transition-colors"
-                                      style={{ color: theme.textPrimary }}
-                                      onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
-                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                      <FontAwesomeIcon icon={faFileWord} className="w-3.5 text-blue-500" />
-                                      <span>Assessment (Word)</span>
-                                    </button>
-
-                                    <div className="my-1 border-t" style={{ borderColor: theme.border }} />
-
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setActiveCardMenuId(null)
-                                        handleInitiateDeleteTopic(topic, e)
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left font-bold transition-colors text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-                                    >
-                                      <FontAwesomeIcon icon={faTrash} className="w-3.5 text-red-500" />
-                                      <span>Delete Unit</span>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Layer 2: Primary Unit Title & Secondary Info Line */}
-                            <div className="my-2 flex-1 flex flex-col justify-center min-h-[3rem]">
-                              <h3 
-                                className="text-[15px] font-extrabold line-clamp-2 leading-snug tracking-tight"
-                                style={{ color: theme.textPrimary }}
-                              >
-                                {topic.topic_nama}
-                              </h3>
-                              {secondarySnippet ? (
-                                <p 
-                                  className="text-xs line-clamp-1 mt-1 font-medium opacity-75"
-                                  style={{ color: theme.textSecondary }}
-                                >
-                                  {secondarySnippet}
-                                </p>
-                              ) : null}
-                            </div>
-
-                            {/* Layer 3: Duration Label with Clock Icon (Bottom Right) */}
-                            <div className="flex items-center justify-end gap-1.5 pt-2 mt-auto">
-                              <div 
-                                className="flex items-center gap-1.5 text-[11px] font-semibold"
-                                style={{ color: theme.textSecondary }}
-                              >
-                                <FontAwesomeIcon icon={faClock} className="text-[11px] opacity-70" />
-                                <span>{formattedDuration}</span>
-                              </div>
-                            </div>
-                          </div>
-                        )})
-                      )}
-                    </div>
-                  ) : filteredTopics.length === 0 ? (
-                    <div className="text-center py-12 text-xs" style={{ color: theme.textSecondary }}>
-                      {t('topicNew.table.noUnits')}
+                {/* Content View */}
+                {loading ? (
+                  <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                    <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2" />
+                    <p className="text-xs font-mono uppercase tracking-wider">LOADING UNITS...</p>
+                  </div>
+                ) : planningView === 'card' ? (
+                  /* ── CARD VIEW ──────────────────────────────────────────────────────── */
+                  filteredTopics.length === 0 ? (
+                    <div className="p-12 text-center border border-dashed rounded" style={{ borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                      <p className="text-xs font-mono uppercase tracking-wider">// NO UNITS FOUND MATCHING THE FILTERS</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-xs" style={{ borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.subtleBg }}>
-                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider w-10" style={{ color: theme.textSecondary }}>#</th>
-                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Topic Name</th>
-                            <th className="px-4 py-2.5 text-center font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Status</th>
-                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Subject</th>
-                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Class</th>
-                            <th className="px-4 py-2.5 text-center font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Duration</th>
-                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Inquiry Question</th>
-                            <th className="px-4 py-2.5 text-left font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Global Context</th>
-                            <th className="px-4 py-2.5 text-right font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredTopics.map((topic, idx) => {
-                            const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
-                            return (
-                            <tr
-                              key={topic.topic_id}
-                              className="cursor-pointer transition-colors"
-                              style={{ borderBottom: `1px solid ${theme.border}` }}
-                              onClick={() => handleTopicOpen(topic)}
-                              onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <td className="px-4 py-3 text-center" style={{ color: theme.textSecondary }}>{idx + 1}</td>
-                              <td className="px-4 py-3">
-                                <div className="font-medium" style={{ color: theme.textPrimary }}>{topic.topic_nama}</div>
-                                {topic.topic_urutan && <div className="text-[10px] mt-0.5" style={{ color: theme.textSecondary }}>Unit #{topic.topic_urutan}</div>}
-                              </td>
-                              <td className="px-4 py-3 text-center whitespace-nowrap">
-                                <span 
-                                  className="px-2 py-0.5 text-[10px] font-bold uppercase rounded" 
-                                  style={{ 
-                                    background: isDraft ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)', 
-                                    color: isDraft ? '#b45309' : '#047857', 
-                                    border: `1px solid ${isDraft ? '#fcd34d' : '#6ee7b7'}` 
+                    <div className="space-y-8">
+                      {groupedFilteredTopics.map((group) => (
+                        <div key={group.kelasId} className="space-y-3">
+                          {/* Class / Grade Section Header (shown when All Classes is selected) */}
+                          {!filters.kelas && (
+                            <div className="flex items-center gap-3 pt-2">
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="px-2.5 py-1 text-xs font-mono font-bold rounded bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3] uppercase tracking-wide">
+                                  {group.kelasName}
+                                </span>
+                                <span className="text-[11px] font-mono px-2 py-0.5 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+                                  {group.topics.length} unit{group.topics.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                              <div className="flex-1 border-t" style={{ borderColor: theme.border }} />
+                            </div>
+                          )}
+
+                          {/* 3-Column Card Grid for this Grade */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {group.topics.map((topic) => {
+                              const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
+                              const kelasName = kelasNameMap.get(topic.topic_kelas_id) || ''
+                              const durationVal = topic.topic_duration
+                              const durationNum = parseInt(durationVal, 10)
+                              const formattedDuration = !isNaN(durationNum) && durationNum > 0
+                                ? `${durationNum} ${durationNum === 1 ? 'Wk' : 'Wks'}`
+                                : (durationVal && durationVal !== '0' && durationVal !== 0 ? `${durationVal} Wks` : '–')
+
+                              const secondarySnippet = topic.topic_statement || topic.topic_inquiry_question || topic.topic_key_concept || ''
+
+                              return (
+                                <div
+                                  key={topic.topic_id}
+                                  className="relative flex flex-col justify-between p-4 rounded border transition-all cursor-pointer hover:shadow-sm"
+                                  style={{
+                                    background: isDraft ? (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF9C3') : theme.cardBg,
+                                    borderColor: isDraft ? (isDark ? 'rgba(245, 158, 11, 0.5)' : '#FCD34D') : theme.border,
+                                    borderWidth: isDraft ? '1.5px' : '1px',
+                                    borderRadius: '8px'
                                   }}
+                                  onClick={() => handleTopicOpen(topic)}
                                 >
-                                  {isDraft ? 'DRAFT' : 'PUBLISHED'}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>
-                                  {subjectMap.get(topic.topic_subject_id) || 'N/A'}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="px-1.5 py-0.5 font-medium" style={{ background: theme.greenBg, color: theme.greenText, borderRadius: '4px' }}>
-                                  {kelasNameMap.get(topic.topic_kelas_id) || 'N/A'}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-center" style={{ color: theme.textBody }}>
-                                {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
-                                  ? `${topic.topic_duration}w`
-                                  : '-'}
-                              </td>
-                              <td className="px-4 py-3 max-w-xs" style={{ color: theme.textBody }}>
-                                <p className="line-clamp-2">{topic.topic_inquiry_question || '-'}</p>
-                              </td>
-                              <td className="px-4 py-3 max-w-xs">
-                                <p className="line-clamp-1" style={{ color: theme.textBody }}>{topic.topic_global_context || '-'}</p>
-                                {topic.topic_gc_exploration && (
-                                  <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px]" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }}>{topic.topic_gc_exploration}</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex items-center justify-end gap-1">
-                                  <button onClick={(e) => handleGeneratePDF(topic, e)} className="p-1.5 transition-colors" style={{ background: theme.blueBg, color: theme.blueText, borderRadius: '4px' }} title="Unit Planner PDF">
-                                    <FontAwesomeIcon icon={faPrint} className="text-xs" />
-                                  </button>
-                                  <button onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)} className="p-1.5 transition-colors" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }} title="Assessment PDF">
-                                    <FontAwesomeIcon icon={faFileAlt} className="text-xs" />
-                                  </button>
-                                  <button onClick={(e) => handleExportAssessmentWordFromCard(topic, e)} className="p-1.5 transition-colors" style={{ background: theme.subtleBg, color: theme.textSecondary, borderRadius: '4px', border: `1px solid ${theme.border}` }} title="Assessment Word">
-                                    <FontAwesomeIcon icon={faFileWord} className="text-xs" />
-                                  </button>
-                                  <button onClick={(e) => handleInitiateDeleteTopic(topic, e)} className="p-1.5 transition-colors text-red-600 hover:text-red-800" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', borderRadius: '4px', border: `1px solid ${theme.border}` }} title="Delete Unit">
-                                    <FontAwesomeIcon icon={faTrash} className="text-xs" />
-                                  </button>
+                                  <div className="flex flex-col flex-grow">
+                                    {/* Top metadata row */}
+                                    <div className="flex items-center justify-between gap-2 pb-2 mb-2.5 border-b" style={{ borderColor: isDraft ? (isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A') : theme.border }}>
+                                      <div className="flex items-center gap-1.5 flex-wrap flex-1 pr-1">
+                                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                                          UNIT {topic.topic_urutan || '–'}
+                                        </span>
+
+                                        {isDraft ? (
+                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#FDE68A] text-[#78350F] border border-[#F59E0B]">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                                            Draft
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                                            Published ✓
+                                          </span>
+                                        )}
+
+                                        {subjectMap.get(topic.topic_subject_id) && (
+                                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border truncate max-w-[120px]" style={{ background: isDraft ? '#FEF08A' : theme.subtleBg, borderColor: isDraft ? '#FDE047' : theme.border, color: isDraft ? '#713F12' : theme.textPrimary }} title={subjectMap.get(topic.topic_subject_id)}>
+                                            {subjectMap.get(topic.topic_subject_id)}
+                                          </span>
+                                        )}
+
+                                        {kelasName && (
+                                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                                            {kelasName}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Action Menu */}
+                                      <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setActiveCardMenuId(prev => (prev === topic.topic_id ? null : topic.topic_id))
+                                          }}
+                                          className="w-6 h-6 flex items-center justify-center rounded border transition-colors cursor-pointer"
+                                          style={{ background: isDraft ? '#FEF08A' : theme.subtleBg, borderColor: isDraft ? '#FDE047' : theme.border, color: isDraft ? '#713F12' : theme.textSecondary, borderRadius: '4px' }}
+                                          title="Actions"
+                                        >
+                                          <FontAwesomeIcon icon={faEllipsisV} className="text-[10px]" />
+                                        </button>
+
+                                        {activeCardMenuId === topic.topic_id && (
+                                          <div
+                                            className="absolute right-0 top-7 z-30 w-48 py-1 rounded border outline-none shadow-lg"
+                                            style={{
+                                              background: theme.cardBg,
+                                              borderColor: theme.border,
+                                              borderRadius: '6px'
+                                            }}
+                                          >
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setActiveCardMenuId(null)
+                                                handleGeneratePDF(topic, e)
+                                              }}
+                                              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left font-mono transition-colors cursor-pointer"
+                                              style={{ color: theme.textPrimary }}
+                                              onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                              <FontAwesomeIcon icon={faPrint} className="text-[11px]" style={{ color: theme.blueText }} />
+                                              <span>Unit Planner (PDF)</span>
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setActiveCardMenuId(null)
+                                                handleGenerateAssessmentPDFFromCard(topic, e)
+                                              }}
+                                              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left font-mono transition-colors cursor-pointer"
+                                              style={{ color: theme.textPrimary }}
+                                              onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                              <FontAwesomeIcon icon={faFileAlt} className="text-[11px]" style={{ color: theme.textSecondary }} />
+                                              <span>Assessment (PDF)</span>
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setActiveCardMenuId(null)
+                                                handleExportAssessmentWordFromCard(topic, e)
+                                              }}
+                                              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left font-mono transition-colors cursor-pointer"
+                                              style={{ color: theme.textPrimary }}
+                                              onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                              <FontAwesomeIcon icon={faFileWord} className="text-[11px]" style={{ color: theme.blueText }} />
+                                              <span>Assessment (Word)</span>
+                                            </button>
+
+                                            <div className="my-1 border-t" style={{ borderColor: theme.border }} />
+
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setActiveCardMenuId(null)
+                                                handleInitiateDeleteTopic(topic, e)
+                                              }}
+                                              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left font-mono transition-colors cursor-pointer"
+                                              style={{ color: theme.redText }}
+                                              onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
+                                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                              <FontAwesomeIcon icon={faTrash} className="text-[11px]" />
+                                              <span>Delete Unit</span>
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Title & snippet */}
+                                    <div className="mb-3">
+                                      <h3 className="text-sm font-bold tracking-tight mb-1" style={{ color: isDraft ? '#451A03' : theme.textPrimary, letterSpacing: '-0.01em' }}>
+                                        {topic.topic_nama}
+                                      </h3>
+                                      {secondarySnippet && (
+                                        <p className="text-xs line-clamp-2 font-mono" style={{ color: isDraft ? '#78350F' : theme.textSecondary }}>
+                                          {secondarySnippet}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Footer info */}
+                                  <div className="pt-2.5 border-t flex items-center justify-between gap-2" style={{ borderColor: isDraft ? (isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A') : theme.border }}>
+                                    <span className="text-[10px] font-mono" style={{ color: isDraft ? '#92400E' : theme.textSecondary }}>
+                                      ⏱ {formattedDuration}
+                                    </span>
+                                    <span className="text-[10px] font-mono font-bold" style={{ color: isDraft ? '#B45309' : theme.blueText }}>
+                                      {isDraft ? '[EDIT DRAFT →]' : '[OPEN PLANNER →]'}
+                                    </span>
+                                  </div>
                                 </div>
-                              </td>
-                            </tr>
-                          )})}
-                        </tbody>
-                      </table>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              )}
+                  )
+                ) : (
+                  /* ── LIST / TABLE VIEW ─────────────────────────────────────────────────── */
+                  <div className="overflow-x-auto rounded border" style={{ borderColor: theme.border, background: theme.cardBg, borderRadius: '8px' }}>
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b text-[10px] font-mono uppercase" style={{ borderColor: theme.border, background: theme.subtleBg, color: theme.textSecondary }}>
+                          <th className="px-3 py-2 text-center w-10">#</th>
+                          <th className="px-3 py-2 text-left font-semibold">Unit Title</th>
+                          <th className="px-3 py-2 text-center font-semibold">Status</th>
+                          <th className="px-3 py-2 text-left font-semibold">Subject</th>
+                          <th className="px-3 py-2 text-left font-semibold">Class</th>
+                          <th className="px-3 py-2 text-center font-semibold">Duration</th>
+                          <th className="px-3 py-2 text-left font-semibold">Inquiry / Statement</th>
+                          <th className="px-3 py-2 text-right font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y" style={{ borderColor: theme.border }}>
+                        {filteredTopics.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="px-4 py-8 text-center text-xs font-mono uppercase" style={{ color: theme.textSecondary }}>
+                              // No units found
+                            </td>
+                          </tr>
+                        ) : (
+                          groupedFilteredTopics.map((group) => (
+                            <Fragment key={group.kelasId}>
+                              {!filters.kelas && (
+                                <tr style={{ background: theme.subtleBg }}>
+                                  <td colSpan={8} className="px-3 py-1.5 font-mono text-[11px] font-bold border-y" style={{ borderColor: theme.border }}>
+                                    <span className="text-[#346538] font-bold mr-2">[{group.kelasName}]</span>
+                                    <span style={{ color: theme.textSecondary }}>— {group.topics.length} unit{group.topics.length !== 1 ? 's' : ''}</span>
+                                  </td>
+                                </tr>
+                              )}
+                              {group.topics.map((topic, idx) => {
+                                const isDraft = topic.topic_status === 'draft' || topic.topic_status === 'Draft'
+                                const kelasName = kelasNameMap.get(topic.topic_kelas_id) || ''
+                                return (
+                                  <tr
+                                    key={topic.topic_id}
+                                    className="transition-colors cursor-pointer"
+                                    style={{ background: isDraft ? (isDark ? 'rgba(245, 158, 11, 0.08)' : '#FEFCE8') : 'transparent' }}
+                                    onClick={() => handleTopicOpen(topic)}
+                                    onMouseEnter={e => e.currentTarget.style.background = isDraft ? (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF9C3') : theme.subtleBg}
+                                    onMouseLeave={e => e.currentTarget.style.background = isDraft ? (isDark ? 'rgba(245, 158, 11, 0.08)' : '#FEFCE8') : 'transparent'}
+                                  >
+                                    <td className="px-3 py-2.5 text-center font-mono font-bold" style={{ color: isDraft ? '#B45309' : theme.textSecondary }}>
+                                      {String(idx + 1).padStart(2, '0')}
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                      <div className="font-bold flex items-center gap-1.5" style={{ color: isDraft ? '#78350F' : theme.textPrimary }}>
+                                        {topic.topic_urutan && (
+                                          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                                            U{topic.topic_urutan}
+                                          </span>
+                                        )}
+                                        {topic.topic_nama}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                      {isDraft ? (
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#FDE68A] text-[#78350F] border border-[#F59E0B]">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                                          Draft
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                                          Published ✓
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2.5 whitespace-nowrap">
+                                      <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}>
+                                        {subjectMap.get(topic.topic_subject_id) || 'N/A'}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2.5 whitespace-nowrap">
+                                      <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
+                                        {kelasName || 'N/A'}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center font-mono text-[11px]" style={{ color: theme.textBody }}>
+                                      {topic.topic_duration && topic.topic_duration !== '0' && topic.topic_duration !== 0
+                                        ? `${topic.topic_duration}w`
+                                        : '–'}
+                                    </td>
+                                    <td className="px-3 py-2.5 max-w-xs font-mono text-[11px]" style={{ color: theme.textSecondary }}>
+                                      <p className="line-clamp-1">{topic.topic_statement || topic.topic_inquiry_question || '–'}</p>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                      <div className="flex items-center justify-end gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleGeneratePDF(topic, e)}
+                                          className="p-1 rounded border transition-colors cursor-pointer"
+                                          style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.blueText, borderRadius: '4px' }}
+                                          title="Unit Planner PDF"
+                                        >
+                                          <FontAwesomeIcon icon={faPrint} className="text-[11px]" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleGenerateAssessmentPDFFromCard(topic, e)}
+                                          className="p-1 rounded border transition-colors cursor-pointer"
+                                          style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '4px' }}
+                                          title="Assessment PDF"
+                                        >
+                                          <FontAwesomeIcon icon={faFileAlt} className="text-[11px]" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleExportAssessmentWordFromCard(topic, e)}
+                                          className="p-1 rounded border transition-colors cursor-pointer"
+                                          style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.blueText, borderRadius: '4px' }}
+                                          title="Assessment Word"
+                                        >
+                                          <FontAwesomeIcon icon={faFileWord} className="text-[11px]" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleInitiateDeleteTopic(topic, e)}
+                                          className="p-1 rounded border transition-colors cursor-pointer"
+                                          style={{ background: theme.redBg, borderColor: theme.border, color: theme.redText, borderRadius: '4px' }}
+                                          title="Delete Unit"
+                                        >
+                                          <FontAwesomeIcon icon={faTrash} className="text-[11px]" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </Fragment>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
+            {/* SubMenu 2: Weekly Plan */}
             {activeSubMenu === 'weekly-plan' && (
-              <div>
-                <div className="mb-6">
-                  {/* Cascade Filter Panel: Year → Kelas → Subject → Topic */}
-                  <div 
-                    className="p-4 sm:p-5 rounded-2xl border shadow-2xs mb-6 transition-all duration-200"
-                    style={{ background: theme.cardBg, borderColor: theme.border }}
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                      {/* 1. Tahun Ajaran */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
-                          {t('topicNew.weeklyPlanTab.filterYear')}
-                        </label>
-                        <select
-                          value={wpYear}
-                          onChange={e => {
-                            const val = e.target.value
-                            handleGuardedAction(() => {
-                              setWpYear(val)
-                              setWpKelas('')
-                              setWpSubject('')
-                              setSelectedTopicForWeekly(null)
-                              setWeeklyPlans([])
-                              initialWeeklyPlansRef.current = null
-                              setIsWeeklyPlanDirty(false)
-                            })
-                          }}
-                          className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
-                          style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
-                        >
-                          <option value="">{t('topicNew.weeklyPlanTab.allYears')}</option>
-                          {yearOptions.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
-                        </select>
-                      </div>
+              <div className="space-y-4">
+                {/* Cascade Filter Bento Card */}
+                <div className="p-3.5 rounded border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* 1. Academic Year */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                        1. {t('topicNew.weeklyPlanTab.filterYear') || 'Academic Year'}
+                      </label>
+                      <select
+                        value={wpYear}
+                        onChange={e => {
+                          const val = e.target.value
+                          handleGuardedAction(() => {
+                            setWpYear(val)
+                            setWpKelas('')
+                            setWpSubject('')
+                            setSelectedTopicForWeekly(null)
+                            setWeeklyPlans([])
+                            initialWeeklyPlansRef.current = null
+                            setIsWeeklyPlanDirty(false)
+                          })
+                        }}
+                        className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                        style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                      >
+                        <option value="">{t('topicNew.weeklyPlanTab.allYears') || 'All Years'}</option>
+                        {yearOptions.map(y => <option key={y.year_id} value={y.year_id}>{y.year_name}</option>)}
+                      </select>
+                    </div>
 
-                      {/* 2. Kelas */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
-                          {t('topicNew.weeklyPlanTab.filterClass')}
-                        </label>
-                        <select
-                          value={wpKelas}
-                          disabled={!wpYear}
-                          onChange={e => {
-                            const val = e.target.value
-                            handleGuardedAction(() => {
-                              setWpKelas(val)
-                              setWpSubject('')
-                              setSelectedTopicForWeekly(null)
-                              setWeeklyPlans([])
-                              initialWeeklyPlansRef.current = null
-                              setIsWeeklyPlanDirty(false)
-                            })
-                          }}
-                          className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
-                          style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: !wpYear ? theme.subtleBg : theme.inputBg, color: theme.textBody, opacity: !wpYear ? 0.6 : 1 }}
-                        >
-                          <option value="">{!wpYear ? t('topicNew.weeklyPlanTab.selectYearFirst') : t('topicNew.weeklyPlanTab.allClasses')}</option>
-                          {[...allKelasRaw]
-                            .filter(k => !wpYear || String(k.kelas_year_id) === String(wpYear))
-                            .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama, 'id'))
-                            .map(k => <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>)
-                          }
-                        </select>
-                      </div>
+                    {/* 2. Class */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                        2. {t('topicNew.weeklyPlanTab.filterClass') || 'Class'}
+                      </label>
+                      <select
+                        value={wpKelas}
+                        disabled={!wpYear}
+                        onChange={e => {
+                          const val = e.target.value
+                          handleGuardedAction(() => {
+                            setWpKelas(val)
+                            setWpSubject('')
+                            setSelectedTopicForWeekly(null)
+                            setWeeklyPlans([])
+                            initialWeeklyPlansRef.current = null
+                            setIsWeeklyPlanDirty(false)
+                          })
+                        }}
+                        className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                        style={{ background: !wpYear ? theme.subtleBg : theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px', opacity: !wpYear ? 0.6 : 1 }}
+                      >
+                        <option value="">{!wpYear ? (t('topicNew.weeklyPlanTab.selectYearFirst') || 'Select academic year first') : (t('topicNew.weeklyPlanTab.allClasses') || 'All Classes')}</option>
+                        {wpFilterKelasOptions.map(k => (
+                          <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                      {/* 3. Subject */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
-                          {t('topicNew.weeklyPlanTab.filterSubject')}
-                        </label>
-                        <select
-                          value={wpSubject}
-                          onChange={e => {
-                            const val = e.target.value
-                            handleGuardedAction(() => {
-                              setWpSubject(val)
-                              setSelectedTopicForWeekly(null)
-                              setWeeklyPlans([])
-                              initialWeeklyPlansRef.current = null
-                              setIsWeeklyPlanDirty(false)
-                            })
-                          }}
-                          className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
-                          style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
-                        >
-                          <option value="">{t('topicNew.weeklyPlanTab.allSubjects')}</option>
-                          {subjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)}
-                        </select>
-                      </div>
+                    {/* 3. Subject */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                        3. {t('topicNew.weeklyPlanTab.filterSubject') || 'Subject'}
+                      </label>
+                      <select
+                        value={wpSubject}
+                        onChange={e => {
+                          const val = e.target.value
+                          handleGuardedAction(() => {
+                            setWpSubject(val)
+                            setSelectedTopicForWeekly(null)
+                            setWeeklyPlans([])
+                            initialWeeklyPlansRef.current = null
+                            setIsWeeklyPlanDirty(false)
+                          })
+                        }}
+                        className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                        style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                      >
+                        <option value="">{t('topicNew.weeklyPlanTab.allSubjects') || 'All Subjects'}</option>
+                        {subjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)}
+                      </select>
+                    </div>
 
-                      {/* 4. Topic/Unit */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: theme.textSecondary }}>
-                          {t('topicNew.weeklyPlanTab.filterUnit')}
-                        </label>
-                        <select
-                          value={selectedTopicForWeekly?.topic_id || ''}
-                          onChange={e => handleTopicSelectionForWeekly(e.target.value)}
-                          className="w-full px-3 py-2 text-xs font-medium focus:outline-none transition-colors"
-                          style={{ border: `1px solid ${theme.border}`, borderRadius: '8px', background: theme.inputBg, color: theme.textBody }}
-                        >
-                          <option value="">{t('topicNew.fields.chooseTopic')}</option>
-                          {topics
-                            .filter(t => {
-                              const matchYear    = !wpYear    || (allKelasRaw.find(k => k.kelas_id === t.topic_kelas_id)?.kelas_year_id?.toString() === wpYear)
-                              const matchKelas   = !wpKelas   || t.topic_kelas_id   === parseInt(wpKelas)
-                              const matchSubject = !wpSubject || t.topic_subject_id === parseInt(wpSubject)
-                              return matchYear && matchKelas && matchSubject
-                            })
-                            .sort((a, b) => (a.topic_urutan || 0) - (b.topic_urutan || 0) || (a.topic_nama || '').localeCompare(b.topic_nama || ''))
-                            .map(topic => (
-                              <option key={topic.topic_id} value={topic.topic_id}>
-                                Unit {topic.topic_urutan} — {topic.topic_nama}
-                              </option>
-                            ))
-                          }
-                        </select>
-                      </div>
+                    {/* 4. Topic/Unit */}
+                    <div>
+                      <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>
+                        4. {t('topicNew.weeklyPlanTab.filterUnit') || 'Unit'}
+                      </label>
+                      <select
+                        value={selectedTopicForWeekly?.topic_id || ''}
+                        onChange={e => handleTopicSelectionForWeekly(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                        style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
+                      >
+                        <option value="">{t('topicNew.fields.chooseTopic') || 'Choose Unit'}</option>
+                        {topics
+                          .filter(t => {
+                            const matchYear    = !wpYear    || (allKelasRaw.find(k => k.kelas_id === t.topic_kelas_id)?.kelas_year_id?.toString() === wpYear)
+                            const matchKelas   = !wpKelas   || t.topic_kelas_id   === parseInt(wpKelas)
+                            const matchSubject = !wpSubject || t.topic_subject_id === parseInt(wpSubject)
+                            return matchYear && matchKelas && matchSubject
+                          })
+                          .sort((a, b) => (a.topic_urutan || 0) - (b.topic_urutan || 0) || (a.topic_nama || '').localeCompare(b.topic_nama || ''))
+                          .map(topic => (
+                            <option key={topic.topic_id} value={topic.topic_id}>
+                              Unit {topic.topic_urutan} — {topic.topic_nama}
+                            </option>
+                          ))
+                        }
+                      </select>
                     </div>
                   </div>
                 </div>
 
-                {/* Weekly Plans Display */}
+                {/* Weekly Plans Content */}
                 {loadingWeeklyPlans ? (
-                  <div className="flex justify-center py-16">
-                    <FontAwesomeIcon icon={faSpinner} spin className="text-2xl" style={{ color: theme.textSecondary }} />
+                  <div className="p-12 text-center border rounded" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                    <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2" />
+                    <p className="text-xs font-mono uppercase tracking-wider">LOADING WEEKLY PLANS...</p>
                   </div>
                 ) : selectedTopicForWeekly && weeklyPlans.length > 0 ? (
-                  <div>
-                    {/* Topic Info and Actions */}
-                    <div className="p-4 sm:p-5 mb-5 rounded-2xl border shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ background: theme.blueBg, borderColor: theme.border }}>
+                  <div className="space-y-4">
+                    {/* Unit Info Bento Bar */}
+                    <div className="p-3.5 rounded border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
                       <div>
-                        <h3 className="font-bold text-sm sm:text-base mb-0.5" style={{ color: theme.textPrimary }}>{selectedTopicForWeekly.topic_nama}</h3>
-                        <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: theme.textSecondary }}>
-                          <span className="font-semibold">{t('topicNew.weeklyPlanTab.duration')}: {selectedTopicForWeekly.topic_duration} weeks</span>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                            UNIT {selectedTopicForWeekly.topic_urutan || '–'}
+                          </span>
+                          <h3 className="font-bold text-sm tracking-tight" style={{ color: theme.textPrimary }}>
+                            {selectedTopicForWeekly.topic_nama}
+                          </h3>
+                        </div>
+                        <div className="text-xs font-mono flex items-center gap-3" style={{ color: theme.textSecondary }}>
+                          <span>⏱ {selectedTopicForWeekly.topic_duration} weeks</span>
                           <span>·</span>
-                          <span className="font-semibold">{t('topicNew.weeklyPlanTab.hoursPerWeek')}: {selectedTopicForWeekly.topic_hours_per_week || t('topicNew.weeklyPlanTab.notAvailable')}</span>
+                          <span>{selectedTopicForWeekly.topic_hours_per_week || '–'} hrs/week</span>
                         </div>
                       </div>
+
                       <button
-                        className="px-3.5 py-2 text-xs font-bold flex items-center gap-2 rounded-xl border shadow-2xs hover:opacity-90 transition-all self-stretch sm:self-auto justify-center"
-                        style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}
+                        type="button"
+                        className="px-2.5 py-1 text-xs font-mono font-bold uppercase rounded border transition-colors cursor-pointer self-start sm:self-auto flex items-center gap-1.5"
+                        style={{
+                          background: isDark ? '#2D1B4E' : '#F3E8FF',
+                          borderColor: isDark ? 'rgba(196, 130, 255, 0.3)' : '#E9D5FF',
+                          color: isDark ? '#D8B4FE' : '#6B21A8',
+                          borderRadius: '4px'
+                        }}
                         onClick={() => {
                           setWeeklyAiInput({ assessmentDuration: '', specialRequests: '' })
                           setWeeklyAiModalOpen(true)
                         }}
                       >
-                        <FontAwesomeIcon icon={faLightbulb} className="text-amber-500" />
-                        {t('topicNew.weeklyPlanTab.aiHelp')}
+                        <FontAwesomeIcon icon={faLightbulb} className="text-[10px]" />
+                        <span>{t('topicNew.weeklyPlanTab.aiHelp') || 'AI Assistant'}</span>
                       </button>
                     </div>
 
-                    {/* Schedule Helper Banner: Upcoming Class Dates */}
-                    <div className="mb-5 p-3.5 sm:p-4 rounded-2xl border-2 shadow-2xs text-xs space-y-2.5 bg-gradient-to-br from-indigo-50/90 via-blue-50/80 to-sky-50/90 dark:from-indigo-950/60 dark:via-blue-950/50 dark:to-slate-900/80 border-indigo-300 dark:border-indigo-700">
-                      <div className="flex items-center justify-between gap-2 border-b border-indigo-200 dark:border-indigo-800 pb-2">
-                        <div className="font-extrabold flex items-center gap-2 text-xs sm:text-sm text-indigo-950 dark:text-indigo-100">
-                          <FontAwesomeIcon icon={faClock} className="text-amber-500 text-sm" />
-                          <span>Schedule</span>
-                        </div>
+                    {/* Schedule Helper Banner */}
+                    <div className="p-3 rounded border text-xs font-mono space-y-1.5" style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '8px' }}>
+                      <div className="flex items-center justify-between gap-2 border-b pb-1.5" style={{ borderColor: theme.border }}>
+                        <span className="font-bold uppercase tracking-wider" style={{ color: theme.blueText }}>
+                          [ROUTINE TIMETABLE SCHEDULE]
+                        </span>
                         {subjectTimetableInfo.routineDays.length > 0 && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-2xs">
+                          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#EDF3EC] text-[#346538] border border-[#D5E6D3]">
                             {subjectTimetableInfo.routineDays.length} {subjectTimetableInfo.routineDays.length === 1 ? 'Day' : 'Days'} / Week
                           </span>
                         )}
                       </div>
 
                       {subjectTimetableInfo.loading ? (
-                        <div className="flex items-center gap-2 py-1 text-indigo-700 dark:text-indigo-300 text-xs">
-                          <FontAwesomeIcon icon={faSpinner} spin />
-                          <span>Loading schedule...</span>
-                        </div>
+                        <p className="text-xs" style={{ color: theme.textSecondary }}>Loading schedule dates...</p>
                       ) : subjectTimetableInfo.routineDays.length > 0 && subjectTimetableInfo.nextDates.length > 0 ? (
-                        <div className="space-y-1.5">
-                          <span className="font-bold text-indigo-800 dark:text-indigo-200 block text-[11px] uppercase tracking-wider">Upcoming Class Dates:</span>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {subjectTimetableInfo.nextDates.slice(0, 4).map((nd, idx) => {
-                              const timeSlotStr = nd.daySlots ? ` (${nd.daySlots})` : ''
-                              return (
-                                <span key={idx} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-indigo-300 dark:border-indigo-600 shadow-2xs flex items-center gap-1.5">
-                                  📌 {nd.formatted}{timeSlotStr}
-                                </span>
-                              )
-                            })}
-                          </div>
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[10px] uppercase" style={{ color: theme.textSecondary }}>Upcoming:</span>
+                          {subjectTimetableInfo.nextDates.slice(0, 4).map((nd, idx) => (
+                            <span key={idx} className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}>
+                              📌 {nd.formatted}{nd.daySlots ? ` (${nd.daySlots})` : ''}
+                            </span>
+                          ))}
                         </div>
                       ) : (
-                        <p className="text-xs italic text-indigo-700/80 dark:text-indigo-300/80">
-                          No routine timetable schedule configured for this Class and Subject yet.
+                        <p className="text-[11px]" style={{ color: theme.textSecondary }}>
+                          // No routine timetable schedule configured for this Class and Subject yet.
                         </p>
                       )}
                     </div>
 
-                    {/* Unsaved Changes Warning Banner */}
+                    {/* Unsaved Changes Banner */}
                     {isWeeklyPlanDirty && (
-                      <div className="mb-5 p-3.5 text-xs font-semibold flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-xl shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">⚠️</span>
-                          <span>Attention: You have unsaved changes in your Weekly Plan!</span>
-                        </div>
+                      <div className="p-3 text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-[#FBF3DB] text-[#956400] border border-[#F5E6B3] rounded" style={{ borderRadius: '6px' }}>
+                        <span>⚠️ ATTENTION: YOU HAVE UNSAVED CHANGES IN YOUR WEEKLY PLAN!</span>
                         <button
+                          type="button"
                           onClick={saveWeeklyPlans}
                           disabled={savingWeeklyPlans}
-                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs flex items-center justify-center gap-1.5"
+                          className="px-3 py-1 bg-[#956400] text-white rounded text-xs font-mono font-bold transition-colors cursor-pointer"
                         >
-                          {savingWeeklyPlans ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faSave} />}
-                          Save Now
+                          {savingWeeklyPlans ? 'Saving...' : 'Save Now'}
                         </button>
                       </div>
                     )}
 
                     {/* Notification */}
                     {weeklyPlanNotification.show && (
-                      <div className="mb-5 p-3.5 text-xs rounded-xl border font-medium" style={{
+                      <div className="p-3 text-xs font-mono rounded border" style={{
                         background: weeklyPlanNotification.type === 'success' ? theme.greenBg : theme.redBg,
                         borderColor: theme.border,
                         color: weeklyPlanNotification.type === 'success' ? theme.greenText : theme.redText,
+                        borderRadius: '6px'
                       }}>
                         {weeklyPlanNotification.message}
                       </div>
                     )}
 
                     {/* Weekly Plan Forms Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {Array.from({ length: selectedTopicForWeekly?.topic_duration || 5 }).map((_, wIdx) => {
                         const weekNum = wIdx + 1
                         const weekSessions = weeklyPlans.filter(p => p.week_number === weekNum)
@@ -6365,74 +6381,59 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         }]
 
                         return (
-                          <div 
-                            key={weekNum} 
-                            className="space-y-4 p-4 sm:p-5 border rounded-2xl shadow-2xs transition-all duration-200" 
-                            style={{ background: theme.cardBg, borderColor: theme.border }}
+                          <div
+                            key={weekNum}
+                            className="p-4 border rounded space-y-3"
+                            style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}
                           >
                             {/* Week Header */}
-                            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: theme.border }}>
-                              <h3 className="text-xs sm:text-sm font-extrabold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                                <span className="flex items-center justify-center w-6 h-6 text-xs font-black rounded-lg" style={{ background: theme.blueBg, color: theme.blueText, border: `1px solid ${theme.border}` }}>
-                                  {weekNum}
+                            <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: theme.border }}>
+                              <h3 className="text-xs font-mono font-bold flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
+                                <span className="px-1.5 py-0.5 rounded bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                                  W{weekNum}
                                 </span>
-                                {t('topicNew.weeklyPlanTab.week')} {weekNum}
+                                <span>{t('topicNew.weeklyPlanTab.week') || 'Week'} {weekNum}</span>
                               </h3>
                               <button
                                 type="button"
                                 onClick={() => handleAddSessionToWeek(weekNum)}
-                                className="text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:opacity-80 border shadow-2xs transition-all"
-                                style={{ background: theme.subtleBg, color: theme.textPrimary, borderColor: theme.border }}
+                                className="text-[11px] font-mono font-bold px-2 py-1 rounded border transition-colors cursor-pointer"
+                                style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
                               >
-                                <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
-                                <span className="hidden sm:inline">Add Teaching Session</span>
-                                <span className="inline sm:hidden">+ Session</span>
+                                <FontAwesomeIcon icon={faPlus} className="text-[10px] mr-1" />
+                                <span>Session</span>
                               </button>
                             </div>
 
                             {/* Sessions inside Week */}
                             {sessionsToRender.map((plan, sIdx) => (
-                              <div 
-                                key={plan._tempId || (plan.id ? `${plan.id}_${sIdx}` : sIdx)} 
-                                className="p-3.5 sm:p-4 rounded-xl space-y-3 border-l-4 border-l-blue-500 border shadow-2xs transition-all" 
-                                style={{ background: theme.subtleBg, borderColor: theme.border }}
+                              <div
+                                key={plan._tempId || (plan.id ? `${plan.id}_${sIdx}` : sIdx)}
+                                className="p-3 rounded border space-y-2.5"
+                                style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '6px' }}
                               >
                                 {/* Session Header & Date */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
-                                  <span className="text-xs font-extrabold" style={{ color: theme.textPrimary }}>
-                                    {sessionsToRender.length > 1 ? `Session ${sIdx + 1}` : 'Main Teaching Session'}
+                                <div className="flex items-center justify-between gap-2 pb-1 border-b" style={{ borderColor: theme.border }}>
+                                  <span className="text-[11px] font-mono font-bold" style={{ color: theme.textPrimary }}>
+                                    {sessionsToRender.length > 1 ? `Session ${sIdx + 1}` : 'Main Session'}
                                   </span>
-                                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('topicNew.weeklyPlanTab.dateLabel')}</label>
-                                    <div
-                                      onClick={(e) => {
-                                        const input = e.currentTarget.querySelector('input[type="date"]')
-                                        if (input) {
-                                          if (typeof input.showPicker === 'function') {
-                                            try { input.showPicker() } catch (err) { input.focus() }
-                                          } else {
-                                            input.focus()
-                                          }
-                                        }
-                                      }}
-                                      className="text-xs px-2.5 py-1 rounded-lg border flex items-center justify-between gap-2 cursor-pointer font-bold shadow-2xs hover:border-indigo-500 transition-all min-w-[125px] relative"
-                                      style={{ borderColor: theme.border, background: theme.inputBg, color: plan.week_date ? theme.textBody : theme.textSecondary }}
-                                    >
-                                      <span>{plan.week_date ? formatDateDDMMYYYY(plan.week_date) : 'dd/mm/yyyy'}</span>
-                                      <FontAwesomeIcon icon={faCalendar} className="text-slate-400 text-xs" />
-                                      <input
-                                        type="date"
-                                        value={plan.week_date || ''}
-                                        onChange={e => handleWeeklyPlanChange(plan, 'week_date', e.target.value)}
-                                        className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
-                                      />
-                                    </div>
+                                  <div className="flex items-center gap-2">
+                                    <label className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>
+                                      {t('topicNew.weeklyPlanTab.dateLabel') || 'Date'}:
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={plan.week_date || ''}
+                                      onChange={e => handleWeeklyPlanChange(plan, 'week_date', e.target.value)}
+                                      className="px-2 py-0.5 text-xs font-mono rounded border outline-none"
+                                      style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
+                                    />
                                     {sessionsToRender.length > 1 && (
                                       <button
                                         type="button"
                                         onClick={() => handleRemoveSession(plan)}
                                         title="Remove Session"
-                                        className="text-red-500 hover:text-red-700 p-1 text-xs"
+                                        className="text-red-500 hover:text-red-700 p-0.5 text-xs cursor-pointer"
                                       >
                                         <FontAwesomeIcon icon={faTrash} />
                                       </button>
@@ -6441,70 +6442,74 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 </div>
 
                                 {getDayWarningForDate(plan.week_date) && (
-                                  <div className="text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 p-2 rounded-lg border border-red-300 dark:border-red-800 flex items-start gap-1.5">
-                                    <span>⚠️</span>
-                                    <span>{getDayWarningForDate(plan.week_date)}</span>
+                                  <div className="text-[10px] font-mono p-1.5 rounded bg-[#FDEBEC] text-[#D44C47] border border-[#F7C5C4]">
+                                    ⚠️ {getDayWarningForDate(plan.week_date)}
                                   </div>
                                 )}
 
                                 {/* Objectives */}
                                 <div>
-                                  <label className="block text-[11px] font-bold mb-1 tracking-wide" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.objectives')}
+                                  <label className="block text-[10px] font-mono uppercase mb-0.5" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.objectives') || 'Objectives'}
                                   </label>
                                   <textarea
                                     value={plan.week_objectives || ''}
                                     onChange={(e) => handleWeeklyPlanChange(plan, 'week_objectives', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.objectivesPlaceholder')}
-                                    rows={3}
-                                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none resize-y rounded-xl border focus:ring-2 focus:ring-blue-500/20 min-h-[80px] transition-all"
-                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                    rows={2}
+                                    className="w-full p-2 text-xs font-sans rounded border outline-none resize-y"
+                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
                                   />
                                 </div>
 
                                 {/* Activities */}
                                 <div>
-                                  <label className="block text-[11px] font-bold mb-1 tracking-wide" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.activities')} <span className="text-[10px] font-normal text-slate-400">(Max 300 chars)</span>
-                                  </label>
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <label className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>
+                                      {t('topicNew.weeklyPlanTab.activities') || 'Activities'}
+                                    </label>
+                                    <span className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>
+                                      {(plan.week_activities || '').length}/300
+                                    </span>
+                                  </div>
                                   <textarea
                                     value={plan.week_activities || ''}
                                     onChange={(e) => handleWeeklyPlanChange(plan, 'week_activities', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.activitiesPlaceholder')}
-                                    rows={4}
+                                    rows={3}
                                     maxLength={300}
-                                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none resize-y rounded-xl border focus:ring-2 focus:ring-blue-500/20 min-h-[100px] transition-all"
-                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                    className="w-full p-2 text-xs font-sans rounded border outline-none resize-y"
+                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
                                   />
                                 </div>
 
                                 {/* Resources */}
                                 <div>
-                                  <label className="block text-[11px] font-bold mb-1 tracking-wide" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.resources')}
+                                  <label className="block text-[10px] font-mono uppercase mb-0.5" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.resources') || 'Resources'}
                                   </label>
                                   <textarea
                                     value={plan.week_resources || ''}
                                     onChange={(e) => handleWeeklyPlanChange(plan, 'week_resources', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.resourcesPlaceholder')}
-                                    rows={3}
-                                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none resize-y rounded-xl border focus:ring-2 focus:ring-blue-500/20 min-h-[75px] transition-all"
-                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                    rows={2}
+                                    className="w-full p-2 text-xs font-sans rounded border outline-none resize-y"
+                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
                                   />
                                 </div>
 
                                 {/* Reflection */}
                                 <div>
-                                  <label className="block text-[11px] font-bold mb-1 tracking-wide" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.reflection')} <span className="text-[10px] font-normal text-slate-400">(During Teaching)</span>
+                                  <label className="block text-[10px] font-mono uppercase mb-0.5" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.reflection') || 'Reflection (During Teaching)'}
                                   </label>
                                   <textarea
                                     value={plan.week_reflection || ''}
                                     onChange={(e) => handleWeeklyPlanChange(plan, 'week_reflection', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.reflectionPlaceholder')}
-                                    rows={3}
-                                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none resize-y rounded-xl border focus:ring-2 focus:ring-blue-500/20 min-h-[75px] transition-all"
-                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textBody }}
+                                    rows={2}
+                                    className="w-full p-2 text-xs font-sans rounded border outline-none resize-y"
+                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
                                   />
                                 </div>
                               </div>
@@ -6514,45 +6519,51 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       })}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="mt-6 flex items-center justify-end gap-3">
+                    {/* Action Bar */}
+                    <div className="pt-3 border-t flex items-center justify-end gap-2" style={{ borderColor: theme.border }}>
                       <button
+                        type="button"
                         onClick={deleteAllWeeklyPlans}
                         disabled={savingWeeklyPlans || weeklyPlans.length === 0}
-                        className="px-4 py-2 text-xs font-bold flex items-center justify-center gap-2 rounded-xl transition-all shadow-2xs"
-                        style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}` }}
+                        className="px-3 py-1.5 text-xs font-mono font-bold rounded border transition-colors cursor-pointer disabled:opacity-40"
+                        style={{ background: theme.redBg, borderColor: theme.border, color: theme.redText, borderRadius: '4px' }}
                       >
-                        <FontAwesomeIcon icon={faTrash} />
-                        {t('topicNew.weeklyPlanTab.deleteAll')}
+                        <FontAwesomeIcon icon={faTrash} className="mr-1 text-[10px]" />
+                        <span>{t('topicNew.weeklyPlanTab.deleteAll') || 'Delete All'}</span>
                       </button>
                       <button
+                        type="button"
                         onClick={saveWeeklyPlans}
                         disabled={savingWeeklyPlans}
-                        className="px-5 py-2 text-xs font-bold flex items-center justify-center gap-2 rounded-xl transition-all shadow-2xs"
-                        style={{ background: theme.greenBg, color: theme.greenText, border: `1px solid ${theme.border}` }}
+                        className="px-4 py-1.5 text-xs font-semibold rounded border transition-colors cursor-pointer disabled:opacity-40"
+                        style={{
+                          background: theme.textPrimary,
+                          color: theme.cardBg,
+                          borderColor: theme.textPrimary,
+                          borderRadius: '4px'
+                        }}
                       >
                         {savingWeeklyPlans ? (
-                          <><FontAwesomeIcon icon={faSpinner} spin />{t('topicNew.weeklyPlanTab.saving')}</>
+                          <><FontAwesomeIcon icon={faSpinner} spin className="mr-1.5" />{t('topicNew.weeklyPlanTab.saving') || 'Saving...'}</>
                         ) : (
-                          <><FontAwesomeIcon icon={faSave} />{t('topicNew.weeklyPlanTab.save')}</>
+                          <><FontAwesomeIcon icon={faSave} className="mr-1.5 text-[11px]" />{t('topicNew.weeklyPlanTab.save') || 'Save Weekly Plan'}</>
                         )}
                       </button>
                     </div>
                   </div>
                 ) : selectedTopicForWeekly ? (
-                  <div className="text-center py-16 text-xs font-medium" style={{ color: theme.textSecondary }}>
-                    <p>{t('topicNew.weeklyPlanTab.noData')}</p>
-                    <p className="mt-2 text-slate-400">{t('topicNew.weeklyPlanTab.noDataHint')}</p>
+                  <div className="p-12 text-center border border-dashed rounded" style={{ borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                    <p className="text-xs font-mono uppercase tracking-wider">{t('topicNew.weeklyPlanTab.noData') || 'No weekly plan data yet'}</p>
+                    <p className="text-[11px] font-mono mt-1 opacity-70">{t('topicNew.weeklyPlanTab.noDataHint') || 'Add sessions to start planning'}</p>
                   </div>
                 ) : (
-                  <div className="text-center py-16" style={{ color: theme.textSecondary }}>
-                    <FontAwesomeIcon icon={faClipboardList} className="text-4xl mb-3 opacity-30" />
-                    <p className="text-xs font-medium">{t('topicNew.weeklyPlanTab.selectTopic')}</p>
+                  <div className="p-12 text-center border border-dashed rounded" style={{ borderColor: theme.border, color: theme.textSecondary, borderRadius: '8px' }}>
+                    <FontAwesomeIcon icon={faClipboardList} className="text-2xl mb-2 opacity-30" />
+                    <p className="text-xs font-mono uppercase tracking-wider">{t('topicNew.weeklyPlanTab.selectTopic') || 'Select academic year, class, subject, and unit to start planning.'}</p>
                   </div>
                 )}
               </div>
             )}
-            </div>
           </div>
         )}
 
@@ -6757,8 +6768,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   const gradeNumber = gradeMatch ? gradeMatch[1] : ''
 
                   const hasCriteria = assessment.criteria && assessment.criteria.length > 0
-                  const isPending = assessment.assessment_status === 0 || assessment.assessment_status === 3
-                  const canEdit = (isPending || !hasCriteria) && assessment.assessment_user_id === currentUserId
+                  const canEdit = assessment.assessment_user_id === currentUserId || isAdmin
                   const isFullyGraded = assessment.total_students > 0 && assessment.graded_count === assessment.total_students
 
                   return (
@@ -6929,8 +6939,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     ) : (
                       filteredAssessments.map((assessment, idx) => {
                         const hasCriteria = assessment.criteria && assessment.criteria.length > 0
-                        const isPending = assessment.assessment_status === 0 || assessment.assessment_status === 3
-                        const canEdit = (isPending || !hasCriteria) && assessment.assessment_user_id === currentUserId
+                        const canEdit = assessment.assessment_user_id === currentUserId || isAdmin
                         const isFullyGraded = assessment.total_students > 0 && assessment.graded_count === assessment.total_students
 
                         return (
@@ -8405,7 +8414,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         wizardRubrics={wizardRubrics}
                         loadingStrands={loadingStrands}
                         subjects={subjects}
-                        allKelas={allKelas}
+                        allKelas={wizardKelasOptions}
                         kelasLoading={kelasLoading}
                         keyConcepts={keyConcepts}
                         globalContexts={globalContexts}
@@ -8446,9 +8455,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                         }}
                         onWizardYearChange={(yr) => {
                           setWizardYear(yr)
-                          // Use allowedKelasRaw so only user's permitted classes appear
-                          const filtered = yr ? allowedKelasRaw.filter(k => String(k.kelas_year_id) === String(yr)) : []
-                          setAllKelas(filtered)
                           setSelectedTopic(prev => ({ ...prev, topic_kelas_id: '', topic_subject_id: '' }))
                           setSubjectsForSelectedKelas([])
                         }}
