@@ -69,8 +69,19 @@ export default function TopicNewPage() {
   const [kelasNameMap, setKelasNameMap] = useState(new Map())
   const [loading, setLoading] = useState(true)
   
-  // Filters
-  const [filters, setFilters] = useState({ year: '', kelas: '', subject: '', search: '' })
+  // Filters (Planning Overview)
+  const [filters, setFilters] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('planning_filters')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          return { year: parsed.year || '', kelas: parsed.kelas || '', subject: parsed.subject || '', search: '' }
+        }
+      } catch (e) {}
+    }
+    return { year: '', kelas: '', subject: '', search: '' }
+  })
   
   // Assessment state
   const [assessments, setAssessments] = useState([])
@@ -79,7 +90,17 @@ export default function TopicNewPage() {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('assessment_filters')
-        if (saved) return JSON.parse(saved)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          return {
+            year: parsed.year || '',
+            subject: parsed.subject || '',
+            kelas: parsed.kelas || '',
+            status: parsed.status || '',
+            search: '',
+            noCriteria: false
+          }
+        }
       } catch (e) {}
     }
     return { subject: '', kelas: '', year: '', status: '', search: '', noCriteria: false }
@@ -560,9 +581,33 @@ export default function TopicNewPage() {
   const [weeklyAiLoading, setWeeklyAiLoading] = useState(false)
   const [weeklyAiResults, setWeeklyAiResults] = useState(null)
   // Weekly Plan cascade filter state (Year → Kelas → Subject → Topic)
-  const [wpYear, setWpYear] = useState('')
-  const [wpKelas, setWpKelas] = useState('')
-  const [wpSubject, setWpSubject] = useState('')
+  const [wpYear, setWpYear] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('weekly_plan_filters')
+        if (saved) return JSON.parse(saved).year || ''
+      } catch (e) {}
+    }
+    return ''
+  })
+  const [wpKelas, setWpKelas] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('weekly_plan_filters')
+        if (saved) return JSON.parse(saved).kelas || ''
+      } catch (e) {}
+    }
+    return ''
+  })
+  const [wpSubject, setWpSubject] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('weekly_plan_filters')
+        if (saved) return JSON.parse(saved).subject || ''
+      } catch (e) {}
+    }
+    return ''
+  })
 
   // Weekly Overview DOCX Modal State
   const [woDocxModalOpen, setWoDocxModalOpen] = useState(false)
@@ -1055,11 +1100,43 @@ export default function TopicNewPage() {
   const [loadingClassRecap, setLoadingClassRecap] = useState(false)
   
   // Comment tab state
-  const [commentYear, setCommentYear] = useState('')
-  const [commentSubject, setCommentSubject] = useState('')
-  const [commentKelas, setCommentKelas] = useState('')
+  const [commentYear, setCommentYear] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('comment_filters')
+        if (saved) return JSON.parse(saved).year || ''
+      } catch (e) {}
+    }
+    return ''
+  })
+  const [commentSubject, setCommentSubject] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('comment_filters')
+        if (saved) return JSON.parse(saved).subject || ''
+      } catch (e) {}
+    }
+    return ''
+  })
+  const [commentKelas, setCommentKelas] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('comment_filters')
+        if (saved) return JSON.parse(saved).kelas || ''
+      } catch (e) {}
+    }
+    return ''
+  })
   const [commentKelasOptions, setCommentKelasOptions] = useState([])
-  const [commentSemester, setCommentSemester] = useState('')
+  const [commentSemester, setCommentSemester] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('comment_filters')
+        if (saved) return JSON.parse(saved).semester || ''
+      } catch (e) {}
+    }
+    return ''
+  })
   const [commentStudents, setCommentStudents] = useState([])
   const [commentStudentGrades, setCommentStudentGrades] = useState({}) // { [user_id]: [{name, A, B, C, D}] }
   const [loadingComments, setLoadingComments] = useState(false)
@@ -1069,14 +1146,38 @@ export default function TopicNewPage() {
   // Mentor Comment tab state
   const [isWaliKelas, setIsWaliKelas] = useState(false)
   const [mentorKelasOptions, setMentorKelasOptions] = useState([])
-  const [mentorYear, setMentorYear] = useState('')
-  const [mentorKelas, setMentorKelas] = useState('')
-  const [mentorSemester, setMentorSemester] = useState('')
+  const [mentorYear, setMentorYear] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('mentor_filters')
+        if (saved) return JSON.parse(saved).year || ''
+      } catch (e) {}
+    }
+    return ''
+  })
+  const [mentorKelas, setMentorKelas] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('mentor_filters')
+        if (saved) return JSON.parse(saved).kelas || ''
+      } catch (e) {}
+    }
+    return ''
+  })
+  const [mentorSemester, setMentorSemester] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('mentor_filters')
+        if (saved) return JSON.parse(saved).semester || ''
+      } catch (e) {}
+    }
+    return ''
+  })
   const [mentorStudents, setMentorStudents] = useState([])
   const [loadingMentorComments, setLoadingMentorComments] = useState(false)
   const [savingMentorCommentId, setSavingMentorCommentId] = useState(null)
 
-  // Daily Attendance state (kelas_attendance table)
+  // Daily Attendance state (kelas_attendance table) - Always defaults to today
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [attendanceRecords, setAttendanceRecords] = useState({}) // { [detail_siswa_id]: { status, keterangan, id } }
   const [loadingAttendance, setLoadingAttendance] = useState(false)
@@ -1179,14 +1280,62 @@ export default function TopicNewPage() {
     }
   ]
   
-  // Persist tab + assessment filters across navigation
+  // Persist tab + filters across navigation / page refresh
   useEffect(() => {
     if (typeof window !== 'undefined') localStorage.setItem('topic_active_tab', activeTab)
   }, [activeTab])
 
   useEffect(() => {
-    if (typeof window !== 'undefined') localStorage.setItem('assessment_filters', JSON.stringify(assessmentFilters))
-  }, [assessmentFilters])
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('planning_filters', JSON.stringify({
+        year: filters.year,
+        kelas: filters.kelas,
+        subject: filters.subject
+      }))
+    }
+  }, [filters.year, filters.kelas, filters.subject])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('weekly_plan_filters', JSON.stringify({
+        year: wpYear,
+        kelas: wpKelas,
+        subject: wpSubject
+      }))
+    }
+  }, [wpYear, wpKelas, wpSubject])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('assessment_filters', JSON.stringify({
+        year: assessmentFilters.year,
+        subject: assessmentFilters.subject,
+        kelas: assessmentFilters.kelas,
+        status: assessmentFilters.status
+      }))
+    }
+  }, [assessmentFilters.year, assessmentFilters.subject, assessmentFilters.kelas, assessmentFilters.status])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mentor_filters', JSON.stringify({
+        year: mentorYear,
+        kelas: mentorKelas,
+        semester: mentorSemester
+      }))
+    }
+  }, [mentorYear, mentorKelas, mentorSemester])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('comment_filters', JSON.stringify({
+        year: commentYear,
+        subject: commentSubject,
+        kelas: commentKelas,
+        semester: commentSemester
+      }))
+    }
+  }, [commentYear, commentSubject, commentKelas, commentSemester])
 
   // Fetch kelas where logged-in user is wali kelas (or all kelas for admin)
   // When mentorYear changes, reload kelas options filtered by that year
@@ -1226,10 +1375,13 @@ export default function TopicNewPage() {
           setMentorKelasOptions(data)
         }
 
-        // Reset selection when year changes
-        setMentorKelas('')
-        setMentorSemester('')
-        setMentorStudents([])
+        // Validate if saved mentorKelas exists in newly fetched options for this year
+        // Only reset if saved mentorKelas is NOT in the data
+        setMentorKelas(prev => {
+          if (!prev) return ''
+          const found = data.some(k => String(k.kelas_id) === String(prev))
+          return found ? prev : ''
+        })
       } catch (err) {
         console.error('[fetchWaliKelas] Error:', err)
         // Failsafe: admin always sees tab even on network error
@@ -1349,11 +1501,12 @@ export default function TopicNewPage() {
       if (current) {
         filteredForDropdown = kelasData.filter(k => String(k.kelas_year_id) === String(current.year_id))
         setAllKelas(filteredForDropdown)
-        setFilters(prev => ({ ...prev, year: String(current.year_id) }))
+        setFilters(prev => ({ ...prev, year: prev.year || String(current.year_id) }))
         setWpYear(prev => prev || String(current.year_id))
       } else {
         setAllKelas(kelasData || [])
         if (yearData && yearData.length > 0) {
+          setFilters(prev => ({ ...prev, year: prev.year || String(yearData[0].year_id) }))
           setWpYear(prev => prev || String(yearData[0].year_id))
         }
       }
@@ -3210,9 +3363,53 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
   
   const handleCommentKelasChange = (kelasId) => {
     setCommentKelas(kelasId)
-    setCommentSemester('')
-    setCommentStudents([])
+    if (commentSemester && commentSubject && kelasId) {
+      fetchCommentStudents(commentSubject, kelasId, commentSemester)
+    } else {
+      setCommentStudents([])
+    }
   }
+
+  // When commentSubject and commentYear are restored from localStorage, populate commentKelasOptions
+  useEffect(() => {
+    if (commentSubject) {
+      (async () => {
+        try {
+          setLoadingCommentKelas(true)
+          const { data: detailKelasData } = await supabase
+            .from('detail_kelas')
+            .select('detail_kelas_kelas_id')
+            .eq('detail_kelas_subject_id', commentSubject)
+          if (!detailKelasData || detailKelasData.length === 0) return
+          const kelasIds = [...new Set(detailKelasData.map(d => d.detail_kelas_kelas_id))]
+          let kelasQuery = supabase
+            .from('kelas')
+            .select('kelas_id, kelas_nama, kelas_year_id, kelas_unit_id')
+            .in('kelas_id', kelasIds)
+            .order('kelas_nama')
+          if (commentYear) kelasQuery = kelasQuery.eq('kelas_year_id', commentYear)
+          const { data: kelasData } = await kelasQuery
+          const { data: unitsData } = await supabase.from('unit').select('unit_id, unit_name, is_myp')
+          const mypIds = new Set((unitsData || []).filter(u => u.is_myp || (u.unit_name && u.unit_name.toUpperCase().includes('MYP'))).map(u => u.unit_id))
+          const filteredSorted = (kelasData || [])
+            .filter(k => mypIds.has(k.kelas_unit_id))
+            .sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+          setCommentKelasOptions(filteredSorted)
+        } catch (err) {
+          console.error('Error auto-fetching comment kelas:', err)
+        } finally {
+          setLoadingCommentKelas(false)
+        }
+      })()
+    }
+  }, [commentSubject, commentYear])
+
+  // When commentSubject, commentKelas, and commentSemester are restored, fetch students & comments
+  useEffect(() => {
+    if (activeTab === 'comment' && commentSubject && commentKelas && commentSemester) {
+      fetchCommentStudents(commentSubject, commentKelas, commentSemester)
+    }
+  }, [activeTab, commentSubject, commentKelas, commentSemester])
   
   const fetchCommentStudents = async (subjectId, kelasId, semester) => {
     if (!subjectId || !kelasId || !semester) {
@@ -3681,8 +3878,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
   const handleMentorKelasChange = (kelasId) => {
     setMentorKelas(kelasId)
-    setMentorSemester('')
-    setMentorStudents([])
+    if (mentorSemester && kelasId) {
+      fetchMentorStudents(kelasId, mentorSemester)
+    } else {
+      setMentorStudents([])
+    }
   }
 
   const handleMentorSemesterChange = (semester) => {
@@ -3741,6 +3941,20 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       setLoadingAttendance(false)
     }
   }, [attendanceDate])
+
+  // Auto-fetch mentor comments when mentorKelas and mentorSemester are both set on mount/switch
+  useEffect(() => {
+    if (activeTab === 'mentor' && mentorKelas && mentorSemester) {
+      fetchMentorStudents(mentorKelas, mentorSemester)
+    }
+  }, [activeTab, mentorKelas, mentorSemester])
+
+  // Auto-fetch daily attendance when mentorKelas and attendanceDate are both set on mount/switch
+  useEffect(() => {
+    if ((activeTab === 'attendance' || activeTab === 'mentor') && mentorKelas && attendanceDate) {
+      fetchDailyAttendance(mentorKelas, attendanceDate)
+    }
+  }, [activeTab, mentorKelas, attendanceDate, fetchDailyAttendance])
 
   // Upsert single student attendance via API route
   const saveSingleAttendance = useCallback(async (detailSiswaId, status, keterangan) => {
@@ -7504,7 +7718,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </label>
                   <select
                     value={mentorYear}
-                    onChange={(e) => setMentorYear(e.target.value)}
+                    onChange={(e) => {
+                      setMentorYear(e.target.value)
+                      setMentorKelas('')
+                    }}
                     className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
                     style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
                   >
@@ -7790,7 +8007,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                   </label>
                   <select
                     value={mentorYear}
-                    onChange={(e) => setMentorYear(e.target.value)}
+                    onChange={(e) => {
+                      setMentorYear(e.target.value)
+                      setMentorKelas('')
+                    }}
                     className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
                     style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
                   >

@@ -11843,8 +11843,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 300,
-      "community_name": "bcryptjs",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -11854,8 +11854,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 300,
-      "community_name": "bcryptjs",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -11865,8 +11865,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 300,
-      "community_name": "bcryptjs",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -11876,8 +11876,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 300,
-      "community_name": "bcryptjs",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -12261,8 +12261,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 300,
+      "community_name": "bcryptjs",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -12272,8 +12272,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 300,
+      "community_name": "bcryptjs",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -12283,8 +12283,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 300,
+      "community_name": "bcryptjs",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -12294,8 +12294,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 300,
+      "community_name": "bcryptjs",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -14714,8 +14714,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 302,
+      "community_name": "**3. Assessment System**",
       "norm_label": "skill.md"
     },
     {
@@ -14725,8 +14725,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 302,
+      "community_name": "**3. Assessment System**",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -14736,8 +14736,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 302,
+      "community_name": "**3. Assessment System**",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -32161,7 +32161,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5306",
+      "source_location": "L5320",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32377,7 +32377,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5315",
+      "source_location": "L5329",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32401,7 +32401,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5329",
+      "source_location": "L5343",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32425,7 +32425,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5344",
+      "source_location": "L5358",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32449,7 +32449,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5356",
+      "source_location": "L5370",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32497,7 +32497,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3275",
+      "source_location": "L3289",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32521,7 +32521,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3289",
+      "source_location": "L3303",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32545,7 +32545,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3305",
+      "source_location": "L3319",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -32592,7 +32592,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4660",
+      "source_location": "L4674",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
