@@ -153,13 +153,15 @@ export default function SubjectManagement() {
             user_nama_depan,
             user_nama_belakang
           ),
-          unit:subject_unit_id (
-            unit_name
+          unit:subject_unit_id!inner (
+            unit_name,
+            is_myp
           ),
           subject_group:subject_group_id (
             name
           )
         `)
+        .eq('unit.is_myp', true)
         .order('print_order', { ascending: true })
         .order('subject_id', { ascending: true });
 
@@ -223,7 +225,8 @@ export default function SubjectManagement() {
     try {
       const { data, error: sbErr } = await supabase
         .from('unit')
-        .select('unit_id, unit_name')
+        .select('unit_id, unit_name, is_myp')
+        .eq('is_myp', true)
         .order('unit_name');
       if (sbErr) throw sbErr;
       setUnits(data || []);
@@ -302,12 +305,30 @@ export default function SubjectManagement() {
 
     setSubmitting(true);
     try {
+      let iconUrl = editingSubject?.subject_icon || null;
+      if (removeIcon) {
+        iconUrl = null;
+      } else if (iconFile) {
+        setUploadingIcon(true);
+        const ext = iconFile.name.split('.').pop();
+        const path = `subject-icons/${Date.now()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('profile-pictures')
+          .upload(path, iconFile, { cacheControl: '3600', upsert: false });
+        if (uploadErr) throw uploadErr;
+
+        const { data: pub } = supabase.storage.from('profile-pictures').getPublicUrl(path);
+        iconUrl = pub?.publicUrl || null;
+        setUploadingIcon(false);
+      }
+
       const submitData = {
         subject_name: formData.subject_name.trim(),
         subject_user_id: Number(formData.subject_user_id),
-        subject_unit_id: Number(formData.subject_unit_id),
+        subject_unit_id: Number(formData.subject_unit_id || units[0]?.unit_id),
         subject_code: formData.subject_code?.trim() || null,
         subject_guide: formData.subject_guide?.trim() || null,
+        subject_icon: iconUrl,
         grading_method: formData.grading_method || 'highest',
         core_subject: !!formData.core_subject,
         is_community_project: !!formData.is_community_project,
@@ -323,40 +344,55 @@ export default function SubjectManagement() {
         })()
       };
 
-      if (iconFile) {
-        setUploadingIcon(true);
-        const ext = iconFile.name.split('.').pop();
-        const path = `subject-icons/${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage
-          .from('profile-pictures')
-          .upload(path, iconFile, { cacheControl: '3600', upsert: false });
-        if (uploadErr) throw uploadErr;
-
-        const { data: pub } = supabase.storage.from('profile-pictures').getPublicUrl(path);
-        submitData.subject_icon = pub?.publicUrl || null;
-        setUploadingIcon(false);
-      } else if (removeIcon) {
-        submitData.subject_icon = null;
-      }
-
-      let res;
       if (editingSubject) {
-        res = await supabase.from('subject').update(submitData).eq('subject_id', editingSubject.subject_id);
+        const { error: updateErr } = await supabase
+          .from('subject')
+          .update(submitData)
+          .eq('subject_id', editingSubject.subject_id);
+
+        if (updateErr) throw updateErr;
+        showNotification('Success', 'Subject updated successfully.', 'success');
       } else {
-        res = await supabase.from('subject').insert([submitData]);
+        const { error: insertErr } = await supabase
+          .from('subject')
+          .insert([submitData]);
+
+        if (insertErr) throw insertErr;
+        showNotification('Success', 'New subject added successfully.', 'success');
       }
 
-      if (res.error) throw new Error(res.error.message);
-
-      await fetchSubjects();
       setShowForm(false);
-      setEditingSubject(null);
-      showNotification('Success', editingSubject ? 'Subject updated successfully.' : 'New subject added successfully.', 'success');
+      resetForm();
+      await fetchSubjects();
     } catch (err) {
-      showNotification('Error', err.message, 'error');
+      console.error('Error saving subject:', err);
+      showNotification('Error', 'Failed to save subject: ' + err.message, 'error');
     } finally {
       setSubmitting(false);
+      setUploadingIcon(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      subject_name: '',
+      subject_user_id: '',
+      subject_unit_id: units.length > 0 ? String(units[0].unit_id) : '',
+      subject_code: '',
+      subject_guide: '',
+      grading_method: 'highest',
+      core_subject: false,
+      is_community_project: false,
+      print_order: 0,
+      include_in_print: true,
+      subject_group_id: '',
+      custom_grade_boundaries: ''
+    });
+    setFormErrors({});
+    setIconFile(null);
+    setIconPreview(null);
+    setRemoveIcon(false);
+    setEditingSubject(null);
   };
 
   const handleEdit = (subject) => {
@@ -364,7 +400,7 @@ export default function SubjectManagement() {
     setFormData({
       subject_name: subject.subject_name,
       subject_user_id: subject.subject_user_id || '',
-      subject_unit_id: subject.subject_unit_id || '',
+      subject_unit_id: subject.subject_unit_id || (units.length > 0 ? String(units[0].unit_id) : ''),
       subject_code: subject.subject_code || '',
       subject_guide: subject.subject_guide || '',
       grading_method: subject.grading_method || 'highest',
@@ -401,7 +437,7 @@ export default function SubjectManagement() {
     setFormData({
       subject_name: '',
       subject_user_id: '',
-      subject_unit_id: '',
+      subject_unit_id: units.length > 0 ? String(units[0].unit_id) : '',
       subject_code: '',
       subject_guide: '',
       grading_method: 'highest',
@@ -794,7 +830,7 @@ export default function SubjectManagement() {
               >
                 <option value="">All Units</option>
                 {units.map(u => (
-                  <option key={u.unit_id} value={u.unit_name}>{u.unit_name}</option>
+                  <option key={u.unit_id} value={u.unit_name}>{u.unit_name} (MYP)</option>
                 ))}
               </select>
             </div>
@@ -1100,15 +1136,23 @@ export default function SubjectManagement() {
                 </Label>
                 <select
                   required
-                  value={formData.subject_unit_id}
+                  value={formData.subject_unit_id || (units[0]?.unit_id ? String(units[0].unit_id) : '')}
+                  disabled={units.length <= 1}
                   onChange={e => setFormData({ ...formData, subject_unit_id: e.target.value })}
-                  style={{ ...selectStyle, width: '100%' }}
+                  style={{
+                    ...selectStyle,
+                    width: '100%',
+                    opacity: units.length <= 1 ? 0.9 : 1,
+                    cursor: units.length <= 1 ? 'not-allowed' : 'pointer'
+                  }}
                 >
-                  <option value="">Select Unit</option>
                   {units.map(u => (
-                    <option key={u.unit_id} value={u.unit_id}>{u.unit_name}</option>
+                    <option key={u.unit_id} value={u.unit_id}>{u.unit_name} (MYP)</option>
                   ))}
                 </select>
+                <p style={{ fontSize: '11px', color: textSecondary, marginTop: '4px' }}>
+                  Locked to MYP Unit (IB Middle Years Programme)
+                </p>
               </div>
             </div>
 
