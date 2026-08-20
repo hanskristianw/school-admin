@@ -190,13 +190,13 @@ export async function POST(request) {
     const studentName = formattedStudentsList.join(', ')
     const reporterName = `${incident.reporter?.user_nama_depan || ''} ${incident.reporter?.user_nama_belakang || ''}`.trim() || 'Teacher'
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://manageccs.online'
-    const detailLink = `${appUrl}/data/incident-report-approval`
 
     let subject = ''
     let htmlContent = ''
     let chatText = ''
 
     if (type === 'new_report' || type === 'incident_created') {
+      const detailLink = `${appUrl}/data/incident-report-approval`
       subject = `[NEW INCIDENT REPORT] ${incident.title} - ${studentName}`
       
       htmlContent = `
@@ -284,6 +284,7 @@ export async function POST(request) {
       const rawStatus = body.resultingStatus || body.resulting_status || followupInfo?.resulting_status || incident.status || 'IN_PROGRESS'
       const statusUpper = rawStatus.replace(/_/g, ' ').toUpperCase().replace('ON PROGRESS', 'IN PROGRESS')
 
+      const detailLink = `${appUrl}/data/incident-report`
       subject = `[INCIDENT FOLLOW-UP UPDATE] ${incident.title} - ${studentName}`
       
       htmlContent = `
