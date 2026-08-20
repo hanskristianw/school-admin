@@ -42,7 +42,10 @@ import {
   faAward,
   faSave,
   faCheckCircle,
-  faExclamationTriangle
+  faExclamationTriangle,
+  faUpload,
+  faImage,
+  faTimes
 } from '@fortawesome/free-solid-svg-icons'
 import { generatePypClassReportPDF } from './lib/pypPdfGenerator'
 
@@ -61,6 +64,12 @@ const LEARNER_PROFILES = [
   'Inquirers', 'Knowledgeable', 'Thinkers', 'Communicators',
   'Principled', 'Open-Minded', 'Caring', 'Risk-Takers', 'Balanced', 'Reflective'
 ]
+
+// Helper to determine if an image was explicitly uploaded to Supabase Storage or data URI
+const isUploadedImage = (url) => {
+  if (!url || typeof url !== 'string') return false
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image/')
+}
 
 // PYP Subject Areas & Scope and Sequence Strands
 const PYP_SUBJECT_AREAS = [
@@ -269,6 +278,7 @@ export default function PypPage() {
   const [printModalSemester, setPrintModalSemester] = useState('1')
   const [printScope, setPrintScope] = useState('class') // 'class' | 'single'
   const [printSingleStudentId, setPrintSingleStudentId] = useState('')
+  const [printPaperSize, setPrintPaperSize] = useState('a4') // 'a4' | 'letter'
   const [printReportDate, setPrintReportDate] = useState('')
   const [printStudentsList, setPrintStudentsList] = useState([])
   const [loadingPrintStudents, setLoadingPrintStudents] = useState(false)
@@ -282,6 +292,7 @@ export default function PypPage() {
     }
     setPrintModalSemester(semester)
     setPrintScope('class')
+    setPrintPaperSize('a4')
     setPrintReportDate('')
     setShowPrintModal(true)
 
@@ -343,6 +354,7 @@ export default function PypPage() {
         yearId: selectedYearId,
         yearName: selectedYear,
         semester: printModalSemester,
+        paperSize: printPaperSize,
         targetStudentId: printScope === 'single' ? printSingleStudentId : 'all',
         customReportDate: printReportDate || null,
         onLoading: (isLoading) => setIsGeneratingPdf(isLoading),
@@ -380,7 +392,8 @@ export default function PypPage() {
   // Master List Modals & Form
   const [showMasterModal, setShowMasterModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
-  const [masterFormData, setMasterFormData] = useState({ name: '', key: '', question: '', definition: '' })
+  const [masterFormData, setMasterFormData] = useState({ name: '', key: '', question: '', definition: '', image_url: '' })
+  const [uploadingAtlImage, setUploadingAtlImage] = useState(false)
 
   // Master Templates Search & Pagination States
   const [masterSearchQuery, setMasterSearchQuery] = useState('')
@@ -431,7 +444,8 @@ export default function PypPage() {
     title: '',
     centralIdea: '',
     theme: 'Who We Are',
-    duration: '6'
+    duration: '6',
+    semester: '1'
   })
   const [selectedLoiIds, setSelectedLoiIds] = useState([])
   const [selectedKcIds, setSelectedKcIds] = useState([])
@@ -689,6 +703,7 @@ export default function PypPage() {
             centralIdea: u.central_idea,
             theme: u.theme,
             durationWeeks: u.duration_weeks,
+            semester: u.semester || 1,
             kelasId: u.kelas_id,
             yearName: u.year_name,
             status: u.status || 'published',
@@ -1209,6 +1224,7 @@ export default function PypPage() {
         central_idea: sourceUnit.centralIdea,
         theme: sourceUnit.theme,
         duration_weeks: sourceUnit.durationWeeks || 6,
+        semester: sourceUnit.semester || 1,
         kelas_id: selectedClassId ? parseInt(selectedClassId, 10) : null,
         year_name: selectedYear || '2025/2026',
         status: 'published'
@@ -1244,8 +1260,7 @@ export default function PypPage() {
             "loiId": p.loiId,
             is_deleted: 0
           }))
-          const { data: insertedLois } = await supabase.from('pyploiunit').insert(loiInserts).select()
-          if (insertedLois) setLoiPivots(prev => [...prev, ...insertedLois])
+          await supabase.from('pyploiunit').insert(loiInserts)
         }
 
         // 3. Copy Key Concept pivot relationships (pypkcunit)
@@ -1254,10 +1269,10 @@ export default function PypPage() {
           const kcInserts = sourceKcs.map(p => ({
             "unitId": createdUnitId,
             "kcId": p.kcId,
+            keterangan: p.keterangan || '',
             is_deleted: 0
           }))
-          const { data: insertedKcs } = await supabase.from('pypkcunit').insert(kcInserts).select()
-          if (insertedKcs) setKcPivots(prev => [...prev, ...insertedKcs])
+          await supabase.from('pypkcunit').insert(kcInserts)
         }
 
         // 4. Copy ATL Skills pivot relationships (pypatlsunit)
@@ -1269,8 +1284,7 @@ export default function PypPage() {
             keterangan: p.keterangan || '',
             is_deleted: 0
           }))
-          const { data: insertedAtls } = await supabase.from('pypatlsunit').insert(atlInserts).select()
-          if (insertedAtls) setAtlPivots(prev => [...prev, ...insertedAtls])
+          await supabase.from('pypatlsunit').insert(atlInserts)
         }
 
         const newDisplayUnit = {
@@ -1280,6 +1294,7 @@ export default function PypPage() {
           centralIdea: sourceUnit.centralIdea,
           theme: sourceUnit.theme,
           durationWeeks: sourceUnit.durationWeeks || 6,
+          semester: sourceUnit.semester || 1,
           kelasId: selectedClassId ? parseInt(selectedClassId, 10) : null,
           yearName: selectedYear || '2025/2026',
           status: 'published',
@@ -1317,7 +1332,8 @@ export default function PypPage() {
       title: '',
       centralIdea: '',
       theme: 'Who We Are',
-      duration: '6'
+      duration: '6',
+      semester: '1'
     })
     setSelectedLoiIds([])
     setSelectedLoiObjs([])
@@ -1341,7 +1357,8 @@ export default function PypPage() {
       title: t.title || '',
       centralIdea: t.centralIdea || '',
       theme: t.theme || 'Who We Are',
-      duration: t.durationWeeks ? t.durationWeeks.toString() : '6'
+      duration: t.durationWeeks ? t.durationWeeks.toString() : '6',
+      semester: t.semester ? String(t.semester) : '1'
     })
 
     // Match Central Idea object from ciList
@@ -1467,6 +1484,7 @@ export default function PypPage() {
             central_idea: unitFormData.centralIdea.trim(),
             theme: unitFormData.theme,
             duration_weeks: parseInt(unitFormData.duration, 10) || 6,
+            semester: parseInt(unitFormData.semester, 10) || 1,
             kelas_id: selectedClassId ? parseInt(selectedClassId, 10) : null,
             year_name: selectedYear || '2025/2026'
           }
@@ -1500,6 +1518,7 @@ export default function PypPage() {
           central_idea: unitFormData.centralIdea.trim(),
           theme: unitFormData.theme,
           duration_weeks: parseInt(unitFormData.duration, 10) || 6,
+          semester: parseInt(unitFormData.semester, 10) || 1,
           kelas_id: selectedClassId ? parseInt(selectedClassId, 10) : null,
           year_name: selectedYear || '2025/2026',
           status: 'published'
@@ -1572,6 +1591,7 @@ export default function PypPage() {
           centralIdea: unitFormData.centralIdea.trim(),
           theme: unitFormData.theme,
           durationWeeks: parseInt(unitFormData.duration, 10) || 6,
+          semester: parseInt(unitFormData.semester, 10) || 1,
           kelasId: selectedClassId ? parseInt(selectedClassId, 10) : null,
           yearName: selectedYear || '2025/2026',
           status: 'published',
@@ -1605,6 +1625,38 @@ export default function PypPage() {
     }
   }
 
+  // Upload Master Image (ATL Skills or Key Concepts) to Supabase Storage
+  const handleUploadMasterImage = async (file) => {
+    if (!file) return
+    try {
+      setUploadingAtlImage(true)
+      const fileExt = file.name.split('.').pop() || 'png'
+      const targetFolder = masterSubTab === 'kc' ? 'pyp-kc' : 'pyp-atls'
+      const prefix = masterSubTab === 'kc' ? 'kc' : 'atl'
+      const filePath = `${targetFolder}/${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('report-assets')
+        .upload(filePath, file, { contentType: file.type || 'image/png', upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: pubData } = supabase.storage.from('report-assets').getPublicUrl(filePath)
+      const publicUrl = pubData?.publicUrl || ''
+      setMasterFormData(prev => ({ ...prev, image_url: publicUrl }))
+    } catch (err) {
+      console.error('Image upload failed:', err)
+      setNotif({
+        isOpen: true,
+        title: 'Upload Failed',
+        message: err.message || 'Could not upload image.',
+        type: 'error'
+      })
+    } finally {
+      setUploadingAtlImage(false)
+    }
+  }
+
   // Open Master Item Modal (Create or Edit)
   const handleOpenMasterModal = (itemToEdit = null) => {
     setEditingItem(itemToEdit)
@@ -1613,10 +1665,11 @@ export default function PypPage() {
         name: itemToEdit.name || '',
         key: itemToEdit.key || '',
         question: itemToEdit.question || '',
-        definition: itemToEdit.definition || ''
+        definition: itemToEdit.definition || '',
+        image_url: isUploadedImage(itemToEdit.image_url) ? itemToEdit.image_url : (isUploadedImage(itemToEdit.icon) ? itemToEdit.icon : '')
       })
     } else {
-      setMasterFormData({ name: '', key: '', question: '', definition: '' })
+      setMasterFormData({ name: '', key: '', question: '', definition: '', image_url: '' })
     }
     setShowMasterModal(true)
   }
@@ -1635,7 +1688,9 @@ export default function PypPage() {
         const payload = {
           key: masterFormData.key.trim(),
           question: masterFormData.question.trim(),
-          definition: masterFormData.definition.trim()
+          definition: masterFormData.definition.trim(),
+          image_url: masterFormData.image_url ? masterFormData.image_url.trim() : null,
+          icon: masterFormData.image_url ? masterFormData.image_url.trim() : null
         }
 
         if (editingItem) {
@@ -1653,7 +1708,13 @@ export default function PypPage() {
         }
       } else {
         if (!masterFormData.name.trim()) return
-        const payload = { name: masterFormData.name.trim() }
+        const payload = { 
+          name: masterFormData.name.trim(),
+          ...(masterSubTab === 'atls' ? { 
+            image_url: masterFormData.image_url || null,
+            icon: masterFormData.image_url || null 
+          } : {})
+        }
 
         if (editingItem) {
           const { error } = await supabase.from(tableName).update(payload).eq('id', editingItem.id)
@@ -2063,10 +2124,33 @@ export default function PypPage() {
                         return (
                           <div key={item.id || index} style={{ background: isDark ? '#27272A' : '#FBFBFA', border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                             <div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', fontFamily: 'monospace' }}>
-                                  #{globalIdx} {item.key}
-                                </span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {isUploadedImage(item.image_url || item.icon) ? (
+                                    <div 
+                                      onClick={() => handleOpenMasterModal(item)}
+                                      title="Click to change Key Concept icon"
+                                      style={{ width: '32px', height: '32px', borderRadius: '6px', background: isDark ? '#18181B' : '#FFFFFF', border: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '2px', cursor: 'pointer', flexShrink: 0 }}
+                                    >
+                                      <img 
+                                        src={item.image_url || item.icon} 
+                                        alt={item.key} 
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div 
+                                      onClick={() => handleOpenMasterModal(item)}
+                                      title="Click to upload Key Concept icon"
+                                      style={{ width: '32px', height: '32px', borderRadius: '6px', background: isDark ? '#18181B' : '#FFFFFF', border: `1px dashed ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: textSecondary, flexShrink: 0 }}
+                                    >
+                                      <FontAwesomeIcon icon={faImage} style={{ fontSize: '13px' }} />
+                                    </div>
+                                  )}
+                                  <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', fontFamily: 'monospace' }}>
+                                    #{globalIdx} {item.key}
+                                  </span>
+                                </div>
                                 <div style={{ display: 'flex', gap: '6px' }}>
                                   <button onClick={() => handleOpenMasterModal(item)} style={{ background: 'none', border: 'none', color: textSecondary, cursor: 'pointer', padding: '2px' }}>
                                     <FontAwesomeIcon icon={faEdit} style={{ fontSize: '12px' }} />
@@ -2097,13 +2181,63 @@ export default function PypPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {paginatedMasterList.map((item, index) => {
                         const globalIdx = (masterPage - 1) * MASTER_ITEMS_PER_PAGE + index + 1
+                        const hasImage = masterSubTab === 'atls' && isUploadedImage(item.image_url || item.icon)
                         return (
-                          <div key={item.id || index} style={{ background: isDark ? '#27272A' : '#FBFBFA', border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                          <div key={item.id || index} style={{ background: isDark ? '#27272A' : '#FBFBFA', border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <span style={{ width: '26px', height: '26px', borderRadius: '50%', background: isDark ? '#3F3F46' : '#E5E5E5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: textSecondary, flexShrink: 0 }}>
                                 {globalIdx}
                               </span>
-                              <span style={{ fontSize: '13px', color: textPrimary, lineHeight: 1.5 }}>
+
+                              {hasImage ? (
+                                <div 
+                                  onClick={() => handleOpenMasterModal(item)}
+                                  title="Click to change ATL image"
+                                  style={{ 
+                                    width: '38px', 
+                                    height: '38px', 
+                                    borderRadius: '8px', 
+                                    background: isDark ? '#18181B' : '#FFFFFF', 
+                                    border: `1px solid ${borderColor}`, 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    overflow: 'hidden', 
+                                    flexShrink: 0, 
+                                    padding: '3px',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                  }}
+                                >
+                                  <img 
+                                    src={item.image_url || item.icon} 
+                                    alt={item.name} 
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                                  />
+                                </div>
+                              ) : masterSubTab === 'atls' ? (
+                                <div 
+                                  onClick={() => handleOpenMasterModal(item)}
+                                  title="Click to upload ATL image"
+                                  style={{ 
+                                    width: '38px', 
+                                    height: '38px', 
+                                    borderRadius: '8px', 
+                                    background: isDark ? '#18181B' : '#FFFFFF', 
+                                    border: `1px dashed ${borderColor}`, 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    flexShrink: 0, 
+                                    cursor: 'pointer',
+                                    color: textSecondary
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faImage} style={{ fontSize: '14px' }} />
+                                </div>
+                              ) : null}
+
+                              <span style={{ fontSize: '13px', color: textPrimary, lineHeight: 1.5, fontWeight: masterSubTab === 'atls' ? 500 : 400 }}>
                                 {item.name}
                               </span>
                             </div>
@@ -2233,53 +2367,6 @@ export default function PypPage() {
                     <span style={{ fontSize: '12px', color: textSecondary }}>
                       Academic Year: {selectedYear || 'All'}
                     </span>
-                  </div>
-                  
-                  {/* Header Quick Print Actions */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPrintModal('1')}
-                      style={{
-                        background: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
-                        border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`,
-                        color: isDark ? '#93C5FD' : '#1D4ED8',
-                        borderRadius: '6px',
-                        fontWeight: 600,
-                        fontSize: '12px',
-                        padding: '6px 12px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faPrint} style={{ fontSize: '11px' }} />
-                      <span>Print Report Sem 1</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPrintModal('2')}
-                      style={{
-                        background: isDark ? 'rgba(168, 85, 247, 0.12)' : '#FAF5FF',
-                        border: `1px solid ${isDark ? 'rgba(168, 85, 247, 0.3)' : '#E9D5FF'}`,
-                        color: isDark ? '#C084FC' : '#7E22CE',
-                        borderRadius: '6px',
-                        fontWeight: 600,
-                        fontSize: '12px',
-                        padding: '6px 12px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faPrint} style={{ fontSize: '11px' }} />
-                      <span>Print Report Sem 2</span>
-                    </button>
                   </div>
                 </div>
 
@@ -2443,10 +2530,29 @@ export default function PypPage() {
                           }}
                         >
                           <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                              <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '9999px', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', color: isDark ? '#4ADE80' : '#346538', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                {t.theme || 'Who We Are'}
-                              </span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '9999px', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', color: isDark ? '#4ADE80' : '#346538', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                  {t.theme || 'Who We Are'}
+                                </span>
+                                <span style={{ 
+                                  fontSize: '11px', 
+                                  fontWeight: 600, 
+                                  padding: '3px 8px', 
+                                  borderRadius: '9999px', 
+                                  background: Number(t.semester) === 2 
+                                    ? (isDark ? 'rgba(168, 85, 247, 0.15)' : '#FAF5FF') 
+                                    : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF'), 
+                                  color: Number(t.semester) === 2 
+                                    ? (isDark ? '#C084FC' : '#7E22CE') 
+                                    : (isDark ? '#93C5FD' : '#1D4ED8'), 
+                                  border: `1px solid ${Number(t.semester) === 2 
+                                    ? (isDark ? 'rgba(168, 85, 247, 0.3)' : '#E9D5FF') 
+                                    : (isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE')}`
+                                }}>
+                                  Semester {t.semester || 1}
+                                </span>
+                              </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 {t.durationWeeks && (
                                   <span style={{ fontSize: '12px', color: textSecondary, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -2472,6 +2578,9 @@ export default function PypPage() {
 
                             {/* Badges for LOI, Key Concepts & ATL Skills */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '12px', borderTop: `1px solid ${borderColor}` }}>
+                              <div style={{ fontSize: '11px', color: textSecondary }}>
+                                <strong>Semester:</strong> Semester {t.semester || 1}
+                              </div>
                               <div style={{ fontSize: '11px', color: textSecondary }}>
                                 <strong>LOIs:</strong> {linkedLois.length > 0 ? `${linkedLois.length} selected` : 'None linked'}
                               </div>
@@ -3803,7 +3912,7 @@ export default function PypPage() {
                   )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
                   <div>
                     <Label style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', display: 'block', color: textPrimary }}>
                       Transdisciplinary Theme
@@ -3816,6 +3925,20 @@ export default function PypPage() {
                       {TRANSDISCIPLINARY_THEMES.map(th => (
                         <option key={th} value={th}>{th}</option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', display: 'block', color: textPrimary }}>
+                      Semester *
+                    </Label>
+                    <select
+                      value={unitFormData.semester || '1'}
+                      onChange={e => setUnitFormData({ ...unitFormData, semester: e.target.value })}
+                      style={{ ...selectStyle, width: '100%' }}
+                    >
+                      <option value="1">Semester 1</option>
+                      <option value="2">Semester 2</option>
                     </select>
                   </div>
 
@@ -4021,6 +4144,15 @@ export default function PypPage() {
                               checked={isChecked}
                               onChange={() => toggleKcSelection(kc.id)}
                             />
+                            {isUploadedImage(kc.image_url || kc.icon) && (
+                              <div style={{ width: '24px', height: '24px', borderRadius: '4px', background: isDark ? '#18181B' : '#FFFFFF', border: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1px', flexShrink: 0 }}>
+                                <img 
+                                  src={kc.image_url || kc.icon} 
+                                  alt={kc.key} 
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                                />
+                              </div>
+                            )}
                             <span style={{ fontSize: '13px', fontWeight: 700, color: isChecked ? (isDark ? '#60A5FA' : '#1F6C9F') : textPrimary }}>
                               {kc.key}
                             </span>
@@ -4079,6 +4211,15 @@ export default function PypPage() {
                               checked={isChecked}
                               onChange={() => toggleAtlSelection(atl.id)}
                             />
+                            {isUploadedImage(atl.image_url || atl.icon) && (
+                              <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: isDark ? '#18181B' : '#FFFFFF', border: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, padding: '2px' }}>
+                                <img 
+                                  src={atl.image_url || atl.icon} 
+                                  alt={atl.name} 
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                                />
+                              </div>
+                            )}
                             <span style={{ fontSize: '13px', fontWeight: 600, color: textPrimary }}>
                               {atl.name}
                             </span>
@@ -4229,7 +4370,205 @@ export default function PypPage() {
                     style={{ ...inputStyle, width: '100%', padding: '8px 12px', resize: 'vertical' }}
                   />
                 </div>
+
+                {/* Key Concept Icon / Image Upload */}
+                <div>
+                  <Label style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', display: 'block', color: textPrimary }}>
+                    Key Concept Icon / Image
+                  </Label>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: isDark ? '#27272A' : '#F4F4F5', border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '14px 16px' }}>
+                    {/* Image Preview Thumbnail */}
+                    <div style={{ 
+                      width: '60px', 
+                      height: '60px', 
+                      borderRadius: '8px', 
+                      background: isDark ? '#18181B' : '#FFFFFF', 
+                      border: `1px solid ${borderColor}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}>
+                      {masterFormData.image_url ? (
+                        <img 
+                          src={masterFormData.image_url} 
+                          alt="Key Concept Icon Preview" 
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }} 
+                        />
+                      ) : (
+                        <FontAwesomeIcon icon={faImage} style={{ fontSize: '24px', color: textSecondary }} />
+                      )}
+                    </div>
+
+                    {/* Upload Controls */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <label style={{
+                          background: textPrimary,
+                          color: isDark ? '#09090B' : '#FFFFFF',
+                          borderRadius: '6px',
+                          padding: '7px 14px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: uploadingAtlImage ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          opacity: uploadingAtlImage ? 0.7 : 1
+                        }}>
+                          <FontAwesomeIcon icon={uploadingAtlImage ? faSpinner : faUpload} spin={uploadingAtlImage} style={{ fontSize: '11px' }} />
+                          <span>{uploadingAtlImage ? 'Uploading...' : masterFormData.image_url ? 'Change Image' : 'Upload Image'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={uploadingAtlImage}
+                            onChange={e => {
+                              const file = e.target.files?.[0]
+                              if (file) handleUploadMasterImage(file)
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+
+                        {masterFormData.image_url && (
+                          <button
+                            type="button"
+                            onClick={() => setMasterFormData({ ...masterFormData, image_url: '' })}
+                            style={{
+                              background: 'none',
+                              border: `1px solid ${borderColor}`,
+                              color: '#EF4444',
+                              borderRadius: '6px',
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faTimes} style={{ fontSize: '11px' }} />
+                            <span>Remove</span>
+                          </button>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '11px', color: textSecondary }}>
+                        Upload PNG, JPG, or SVG icon image for this Key Concept.
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </>
+            ) : masterSubTab === 'atls' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <Label style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', display: 'block', color: textPrimary }}>
+                    ATL Skill Name *
+                  </Label>
+                  <Input
+                    type="text"
+                    required
+                    placeholder="e.g. Self-management Skill, Research Skill, Thinking Skill..."
+                    value={masterFormData.name}
+                    onChange={e => setMasterFormData({ ...masterFormData, name: e.target.value })}
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* ATL Skill Image / Icon Upload */}
+                <div>
+                  <Label style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', display: 'block', color: textPrimary }}>
+                    ATL Skill Icon / Image
+                  </Label>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: isDark ? '#27272A' : '#F4F4F5', border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '14px 16px' }}>
+                    {/* Image Preview Thumbnail */}
+                    <div style={{ 
+                      width: '60px', 
+                      height: '60px', 
+                      borderRadius: '8px', 
+                      background: isDark ? '#18181B' : '#FFFFFF', 
+                      border: `1px solid ${borderColor}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}>
+                      {masterFormData.image_url ? (
+                        <img 
+                          src={masterFormData.image_url} 
+                          alt="ATL Skill Icon Preview" 
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }} 
+                        />
+                      ) : (
+                        <FontAwesomeIcon icon={faImage} style={{ fontSize: '24px', color: textSecondary }} />
+                      )}
+                    </div>
+
+                    {/* Upload Controls */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <label style={{
+                          background: textPrimary,
+                          color: isDark ? '#09090B' : '#FFFFFF',
+                          borderRadius: '6px',
+                          padding: '7px 14px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: uploadingAtlImage ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          opacity: uploadingAtlImage ? 0.7 : 1
+                        }}>
+                          <FontAwesomeIcon icon={uploadingAtlImage ? faSpinner : faUpload} spin={uploadingAtlImage} style={{ fontSize: '11px' }} />
+                          <span>{uploadingAtlImage ? 'Uploading...' : masterFormData.image_url ? 'Change Image' : 'Upload Image'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={uploadingAtlImage}
+                            onChange={e => {
+                              const file = e.target.files?.[0]
+                              if (file) handleUploadAtlImage(file)
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+
+                        {masterFormData.image_url && (
+                          <button
+                            type="button"
+                            onClick={() => setMasterFormData({ ...masterFormData, image_url: '' })}
+                            style={{
+                              background: 'none',
+                              border: `1px solid ${borderColor}`,
+                              color: '#EF4444',
+                              borderRadius: '6px',
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faTimes} style={{ fontSize: '11px' }} />
+                            <span>Remove</span>
+                          </button>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '11px', color: textSecondary }}>
+                        Upload PNG, JPG, or SVG icon image for this Approaches to Learning skill.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div>
                 <Label style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', display: 'block', color: textPrimary }}>
@@ -4238,7 +4577,7 @@ export default function PypPage() {
                 <textarea
                   required
                   rows={3}
-                  placeholder={`Enter ${masterSubTab === 'ci' ? 'Central Idea' : masterSubTab === 'loi' ? 'Line of Inquiry' : 'ATL Skill'} description...`}
+                  placeholder={`Enter ${masterSubTab === 'ci' ? 'Central Idea' : 'Line of Inquiry'} description...`}
                   value={masterFormData.name}
                   onChange={e => setMasterFormData({ ...masterFormData, name: e.target.value })}
                   style={{ ...inputStyle, width: '100%', padding: '8px 12px', resize: 'vertical' }}
@@ -4698,6 +5037,62 @@ export default function PypPage() {
                 )}
               </div>
             )}
+
+            {/* Paper Size Selection */}
+            <div>
+              <Label style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px', display: 'block' }}>
+                Paper Size / Ukuran Kertas
+              </Label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPrintPaperSize('a4')}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: `1.5px solid ${printPaperSize === 'a4' ? (isDark ? '#FFFFFF' : '#18181B') : borderColor}`,
+                    background: printPaperSize === 'a4' ? (isDark ? 'rgba(255,255,255,0.06)' : '#F7F6F3') : 'transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span style={{ fontSize: '13px', fontWeight: printPaperSize === 'a4' ? 700 : 600, color: textPrimary }}>
+                    A4 (Standard IB)
+                  </span>
+                  <span style={{ fontSize: '11px', color: textSecondary }}>
+                    210 × 297 mm
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPrintPaperSize('letter')}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: `1.5px solid ${printPaperSize === 'letter' ? (isDark ? '#FFFFFF' : '#18181B') : borderColor}`,
+                    background: printPaperSize === 'letter' ? (isDark ? 'rgba(255,255,255,0.06)' : '#F7F6F3') : 'transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span style={{ fontSize: '13px', fontWeight: printPaperSize === 'letter' ? 700 : 600, color: textPrimary }}>
+                    US Letter
+                  </span>
+                  <span style={{ fontSize: '11px', color: textSecondary }}>
+                    215.9 × 279.4 mm
+                  </span>
+                </button>
+              </div>
+            </div>
 
             {/* Optional Custom Report Date Input */}
             <div>

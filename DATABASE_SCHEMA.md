@@ -1869,6 +1869,8 @@ erDiagram
 3. `pyp_atls_list` — Master Approaches to Learning
    - `id`: `SERIAL PRIMARY KEY`
    - `name`: `TEXT` (ATL Skill descriptor)
+   - `image_url`: `TEXT` (Public URL or path of the uploaded ATL skill icon/image)
+   - `icon`: `TEXT` (Identifier or image URL for ATL icon)
    - `is_deleted`: `SMALLINT DEFAULT 0`
    - `created_by`, `created_at`, `updated_by`, `updated_at`
 
@@ -1877,6 +1879,8 @@ erDiagram
    - `key`: `VARCHAR(255)` (Concept keyword, e.g., Form, Function, Causation)
    - `question`: `TEXT` (Key concept guiding question)
    - `definition`: `TEXT` (Detailed explanation of the key concept)
+   - `image_url`: `TEXT` (Public URL or path of the uploaded Key Concept icon/image)
+   - `icon`: `TEXT` (Identifier or image URL for Key Concept icon)
    - `is_deleted`: `SMALLINT DEFAULT 0`
    - `created_by`, `created_at`, `updated_by`, `updated_at`
 
@@ -1941,6 +1945,7 @@ erDiagram
    - `central_idea`: `TEXT NOT NULL` (Central Idea statement)
    - `theme`: `TEXT NOT NULL DEFAULT 'Who We Are'` (Transdisciplinary Theme)
    - `duration_weeks`: `INTEGER DEFAULT 6` (Unit duration in weeks)
+   - `semester`: `SMALLINT NOT NULL DEFAULT 1` (1 = Semester 1, 2 = Semester 2)
    - `kelas_id`: `bigint NOT NULL` (FK to `kelas(kelas_id)`)
    - `year_name`: `TEXT` (Academic Year)
    - `status`: `VARCHAR(20) DEFAULT 'published'`
