@@ -61,7 +61,7 @@ export async function POST(request) {
           else if (userDb.user_email) resolvedRequesterName = userDb.user_email
 
           if (userDb.user_email) resolvedRequesterEmail = userDb.user_email
-          if (userDb.user_unit_id) resolvedUnitId = userDb.user_unit_id
+          if (!resolvedUnitId && userDb.user_unit_id) resolvedUnitId = userDb.user_unit_id
         }
       } catch (uErr) {
         console.warn('[CCTV Notification] Could not fetch requester user from DB:', uErr)
@@ -190,23 +190,27 @@ export async function POST(request) {
 
       if (!IS_DEBUG_MODE && resolvedUnitId) {
         try {
-          const { data: principalUser } = await supabase
-            .from('users')
-            .select(`
-              user_id,
-              user_email,
-              user_nama_depan,
-              user_nama_belakang,
-              role:user_role_id(role_name, is_principal)
-            `)
-            .eq('user_unit_id', resolvedUnitId)
-            .or('role.is_principal.eq.true,role.role_name.ilike.%principal%,role.role_name.ilike.%kepala sekolah%')
-            .limit(1)
-            .single()
+          const { data: pRoles } = await supabase
+            .from('role')
+            .select('role_id')
+            .or('is_principal.eq.true,role_name.ilike.%principal%')
 
-          if (principalUser && principalUser.user_email) {
-            targetEmail = principalUser.user_email
-            principalName = `${principalUser.user_nama_depan || ''} ${principalUser.user_nama_belakang || ''}`.trim() || 'Principal'
+          const roleIds = pRoles?.map(r => r.role_id) || []
+
+          if (roleIds.length > 0) {
+            const { data: principalUser } = await supabase
+              .from('users')
+              .select('user_id, user_email, user_nama_depan, user_nama_belakang')
+              .eq('user_unit_id', resolvedUnitId)
+              .in('user_role_id', roleIds)
+              .eq('is_active', true)
+              .limit(1)
+              .maybeSingle()
+
+            if (principalUser && principalUser.user_email) {
+              targetEmail = principalUser.user_email
+              principalName = `${principalUser.user_nama_depan || ''} ${principalUser.user_nama_belakang || ''}`.trim() || 'Principal'
+            }
           }
         } catch (pErr) {
           console.warn('[CCTV Notification] Error resolving Principal email:', pErr)
