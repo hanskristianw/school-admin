@@ -486,7 +486,7 @@ async function handleNotify(request) {
           newIssues.forEach(issue => {
             if (issue.type === 'absent') chatText += `- *Absent* (No explanation provided)\n`;
             if (issue.type === 'late') chatText += `- *Late check-in* by ${issue.minutesDiff} minutes (Schedule: ${issue.scheduledTime}, Actual: ${issue.actualTime})\n`;
-            if (issue.type === 'leave_early') chatText += `- *Early check-out* by ${issue.minutesDiff} minutes (Schedule: ${issue.scheduledTime}, Actual: ${issue.actualTime})\n`;
+            if (issue.type === 'leave_early') chatText += `- *Early dismissal* by ${issue.minutesDiff} minutes (Schedule: ${issue.scheduledTime}, Actual: ${issue.actualTime})\n`;
             if (issue.type === 'no_checkin') chatText += `- *Missed check-in* (Schedule: ${issue.scheduledTime})\n`;
             if (issue.type === 'no_checkout') chatText += `- *Missed check-out* (Schedule: ${issue.scheduledTime})\n`;
           });

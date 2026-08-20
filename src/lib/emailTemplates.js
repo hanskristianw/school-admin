@@ -155,7 +155,7 @@ export const emailTemplates = {
     const typeLabel = (type) => {
       switch (type) {
         case 'late':        return { icon: '🕐', label: 'Late Attendance',    engLabel: 'Late Attendance',    color: '#d97706', bg: '#fef3c7', headerGrad: 'linear-gradient(135deg, #d97706, #f59e0b)' }
-        case 'leave_early': return { icon: '🚪', label: 'Early Departure',    engLabel: 'Early Departure',    color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
+        case 'leave_early': return { icon: '🚪', label: 'Early Dismissal',     engLabel: 'Early Dismissal',     color: '#dc2626', bg: '#fee2e2', headerGrad: 'linear-gradient(135deg, #dc2626, #ef4444)' }
         case 'absent':      return { icon: '🚫', label: 'Absence',            engLabel: 'Absence',            color: '#6b21a8', bg: '#f3e8ff', headerGrad: 'linear-gradient(135deg, #6b21a8, #9333ea)' }
         case 'no_checkin':  return { icon: '❌', label: 'Missing Check-In',   engLabel: 'Missing Check-In',   color: '#7c3aed', bg: '#ede9fe', headerGrad: 'linear-gradient(135deg, #7c3aed, #8b5cf6)' }
         case 'no_checkout': return { icon: '⚠️', label: 'Missing Check-Out',  engLabel: 'Missing Check-Out',  color: '#ea580c', bg: '#ffedd5', headerGrad: 'linear-gradient(135deg, #ea580c, #f97316)' }
@@ -247,7 +247,7 @@ export const emailTemplates = {
     const typeLabel = (type) => {
       switch (type) {
         case 'late':        return '🕐 Late'
-        case 'leave_early': return '🚪 Early Departure'
+        case 'leave_early': return '🚪 Early Dismissal'
         case 'absent':      return '🚫 Absent'
         case 'no_checkin':  return '❌ Missing Check-In'
         case 'no_checkout': return '⚠️ Missing Check-Out'
