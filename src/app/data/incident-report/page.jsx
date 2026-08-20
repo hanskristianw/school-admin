@@ -400,8 +400,26 @@ export default function IncidentReportListPage() {
       const targetUserId = currentUser?.userID || currentUser?.user_id || currentUser?.id
 
       const dCode = cctvFormData.cctv_date.replace(/-/g, '')
-      const seq = String((cctvRequests.length || 0) + 1).padStart(3, '0')
-      const reqNumber = `CCTV/${dCode}/${seq}`
+      const prefix = `CCTV/${dCode}/`
+      const { data: existingCctvs } = await supabase
+        .from('cctv_footage_requests')
+        .select('request_number')
+        .ilike('request_number', `${prefix}%`)
+
+      let maxSeq = 0
+      if (existingCctvs && existingCctvs.length > 0) {
+        existingCctvs.forEach(cctv => {
+          const parts = (cctv.request_number || '').split('/')
+          const numPart = parts[parts.length - 1]
+          const parsed = parseInt(numPart, 10)
+          if (!isNaN(parsed) && parsed > maxSeq) {
+            maxSeq = parsed
+          }
+        })
+      }
+
+      const seq = String(maxSeq + 1).padStart(3, '0')
+      const reqNumber = `${prefix}${seq}`
 
       const payload = {
         request_number: reqNumber,
@@ -509,8 +527,27 @@ export default function IncidentReportListPage() {
       const dCode = dateParts.length === 3 
         ? `${dateParts[2]}${dateParts[1]}${dateParts[0].slice(2)}` 
         : formData.incident_date.replace(/-/g, '').substring(2)
-      const seq = String((reports.length || 0) + 1).padStart(3, '0')
-      const incidentNum = `INC/${uCode}/${dCode}/${seq}`
+
+      const prefix = `INC/${uCode}/${dCode}/`
+      const { data: existingIncidents } = await supabase
+        .from('incident_reports')
+        .select('incident_number')
+        .ilike('incident_number', `${prefix}%`)
+
+      let maxSeq = 0
+      if (existingIncidents && existingIncidents.length > 0) {
+        existingIncidents.forEach(inc => {
+          const parts = (inc.incident_number || '').split('/')
+          const numPart = parts[parts.length - 1]
+          const parsed = parseInt(numPart, 10)
+          if (!isNaN(parsed) && parsed > maxSeq) {
+            maxSeq = parsed
+          }
+        })
+      }
+
+      const seq = String(maxSeq + 1).padStart(3, '0')
+      const incidentNum = `${prefix}${seq}`
 
       const allStudentNames = selectedStudents
         .map(s => `${s.user_nama_depan || ''} ${s.user_nama_belakang || ''}`.trim())
