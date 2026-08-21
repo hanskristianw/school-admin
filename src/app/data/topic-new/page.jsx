@@ -7942,11 +7942,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       {/* Attendance 5-column Roster Grid */}
                       <div className="grid grid-cols-5 gap-2 mb-3.5">
                         {[
-                          { field: 'present', label: t('topicNew.mentorCommentTab.present') || 'Present', bg: '#EDF3EC', text: '#346538', border: '#D5E6D3' },
-                          { field: 'absent',  label: t('topicNew.mentorCommentTab.absent')  || 'Absent',  bg: '#FDEBEC', text: '#9F2F2D', border: '#F8C9CC' },
-                          { field: 'late',    label: t('topicNew.mentorCommentTab.late')    || 'Late',    bg: '#E1F3FE', text: '#1F6C9F', border: '#BDE3FC' },
-                          { field: 'sick',    label: t('topicNew.mentorCommentTab.sick')    || 'Sick',    bg: '#FBF3DB', text: '#956400', border: '#F5E6B3' },
-                          { field: 'excused', label: t('topicNew.mentorCommentTab.excused') || 'Excused', bg: '#F3E8FF', text: '#6B21A8', border: '#E9D5FF' }
+                          { field: 'present', label: t('topicNew.mentorCommentTab.present') || 'Present', bg: isDark ? 'rgba(34, 197, 94, 0.18)' : '#DCFCE7', text: isDark ? '#4ADE80' : '#15803D', border: isDark ? '#22C55E' : '#86EFAC' },
+                          { field: 'absent',  label: t('topicNew.mentorCommentTab.absent')  || 'Absent',  bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2', text: isDark ? '#F87171' : '#DC2626', border: isDark ? 'rgba(248, 113, 113, 0.4)' : '#FCA5A5' },
+                          { field: 'late',    label: t('topicNew.mentorCommentTab.late')    || 'Late',    bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#DBEAFE', text: isDark ? '#60A5FA' : '#2563EB', border: isDark ? 'rgba(96, 165, 250, 0.4)' : '#93C5FD' },
+                          { field: 'sick',    label: t('topicNew.mentorCommentTab.sick')    || 'Sick',    bg: isDark ? 'rgba(234, 179, 8, 0.15)' : '#FEF3C7', text: isDark ? '#FACC15' : '#D97706', border: isDark ? 'rgba(250, 204, 21, 0.4)' : '#FCD34D' },
+                          { field: 'excused', label: t('topicNew.mentorCommentTab.excused') || 'Excused', bg: isDark ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF', text: isDark ? '#C084FC' : '#9333EA', border: isDark ? 'rgba(192, 132, 252, 0.4)' : '#D8B4FE' }
                         ].map(({ field, label, bg, text, border }) => (
                           <div key={field} className="p-2 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '4px' }}>
                             <label className="block text-[9px] font-mono font-bold uppercase tracking-wider mb-1 truncate text-center" style={{ color: theme.textSecondary }}>
@@ -8167,11 +8167,11 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                             const currentStatus = rec?.status || ''
                             const isSaving = savingAttendanceId === student.detail_siswa_id
                             const statusOptions = [
-                              { value: 'hadir',        label: t('topicNew.mentorCommentTab.dailyAttendance.statusHadir')        || 'Present',     bg: '#EDF3EC', color: '#346538', border: '#D5E6D3' },
-                              { value: 'tidak_hadir',  label: t('topicNew.mentorCommentTab.dailyAttendance.statusTidakHadir')  || 'Absent',      bg: '#FDEBEC', color: '#9F2F2D', border: '#F8C9CC' },
-                              { value: 'ijin',         label: t('topicNew.mentorCommentTab.dailyAttendance.statusIjin')         || 'Excused',     bg: '#FBF3DB', color: '#956400', border: '#F5E6B3' },
-                              { value: 'terlambat',    label: t('topicNew.mentorCommentTab.dailyAttendance.statusTerlambat')    || 'Late',        bg: '#E1F3FE', color: '#1F6C9F', border: '#BDE3FC' },
-                              { value: 'pulang_cepat', label: t('topicNew.mentorCommentTab.dailyAttendance.statusPulangCepat') || 'Early Leave',  bg: '#F3E8FF', color: '#6B21A8', border: '#E9D5FF' },
+                              { value: 'hadir',        label: t('topicNew.mentorCommentTab.dailyAttendance.statusHadir')        || 'Present',     bg: isDark ? 'rgba(34, 197, 94, 0.18)' : '#DCFCE7', color: isDark ? '#4ADE80' : '#15803D', border: isDark ? '#22C55E' : '#86EFAC' },
+                              { value: 'tidak_hadir',  label: t('topicNew.mentorCommentTab.dailyAttendance.statusTidakHadir')  || 'Absent',      bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2', color: isDark ? '#F87171' : '#DC2626', border: isDark ? 'rgba(248, 113, 113, 0.4)' : '#FCA5A5' },
+                              { value: 'ijin',         label: t('topicNew.mentorCommentTab.dailyAttendance.statusIjin')         || 'Excused',     bg: isDark ? 'rgba(234, 179, 8, 0.15)' : '#FEF3C7', color: isDark ? '#FACC15' : '#D97706', border: isDark ? 'rgba(250, 204, 21, 0.4)' : '#FCD34D' },
+                              { value: 'terlambat',    label: t('topicNew.mentorCommentTab.dailyAttendance.statusTerlambat')    || 'Late',        bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#DBEAFE', color: isDark ? '#60A5FA' : '#2563EB', border: isDark ? 'rgba(96, 165, 250, 0.4)' : '#93C5FD' },
+                              { value: 'pulang_cepat', label: t('topicNew.mentorCommentTab.dailyAttendance.statusPulangCepat') || 'Early Leave',  bg: isDark ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF', color: isDark ? '#C084FC' : '#9333EA', border: isDark ? 'rgba(192, 132, 252, 0.4)' : '#D8B4FE' },
                             ]
 
                             return (
