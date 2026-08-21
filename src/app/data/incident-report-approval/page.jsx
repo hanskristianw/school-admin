@@ -49,6 +49,7 @@ export default function IncidentHandlingApprovalPage() {
   const [loading, setLoading] = useState(true)
   const [reports, setReports] = useState([])
   const [units, setUnits] = useState([])
+  const [allUnits, setAllUnits] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
   const [userRoleData, setUserRoleData] = useState(null)
 
@@ -363,15 +364,17 @@ export default function IncidentHandlingApprovalPage() {
           .order('incident_time', { ascending: false }),
         supabase
           .from('unit')
-          .select('unit_id, unit_name')
+          .select('unit_id, unit_name, is_school')
           .order('unit_name')
       ])
 
       if (reportsRes.error) throw reportsRes.error
       if (unitsRes.error) throw unitsRes.error
 
+      const rawUnits = unitsRes.data || []
       setReports(reportsRes.data || [])
-      setUnits(unitsRes.data || [])
+      setAllUnits(rawUnits)
+      setUnits(rawUnits.filter(u => u.is_school === true))
     } catch (err) {
       console.error('Error fetching incident approval reports:', err)
       setNotif({ isOpen: true, title: 'Fetch Error', message: err.message, type: 'error' })
@@ -1154,7 +1157,7 @@ export default function IncidentHandlingApprovalPage() {
                 <tbody className="divide-y" style={{ borderColor: theme.border }}>
                   {filteredCctvRequests.map(r => {
                     const reqName = r.requester ? `${r.requester.user_nama_depan || ''} ${r.requester.user_nama_belakang || ''}`.trim() : 'Staff'
-                    const unitName = units.find(u => u.unit_id === r.requester?.user_unit_id)?.unit_name || '-'
+                    const unitName = allUnits.find(u => u.unit_id === r.requester?.user_unit_id)?.unit_name || '-'
 
                     return (
                       <tr key={r.id} className="transition-colors" style={{ background: 'transparent' }} onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -1482,7 +1485,7 @@ export default function IncidentHandlingApprovalPage() {
         {selectedCctv && (() => {
           const reqName = selectedCctv.requester ? `${selectedCctv.requester.user_nama_depan || ''} ${selectedCctv.requester.user_nama_belakang || ''}`.trim() : 'Staff'
           const reqEmail = selectedCctv.requester?.user_email || ''
-          const unitName = units.find(u => u.unit_id === selectedCctv.requester?.user_unit_id)?.unit_name || '-'
+          const unitName = allUnits.find(u => u.unit_id === selectedCctv.requester?.user_unit_id)?.unit_name || '-'
 
           return (
             <form onSubmit={handleSaveCctvHandling} className="space-y-4 text-xs" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>

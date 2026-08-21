@@ -49,12 +49,14 @@ export default function TopicNewPage() {
   })
   const [userRole, setUserRole] = useState(null)
   const [userIsCurriculum, setUserIsCurriculum] = useState(false)
-  // userIsAdmin: set from user_data.isAdmin (role.is_admin from DB) — covers any role name with is_admin=true
   const [userIsAdmin, setUserIsAdmin] = useState(false)
+  const [userIsPrincipal, setUserIsPrincipal] = useState(false)
+  const [userIsCounselor, setUserIsCounselor] = useState(false)
+  const [userIsPastoralCare, setUserIsPastoralCare] = useState(false)
   // isAdmin: full access when role name is 'admin', OR is_admin flag is true in DB, OR curriculum/principal flag
-  const isAdmin = (userRole?.toLowerCase() === 'admin') || userIsAdmin || userIsCurriculum
+  const isAdmin = (userRole?.toLowerCase() === 'admin') || userIsAdmin || userIsCurriculum || userIsPrincipal
   // Helper for functions that receive role as param (before state is set)
-  const isAdminLike = (r) => !!(r && r.toLowerCase() === 'admin') || userIsAdmin || userIsCurriculum
+  const isAdminLike = (r) => !!(r && r.toLowerCase() === 'admin') || userIsAdmin || userIsCurriculum || userIsPrincipal
 
   
   // Data state
@@ -1337,59 +1339,69 @@ export default function TopicNewPage() {
     }
   }, [commentYear, commentSubject, commentKelas, commentSemester])
 
-  // Fetch kelas where logged-in user is wali kelas (or all kelas for admin)
+  // Fetch kelas where logged-in user is wali kelas (or all kelas for admin / counselor / principal / curriculum)
   // When mentorYear changes, reload kelas options filtered by that year
   // Uses /api/class/list (SERVICE_ROLE_KEY) to bypass RLS — anon client is blocked in production.
   useEffect(() => {
-    if (!currentUserId) return
+    if (!currentUserId && !userIsAdmin && !userIsCurriculum && !userIsPrincipal && !userIsCounselor && !userIsPastoralCare) return
     const fetchWaliKelas = async () => {
       try {
-        const adminRole = isAdminLike(userRole)
+        const broadRole = isAdminLike(userRole) || userIsAdmin || userIsCurriculum || userIsPrincipal || userIsCounselor || userIsPastoralCare || (userRole && (userRole.toLowerCase().includes('admin') || userRole.toLowerCase().includes('counselor') || userRole.toLowerCase().includes('principal')))
 
-        // For admin: show Mentor tab immediately before data arrives
-        if (adminRole) setIsWaliKelas(true)
+        // For admin / counselor / principal / curriculum: show Mentor & Attendance tabs immediately
+        if (broadRole) setIsWaliKelas(true)
 
-        // Always use the API route (supabaseAdmin / SERVICE_ROLE_KEY) — never the anon client.
-        // The anon client is blocked by RLS on the `kelas` table in production.
-        const params = new URLSearchParams()
-        if (!adminRole) params.set('user_id', String(currentUserId))
-        if (mentorYear) params.set('year_id', String(mentorYear))
-        params.set('is_myp', 'true')
+        // 1. Check if user is assigned as wali kelas in ANY MYP class (unconstrained by single year for tab visibility)
+        const userClassesParams = new URLSearchParams()
+        if (!broadRole && currentUserId) userClassesParams.set('user_id', String(currentUserId))
+        userClassesParams.set('is_myp', 'true')
 
-        const res = await fetch(`/api/class/list?${params}`)
-        if (!res.ok) {
-          console.warn('[fetchWaliKelas] API error:', res.status)
-          if (!adminRole) { setIsWaliKelas(false); setMentorKelasOptions([]) }
-          return
+        const resAll = await fetch(`/api/class/list?${userClassesParams}`)
+        let allClasses = []
+        if (resAll.ok) {
+          const jsonAll = await resAll.json()
+          allClasses = jsonAll.data || []
+          if (broadRole || allClasses.length > 0) {
+            setIsWaliKelas(true)
+          } else {
+            setIsWaliKelas(false)
+          }
+
+          // If mentorYear is not yet set, default to the year of their assigned class or active year
+          if (!mentorYear && allClasses.length > 0) {
+            const firstClassYear = allClasses[0].kelas_year_id
+            if (firstClassYear) setMentorYear(String(firstClassYear))
+          }
         }
 
-        const json = await res.json()
-        const data = (json.data || []).sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
+        // 2. Fetch kelas options for the currently selected mentorYear (or all if none selected)
+        const filterParams = new URLSearchParams()
+        if (!broadRole && currentUserId) filterParams.set('user_id', String(currentUserId))
+        if (mentorYear) filterParams.set('year_id', String(mentorYear))
+        filterParams.set('is_myp', 'true')
 
-        if (adminRole) {
-          // Admin always sees tab; populate dropdown with all MYP classes
+        const res = await fetch(`/api/class/list?${filterParams}`)
+        if (res.ok) {
+          const json = await res.json()
+          const data = (json.data || []).sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }))
           setMentorKelasOptions(data)
-        } else {
-          // Regular user: show tab only if they are wali kelas for ≥1 class
-          setIsWaliKelas(data.length > 0)
-          setMentorKelasOptions(data)
+
+          // Auto-select if single class available or validate existing selection
+          setMentorKelas(prev => {
+            if (!prev) return (data.length === 1 ? String(data[0].kelas_id) : '')
+            const found = data.some(k => String(k.kelas_id) === String(prev))
+            return found ? prev : (data.length === 1 ? String(data[0].kelas_id) : '')
+          })
         }
-
-        // Validate if saved mentorKelas exists in newly fetched options for this year
-        // Only reset if saved mentorKelas is NOT in the data
-        setMentorKelas(prev => {
-          if (!prev) return ''
-          const found = data.some(k => String(k.kelas_id) === String(prev))
-          return found ? prev : ''
-        })
       } catch (err) {
         console.error('[fetchWaliKelas] Error:', err)
-        // Failsafe: admin always sees tab even on network error
-        if (isAdminLike(userRole)) setIsWaliKelas(true)
+        if (isAdminLike(userRole) || userIsAdmin || userIsCurriculum || userIsPrincipal || userIsCounselor || userIsPastoralCare) {
+          setIsWaliKelas(true)
+        }
       }
     }
     fetchWaliKelas()
-  }, [currentUserId, userRole, mentorYear])
+  }, [currentUserId, userRole, mentorYear, userIsAdmin, userIsCurriculum, userIsPrincipal, userIsCounselor, userIsPastoralCare])
 
   // Get current user ID
   useEffect(() => {
@@ -1406,17 +1418,26 @@ export default function TopicNewPage() {
       setUserRole(role)
     }
 
-    // Read isCurriculum / isPrincipal / isAdmin flags synchronously before calling fetch functions
+    // Read isCurriculum / isPrincipal / isCounselor / isPastoralCare / isAdmin flags synchronously before calling fetch functions
     let isCurriculum = false
     let isAdminFlag = false
+    let isPrincipalFlag = false
+    let isCounselorFlag = false
+    let isPastoralCareFlag = false
     if (userData) {
       try {
         const parsedCheck = JSON.parse(userData)
         // Full subject access: is_admin flag, curriculum, or principal
-        isCurriculum = !!parsedCheck.isCurriculum || !!parsedCheck.isPrincipal
-        isAdminFlag = !!parsedCheck.isAdmin
+        isCurriculum = !!parsedCheck.isCurriculum || !!parsedCheck.is_curriculum
+        isAdminFlag = !!parsedCheck.isAdmin || !!parsedCheck.is_admin
+        isPrincipalFlag = !!parsedCheck.isPrincipal || !!parsedCheck.is_principal
+        isCounselorFlag = !!parsedCheck.isCounselor || !!parsedCheck.is_counselor
+        isPastoralCareFlag = !!parsedCheck.isPastoralCare || !!parsedCheck.is_pastoral_care
         setUserIsCurriculum(isCurriculum)
         setUserIsAdmin(isAdminFlag)
+        setUserIsPrincipal(isPrincipalFlag)
+        setUserIsCounselor(isCounselorFlag)
+        setUserIsPastoralCare(isPastoralCareFlag)
       } catch (e) {}
     }
 
@@ -1428,9 +1449,9 @@ export default function TopicNewPage() {
         const userId = parsed.userID || parsed.user_id || parsed.userId || parsed.id
         console.log('👤 User ID:', userId)
         if (userId) {
-          fetchSubjects(userId, role, isCurriculum, isAdminFlag)
-          fetchDetailKelasForAssessment(userId, role, isCurriculum, isAdminFlag)
-          fetchAllKelas(userId, role, isCurriculum, isAdminFlag) // Fetch all kelas for filter dropdown
+          fetchSubjects(userId, role, isCurriculum || isPrincipalFlag, isAdminFlag)
+          fetchDetailKelasForAssessment(userId, role, isCurriculum || isPrincipalFlag, isAdminFlag)
+          fetchAllKelas(userId, role, isCurriculum || isPrincipalFlag, isAdminFlag) // Fetch all kelas for filter dropdown
         } else {
           console.warn('⚠️ No user ID found')
           setLoading(false)
