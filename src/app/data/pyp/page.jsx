@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
@@ -279,10 +279,29 @@ export default function PypPage() {
   const [printScope, setPrintScope] = useState('class') // 'class' | 'single'
   const [printSingleStudentId, setPrintSingleStudentId] = useState('')
   const [printPaperSize, setPrintPaperSize] = useState('a4') // 'a4' | 'letter'
-  const [printReportDate, setPrintReportDate] = useState('')
   const [printStudentsList, setPrintStudentsList] = useState([])
   const [loadingPrintStudents, setLoadingPrintStudents] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [printBatchProgress, setPrintBatchProgress] = useState({ current: 0, total: 0, name: '' })
+  const [showPrintDropdown, setShowPrintDropdown] = useState(false)
+  const printDropdownRef = useRef(null)
+
+  // Close print dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (printDropdownRef.current && !printDropdownRef.current.contains(event.target)) {
+        setShowPrintDropdown(false)
+      }
+    }
+    if (showPrintDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [showPrintDropdown])
 
   // Handler to open print selection modal and fetch class students
   const handleOpenPrintModal = async (semester) => {
@@ -293,7 +312,6 @@ export default function PypPage() {
     setPrintModalSemester(semester)
     setPrintScope('class')
     setPrintPaperSize('a4')
-    setPrintReportDate('')
     setShowPrintModal(true)
 
     try {
@@ -348,6 +366,7 @@ export default function PypPage() {
   const handleExecutePrintPdf = async () => {
     try {
       setIsGeneratingPdf(true)
+      setPrintBatchProgress({ current: 0, total: 0, name: 'Starting...' })
       await generatePypClassReportPDF({
         classId: selectedClassId,
         className: currentSelectedClassObj?.kelas_nama,
@@ -356,7 +375,7 @@ export default function PypPage() {
         semester: printModalSemester,
         paperSize: printPaperSize,
         targetStudentId: printScope === 'single' ? printSingleStudentId : 'all',
-        customReportDate: printReportDate || null,
+        onProgress: (current, total, name) => setPrintBatchProgress({ current, total, name }),
         onLoading: (isLoading) => setIsGeneratingPdf(isLoading),
         onError: (err) => alert('Gagal menghasilkan report PDF: ' + (err?.message || err))
       })
@@ -366,6 +385,7 @@ export default function PypPage() {
       alert('Gagal menghasilkan report PDF: ' + (err?.message || err))
     } finally {
       setIsGeneratingPdf(false)
+      setPrintBatchProgress({ current: 0, total: 0, name: '' })
     }
   }
 
@@ -2118,7 +2138,7 @@ export default function PypPage() {
               ) : (
                 <div>
                   {masterSubTab === 'kc' ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '14px', width: '100%' }}>
                       {paginatedMasterList.map((item, index) => {
                         const globalIdx = (masterPage - 1) * MASTER_ITEMS_PER_PAGE + index + 1
                         return (
@@ -2358,7 +2378,7 @@ export default function PypPage() {
 
             {/* Units Display for Selected PYP Class */}
             {selectedClassId && (
-              <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '24px' }}>
+              <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: 'clamp(14px, 3vw, 24px)', boxSizing: 'border-box', width: '100%', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
                     <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 4px 0', color: textPrimary }}>
@@ -2376,7 +2396,7 @@ export default function PypPage() {
                     <p style={{ margin: 0, fontSize: '13px' }}>Loading class units...</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '16px', width: '100%' }}>
                     
                     {/* SINGLE COMBINED ACTION CARD: CREATE, COPY UNIT & PRINT REPORTS */}
                     <div
@@ -2384,13 +2404,15 @@ export default function PypPage() {
                         background: isDark ? 'rgba(39, 39, 42, 0.4)' : '#FAF9F5',
                         border: `2px dashed ${borderColor}`,
                         borderRadius: '10px',
-                        padding: '24px 20px',
+                        padding: 'clamp(16px, 3vw, 24px) clamp(12px, 3vw, 20px)',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
                         textAlign: 'center',
                         minHeight: '220px',
+                        width: '100%',
+                        boxSizing: 'border-box',
                         gap: '14px'
                       }}
                     >
@@ -2403,97 +2425,193 @@ export default function PypPage() {
                         </p>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', maxWidth: '240px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', maxWidth: '280px', justifyContent: 'center', position: 'relative' }}>
                         <Button
                           onClick={handleOpenClassUnitModal}
                           style={{
-                            width: '100%',
+                            flex: 1,
                             background: textPrimary,
                             color: isDark ? '#09090B' : '#FFFFFF',
                             border: 'none',
                             borderRadius: '6px',
                             fontWeight: 600,
-                            fontSize: '13px',
-                            padding: '9px 14px',
+                            fontSize: '12px',
+                            padding: '9px 8px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '8px'
+                            gap: '6px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           <FontAwesomeIcon icon={faPlus} />
-                          Create New Unit
+                          Create
                         </Button>
 
                         <Button
                           onClick={handleOpenCopyModal}
                           style={{
-                            width: '100%',
+                            flex: 1,
                             background: cardBg,
                             border: `1px solid ${borderColor}`,
                             color: textPrimary,
                             borderRadius: '6px',
                             fontWeight: 600,
                             fontSize: '12px',
-                            padding: '8px 14px',
+                            padding: '9px 8px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '8px'
+                            gap: '6px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           <FontAwesomeIcon icon={faCopy} />
-                          Copy Unit
+                          Copy
                         </Button>
 
-                        {/* Divider */}
-                        <div style={{ width: '100%', height: '1px', background: borderColor, margin: '2px 0' }} />
-
-                        {/* Print Report Semester 1 */}
-                        <Button
-                          onClick={() => handleOpenPrintModal('1')}
-                          style={{
-                            width: '100%',
-                            background: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
-                            border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`,
-                            color: isDark ? '#93C5FD' : '#1D4ED8',
-                            borderRadius: '6px',
-                            fontWeight: 600,
-                            fontSize: '12px',
-                            padding: '8px 14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            cursor: 'pointer'
-                          }}
+                        {/* Print Button with Click-Triggered Upward Tooltip */}
+                        <div
+                          ref={printDropdownRef}
+                          style={{ position: 'relative', flex: 1 }}
                         >
-                          <FontAwesomeIcon icon={faPrint} />
-                          Print Report Semester 1
-                        </Button>
+                          <Button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setShowPrintDropdown(prev => !prev)
+                            }}
+                            style={{
+                              width: '100%',
+                              background: showPrintDropdown 
+                                ? (isDark ? 'rgba(59, 130, 246, 0.3)' : '#DBEAFE')
+                                : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF'),
+                              border: `1px solid ${showPrintDropdown ? (isDark ? '#60A5FA' : '#3B82F6') : (isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE')}`,
+                              color: isDark ? '#93C5FD' : '#1D4ED8',
+                              borderRadius: '6px',
+                              fontWeight: 600,
+                              fontSize: '12px',
+                              padding: '9px 8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faPrint} />
+                            Print
+                          </Button>
 
-                        {/* Print Report Semester 2 */}
-                        <Button
-                          onClick={() => handleOpenPrintModal('2')}
-                          style={{
-                            width: '100%',
-                            background: isDark ? 'rgba(168, 85, 247, 0.12)' : '#FAF5FF',
-                            border: `1px solid ${isDark ? 'rgba(168, 85, 247, 0.3)' : '#E9D5FF'}`,
-                            color: isDark ? '#C084FC' : '#7E22CE',
-                            borderRadius: '6px',
-                            fontWeight: 600,
-                            fontSize: '12px',
-                            padding: '8px 14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faPrint} />
-                          Print Report Semester 2
-                        </Button>
+                          {/* Upward Tooltip Popover Menu */}
+                          {showPrintDropdown && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: 'calc(100% + 10px)',
+                                right: 0,
+                                minWidth: '150px',
+                                background: isDark ? '#27272A' : '#FFFFFF',
+                                border: `1px solid ${borderColor}`,
+                                borderRadius: '8px',
+                                boxShadow: '0 -4px 20px -2px rgba(0, 0, 0, 0.15), 0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                                padding: '6px',
+                                zIndex: 60,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                animation: 'fadeIn 0.15s ease'
+                              }}
+                            >
+                              {/* Downward-pointing arrow indicator */}
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '-6px',
+                                  right: '28px',
+                                  width: '10px',
+                                  height: '10px',
+                                  background: isDark ? '#27272A' : '#FFFFFF',
+                                  borderRight: `1px solid ${borderColor}`,
+                                  borderBottom: `1px solid ${borderColor}`,
+                                  transform: 'rotate(45deg)',
+                                  zIndex: 61
+                                }}
+                              />
+
+                              <div style={{ fontSize: '10px', fontWeight: 700, color: textSecondary, textTransform: 'uppercase', padding: '4px 8px 2px 8px', letterSpacing: '0.05em', textAlign: 'left' }}>
+                                Print Report
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowPrintDropdown(false)
+                                  handleOpenPrintModal('1')
+                                }}
+                                style={{
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  padding: '7px 10px',
+                                  fontSize: '12px',
+                                  fontWeight: 500,
+                                  color: textPrimary,
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  transition: 'background 0.1s ease',
+                                  position: 'relative',
+                                  zIndex: 62
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <span>Semester 1</span>
+                                <span style={{ fontSize: '10px', color: isDark ? '#93C5FD' : '#2563EB', fontWeight: 600, background: isDark ? 'rgba(59, 130, 246, 0.2)' : '#EFF6FF', padding: '1px 5px', borderRadius: '4px' }}>Sem 1</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowPrintDropdown(false)
+                                  handleOpenPrintModal('2')
+                                }}
+                                style={{
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  padding: '7px 10px',
+                                  fontSize: '12px',
+                                  fontWeight: 500,
+                                  color: textPrimary,
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  transition: 'background 0.1s ease',
+                                  position: 'relative',
+                                  zIndex: 62
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <span>Semester 2</span>
+                                <span style={{ fontSize: '10px', color: isDark ? '#C084FC' : '#7E22CE', fontWeight: 600, background: isDark ? 'rgba(168, 85, 247, 0.2)' : '#FAF5FF', padding: '1px 5px', borderRadius: '4px' }}>Sem 2</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -2512,10 +2630,14 @@ export default function PypPage() {
                             background: isDark ? '#27272A' : '#FBFBFA',
                             border: `1px solid ${borderColor}`,
                             borderRadius: '10px',
-                            padding: '20px',
+                            padding: 'clamp(14px, 3vw, 20px)',
                             display: 'flex',
                             flexDirection: 'column',
-                            justify: 'space-between',
+                            justifyContent: 'space-between',
+                            height: '100%',
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            overflow: 'hidden',
                             cursor: 'pointer',
                             transition: 'all 0.15s ease',
                             position: 'relative'
@@ -2529,10 +2651,10 @@ export default function PypPage() {
                             e.currentTarget.style.boxShadow = 'none'
                           }}
                         >
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '9999px', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', color: isDark ? '#4ADE80' : '#346538', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', flex: 1 }}>
+                                <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '9999px', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', color: isDark ? '#4ADE80' : '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                   {t.theme || 'Who We Are'}
                                 </span>
                                 <span style={{ 
@@ -2553,49 +2675,44 @@ export default function PypPage() {
                                   Semester {t.semester || 1}
                                 </span>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                {t.durationWeeks && (
-                                  <span style={{ fontSize: '12px', color: textSecondary, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <FontAwesomeIcon icon={faClock} style={{ fontSize: '10px' }} />
-                                    {t.durationWeeks} Weeks
-                                  </span>
-                                )}
-                                <span style={{ fontSize: '11px', fontWeight: 600, color: isDark ? '#60A5FA' : '#1F6C9F', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <FontAwesomeIcon icon={faEdit} style={{ fontSize: '10px' }} /> Edit
+                              {t.durationWeeks && (
+                                <span style={{ fontSize: '11px', color: textSecondary, display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                  <FontAwesomeIcon icon={faClock} style={{ fontSize: '10px' }} />
+                                  {t.durationWeeks} Weeks
                                 </span>
-                              </div>
+                              )}
                             </div>
 
-                            <h4 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 8px 0', color: textPrimary, lineHeight: 1.4 }}>
+                            <h4 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 8px 0', color: textPrimary, lineHeight: 1.4 }}>
                               {t.title}
                             </h4>
 
                             {t.centralIdea && (
-                              <p style={{ fontSize: '13px', color: textSecondary, margin: '0 0 14px 0', lineHeight: 1.5 }}>
+                              <p style={{ fontSize: '12.5px', color: textSecondary, margin: '0 0 14px 0', lineHeight: 1.5 }}>
                                 &ldquo;{t.centralIdea}&rdquo;
                               </p>
                             )}
 
                             {/* Badges for LOI, Key Concepts & ATL Skills */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '12px', borderTop: `1px solid ${borderColor}` }}>
-                              <div style={{ fontSize: '11px', color: textSecondary }}>
-                                <strong>Semester:</strong> Semester {t.semester || 1}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '12px', borderTop: `1px solid ${borderColor}`, marginTop: 'auto' }}>
+                              <div style={{ fontSize: '11px', color: textSecondary, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <strong>LOIs:</strong>
+                                <span style={{ color: textPrimary, fontWeight: 500 }}>{linkedLois.length > 0 ? `${linkedLois.length} selected` : 'None linked'}</span>
                               </div>
-                              <div style={{ fontSize: '11px', color: textSecondary }}>
-                                <strong>LOIs:</strong> {linkedLois.length > 0 ? `${linkedLois.length} selected` : 'None linked'}
+                              <div style={{ fontSize: '11px', color: textSecondary, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <strong>Key Concepts:</strong>
+                                <span style={{ color: textPrimary, fontWeight: 500 }}>{linkedKcs.length > 0 ? `${linkedKcs.length} selected` : 'None linked'}</span>
                               </div>
-                              <div style={{ fontSize: '11px', color: textSecondary }}>
-                                <strong>Key Concepts:</strong> {linkedKcs.length > 0 ? `${linkedKcs.length} selected` : 'None linked'}
-                              </div>
-                              <div style={{ fontSize: '11px', color: textSecondary }}>
-                                <strong>ATL Skills:</strong> {linkedAtls.length > 0 ? `${linkedAtls.length} selected` : 'None linked'}
+                              <div style={{ fontSize: '11px', color: textSecondary, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <strong>ATL Skills:</strong>
+                                <span style={{ color: textPrimary, fontWeight: 500 }}>{linkedAtls.length > 0 ? `${linkedAtls.length} selected` : 'None linked'}</span>
                               </div>
                             </div>
                           </div>
 
-                          <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: `1px solid ${borderColor}`, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', fontSize: '12px', color: textSecondary }}>
-                            <span style={{ fontWeight: 500, color: textPrimary, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                              <FontAwesomeIcon icon={faEdit} style={{ fontSize: '11px', color: textSecondary }} /> Click Card to Edit
+                          <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: `1px solid ${borderColor}`, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', fontSize: '11.5px', color: textSecondary }}>
+                            <span style={{ fontWeight: 500, color: isDark ? '#93C5FD' : '#1F6C9F', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <FontAwesomeIcon icon={faEdit} style={{ fontSize: '11px' }} /> Click Card to Edit
                             </span>
                           </div>
                         </div>
@@ -4954,7 +5071,7 @@ export default function PypPage() {
                     </span>
                   </div>
                   <span style={{ fontSize: '11px', color: textSecondary, lineHeight: 1.4 }}>
-                    {loadingPrintStudents ? 'Loading students...' : `Print all ${printStudentsList.length} students into one PDF file.`}
+                    {loadingPrintStudents ? 'Loading students...' : `Export all ${printStudentsList.length} students into one ZIP file (separate PDF per student).`}
                   </span>
                 </button>
 
@@ -5094,22 +5211,21 @@ export default function PypPage() {
               </div>
             </div>
 
-            {/* Optional Custom Report Date Input */}
-            <div>
-              <Label style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' }}>
-                Report Prepared Date (Optional)
-              </Label>
-              <input
-                type="date"
-                value={printReportDate}
-                onChange={(e) => setPrintReportDate(e.target.value)}
-                placeholder="Leave blank for default semester date"
-                style={{ ...inputStyle, width: '100%', padding: '8px 12px', fontSize: '13px' }}
-              />
-              <span style={{ fontSize: '11px', color: textSecondary, marginTop: '4px', display: 'block' }}>
-                Kosongkan jika ingin menggunakan tanggal default semester dari pengaturan sekolah.
-              </span>
-            </div>
+            {/* Batch Progress Bar when generating class ZIP */}
+            {isGeneratingPdf && printBatchProgress.total > 1 && (
+              <div style={{ padding: '12px 14px', borderRadius: '8px', background: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF', border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`, marginTop: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: isDark ? '#93C5FD' : '#1D4ED8', marginBottom: '6px' }}>
+                  <span>Generating ZIP ({printBatchProgress.current}/{printBatchProgress.total})</span>
+                  <span>{Math.round((printBatchProgress.current / printBatchProgress.total) * 100)}%</span>
+                </div>
+                <div style={{ width: '100%', height: '6px', background: isDark ? 'rgba(255,255,255,0.1)' : '#DBEAFE', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div style={{ width: `${(printBatchProgress.current / printBatchProgress.total) * 100}%`, height: '100%', background: isDark ? '#60A5FA' : '#2563EB', transition: 'width 0.2s ease' }} />
+                </div>
+                <div style={{ fontSize: '11px', color: textSecondary, marginTop: '6px', textAlign: 'center', fontStyle: 'italic' }}>
+                  {printBatchProgress.name}
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px', paddingTop: '14px', borderTop: `1px solid ${borderColor}` }}>
@@ -5141,12 +5257,12 @@ export default function PypPage() {
                 {isGeneratingPdf ? (
                   <>
                     <FontAwesomeIcon icon={faSpinner} spin />
-                    <span>Generating PDF...</span>
+                    <span>{printScope === 'class' && printBatchProgress.total > 1 ? `Generating ZIP (${printBatchProgress.current}/${printBatchProgress.total})...` : 'Generating PDF...'}</span>
                   </>
                 ) : (
                   <>
                     <FontAwesomeIcon icon={faPrint} />
-                    <span>Generate &amp; Print PDF</span>
+                    <span>{printScope === 'class' ? 'Generate & Download ZIP' : 'Generate & Print PDF'}</span>
                   </>
                 )}
               </Button>

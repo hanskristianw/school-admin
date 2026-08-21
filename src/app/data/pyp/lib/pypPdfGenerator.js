@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf'
+import JSZip from 'jszip'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -1212,10 +1213,12 @@ export const generatePypClassReportPDF = async ({
   targetStudentId = null, // null | 'all' | student_user_id (number/string)
   customReportDate = null,
   onLoading = () => {},
+  onProgress = () => {},
   onError = () => {}
 }) => {
   try {
     onLoading(true)
+    onProgress(0, 1, 'Fetching class & student details...')
 
     // 1. Fetch Class details & Homeroom teacher
     const { data: classData } = await supabase
@@ -1552,15 +1555,9 @@ export const generatePypClassReportPDF = async ({
       kc_responsibility: kcRespBase64
     }
 
-    // 7. Generate PDF Doc with jsPDF
-    const doc = new jsPDF('portrait', 'mm', paperSize || 'a4')
-
-    for (let i = 0; i < students.length; i++) {
-      if (i > 0) {
-        doc.addPage()
-      }
-
-      const st = students[i]
+    // Helper to generate a complete multi-page PYP Report PDF for a single student
+    const generateStudentPdfDoc = async (st) => {
+      const doc = new jsPDF('portrait', 'mm', paperSize || 'a4')
       const fullName = `${st.user_nama_depan || ''} ${st.user_nama_belakang || ''}`.trim() || 'Student Name'
       const att = attendanceMap[st.user_id] || { absent: 1, present: 92, late: 0, excused: 8 }
 
@@ -1619,14 +1616,53 @@ export const generatePypClassReportPDF = async ({
           kcIcons: kcIcons
         })
       }
+
+      return doc
     }
 
-    // 8. Output PDF Blob & open in preview
-    const pdfBlob = doc.output('blob')
-    const pdfUrl = URL.createObjectURL(pdfBlob)
-    window.open(pdfUrl, '_blank')
+    // 7. Output Result: Single PDF preview for 1 student, or ZIP archive for multiple students
+    if (students.length === 1) {
+      onProgress(1, 1, `Generating report for ${students[0].user_nama_depan || 'Student'}...`)
+      const doc = await generateStudentPdfDoc(students[0])
+      const pdfBlob = doc.output('blob')
+      const pdfUrl = URL.createObjectURL(pdfBlob)
+      window.open(pdfUrl, '_blank')
+    } else {
+      const zip = new JSZip()
+      let generated = 0
+
+      for (let i = 0; i < students.length; i++) {
+        const st = students[i]
+        const fullName = `${st.user_nama_depan || ''} ${st.user_nama_belakang || ''}`.trim() || `Student-${i + 1}`
+        
+        onProgress(i + 1, students.length, `${fullName} (${i + 1}/${students.length})`)
+
+        const doc = await generateStudentPdfDoc(st)
+        const pdfBlob = doc.output('blob')
+        const safeName = fullName.replace(/[^a-zA-Z0-9\s\-]/g, '').trim() || `Student-${i + 1}`
+        zip.file(`${safeName}.pdf`, pdfBlob)
+        generated++
+      }
+
+      if (generated === 0) {
+        alert('Tidak ada data siswa untuk digenerate')
+        return
+      }
+
+      onProgress(students.length, students.length, 'Creating ZIP archive...')
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const zipUrl = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = zipUrl
+      const safeClassName = activeClassName.replace(/[^a-zA-Z0-9\s\-]/g, '').trim() || 'Class'
+      a.download = `Report-PYP-${safeClassName}-Semester-${semester}.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(zipUrl)
+    }
   } catch (err) {
-    console.error('Error generating PYP report PDF:', err)
+    console.error('Error generating PYP report PDF/ZIP:', err)
     onError(err)
   } finally {
     onLoading(false)

@@ -2790,8 +2790,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_dependencies_fortawesome_react_fontawesome",
-      "community": 310,
-      "community_name": "class-variance-authority",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -2801,8 +2801,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "fortawesome_react_fontawesome",
-      "community": 310,
-      "community_name": "class-variance-authority",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "@fortawesome/react-fontawesome"
     },
     {
@@ -2988,8 +2988,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_dependencies_bcryptjs",
-      "community": 300,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -2999,8 +2999,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "bcryptjs",
-      "community": 300,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "bcryptjs"
     },
     {
@@ -3098,8 +3098,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "package_dependencies_dotenv",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 300,
+      "community_name": "bcryptjs",
       "norm_label": "dotenv"
     },
     {
@@ -3109,8 +3109,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 300,
+      "community_name": "bcryptjs",
       "norm_label": "dotenv"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "package_dependencies_driver_js",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 310,
+      "community_name": "class-variance-authority",
       "norm_label": "driver.js"
     },
     {
@@ -3131,8 +3131,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "driver_js",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 310,
+      "community_name": "class-variance-authority",
       "norm_label": "driver.js"
     },
     {
@@ -12019,8 +12019,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -12030,8 +12030,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -12041,8 +12041,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -12052,8 +12052,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -12437,8 +12437,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -12448,8 +12448,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -12459,8 +12459,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -12470,8 +12470,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -31780,7 +31780,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/pyp/page.jsx",
-      "source_location": "L351",
+      "source_location": "L368",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_pyp_page_pyppage",
@@ -31880,7 +31880,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/pyp/page.jsx",
-      "source_location": "L1669",
+      "source_location": "L1685",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_pyp_page_pyppage",
@@ -32815,7 +32815,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5306",
+      "source_location": "L5327",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33031,7 +33031,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5315",
+      "source_location": "L5336",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33055,7 +33055,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5329",
+      "source_location": "L5350",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33079,7 +33079,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5344",
+      "source_location": "L5365",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33103,7 +33103,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5356",
+      "source_location": "L5377",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33151,7 +33151,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3275",
+      "source_location": "L3296",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33175,7 +33175,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3289",
+      "source_location": "L3310",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33199,7 +33199,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3305",
+      "source_location": "L3326",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33246,7 +33246,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4660",
+      "source_location": "L4681",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -47659,5 +47659,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "37d58ff7c2507de8f5abec61fa830af5f696a360"
+  "built_at_commit": "aa7a973555624ae333ad0787722432f4dafd71f3"
 }
