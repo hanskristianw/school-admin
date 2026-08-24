@@ -38,6 +38,39 @@ import {
   faLayerGroup
 } from '@fortawesome/free-solid-svg-icons'
 
+// Minimalist Student Avatar Component with manual picture support & error fallback
+function StudentAvatar({ user, theme, size = "w-6 h-6", textSize = "text-[9px]" }) {
+  const [imgError, setImgError] = useState(false)
+  const pic = user?.user_manual_picture || user?.user_profile_picture
+  const initials = `${user?.user_nama_depan?.[0] || ''}${user?.user_nama_belakang?.[0] || ''}`.toUpperCase()
+
+  if (pic && !imgError) {
+    return (
+      <img
+        src={pic}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+        className={`${size} rounded-full object-cover border shrink-0`}
+        style={{ borderColor: theme?.border || '#E5E7EB' }}
+      />
+    )
+  }
+
+  return (
+    <div
+      className={`${size} rounded-full flex items-center justify-center font-mono ${textSize} font-bold border shrink-0`}
+      style={{
+        background: theme?.subtleBg || '#F3F4F6',
+        color: theme?.textSecondary || '#6B7280',
+        borderColor: theme?.border || '#E5E7EB'
+      }}
+    >
+      {initials || '?'}
+    </div>
+  )
+}
+
 export default function IncidentHandlingApprovalPage() {
   const router = useRouter()
   const { theme, isDark } = useTheme()
@@ -50,6 +83,9 @@ export default function IncidentHandlingApprovalPage() {
   const [reports, setReports] = useState([])
   const [units, setUnits] = useState([])
   const [allUnits, setAllUnits] = useState([])
+  const [years, setYears] = useState([])
+  const [classes, setClasses] = useState([])
+  const [studentAssignments, setStudentAssignments] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
   const [userRoleData, setUserRoleData] = useState(null)
 
@@ -338,7 +374,7 @@ export default function IncidentHandlingApprovalPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [reportsRes, unitsRes] = await Promise.all([
+      const [reportsRes, unitsRes, yearsRes, classesRes, dsRes] = await Promise.all([
         supabase
           .from('incident_reports')
           .select(`
@@ -356,7 +392,7 @@ export default function IncidentHandlingApprovalPage() {
             action_taken,
             status,
             created_at,
-            student:users!student_user_id (user_id, user_nama_depan, user_nama_belakang),
+            student:users!student_user_id (user_id, user_nama_depan, user_nama_belakang, user_manual_picture, user_profile_picture),
             reporter:users!reporter_user_id (user_id, user_nama_depan, user_nama_belakang),
             unit:unit!unit_id (unit_id, unit_name)
           `)
@@ -365,7 +401,18 @@ export default function IncidentHandlingApprovalPage() {
         supabase
           .from('unit')
           .select('unit_id, unit_name, is_school')
-          .order('unit_name')
+          .order('unit_name'),
+        supabase
+          .from('year')
+          .select('year_id, year_name, start_date, end_date')
+          .order('year_name', { ascending: false }),
+        supabase
+          .from('kelas')
+          .select('kelas_id, kelas_nama, kelas_unit_id, kelas_year_id')
+          .order('kelas_nama'),
+        supabase
+          .from('detail_siswa')
+          .select('detail_siswa_id, detail_siswa_kelas_id, detail_siswa_user_id')
       ])
 
       if (reportsRes.error) throw reportsRes.error
@@ -375,6 +422,9 @@ export default function IncidentHandlingApprovalPage() {
       setReports(reportsRes.data || [])
       setAllUnits(rawUnits)
       setUnits(rawUnits.filter(u => u.is_school === true))
+      setYears(yearsRes.data || [])
+      setClasses(classesRes.data || [])
+      setStudentAssignments(dsRes.data || [])
     } catch (err) {
       console.error('Error fetching incident approval reports:', err)
       setNotif({ isOpen: true, title: 'Fetch Error', message: err.message, type: 'error' })
@@ -483,6 +533,26 @@ export default function IncidentHandlingApprovalPage() {
 
     return { total: scopedCctvRequests.length, pending, approved, inProgress, completed, rejected }
   }, [scopedCctvRequests])
+
+  // Helper to resolve student class for any specific date
+  const getStudentClassForDate = (studentUserId, dateStr) => {
+    if (!studentUserId || !years.length || !classes.length || !studentAssignments.length) return null
+    const checkDate = dateStr || getTodayDate()
+    const matchedYear = years.find(y => y.start_date && y.end_date && checkDate >= y.start_date && checkDate <= y.end_date) || years[0]
+    if (!matchedYear) return null
+
+    const yearClassIds = new Set(classes.filter(c => c.kelas_year_id === matchedYear.year_id).map(c => c.kelas_id))
+    const assignment = studentAssignments.find(ds => ds.detail_siswa_user_id === studentUserId && yearClassIds.has(ds.detail_siswa_kelas_id))
+    if (!assignment) return null
+
+    const matchedClass = classes.find(c => c.kelas_id === assignment.detail_siswa_kelas_id)
+    return matchedClass ? {
+      kelas_id: matchedClass.kelas_id,
+      kelas_nama: matchedClass.kelas_nama,
+      year_name: matchedYear.year_name,
+      year_id: matchedYear.year_id
+    } : null
+  }
 
   // Filtered Incident Reports
   const filteredReports = useMemo(() => {
@@ -1076,8 +1146,23 @@ export default function IncidentHandlingApprovalPage() {
                           <div className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{r.incident_date} {r.incident_time}</div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-semibold" style={{ color: theme.textPrimary }}>{studentName}</div>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.textSecondary }}>{unitName}</span>
+                          <div className="flex items-center gap-2.5">
+                            <StudentAvatar user={r.student} theme={theme} size="w-6 h-6" textSize="text-[9px]" />
+                            <div>
+                              <div className="font-semibold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
+                                <span>{studentName}</span>
+                                {(() => {
+                                  const studentClass = getStudentClassForDate(r.student_user_id || r.student?.user_id, r.incident_date)?.kelas_nama
+                                  return studentClass ? (
+                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
+                                      {studentClass}
+                                    </span>
+                                  ) : null
+                                })()}
+                              </div>
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.textSecondary }}>{unitName}</span>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-3 px-4 max-w-xs">
                           <div className="font-medium truncate" style={{ color: theme.textPrimary }}>{r.title}</div>
@@ -1239,7 +1324,20 @@ export default function IncidentHandlingApprovalPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                   <div>
                     <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>STUDENT:</span>
-                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{studentName}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <StudentAvatar user={selectedReport.student} theme={theme} size="w-7 h-7" textSize="text-[10px]" />
+                      <p className="font-semibold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
+                        <span>{studentName}</span>
+                        {(() => {
+                          const studentClass = getStudentClassForDate(selectedReport.student_user_id || selectedReport.student?.user_id, selectedReport.incident_date)?.kelas_nama
+                          return studentClass ? (
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
+                              {studentClass}
+                            </span>
+                          ) : null
+                        })()}
+                      </p>
+                    </div>
                   </div>
                   <div>
                     <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>REPORTER:</span>

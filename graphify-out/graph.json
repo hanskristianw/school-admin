@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 142,
-      "community_name": "Module 142",
+      "community": 331,
+      "community_name": "driver.js",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 142,
-      "community_name": "Module 142",
+      "community": 331,
+      "community_name": "driver.js",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3054,8 +3054,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "package_dependencies_clsx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 142,
+      "community_name": "Module 142",
       "norm_label": "clsx"
     },
     {
@@ -3065,8 +3065,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "clsx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 142,
+      "community_name": "Module 142",
       "norm_label": "clsx"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 331,
-      "community_name": "driver.js",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "docx"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 331,
-      "community_name": "driver.js",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "docx"
     },
     {
@@ -7437,10 +7437,21 @@
       "norm_label": "page.jsx"
     },
     {
+      "label": "StudentAvatar()",
+      "file_type": "code",
+      "source_file": "src/app/data/incident-report-approval/page.jsx",
+      "source_location": "L42",
+      "_origin": "ast",
+      "id": "src_app_data_incident_report_approval_page_studentavatar",
+      "community": 311,
+      "community_name": "page.jsx",
+      "norm_label": "studentavatar()"
+    },
+    {
       "label": "IncidentHandlingApprovalPage()",
       "file_type": "code",
       "source_file": "src/app/data/incident-report-approval/page.jsx",
-      "source_location": "L41",
+      "source_location": "L74",
       "_origin": "ast",
       "id": "src_app_data_incident_report_approval_page_incidenthandlingapprovalpage",
       "community": 311,
@@ -7459,10 +7470,21 @@
       "norm_label": "page.jsx"
     },
     {
+      "label": "StudentAvatar()",
+      "file_type": "code",
+      "source_file": "src/app/data/incident-report/page.jsx",
+      "source_location": "L37",
+      "_origin": "ast",
+      "id": "src_app_data_incident_report_page_studentavatar",
+      "community": 306,
+      "community_name": "page.jsx",
+      "norm_label": "studentavatar()"
+    },
+    {
       "label": "IncidentReportListPage()",
       "file_type": "code",
       "source_file": "src/app/data/incident-report/page.jsx",
-      "source_location": "L36",
+      "source_location": "L69",
       "_origin": "ast",
       "id": "src_app_data_incident_report_page_incidentreportlistpage",
       "community": 306,
@@ -28071,7 +28093,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/notify/route.js",
-      "source_location": "L411",
+      "source_location": "L421",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_notify_route_handlenotify",
@@ -28131,7 +28153,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/notify/route.js",
-      "source_location": "L410",
+      "source_location": "L420",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_notify_route_handlenotify",
@@ -28155,7 +28177,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/notify/route.js",
-      "source_location": "L480",
+      "source_location": "L490",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_notify_route_handlenotify",
@@ -28325,7 +28347,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/report/route.js",
-      "source_location": "L454",
+      "source_location": "L465",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_report_route_get",
@@ -28361,7 +28383,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/report/route.js",
-      "source_location": "L401",
+      "source_location": "L403",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_report_route_get",
@@ -28373,7 +28395,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/attendance/report/route.js",
-      "source_location": "L449",
+      "source_location": "L460",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_attendance_report_route_get",
@@ -29336,7 +29358,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/dashboard/teacher/page.jsx",
-      "source_location": "L508",
+      "source_location": "L507",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_dashboard_teacher_page_teacherdashboard",
@@ -29349,7 +29371,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "src/app/dashboard/teacher/page.jsx",
-      "source_location": "L126",
+      "source_location": "L125",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_dashboard_teacher_page_teacherdashboard",
@@ -31422,7 +31444,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/incident-report-approval/page.jsx",
-      "source_location": "L41",
+      "source_location": "L74",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_incident_report_approval_page",
@@ -31432,12 +31454,34 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/data/incident-report-approval/page.jsx",
+      "source_location": "L42",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_incident_report_approval_page",
+      "target": "src_app_data_incident_report_approval_page_studentavatar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/data/incident-report/page.jsx",
-      "source_location": "L36",
+      "source_location": "L69",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_incident_report_page",
       "target": "src_app_data_incident_report_page_incidentreportlistpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/incident-report/page.jsx",
+      "source_location": "L37",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_incident_report_page",
+      "target": "src_app_data_incident_report_page_studentavatar",
       "confidence_score": 1.0
     },
     {
@@ -34176,7 +34220,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L632",
+      "source_location": "L804",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -34188,7 +34232,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L395",
+      "source_location": "L566",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -47671,5 +47715,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4d5120f26c9e42c888b2dfe2c9ddf624862df144"
+  "built_at_commit": "e20d6d7c66fdac50824e8a335e386800563bea02"
 }

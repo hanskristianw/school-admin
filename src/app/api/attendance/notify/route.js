@@ -365,32 +365,42 @@ async function handleNotify(request) {
       const effIsFlexible = isFlexible || isRuleFlexible
 
       // Classify scans:
-      // - Khusus VENDOR: Scan Pertama = Check-In, Scan Terakhir = Check-Out
-      // - NON-VENDOR: Gunakan midpoint logic standar
+      // Skema: Scan Pertama = Check-In, Scan Terakhir = Check-Out
+      // Dilengkapi proteksi jeda minimum 5 menit untuk mencegah double-scan beruntun.
       let checkins = []
       let checkouts = []
 
-      if (user.role?.is_vendor) {
-        const sortedAtts = [...userAtts].sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
-        if (sortedAtts.length === 1) {
-          if (resolveIsCheckIn(sortedAtts[0].scan_time, expectedIn, expectedOut)) {
-            checkins = [sortedAtts[0]]
+      const sortedAtts = [...userAtts].sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+
+      if (sortedAtts.length === 1) {
+        if (resolveIsCheckIn(sortedAtts[0].scan_time, expectedIn, expectedOut)) {
+          checkins = [sortedAtts[0]]
+          checkouts = []
+        } else {
+          checkins = []
+          checkouts = [sortedAtts[0]]
+        }
+      } else if (sortedAtts.length >= 2) {
+        const firstScan = sortedAtts[0]
+        const lastScan  = sortedAtts[sortedAtts.length - 1]
+
+        const firstTime = new Date(firstScan.scan_time).getTime()
+        const lastTime  = new Date(lastScan.scan_time).getTime()
+        const gapMinutes = (lastTime - firstTime) / 60000
+
+        // Ambang batas jeda minimum 5 menit untuk proteksi double scan tak sengaja
+        if (gapMinutes < 5) {
+          if (resolveIsCheckIn(firstScan.scan_time, expectedIn, expectedOut)) {
+            checkins = [firstScan]
             checkouts = []
           } else {
             checkins = []
-            checkouts = [sortedAtts[0]]
+            checkouts = [lastScan]
           }
-        } else if (sortedAtts.length >= 2) {
-          checkins = [sortedAtts[0]]
-          checkouts = [sortedAtts[sortedAtts.length - 1]]
+        } else {
+          checkins = [firstScan]
+          checkouts = [lastScan]
         }
-      } else {
-        checkins = userAtts
-          .filter(a => resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
-          .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
-        checkouts = userAtts
-          .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
-          .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
       }
 
       const noCheckIn  = checkins.length === 0

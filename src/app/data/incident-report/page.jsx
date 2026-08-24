@@ -33,6 +33,39 @@ import {
   faImage
 } from '@fortawesome/free-solid-svg-icons'
 
+// Minimalist Student Avatar Component with manual picture support & error fallback
+function StudentAvatar({ user, theme, size = "w-6 h-6", textSize = "text-[9px]" }) {
+  const [imgError, setImgError] = useState(false)
+  const pic = user?.user_manual_picture || user?.user_profile_picture
+  const initials = `${user?.user_nama_depan?.[0] || ''}${user?.user_nama_belakang?.[0] || ''}`.toUpperCase()
+
+  if (pic && !imgError) {
+    return (
+      <img
+        src={pic}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+        className={`${size} rounded-full object-cover border shrink-0`}
+        style={{ borderColor: theme?.border || '#E5E7EB' }}
+      />
+    )
+  }
+
+  return (
+    <div
+      className={`${size} rounded-full flex items-center justify-center font-mono ${textSize} font-bold border shrink-0`}
+      style={{
+        background: theme?.subtleBg || '#F3F4F6',
+        color: theme?.textSecondary || '#6B7280',
+        borderColor: theme?.border || '#E5E7EB'
+      }}
+    >
+      {initials || '?'}
+    </div>
+  )
+}
+
 export default function IncidentReportListPage() {
   const router = useRouter()
   const { theme, isDark } = useTheme()
@@ -46,6 +79,9 @@ export default function IncidentReportListPage() {
   const [units, setUnits] = useState([])
   const [students, setStudents] = useState([])
   const [roomsList, setRoomsList] = useState([])
+  const [years, setYears] = useState([])
+  const [classes, setClasses] = useState([])
+  const [studentAssignments, setStudentAssignments] = useState([])
   
   // Delete Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -158,7 +194,25 @@ export default function IncidentReportListPage() {
         .order('room_name')
       setRoomsList(rData || [])
 
-      // 3. Fetch Students
+      // 3. Fetch Academic Years, Classes, and Student Class Assignments
+      const { data: yearsData } = await supabase
+        .from('year')
+        .select('year_id, year_name, start_date, end_date')
+        .order('year_name', { ascending: false })
+      setYears(yearsData || [])
+
+      const { data: kelasData } = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama, kelas_unit_id, kelas_year_id')
+        .order('kelas_nama')
+      setClasses(kelasData || [])
+
+      const { data: dsData } = await supabase
+        .from('detail_siswa')
+        .select('detail_siswa_id, detail_siswa_kelas_id, detail_siswa_user_id')
+      setStudentAssignments(dsData || [])
+
+      // 4. Fetch Students
       const { data: studentRoles } = await supabase
         .from('role')
         .select('role_id, role_name, is_student')
@@ -168,7 +222,7 @@ export default function IncidentReportListPage() {
 
       let studentsQuery = supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_unit_id, user_role_id')
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_unit_id, user_role_id, user_manual_picture, user_profile_picture')
         .order('user_nama_depan')
 
       if (studentRoleIds.length > 0) {
@@ -182,7 +236,7 @@ export default function IncidentReportListPage() {
       }))
       setStudents(formattedStudents)
 
-      // 4. Fetch Reports
+      // 5. Fetch Reports
       const rawKrId = typeof window !== 'undefined' ? localStorage.getItem('kr_id') : null
       const targetUserId = overrideUserId || currentUser?.userID || currentUser?.user_id || currentUser?.id || rawKrId
       
@@ -190,7 +244,7 @@ export default function IncidentReportListPage() {
         .from('incident_reports')
         .select(`
           *,
-          student:student_user_id(user_id, user_nama_depan, user_nama_belakang, user_unit_id),
+          student:student_user_id(user_id, user_nama_depan, user_nama_belakang, user_unit_id, user_manual_picture, user_profile_picture),
           reporter:reporter_user_id(user_id, user_nama_depan, user_nama_belakang, user_email),
           unit:unit_id(unit_id, unit_name)
         `)
@@ -253,15 +307,66 @@ export default function IncidentReportListPage() {
     return { total: reports.length, waiting, onProgress, completed }
   }, [reports])
 
-  // Filtered Students for Autocomplete
+  // Dynamic Academic Year matching incident_date or today
+  const currentIncidentYear = useMemo(() => {
+    if (!years.length) return null
+    const checkDate = formData.incident_date || getTodayDate()
+    return years.find(y => y.start_date && y.end_date && checkDate >= y.start_date && checkDate <= y.end_date) || years[0]
+  }, [years, formData.incident_date])
+
+  // Map of student_user_id -> { kelas_id, kelas_nama, year_name } for current form incident date
+  const studentClassMapForModal = useMemo(() => {
+    if (!currentIncidentYear || !classes.length || !studentAssignments.length) return new Map()
+    const yearClasses = classes.filter(c => c.kelas_year_id === currentIncidentYear.year_id)
+    const yearClassMap = new Map(yearClasses.map(c => [c.kelas_id, c]))
+
+    const map = new Map()
+    for (const ds of studentAssignments) {
+      const k = yearClassMap.get(ds.detail_siswa_kelas_id)
+      if (k) {
+        map.set(ds.detail_siswa_user_id, {
+          kelas_id: k.kelas_id,
+          kelas_nama: k.kelas_nama,
+          year_name: currentIncidentYear.year_name
+        })
+      }
+    }
+    return map
+  }, [currentIncidentYear, classes, studentAssignments])
+
+  // Helper to resolve student class for any specific date
+  const getStudentClassForDate = (studentUserId, dateStr) => {
+    if (!studentUserId || !years.length || !classes.length || !studentAssignments.length) return null
+    const checkDate = dateStr || getTodayDate()
+    const matchedYear = years.find(y => y.start_date && y.end_date && checkDate >= y.start_date && checkDate <= y.end_date) || years[0]
+    if (!matchedYear) return null
+
+    const yearClassIds = new Set(classes.filter(c => c.kelas_year_id === matchedYear.year_id).map(c => c.kelas_id))
+    const assignment = studentAssignments.find(ds => ds.detail_siswa_user_id === studentUserId && yearClassIds.has(ds.detail_siswa_kelas_id))
+    if (!assignment) return null
+
+    const matchedClass = classes.find(c => c.kelas_id === assignment.detail_siswa_kelas_id)
+    return matchedClass ? {
+      kelas_id: matchedClass.kelas_id,
+      kelas_nama: matchedClass.kelas_nama,
+      year_name: matchedYear.year_name,
+      year_id: matchedYear.year_id
+    } : null
+  }
+
+  // Filtered Students for Autocomplete (searches name, email, class name, and unit)
   const filteredStudentsForSearch = useMemo(() => {
     const q = studentSearchText.trim().toLowerCase()
     if (!q) return []
     return students.filter(s => {
       const fullName = `${s.user_nama_depan || ''} ${s.user_nama_belakang || ''}`.toLowerCase()
-      return fullName.includes(q)
-    }).slice(0, 10)
-  }, [students, studentSearchText])
+      const email = (s.user_email || '').toLowerCase()
+      const classInfo = studentClassMapForModal.get(s.user_id)
+      const className = (classInfo?.kelas_nama || '').toLowerCase()
+      const unitName = (s.unit?.unit_name || '').toLowerCase()
+      return fullName.includes(q) || email.includes(q) || className.includes(q) || unitName.includes(q)
+    }).slice(0, 15)
+  }, [students, studentSearchText, studentClassMapForModal])
 
   // Filtered Reports Table
   const filteredReports = useMemo(() => {
@@ -962,13 +1067,24 @@ export default function IncidentReportListPage() {
                           <div className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{rep.incident_date} {rep.incident_time}</div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-semibold flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
-                            <span>{studentName}</span>
-                            {extraStudentsCount > 0 && (
-                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.blueText }}>
-                                +{extraStudentsCount}
-                              </span>
-                            )}
+                          <div className="flex items-center gap-2.5">
+                            <StudentAvatar user={rep.student} theme={theme} size="w-6 h-6" textSize="text-[9px]" />
+                            <div className="font-semibold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
+                              <span>{studentName}</span>
+                              {(() => {
+                                const studentClass = getStudentClassForDate(rep.student_user_id || rep.student?.user_id, rep.incident_date)?.kelas_nama
+                                return studentClass ? (
+                                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
+                                    {studentClass}
+                                  </span>
+                                ) : null
+                              })()}
+                              {extraStudentsCount > 0 && (
+                                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.blueText }}>
+                                  +{extraStudentsCount}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -1093,28 +1209,49 @@ export default function IncidentReportListPage() {
 
           {/* Student Autocomplete Selection */}
           <div className="relative" ref={studentDropdownRef}>
-            <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: theme.textSecondary }}>Student(s) Involved *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>
+                Student(s) Involved *
+              </label>
+              {currentIncidentYear && (
+                <span className="text-[10px] font-mono opacity-80" style={{ color: theme.blueText }}>
+                  T.A. {currentIncidentYear.year_name}
+                </span>
+              )}
+            </div>
             
             {/* Selected Chips */}
             {selectedStudents.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                {selectedStudents.map(st => (
-                  <span
-                    key={st.user_id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono text-[10px] border"
-                    style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
-                  >
-                    <span>{st.user_nama_depan} {st.user_nama_belakang}</span>
-                    <span className="opacity-60">({st.unit?.unit_name || 'Unit'})</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveStudent(st.user_id)}
-                      className="ml-1 hover:text-red-500 font-bold cursor-pointer"
+                {selectedStudents.map(st => {
+                  const classInfo = studentClassMapForModal.get(st.user_id)
+                  return (
+                    <span
+                      key={st.user_id}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded font-mono text-[11px] border"
+                      style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
                     >
-                      ✕
-                    </button>
-                  </span>
-                ))}
+                      <StudentAvatar user={st} theme={theme} size="w-5 h-5" textSize="text-[8px]" />
+                      <span className="font-semibold">{st.user_nama_depan} {st.user_nama_belakang}</span>
+                      {classInfo?.kelas_nama && (
+                        <span
+                          className="px-1.5 py-0.2 rounded text-[10px] font-bold"
+                          style={{ background: theme.blueBg, color: theme.blueText }}
+                        >
+                          {classInfo.kelas_nama}
+                        </span>
+                      )}
+                      <span className="opacity-60 text-[10px]">({st.unit?.unit_name || 'Unit'})</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStudent(st.user_id)}
+                        className="ml-1 hover:text-red-500 font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  )
+                })}
               </div>
             )}
 
@@ -1122,7 +1259,7 @@ export default function IncidentReportListPage() {
               <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
               <input
                 type="text"
-                placeholder="Type student name to search..."
+                placeholder="Type student name or class (e.g. Grade 7, Jeremy)..."
                 value={studentSearchText}
                 onChange={e => {
                   setStudentSearchText(e.target.value)
@@ -1137,27 +1274,47 @@ export default function IncidentReportListPage() {
             {/* Dropdown Options */}
             {showStudentDropdown && filteredStudentsForSearch.length > 0 && (
               <div
-                className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded border shadow-xl"
+                className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded border shadow-xl"
                 style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '4px' }}
               >
-                {filteredStudentsForSearch.map(st => (
-                  <div
-                    key={st.user_id}
-                    onClick={() => handleSelectStudent(st)}
-                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer flex items-center justify-between border-b last:border-b-0 text-xs"
-                    style={{ borderColor: theme.border }}
-                  >
-                    <div>
-                      <span className="font-semibold block" style={{ color: theme.textPrimary }}>
-                        {st.user_nama_depan} {st.user_nama_belakang}
-                      </span>
-                      <span className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{st.user_email || 'No email'}</span>
+                {filteredStudentsForSearch.map(st => {
+                  const classInfo = studentClassMapForModal.get(st.user_id)
+                  return (
+                    <div
+                      key={st.user_id}
+                      onClick={() => handleSelectStudent(st)}
+                      className="p-2.5 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer flex items-center justify-between border-b last:border-b-0 text-xs transition-colors"
+                      style={{ borderColor: theme.border }}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <StudentAvatar user={st} theme={theme} size="w-7 h-7" textSize="text-[10px]" />
+                        <div className="min-w-0">
+                          <span className="font-semibold block truncate" style={{ color: theme.textPrimary }}>
+                            {st.user_nama_depan} {st.user_nama_belakang}
+                          </span>
+                          <span className="text-[10px] font-mono block truncate" style={{ color: theme.textSecondary }}>{st.user_email || 'No email'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {classInfo?.kelas_nama ? (
+                          <span
+                            className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border"
+                            style={{ background: theme.blueBg, color: theme.blueText, borderColor: theme.border }}
+                          >
+                            {classInfo.kelas_nama}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono italic px-1.5 py-0.5 rounded opacity-60" style={{ color: theme.textSecondary }}>
+                            No class
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border" style={{ borderColor: theme.border, color: theme.textSecondary }}>
+                          {st.unit?.unit_name || 'Unit'}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded border" style={{ borderColor: theme.border, color: theme.textSecondary }}>
-                      {st.unit?.unit_name || 'Unit'}
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -1424,7 +1581,20 @@ export default function IncidentReportListPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                   <div>
                     <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>STUDENT:</span>
-                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{studentName}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <StudentAvatar user={selectedReportDetail.student} theme={theme} size="w-7 h-7" textSize="text-[10px]" />
+                      <p className="font-semibold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
+                        <span>{studentName}</span>
+                        {(() => {
+                          const studentClass = getStudentClassForDate(selectedReportDetail.student_user_id || selectedReportDetail.student?.user_id, selectedReportDetail.incident_date)?.kelas_nama
+                          return studentClass ? (
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
+                              {studentClass}
+                            </span>
+                          ) : null
+                        })()}
+                      </p>
+                    </div>
                   </div>
                   <div>
                     <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>REPORTER:</span>

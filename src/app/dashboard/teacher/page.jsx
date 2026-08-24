@@ -11,7 +11,7 @@ import {
   Truck, Warehouse, Shirt, Ruler, DoorOpen, BarChart2, FileBarChart2, SlidersHorizontal,
   BadgeCheck, Lightbulb, Hash, Building, Wand2, Calculator, LayoutGrid, ScanLine,
   BookMarked, NotebookPen, Clock, Star, Trophy, Megaphone, ChevronLeft, ChevronRight,
-  User
+  User, ArrowRight, ExternalLink, Sparkles, AlertCircle, CheckCircle2, Coffee, Radio
 } from 'lucide-react'
 
 // Map menu path prefixes to Lucide icon components
@@ -112,7 +112,6 @@ export default function TeacherDashboard() {
     } else {
       setLoading(true)
       setError("")
-      const uid = parseInt(id, 10)
       // Load menus for card grid
       const loadMenus = async () => {
         try {

@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 142,
-      "community_name": "Module 142",
+      "community": 331,
+      "community_name": "driver.js",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 142,
-      "community_name": "Module 142",
+      "community": 331,
+      "community_name": "driver.js",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 299,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 299,
-      "community_name": "bcryptjs",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3054,8 +3054,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "package_dependencies_clsx",
-      "community": 331,
-      "community_name": "driver.js",
+      "community": 142,
+      "community_name": "Module 142",
       "norm_label": "clsx"
     },
     {
@@ -3065,8 +3065,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "clsx",
-      "community": 331,
-      "community_name": "driver.js",
+      "community": 142,
+      "community_name": "Module 142",
       "norm_label": "clsx"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 299,
+      "community_name": "bcryptjs",
       "norm_label": "docx"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 299,
+      "community_name": "bcryptjs",
       "norm_label": "docx"
     },
     {
@@ -7437,10 +7437,21 @@
       "norm_label": "page.jsx"
     },
     {
+      "label": "StudentAvatar()",
+      "file_type": "code",
+      "source_file": "src/app/data/incident-report-approval/page.jsx",
+      "source_location": "L42",
+      "_origin": "ast",
+      "id": "src_app_data_incident_report_approval_page_studentavatar",
+      "community": 311,
+      "community_name": "page.jsx",
+      "norm_label": "studentavatar()"
+    },
+    {
       "label": "IncidentHandlingApprovalPage()",
       "file_type": "code",
       "source_file": "src/app/data/incident-report-approval/page.jsx",
-      "source_location": "L41",
+      "source_location": "L74",
       "_origin": "ast",
       "id": "src_app_data_incident_report_approval_page_incidenthandlingapprovalpage",
       "community": 311,
@@ -7459,10 +7470,21 @@
       "norm_label": "page.jsx"
     },
     {
+      "label": "StudentAvatar()",
+      "file_type": "code",
+      "source_file": "src/app/data/incident-report/page.jsx",
+      "source_location": "L37",
+      "_origin": "ast",
+      "id": "src_app_data_incident_report_page_studentavatar",
+      "community": 306,
+      "community_name": "page.jsx",
+      "norm_label": "studentavatar()"
+    },
+    {
       "label": "IncidentReportListPage()",
       "file_type": "code",
       "source_file": "src/app/data/incident-report/page.jsx",
-      "source_location": "L36",
+      "source_location": "L69",
       "_origin": "ast",
       "id": "src_app_data_incident_report_page_incidentreportlistpage",
       "community": 306,
@@ -12019,8 +12041,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -12030,8 +12052,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -12041,8 +12063,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -12052,8 +12074,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -12437,8 +12459,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -12448,8 +12470,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -12459,8 +12481,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -12470,8 +12492,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -29336,7 +29358,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/dashboard/teacher/page.jsx",
-      "source_location": "L508",
+      "source_location": "L507",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_dashboard_teacher_page_teacherdashboard",
@@ -29349,7 +29371,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "src/app/dashboard/teacher/page.jsx",
-      "source_location": "L126",
+      "source_location": "L125",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_dashboard_teacher_page_teacherdashboard",
@@ -31422,7 +31444,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/incident-report-approval/page.jsx",
-      "source_location": "L41",
+      "source_location": "L74",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_incident_report_approval_page",
@@ -31432,12 +31454,34 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/data/incident-report-approval/page.jsx",
+      "source_location": "L42",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_incident_report_approval_page",
+      "target": "src_app_data_incident_report_approval_page_studentavatar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/data/incident-report/page.jsx",
-      "source_location": "L36",
+      "source_location": "L69",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_incident_report_page",
       "target": "src_app_data_incident_report_page_incidentreportlistpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/data/incident-report/page.jsx",
+      "source_location": "L37",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_data_incident_report_page",
+      "target": "src_app_data_incident_report_page_studentavatar",
       "confidence_score": 1.0
     },
     {
@@ -32344,7 +32388,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/timetable/page.jsx",
-      "source_location": "L348",
+      "source_location": "L397",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_timetable_page_timetablepage",
@@ -32356,7 +32400,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/timetable/page.jsx",
-      "source_location": "L211",
+      "source_location": "L240",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_timetable_page_timetablepage",
@@ -32368,7 +32412,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/timetable/page.jsx",
-      "source_location": "L213",
+      "source_location": "L242",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_timetable_page_timetablepage",
@@ -32380,7 +32424,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/timetable/page.jsx",
-      "source_location": "L1395",
+      "source_location": "L1417",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_timetable_page_timetablepage",
@@ -34176,7 +34220,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L632",
+      "source_location": "L804",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -34188,7 +34232,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/components/GlobalActionCards.jsx",
-      "source_location": "L395",
+      "source_location": "L566",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_components_globalactioncards_globalactioncards",
@@ -47671,5 +47715,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4d5120f26c9e42c888b2dfe2c9ddf624862df144"
+  "built_at_commit": "e20d6d7c66fdac50824e8a335e386800563bea02"
 }

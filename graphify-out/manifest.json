@@ -725,8 +725,8 @@
     "semantic_hash": "315962553f5c31c876de509490acaf08"
   },
   "src/app/api/attendance/notify/route.js": {
-    "mtime": 1787196838.108868,
-    "ast_hash": "11df6bfd8c388bfa4e5be62e42dbcd46",
+    "mtime": 1787558871.0104158,
+    "ast_hash": "8bbffe290645dde8c7c2cd6d3ef21db7",
     "semantic_hash": ""
   },
   "src/app/api/attendance/notify/test-email/route.js": {
@@ -735,8 +735,8 @@
     "semantic_hash": "ee2db9404a462cd52d527b1df97e6681"
   },
   "src/app/api/attendance/report/route.js": {
-    "mtime": 1786082525.3190129,
-    "ast_hash": "31bfdb17116a95709e87b5a959a8f49a",
+    "mtime": 1787558863.5926323,
+    "ast_hash": "a6148d4cf6777d081a1eba7739b09fae",
     "semantic_hash": ""
   },
   "src/app/api/attendance/role-approvers/route.js": {
@@ -870,8 +870,8 @@
     "semantic_hash": ""
   },
   "src/app/dashboard/teacher/page.jsx": {
-    "mtime": 1784511657.4236095,
-    "ast_hash": "6b5e1201c3e14dd9c07954b08201c43d",
+    "mtime": 1787545288.1036983,
+    "ast_hash": "ab093bfc8de92fddaeac001849ba6d38",
     "semantic_hash": ""
   },
   "src/app/data/admission-level/page.jsx": {
@@ -1635,8 +1635,8 @@
     "semantic_hash": ""
   },
   "src/components/GlobalActionCards.jsx": {
-    "mtime": 1786418902.511571,
-    "ast_hash": "659f8ac184209cc7c0dd83e042142fc9",
+    "mtime": 1787545461.1204555,
+    "ast_hash": "e07d86bc31eb9fc52e270b1068312242",
     "semantic_hash": ""
   },
   "src/lib/googleChat.js": {
@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1787215486.2757428,
-    "ast_hash": "249b44caead6c1f2239f302529979215",
+    "mtime": 1787558876.532449,
+    "ast_hash": "eae89d745b23b4f77e70900468604a14",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -1705,8 +1705,8 @@
     "semantic_hash": ""
   },
   "src/app/data/incident-report/page.jsx": {
-    "mtime": 1787190646.4860976,
-    "ast_hash": "bb04a7d6a656422683b0bcc1c0c4fe33",
+    "mtime": 1787557608.3764462,
+    "ast_hash": "5689488c1256b5edf8331134318df6c8",
     "semantic_hash": ""
   },
   "src/app/settings/incident-report/page.jsx": {
@@ -1715,8 +1715,8 @@
     "semantic_hash": ""
   },
   "src/app/data/incident-report-approval/page.jsx": {
-    "mtime": 1787290253.5922163,
-    "ast_hash": "09789303cdccf51b7c974e4a374cb0e9",
+    "mtime": 1787557635.5554857,
+    "ast_hash": "31724b955749f313a7ea06fa362185ed",
     "semantic_hash": ""
   },
   "src/app/stock/uniform/audit/page.jsx": {

@@ -390,6 +390,177 @@ export default function GlobalActionCards() {
     fetchDutySchedules()
   }, [userId])
 
+  // ── Card 6: Teaching Schedule for Teachers ───────────────────────────────
+  const [teachingSchedule, setTeachingSchedule] = useState([])
+  const [teachingDayIndex, setTeachingDayIndex] = useState(() => {
+    const day = new Date().getDay()
+    // Map Sunday=0..Saturday=6 to Monday=0..Friday=4. If weekend, default to Monday (0)
+    if (day >= 1 && day <= 5) return day - 1
+    return 0
+  })
+  const [activeYearInfo, setActiveYearInfo]     = useState(null)
+  const [todayException, setTodayException]     = useState(null)
+  const [teachingLoading, setTeachingLoading]   = useState(false)
+  const [isTeacherUser, setIsTeacherUser]       = useState(false)
+
+  useEffect(() => {
+    if (!userId) return
+    setTeachingLoading(true)
+
+    const fetchTeachingSchedule = async () => {
+      try {
+        const today = new Date()
+        const todayStr = today.toISOString().split('T')[0]
+
+        // 1. Fetch active academic year
+        const { data: yearsData, error: yErr } = await supabase
+          .from('year')
+          .select('year_id, year_name, start_date, end_date')
+          .order('year_name', { ascending: false })
+        if (yErr) throw yErr
+
+        const activeYear = (yearsData || []).find(y => {
+          if (!y.start_date || !y.end_date) return false
+          return todayStr >= y.start_date && todayStr <= y.end_date
+        }) || (yearsData && yearsData.length > 0 ? yearsData[0] : null)
+
+        setActiveYearInfo(activeYear)
+        if (!activeYear) return
+
+        // 2. Fetch exceptions for today
+        const { data: exData } = await supabase
+          .from('timetable_exception')
+          .select('*')
+          .eq('exception_date', todayStr)
+        if (exData && exData.length > 0) setTodayException(exData[0])
+
+        // 3. Get classes in active academic year
+        const { data: kelasData, error: kErr } = await supabase
+          .from('kelas')
+          .select('kelas_id, kelas_nama, kelas_unit_id, kelas_year_id')
+          .eq('kelas_year_id', activeYear.year_id)
+        if (kErr) throw kErr
+
+        const activeKelasIds = (kelasData || []).map(k => k.kelas_id)
+        const kelasMap = new Map((kelasData || []).map(k => [k.kelas_id, k]))
+        if (activeKelasIds.length === 0) return
+
+        // 4. Get all detail_kelas in active year
+        const { data: dkData, error: dkErr } = await supabase
+          .from('detail_kelas')
+          .select('detail_kelas_id, detail_kelas_subject_id, detail_kelas_kelas_id, teacher_user_id')
+          .in('detail_kelas_kelas_id', activeKelasIds)
+        if (dkErr) throw dkErr
+
+        if (!dkData || dkData.length === 0) return
+
+        // 5. Get subjects (including subject_user_id)
+        const subjectIds = Array.from(new Set(dkData.map(d => d.detail_kelas_subject_id)))
+        let subjMap = new Map()
+        if (subjectIds.length > 0) {
+          const { data: subjs } = await supabase
+            .from('subject')
+            .select('subject_id, subject_name, subject_code, subject_user_id')
+            .in('subject_id', subjectIds)
+          subjMap = new Map((subjs || []).map(s => [s.subject_id, s]))
+        }
+
+        // Filter detail_kelas for this teacher (explicit override or fallback to subject default teacher)
+        const myDkList = dkData.filter(d => {
+          if (d.teacher_user_id) return d.teacher_user_id === userId
+          const subj = subjMap.get(d.detail_kelas_subject_id)
+          return subj?.subject_user_id === userId
+        })
+
+        if (myDkList.length > 0) {
+          setIsTeacherUser(true)
+
+          const dkMap = new Map(myDkList.map(d => [d.detail_kelas_id, {
+            ...d,
+            subject: subjMap.get(d.detail_kelas_subject_id) || null,
+            kelas: kelasMap.get(d.detail_kelas_kelas_id) || null,
+          }]))
+
+          const myDkIds = myDkList.map(d => d.detail_kelas_id)
+
+          // 6. Fetch all timetable slots for this teacher
+          const { data: ttData, error: ttErr } = await supabase
+            .from('timetable')
+            .select('timetable_id, timetable_detail_kelas_id, timetable_day, timetable_time, custom_label, kelas_id, custom_color')
+            .in('timetable_detail_kelas_id', myDkIds)
+          if (ttErr) throw ttErr
+
+          const parseRange = (pgRange) => {
+            if (!pgRange) return { start: '', end: '' }
+            const m = pgRange.match(/^[\[(](.*),(.*)[)\]]$/)
+            if (!m) return { start: '', end: '' }
+            const clean = (raw) => {
+              let v = raw.trim()
+              if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1)
+              if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(v)) v += ':00'
+              return v
+            }
+            return { start: clean(m[1]), end: clean(m[2]) }
+          }
+
+          const extractHM = (ts) => {
+            if (!ts) return ''
+            const parts = ts.split(' ')
+            if (parts.length < 2) return ''
+            return parts[1].slice(0, 5)
+          }
+
+          const enriched = (ttData || []).map(r => {
+            const { start, end } = parseRange(r.timetable_time)
+            const startTime = extractHM(start)
+            const endTime = extractHM(end)
+            const durationMin = (() => {
+              const s = new Date(start.replace(' ', 'T'))
+              const e = new Date(end.replace(' ', 'T'))
+              return (!isNaN(s) && !isNaN(e) && e > s) ? Math.round((e - s) / 60000) : null
+            })()
+            const dk = dkMap.get(r.timetable_detail_kelas_id)
+            return {
+              ...r,
+              startTime,
+              endTime,
+              durationMin,
+              subject_name: dk?.subject?.subject_name || 'Subject',
+              subject_code: dk?.subject?.subject_code || '',
+              kelas_nama: dk?.kelas?.kelas_nama || 'Class',
+            }
+          }).sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
+
+          setTeachingSchedule(enriched)
+        } else {
+          // Check if user has role is_teacher
+          const { data: userRole } = await supabase
+            .from('users')
+            .select('user_role_id, role(is_teacher)')
+            .eq('user_id', userId)
+            .single()
+          if (userRole?.role?.is_teacher) {
+            setIsTeacherUser(true)
+          }
+        }
+      } catch (e) {
+        console.error('Teaching schedule load failed:', e)
+      } finally {
+        setTeachingLoading(false)
+      }
+    }
+
+    fetchTeachingSchedule()
+  }, [userId])
+
+  const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+  const selectedWeekdayName = WEEKDAYS[teachingDayIndex] || 'Monday'
+  const todayWeekdayName = DAY_NAMES[new Date().getDay()]
+  const isTodaySelected = selectedWeekdayName === todayWeekdayName
+  const currentDaySessions = useMemo(() => {
+    return teachingSchedule.filter(s => s.timetable_day === selectedWeekdayName)
+  }, [teachingSchedule, selectedWeekdayName])
+
   // ── Active Duty Row & User Duties ─────────────────────────────────────────
   const currentDutyRow = dutySchedules[dutyIndex] || null
   const currentDuties  = useMemo(() => resolveUserDuties(currentDutyRow, userId, dutyTimeMap), [currentDutyRow, userId, dutyTimeMap])
@@ -399,8 +570,9 @@ export default function GlobalActionCards() {
   const showAtt         = !attLoading && attCount !== null && attCount > 0
   const showIncident    = !incidentLoading && incidentCount !== null && incidentCount > 0
   const showDuty        = !dutyLoading && dutySchedules.length > 0
+  const showTeaching    = !teachingLoading && isTeacherUser
 
-  if (!showFpb && !showAttApproval && !showAtt && !showIncident && !showDuty) return null
+  if (!showFpb && !showAttApproval && !showAtt && !showIncident && !showDuty && !showTeaching) return null
 
   return (
     <div
@@ -716,6 +888,145 @@ export default function GlobalActionCards() {
             <span style={{ fontSize: '11px', fontWeight: '500', color: theme.textSecondary }}>
               Schedule {dutyIndex + 1} of {dutySchedules.length}
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Card 6: Teaching Schedule (Jadwal Mengajar) ──────────────────── */}
+      {showTeaching && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            borderRadius: '14px',
+            border: `1.5px solid ${theme.border}`,
+            background: theme.cardBg,
+            minWidth: '280px',
+            flex: '1',
+            maxWidth: '420px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            transition: 'box-shadow 0.18s, transform 0.18s',
+          }}
+        >
+          {/* Top Header: Badge Icon & Prev/Next Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, fontSize: '18px', color: '#fff'
+              }}>
+                📚
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textPrimary, lineHeight: 1.2 }}>
+                  Teaching Schedule
+                </div>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#2563eb', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <span>{isTodaySelected ? `Today (${selectedWeekdayName})` : selectedWeekdayName}</span>
+                  {activeYearInfo && (
+                    <span style={{ padding: '1px 7px', borderRadius: '4px', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)', color: '#1d4ed8', fontWeight: 700, fontSize: '10px' }}>
+                      T.A. {activeYearInfo.year_name}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Prev / Next Buttons for Weekdays */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); setTeachingDayIndex(i => Math.max(0, i - 1)) }}
+                disabled={teachingDayIndex === 0}
+                style={{
+                  padding: '4px 8px', borderRadius: '6px', fontSize: '11px',
+                  border: `1px solid ${theme.border}`, background: theme.inputBg,
+                  color: teachingDayIndex === 0 ? theme.textSecondary : theme.textPrimary,
+                  opacity: teachingDayIndex === 0 ? 0.4 : 1, cursor: teachingDayIndex === 0 ? 'default' : 'pointer'
+                }}
+                title="Previous day"
+              >
+                <FontAwesomeIcon icon={faChevronLeft} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setTeachingDayIndex(i => Math.min(WEEKDAYS.length - 1, i + 1)) }}
+                disabled={teachingDayIndex >= WEEKDAYS.length - 1}
+                style={{
+                  padding: '4px 8px', borderRadius: '6px', fontSize: '11px',
+                  border: `1px solid ${theme.border}`, background: theme.inputBg,
+                  color: teachingDayIndex >= WEEKDAYS.length - 1 ? theme.textSecondary : theme.textPrimary,
+                  opacity: teachingDayIndex >= WEEKDAYS.length - 1 ? 0.4 : 1, cursor: teachingDayIndex >= WEEKDAYS.length - 1 ? 'default' : 'pointer'
+                }}
+                title="Next day"
+              >
+                <FontAwesomeIcon icon={faChevronRight} />
+              </button>
+            </div>
+          </div>
+
+          {/* Exception Banner if Holiday today */}
+          {isTodaySelected && todayException && (
+            <div style={{
+              margin: '2px 0 6px', padding: '5px 8px', borderRadius: '6px',
+              background: todayException.exception_type === 'holiday' ? '#fef2f2' : '#fefce8',
+              border: `1px solid ${todayException.exception_type === 'holiday' ? '#fecaca' : '#fef08a'}`,
+              color: todayException.exception_type === 'holiday' ? '#b91c1c' : '#854d0e',
+              fontSize: '10px', fontWeight: 600
+            }}>
+              {todayException.exception_type === 'holiday' ? '🚫 Libur Sekolah: ' : '📅 Acara: '}
+              {todayException.exception_label}
+            </div>
+          )}
+
+          {/* Body: Classes chips */}
+          <div style={{ margin: '4px 0 6px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {currentDaySessions.length > 0 ? (
+              currentDaySessions.map((s, idx) => (
+                <span
+                  key={s.timetable_id || idx}
+                  style={{
+                    fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '6px',
+                    background: '#eff6ff',
+                    color: '#1e40af',
+                    border: '1px solid #bfdbfe',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+                    {s.subject_code ? `[${s.subject_code}]` : ''} {s.kelas_nama}
+                  </span>
+                  <span style={{ fontFamily: "'SF Mono', monospace", fontSize: '10px', color: '#64748b' }}>
+                    ({s.startTime}–{s.endTime})
+                  </span>
+                </span>
+              ))
+            ) : (
+              <span style={{ fontSize: '11px', color: theme.textSecondary, fontStyle: 'italic' }}>
+                No teaching schedule on {selectedWeekdayName}
+              </span>
+            )}
+          </div>
+
+          {/* Footer schedule summary */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${theme.border}`, paddingTop: '8px', marginTop: '2px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '500', color: theme.textSecondary }}>
+              {currentDaySessions.length} {currentDaySessions.length === 1 ? 'session' : 'sessions'}
+            </span>
+            {currentDaySessions.length > 0 && (
+              <span style={{ fontSize: '11px', fontWeight: '600', color: theme.textSecondary }}>
+                Total {(() => {
+                  const totalMins = currentDaySessions.reduce((acc, curr) => acc + (curr.durationMin || 0), 0)
+                  const h = Math.floor(totalMins / 60)
+                  const m = totalMins % 60
+                  return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`
+                })()}
+              </span>
+            )}
           </div>
         </div>
       )}

@@ -390,33 +390,44 @@ export async function GET(request) {
         const dayAtts = attMap[user.user_id]?.[dateStr] || []
 
         // Classify each scan as check-in or check-out:
-        // - Khusus VENDOR: Scan Pertama = Check-In, Scan Terakhir = Check-Out
-        // - NON-VENDOR: Gunakan midpoint logic standar
+        // Skema: Scan Pertama = Check-In, Scan Terakhir = Check-Out
+        // Dilengkapi proteksi jeda minimum 5 menit untuk mencegah double-scan beruntun.
         let checkins = []
         let checkouts = []
 
-        if (user.role?.is_vendor) {
-          const sortedAtts = [...dayAtts].sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
-          if (sortedAtts.length === 1) {
-            if (resolveIsCheckIn(sortedAtts[0].scan_time, expectedIn, expectedOut)) {
-              checkins = [sortedAtts[0]]
+        const sortedAtts = [...dayAtts].sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+
+        if (sortedAtts.length === 1) {
+          // Hanya 1 scan dalam sehari:
+          // Gunakan midpoint untuk menentukan apakah ini scan masuk (pagi) atau scan pulang (sore)
+          if (resolveIsCheckIn(sortedAtts[0].scan_time, expectedIn, expectedOut)) {
+            checkins = [sortedAtts[0]]
+            checkouts = []
+          } else {
+            checkins = []
+            checkouts = [sortedAtts[0]]
+          }
+        } else if (sortedAtts.length >= 2) {
+          const firstScan = sortedAtts[0]
+          const lastScan  = sortedAtts[sortedAtts.length - 1]
+
+          const firstTime = new Date(firstScan.scan_time).getTime()
+          const lastTime  = new Date(lastScan.scan_time).getTime()
+          const gapMinutes = (lastTime - firstTime) / 60000
+
+          // Ambang batas jeda minimum 5 menit untuk proteksi double scan tak sengaja
+          if (gapMinutes < 5) {
+            if (resolveIsCheckIn(firstScan.scan_time, expectedIn, expectedOut)) {
+              checkins = [firstScan]
               checkouts = []
             } else {
               checkins = []
-              checkouts = [sortedAtts[0]]
+              checkouts = [lastScan]
             }
-          } else if (sortedAtts.length >= 2) {
-            checkins = [sortedAtts[0]]
-            checkouts = [sortedAtts[sortedAtts.length - 1]]
+          } else {
+            checkins = [firstScan]
+            checkouts = [lastScan]
           }
-        } else {
-          checkins = dayAtts
-            .filter(a => resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
-            .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
-
-          checkouts = dayAtts
-            .filter(a => !resolveIsCheckIn(a.scan_time, expectedIn, expectedOut))
-            .sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
         }
 
         const dayRecord = {

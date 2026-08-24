@@ -712,7 +712,7 @@ Stores custom attendance rules for specific dates (e.g., event days) affecting a
 | `created_at` | `TIMESTAMP`| Record creation time |
 
 #### `attendances`
-Stores the raw machine scan logs. Note: Check-in vs check-out is determined dynamically via time midpoint, not `status_scan`.
+Stores the raw machine scan logs. Note: Check-in vs check-out is determined dynamically: First scan of the day = Check-In, Last scan of the day = Check-Out (with a 5-minute debounce guardrail to prevent accidental double-scans upon arrival). Single-scan days use midpoint logic (<= 12:00 = Check-In, > 12:00 = Check-Out). `status_scan` from machine is not relied upon.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
