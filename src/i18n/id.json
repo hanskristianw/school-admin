@@ -1018,6 +1018,7 @@
         "statusHadir": "Hadir",
         "statusTidakHadir": "Tdk Hadir",
         "statusIjin": "Ijin",
+        "statusSakit": "Sakit",
         "statusTerlambat": "Terlambat",
         "statusPulangCepat": "Pulang Cepat"
       }

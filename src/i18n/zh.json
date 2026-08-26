@@ -1017,6 +1017,7 @@
         "statusHadir": "出勤",
         "statusTidakHadir": "缺席",
         "statusIjin": "请假",
+        "statusSakit": "生病",
         "statusTerlambat": "迟到",
         "statusPulangCepat": "早退"
       }

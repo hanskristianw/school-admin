@@ -39,7 +39,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 
 // Minimalist Student Avatar Component with manual picture support & error fallback
-function StudentAvatar({ user, theme, size = "w-6 h-6", textSize = "text-[9px]" }) {
+function StudentAvatar({ user, theme, size = "w-6 h-6", textSize = "text-[9px]", rounded = "rounded-full", onPhotoClick }) {
   const [imgError, setImgError] = useState(false)
   const pic = user?.user_manual_picture || user?.user_profile_picture
   const initials = `${user?.user_nama_depan?.[0] || ''}${user?.user_nama_belakang?.[0] || ''}`.toUpperCase()
@@ -51,15 +51,22 @@ function StudentAvatar({ user, theme, size = "w-6 h-6", textSize = "text-[9px]" 
         alt=""
         referrerPolicy="no-referrer"
         onError={() => setImgError(true)}
-        className={`${size} rounded-full object-cover border shrink-0`}
+        onClick={(e) => {
+          if (onPhotoClick) {
+            e.stopPropagation()
+            onPhotoClick(pic, user)
+          }
+        }}
+        className={`${size} ${rounded} object-cover border shrink-0 ${onPhotoClick ? 'cursor-zoom-in hover:opacity-90 hover:scale-105 transition-all shadow-xs' : ''}`}
         style={{ borderColor: theme?.border || '#E5E7EB' }}
+        title={onPhotoClick ? "Click to view full photo" : undefined}
       />
     )
   }
 
   return (
     <div
-      className={`${size} rounded-full flex items-center justify-center font-mono ${textSize} font-bold border shrink-0`}
+      className={`${size} ${rounded} flex items-center justify-center font-mono ${textSize} font-bold border shrink-0`}
       style={{
         background: theme?.subtleBg || '#F3F4F6',
         color: theme?.textSecondary || '#6B7280',
@@ -88,11 +95,12 @@ export default function IncidentHandlingApprovalPage() {
   const [studentAssignments, setStudentAssignments] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
   const [userRoleData, setUserRoleData] = useState(null)
+  const [previewPhoto, setPreviewPhoto] = useState(null)
 
   // Incident Search & Filter State
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('all')
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('active')
 
   // Notification Toast
   const [notif, setNotif] = useState({ isOpen: false, title: '', message: '', type: 'success' })
@@ -557,7 +565,9 @@ export default function IncidentHandlingApprovalPage() {
   // Filtered Incident Reports
   const filteredReports = useMemo(() => {
     return scopedReports.filter(r => {
-      if (selectedStatusFilter !== 'all') {
+      if (selectedStatusFilter === 'active') {
+        if (r.status === 'completed') return false
+      } else if (selectedStatusFilter !== 'all') {
         if (selectedStatusFilter === 'on_progress' || selectedStatusFilter === 'in_progress') {
           if (r.status !== 'on_progress' && r.status !== 'in_progress') return false
         } else if (r.status !== selectedStatusFilter) {
@@ -931,28 +941,76 @@ export default function IncidentHandlingApprovalPage() {
       {/* Bento Metric Cards */}
       {activeTab === 'incidents' ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-4 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+          <div
+            onClick={() => setSelectedStatusFilter(selectedStatusFilter === 'all' ? 'active' : 'all')}
+            className="p-4 rounded border cursor-pointer transition-all hover:scale-[1.01]"
+            style={{
+              background: theme.cardBg,
+              borderColor: selectedStatusFilter === 'all' ? theme.blueText : theme.border,
+              borderRadius: '8px',
+              boxShadow: selectedStatusFilter === 'all' ? '0 0 0 1px #3b82f6' : 'none'
+            }}
+            title="Click to toggle between Active cases and All recorded entries"
+          >
             <span className="font-mono text-[10px] uppercase tracking-wider block mb-1" style={{ color: theme.textSecondary }}>// TOTAL INCIDENTS</span>
             <div className="text-2xl font-bold font-mono tracking-tight" style={{ color: theme.textPrimary }}>{metrics.total}</div>
-            <span className="text-[10px] font-mono mt-1 block" style={{ color: theme.textSecondary }}>All recorded entries</span>
+            <span className="text-[10px] font-mono mt-1 block" style={{ color: selectedStatusFilter === 'all' ? theme.blueText : theme.textSecondary }}>
+              {selectedStatusFilter === 'all' ? '✓ Showing all entries' : 'Click to show all'}
+            </span>
           </div>
 
-          <div className="p-4 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+          <div
+            onClick={() => setSelectedStatusFilter(selectedStatusFilter === 'waiting' ? 'active' : 'waiting')}
+            className="p-4 rounded border cursor-pointer transition-all hover:scale-[1.01]"
+            style={{
+              background: theme.cardBg,
+              borderColor: selectedStatusFilter === 'waiting' ? '#956400' : theme.border,
+              borderRadius: '8px',
+              boxShadow: selectedStatusFilter === 'waiting' ? '0 0 0 1px #956400' : 'none'
+            }}
+            title="Click to filter Waiting Review cases only"
+          >
             <span className="font-mono text-[10px] uppercase tracking-wider block mb-1 text-[#956400]">// WAITING REVIEW</span>
             <div className="text-2xl font-bold font-mono tracking-tight text-[#956400]">{metrics.waiting}</div>
-            <span className="text-[10px] font-mono mt-1 block" style={{ color: theme.textSecondary }}>Requires initial action</span>
+            <span className="text-[10px] font-mono mt-1 block" style={{ color: selectedStatusFilter === 'waiting' ? '#956400' : theme.textSecondary }}>
+              {selectedStatusFilter === 'waiting' ? '✓ Filter active' : 'Requires initial action'}
+            </span>
           </div>
 
-          <div className="p-4 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+          <div
+            onClick={() => setSelectedStatusFilter(selectedStatusFilter === 'on_progress' ? 'active' : 'on_progress')}
+            className="p-4 rounded border cursor-pointer transition-all hover:scale-[1.01]"
+            style={{
+              background: theme.cardBg,
+              borderColor: selectedStatusFilter === 'on_progress' ? '#1F6C9F' : theme.border,
+              borderRadius: '8px',
+              boxShadow: selectedStatusFilter === 'on_progress' ? '0 0 0 1px #1F6C9F' : 'none'
+            }}
+            title="Click to filter In Progress cases only"
+          >
             <span className="font-mono text-[10px] uppercase tracking-wider block mb-1 text-[#1F6C9F]">// IN PROGRESS</span>
             <div className="text-2xl font-bold font-mono tracking-tight text-[#1F6C9F]">{metrics.onProgress}</div>
-            <span className="text-[10px] font-mono mt-1 block" style={{ color: theme.textSecondary }}>Active investigations</span>
+            <span className="text-[10px] font-mono mt-1 block" style={{ color: selectedStatusFilter === 'on_progress' ? '#1F6C9F' : theme.textSecondary }}>
+              {selectedStatusFilter === 'on_progress' ? '✓ Filter active' : 'Active investigations'}
+            </span>
           </div>
 
-          <div className="p-4 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
+          <div
+            onClick={() => setSelectedStatusFilter(selectedStatusFilter === 'completed' ? 'active' : 'completed')}
+            className="p-4 rounded border cursor-pointer transition-all hover:scale-[1.01]"
+            style={{
+              background: theme.cardBg,
+              borderColor: selectedStatusFilter === 'completed' ? '#346538' : theme.border,
+              borderRadius: '8px',
+              boxShadow: selectedStatusFilter === 'completed' ? '0 0 0 1px #346538' : 'none'
+            }}
+            title="Click to filter Completed cases only"
+          >
             <span className="font-mono text-[10px] uppercase tracking-wider block mb-1 text-[#346538]">// COMPLETED</span>
             <div className="text-2xl font-bold font-mono tracking-tight text-[#346538]">{metrics.completed}</div>
-            <span className="text-[10px] font-mono mt-1 block" style={{ color: theme.textSecondary }}>Fully resolved cases</span>
+            <span className="text-[10px] font-mono mt-1 block" style={{ color: selectedStatusFilter === 'completed' ? '#346538' : theme.textSecondary }}>
+              {selectedStatusFilter === 'completed' ? '✓ Filter active' : 'Click to show resolved'}
+            </span>
           </div>
         </div>
       ) : (
@@ -1034,12 +1092,46 @@ export default function IncidentHandlingApprovalPage() {
                   className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
                   style={{ background: theme.inputBg, borderColor: theme.border, color: theme.textPrimary, borderRadius: '4px' }}
                 >
-                  <option value="all">All Statuses</option>
-                  <option value="waiting">Waiting</option>
-                  <option value="on_progress">In Progress</option>
-                  <option value="completed">Completed</option>
+                  <option value="active">Active Cases (Waiting & In Progress)</option>
+                  <option value="all">All Cases (Incl. Completed)</option>
+                  <option value="waiting">Waiting Review Only</option>
+                  <option value="on_progress">In Progress Only</option>
+                  <option value="completed">Completed Only</option>
                 </select>
               </div>
+
+              {/* Quick Toggle Show / Hide Completed Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedStatusFilter === 'all' || selectedStatusFilter === 'completed') {
+                    setSelectedStatusFilter('active')
+                  } else {
+                    setSelectedStatusFilter('all')
+                  }
+                }}
+                className="px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer transition-all flex items-center gap-1.5 shrink-0"
+                style={{
+                  background: (selectedStatusFilter === 'all' || selectedStatusFilter === 'completed')
+                    ? (isDark ? '#1C3829' : '#DCFCE7')
+                    : theme.subtleBg,
+                  borderColor: (selectedStatusFilter === 'all' || selectedStatusFilter === 'completed')
+                    ? (isDark ? '#2B6344' : '#86EFAC')
+                    : theme.border,
+                  color: (selectedStatusFilter === 'all' || selectedStatusFilter === 'completed')
+                    ? (isDark ? '#86EFAC' : '#166534')
+                    : theme.textSecondary,
+                  borderRadius: '4px'
+                }}
+                title="Toggle show/hide completed incident cases"
+              >
+                <span>{(selectedStatusFilter === 'all' || selectedStatusFilter === 'completed') ? '✓' : '👁️'}</span>
+                <span>
+                  {(selectedStatusFilter === 'all' || selectedStatusFilter === 'completed')
+                    ? 'Showing Completed'
+                    : `Show Completed (${metrics.completed})`}
+                </span>
+              </button>
             </div>
           </>
         ) : (
@@ -1147,7 +1239,17 @@ export default function IncidentHandlingApprovalPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2.5">
-                            <StudentAvatar user={r.student} theme={theme} size="w-6 h-6" textSize="text-[9px]" />
+                            <StudentAvatar
+                              user={r.student}
+                              theme={theme}
+                              size="w-6 h-6"
+                              textSize="text-[9px]"
+                              onPhotoClick={(url) => setPreviewPhoto({
+                                url,
+                                title: studentName,
+                                subtitle: `${getStudentClassForDate(r.student_user_id || r.student?.user_id, r.incident_date)?.kelas_nama || ''} • ${unitName}`.replace(/^ • | • $/, '')
+                              })}
+                            />
                             <div>
                               <div className="font-semibold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
                                 <span>{studentName}</span>
@@ -1307,13 +1409,13 @@ export default function IncidentHandlingApprovalPage() {
           return (
             <div className="space-y-4 text-xs" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
               {/* Overview Box */}
-              <div className="p-3.5 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '6px' }}>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2" style={{ borderColor: theme.border }}>
+              <div className="p-3.5 rounded-lg border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5" style={{ borderColor: theme.border }}>
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: theme.blueText }}>
+                    <span className="text-[10px] font-mono uppercase tracking-wider font-bold" style={{ color: theme.blueText }}>
                       {selectedReport.unit?.unit_name || 'General Unit'}
                     </span>
-                    <h3 className="text-sm font-bold mt-0.5" style={{ color: theme.textPrimary }}>{selectedReport.title}</h3>
+                    <h3 className="text-base font-bold mt-0.5" style={{ color: theme.textPrimary }}>{selectedReport.title}</h3>
                   </div>
                   <div className="flex items-center gap-2">
                     {getLevelBadge(selectedReport.incident_record)}
@@ -1321,35 +1423,69 @@ export default function IncidentHandlingApprovalPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                  <div>
-                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>STUDENT:</span>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <StudentAvatar user={selectedReport.student} theme={theme} size="w-7 h-7" textSize="text-[10px]" />
-                      <p className="font-semibold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
+                {/* Student & Metadata Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                  <div className="flex items-center gap-3">
+                    <StudentAvatar
+                      user={selectedReport.student}
+                      theme={theme}
+                      size="w-14 h-14"
+                      textSize="text-sm"
+                      rounded="rounded-xl"
+                      onPhotoClick={(url) => setPreviewPhoto({
+                        url,
+                        title: studentName,
+                        subtitle: `${(() => {
+                          const studentClass = getStudentClassForDate(selectedReport.student_user_id || selectedReport.student?.user_id, selectedReport.incident_date)?.kelas_nama
+                          return studentClass ? `${studentClass} • ` : ''
+                        })()}${selectedReport.unit?.unit_name || 'General Unit'}`
+                      })}
+                    />
+                    <div>
+                      <span className="text-[10px] font-mono block uppercase tracking-wider font-semibold" style={{ color: theme.textSecondary }}>STUDENT</span>
+                      <div className="text-sm font-bold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
                         <span>{studentName}</span>
                         {(() => {
                           const studentClass = getStudentClassForDate(selectedReport.student_user_id || selectedReport.student?.user_id, selectedReport.incident_date)?.kelas_nama
                           return studentClass ? (
-                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
                               {studentClass}
                             </span>
                           ) : null
                         })()}
-                      </p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] font-mono" style={{ color: theme.textSecondary }}>{selectedReport.unit?.unit_name || 'General Unit'}</span>
+                        {(selectedReport.student?.user_manual_picture || selectedReport.student?.user_profile_picture) && (
+                          <span
+                            onClick={() => setPreviewPhoto({
+                              url: selectedReport.student?.user_manual_picture || selectedReport.student?.user_profile_picture,
+                              title: studentName,
+                              subtitle: `${getStudentClassForDate(selectedReport.student_user_id || selectedReport.student?.user_id, selectedReport.incident_date)?.kelas_nama || ''} • ${selectedReport.unit?.unit_name || ''}`.replace(/^ • | • $/, '')
+                            })}
+                            className="text-[10px] font-mono font-semibold cursor-pointer hover:underline flex items-center gap-1 px-1.5 py-0.2 rounded border"
+                            style={{ color: theme.blueText, borderColor: theme.border, background: theme.cardBg }}
+                          >
+                            🔍 Enlarge Photo
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>REPORTER:</span>
-                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{reporterName}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>DATE & TIME:</span>
-                    <p className="font-mono font-semibold" style={{ color: theme.textPrimary }}>{selectedReport.incident_date} {selectedReport.incident_time}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>LOCATION:</span>
-                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedReport.place_of_incident || '-'}</p>
+
+                  <div className="grid grid-cols-3 gap-3 text-[11px] border-t sm:border-t-0 sm:border-l pt-2 sm:pt-0 sm:pl-4" style={{ borderColor: theme.border }}>
+                    <div>
+                      <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>REPORTER:</span>
+                      <p className="font-semibold" style={{ color: theme.textPrimary }}>{reporterName}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>DATE & TIME:</span>
+                      <p className="font-mono font-semibold" style={{ color: theme.textPrimary }}>{selectedReport.incident_date} {selectedReport.incident_time}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>LOCATION:</span>
+                      <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedReport.place_of_incident || '-'}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -1770,6 +1906,49 @@ export default function IncidentHandlingApprovalPage() {
         message={notif.message}
         type={notif.type}
       />
+
+      {/* Enlarged Student Photo Lightbox Modal */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="relative max-w-sm sm:max-w-md w-full rounded-2xl overflow-hidden shadow-2xl border flex flex-col"
+            style={{ background: theme.cardBg, borderColor: theme.border }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: theme.border, background: theme.subtleBg }}>
+              <div>
+                <h4 className="text-sm font-bold" style={{ color: theme.textPrimary }}>{previewPhoto.title || 'Student Photo'}</h4>
+                {previewPhoto.subtitle && (
+                  <p className="text-[11px] font-mono mt-0.5" style={{ color: theme.textSecondary }}>{previewPhoto.subtitle}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs hover:opacity-80 transition cursor-pointer"
+                style={{ background: theme.cardBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Photo */}
+            <div className="p-4 flex items-center justify-center bg-black/5 dark:bg-black/40">
+              <img
+                src={previewPhoto.url}
+                alt={previewPhoto.title || ''}
+                referrerPolicy="no-referrer"
+                className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-md border"
+                style={{ borderColor: theme.border }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

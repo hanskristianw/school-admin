@@ -1018,6 +1018,7 @@
         "statusHadir": "Present",
         "statusTidakHadir": "Absent",
         "statusIjin": "Excused",
+        "statusSakit": "Sick",
         "statusTerlambat": "Late",
         "statusPulangCepat": "Early Leave"
       }

@@ -1460,6 +1460,31 @@ export const generatePypClassReportPDF = async ({
       }
     }
 
+    // 5.1 Fetch Student Unit & ATL Assessments
+    let unitAssessmentsMap = {}
+    let atlAssessmentsMap = {}
+    if (unitIds.length > 0) {
+      try {
+        const [uAssessRes, aAssessRes] = await Promise.all([
+          supabase.from('pyp_unit_assessment').select('*').in('unit_id', unitIds),
+          supabase.from('pyp_atl_assessment').select('*').in('unit_id', unitIds)
+        ])
+
+        if (uAssessRes.data) {
+          uAssessRes.data.forEach(row => {
+            unitAssessmentsMap[`${row.student_id}_${row.unit_id}`] = row
+          })
+        }
+        if (aAssessRes.data) {
+          aAssessRes.data.forEach(row => {
+            atlAssessmentsMap[`${row.student_id}_${row.unit_id}_${row.atl_id}`] = row
+          })
+        }
+      } catch (e) {
+        console.warn('Error loading unit/ATL assessments for report PDF:', e)
+      }
+    }
+
     // 6. Load Logos & Page Icons Base64
     const [
       logoBase64,
@@ -1604,12 +1629,13 @@ export const generatePypClassReportPDF = async ({
 
       // ── Page 5+: Programme of Inquiry (1 page per Unit in this semester) ──
       for (const unit of classUnits) {
+        const studentUnitRating = (unitAssessmentsMap[`${st.user_id}_${unit.id}`]?.rating) || 'Achieving'
         doc.addPage()
         await renderPypProgrammeOfInquiryPage(doc, {
           unit: unit,
           lois: unitLoiMap[unit.id] || [],
           kcs: unitKcMap[unit.id] || [],
-          rating: 'Achieving',
+          rating: studentUnitRating !== 'N/A' ? studentUnitRating : '',
           logoBase64: logoBase64,
           headerIconBase64: poiHeaderIconBase64,
           sectionIcons: sectionIcons,

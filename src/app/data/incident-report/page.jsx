@@ -34,7 +34,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 
 // Minimalist Student Avatar Component with manual picture support & error fallback
-function StudentAvatar({ user, theme, size = "w-6 h-6", textSize = "text-[9px]" }) {
+function StudentAvatar({ user, theme, size = "w-6 h-6", textSize = "text-[9px]", rounded = "rounded-full", onPhotoClick }) {
   const [imgError, setImgError] = useState(false)
   const pic = user?.user_manual_picture || user?.user_profile_picture
   const initials = `${user?.user_nama_depan?.[0] || ''}${user?.user_nama_belakang?.[0] || ''}`.toUpperCase()
@@ -46,15 +46,22 @@ function StudentAvatar({ user, theme, size = "w-6 h-6", textSize = "text-[9px]" 
         alt=""
         referrerPolicy="no-referrer"
         onError={() => setImgError(true)}
-        className={`${size} rounded-full object-cover border shrink-0`}
+        onClick={(e) => {
+          if (onPhotoClick) {
+            e.stopPropagation()
+            onPhotoClick(pic, user)
+          }
+        }}
+        className={`${size} ${rounded} object-cover border shrink-0 ${onPhotoClick ? 'cursor-zoom-in hover:opacity-90 hover:scale-105 transition-all shadow-xs' : ''}`}
         style={{ borderColor: theme?.border || '#E5E7EB' }}
+        title={onPhotoClick ? "Click to view full photo" : undefined}
       />
     )
   }
 
   return (
     <div
-      className={`${size} rounded-full flex items-center justify-center font-mono ${textSize} font-bold border shrink-0`}
+      className={`${size} ${rounded} flex items-center justify-center font-mono ${textSize} font-bold border shrink-0`}
       style={{
         background: theme?.subtleBg || '#F3F4F6',
         color: theme?.textSecondary || '#6B7280',
@@ -82,6 +89,7 @@ export default function IncidentReportListPage() {
   const [years, setYears] = useState([])
   const [classes, setClasses] = useState([])
   const [studentAssignments, setStudentAssignments] = useState([])
+  const [previewPhoto, setPreviewPhoto] = useState(null)
   
   // Delete Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -1068,7 +1076,17 @@ export default function IncidentReportListPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2.5">
-                            <StudentAvatar user={rep.student} theme={theme} size="w-6 h-6" textSize="text-[9px]" />
+                            <StudentAvatar
+                              user={rep.student}
+                              theme={theme}
+                              size="w-6 h-6"
+                              textSize="text-[9px]"
+                              onPhotoClick={(url) => setPreviewPhoto({
+                                url,
+                                title: studentName,
+                                subtitle: `${getStudentClassForDate(rep.student_user_id || rep.student?.user_id, rep.incident_date)?.kelas_nama || ''} • ${unitName}`.replace(/^ • | • $/, '')
+                              })}
+                            />
                             <div className="font-semibold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
                               <span>{studentName}</span>
                               {(() => {
@@ -1564,13 +1582,13 @@ export default function IncidentReportListPage() {
 
           return (
             <div className="space-y-3.5 text-xs" style={{ fontFamily: "'SF Pro Display', 'Geist Sans', 'Helvetica Neue', sans-serif" }}>
-              <div className="p-3 rounded border space-y-2" style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '6px' }}>
-                <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: theme.border }}>
+              <div className="p-3.5 rounded-lg border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border }}>
+                <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: theme.border }}>
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: theme.blueText }}>
+                    <span className="text-[10px] font-mono uppercase tracking-wider font-bold" style={{ color: theme.blueText }}>
                       {selectedReportDetail.unit?.unit_name || 'Unit'}
                     </span>
-                    <h3 className="text-sm font-bold mt-0.5" style={{ color: theme.textPrimary }}>{selectedReportDetail.title}</h3>
+                    <h3 className="text-base font-bold mt-0.5" style={{ color: theme.textPrimary }}>{selectedReportDetail.title}</h3>
                   </div>
                   <div className="flex items-center gap-2">
                     {getLevelBadge(selectedReportDetail.incident_record)}
@@ -1578,35 +1596,69 @@ export default function IncidentReportListPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                  <div>
-                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>STUDENT:</span>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <StudentAvatar user={selectedReportDetail.student} theme={theme} size="w-7 h-7" textSize="text-[10px]" />
-                      <p className="font-semibold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
+                {/* Student & Metadata Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                  <div className="flex items-center gap-3">
+                    <StudentAvatar
+                      user={selectedReportDetail.student}
+                      theme={theme}
+                      size="w-14 h-14"
+                      textSize="text-sm"
+                      rounded="rounded-xl"
+                      onPhotoClick={(url) => setPreviewPhoto({
+                        url,
+                        title: studentName,
+                        subtitle: `${(() => {
+                          const studentClass = getStudentClassForDate(selectedReportDetail.student_user_id || selectedReportDetail.student?.user_id, selectedReportDetail.incident_date)?.kelas_nama
+                          return studentClass ? `${studentClass} • ` : ''
+                        })()}${selectedReportDetail.unit?.unit_name || 'General Unit'}`
+                      })}
+                    />
+                    <div>
+                      <span className="text-[10px] font-mono block uppercase tracking-wider font-semibold" style={{ color: theme.textSecondary }}>STUDENT</span>
+                      <div className="text-sm font-bold flex items-center gap-1.5 flex-wrap" style={{ color: theme.textPrimary }}>
                         <span>{studentName}</span>
                         {(() => {
                           const studentClass = getStudentClassForDate(selectedReportDetail.student_user_id || selectedReportDetail.student?.user_id, selectedReportDetail.incident_date)?.kelas_nama
                           return studentClass ? (
-                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded" style={{ background: theme.blueBg, color: theme.blueText }}>
                               {studentClass}
                             </span>
                           ) : null
                         })()}
-                      </p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] font-mono" style={{ color: theme.textSecondary }}>{selectedReportDetail.unit?.unit_name || 'General Unit'}</span>
+                        {(selectedReportDetail.student?.user_manual_picture || selectedReportDetail.student?.user_profile_picture) && (
+                          <span
+                            onClick={() => setPreviewPhoto({
+                              url: selectedReportDetail.student?.user_manual_picture || selectedReportDetail.student?.user_profile_picture,
+                              title: studentName,
+                              subtitle: `${getStudentClassForDate(selectedReportDetail.student_user_id || selectedReportDetail.student?.user_id, selectedReportDetail.incident_date)?.kelas_nama || ''} • ${selectedReportDetail.unit?.unit_name || ''}`.replace(/^ • | • $/, '')
+                            })}
+                            className="text-[10px] font-mono font-semibold cursor-pointer hover:underline flex items-center gap-1 px-1.5 py-0.2 rounded border"
+                            style={{ color: theme.blueText, borderColor: theme.border, background: theme.cardBg }}
+                          >
+                            🔍 Enlarge Photo
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>REPORTER:</span>
-                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{reporterName}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>DATE & TIME:</span>
-                    <p className="font-mono font-semibold" style={{ color: theme.textPrimary }}>{selectedReportDetail.incident_date} {selectedReportDetail.incident_time}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>LOCATION:</span>
-                    <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedReportDetail.place_of_incident || '-'}</p>
+
+                  <div className="grid grid-cols-3 gap-3 text-[11px] border-t sm:border-t-0 sm:border-l pt-2 sm:pt-0 sm:pl-4" style={{ borderColor: theme.border }}>
+                    <div>
+                      <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>REPORTER:</span>
+                      <p className="font-semibold" style={{ color: theme.textPrimary }}>{reporterName}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>DATE & TIME:</span>
+                      <p className="font-mono font-semibold" style={{ color: theme.textPrimary }}>{selectedReportDetail.incident_date} {selectedReportDetail.incident_time}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono block" style={{ color: theme.textSecondary }}>LOCATION:</span>
+                      <p className="font-semibold" style={{ color: theme.textPrimary }}>{selectedReportDetail.place_of_incident || '-'}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -1735,6 +1787,49 @@ export default function IncidentReportListPage() {
         message={notif.message}
         type={notif.type}
       />
+
+      {/* Enlarged Student Photo Lightbox Modal */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="relative max-w-sm sm:max-w-md w-full rounded-2xl overflow-hidden shadow-2xl border flex flex-col"
+            style={{ background: theme.cardBg, borderColor: theme.border }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: theme.border, background: theme.subtleBg }}>
+              <div>
+                <h4 className="text-sm font-bold" style={{ color: theme.textPrimary }}>{previewPhoto.title || 'Student Photo'}</h4>
+                {previewPhoto.subtitle && (
+                  <p className="text-[11px] font-mono mt-0.5" style={{ color: theme.textSecondary }}>{previewPhoto.subtitle}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs hover:opacity-80 transition cursor-pointer"
+                style={{ background: theme.cardBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Photo */}
+            <div className="p-4 flex items-center justify-center bg-black/5 dark:bg-black/40">
+              <img
+                src={previewPhoto.url}
+                alt={previewPhoto.title || ''}
+                referrerPolicy="no-referrer"
+                className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-md border"
+                style={{ borderColor: theme.border }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

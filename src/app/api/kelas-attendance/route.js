@@ -69,7 +69,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'kelas_id, detail_siswa_id, tanggal, status required' }, { status: 400 })
     }
 
-    const validStatuses = ['hadir', 'tidak_hadir', 'ijin', 'terlambat', 'pulang_cepat']
+    const validStatuses = ['hadir', 'tidak_hadir', 'ijin', 'sakit', 'terlambat', 'pulang_cepat']
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }

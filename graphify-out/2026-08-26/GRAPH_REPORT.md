@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-08-26)
 
 ## Corpus Check
-- 364 files · ~580,152 words
+- 363 files · ~579,949 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2136 nodes · 2177 edges · 358 communities (254 shown, 104 thin omitted)
+- 2135 nodes · 2176 edges · 359 communities (254 shown, 105 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
@@ -258,6 +258,7 @@
 - 8. DARK MODE PROTOCOL
 - 21. MOBILE ANTI-AI-TELLS RULE
 - SKILL.md
+- SKILL.md
 - 33. DEFAULT SECTION PACKS
 - 14. HERO MINIMALISM RULES
 - 37. EXAMPLE INTERPRETATIONS
@@ -295,7 +296,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (358 total, 104 thin omitted)
+## Communities (359 total, 105 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
@@ -622,8 +623,8 @@ Cohesion: 0.14
 Nodes (13): Active/Current Migrations, Core Attendance System, Database Migrations, 🚀 How to Run Migrations, ⚠️ Important Notes, 📋 Migration Checklist, Other Systems (Unrelated to Attendance), 🔄 Recent Changes (October 2025) (+5 more)
 
 ### Community 261 - "5.1 Tables"
-Cohesion: 0.15
-Nodes (13): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance`, `leave_quotas`, `leave_types` (+5 more)
+Cohesion: 0.17
+Nodes (12): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `leave_quotas`, `leave_types`, `role_approvers` (+4 more)
 
 ### Community 262 - "sendGoogleChatMessage"
 Cohesion: 0.80
@@ -742,8 +743,8 @@ Cohesion: 0.11
 Nodes (17): 1. Meta Information & Core Directive, 2. THE "ABSOLUTE ZERO" DIRECTIVE (STRICT ANTI-PATTERNS), 3. THE CREATIVE VARIANCE ENGINE, 4. HAPTIC MICRO-AESTHETICS (COMPONENT MASTERY), 5. MOTION CHOREOGRAPHY (FLUID DYNAMICS), 6. PERFORMANCE GUARDRAILS, 7. EXECUTION PROTOCOL, 8. PRE-OUTPUT CHECKLIST (+9 more)
 
 ### Community 316 - "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION"
-Cohesion: 0.12
-Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
+Cohesion: 0.14
+Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
 
 ### Community 317 - "SKILL: Industrial Brutalism & Tactical Telemetry UI"
 Cohesion: 0.12
@@ -890,9 +891,9 @@ Cohesion: 0.67
 Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure**
 
 ## Knowledge Gaps
-- **1112 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1107 more)
+- **1111 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1106 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **104 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -904,7 +905,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `Database Schema & Relationships` connect `Module 126` to `bcryptjs`, `7.1 Tables`, `3.1 Tables`, `4.1 Tables`, `1.1 Tables`, `2.1 Tables`, `Module 143`, `9.1 Tables`, `8.1 Tables`, `**3. Assessment System**`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1112 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1111 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
   _Cohesion score 0.0744047619047619 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**

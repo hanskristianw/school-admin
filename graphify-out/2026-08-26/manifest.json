@@ -1065,8 +1065,8 @@
     "semantic_hash": "ed62be15a684e4722d48de789ed2e4ba"
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1787715632.4110312,
-    "ast_hash": "aae2e11b2967ba2afdb1e7167e931dd2",
+    "mtime": 1787291154.6437452,
+    "ast_hash": "3310898f13d45d95d681b7e184500de1",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -1335,18 +1335,18 @@
     "semantic_hash": "a7c1c38cae37e55ea43d9bff76355a4c"
   },
   "src/i18n/en.json": {
-    "mtime": 1787715617.2063768,
-    "ast_hash": "4decbc7edbc1eadb893c97331df6247d",
+    "mtime": 1787020025.2246952,
+    "ast_hash": "a7bbae80cd3093ef2d34a72743cebfd7",
     "semantic_hash": ""
   },
   "src/i18n/id.json": {
-    "mtime": 1787715621.452302,
-    "ast_hash": "2bcd7941ef058f7c149c53ce5bce7638",
+    "mtime": 1787020028.3033159,
+    "ast_hash": "af1fc59f82e9c191d7dd975541fe0bdd",
     "semantic_hash": ""
   },
   "src/i18n/zh.json": {
-    "mtime": 1787715625.6228144,
-    "ast_hash": "0d45801ad164d9dd7afb23c96a6a6403",
+    "mtime": 1787020031.6569295,
+    "ast_hash": "d94acca42e4fea32e67893f83f385fa9",
     "semantic_hash": ""
   },
   "src/lib/auth.js": {
@@ -1590,9 +1590,9 @@
     "semantic_hash": "6d611f824179188ac98e57c04f76b84d"
   },
   "src/app/api/kelas-attendance/route.js": {
-    "mtime": 1787715612.006763,
-    "ast_hash": "3383499e9ecaae660c69dff975ea0657",
-    "semantic_hash": ""
+    "mtime": 1784179362.4169674,
+    "ast_hash": "f9d76d6fa47a882eb12341df05e70f0b",
+    "semantic_hash": "f9d76d6fa47a882eb12341df05e70f0b"
   },
   "src/app/data/attendance-form/create/page.jsx": {
     "mtime": 1784179362.42909,
@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1787715607.883737,
-    "ast_hash": "8ce7eec2d6c53e7de5cbaf6afc166ed0",
+    "mtime": 1787714229.755122,
+    "ast_hash": "fee2803863b3d74564bac7712ced2880",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2027,11 +2027,6 @@
   "migrations/create-pyp-unit-and-atl-assessment.sql": {
     "mtime": 1787714221.5801935,
     "ast_hash": "54ed4290b474ed4199e2c5a587b05c00",
-    "semantic_hash": ""
-  },
-  "migrations/add-sakit-status-to-kelas-attendance.sql": {
-    "mtime": 1787715597.6385765,
-    "ast_hash": "20320bd8527091b7cde885f59dae8c7c",
     "semantic_hash": ""
   }
 }
