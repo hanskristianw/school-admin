@@ -45,7 +45,8 @@ import {
   faExclamationTriangle,
   faUpload,
   faImage,
-  faTimes
+  faTimes,
+  faHouseUser
 } from '@fortawesome/free-solid-svg-icons'
 import { generatePypClassReportPDF } from './lib/pypPdfGenerator'
 
@@ -594,6 +595,14 @@ export default function PypPage() {
   const [copiedCommentSql, setCopiedCommentSql] = useState(false)
 
   // -------------------------------------------------------------
+  // HOMEROOM TEACHER COMMENTS & ATTENDANCE STATES (Tab 5)
+  // -------------------------------------------------------------
+  const [homeroomCommentsMap, setHomeroomCommentsMap] = useState({}) // { [studentId]: { comment_text, present, sick, excused, late, absent, comment_id, saved } }
+  const [loadingHomeroomComments, setLoadingHomeroomComments] = useState(false)
+  const [savingHomeroomStudentId, setSavingHomeroomStudentId] = useState(null)
+  const [savingAllHomeroomComments, setSavingAllHomeroomComments] = useState(false)
+
+  // -------------------------------------------------------------
   // UNIT & ATL ASSESSMENT MODAL STATES (Tab 2: Class)
   // -------------------------------------------------------------
   const [showUnitAssessModal, setShowUnitAssessModal] = useState(false)
@@ -744,6 +753,43 @@ export default function PypPage() {
       setOriginalCommentsMap({ ...map })
     } catch (err) {
       console.error('Error fetching pyp subject comments:', err)
+    }
+  }
+
+  // Fetch Homeroom Comments & Attendance from mentor_comment (Tab 5)
+  const fetchHomeroomComments = async (classId, semester) => {
+    if (!classId) {
+      setHomeroomCommentsMap({})
+      return
+    }
+    try {
+      setLoadingHomeroomComments(true)
+      const { data, error } = await supabase
+        .from('mentor_comment')
+        .select('*')
+        .eq('kelas_id', Number(classId))
+        .eq('semester', Number(semester || activeGradingSemester || 1))
+
+      if (error) throw error
+
+      const map = {}
+      for (const row of (data || [])) {
+        map[row.student_user_id] = {
+          comment_id: row.id,
+          comment_text: row.comment_text || '',
+          present: row.present ?? 0,
+          sick: row.sick ?? 0,
+          excused: row.excused ?? 0,
+          late: row.late ?? 0,
+          absent: row.absent ?? 0,
+          saved: true
+        }
+      }
+      setHomeroomCommentsMap(map)
+    } catch (err) {
+      console.error('Error fetching homeroom comments:', err)
+    } finally {
+      setLoadingHomeroomComments(false)
     }
   }
 
@@ -983,6 +1029,13 @@ export default function PypPage() {
       fetchPypSubjectComments(selectedYearId, selectedClassId, subjectTabSubjectId, activeGradingSemester)
     }
   }, [selectedYearId, selectedClassId, subjectTabSubjectId, activeGradingSemester, activeTab])
+
+  // Auto-fetch homeroom comments & attendance when selectedClassId, activeGradingSemester, or activeTab changes
+  useEffect(() => {
+    if (selectedClassId && activeTab === 'homeroom_comment') {
+      fetchHomeroomComments(selectedClassId, activeGradingSemester)
+    }
+  }, [selectedClassId, activeGradingSemester, activeTab])
 
   // Rating Change Handler
   const handleRatingChange = async (studentId, strandId, newRating) => {
@@ -1247,6 +1300,106 @@ export default function PypPage() {
       })
     } finally {
       setSavingComments(false)
+    }
+  }
+
+  // -------------------------------------------------------------
+  // HOMEROOM TEACHER COMMENT & ATTENDANCE HANDLERS (Tab 5)
+  // -------------------------------------------------------------
+  const handleHomeroomFieldChange = (studentId, field, value) => {
+    setHomeroomCommentsMap(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || { comment_text: '', present: 0, sick: 0, excused: 0, late: 0, absent: 0 }),
+        [field]: value,
+        saved: false
+      }
+    }))
+  }
+
+  const handleSaveHomeroomComment = async (studentId) => {
+    if (!selectedClassId) return
+    try {
+      setSavingHomeroomStudentId(studentId)
+      const current = homeroomCommentsMap[studentId] || { comment_text: '', present: 0, sick: 0, excused: 0, late: 0, absent: 0 }
+      const sem = Number(activeGradingSemester) || 1
+
+      const payload = {
+        kelas_id: Number(selectedClassId),
+        student_user_id: Number(studentId),
+        semester: sem,
+        comment_text: current.comment_text?.trim() || null,
+        present: Number(current.present) || 0,
+        sick: Number(current.sick) || 0,
+        excused: Number(current.excused) || 0,
+        late: Number(current.late) || 0,
+        absent: Number(current.absent) || 0,
+        updated_at: new Date().toISOString()
+      }
+
+      if (current.comment_id) {
+        const { error } = await supabase
+          .from('mentor_comment')
+          .update(payload)
+          .eq('id', current.comment_id)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('mentor_comment')
+          .insert([payload])
+          .select('id')
+        if (error) throw error
+
+        if (data?.[0]?.id) {
+          setHomeroomCommentsMap(prev => ({
+            ...prev,
+            [studentId]: {
+              ...(prev[studentId] || payload),
+              comment_id: data[0].id,
+              saved: true
+            }
+          }))
+          return
+        }
+      }
+
+      setHomeroomCommentsMap(prev => ({
+        ...prev,
+        [studentId]: {
+          ...(prev[studentId] || payload),
+          saved: true
+        }
+      }))
+    } catch (err) {
+      console.error('Error saving homeroom comment:', err)
+      setNotif({
+        isOpen: true,
+        title: 'Error Saving Homeroom Comment',
+        message: err.message || 'Could not save homeroom comment.',
+        type: 'error'
+      })
+    } finally {
+      setSavingHomeroomStudentId(null)
+    }
+  }
+
+  const handleSaveAllHomeroomComments = async () => {
+    if (!selectedClassId || !classStudents || classStudents.length === 0) return
+    try {
+      setSavingAllHomeroomComments(true)
+      for (const st of classStudents) {
+        await handleSaveHomeroomComment(st.user_id)
+      }
+      setNotif({
+        isOpen: true,
+        title: 'Homeroom Comments Saved',
+        message: `Successfully saved all homeroom comments & attendance for Semester ${activeGradingSemester}!`,
+        type: 'success'
+      })
+    } catch (err) {
+      console.error('Error batch saving homeroom comments:', err)
+    } finally {
+      setSavingAllHomeroomComments(false)
     }
   }
 
@@ -2180,47 +2333,53 @@ export default function PypPage() {
   }
 
   return (
-    <div style={{ background: pageBg, minHeight: '100vh', padding: '32px 24px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
       
-      {/* ------------------------------------------------------------- */}
-      {/* HEADER SECTION */}
-      {/* ------------------------------------------------------------- */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto 32px auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '9999px', background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '8px' }}>
-              <FontAwesomeIcon icon={faGraduationCap} style={{ fontSize: '10px' }} />
-              Primary Years Programme (PYP)
+      {/* ── HEADER & BREADCRUMBS (MATCHING PYP SUBJECTS LAYOUT) ─────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
+        <div>
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1.5" style={{ color: textSecondary }}>
+            <span>[CURRICULUM]</span>
+            <span>/</span>
+            <span>[PYP MASTER DATA]</span>
+            <span>/</span>
+            <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>[UNITS OF INQUIRY]</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded flex items-center justify-center border" style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', borderColor: isDark ? '#2563EB' : '#BAE6FD', color: isDark ? '#60A5FA' : '#0284C7' }}>
+              <FontAwesomeIcon icon={faBookOpen} className="text-base" />
             </div>
-            <h1 style={{ fontSize: '28px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: textPrimary }}>
-              PYP Curriculum Framework
-            </h1>
-            <p style={{ margin: '6px 0 0 0', color: textSecondary, fontSize: '14px', lineHeight: 1.5 }}>
-              Manage Master Templates, Class Units, Approaches to Learning, Subject Strands, and Teacher Comments.
-            </p>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+                PYP Master Units &amp; Curriculum Framework
+              </h1>
+              <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
+                Manage Master Templates, Class Units, Approaches to Learning, Subject Strands, and Teacher Comments.
+              </p>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* ------------------------------------------------------------- */}
-        {/* ACADEMIC YEAR FILTER BAR ONLY */}
-        {/* ------------------------------------------------------------- */}
-        <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
-          <div style={{ maxWidth: '300px' }}>
-            <Label style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: textSecondary, marginBottom: '6px', display: 'block' }}>
-              Academic Year
-            </Label>
-            <select
-              value={selectedYear}
-              onChange={e => handleYearChange(e.target.value)}
-              style={{ ...selectStyle, width: '100%' }}
-            >
-              <option value="">Select Academic Year</option>
-              {years.map(y => (
-                <option key={y.year_id} value={y.year_name}>{y.year_name}</option>
-              ))}
-            </select>
-          </div>
+      {/* ── ACADEMIC YEAR FILTER BAR ────────────────────────────────────────── */}
+      <div className="p-3.5 rounded border mb-6" style={{ background: cardBg, borderColor, borderRadius: '8px' }}>
+        <div style={{ maxWidth: '280px' }}>
+          <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+            1. Academic Year *
+          </label>
+          <select
+            value={selectedYear}
+            onChange={e => handleYearChange(e.target.value)}
+            className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
+            style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+          >
+            <option value="">Select Academic Year</option>
+            {years.map(y => (
+              <option key={y.year_id} value={y.year_name}>{y.year_name}</option>
+            ))}
+          </select>
         </div>
+      </div>
 
         {/* ------------------------------------------------------------- */}
         {/* TABS NAVIGATION (5 EXACT REQUESTED TABS) */}
@@ -2293,7 +2452,7 @@ export default function PypPage() {
             Subject
           </button>
 
-          {/* TAB 5: Teacher's Comment */}
+          {/* TAB 4: Subject Comment */}
           <button
             onClick={() => setActiveTab('comment')}
             style={{
@@ -2312,7 +2471,29 @@ export default function PypPage() {
             }}
           >
             <FontAwesomeIcon icon={faComments} style={{ fontSize: '13px' }} />
-            Teacher's Comment
+            Subject Comment
+          </button>
+
+          {/* TAB 5: Homeroom Comment */}
+          <button
+            onClick={() => setActiveTab('homeroom_comment')}
+            style={{
+              padding: '12px 0',
+              fontSize: '14px',
+              fontWeight: activeTab === 'homeroom_comment' ? 600 : 400,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              color: activeTab === 'homeroom_comment' ? textPrimary : textSecondary,
+              borderBottom: activeTab === 'homeroom_comment' ? `2px solid ${textPrimary}` : '2px solid transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <FontAwesomeIcon icon={faHouseUser} style={{ fontSize: '13px' }} />
+            Homeroom Comment
           </button>
 
         </div>
@@ -2976,14 +3157,13 @@ export default function PypPage() {
                             background: isDark ? '#27272A' : '#FBFBFA',
                             border: `1px solid ${borderColor}`,
                             borderRadius: '10px',
-                            padding: 'clamp(14px, 3vw, 20px)',
+                            padding: '16px 18px',
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'space-between',
                             height: '100%',
                             width: '100%',
                             boxSizing: 'border-box',
-                            overflow: 'hidden',
                             cursor: 'pointer',
                             transition: 'all 0.15s ease',
                             position: 'relative'
@@ -2998,48 +3178,97 @@ export default function PypPage() {
                           }}
                         >
                           <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', gap: '8px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', flex: 1 }}>
-                                <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '9999px', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', color: isDark ? '#4ADE80' : '#15803D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                  {t.theme || 'Who We Are'}
-                                </span>
-                                <span style={{ 
-                                  fontSize: '11px', 
-                                  fontWeight: 600, 
-                                  padding: '3px 8px', 
-                                  borderRadius: '9999px', 
-                                  background: Number(t.semester) === 2 
-                                    ? (isDark ? 'rgba(168, 85, 247, 0.15)' : '#FAF5FF') 
-                                    : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF'), 
-                                  color: Number(t.semester) === 2 
-                                    ? (isDark ? '#C084FC' : '#7E22CE') 
-                                    : (isDark ? '#93C5FD' : '#1D4ED8'), 
-                                  border: `1px solid ${Number(t.semester) === 2 
-                                    ? (isDark ? 'rgba(168, 85, 247, 0.3)' : '#E9D5FF') 
-                                    : (isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE')}`
-                                }}>
-                                  Semester {t.semester || 1}
-                                </span>
-                              </div>
-                              {t.durationWeeks && (
+                            
+                            {/* 1. Top Metadata Bar: Semester Badge on Left, Duration on Right */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
+                              <span style={{ 
+                                fontSize: '11px', 
+                                fontWeight: 600, 
+                                padding: '2px 8px', 
+                                borderRadius: '9999px', 
+                                background: Number(t.semester) === 2 
+                                  ? (isDark ? 'rgba(168, 85, 247, 0.15)' : '#FAF5FF') 
+                                  : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF'), 
+                                color: Number(t.semester) === 2 
+                                  ? (isDark ? '#C084FC' : '#7E22CE') 
+                                  : (isDark ? '#93C5FD' : '#1D4ED8'), 
+                                border: `1px solid ${Number(t.semester) === 2 
+                                  ? (isDark ? 'rgba(168, 85, 247, 0.3)' : '#E9D5FF') 
+                                  : (isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE')}`
+                              }}>
+                                Semester {t.semester || 1}
+                              </span>
+
+                              {t.durationWeeks ? (
                                 <span style={{ fontSize: '11px', color: textSecondary, display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0, whiteSpace: 'nowrap' }}>
                                   <FontAwesomeIcon icon={faClock} style={{ fontSize: '10px' }} />
                                   {t.durationWeeks} Weeks
                                 </span>
-                              )}
+                              ) : <span />}
                             </div>
 
-                            <h4 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 8px 0', color: textPrimary, lineHeight: 1.4 }}>
+                            {/* 2. Theme Pill Badge with structured container height */}
+                            <div style={{ minHeight: '26px', display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                              <span 
+                                style={{ 
+                                  fontSize: '10.5px', 
+                                  fontWeight: 700, 
+                                  padding: '3px 8px', 
+                                  borderRadius: '6px', 
+                                  background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', 
+                                  color: isDark ? '#4ADE80' : '#15803D', 
+                                  textTransform: 'uppercase', 
+                                  letterSpacing: '0.04em',
+                                  display: 'inline-block',
+                                  maxWidth: '100%',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}
+                                title={t.theme || 'Who We Are'}
+                              >
+                                {t.theme || 'Who We Are'}
+                              </span>
+                            </div>
+
+                            {/* 3. Unit Title with consistent minHeight so all titles start & align at the exact same line */}
+                            <h4 
+                              style={{ 
+                                fontSize: '15px', 
+                                fontWeight: 600, 
+                                margin: '0 0 8px 0', 
+                                color: textPrimary, 
+                                lineHeight: 1.35,
+                                minHeight: '42px',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              }}
+                              title={t.title}
+                            >
                               {t.title}
                             </h4>
 
-                            {t.centralIdea && (
-                              <p style={{ fontSize: '12.5px', color: textSecondary, margin: '0 0 14px 0', lineHeight: 1.5 }}>
-                                &ldquo;{t.centralIdea}&rdquo;
-                              </p>
-                            )}
+                            {/* 4. Central Idea with consistent minHeight */}
+                            <p 
+                              style={{ 
+                                fontSize: '12.5px', 
+                                color: textSecondary, 
+                                margin: '0 0 14px 0', 
+                                lineHeight: 1.45,
+                                minHeight: '52px',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              }}
+                              title={t.centralIdea || ''}
+                            >
+                              {t.centralIdea ? `“${t.centralIdea}”` : '—'}
+                            </p>
 
-                            {/* Badges for LOI, Key Concepts & ATL Skills */}
+                            {/* 5. Badges for LOI, Key Concepts & ATL Skills */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '12px', borderTop: `1px solid ${borderColor}`, marginTop: 'auto' }}>
                               <div style={{ fontSize: '11px', color: textSecondary, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <strong>LOIs:</strong>
@@ -4243,7 +4472,479 @@ export default function PypPage() {
           </div>
         )}
 
-      </div>
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 5: HOMEROOM TEACHER COMMENTS & ATTENDANCE */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === 'homeroom_comment' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Main Container */}
+            <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '24px' }}>
+              
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+                <div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 4px 0', color: textPrimary, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FontAwesomeIcon icon={faHouseUser} style={{ color: textSecondary, fontSize: '14px' }} />
+                    PYP Homeroom Teacher Comments &amp; Attendance
+                  </h3>
+                  <p style={{ fontSize: '13px', color: textSecondary, margin: 0 }}>
+                    Write semester homeroom reflection comments and record student attendance summary for official report cards.
+                  </p>
+                </div>
+
+                {/* Save All Homeroom Comments Button */}
+                <Button
+                  onClick={handleSaveAllHomeroomComments}
+                  disabled={savingAllHomeroomComments || classStudents.length === 0}
+                  style={{
+                    background: isDark ? '#FFFFFF' : '#18181B',
+                    color: isDark ? '#09090B' : '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    padding: '8px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: savingAllHomeroomComments ? 'not-allowed' : 'pointer',
+                    opacity: savingAllHomeroomComments ? 0.7 : 1,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <FontAwesomeIcon icon={savingAllHomeroomComments ? faSpinner : faSave} spin={savingAllHomeroomComments} style={{ fontSize: '12px' }} />
+                  <span>{savingAllHomeroomComments ? 'Saving All...' : `Save All Semester ${activeGradingSemester} Homeroom Comments`}</span>
+                </Button>
+              </div>
+
+              {/* Toolbar Filters (Class, Grading Period, Search Student) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', paddingTop: '16px', borderTop: `1px solid ${borderColor}` }}>
+                
+                {/* 1. Class Selector */}
+                <div>
+                  <Label style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' }}>
+                    1. PYP Class ({pypClasses.length})
+                  </Label>
+                  <select
+                    value={selectedClassId || ''}
+                    onChange={(e) => setSelectedClassId(e.target.value)}
+                    style={{ ...selectStyle, width: '100%', padding: '8px 12px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {pypClasses.length === 0 ? (
+                      <option value="">No PYP classes available</option>
+                    ) : (
+                      pypClasses.map(cls => (
+                        <option key={cls.kelas_id} value={cls.kelas_id.toString()}>
+                          {cls.kelas_nama}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* 2. Active Grading Period Switcher */}
+                <div>
+                  <Label style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' }}>
+                    2. Grading Period *
+                  </Label>
+                  <div style={{ display: 'flex', borderRadius: '6px', border: `1px solid ${borderColor}`, background: isDark ? '#1F1F23' : '#F7F6F3', padding: '2px', gap: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveGradingSemester('1')}
+                      style={{
+                        flex: 1,
+                        padding: '6px 10px',
+                        fontSize: '11px',
+                        fontWeight: activeGradingSemester === '1' ? 700 : 500,
+                        borderRadius: '4px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: activeGradingSemester === '1' ? (isDark ? '#FFFFFF' : '#18181B') : 'transparent',
+                        color: activeGradingSemester === '1' ? (isDark ? '#09090B' : '#FFFFFF') : textSecondary,
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>Semester 1</span>
+                      {activeGradingSemester === '1' && <FontAwesomeIcon icon={faCheck} style={{ fontSize: '9px' }} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveGradingSemester('2')}
+                      style={{
+                        flex: 1,
+                        padding: '6px 10px',
+                        fontSize: '11px',
+                        fontWeight: activeGradingSemester === '2' ? 700 : 500,
+                        borderRadius: '4px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: activeGradingSemester === '2' ? (isDark ? '#FFFFFF' : '#18181B') : 'transparent',
+                        color: activeGradingSemester === '2' ? (isDark ? '#09090B' : '#FFFFFF') : textSecondary,
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>Semester 2</span>
+                      {activeGradingSemester === '2' && <FontAwesomeIcon icon={faCheck} style={{ fontSize: '9px' }} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Search Student in Class */}
+                <div>
+                  <Label style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' }}>
+                    3. Search Student ({filteredClassStudents.length}/{classStudents.length})
+                  </Label>
+                  <div style={{ position: 'relative' }}>
+                    <FontAwesomeIcon
+                      icon={faSearch}
+                      style={{
+                        position: 'absolute',
+                        left: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: textSecondary,
+                        fontSize: '12px',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Search by student name..."
+                      value={studentSearchQuery}
+                      onChange={(e) => setStudentSearchQuery(e.target.value)}
+                      style={{
+                        ...inputStyle,
+                        width: '100%',
+                        paddingLeft: '30px',
+                        paddingRight: studentSearchQuery ? '28px' : '10px',
+                        fontSize: '12px',
+                        height: '35px'
+                      }}
+                    />
+                    {studentSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setStudentSearchQuery('')}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          color: textSecondary,
+                          padding: '4px'
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faTimes} style={{ fontSize: '11px' }} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Students Homeroom Comments & Attendance List */}
+            {loadingHomeroomComments ? (
+              <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '40px 20px', textAlign: 'center' }}>
+                <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: '24px', color: textSecondary, marginBottom: '12px' }} />
+                <p style={{ margin: 0, fontSize: '13px', color: textSecondary }}>
+                  Loading homeroom comments &amp; attendance records...
+                </p>
+              </div>
+            ) : filteredClassStudents.length === 0 ? (
+              <div style={{ background: cardBg, border: `1px dashed ${borderColor}`, borderRadius: '8px', padding: '40px 20px', textAlign: 'center' }}>
+                <FontAwesomeIcon icon={faInbox} style={{ fontSize: '20px', color: textSecondary, marginBottom: '8px' }} />
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: textPrimary }}>
+                  No students found in {currentSelectedClassObj?.kelas_nama || 'this class'}.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {filteredClassStudents.map((std, idx) => {
+                  const studentName = `${std.user_nama_depan || ''} ${std.user_nama_belakang || ''}`.trim() || 'Student'
+                  const currentData = homeroomCommentsMap[std.user_id] || { comment_text: '', present: 0, sick: 0, excused: 0, late: 0, absent: 0, saved: true }
+                  const isSaving = savingHomeroomStudentId === std.user_id
+                  const isDirty = currentData.saved === false
+                  const charCount = (currentData.comment_text || '').length
+                  const wordCount = (currentData.comment_text || '').trim() ? (currentData.comment_text || '').trim().split(/\s+/).length : 0
+
+                  return (
+                    <div
+                      key={std.user_id}
+                      style={{
+                        background: cardBg,
+                        border: `1px solid ${isDirty ? (isDark ? '#FBBF24' : '#EAB308') : borderColor}`,
+                        borderRadius: '8px',
+                        padding: '18px 20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '14px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {/* Student Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '4px',
+                            background: isDark ? 'rgba(255,255,255,0.06)' : '#F4F4F5',
+                            color: textPrimary,
+                            border: `1px solid ${borderColor}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            fontFamily: 'monospace'
+                          }}>
+                            {(std.user_nama_depan?.[0] || 'S').toUpperCase()}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, fontFamily: 'monospace' }}>
+                              #{idx + 1}
+                            </span>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: textPrimary }}>
+                              {studentName}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status Badges & Individual Save Button */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {isDirty ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7',
+                              color: isDark ? '#FBBF24' : '#B45309',
+                              border: `1px solid ${isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A'}`
+                            }}>
+                              Unsaved
+                            </span>
+                          ) : (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+                              color: isDark ? '#34D399' : '#047857',
+                              border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0'}`
+                            }}>
+                              <FontAwesomeIcon icon={faCheck} style={{ fontSize: '9px' }} />
+                              Saved
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleSaveHomeroomComment(std.user_id)}
+                            disabled={isSaving}
+                            style={{
+                              background: isDark ? '#27272A' : '#F4F4F5',
+                              border: `1px solid ${borderColor}`,
+                              color: textPrimary,
+                              borderRadius: '4px',
+                              padding: '4px 10px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: isSaving ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px'
+                            }}
+                          >
+                            <FontAwesomeIcon icon={isSaving ? faSpinner : faSave} spin={isSaving} style={{ fontSize: '10px' }} />
+                            <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Homeroom Comment Textarea */}
+                      <div>
+                        <Label style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' }}>
+                          Homeroom Reflection &amp; Holistic Comment (Semester {activeGradingSemester})
+                        </Label>
+                        <textarea
+                          rows={3}
+                          value={currentData.comment_text || ''}
+                          onChange={(e) => handleHomeroomFieldChange(std.user_id, 'comment_text', e.target.value)}
+                          placeholder={`Write Semester ${activeGradingSemester} homeroom teacher comment for ${studentName}...`}
+                          style={{
+                            ...inputStyle,
+                            width: '100%',
+                            padding: '10px 12px',
+                            fontSize: '13px',
+                            lineHeight: 1.6,
+                            resize: 'vertical',
+                            minHeight: '76px',
+                            fontFamily: 'inherit',
+                            background: isDark ? '#18181B' : '#FFFFFF',
+                            borderRadius: '6px'
+                          }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', fontSize: '11px', color: textSecondary, fontFamily: 'monospace' }}>
+                          <span>{wordCount} words • {charCount} chars</span>
+                        </div>
+                      </div>
+
+                      {/* Attendance Summary Grid */}
+                      <div style={{
+                        background: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F9FAFB',
+                        border: `1px solid ${borderColor}`,
+                        borderRadius: '6px',
+                        padding: '12px 14px'
+                      }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: textSecondary, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <FontAwesomeIcon icon={faClock} style={{ fontSize: '11px' }} />
+                          Attendance Summary (Semester {activeGradingSemester})
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
+                          {/* Present */}
+                          <div>
+                            <label style={{ fontSize: '11px', fontWeight: 600, color: isDark ? '#34D399' : '#059669', display: 'block', marginBottom: '3px' }}>
+                              🟢 Present (Hadir)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={currentData.present ?? 0}
+                              onChange={(e) => handleHomeroomFieldChange(std.user_id, 'present', parseInt(e.target.value) || 0)}
+                              style={{
+                                ...inputStyle,
+                                width: '100%',
+                                padding: '6px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                background: isDark ? '#18181B' : '#FFFFFF'
+                              }}
+                            />
+                          </div>
+
+                          {/* Sick */}
+                          <div>
+                            <label style={{ fontSize: '11px', fontWeight: 600, color: isDark ? '#FBBF24' : '#D97706', display: 'block', marginBottom: '3px' }}>
+                              🟡 Sick (Sakit)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={currentData.sick ?? 0}
+                              onChange={(e) => handleHomeroomFieldChange(std.user_id, 'sick', parseInt(e.target.value) || 0)}
+                              style={{
+                                ...inputStyle,
+                                width: '100%',
+                                padding: '6px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                background: isDark ? '#18181B' : '#FFFFFF'
+                              }}
+                            />
+                          </div>
+
+                          {/* Excused */}
+                          <div>
+                            <label style={{ fontSize: '11px', fontWeight: 600, color: isDark ? '#60A5FA' : '#2563EB', display: 'block', marginBottom: '3px' }}>
+                              🔵 Excused (Izin)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={currentData.excused ?? 0}
+                              onChange={(e) => handleHomeroomFieldChange(std.user_id, 'excused', parseInt(e.target.value) || 0)}
+                              style={{
+                                ...inputStyle,
+                                width: '100%',
+                                padding: '6px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                background: isDark ? '#18181B' : '#FFFFFF'
+                              }}
+                            />
+                          </div>
+
+                          {/* Late */}
+                          <div>
+                            <label style={{ fontSize: '11px', fontWeight: 600, color: isDark ? '#FB923C' : '#EA580C', display: 'block', marginBottom: '3px' }}>
+                              🟠 Late (Terlambat)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={currentData.late ?? 0}
+                              onChange={(e) => handleHomeroomFieldChange(std.user_id, 'late', parseInt(e.target.value) || 0)}
+                              style={{
+                                ...inputStyle,
+                                width: '100%',
+                                padding: '6px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                background: isDark ? '#18181B' : '#FFFFFF'
+                              }}
+                            />
+                          </div>
+
+                          {/* Absent */}
+                          <div>
+                            <label style={{ fontSize: '11px', fontWeight: 600, color: isDark ? '#F87171' : '#DC2626', display: 'block', marginBottom: '3px' }}>
+                              🔴 Absent (Alpha)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={currentData.absent ?? 0}
+                              onChange={(e) => handleHomeroomFieldChange(std.user_id, 'absent', parseInt(e.target.value) || 0)}
+                              style={{
+                                ...inputStyle,
+                                width: '100%',
+                                padding: '6px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                background: isDark ? '#18181B' : '#FFFFFF'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+          </div>
+        )}
 
       {/* ------------------------------------------------------------- */}
       {/* 4-STEP WIZARD MODAL: CREATE UNIT FOR PYP CLASS */}
@@ -5289,7 +5990,7 @@ export default function PypPage() {
               setScopeConfirmModal(prev => ({ ...prev, isOpen: false }))
             }
           }}
-          disableBackdropClose={scopeConfirmModal.saving}
+          disableBackdropClose={true}
           title="Change Semester Scope"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -5403,7 +6104,7 @@ export default function PypPage() {
           onClose={() => {
             if (!isGeneratingPdf) setShowPrintModal(false)
           }}
-          disableBackdropClose={isGeneratingPdf}
+          disableBackdropClose={true}
           title={`Print PYP Report Card — Semester ${printModalSemester}`}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -5695,6 +6396,7 @@ export default function PypPage() {
           <Modal
             isOpen={showUnitAssessModal}
             onClose={() => setShowUnitAssessModal(false)}
+            disableBackdropClose={true}
             size="xl"
             title={`Unit & ATL Assessment Matrix — ${activeAssessingUnit.title}`}
           >
@@ -5898,24 +6600,20 @@ export default function PypPage() {
                       <tr style={{ background: isDark ? '#27272A' : '#F4F4F5', borderBottom: `1px solid ${borderColor}`, position: 'sticky', top: 0, zIndex: 10 }}>
                         <th style={{ padding: '10px 12px', width: '40px', fontWeight: 600, color: textSecondary, textAlign: 'center' }}>#</th>
                         <th style={{ padding: '10px 12px', minWidth: '180px', fontWeight: 600, color: textPrimary }}>Student Name</th>
-                        <th style={{ padding: '10px 12px', minWidth: '150px', fontWeight: 700, color: isDark ? '#60A5FA' : '#1E40AF', background: isDark ? 'rgba(59,130,246,0.1)' : '#EFF6FF' }}>
+                        <th style={{ padding: '10px 12px', minWidth: '160px', fontWeight: 700, color: isDark ? '#60A5FA' : '#1E40AF', background: isDark ? 'rgba(59,130,246,0.1)' : '#EFF6FF' }}>
                           Unit Overall Rating
                         </th>
                         {activeUnitAtls.map(atl => (
-                          <th key={atl.id} style={{ padding: '10px 12px', minWidth: '150px', fontWeight: 600, color: textPrimary }}>
+                          <th key={atl.id} style={{ padding: '10px 12px', minWidth: '160px', fontWeight: 600, color: textPrimary }}>
                             {atl.name}
                           </th>
                         ))}
-                        <th style={{ padding: '10px 12px', minWidth: '220px', fontWeight: 600, color: textSecondary }}>
-                          Teacher Unit Notes (Optional)
-                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {displayedStudents.map((std, idx) => {
                         const studentFullName = `${std.user_nama_depan || ''} ${std.user_nama_belakang || ''}`.trim() || `Student ${idx + 1}`
                         const currentUnitRating = unitAssessMap[std.user_id]?.rating || 'N/A'
-                        const currentUnitNotes = unitAssessMap[std.user_id]?.notes || ''
                         const unitBadge = getRatingBadgeStyle(currentUnitRating, isDark)
 
                         return (
@@ -5942,10 +6640,10 @@ export default function PypPage() {
                                     color: textPrimary, 
                                     display: 'flex', 
                                     alignItems: 'center', 
-                                    justifyContent: 'center',
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    flexShrink: 0
+                                    justifyContent: 'center', 
+                                    fontSize: '10px', 
+                                    fontWeight: 700, 
+                                    flexShrink: 0 
                                   }}
                                 >
                                   {std.user_nama_depan?.[0]?.toUpperCase() || '?'}
@@ -6022,38 +6720,6 @@ export default function PypPage() {
                                 </td>
                               )
                             })}
-
-                            {/* Unit Evaluation Notes */}
-                            <td style={{ padding: '8px 12px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <input
-                                  type="text"
-                                  placeholder="Evaluation notes..."
-                                  value={currentUnitNotes}
-                                  onChange={(e) => {
-                                    const val = e.target.value
-                                    setUnitAssessMap(old => ({
-                                      ...old,
-                                      [std.user_id]: {
-                                        ...(old[std.user_id] || {}),
-                                        notes: val
-                                      }
-                                    }))
-                                  }}
-                                  onBlur={(e) => handleUnitNotesChange(std.user_id, e.target.value)}
-                                  style={{
-                                    ...selectStyle,
-                                    width: '100%',
-                                    padding: '5px 8px',
-                                    fontSize: '11.5px',
-                                    borderRadius: '5px'
-                                  }}
-                                />
-                                {savingUnitAssessId === `notes_${std.user_id}` && (
-                                  <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: '10px', color: isDark ? '#93C5FD' : '#2563EB' }} />
-                                )}
-                              </div>
-                            </td>
                           </tr>
                         )
                       })}

@@ -105,6 +105,7 @@ export const renderPypReportPage1 = async (doc, {
   principalName = 'Christin Anggraeni',
   principalTitle = 'PYP Principal',
   signatureUrl = null,
+  reportGreeting = null,
   logoBase64 = null,
   ibLogoBase64 = null,
   attendance = { absent: 1, present: 92, late: 0, excused: 8 }
@@ -162,7 +163,7 @@ export const renderPypReportPage1 = async (doc, {
 
   doc.setFontSize(9.5)
   doc.setTextColor(107, 114, 128)
-  doc.text(`Prepared : ${preparedDate}`, txStart, y + 24.5)
+  doc.text(`Prepared : ${preparedDate || '[Set in /settings/unit]'}`, txStart, y + 24.5)
 
   // Top Right: IB Primary Years Programme Logo Image
   if (ibLogoBase64) {
@@ -228,94 +229,167 @@ export const renderPypReportPage1 = async (doc, {
     }
   })
 
-  // 4. Letter to Parents (Fully Justified)
+  // 4. Letter to Parents / Greeting (from /settings/unit report_settings)
   y = Math.max(y + 19, teacherY + 6)
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10.5)
-  doc.setTextColor(17, 24, 39)
-  doc.text('Dear Parents,', ml, y)
+  if (reportGreeting && reportGreeting.trim() !== '') {
+    const semesterLabel = semester === '1' || semester === 1 ? 'Semester 1' : 'Semester 2'
+    let rawText = reportGreeting.trim().replace(/\{semester\}/gi, semesterLabel)
 
-  y += 7.5
-  const letterParagraph = `At Chung Chung Christian School, we believe in an education that actively combines challenging and enriching experiences with academic rigor and creative opportunities. Our goal is to empower students to courageously push the boundaries of their experiences and explore the vast possibilities available to them. While we take pride in their academic achievements, our commitment goes beyond test scores. We aim for our students to discover the excitement of realizing their capabilities far exceed what they might have thought possible. We hold high expectations for our students, and they, in turn, have high expectations for themselves. It is crucial that parents wholeheartedly embrace and support the school's ethos. With this, I am pleased to present your child's report card for this semester. Let's collaborate to create an environment that fosters growth and development.`
-
-  const words = letterParagraph.trim().split(/\s+/)
-  const normalSpaceW = doc.getTextWidth(' ')
-  const lines = []
-  let currentLine = []
-  let currentLineWidth = 0
-
-  for (const word of words) {
-    const wWidth = doc.getTextWidth(word)
-    const testWidth = currentLine.length === 0 ? wWidth : currentLineWidth + normalSpaceW + wWidth
-
-    if (testWidth > cw && currentLine.length > 0) {
-      lines.push(currentLine)
-      currentLine = [{ text: word, width: wWidth }]
-      currentLineWidth = wWidth
+    // Check if starts with "Dear Parents," or greeting salute
+    if (/^Dear\s+Parents[,\.\:]?/i.test(rawText)) {
+      const firstBreak = rawText.indexOf('\n')
+      if (firstBreak !== -1) {
+        const salute = rawText.substring(0, firstBreak).trim()
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10.5)
+        doc.setTextColor(17, 24, 39)
+        doc.text(salute, ml, y)
+        y += 7.5
+        rawText = rawText.substring(firstBreak).trim()
+      } else {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10.5)
+        doc.setTextColor(17, 24, 39)
+        doc.text('Dear Parents,', ml, y)
+        y += 7.5
+        rawText = rawText.replace(/^Dear\s+Parents[,\.\:]?/i, '').trim()
+      }
     } else {
-      currentLine.push({ text: word, width: wWidth })
-      currentLineWidth = testWidth
-    }
-  }
-  if (currentLine.length > 0) {
-    lines.push(currentLine)
-  }
-
-  const lineH = 5.2
-  for (let lIdx = 0; lIdx < lines.length; lIdx++) {
-    const line = lines[lIdx]
-    const isLastLine = (lIdx === lines.length - 1)
-    const totalWordsWidth = line.reduce((sum, item) => sum + item.width, 0)
-    const spacesCount = line.length - 1
-
-    let spaceW = normalSpaceW
-    if (!isLastLine && spacesCount > 0) {
-      spaceW = (cw - totalWordsWidth) / spacesCount
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10.5)
+      doc.setTextColor(17, 24, 39)
+      doc.text('Dear Parents,', ml, y)
+      y += 7.5
     }
 
-    let curX = ml
-    for (let wIdx = 0; wIdx < line.length; wIdx++) {
-      const item = line[wIdx]
-      doc.text(item.text, curX, y)
-      curX += item.width + spaceW
-    }
+    // Split remaining text into paragraphs
+    const paragraphs = rawText.split(/\r?\n\r?\n|\n/)
 
-    y += lineH
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10.5)
+    doc.setTextColor(17, 24, 39)
+    const lineH = 5.2
+
+    for (const para of paragraphs) {
+      if (!para.trim()) continue
+      const words = para.trim().split(/\s+/)
+      const normalSpaceW = doc.getTextWidth(' ')
+      const lines = []
+      let currentLine = []
+      let currentLineWidth = 0
+
+      for (const word of words) {
+        const wWidth = doc.getTextWidth(word)
+        const testWidth = currentLine.length === 0 ? wWidth : currentLineWidth + normalSpaceW + wWidth
+
+        if (testWidth > cw && currentLine.length > 0) {
+          lines.push(currentLine)
+          currentLine = [{ text: word, width: wWidth }]
+          currentLineWidth = wWidth
+        } else {
+          currentLine.push({ text: word, width: wWidth })
+          currentLineWidth = testWidth
+        }
+      }
+      if (currentLine.length > 0) {
+        lines.push(currentLine)
+      }
+
+      for (let lIdx = 0; lIdx < lines.length; lIdx++) {
+        const line = lines[lIdx]
+        const isLastLine = (lIdx === lines.length - 1)
+        const totalWordsWidth = line.reduce((sum, item) => sum + item.width, 0)
+        const spacesCount = line.length - 1
+
+        let spaceW = normalSpaceW
+        if (!isLastLine && spacesCount > 0 && lines.length > 1) {
+          spaceW = (cw - totalWordsWidth) / spacesCount
+        }
+
+        let curX = ml
+        for (let wIdx = 0; wIdx < line.length; wIdx++) {
+          const item = line[wIdx]
+          doc.text(item.text, curX, y)
+          curX += item.width + spaceW
+        }
+
+        y += lineH
+      }
+
+      y += 3.5 // Paragraph spacing
+    }
+  } else {
+    // Unconfigured notice
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10.5)
+    doc.setTextColor(17, 24, 39)
+    doc.text('Dear Parents,', ml, y)
+    y += 7.5
+
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10)
+    doc.setTextColor(107, 114, 128)
+    doc.text(`[Report greeting for Semester ${semester} has not been configured. Please set it in /settings/unit]`, ml, y)
+    y += 12
   }
 
   // Kind regards
   y += 5.5
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10.5)
+  doc.setTextColor(17, 24, 39)
   doc.text('Kind regards,', ml, y)
 
-  // Signature
-  y += 6.5
+  // Signature (Enlarged 1.5x / +50%)
+  y += 5.5
+  let renderedSigHeight = 16
   if (signatureUrl) {
     try {
       const sigB64 = await loadImgBase64(signatureUrl)
       if (sigB64) {
-        doc.addImage(sigB64, 'PNG', ml, y, 28, 14)
-      } else {
-        drawPrincipalSignature(doc, ml, y)
+        const imgProps = doc.getImageProperties(sigB64)
+        const sigH = 22.5 // 1.5x enlarged from 15mm
+        const sigW = (imgProps.width / imgProps.height) * sigH
+        const maxSigW = 63 // 1.5x enlarged from 42mm
+        const renderW = Math.min(sigW, maxSigW)
+        const renderH = (sigH * renderW) / sigW
+        renderedSigHeight = renderH
+        doc.addImage(sigB64, 'PNG', ml, y - 2, renderW, renderH)
       }
     } catch (e) {
-      drawPrincipalSignature(doc, ml, y)
+      console.warn('Failed to load principal signature image:', e)
     }
   } else {
-    drawPrincipalSignature(doc, ml, y)
+    // No signature in /settings/unit - leave clean blank space
+    renderedSigHeight = 12
   }
 
   // Principal Name & Title
-  y += 18
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10.5)
-  doc.setTextColor(17, 24, 39)
-  doc.text(principalName, ml, y)
+  y += Math.max(renderedSigHeight + 3, 18)
+  if (principalName && principalName.trim() !== '') {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(17, 24, 39)
+    doc.text(principalName, ml, y)
+  } else {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(9.5)
+    doc.setTextColor(156, 163, 175)
+    doc.text('[Principal Name not set in /settings/unit]', ml, y)
+  }
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.setTextColor(55, 65, 81)
-  doc.text(principalTitle, ml, y + 4.8)
+  if (principalTitle && principalTitle.trim() !== '') {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    doc.setTextColor(55, 65, 81)
+    doc.text(principalTitle, ml, y + 4.8)
+  } else {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(9.5)
+    doc.setTextColor(156, 163, 175)
+    doc.text('[Principal Title not set in /settings/unit]', ml, y + 4.8)
+  }
 
   // 5. Attendance Section
   y += 15
@@ -1359,6 +1433,296 @@ export const renderPypApproachesToLearningPage = async (doc, {
 }
 
 /**
+ * Helper to draw a crisp vector document icon next to each subject name
+ */
+const drawMiniSubjectDocIcon = (doc, x, y) => {
+  try {
+    doc.saveGraphicsState()
+    doc.setDrawColor(147, 197, 253) // #93C5FD
+    doc.setFillColor(239, 246, 255) // #EFF6FF
+    doc.setLineWidth(0.35)
+    doc.roundedRect(x, y - 4.5, 4.8, 5.8, 0.5, 0.5, 'FD')
+    doc.setDrawColor(96, 165, 250)  // #60A5FA
+    doc.line(x + 1.1, y - 3.0, x + 3.7, y - 3.0)
+    doc.line(x + 1.1, y - 1.7, x + 3.7, y - 1.7)
+    doc.line(x + 1.1, y - 0.4, x + 2.7, y - 0.4)
+    doc.restoreGraphicsState()
+  } catch (e) {}
+}
+
+/**
+ * Builds the "Subjects" (Subject Strands Assessment) Page(s) for a student on the given jsPDF doc
+ */
+export const renderPypSubjectsPage = async (doc, {
+  student = {},
+  classSubjects = [],
+  subjectStrandsMap = {},
+  strandAssessmentsMap = {},
+  logoBase64 = null,
+  headerIconBase64 = null
+}) => {
+  const pw = doc.internal.pageSize.getWidth()   // 210mm
+  const ph = doc.internal.pageSize.getHeight()  // 297mm
+  const ml = 18
+  const mr = 18
+  const mt = 16
+  const mb = 22
+  const cw = pw - ml - mr // 174mm
+
+  // Function to render page background, header box & watermark
+  const renderHeaderAndBackground = () => {
+    // 1. Watermark
+    if (logoBase64) {
+      try {
+        doc.saveGraphicsState()
+        doc.setGState(new doc.GState({ opacity: 0.05 }))
+        const wmW = 105
+        const imgProps = doc.getImageProperties(logoBase64)
+        const wmH = (imgProps.height / imgProps.width) * wmW
+        doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH)
+        doc.restoreGraphicsState()
+      } catch (e) {}
+    }
+
+    // 2. Header Box: "Subjects"
+    let y = mt
+    const boxH = 20
+    doc.setDrawColor(20, 45, 85) // Navy border
+    doc.setLineWidth(0.6)
+    doc.rect(ml, y, cw, boxH)
+
+    if (headerIconBase64) {
+      try {
+        const ext = headerIconBase64.includes('image/jpeg') ? 'JPEG' : 'PNG'
+        doc.addImage(headerIconBase64, ext, ml + 4.5, y + 2.5, 15, 15)
+      } catch (e) {}
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(17)
+    doc.setTextColor(17, 24, 39) // #111827
+    doc.text('Subjects', ml + 24, y + 12.8)
+
+    return y + boxH + 8
+  }
+
+  let contentTopY = renderHeaderAndBackground()
+  const contentBoxH = ph - mb - contentTopY - 2
+
+  doc.setDrawColor(20, 45, 85)
+  doc.setLineWidth(0.5)
+  doc.rect(ml, contentTopY, cw, contentBoxH)
+
+  let itemY = contentTopY + 10
+
+  // Filter subjects that have at least one assessed strand for this student
+  const activeSubjectsWithGradedStrands = classSubjects.map(sub => {
+    const allStrands = subjectStrandsMap[sub.id] || []
+    const gradedStrands = allStrands.filter(strand => {
+      const rawRating = strandAssessmentsMap[`${student.user_id}_${sub.id}_${strand.id}`]?.rating
+      return rawRating && rawRating !== 'N/A' && rawRating.trim() !== ''
+    })
+    return {
+      ...sub,
+      gradedStrands
+    }
+  }).filter(sub => sub.gradedStrands.length > 0)
+
+  const MAX_SUBJECTS_PER_PAGE = 5
+  let subjectsOnCurrentPage = 0
+
+  if (activeSubjectsWithGradedStrands.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(11)
+    doc.setTextColor(107, 114, 128)
+    doc.text('No subject strand evaluations available for this semester.', ml + 10, itemY + 8)
+  } else {
+    for (let sIdx = 0; sIdx < activeSubjectsWithGradedStrands.length; sIdx++) {
+      const subject = activeSubjectsWithGradedStrands[sIdx]
+      const strands = subject.gradedStrands || []
+
+      // Calculate required height for this subject block:
+      // subject header (7.5mm) + each strand (4.5mm) + gap (7mm)
+      const blockH = 7.5 + strands.length * 4.5 + 7
+      if (subjectsOnCurrentPage >= MAX_SUBJECTS_PER_PAGE || (itemY + blockH > ph - mb - 8)) {
+        // Render footer on current page
+        renderPypReportFooter(doc)
+
+        // Add new page
+        doc.addPage()
+        contentTopY = renderHeaderAndBackground()
+        doc.setDrawColor(20, 45, 85)
+        doc.setLineWidth(0.5)
+        doc.rect(ml, contentTopY, cw, contentBoxH)
+        itemY = contentTopY + 10
+        subjectsOnCurrentPage = 0
+      }
+
+      // Subject Header Row
+      const iconX = ml + 6
+      drawMiniSubjectDocIcon(doc, iconX, itemY + 3.5)
+
+      // Subject Name
+      const textStartX = ml + 14
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11.5)
+      doc.setTextColor(17, 24, 39)
+      doc.text(subject.name, textStartX, itemY + 4)
+
+      // "Student Progress" column label
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10.5)
+      doc.setTextColor(31, 41, 55)
+      const progressLabel = 'Student Progress'
+      const progressW = doc.getTextWidth(progressLabel)
+      doc.text(progressLabel, ml + cw - 8 - progressW, itemY + 4)
+
+      itemY += 8.5
+
+      // Strands list under this Subject
+      for (const strand of strands) {
+        const rawRating = strandAssessmentsMap[`${student.user_id}_${subject.id}_${strand.id}`]?.rating
+        const rating = (rawRating && rawRating !== 'N/A') ? rawRating : 'Achieving'
+
+        // Strand Name
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(31, 41, 55)
+        doc.text(strand.name, textStartX, itemY + 3)
+
+        // Student Rating
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(31, 41, 55)
+        const ratingW = doc.getTextWidth(rating)
+        doc.text(rating, ml + cw - 8 - ratingW, itemY + 3)
+
+        itemY += 4.8
+      }
+
+      itemY += 5.5 // Gap between subjects
+      subjectsOnCurrentPage++
+    }
+  }
+
+  // Render Footer on final subjects page
+  renderPypReportFooter(doc)
+}
+
+/**
+ * Builds the "Teacher's Comment" Page for a student on the given jsPDF doc
+ */
+export const renderPypTeacherCommentPage = async (doc, {
+  student = {},
+  commentText = '',
+  logoBase64 = null,
+  headerIconBase64 = null
+}) => {
+  const pw = doc.internal.pageSize.getWidth()   // 210mm
+  const ph = doc.internal.pageSize.getHeight()  // 297mm
+  const ml = 18
+  const mr = 18
+  const mt = 16
+  const mb = 22
+  const cw = pw - ml - mr // 174mm
+
+  // 1. Watermark
+  if (logoBase64) {
+    try {
+      doc.saveGraphicsState()
+      doc.setGState(new doc.GState({ opacity: 0.05 }))
+      const wmW = 105
+      const imgProps = doc.getImageProperties(logoBase64)
+      const wmH = (imgProps.height / imgProps.width) * wmW
+      doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH)
+      doc.restoreGraphicsState()
+    } catch (e) {}
+  }
+
+  // 2. Header Box: "Teacher's Comment"
+  let y = mt
+  const boxH = 20
+  doc.setDrawColor(20, 45, 85) // Navy border
+  doc.setLineWidth(0.6)
+  doc.rect(ml, y, cw, boxH)
+
+  if (headerIconBase64) {
+    try {
+      const ext = headerIconBase64.includes('image/jpeg') ? 'JPEG' : 'PNG'
+      doc.addImage(headerIconBase64, ext, ml + 4.5, y + 2.5, 15, 15)
+    } catch (e) {}
+  }
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(17)
+  doc.setTextColor(17, 24, 39) // #111827
+  doc.text("Teacher's Comment", ml + 24, y + 12.8)
+
+  // 3. Comment Content
+  let textY = y + boxH + 12
+  const maxTextW = cw
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10.5)
+  doc.setTextColor(17, 24, 39) // #111827
+
+  if (commentText && commentText.trim() !== '') {
+    // Justified paragraph rendering
+    const paragraphs = commentText.split(/\r?\n\r?\n|\n/)
+    
+    for (const para of paragraphs) {
+      if (!para.trim()) continue
+      
+      const words = para.trim().split(/\s+/)
+      const normalSpaceW = doc.getTextWidth(' ')
+      let currentLine = []
+      let currentLineWidth = 0
+
+      for (const word of words) {
+        const wWidth = doc.getTextWidth(word)
+        const testWidth = currentLine.length === 0 ? wWidth : currentLineWidth + normalSpaceW + wWidth
+
+        if (testWidth <= maxTextW) {
+          currentLine.push(word)
+          currentLineWidth = testWidth
+        } else {
+          // Render justified line
+          if (currentLine.length > 1) {
+            const extraSpace = maxTextW - currentLineWidth
+            const spaceIncrement = extraSpace / (currentLine.length - 1)
+            let curX = ml
+            for (let i = 0; i < currentLine.length; i++) {
+              doc.text(currentLine[i], curX, textY)
+              curX += doc.getTextWidth(currentLine[i]) + normalSpaceW + (i < currentLine.length - 1 ? spaceIncrement : 0)
+            }
+          } else if (currentLine.length === 1) {
+            doc.text(currentLine[0], ml, textY)
+          }
+
+          textY += 6
+          currentLine = [word]
+          currentLineWidth = wWidth
+        }
+      }
+
+      // Last line of paragraph (left-aligned)
+      if (currentLine.length > 0) {
+        doc.text(currentLine.join(' '), ml, textY)
+        textY += 9 // Space between paragraphs
+      }
+    }
+  } else {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10.5)
+    doc.setTextColor(107, 114, 128)
+    doc.text('No homeroom teacher comments recorded for this semester.', ml, textY)
+  }
+
+  // 4. Render Footer
+  renderPypReportFooter(doc)
+}
+
+/**
  * Main handler to generate and open PYP Report PDF for a class & semester
  */
 export const generatePypClassReportPDF = async ({
@@ -1461,10 +1825,11 @@ export const generatePypClassReportPDF = async ({
     // 3. Fetch Mentor Comment / Attendance records for these students
     const studentUserIds = students.map(s => s.user_id).filter(id => id > 0)
     let attendanceMap = {}
+    let homeroomCommentsMap = {}
     if (studentUserIds.length > 0) {
       const { data: mentorComments } = await supabase
         .from('mentor_comment')
-        .select('student_user_id, absent, present, late, excused, sick')
+        .select('student_user_id, comment_text, absent, present, late, excused, sick')
         .eq('kelas_id', Number(classId))
         .eq('semester', Number(semester))
         .in('student_user_id', studentUserIds)
@@ -1476,32 +1841,65 @@ export const generatePypClassReportPDF = async ({
           late: mc.late ?? 0,
           excused: (mc.excused ?? 0) + (mc.sick ?? 0)
         }
+        if (mc.comment_text && mc.comment_text.trim() !== '') {
+          homeroomCommentsMap[mc.student_user_id] = mc.comment_text.trim()
+        }
       }
     }
 
-    // 4. Fetch PYP Report Settings (Principal Name, Title, Date)
-    let principalName = 'Christin Anggraeni'
-    let principalTitle = 'PYP Principal'
-    let preparedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    // 4. Fetch PYP Report Settings strictly from /settings/unit (per DATABASE_SCHEMA.md)
+    let principalName = ''
+    let principalTitle = ''
+    let preparedDate = ''
     let signatureUrl = null
+    let reportGreeting = null
 
-    // Check report_settings table if available
-    const { data: reportSettings } = await supabase
-      .from('report_settings')
-      .select('principal_name, principal_title, report_date_s1, report_date_s2, signature_principal_url')
-      .eq('unit_id', classData?.kelas_unit_id || 1)
-      .order('id', { ascending: false })
-      .limit(1)
+    try {
+      const unitIdToUse = classData?.kelas_unit_id || 1
 
-    if (reportSettings && reportSettings.length > 0) {
-      const rs = reportSettings[0]
-      if (rs.principal_name) principalName = rs.principal_name
-      if (rs.principal_title) principalTitle = rs.principal_title
-      if (rs.signature_principal_url) signatureUrl = rs.signature_principal_url
-      const rawDate = semester === '1' ? rs.report_date_s1 : rs.report_date_s2
-      if (rawDate) {
-        preparedDate = new Date(rawDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      // Strictly query report_settings table (configured via /settings/unit)
+      let rs = null
+      if (yearId) {
+        const { data: matchedRs } = await supabase
+          .from('report_settings')
+          .select('principal_name, principal_title, report_greeting_s1, report_greeting_s2, report_date_s1, report_date_s2, signature_principal_url, stamp_url')
+          .eq('unit_id', unitIdToUse)
+          .eq('year_id', Number(yearId))
+          .limit(1)
+        if (matchedRs && matchedRs.length > 0) rs = matchedRs[0]
       }
+
+      if (!rs) {
+        const { data: fallbackRs } = await supabase
+          .from('report_settings')
+          .select('principal_name, principal_title, report_greeting_s1, report_greeting_s2, report_date_s1, report_date_s2, signature_principal_url, stamp_url')
+          .eq('unit_id', unitIdToUse)
+          .order('id', { ascending: false })
+          .limit(1)
+        if (fallbackRs && fallbackRs.length > 0) rs = fallbackRs[0]
+      }
+
+      if (rs) {
+        if (rs.principal_name && rs.principal_name.trim() !== '') {
+          principalName = rs.principal_name.trim()
+        }
+        if (rs.principal_title && rs.principal_title.trim() !== '') {
+          principalTitle = rs.principal_title.trim()
+        }
+        if (rs.signature_principal_url && rs.signature_principal_url.trim() !== '') {
+          signatureUrl = rs.signature_principal_url.trim()
+        }
+        const greeting = semester === '1' ? rs.report_greeting_s1 : rs.report_greeting_s2
+        if (greeting && greeting.trim() !== '') {
+          reportGreeting = greeting.trim()
+        }
+        const rawDate = semester === '1' ? rs.report_date_s1 : rs.report_date_s2
+        if (rawDate) {
+          preparedDate = new Date(rawDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        }
+      }
+    } catch (e) {
+      console.warn('Error querying report_settings from /settings/unit:', e)
     }
 
     // Override with custom user-selected report date if provided
@@ -1680,6 +2078,67 @@ export const generatePypClassReportPDF = async ({
       }
     }
 
+    // 5.2 Fetch PYP Subjects, Strands, and Student Strand Assessments for this Class & Semester
+    let classSubjects = []
+    let subjectStrandsMap = {}
+    let strandAssessmentsMap = {}
+
+    try {
+      // 1. Get subjects linked to this class
+      const { data: subjectClassRows } = await supabase
+        .from('pyp_subject_class')
+        .select('subject_id')
+        .eq('kelas_id', Number(classId))
+
+      const assignedSubjectIds = (subjectClassRows || []).map(r => r.subject_id)
+
+      let subjectQuery = supabase.from('pyp_subject').select('*').eq('is_active', true).order('order_index', { ascending: true })
+      if (assignedSubjectIds.length > 0) {
+        subjectQuery = subjectQuery.in('id', assignedSubjectIds)
+      } else if (yearId) {
+        subjectQuery = subjectQuery.eq('year_id', Number(yearId))
+      }
+
+      const { data: subjectsData } = await subjectQuery
+      classSubjects = subjectsData || []
+
+      const pypSubjectIds = classSubjects.map(s => s.id)
+
+      if (pypSubjectIds.length > 0) {
+        const [strandsRes, strandAssessRes] = await Promise.all([
+          supabase
+            .from('pyp_subject_strand')
+            .select('*')
+            .in('subject_id', pypSubjectIds)
+            .eq('is_active', true)
+            .or(`semester.eq.${semester},semester.eq.all,semester.is.null`)
+            .order('order_index', { ascending: true }),
+          supabase
+            .from('pyp_strand_assessment')
+            .select('*')
+            .eq('kelas_id', Number(classId))
+            .eq('year_id', Number(yearId))
+            .eq('semester', Number(semester))
+            .in('subject_id', pypSubjectIds)
+        ])
+
+        if (strandsRes.data) {
+          strandsRes.data.forEach(strand => {
+            if (!subjectStrandsMap[strand.subject_id]) subjectStrandsMap[strand.subject_id] = []
+            subjectStrandsMap[strand.subject_id].push(strand)
+          })
+        }
+
+        if (strandAssessRes.data) {
+          strandAssessRes.data.forEach(row => {
+            strandAssessmentsMap[`${row.student_id}_${row.subject_id}_${row.strand_id}`] = row
+          })
+        }
+      }
+    } catch (e) {
+      console.warn('Error loading PYP subjects/strands/assessments for report PDF:', e)
+    }
+
     // 6. Load Logos & Page Icons Base64
     const [
       logoBase64,
@@ -1709,7 +2168,9 @@ export const generatePypClassReportPDF = async ({
       kcConnBase64,
       kcPerspBase64,
       kcRespBase64,
-      atlHeaderIconBase64
+      atlHeaderIconBase64,
+      subjectHeaderIconBase64,
+      teacherCommentHeaderIconBase64
     ] = await Promise.all([
       loadImgBase64('/images/login-logo.png'),
       loadImgBase64('/images/pyp-descriptor-icon.png'),
@@ -1738,7 +2199,9 @@ export const generatePypClassReportPDF = async ({
       loadImgBase64('/images/kc_connection.jpg'),
       loadImgBase64('/images/kc_perspective.jpg'),
       loadImgBase64('/images/kc_responsibility.jpg'),
-      loadImgBase64('/images/atl-header-icon.jpg') || loadImgBase64('/images/atl-header-icon.png')
+      loadImgBase64('/images/atl-header-icon.jpg') || loadImgBase64('/images/atl-header-icon.png'),
+      loadImgBase64('/images/subject-header-icon.jpg') || loadImgBase64('/images/subject-header-icon.png'),
+      loadImgBase64('/images/teacher-comment-header-icon.png') || loadImgBase64('/images/teacher-comment-header-icon.jpg')
     ])
 
     const lpIcons = {
@@ -1794,6 +2257,7 @@ export const generatePypClassReportPDF = async ({
         principalName: principalName,
         principalTitle: principalTitle,
         signatureUrl: signatureUrl,
+        reportGreeting: reportGreeting,
         logoBase64: logoBase64,
         ibLogoBase64: ibLogoBase64,
         attendance: att
@@ -1850,6 +2314,44 @@ export const generatePypClassReportPDF = async ({
           logoBase64: logoBase64,
           headerIconBase64: atlHeaderIconBase64 || poiHeaderIconBase64 || lpHeaderIconBase64,
           lpIcons: lpIcons
+        })
+      }
+
+      // ── Page: Subjects (Subject Strands Assessment in this semester) ──
+      // Only include subjects that have at least one assessed/graded strand for this student
+      const studentAssessedSubjects = classSubjects.map(sub => {
+        const allStrands = subjectStrandsMap[sub.id] || []
+        const gradedStrands = allStrands.filter(strand => {
+          const rawRating = strandAssessmentsMap[`${st.user_id}_${sub.id}_${strand.id}`]?.rating
+          return rawRating && rawRating !== 'N/A' && rawRating.trim() !== ''
+        })
+        return {
+          ...sub,
+          gradedStrands
+        }
+      }).filter(sub => sub.gradedStrands.length > 0)
+
+      if (studentAssessedSubjects.length > 0) {
+        doc.addPage()
+        await renderPypSubjectsPage(doc, {
+          student: st,
+          classSubjects: studentAssessedSubjects,
+          subjectStrandsMap: subjectStrandsMap,
+          strandAssessmentsMap: strandAssessmentsMap,
+          logoBase64: logoBase64,
+          headerIconBase64: subjectHeaderIconBase64 || poiHeaderIconBase64 || lpHeaderIconBase64
+        })
+      }
+
+      // ── Page: Teacher's Comment (Homeroom Teacher Holistic Comment) ──
+      const studentCommentText = homeroomCommentsMap[st.user_id] || ''
+      if (studentCommentText) {
+        doc.addPage()
+        await renderPypTeacherCommentPage(doc, {
+          student: st,
+          commentText: studentCommentText,
+          logoBase64: logoBase64,
+          headerIconBase64: teacherCommentHeaderIconBase64 || poiHeaderIconBase64 || lpHeaderIconBase64
         })
       }
 

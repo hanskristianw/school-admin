@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1787718436.8566103,
-    "ast_hash": "69572d02c824ff45b90ef9d2dcb9d7a2",
+    "mtime": 1787726142.300944,
+    "ast_hash": "66b4895de4208c41120124b4c94bdc29",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -1840,8 +1840,8 @@
     "semantic_hash": ""
   },
   "src/app/data/pyp/page.jsx": {
-    "mtime": 1787714319.710128,
-    "ast_hash": "402492b2058bddbf6ca023de4cba26fb",
+    "mtime": 1787732853.4891055,
+    "ast_hash": "0910ba1397b6b7b252a0aa5a2d800021",
     "semantic_hash": ""
   },
   "src/app/data/topic-pyp/page.jsx": {
@@ -1890,8 +1890,8 @@
     "semantic_hash": ""
   },
   "src/app/data/pyp/lib/pypPdfGenerator.js": {
-    "mtime": 1787718041.718724,
-    "ast_hash": "95c588cadd2d7082e1da7327f75f4e6c",
+    "mtime": 1787727718.903761,
+    "ast_hash": "cfa7556f14a25a8a9c56c4a6b5585b45",
     "semantic_hash": ""
   },
   "public/images/pyp-descriptor-icon.png": {
@@ -2042,6 +2042,16 @@
   "migrations/update-fpb-procurement-status.sql": {
     "mtime": 1787718443.056281,
     "ast_hash": "fa4841ed1fb08f75d2fae310c837d91e",
+    "semantic_hash": ""
+  },
+  "public/images/subject-header-icon.jpg": {
+    "mtime": 1787720309.7403014,
+    "ast_hash": "dd13ccd8023058416956f5ca8a16d593",
+    "semantic_hash": ""
+  },
+  "public/images/teacher-comment-header-icon.png": {
+    "mtime": 1787725036.645,
+    "ast_hash": "e46f1fbdedba88d783eaed8128e4e336",
     "semantic_hash": ""
   }
 }
