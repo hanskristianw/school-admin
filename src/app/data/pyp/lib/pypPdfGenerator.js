@@ -1201,6 +1201,164 @@ export const renderPypProgrammeOfInquiryPage = async (doc, {
 }
 
 /**
+ * Builds the "Approaches to Learning" (ATL) Page for a student on the given jsPDF doc
+ */
+export const renderPypApproachesToLearningPage = async (doc, {
+  student = {},
+  semesterAtlItems = [],
+  atlAssessmentsMap = {},
+  logoBase64 = null,
+  headerIconBase64 = null,
+  lpIcons = {}
+}) => {
+  const pw = doc.internal.pageSize.getWidth()   // 210mm
+  const ph = doc.internal.pageSize.getHeight()  // 297mm
+  const ml = 18
+  const mr = 18
+  const mt = 16
+  const mb = 22
+  const cw = pw - ml - mr // 174mm
+
+  // 1. Watermark: Subtle school crest in the center background
+  if (logoBase64) {
+    try {
+      doc.saveGraphicsState()
+      doc.setGState(new doc.GState({ opacity: 0.05 }))
+      const wmW = 105
+      const imgProps = doc.getImageProperties(logoBase64)
+      const wmH = (imgProps.height / imgProps.width) * wmW
+      doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH)
+      doc.restoreGraphicsState()
+    } catch (e) {}
+  }
+
+  // 2. Header Box: "Approaches to Learning" with blue circular icon
+  let y = mt
+  const boxH = 20
+  doc.setDrawColor(20, 45, 85) // Navy border
+  doc.setLineWidth(0.6)
+  doc.rect(ml, y, cw, boxH)
+
+  if (headerIconBase64) {
+    try {
+      const ext = headerIconBase64.includes('image/jpeg') ? 'JPEG' : 'PNG'
+      doc.addImage(headerIconBase64, ext, ml + 5, y + 2.5, 15, 15)
+    } catch (e) {}
+  }
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(17)
+  doc.setTextColor(17, 24, 39) // #111827
+  doc.text('Approaches to Learning', ml + 24, y + 12.8)
+
+  y += boxH + 8
+
+  // 3. Main Outer Content Container Box
+  const contentTopY = y
+  const contentBoxH = ph - mb - contentTopY - 2
+
+  doc.setDrawColor(20, 45, 85)
+  doc.setLineWidth(0.5)
+  doc.rect(ml, contentTopY, cw, contentBoxH)
+
+  // Inner padding for the list
+  let itemY = contentTopY + 8
+
+  if (semesterAtlItems.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(11)
+    doc.setTextColor(107, 114, 128)
+    doc.text('No Approaches to Learning skills configured for this semester.', ml + 10, itemY + 8)
+  } else {
+    for (let idx = 0; idx < semesterAtlItems.length; idx++) {
+      const item = semesterAtlItems[idx]
+      const rawRating = atlAssessmentsMap[`${student.user_id}_${item.unitId}_${item.atlId}`]?.rating
+      const rating = (rawRating && rawRating !== 'N/A') ? rawRating : 'Achieving'
+
+      // Determine skill icon based on ATL category
+      let iconToUse = null
+      const lowerName = (item.atlName || '').toLowerCase()
+      if (lowerName.includes('think')) iconToUse = lpIcons.thinkers
+      else if (lowerName.includes('research') || lowerName.includes('inquir')) iconToUse = lpIcons.inquirers || lpIcons.knowledgeable
+      else if (lowerName.includes('self') || lowerName.includes('manage') || lowerName.includes('balanc')) iconToUse = lpIcons.balanced || lpIcons.reflective
+      else if (lowerName.includes('communicat')) iconToUse = lpIcons.communicators
+      else if (lowerName.includes('social') || lowerName.includes('car')) iconToUse = lpIcons.caring || lpIcons.principled
+
+      // Draw mini icon or clean bullet
+      const iconX = ml + 6
+      const iconY = itemY
+      const iconSize = 7
+
+      if (iconToUse) {
+        try {
+          doc.addImage(iconToUse, 'JPEG', iconX, iconY - 1, iconSize, iconSize)
+        } catch (e) {
+          doc.setFillColor(37, 99, 235)
+          doc.circle(iconX + 3.5, iconY + 2.5, 2, 'F')
+        }
+      } else {
+        doc.setFillColor(37, 99, 235)
+        doc.circle(iconX + 3.5, iconY + 2.5, 2, 'F')
+      }
+
+      // Title on left: Unit X - Skill Name
+      const textStartX = ml + 16
+      let formattedTitle = item.unitTitle || `Unit ${item.unitIndex}`
+      const match = formattedTitle.match(/Unit\s*\d+/i)
+      if (match) {
+        formattedTitle = match[0]
+      } else if (!formattedTitle.toLowerCase().includes('unit')) {
+        formattedTitle = `Unit ${item.unitIndex}`
+      }
+      const displayHeader = `${formattedTitle} - ${item.atlName}`
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11.5)
+      doc.setTextColor(17, 24, 39)
+      doc.text(displayHeader, textStartX, itemY + 4)
+
+      // Rating on right - identical font size and weight to the unit title
+      if (rating) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(11.5)
+        doc.setTextColor(17, 24, 39)
+        const ratingW = doc.getTextWidth(rating)
+        doc.text(rating, ml + cw - 8 - ratingW, itemY + 4)
+      }
+
+      itemY += 8.5
+
+      // Parse bullet points from item.keterangan
+      if (item.keterangan && item.keterangan.trim()) {
+        const rawLines = item.keterangan
+          .split(/[\r\n]+/)
+          .map(l => l.trim().replace(/^[•\-\*\s]+/, ''))
+          .filter(Boolean)
+
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9.5)
+        doc.setTextColor(31, 41, 55)
+
+        const bulletIndent = textStartX + 4
+        const maxTextW = cw - 30
+
+        for (const line of rawLines) {
+          const splitLines = doc.splitTextToSize(line, maxTextW)
+          doc.text('•', bulletIndent - 3, itemY + 1)
+          doc.text(splitLines, bulletIndent, itemY + 1)
+          itemY += splitLines.length * 4.2 + 1.2
+        }
+      }
+
+      itemY += 5.5 // Gap between ATL skills
+    }
+  }
+
+  // 4. Render Footer
+  renderPypReportFooter(doc)
+}
+
+/**
  * Main handler to generate and open PYP Report PDF for a class & semester
  */
 export const generatePypClassReportPDF = async ({
@@ -1420,15 +1578,20 @@ export const generatePypClassReportPDF = async ({
 
     if (unitIds.length > 0) {
       try {
-        const [resLoiPiv, resKcPiv, resLoiList, resKcList] = await Promise.all([
+        const [resLoiPiv, resKcPiv, resAtlPiv, resLoiList, resKcList, resAtlList] = await Promise.all([
           supabase.from('pyploiunit').select('*').in('unitId', unitIds).or('is_deleted.eq.0,is_deleted.is.null'),
           supabase.from('pypkcunit').select('*').in('unitId', unitIds).or('is_deleted.eq.0,is_deleted.is.null'),
+          supabase.from('pypatlsunit').select('*').in('unitId', unitIds).or('is_deleted.eq.0,is_deleted.is.null'),
           supabase.from('pyp_loi_list').select('*').or('is_deleted.eq.0,is_deleted.is.null'),
-          supabase.from('pyp_kc_list').select('*').or('is_deleted.eq.0,is_deleted.is.null')
+          supabase.from('pyp_kc_list').select('*').or('is_deleted.eq.0,is_deleted.is.null'),
+          supabase.from('pyp_atls_list').select('*').or('is_deleted.eq.0,is_deleted.is.null')
         ])
 
         const loiMap = {}
         if (resLoiList.data) resLoiList.data.forEach(l => { loiMap[l.id] = l.name })
+
+        const atlMap = {}
+        if (resAtlList.data) resAtlList.data.forEach(a => { atlMap[a.id] = a })
 
         const kcMap = {}
         if (resKcList.data) {
@@ -1455,8 +1618,40 @@ export const generatePypClassReportPDF = async ({
             if (kcMap[p.kcId]) unitKcMap[p.unitId].push(kcMap[p.kcId])
           })
         }
+
+        let unitAtlMap = {}
+        if (resAtlPiv.data) {
+          resAtlPiv.data.forEach(p => {
+            if (!unitAtlMap[p.unitId]) unitAtlMap[p.unitId] = []
+            const matched = atlMap[p.atlId]
+            unitAtlMap[p.unitId].push({
+              atlId: p.atlId,
+              name: matched?.name || `ATL #${p.atlId}`,
+              sub_skill: matched?.sub_skill || '',
+              deskripsi: matched?.deskripsi || '',
+              keterangan: p.keterangan || matched?.deskripsi || matched?.sub_skill || ''
+            })
+          })
+        }
+
+        // Build list of all ATL skills linked to units in this semester
+        var semesterAtlItems = []
+        for (let i = 0; i < classUnits.length; i++) {
+          const u = classUnits[i]
+          const atls = unitAtlMap[u.id] || []
+          for (const a of atls) {
+            semesterAtlItems.push({
+              unitId: u.id,
+              unitTitle: u.title || `Unit ${i + 1}`,
+              unitIndex: u.order_index || (i + 1),
+              atlId: a.atlId,
+              atlName: a.name,
+              keterangan: a.keterangan || ''
+            })
+          }
+        }
       } catch (e) {
-        console.warn('Error loading LOI/KC pivots for POI pages:', e)
+        console.warn('Error loading LOI/KC/ATL pivots for POI & ATL pages:', e)
       }
     }
 
@@ -1513,7 +1708,8 @@ export const generatePypClassReportPDF = async ({
       kcChanBase64,
       kcConnBase64,
       kcPerspBase64,
-      kcRespBase64
+      kcRespBase64,
+      atlHeaderIconBase64
     ] = await Promise.all([
       loadImgBase64('/images/login-logo.png'),
       loadImgBase64('/images/pyp-descriptor-icon.png'),
@@ -1541,7 +1737,8 @@ export const generatePypClassReportPDF = async ({
       loadImgBase64('/images/kc_change.jpg'),
       loadImgBase64('/images/kc_connection.jpg'),
       loadImgBase64('/images/kc_perspective.jpg'),
-      loadImgBase64('/images/kc_responsibility.jpg')
+      loadImgBase64('/images/kc_responsibility.jpg'),
+      loadImgBase64('/images/atl-header-icon.jpg') || loadImgBase64('/images/atl-header-icon.png')
     ])
 
     const lpIcons = {
@@ -1640,6 +1837,19 @@ export const generatePypClassReportPDF = async ({
           headerIconBase64: poiHeaderIconBase64,
           sectionIcons: sectionIcons,
           kcIcons: kcIcons
+        })
+      }
+
+      // ── Page: Approaches to Learning (ATL Skills evaluated in this semester) ──
+      if (semesterAtlItems && semesterAtlItems.length > 0) {
+        doc.addPage()
+        await renderPypApproachesToLearningPage(doc, {
+          student: st,
+          semesterAtlItems: semesterAtlItems,
+          atlAssessmentsMap: atlAssessmentsMap,
+          logoBase64: logoBase64,
+          headerIconBase64: atlHeaderIconBase64 || poiHeaderIconBase64 || lpHeaderIconBase64,
+          lpIcons: lpIcons
         })
       }
 

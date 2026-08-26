@@ -239,6 +239,7 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
   const [savingProcurement, setSavingProcurement] = useState(false)
   const [procurementNote, setProcurementNote]     = useState('')
   const [showProcurementNote, setShowProcurementNote] = useState(false)
+  const [procurementActionType, setProcurementActionType] = useState('ordered') // 'ordered' | 'cancelled'
 
   useEffect(() => {
     const uid = parseInt(localStorage.getItem('kr_id'))
@@ -519,12 +520,23 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
     finally { setSavingItems(false) }
   }
 
-  const handleToggleProcurement = async (markOrdered) => {
+  const handleToggleProcurement = async (targetStatus) => {
+    // targetStatus: 'ordered' | 'cancelled' | null
     setSavingProcurement(true); setError('')
     try {
-      const payload = markOrdered
-        ? { procurement_status: 'ordered', procurement_by: userId, procurement_at: new Date().toISOString(), procurement_note: procurementNote.trim() || null }
-        : { procurement_status: null,      procurement_by: null,   procurement_at: null,                      procurement_note: null }
+      const payload = targetStatus
+        ? {
+            procurement_status: targetStatus,
+            procurement_by: userId,
+            procurement_at: new Date().toISOString(),
+            procurement_note: procurementNote.trim() || null
+          }
+        : {
+            procurement_status: null,
+            procurement_by: null,
+            procurement_at: null,
+            procurement_note: null
+          }
       const { error: e } = await supabase.from('fpb').update(payload).eq('fpb_id', fpbId)
       if (e) throw e
       setProcurementNote('')
@@ -865,38 +877,116 @@ function ViewFpbModal({ fpbId, onClose, theme, onActionDone }) {
 
                 {/* Procurement Section */}
                 {fpb.status === 'approved' && (iAmScreener || canEditBudget) && (
-                  <div className="p-4 rounded-md border space-y-3" style={{ background: fpb.procurement_status === 'ordered' ? '#EDF3EC' : theme.cardBg, borderColor: fpb.procurement_status === 'ordered' ? '#346538' : theme.border }}>
+                  <div
+                    className="p-4 rounded-md border space-y-3"
+                    style={{
+                      background: fpb.procurement_status === 'ordered' ? '#EDF3EC' : fpb.procurement_status === 'cancelled' ? '#FDEBEC' : theme.cardBg,
+                      borderColor: fpb.procurement_status === 'ordered' ? '#346538' : fpb.procurement_status === 'cancelled' ? '#9F2F2D' : theme.border
+                    }}
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <div onClick={() => !savingProcurement && (fpb.procurement_status === 'ordered' ? handleToggleProcurement(false) : setShowProcurementNote(v => !v))}
-                          className="w-5 h-5 rounded border flex items-center justify-center cursor-pointer transition-all"
-                          style={{ borderColor: fpb.procurement_status === 'ordered' ? '#346538' : theme.border, background: fpb.procurement_status === 'ordered' ? '#346538' : theme.cardBg }}>
+                        <div
+                          onClick={() => !savingProcurement && (fpb.procurement_status ? handleToggleProcurement(null) : null)}
+                          className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${fpb.procurement_status ? 'cursor-pointer' : ''}`}
+                          style={{
+                            borderColor: fpb.procurement_status === 'ordered' ? '#346538' : fpb.procurement_status === 'cancelled' ? '#9F2F2D' : theme.border,
+                            background: fpb.procurement_status === 'ordered' ? '#346538' : fpb.procurement_status === 'cancelled' ? '#9F2F2D' : theme.cardBg
+                          }}
+                          title={fpb.procurement_status ? 'Click to reset procurement status' : ''}
+                        >
                           {fpb.procurement_status === 'ordered' && <FontAwesomeIcon icon={faCheck} className="text-white text-[10px]" />}
+                          {fpb.procurement_status === 'cancelled' && <FontAwesomeIcon icon={faTimes} className="text-white text-[10px]" />}
                         </div>
                         <div>
-                          <div className="font-bold text-xs" style={{ color: fpb.procurement_status === 'ordered' ? '#346538' : theme.textPrimary }}>
-                            {fpb.procurement_status === 'ordered' ? 'Ordered / Funds Disbursed' : 'Mark as Ordered / Funds Disbursed'}
+                          <div
+                            className="font-bold text-xs"
+                            style={{
+                              color: fpb.procurement_status === 'ordered' ? '#346538' : fpb.procurement_status === 'cancelled' ? '#9F2F2D' : theme.textPrimary
+                            }}
+                          >
+                            {fpb.procurement_status === 'ordered'
+                              ? 'Ordered / Funds Disbursed'
+                              : fpb.procurement_status === 'cancelled'
+                              ? 'Cancelled / Tidak Jadi Dipesan'
+                              : 'Mark as Ordered / Funds Disbursed'}
                           </div>
-                          {fpb.procurement_status === 'ordered' && (
+                          {fpb.procurement_status && (
                             <div className="text-[11px]" style={{ color: theme.textSecondary }}>
-                              by <strong>{`${fpb.procurator?.user_nama_depan || ''} ${fpb.procurator?.user_nama_belakang || ''}`.trim() || 'Admin'}</strong>
+                              {fpb.procurement_status === 'ordered' ? 'ordered by ' : 'cancelled by '}
+                              <strong>{`${fpb.procurator?.user_nama_depan || ''} ${fpb.procurator?.user_nama_belakang || ''}`.trim() || 'Admin'}</strong>
                               {fpb.procurement_at && ` · ${fmtDt(fpb.procurement_at)}`}
+                              {fpb.procurement_note && (
+                                <div className="mt-0.5 italic" style={{ color: theme.textPrimary }}>
+                                  Note: "{fpb.procurement_note}"
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       </div>
-                      {fpb.procurement_status !== 'ordered' && (
-                        <button onClick={() => setShowProcurementNote(v => !v)} className="px-3 py-1.5 rounded-md text-xs font-bold border cursor-pointer" style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textPrimary }}>
-                          {showProcurementNote ? 'Cancel' : 'Mark Ordered'}
+                      {!fpb.procurement_status ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setProcurementActionType('ordered')
+                              setShowProcurementNote(prev => (prev && procurementActionType === 'ordered' ? false : true))
+                            }}
+                            className="px-3 py-1.5 rounded-md text-xs font-bold border cursor-pointer transition-all hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            style={{
+                              borderColor: showProcurementNote && procurementActionType === 'ordered' ? '#059669' : theme.border,
+                              background: showProcurementNote && procurementActionType === 'ordered' ? 'rgba(5, 150, 105, 0.1)' : theme.cardBg,
+                              color: showProcurementNote && procurementActionType === 'ordered' ? '#059669' : theme.textPrimary
+                            }}
+                          >
+                            {showProcurementNote && procurementActionType === 'ordered' ? 'Cancel' : 'Mark Ordered'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setProcurementActionType('cancelled')
+                              setShowProcurementNote(prev => (prev && procurementActionType === 'cancelled' ? false : true))
+                            }}
+                            className="px-3 py-1.5 rounded-md text-xs font-bold border cursor-pointer transition-all hover:bg-red-50 dark:hover:bg-red-950/30"
+                            style={{
+                              borderColor: showProcurementNote && procurementActionType === 'cancelled' ? '#dc2626' : 'rgba(239, 68, 68, 0.4)',
+                              background: showProcurementNote && procurementActionType === 'cancelled' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.06)',
+                              color: '#dc2626'
+                            }}
+                          >
+                            {showProcurementNote && procurementActionType === 'cancelled' ? 'Cancel' : 'Cancelled / Tidak Jadi'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleProcurement(null)}
+                          disabled={savingProcurement}
+                          className="px-2.5 py-1 rounded text-[11px] font-semibold border cursor-pointer opacity-75 hover:opacity-100 transition-opacity"
+                          style={{ borderColor: theme.border, background: theme.cardBg, color: theme.textSecondary }}
+                        >
+                          Reset
                         </button>
                       )}
                     </div>
-                    {showProcurementNote && fpb.procurement_status !== 'ordered' && (
+                    {showProcurementNote && !fpb.procurement_status && (
                       <div className="flex gap-2 items-end pt-2 border-t" style={{ borderColor: theme.border }}>
-                        <input value={procurementNote} onChange={e => setProcurementNote(e.target.value)} placeholder="Procurement note..."
-                          className="flex-1 px-3 py-1.5 rounded-md border text-xs outline-none" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }} />
-                        <button onClick={() => handleToggleProcurement(true)} disabled={savingProcurement} className="px-4 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50">
-                          {savingProcurement ? 'Saving...' : 'Confirm Order'}
+                        <input
+                          value={procurementNote}
+                          onChange={e => setProcurementNote(e.target.value)}
+                          placeholder={procurementActionType === 'cancelled' ? "Alasan pembatalan pemesanan (opsional)..." : "Catatan pemesanan (opsional)..."}
+                          className="flex-1 px-3 py-1.5 rounded-md border text-xs outline-none"
+                          style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleToggleProcurement(procurementActionType)}
+                          disabled={savingProcurement}
+                          className={`px-4 py-1.5 rounded-md text-xs font-bold border-none cursor-pointer text-white disabled:opacity-50 transition-all ${
+                            procurementActionType === 'cancelled'
+                              ? 'bg-red-700 hover:bg-red-800'
+                              : 'bg-emerald-700 hover:bg-emerald-800'
+                          }`}
+                        >
+                          {savingProcurement ? 'Saving...' : procurementActionType === 'cancelled' ? 'Confirm Cancel' : 'Confirm Order'}
                         </button>
                       </div>
                     )}
@@ -2310,9 +2400,13 @@ export default function FpbListPage() {
           <StatusBadge status={f.status} />
         </td>
         <td style={{ padding: '12px 14px' }}>
-          {f.procurement_status === 'ordered'
-            ? <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#065f46', background: 'rgba(5,150,105,0.12)', whiteSpace: 'nowrap' }}>📦 Ordered</span>
-            : <span style={{ color: theme.textSecondary, fontSize: 12 }}>—</span>}
+          {f.procurement_status === 'ordered' ? (
+            <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#065f46', background: 'rgba(5,150,105,0.12)', whiteSpace: 'nowrap' }}>📦 Ordered</span>
+          ) : f.procurement_status === 'cancelled' ? (
+            <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#991b1b', background: 'rgba(239,68,68,0.12)', whiteSpace: 'nowrap' }}>🚫 Cancelled</span>
+          ) : (
+            <span style={{ color: theme.textSecondary, fontSize: 12 }}>—</span>
+          )}
         </td>
         {!isPending && !isHistory && (
           <td style={{ padding: '12px 14px', fontSize: 11, color: theme.textSecondary }}>{f.revision_count > 0 ? `Revision #${f.revision_count}` : ''}</td>
@@ -2365,7 +2459,8 @@ export default function FpbListPage() {
       (`${f.users?.user_nama_depan || ''} ${f.users?.user_nama_belakang || ''}`).toLowerCase().includes(q) ||
       (f.fpb_types?.type_name || '').toLowerCase().includes(q)
     const matchStatus = !filterStatus || f.status === filterStatus ||
-      (filterStatus === 'ordered' && f.procurement_status === 'ordered')
+      (filterStatus === 'ordered' && f.procurement_status === 'ordered') ||
+      (filterStatus === 'procurement_cancelled' && f.procurement_status === 'cancelled')
     return matchText && matchStatus
   })
 
@@ -2531,6 +2626,7 @@ export default function FpbListPage() {
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
                 <option value="ordered">Ordered</option>
+                <option value="procurement_cancelled">Procurement Cancelled</option>
               </select>
               {(searchQuery || filterStatus) && (
                 <button onClick={() => { setSearchQuery(''); setFilterStatus('') }}

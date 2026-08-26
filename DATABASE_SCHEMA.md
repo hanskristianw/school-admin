@@ -527,7 +527,7 @@ The main header table for a purchase request.
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
-| `fpb_id` | `SERIAL` | Primary Key |
+| `fpb_id` | `UUID` / `SERIAL` | Primary Key |
 | `fpb_number` | `VARCHAR` | Unique identifier/document number |
 | `fpb_type_id` | `INTEGER` | FK to `fpb_types` (e.g. General, Special) |
 | `division` | `VARCHAR` | Division requesting the items |
@@ -538,6 +538,16 @@ The main header table for a purchase request.
 | `status` | `VARCHAR` | `pending`, `approved`, `revision`, `rejected` |
 | `current_step` | `INTEGER` | The current approval step |
 | `revision_count` | `INTEGER` | Number of times revised |
+| `budget` | `NUMERIC` | Assigned budget allocation |
+| `remaining_budget` | `NUMERIC` | Remaining budget after request |
+| `items_edited_by` | `INTEGER` | FK to `users(user_id)` |
+| `items_edited_at` | `TIMESTAMPTZ` | Timestamp when screener edited items |
+| `procurement_status` | `VARCHAR` | `'ordered'` (dipesan/dana dicairkan), `'cancelled'` (dibatalkan/tidak jadi dipesan), or `NULL` |
+| `procurement_by` | `INTEGER` | FK to `users(user_id)` |
+| `procurement_at` | `TIMESTAMPTZ` | Timestamp when marked ordered or cancelled |
+| `procurement_note` | `TEXT` | Notes or cancellation reason |
+| `created_at` | `TIMESTAMPTZ` | Timestamp created |
+| `updated_at` | `TIMESTAMPTZ` | Timestamp last updated |
 
 #### `fpb_items`
 The line items requested within an FPB.

@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-08-26)
 
 ## Corpus Check
-- 364 files · ~580,152 words
+- 365 files · ~581,803 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2136 nodes · 2177 edges · 358 communities (254 shown, 104 thin omitted)
+- 2137 nodes · 2181 edges · 358 communities (254 shown, 104 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c1d88d77`
+- Built from commit: `4fa7dc07`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -242,7 +242,6 @@
 - 9. AI TELLS (Forbidden Patterns)
 - 12. THE COMBINATORIAL VARIATION ENGINE
 - 8. ANTI-AI-SLOP RULES
-- driver.js
 - 11. REDESIGN PROTOCOL
 - 3. DEFAULT ARCHITECTURE & CONVENTIONS
 - 6. PERFORMANCE & ACCESSIBILITY GUARDRAILS
@@ -258,6 +257,7 @@
 - 8. DARK MODE PROTOCOL
 - 21. MOBILE ANTI-AI-TELLS RULE
 - SKILL.md
+- docx
 - 33. DEFAULT SECTION PACKS
 - 14. HERO MINIMALISM RULES
 - 37. EXAMPLE INTERPRETATIONS
@@ -271,7 +271,7 @@
 ## God Nodes (most connected - your core abstractions)
 1. `CORE DIRECTIVE: IMAGE-FIRST WEBSITE DESIGN TO CODE` - 39 edges
 2. `CORE DIRECTIVE: PREMIUM MOBILE APP IMAGE DIRECTION` - 39 edges
-3. `jspdf` - 24 edges
+3. `jspdf` - 25 edges
 4. `CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION` - 22 edges
 5. `🚀 Supabase Connection Fixed!` - 18 edges
 6. `tasteskill: Anti-Slop Frontend Skill` - 16 edges
@@ -299,7 +299,7 @@
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
-Nodes (52): jspdf, jszip, jspdf, jszip, AdmissionManagement(), statusConfig, FeeSimulationPage(), formatCurrency() (+44 more)
+Nodes (53): jspdf, jszip, jspdf, jszip, AdmissionManagement(), statusConfig, FeeSimulationPage(), formatCurrency() (+45 more)
 
 ### Community 1 - "Package Dependencies & Config"
 Cohesion: 0.09
@@ -363,7 +363,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, docx, googleapis, dependencies, bcryptjs, docx, googleapis, pdf-lib (+3 more)
+Nodes (11): bcryptjs, class-variance-authority, googleapis, dependencies, bcryptjs, class-variance-authority, googleapis, pdf-lib (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -897,16 +897,16 @@ Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure*
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 142`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `bcryptjs`, `bcryptjs`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `driver.js`, `SKILL.md`, `pngjs`, `bcryptjs`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 142`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `bcryptjs`, `bcryptjs`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `SKILL.md`, `docx`, `pngjs`, `bcryptjs`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `tasteskill: Anti-Slop Frontend Skill` connect `tasteskill: Anti-Slop Frontend Skill` to `4. DESIGN ENGINEERING DIRECTIVES (Bias Correction)`, `10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know)`, `Module 131`, `8. DARK MODE PROTOCOL`, `9. AI TELLS (Forbidden Patterns)`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `0. BRIEF INFERENCE (Read the Room Before Anything Else)`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Appendix B - Canonical Sources (read these before reinventing)`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **Why does `Database Schema & Relationships` connect `Module 126` to `bcryptjs`, `7.1 Tables`, `3.1 Tables`, `4.1 Tables`, `1.1 Tables`, `2.1 Tables`, `Module 143`, `9.1 Tables`, `8.1 Tables`, `**3. Assessment System**`?**
-  _High betweenness centrality (0.002) - this node is a cross-community bridge._
+  _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
   _1112 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
-  _Cohesion score 0.0744047619047619 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07403846153846154 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Should `RLS & Migration Scripts` be split into smaller, more focused modules?**
