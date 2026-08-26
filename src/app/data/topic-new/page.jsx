@@ -8152,13 +8152,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                 ) : (
                   <div className="rounded border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full min-w-[780px] text-left text-xs border-collapse">
                         <thead>
                           <tr className="border-b text-[10px] font-mono font-bold uppercase tracking-wider" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
-                            <th className="py-3 px-4 w-12">{t('topicNew.mentorCommentTab.dailyAttendance.colNo') || '#'}</th>
-                            <th className="py-3 px-4">{t('topicNew.mentorCommentTab.dailyAttendance.colName') || 'STUDENT NAME'}</th>
-                            <th className="py-3 px-4 text-center">{t('topicNew.mentorCommentTab.dailyAttendance.colStatus') || 'STATUS'}</th>
-                            <th className="py-3 px-4">{t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'NOTE / DETAILS'}</th>
+                            <th className="py-3 px-3 w-10 text-center">{t('topicNew.mentorCommentTab.dailyAttendance.colNo') || '#'}</th>
+                            <th className="py-3 px-4 min-w-[190px] max-w-[240px]">{t('topicNew.mentorCommentTab.dailyAttendance.colName') || 'STUDENT NAME'}</th>
+                            <th className="py-3 px-4 min-w-[360px] text-center">{t('topicNew.mentorCommentTab.dailyAttendance.colStatus') || 'STATUS'}</th>
+                            <th className="py-3 px-4 min-w-[180px]">{t('topicNew.mentorCommentTab.dailyAttendance.colNote') || 'NOTE / DETAILS'}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y" style={{ borderColor: theme.border }}>
@@ -8183,17 +8183,17 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                 onMouseEnter={e => e.currentTarget.style.background = theme.subtleBg}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                               >
-                                <td className="py-3 px-4 font-mono text-[11px]" style={{ color: theme.textSecondary }}>
+                                <td className="py-2.5 px-3 font-mono text-[11px] text-center" style={{ color: theme.textSecondary }}>
                                   {String(idx + 1).padStart(2, '0')}
                                 </td>
-                                <td className="py-3 px-4">
-                                  <div className="font-semibold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                                    <span>{student.nama}</span>
-                                    {isSaving && <FontAwesomeIcon icon={faSpinner} spin className="text-[10px]" style={{ color: theme.blueText }} />}
+                                <td className="py-2.5 px-4 min-w-[190px] max-w-[240px]">
+                                  <div className="font-semibold flex items-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: theme.textPrimary }} title={student.nama}>
+                                    <span className="truncate">{student.nama}</span>
+                                    {isSaving && <FontAwesomeIcon icon={faSpinner} spin className="text-[10px] shrink-0" style={{ color: theme.blueText }} />}
                                   </div>
                                 </td>
-                                <td className="py-3 px-4">
-                                  <div className="flex flex-wrap gap-1 justify-center">
+                                <td className="py-2.5 px-4 min-w-[360px]">
+                                  <div className="flex items-center gap-1 justify-center whitespace-nowrap flex-nowrap">
                                     {statusOptions.map(opt => {
                                       const isSelected = currentStatus === opt.value
                                       return (
@@ -8202,7 +8202,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                           type="button"
                                           disabled={isSaving}
                                           onClick={() => saveSingleAttendance(student.detail_siswa_id, opt.value, rec?.keterangan || '')}
-                                          className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
+                                          className="px-2 py-1 text-[9.5px] font-mono font-bold uppercase tracking-tight rounded shrink-0 transition-all cursor-pointer"
                                           style={{
                                             background: isSelected ? opt.bg : theme.subtleBg,
                                             color: isSelected ? opt.color : theme.textSecondary,
@@ -8217,7 +8217,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                     })}
                                   </div>
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-2.5 px-4 min-w-[180px]">
                                   <input
                                     type="text"
                                     value={rec?.keterangan || ''}
@@ -8230,7 +8230,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                                       if (currentStatus) saveSingleAttendance(student.detail_siswa_id, currentStatus, e.target.value)
                                     }}
                                     className="w-full px-2.5 py-1 text-xs font-mono rounded border outline-none transition-colors"
-                                    style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textPrimary, minWidth: '120px' }}
+                                    style={{ border: `1px solid ${theme.border}`, borderRadius: '4px', background: theme.inputBg, color: theme.textPrimary }}
                                   />
                                 </td>
                               </tr>
