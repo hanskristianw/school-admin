@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 356,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 356,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3054,8 +3054,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "package_dependencies_clsx",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "clsx"
     },
     {
@@ -3065,8 +3065,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "clsx",
-      "community": 131,
-      "community_name": "Module 131",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "clsx"
     },
     {
@@ -12074,8 +12074,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_the_three_dials_core_configuration",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "1. the three dials (core configuration)"
     },
     {
@@ -12085,8 +12085,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_a_dial_inference_design_read_dial_values",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "1.a dial inference (design read \u2192 dial values)"
     },
     {
@@ -12096,8 +12096,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_b_use_case_presets",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "1.b use-case presets"
     },
     {
@@ -12107,8 +12107,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_1_c_how_the_dials_drive_output",
-      "community": 322,
-      "community_name": "tasteskill: Anti-Slop Frontend Skill",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "1.c how the dials drive output"
     },
     {
@@ -12492,8 +12492,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -12503,8 +12503,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -12514,8 +12514,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -12525,8 +12525,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 322,
+      "community_name": "tasteskill: Anti-Slop Frontend Skill",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -19290,8 +19290,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "main_documentation_database_structure",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "\ufffd\ud83c\udfd7\ufe0f **database structure**"
     },
     {
@@ -19301,8 +19301,8 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "main_documentation_core_tables",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "**core tables:**"
     },
     {
@@ -19312,8 +19312,8 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "main_documentation_grades_nilai_table",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "grades (nilai) table"
     },
     {
@@ -19323,8 +19323,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "main_documentation_attendance_qr_tables",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 131,
+      "community_name": "Module 131",
       "norm_label": "attendance (qr) tables"
     },
     {
@@ -34093,7 +34093,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "src/app/sales/uniform/page.jsx",
-      "source_location": "L933",
+      "source_location": "L931",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_sales_uniform_page_uniformsalespage",

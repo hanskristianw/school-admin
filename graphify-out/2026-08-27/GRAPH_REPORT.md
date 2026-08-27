@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-08-27)
 
 ## Corpus Check
-- 365 files · ~592,628 words
+- 365 files · ~591,625 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2139 nodes · 2191 edges · 356 communities (252 shown, 104 thin omitted)
+- 2139 nodes · 2191 edges · 357 communities (253 shown, 104 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
@@ -264,6 +264,7 @@
 - 37. EXAMPLE INTERPRETATIONS
 - 15. DEFAULT SITE PACKS
 - 20. EXAMPLE INTERPRETATIONS
+- browser-image-compression
 - pngjs
 
 ## God Nodes (most connected - your core abstractions)
@@ -293,7 +294,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (356 total, 104 thin omitted)
+## Communities (357 total, 104 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
@@ -361,7 +362,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, browser-image-compression, googleapis, dependencies, bcryptjs, browser-image-compression, googleapis, pdf-lib (+3 more)
+Nodes (11): bcryptjs, clsx, googleapis, dependencies, bcryptjs, clsx, googleapis, pdf-lib (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -537,7 +538,7 @@ Nodes (7): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock
 
 ### Community 127 - "bcryptjs"
 Cohesion: 0.50
-Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
 
 ### Community 128 - "Module 128"
 Cohesion: 0.05
@@ -546,6 +547,10 @@ Nodes (43): 1. Logo Cover, 1. Monogram + Meaning, 2 × 3 REFERENCE-STYLE LAYOUT,
 ### Community 130 - "bcryptjs"
 Cohesion: 0.40
 Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
+
+### Community 131 - "Module 131"
+Cohesion: 0.50
+Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
 
 ### Community 132 - "Module 132"
 Cohesion: 0.06
@@ -640,8 +645,8 @@ Cohesion: 0.17
 Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
 
 ### Community 265 - "School Admin System - Complete Documentation"
-Cohesion: 0.15
-Nodes (12): Attendance (QR) Tables, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table, **Important Files:**, **Key Business Rules:**, **Key Directories:** (+4 more)
+Cohesion: 0.22
+Nodes (8): **Completed Features:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, 📁 **Project Structure**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation, ✅ **System Status**
 
 ### Community 266 - "Protocol: Premium Utilitarian Minimalism UI Architect"
 Cohesion: 0.20
@@ -761,7 +766,7 @@ Nodes (10): 10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know), Anim
 
 ### Community 322 - "tasteskill: Anti-Slop Frontend Skill"
 Cohesion: 0.20
-Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration), 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system (+2 more)
+Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system, 2. BRIEF → DESIGN SYSTEM MAP, 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10) (+2 more)
 
 ### Community 323 - "CORE DIRECTIVE: AWWWARDS-LEVEL DESIGN ENGINEERING"
 Cohesion: 0.20
@@ -887,7 +892,7 @@ Nodes (4): 20. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `docx`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `@fortawesome/react-fontawesome`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `bcryptjs`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `SKILL.md`, `google-auth-library`, `pngjs`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `docx`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `@fortawesome/react-fontawesome`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `bcryptjs`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `SKILL.md`, `google-auth-library`, `browser-image-compression`, `pngjs`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `tasteskill: Anti-Slop Frontend Skill` connect `tasteskill: Anti-Slop Frontend Skill` to `4. DESIGN ENGINEERING DIRECTIVES (Bias Correction)`, `10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know)`, `8. DARK MODE PROTOCOL`, `9. AI TELLS (Forbidden Patterns)`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `0. BRIEF INFERENCE (Read the Room Before Anything Else)`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Appendix B - Canonical Sources (read these before reinventing)`, `bcryptjs`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._

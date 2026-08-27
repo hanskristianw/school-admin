@@ -90,6 +90,8 @@ export default function UniformSalesPage() {
   const [reportData, setReportData] = useState([])
   const [reportSummary, setReportSummary] = useState({ total_sales: 0, total_amount: 0, total_cost: 0, total_profit: 0, total_items: 0 })
   const [loadingReport, setLoadingReport] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportProgress, setExportProgress] = useState('')
 
   // Load initial data on mount
   useEffect(() => {
@@ -983,7 +985,7 @@ export default function UniformSalesPage() {
       // Fetch sales in date range (exclude voided)
       const { data: sales, error: salesErr } = await supabase
         .from('uniform_sale')
-        .select('sale_id, user_id, unit_id, sale_date, status, total_amount, total_cost, is_voided, pickup_date, processed_by')
+        .select('sale_id, user_id, unit_id, sale_date, status, payment_method, receipt_url, total_amount, total_cost, is_voided, pickup_date, processed_by')
         .gte('sale_date', startDate)
         .lte('sale_date', endDate)
         .eq('is_voided', false)
@@ -1089,8 +1091,14 @@ export default function UniformSalesPage() {
     }
 
     try {
+      setExportingExcel(true)
+      setExportProgress('Mempersiapkan lembar kerja...')
+
       const ExcelJS = (await import('exceljs')).default
       const wb = new ExcelJS.Workbook()
+      wb.creator = 'School Admin System'
+      wb.lastModifiedBy = 'School Admin System'
+      wb.created = new Date()
 
       // Prepare period info
       let periodText = ''
@@ -1103,67 +1111,257 @@ export default function UniformSalesPage() {
         periodText = `${start} - ${end}`
       }
 
-      // Sheet 1: Summary
-      const wsSummary = wb.addWorksheet('Ringkasan')
-      wsSummary.columns = [{ width: 25 }, { width: 20 }]
-      const summaryData = [
-        ['LAPORAN PENJUALAN SERAGAM'],
-        ['Chung Chung Christian School'],
-        ['Periode: ' + periodText],
-        [''],
-        ['RINGKASAN'],
-        ['Total Penjualan', reportSummary.total_sales + ' transaksi'],
-        ['Penjualan Lunas', reportSummary.paid_count + ' transaksi'],
-        ['Penjualan Pending', reportSummary.pending_count + ' transaksi'],
-        ['Total Item Terjual', reportSummary.total_items + ' pcs'],
-        [''],
-        ['Total Pendapatan', reportSummary.total_amount],
-        ['Total HPP', reportSummary.total_cost],
-        ['Total Profit', reportSummary.total_profit],
-        ['Margin', reportSummary.total_amount > 0 ? ((reportSummary.total_profit / reportSummary.total_amount) * 100).toFixed(2) + '%' : '0%'],
-      ]
-      summaryData.forEach(row => wsSummary.addRow(row))
+      // ==========================================
+      // SHEET 1: RINGKASAN PENJUALAN
+      // ==========================================
+      const wsSummary = wb.addWorksheet('Ringkasan', {
+        views: [{ showGridLines: true }]
+      })
 
-      // Sheet 2: Detail Transactions
-      const wsDetail = wb.addWorksheet('Detail Penjualan')
-      wsDetail.columns = [
-        { header: 'ID', key: 'ID', width: 8 },
-        { header: 'Tanggal', key: 'Tanggal', width: 12 },
-        { header: 'Siswa', key: 'Siswa', width: 25 },
-        { header: 'Unit', key: 'Unit', width: 15 },
-        { header: 'Staff', key: 'Staff', width: 20 },
-        { header: 'Detail Seragam', key: 'Detail Seragam', width: 50 },
-        { header: 'Jumlah Item', key: 'Jumlah Item', width: 12 },
-        { header: 'Total Harga', key: 'Total Harga', width: 15 },
-        { header: 'HPP', key: 'HPP', width: 15 },
-        { header: 'Profit', key: 'Profit', width: 15 },
-        { header: 'Margin %', key: 'Margin %', width: 10 },
-        { header: 'Status', key: 'Status', width: 10 },
-        { header: 'Tgl Diambil', key: 'Tgl Diambil', width: 12 },
+      wsSummary.columns = [
+        { width: 30 },
+        { width: 28 }
       ]
-      reportData.forEach(sale => {
-        const itemsText = sale.item_details
-          .map(item => `${item.uniform_name} (${item.size_name}) x${item.qty}`)
-          .join(', ')
-        wsDetail.addRow({
-          'ID': sale.sale_id,
-          'Tanggal': new Date(sale.sale_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          'Siswa': sale.user_name,
-          'Unit': sale.unit_name,
-          'Staff': sale.processed_by_name || '-',
-          'Detail Seragam': itemsText,
-          'Jumlah Item': sale.item_count,
-          'Total Harga': sale.total_amount,
-          'HPP': sale.total_cost,
-          'Profit': sale.total_amount - sale.total_cost,
-          'Margin %': sale.total_amount > 0 ? (((sale.total_amount - sale.total_cost) / sale.total_amount) * 100).toFixed(2) : 0,
-          'Status': sale.status === 'paid' ? 'Lunas' : 'Pending',
-          'Tgl Diambil': sale.pickup_date ? new Date(sale.pickup_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'
+
+      // Title & Header
+      const titleRow1 = wsSummary.addRow(['LAPORAN PENJUALAN SERAGAM'])
+      titleRow1.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF1F4E79' } }
+
+      const titleRow2 = wsSummary.addRow(['Chung Chung Christian School'])
+      titleRow2.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF595959' } }
+
+      const titleRow3 = wsSummary.addRow(['Periode: ' + periodText])
+      titleRow3.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF595959' } }
+
+      wsSummary.addRow([]) // blank
+
+      const secHeader = wsSummary.addRow(['METRIK UTAMA', 'NILAI / JUMLAH'])
+      secHeader.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
+      secHeader.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'left' }
+      })
+
+      const summaryRows = [
+        ['Total Transaksi Penjualan', `${reportSummary.total_sales} Transaksi`],
+        ['Penjualan Lunas', `${reportSummary.paid_count} Transaksi`],
+        ['Penjualan Pending', `${reportSummary.pending_count} Transaksi`],
+        ['Total Fisik Seragam Terjual', `${reportSummary.total_items} Pcs`],
+        ['Total Penerimaan / Omset', reportSummary.total_amount],
+        ['Total Modal / HPP', reportSummary.total_cost],
+        ['Total Profit Bersih', reportSummary.total_profit]
+      ]
+
+      summaryRows.forEach((r, idx) => {
+        const row = wsSummary.addRow(r)
+        row.font = { name: 'Calibri', size: 10 }
+        
+        // Currency formatting for amounts
+        if (idx >= 4) {
+          row.getCell(2).numFmt = '"Rp" #,##0'
+          row.getCell(2).font = { name: 'Calibri', size: 10, bold: true }
+        }
+        
+        row.eachCell(cell => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            right: { style: 'thin', color: { argb: 'FFE0E0E0' } }
+          }
         })
       })
 
+      // ==========================================
+      // SHEET 2: DETAIL TRANSAKSI & BUKTI TRANSFER
+      // ==========================================
+      const wsDetail = wb.addWorksheet('Detail Penjualan', {
+        views: [{ showGridLines: true }]
+      })
+
+      wsDetail.columns = [
+        { header: 'No', key: 'no', width: 6 },
+        { header: 'ID Transaksi', key: 'id', width: 13 },
+        { header: 'Tanggal', key: 'date', width: 14 },
+        { header: 'Nama Siswa', key: 'student', width: 26 },
+        { header: 'Unit Sekolah', key: 'unit', width: 14 },
+        { header: 'Staff Kasir', key: 'staff', width: 20 },
+        { header: 'Metode Bayar', key: 'payment_method', width: 15 },
+        { header: 'Rincian Seragam & Ukuran', key: 'items', width: 38 },
+        { header: 'Total Item (Pcs)', key: 'qty', width: 15 },
+        { header: 'Total Bayar (Rp)', key: 'total', width: 18 },
+        { header: 'HPP / Modal (Rp)', key: 'cost', width: 18 },
+        { header: 'Profit (Rp)', key: 'profit', width: 18 },
+        { header: 'Status Bayar', key: 'status', width: 14 },
+        { header: 'Tgl Pengambilan', key: 'pickup', width: 16 },
+        { header: 'Link Bukti Transfer', key: 'receipt_link', width: 22 },
+        { header: 'Foto Bukti Transfer', key: 'receipt_photo', width: 26 }
+      ]
+
+      // Format Header Row
+      const headerRow = wsDetail.getRow(1)
+      headerRow.height = 28
+      headerRow.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
+      headerRow.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF1F4E79' } },
+          left: { style: 'thin', color: { argb: 'FF1F4E79' } },
+          bottom: { style: 'medium', color: { argb: 'FF0D2840' } },
+          right: { style: 'thin', color: { argb: 'FF1F4E79' } }
+        }
+      })
+
+      // Fetch images in batch and insert rows
+      for (let i = 0; i < reportData.length; i++) {
+        const sale = reportData[i]
+        const rowIndex = i + 2 // 1-based, header is row 1
+        
+        setExportProgress(`Memproses foto bukti transfer (${i + 1}/${reportData.length})...`)
+
+        const itemsText = (sale.item_details || [])
+          .map(item => `${item.uniform_name} (${item.size_name}) x${item.qty}`)
+          .join('\n')
+
+        const payMethodLabel = sale.payment_method === 'transfer' ? 'Transfer Bank' : (sale.payment_method === 'cash' ? 'Tunai / Cash' : (sale.payment_method || '-'))
+        const statusLabel = sale.status === 'paid' ? 'Lunas' : 'Pending'
+        const hasReceipt = Boolean(sale.receipt_url)
+        const itemCount = (sale.item_details || []).length || 1
+        const minTextHeight = Math.max(26, itemCount * 19)
+
+        const rowData = {
+          no: i + 1,
+          id: `#${sale.sale_id}`,
+          date: new Date(sale.sale_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+          student: sale.user_name || '-',
+          unit: sale.unit_name || '-',
+          staff: sale.processed_by_name || '-',
+          payment_method: payMethodLabel,
+          items: itemsText || '-',
+          qty: sale.item_count || 0,
+          total: Number(sale.total_amount || 0),
+          cost: Number(sale.total_cost || 0),
+          profit: Number((sale.total_amount || 0) - (sale.total_cost || 0)),
+          status: statusLabel,
+          pickup: sale.pickup_date ? new Date(sale.pickup_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+          receipt_link: hasReceipt ? { text: '🔗 Buka Foto Bukti', hyperlink: sale.receipt_url } : (sale.payment_method === 'transfer' ? 'Belum Ada Bukti' : 'Tunai'),
+          receipt_photo: ''
+        }
+
+        const addedRow = wsDetail.addRow(rowData)
+        addedRow.font = { name: 'Calibri', size: 9.5 }
+
+        // Alignments & Number formats
+        addedRow.getCell('no').alignment = { vertical: 'middle', horizontal: 'center' }
+        addedRow.getCell('id').alignment = { vertical: 'middle', horizontal: 'center' }
+        addedRow.getCell('date').alignment = { vertical: 'middle', horizontal: 'center' }
+        addedRow.getCell('student').alignment = { vertical: 'middle', horizontal: 'left' }
+        addedRow.getCell('unit').alignment = { vertical: 'middle', horizontal: 'center' }
+        addedRow.getCell('staff').alignment = { vertical: 'middle', horizontal: 'left' }
+        addedRow.getCell('payment_method').alignment = { vertical: 'middle', horizontal: 'center' }
+        addedRow.getCell('items').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
+        addedRow.getCell('qty').alignment = { vertical: 'middle', horizontal: 'center' }
+        addedRow.getCell('status').alignment = { vertical: 'middle', horizontal: 'center' }
+        addedRow.getCell('pickup').alignment = { vertical: 'middle', horizontal: 'center' }
+        addedRow.getCell('receipt_link').alignment = { vertical: 'middle', horizontal: 'center' }
+
+        // Currency formatting
+        addedRow.getCell('total').numFmt = '"Rp" #,##0'
+        addedRow.getCell('total').alignment = { vertical: 'middle', horizontal: 'right' }
+        addedRow.getCell('cost').numFmt = '"Rp" #,##0'
+        addedRow.getCell('cost').alignment = { vertical: 'middle', horizontal: 'right' }
+        addedRow.getCell('profit').numFmt = '"Rp" #,##0'
+        addedRow.getCell('profit').alignment = { vertical: 'middle', horizontal: 'right' }
+
+        // Thin borders
+        addedRow.eachCell(cell => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            right: { style: 'thin', color: { argb: 'FFE0E0E0' } }
+          }
+        })
+
+        // Embed Image if receipt_url exists
+        if (hasReceipt) {
+          try {
+            addedRow.height = Math.max(85, minTextHeight) // Height in points for image thumbnail & multi-line text
+
+            const imgRes = await fetch(sale.receipt_url)
+            if (imgRes.ok) {
+              const arrayBuffer = await imgRes.arrayBuffer()
+              const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
+              const ext = contentType.includes('png') ? 'png' : 'jpeg'
+
+              const imgId = wb.addImage({
+                buffer: arrayBuffer,
+                extension: ext
+              })
+
+              // Column P is index 15 (0-based)
+              wsDetail.addImage(imgId, {
+                tl: { col: 15.1, row: (rowIndex - 1) + 0.08 },
+                ext: { width: 130, height: 95 },
+                editAs: 'oneCell'
+              })
+            }
+          } catch (imgErr) {
+            console.warn(`Could not load image for sale #${sale.sale_id}:`, imgErr)
+          }
+        } else {
+          addedRow.height = minTextHeight
+          addedRow.getCell('receipt_photo').value = sale.payment_method === 'transfer' ? '—' : 'Tunai'
+          addedRow.getCell('receipt_photo').alignment = { vertical: 'middle', horizontal: 'center' }
+        }
+      }
+
+      // Add Total Summary Row at bottom
+      const totalRow = wsDetail.addRow({
+        no: '',
+        id: '',
+        date: '',
+        student: '',
+        unit: '',
+        staff: '',
+        payment_method: '',
+        items: 'TOTAL KESELURUHAN',
+        qty: reportSummary.total_items,
+        total: reportSummary.total_amount,
+        cost: reportSummary.total_cost,
+        profit: reportSummary.total_profit,
+        status: '',
+        pickup: '',
+        receipt_link: '',
+        receipt_photo: ''
+      })
+
+      totalRow.height = 26
+      totalRow.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1F4E79' } }
+      totalRow.getCell('items').alignment = { vertical: 'middle', horizontal: 'right' }
+      totalRow.getCell('qty').alignment = { vertical: 'middle', horizontal: 'center' }
+      totalRow.getCell('total').numFmt = '"Rp" #,##0'
+      totalRow.getCell('total').alignment = { vertical: 'middle', horizontal: 'right' }
+      totalRow.getCell('cost').numFmt = '"Rp" #,##0'
+      totalRow.getCell('cost').alignment = { vertical: 'middle', horizontal: 'right' }
+      totalRow.getCell('profit').numFmt = '"Rp" #,##0'
+      totalRow.getCell('profit').alignment = { vertical: 'middle', horizontal: 'right' }
+
+      totalRow.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } }
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF1F4E79' } },
+          bottom: { style: 'double', color: { argb: 'FF1F4E79' } },
+          left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+          right: { style: 'thin', color: { argb: 'FFE0E0E0' } }
+        }
+      })
+
+      setExportProgress('Menyimpan file Excel...')
+
       // Generate filename and download
-      const filename = `Laporan_Penjualan_${reportPeriod === 'month' ? reportMonth : reportStartDate + '_' + reportEndDate}.xlsx`
+      const filename = `Laporan_Penjualan_Seragam_${reportPeriod === 'month' ? reportMonth : reportStartDate + '_' + reportEndDate}.xlsx`
       const buffer = await wb.xlsx.writeBuffer()
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       const link = document.createElement('a')
@@ -1174,6 +1372,9 @@ export default function UniformSalesPage() {
     } catch (e) {
       console.error('Error exporting to Excel:', e)
       alert('Gagal export ke Excel: ' + e.message)
+    } finally {
+      setExportingExcel(false)
+      setExportProgress('')
     }
   }
 
@@ -2285,9 +2486,17 @@ export default function UniformSalesPage() {
               {reportData.length > 0 && (
                 <Button
                   onClick={handleExportToExcel}
-                  className="bg-green-600 hover:bg-green-700"
+                  disabled={exportingExcel}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold flex items-center gap-2"
                 >
-                  📥 Export Excel
+                  {exportingExcel ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      <span>{exportProgress || 'Mengunduh...'}</span>
+                    </>
+                  ) : (
+                    <span>📥 Export Excel (dengan Foto Bukti)</span>
+                  )}
                 </Button>
               )}
             </div>

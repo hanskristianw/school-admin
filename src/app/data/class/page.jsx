@@ -159,7 +159,7 @@ export default function ClassManagement() {
 
       const { data: unitsData, error: unitsError } = await supabase
         .from('unit')
-        .select('unit_id, unit_name');
+        .select('unit_id, unit_name, is_pyp, is_myp, is_dp, is_school');
 
       if (unitsError) {
         throw new Error(unitsError.message);
@@ -192,7 +192,8 @@ export default function ClassManagement() {
         const unit = unitsData.find(u => u.unit_id === kelas.kelas_unit_id);
         const year = yearsData.find(y => y.year_id === kelas.kelas_year_id);
         const studentList = studentsByClass[kelas.kelas_id] || [];
-        
+        const isPyp = Boolean(unit?.is_pyp) || (unit?.unit_name || '').toUpperCase().includes('PYP');
+
         return {
           kelas_id: kelas.kelas_id,
           kelas_nama: kelas.kelas_nama,
@@ -202,6 +203,7 @@ export default function ClassManagement() {
           user_nama_depan: user?.user_nama_depan || '',
           user_nama_belakang: user?.user_nama_belakang || '',
           unit_name: unit?.unit_name || '',
+          is_pyp: isPyp,
           year_name: year?.year_name || '',
           student_count: studentList.length,
           students: studentList,
@@ -258,7 +260,7 @@ export default function ClassManagement() {
     try {
       const { data, error } = await supabase
         .from('unit')
-        .select('unit_id, unit_name')
+        .select('unit_id, unit_name, is_pyp, is_myp, is_dp, is_school')
         .order('unit_name');
 
       if (error) throw new Error(error.message);
@@ -959,18 +961,20 @@ export default function ClassManagement() {
 
                 {/* Action Buttons Grid */}
                 <div className="pt-3 border-t grid grid-cols-2 gap-2" style={{ borderColor: theme.border }}>
-                  <button
-                    onClick={() => openManageSubjects(kelas)}
-                    className="px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                    style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
-                  >
-                    <FontAwesomeIcon icon={faBookOpen} className="text-[10px]" />
-                    <span>Subjects</span>
-                  </button>
+                  {!kelas.is_pyp && (
+                    <button
+                      onClick={() => openManageSubjects(kelas)}
+                      className="px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                      style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
+                    >
+                      <FontAwesomeIcon icon={faBookOpen} className="text-[10px]" />
+                      <span>Subjects</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => openManageStudents(kelas)}
-                    className="px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                    className={`px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${kelas.is_pyp ? 'col-span-2' : ''}`}
                     style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
                   >
                     <FontAwesomeIcon icon={faUserGraduate} className="text-[10px]" />
@@ -1050,13 +1054,15 @@ export default function ClassManagement() {
                       </button>
                     </td>
                     <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
-                      <button
-                        onClick={() => openManageSubjects(kelas)}
-                        className="px-2.5 py-1 text-xs font-bold rounded border cursor-pointer"
-                        style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
-                      >
-                        Subjects
-                      </button>
+                      {!kelas.is_pyp && (
+                        <button
+                          onClick={() => openManageSubjects(kelas)}
+                          className="px-2.5 py-1 text-xs font-bold rounded border cursor-pointer"
+                          style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
+                        >
+                          Subjects
+                        </button>
+                      )}
                       <button
                         onClick={() => openManageStudents(kelas)}
                         className="px-2.5 py-1 text-xs font-bold rounded border cursor-pointer"

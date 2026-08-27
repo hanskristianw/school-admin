@@ -337,7 +337,7 @@ export default function UserManagement() {
       setError('');
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out');
+        .select('user_id, user_nama_depan, user_nama_belakang, user_email, user_profile_picture, user_manual_picture, user_role_id, user_unit_id, is_active, signature_url, user_tanggal_lahir, user_pin, expected_check_in, expected_check_out, join_date');
 
       if (usersError) throw new Error(usersError.message);
 

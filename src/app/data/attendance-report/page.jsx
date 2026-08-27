@@ -1,9 +1,32 @@
 'use client'
 
-import { useState, useEffect, useCallback, Fragment } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
+import { Button } from '@/components/ui/button'
 import ExcelJS from 'exceljs'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faFileExcel,
+  faBuilding,
+  faDownload,
+  faCheck,
+  faTimes,
+  faClock,
+  faCalendarAlt,
+  faExclamationTriangle,
+  faSpinner,
+  faSearch,
+  faLayerGroup,
+  faChevronDown,
+  faChevronUp,
+  faUser,
+  faChartLine,
+  faRotateRight,
+  faCalendarCheck,
+  faDoorOpen,
+  faUserSlash
+} from '@fortawesome/free-solid-svg-icons'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtMins(mins) {
@@ -14,62 +37,116 @@ function fmtMins(mins) {
   return `${m} mnt`
 }
 
-function getMonthStart() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-}
-
-function getToday() {
-  const now = new Date()
-  return now.toISOString().slice(0, 10)
-}
-
 const STATUS_META = {
-  ok:          { label: '✓',             bg: '#dcfce7', color: '#166534' },
-  late:        { label: 'Telat',         bg: '#fef3c7', color: '#92400e' },
-  leave_early: { label: 'PA',            bg: '#fee2e2', color: '#991b1b' },
-  absent:      { label: 'Absen',         bg: '#f3e8ff', color: '#6b21a8' },
-  no_checkout: { label: 'No CO',         bg: '#ffedd5', color: '#9a3412' },
-  multiple:    { label: '⚠',             bg: '#fef9c3', color: '#854d0e' },
-  no_checkin:  { label: 'No CI',         bg: '#fce7f3', color: '#9d174d' },
-  holiday:     { label: 'Libur',         bg: '#f0f9ff', color: '#0369a1' },
-  off:         { label: '—',             bg: 'transparent', color: '#d1d5db' },
+  ok:          { label: 'Tepat Waktu',   bg: '#EDF3EC', darkBg: '#1E2E1E', border: '#D5E6D3', darkBorder: '#2B422B', color: '#346538', darkColor: '#7BAF7B', icon: faCheck },
+  late:        { label: 'Terlambat',     bg: '#FBF3DB', darkBg: '#2A2618', border: '#F2E3B6', darkBorder: '#3D361F', color: '#956400', darkColor: '#C4A24A', icon: faClock },
+  leave_early: { label: 'Pulang Awal',   bg: '#FFEDD5', darkBg: '#331B16', border: '#FED7AA', darkBorder: '#4A241C', color: '#9A3412', darkColor: '#FB923C', icon: faDoorOpen },
+  absent:      { label: 'Tidak Masuk',   bg: '#FDEBEC', darkBg: '#3A1E1E', border: '#F8C9CC', darkBorder: '#542626', color: '#9F2F2D', darkColor: '#DC8585', icon: faTimes },
+  no_checkout: { label: 'Tanpa Scan Out',bg: '#FFEDD5', darkBg: '#331B16', border: '#FED7AA', darkBorder: '#4A241C', color: '#9A3412', darkColor: '#FB923C', icon: faClock },
+  multiple:    { label: 'Multiple Issue',bg: '#FBF3DB', darkBg: '#2A2618', border: '#F2E3B6', darkBorder: '#3D361F', color: '#956400', darkColor: '#C4A24A', icon: faExclamationTriangle },
+  no_checkin:  { label: 'Tanpa Scan In', bg: '#FDEBEC', darkBg: '#3A1E1E', border: '#F8C9CC', darkBorder: '#542626', color: '#9F2F2D', darkColor: '#DC8585', icon: faTimes },
+  holiday:     { label: 'Hari Libur',    bg: '#FBF3DB', darkBg: '#2A2618', border: '#F2E3B6', darkBorder: '#3D361F', color: '#956400', darkColor: '#C4A24A', icon: faCalendarAlt },
+  dayoff:      { label: 'Day Off',       bg: '#F3F4F6', darkBg: '#232228', border: '#E5E7EB', darkBorder: 'rgba(255,255,255,0.08)', color: '#4B5563', darkColor: '#8C8985', icon: faCalendarAlt },
+  off:         { label: 'Day Off',       bg: '#F3F4F6', darkBg: '#232228', border: '#E5E7EB', darkBorder: 'rgba(255,255,255,0.08)', color: '#4B5563', darkColor: '#8C8985', icon: faCalendarAlt },
+}
+
+const EXCUSE_CATEGORY_MAP = {
+  other: 'Lainnya',
+  bereavement_core: 'Bereavement',
+  bereavement_sibling: 'Bereavement',
+  bereavement: 'Bereavement',
+  medical_appointment: 'Janji Temu Dokter',
+  school_duty: 'Tugas Sekolah',
+  ib_trainer: 'Tugas IB Trainer',
+  woke_up_late: 'Bangun Kesiangan',
+  traffic_jam: 'Macet',
+  sick: 'Sakit',
+  sick_with_letter: 'Sakit Surat Dokter',
+  sick_with_cert: 'Sakit Surat Dokter',
+  sick_no_letter: 'Sakit Tanpa Surat',
+  sick_no_cert: 'Sakit Tanpa Surat',
+  family_personal: 'Urusan Keluarga',
+  personal_family: 'Urusan Keluarga',
+  forgot_scan: 'Lupa Absen',
+  scanned_not_recorded: 'Scan Tidak Terekam',
+  annual_leave: 'Cuti Tahunan',
+  unpaid_leave: 'Cuti Tanpa Gaji',
+  special_leave: 'Ijin Khusus',
+  marriage_employee: 'Cuti Menikah',
+  marriage_child: 'Cuti Menikah Anak',
+  childbirth: 'Istri Melahirkan/Keguguran',
+  circumcision_child: 'Khitanan Anak',
+  baptism_child: 'Baptis Anak',
+}
+
+function formatExcuseDetail(excuse) {
+  if (!excuse) return ''
+  const rawCat = (excuse.category || '').toLowerCase()
+  const otherReason = (excuse.other_reason || excuse.reason || '').trim()
+
+  let jenis = ''
+  if (excuse.excuse_type === 'temporary_exit') {
+    const timeRange = (excuse.exit_time || excuse.return_time)
+      ? ` (${String(excuse.exit_time || '').slice(0,5)}–${String(excuse.return_time || '').slice(0,5)})`
+      : ''
+    jenis = `Izin Keluar Jam Kerja${timeRange}`
+  } else if (rawCat.includes('bereavement')) {
+    jenis = 'Bereavement'
+  } else if (rawCat === 'other' || rawCat === 'lainnya') {
+    jenis = 'Lainnya'
+  } else {
+    jenis = EXCUSE_CATEGORY_MAP[rawCat] || excuse.category_label || excuse.category || 'Izin'
+  }
+
+  if (jenis && otherReason) {
+    return `${jenis} - ${otherReason}`
+  }
+  return jenis || otherReason || ''
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function AttendanceReportPage() {
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
+
+  // UI Theme Tokens matching /data/pyp and theme provider
+  const pageBg = theme?.pageBg || (isDark ? '#18171A' : '#F7F6F3')
+  const cardBg = theme?.cardBg || (isDark ? '#232228' : '#FFFFFF')
+  const borderColor = theme?.border || (isDark ? 'rgba(255,255,255,0.08)' : '#EAEAEA')
+  const textPrimary = theme?.textPrimary || (isDark ? '#F0EFE9' : '#111111')
+  const textSecondary = theme?.textSecondary || (isDark ? '#8C8985' : '#787774')
+  const inputBg = theme?.inputBg || (isDark ? '#232228' : '#FFFFFF')
 
   // Filters
   const now = new Date()
   const [selectedMonth, setSelectedMonth] = useState(
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   )
-  const [graceMin,  setGraceMin]  = useState(0)
-  const [units,     setUnits]     = useState([])
-  const [roles,     setRoles]     = useState([])
-  const [activeTab, setActiveTab] = useState('all') // unit_id | 'all'
+  const [graceMin, setGraceMin] = useState(0)
+  const [searchName, setSearchName] = useState('')
+  const [units, setUnits] = useState([])
+  const [roles, setRoles] = useState([])
+  const [activeTab, setActiveTab] = useState('all') // unit_id | 'all' | 'vendor'
 
   // Derived date range from selectedMonth
   const dateStart = `${selectedMonth}-01`
-  const dateEnd   = (() => {
+  const dateEnd = (() => {
     const [y, m] = selectedMonth.split('-').map(Number)
     const lastDay = new Date(y, m, 0).getDate()
     return `${selectedMonth}-${String(lastDay).padStart(2, '0')}`
   })()
 
-  // Month label — computed at component scope so all export functions can use it
+  // Month label
   const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
   const [mYear, mMonth] = selectedMonth.split('-').map(Number)
   const monthLabel = `${MONTHS_ID[mMonth - 1]} ${mYear}`
 
   // Data
-  const [report,   setReport]   = useState(null)  // { data, dates, range }
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [report, setReport] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   // UI
-  const [expandedUser, setExpandedUser] = useState(null) // user_id
+  const [expandedUser, setExpandedUser] = useState(null)
 
   // ── Init ───────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -104,60 +181,130 @@ export default function AttendanceReportPage() {
       setReport(json)
     } catch (e) {
       setError(e.message)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [dateStart, dateEnd, graceMin])
 
-  // ── Derived Data ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    fetchReport()
+  }, [fetchReport])
+
+  // ── Separation: Vendor vs Non-Vendor ───────────────────────────────────────
   const nonVendorRows = (report?.data || []).filter(r => !r.is_vendor)
-  const vendorRows    = (report?.data || []).filter(r => r.is_vendor)
-  const allRows       = nonVendorRows
+  const vendorRows    = (report?.data || []).filter(r =>  r.is_vendor)
 
-  // Build tab list: All + each unit + Vendor tab
-  const unitTabs = [
-    { id: 'all', name: `Semua (${nonVendorRows.length})` },
-    ...units.filter(u => nonVendorRows.some(r => r.unit_id === u.unit_id)).map(u => ({
-      id: u.unit_id,
-      name: `${u.unit_name} (${nonVendorRows.filter(r => r.unit_id === u.unit_id).length})`
-    })),
-    { id: 'vendor', name: `Vendor (${vendorRows.length})` }
-  ]
+  // Filter by Unit Tab & Search query
+  const filteredRows = useMemo(() => {
+    let rows = []
+    if (activeTab === 'vendor') {
+      rows = vendorRows
+    } else if (activeTab === 'all') {
+      rows = nonVendorRows
+    } else {
+      rows = nonVendorRows.filter(r => String(r.unit_id) === String(activeTab))
+    }
 
-  const filteredRows = activeTab === 'all'
-    ? nonVendorRows
-    : activeTab === 'vendor'
-      ? vendorRows
-      : nonVendorRows.filter(r => r.unit_id === activeTab)
+    if (!searchName.trim()) return rows
+    const q = searchName.toLowerCase().trim()
+    return rows.filter(r =>
+      (r.name || '').toLowerCase().includes(q) ||
+      (r.role_name || '').toLowerCase().includes(q) ||
+      (r.unit_name || '').toLowerCase().includes(q) ||
+      String(r.user_pin || '').includes(q)
+    )
+  }, [activeTab, nonVendorRows, vendorRows, searchName])
 
-  // ── Export Excel ───────────────────────────────────────────────────────────
+  // Dynamic Tabs list
+  const unitTabs = useMemo(() => {
+    const presentUnitIds = new Set(nonVendorRows.map(r => String(r.unit_id)))
+    const tabs = [{ id: 'all', name: 'Semua Karyawan', count: nonVendorRows.length }]
+    units
+      .filter(u => presentUnitIds.has(String(u.unit_id)))
+      .forEach(u => {
+        const count = nonVendorRows.filter(r => String(r.unit_id) === String(u.unit_id)).length
+        tabs.push({ id: String(u.unit_id), name: u.unit_name, count })
+      })
+    if (vendorRows.length > 0) {
+      tabs.push({ id: 'vendor', name: 'Vendor', count: vendorRows.length })
+    }
+    return tabs
+  }, [nonVendorRows, vendorRows, units])
+
+  // Summary Metrics for the current filtered rows
+  const totals = useMemo(() => {
+    return filteredRows.reduce((acc, r) => ({
+      late:         acc.late         + (r.late_count || 0),
+      late_mins:    acc.late_mins    + (r.late_minutes_total || 0),
+      leave_early:  acc.leave_early  + (r.leave_early_count || 0),
+      le_mins:      acc.le_mins      + (r.leave_early_minutes_total || 0),
+      absent:       acc.absent       + (r.absent_count || 0),
+      no_checkout:  acc.no_checkout  + (r.no_checkout_count || 0),
+    }), { late: 0, late_mins: 0, leave_early: 0, le_mins: 0, absent: 0, no_checkout: 0 })
+  }, [filteredRows])
+
+  // ── Export Excel for Non-Vendor (Official Template) ───────────────────────
   const exportExcel = async () => {
     if (!report?.data?.length) return
 
-    // ── Style definitions ──────────────────────────────────────────────────
-    const COL_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } }
-    const ALT_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F0FB' } }
-    const WHITE_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
-    const LATE_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }
-    const LE_FILL    = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
-    const ABS_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } }
-    const HOL_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC0C0' } }  // merah muda — Hari Libur
-    const OFF_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }  // abu — Day Off
-    const APPR_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }
-    const PEND_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } }
-    const REJ_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
-    const HOL_FONT   = { size: 10, color: { argb: 'FF991B1B' }, bold: true }  // teks merah untuk libur
-    const OFF_FONT   = { size: 10, color: { argb: 'FF9CA3AF' }, italic: true } // abu untuk day off
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'School Admin System'
+    wb.created = new Date()
+
+    const COLS = [
+      { key:'nama',        width:24 },
+      { key:'hari',        width:10 },
+      { key:'tanggal',     width:13 },
+      { key:'jamMasuk',    width:13 },
+      { key:'jamKeluar',   width:13 },
+      { key:'scanMasuk',   width:13 },
+      { key:'scanPulang',  width:13 },
+      { key:'terlambat',   width:16 },
+      { key:'pulangCepat', width:14 },
+      { key:'jamKerja',    width:13 },
+      { key:'lembur',      width:10 },
+      { key:'keterangan',  width:40 },
+      { key:'kehadiran',   width:13 },
+    ]
+
+    const HDRS = [
+      'Nama','Hari','Tanggal',
+      'Jadwal Masuk','Jadwal Pulang',
+      'Scan Masuk','Scan Pulang',
+      'Terlambat','Pulang Cepat',
+      'Jam Kerja','Lembur','Keterangan','Kehadiran'
+    ]
 
     const cellBorder = {
-      top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
-      left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
-      bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-      right:  { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      top:    { style:'thin', color:{ argb:'FFD1D5DB' } },
+      bottom: { style:'thin', color:{ argb:'FFD1D5DB' } },
+      left:   { style:'thin', color:{ argb:'FFD1D5DB' } },
+      right:  { style:'thin', color:{ argb:'FFD1D5DB' } },
     }
 
-    // ── Helper functions ───────────────────────────────────────────────────
-    const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
+    const COL_FILL   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF1E3A5F' } }
+    const WHITE_FILL = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFFFFF' } }
+    const ALT_FILL   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF8FAFC' } }
+    const HOL_FILL   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF1F5F9' } }
+    const HOL_FONT   = { color:{ argb:'FF94A3B8' }, italic:true, size:10 }
+    const OFF_FILL   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFF1F5F9' } }
+    const OFF_FONT   = { color:{ argb:'FF94A3B8' }, italic:true, size:10 }
+    const ABS_FILL   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFDF2F8' } }
+    const LATE_FILL  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFFBEB' } }
+    const LE_FILL    = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFF1F2' } }
+    const APPR_FILL  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFD1FAE5' } }
+    const PEND_FILL  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFEF9C3' } }
+    const REJ_FILL   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFEE2E2' } }
 
+    const presentUnitIds = new Set(nonVendorRows.map(r => r.unit_id))
+    const sheetDefs = [
+      { uid: 'all', name: 'ALL' },
+      ...units
+        .filter(u => presentUnitIds.has(u.unit_id))
+        .map(u => ({ uid: u.unit_id, name: u.unit_name }))
+    ]
+
+    const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
     const minsToHMS = (mins) => {
       if (!mins || mins <= 0) return '00:00:00'
       const h = Math.floor(mins / 60)
@@ -175,63 +322,27 @@ export default function AttendanceReportPage() {
     }
 
     const getKeterangan = (d) => {
-      // Holiday / Day Off — langsung return nama liburnya
       if (d.status === 'holiday') return d.holiday_name || 'Hari Libur'
       if (d.status === 'dayoff' || d.status === 'off') {
-        // Cek apakah ini Sabtu/Minggu
         const dow = new Date(d.date + 'T00:00:00').getDay()
         if (dow === 0) return 'Day Off (Minggu)'
         if (dow === 6) return 'Day Off (Sabtu)'
         return 'Day Off'
       }
       if (d.excuse || d.excused || d.excuse_pending) {
-        const cat = d.excuse?.category_label || d.excuse?.category || ''
-        const catStr = cat ? ` — ${cat}` : ''
-        if (d.excuse?.status === 'approved' || d.excused) return `Disetujui${catStr}`
-        if (d.excuse_pending)                             return `Permohonan Diproses${catStr}`
-        if (d.excuse?.status === 'rejected')              return `Ditolak${catStr}`
+        const detail = formatExcuseDetail(d.excuse)
+        if (d.excuse?.status === 'rejected' && d.excuse?.rejected_note) {
+          return detail ? `${detail} (Ditolak: ${d.excuse.rejected_note})` : `Ditolak: ${d.excuse.rejected_note}`
+        }
+        return detail || 'Izin'
       }
       if (d.issues?.length > 0) {
         const map = { absent:'Tidak Masuk', late:'Terlambat', leave_early:'Pulang Awal', no_checkin:'Tidak Check-In', no_checkout:'Tidak Check-Out' }
         const labels = d.issues.map(i => map[i] || i).filter(Boolean)
-        return `${labels.join(', ')} — Belum Mengisi Form Permohonan`
+        return labels.join(', ') || ''
       }
       return ''
     }
-
-
-    const COLS = [
-      { key:'nama',       width:28 },
-      { key:'hari',       width:10 },
-      { key:'tanggal',    width:13 },
-      { key:'jamMasuk',   width:12 },
-      { key:'jamKeluar',  width:12 },
-      { key:'scanMasuk',  width:13 },
-      { key:'scanPulang', width:13 },
-      { key:'terlambat',  width:18 },
-      { key:'pulangCepat',width:14 },
-      { key:'jamKerja',   width:14 },
-      { key:'lembur',     width: 9 },
-      { key:'keterangan', width:40 },
-      { key:'kehadiran',  width:14 },
-    ]
-    const HDRS = [
-      'Nama Karyawan','Hari','Tanggal','Jam Masuk','Jam Keluar',
-      'Scan Masuk','Scan Pulang','Terlambat','Pulang Cepat',
-      'Jml Jam Kerja','Lembur','Keterangan','Jml Kehadiran',
-    ]
-
-    const wb = new ExcelJS.Workbook()
-    wb.creator = 'Chung Chung Christian School'
-    wb.created = new Date()
-
-    // unit sheets first, All last — exclude vendor employees
-    const nonVendorRows = allRows.filter(r => !r.is_vendor)
-    const unitList = units.filter(u => nonVendorRows.some(r => r.unit_id === u.unit_id))
-    const sheetDefs = [
-      ...unitList.map(u => ({ uid: u.unit_id, name: u.unit_name })),
-      { uid: 'all', name: 'All' },
-    ]
 
     for (const { uid, name } of sheetDefs) {
       const rows = uid === 'all' ? nonVendorRows : nonVendorRows.filter(r => r.unit_id === uid)
@@ -239,62 +350,58 @@ export default function AttendanceReportPage() {
 
       const ws = wb.addWorksheet(name.slice(0, 31))
       ws.columns = COLS
+      let maxUnitKetLen = 40
 
-      // Row 1 blank
       ws.addRow([])
-      // Row 2 school name
       ws.addRow(['Chung Chung Christian School'])
       ws.mergeCells('A2:M2')
-      const titleCell      = ws.getCell('A2')
-      titleCell.value      = 'Chung Chung Christian School'
-      titleCell.font       = { bold: true, size: 16, color: { argb: 'FF1E3A5F' } }
-      titleCell.alignment  = { horizontal: 'center', vertical: 'middle' }
-      ws.getRow(2).height  = 28
+      const titleCell = ws.getCell('A2')
+      titleCell.value = 'Chung Chung Christian School'
+      titleCell.font = { bold: true, size: 16, color: { argb: 'FF1E3A5F' } }
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+      ws.getRow(2).height = 28
 
-      // Row 3 Presensi Month Year
       ws.addRow([`Presensi ${monthLabel}`])
       ws.mergeCells('A3:M3')
-      const subCell        = ws.getCell('A3')
-      subCell.value        = `Presensi ${monthLabel}`
-      subCell.font         = { bold: true, size: 13, color: { argb: 'FF374151' } }
-      subCell.alignment    = { horizontal: 'center', vertical: 'middle' }
-      ws.getRow(3).height  = 22
+      const subCell = ws.getCell('A3')
+      subCell.value = `Presensi ${monthLabel}`
+      subCell.font = { bold: true, size: 13, color: { argb: 'FF374151' } }
+      subCell.alignment = { horizontal: 'center', vertical: 'middle' }
+      ws.getRow(3).height = 22
 
-      // Row 4 blank
       ws.addRow([])
 
-      // Row 5 column headers
       const hdrRow = ws.addRow(HDRS)
       hdrRow.height = 30
       hdrRow.eachCell({ includeEmpty: true }, cell => {
-        cell.fill      = COL_FILL
-        cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
-        cell.border    = cellBorder
+        cell.fill = COL_FILL
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+        cell.border = cellBorder
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
       })
       ws.views = [{ state: 'frozen', ySplit: 5 }]
 
-      // Data rows
       let ri = 0
       const userList = rows
       for (let ui = 0; ui < userList.length; ui++) {
         const r = userList[ui]
-        const expIn  = r.expected_check_in  ? r.expected_check_in.slice(0,5)  : '07:30'
+        const expIn = r.expected_check_in ? r.expected_check_in.slice(0,5) : '07:30'
         const expOut = r.expected_check_out ? r.expected_check_out.slice(0,5) : '16:30'
-        const stdMins = 9 * 60  // 09:00
+        const stdMins = 9 * 60
 
         for (const d of (r.daily || [])) {
           const dateObj = new Date(d.date + 'T00:00:00')
           const hariStr = HARI_ID[dateObj.getDay()]
-          const scanIn  = d.checkin_time  ? d.checkin_time.slice(0,8)  : ''
+          const scanIn = d.checkin_time ? d.checkin_time.slice(0,8) : ''
           const scanOut = d.checkout_time ? d.checkout_time.slice(0,8) : ''
           const lateMins = d.late_minutes || 0
-          const leMins   = d.leave_early_minutes || 0
-          const lateTxt  = lateMins > 0 ? minsToHMS(lateMins) : 'tidak terlambat'
-          const leTxt    = minsToHMS(leMins)
-          const jamKerjaTxt   = minsToHMS(Math.max(0, stdMins - lateMins))
-          const kehadiranTxt  = timeDiff(scanIn, scanOut)
-          const keterangan    = getKeterangan(d)
+          const leMins = d.leave_early_minutes || 0
+          const isNonWork = d.status === 'holiday' || d.status === 'dayoff' || d.status === 'off'
+          const lateTxt = isNonWork ? '00:00:00' : (lateMins > 0 ? minsToHMS(lateMins) : 'tidak terlambat')
+          const leTxt = isNonWork ? '00:00:00' : minsToHMS(leMins)
+          const jamKerjaTxt = isNonWork ? '00:00:00' : minsToHMS(Math.max(0, stdMins - lateMins))
+          const kehadiranTxt = timeDiff(scanIn, scanOut)
+          const keterangan = getKeterangan(d)
 
           const dr = ws.addRow([
             r.name, hariStr, d.date,
@@ -307,44 +414,42 @@ export default function AttendanceReportPage() {
 
           const baseFill = ri % 2 === 0 ? WHITE_FILL : ALT_FILL
           dr.eachCell({ includeEmpty: true }, cell => {
-            cell.border    = cellBorder
+            cell.border = cellBorder
             cell.alignment = { vertical: 'middle' }
-            cell.fill      = baseFill
-            cell.font      = { size: 10 }
+            cell.fill = baseFill
+            cell.font = { size: 10 }
           })
 
-          // Row highlight by status — applied BEFORE keterangan override
           const isHolidayRow = d.status === 'holiday'
-          const isDayOffRow  = d.status === 'dayoff' || d.status === 'off'
+          const isDayOffRow = d.status === 'dayoff' || d.status === 'off'
           let rowFill = null
           let rowFont = null
-          const ket = keterangan
-          if (isHolidayRow)                                          { rowFill = HOL_FILL; rowFont = HOL_FONT }
-          else if (isDayOffRow)                                       { rowFill = OFF_FILL; rowFont = OFF_FONT }
-          else if (d.issues?.includes('absent'))                      rowFill = ABS_FILL
-          else if (d.issues?.includes('late'))                        rowFill = LATE_FILL
-          else if (d.issues?.includes('leave_early'))                 rowFill = LE_FILL
+          if (isHolidayRow) { rowFill = HOL_FILL; rowFont = HOL_FONT }
+          else if (isDayOffRow) { rowFill = OFF_FILL; rowFont = OFF_FONT }
+          else if (d.issues?.includes('absent')) rowFill = ABS_FILL
+          else if (d.issues?.includes('late')) rowFill = LATE_FILL
+          else if (d.issues?.includes('leave_early')) rowFill = LE_FILL
           if (rowFill) dr.eachCell({ includeEmpty: true }, cell => { cell.fill = rowFill; if (rowFont) cell.font = rowFont })
 
-          // Keterangan cell special colour by excuse status (only for work days)
           if (!isHolidayRow && !isDayOffRow) {
             const ketCell = dr.getCell('keterangan')
-            if      (d.excuse?.status === 'approved' || d.excused) { ketCell.fill = APPR_FILL; ketCell.font = { size:10, color:{ argb:'FF065F46' } } }
-            else if (d.excuse_pending)                              { ketCell.fill = PEND_FILL; ketCell.font = { size:10, color:{ argb:'FF854D0E' } } }
-            else if (d.excuse?.status === 'rejected')               { ketCell.fill = REJ_FILL;  ketCell.font = { size:10, color:{ argb:'FF991B1B' } } }
+            if (d.excuse?.status === 'approved' || d.excused) { ketCell.fill = APPR_FILL; ketCell.font = { size:10, color:{ argb:'FF065F46' } } }
+            else if (d.excuse_pending) { ketCell.fill = PEND_FILL; ketCell.font = { size:10, color:{ argb:'FF854D0E' } } }
+            else if (d.excuse?.status === 'rejected') { ketCell.fill = REJ_FILL; ketCell.font = { size:10, color:{ argb:'FF991B1B' } } }
           }
 
-          // Bold terlambat when actually late
           if (lateMins > 0) dr.getCell('terlambat').font = { bold:true, size:10, color:{ argb:'FF92400E' } }
 
-          // Center time columns
           ;['hari','tanggal','jamMasuk','jamKeluar','scanMasuk','scanPulang','terlambat','pulangCepat','jamKerja','lembur','kehadiran']
             .forEach(k => { dr.getCell(k).alignment = { horizontal:'center', vertical:'middle' } })
+
+          if (keterangan && keterangan.length > maxUnitKetLen) {
+            maxUnitKetLen = keterangan.length
+          }
 
           ri++
         }
 
-        // ── Separator row between employees ──
         if (ui < userList.length - 1) {
           const sep = ws.addRow([])
           sep.height = 8
@@ -353,255 +458,225 @@ export default function AttendanceReportPage() {
           }
         }
       }
+
+      ws.getColumn('keterangan').width = Math.min(90, Math.max(40, maxUnitKetLen + 4))
     }
 
-    // ── Rekap Absensi Summary Sheet (always last) ─────────────────────────────
-    {
-      const REKAP_HDR_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }
-      const REKAP_SUB_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E75B6' } }
-      const REKAP_ALT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6E4F7' } }
-      const REKAP_WHT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
-      const REKAP_BORDER   = {
-        top: { style:'thin', color:{argb:'FFB8CCE4'} },
-        left: { style:'thin', color:{argb:'FFB8CCE4'} },
-        bottom: { style:'thin', color:{argb:'FFB8CCE4'} },
-        right: { style:'thin', color:{argb:'FFB8CCE4'} },
+    // ── Rekap Absensi Summary Sheet (Always Last) ───────────────────────────
+    const wsRekap = wb.addWorksheet('Rekap Absensi')
+    wsRekap.columns = [
+      { key: 'no',          width: 5  },
+      { key: 'nama',        width: 26 },
+      { key: 'posisi',      width: 22 },
+      { key: 'workingDay',  width: 14 },
+      { key: 'dayOff',      width: 10 },
+      { key: 'daysInMonth', width: 14 },
+      { key: 'terlambat',   width: 13 },
+      { key: 'absen',       width: 13 },
+      { key: 'pulangCepat', width: 13 },
+      { key: 'annualLeave', width: 13 },
+      { key: 'remarks',     width: 45 },
+    ]
+
+    wsRekap.addRow([])
+    wsRekap.addRow(['REKAPITULASI ABSENSI KARYAWAN'])
+    wsRekap.mergeCells('A2:K2')
+    const rkTitle = wsRekap.getCell('A2')
+    rkTitle.value = 'REKAPITULASI ABSENSI KARYAWAN'
+    rkTitle.font = { bold: true, size: 14, color: { argb: 'FF1E3A5F' } }
+    rkTitle.alignment = { horizontal: 'center', vertical: 'middle' }
+    wsRekap.getRow(2).height = 24
+
+    wsRekap.addRow([`Periode: ${monthLabel}`])
+    wsRekap.mergeCells('A3:K3')
+    const rkSub = wsRekap.getCell('A3')
+    rkSub.value = `Periode: ${monthLabel}`
+    rkSub.font = { italic: true, size: 11, color: { argb: 'FF374151' } }
+    rkSub.alignment = { horizontal: 'center', vertical: 'middle' }
+    wsRekap.getRow(3).height = 18
+
+    wsRekap.addRow([])
+
+    const REKAP_HDRS = [
+      'No','Nama Karyawan','Posisi / Unit',
+      'Working Day','Day Off','Days in Month',
+      'Late (minutes)','Absent (Day)','Leave Early',
+      'Annual Leave','Remarks'
+    ]
+    const rkHdr = wsRekap.addRow(REKAP_HDRS)
+    rkHdr.height = 28
+    rkHdr.eachCell({ includeEmpty: true }, cell => {
+      cell.fill = COL_FILL
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9.5 }
+      cell.border = cellBorder
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    })
+    wsRekap.views = [{ state: 'frozen', ySplit: 5 }]
+
+    const [curYear, curMonth] = selectedMonth.split('-').map(Number)
+    const daysInMonth = new Date(curYear, curMonth, 0).getDate()
+
+    let rkIdx = 1
+    let maxRemarksLen = 40
+    for (const u of nonVendorRows) {
+      const isPartTime = !!u.is_part_time_staff
+      const isFlexible = !!u.is_flexible_hours
+      const isOnCall = !!u.is_on_call_staff
+
+      const lateMinsTotal = (isPartTime || isFlexible || isOnCall) ? 0 : (u.late_minutes_total || 0)
+      const leMinsTotal = (isPartTime || isFlexible || isOnCall) ? 0 : (u.leave_early_minutes_total || 0)
+      const lateHMS = minsToHMS(lateMinsTotal)
+      const leHMS = minsToHMS(leMinsTotal)
+
+      let annualLeaveCount = 0
+      const categoryMap = {}
+
+      for (const d of (u.daily || [])) {
+        const isApproved = d.excuse?.status === 'approved' || d.excused || d.excuse?.status === 'approved_1' || d.excuse_pending
+        if (isApproved && d.excuse) {
+          const rawCat = (d.excuse.category || '').toLowerCase()
+          if (rawCat === 'annual_leave') {
+            annualLeaveCount++
+          } else {
+            const catName = formatExcuseDetail(d.excuse) || EXCUSE_CATEGORY_MAP[rawCat] || 'Izin'
+            categoryMap[catName] = (categoryMap[catName] || 0) + 1
+          }
+        }
       }
 
-      const sheetTitle = `Rekap Absensi ${monthLabel}`
-      const wsRekap = wb.addWorksheet(sheetTitle.slice(0, 31))
+      const remarksList = []
+      for (const [cat, count] of Object.entries(categoryMap)) {
+        remarksList.push(`${cat}: ${count} hari`)
+      }
 
-      // Total days in the period
-      const periodeStart = new Date(report.range.start + 'T00:00:00')
-      const periodeEnd   = new Date(report.range.end   + 'T00:00:00')
-      const daysInPeriod = Math.round((periodeEnd - periodeStart) / 86400000) + 1
+      const totalAbsent = isPartTime || isOnCall ? 0 : (u.absent_count || 0)
+      const excusedDays = Object.values(categoryMap).reduce((a, b) => a + b, 0)
+      const unexcusedDays = Math.max(0, totalAbsent - excusedDays)
+      if (unexcusedDays > 0) {
+        remarksList.push(`Tanpa Keterangan: ${unexcusedDays} hari`)
+      }
 
-      // Column widths
-      wsRekap.columns = [
-        { key:'no',           width: 5  },
-        { key:'nama',         width: 30 },
-        { key:'posisi',       width: 28 },
-        { key:'workingDay',   width: 13 },
-        { key:'dayOff',       width: 10 },
-        { key:'daysInMonth',  width: 16 },
-        { key:'late',         width: 16 },
-        { key:'absent',       width: 14 },
-        { key:'leaveEarly',   width: 13 },
-        { key:'annualLeave',  width: 14 },
-        { key:'remarks',      width: 16 },
-      ]
+      const remarksText = remarksList.join(', ') || ''
+      if (remarksText.length > maxRemarksLen) {
+        maxRemarksLen = remarksText.length
+      }
 
-      // ── Title rows ──────────────────────────────────────────────────────────
-      wsRekap.addRow([])
-      wsRekap.addRow(['Chung Chung Christian School'])
-      wsRekap.mergeCells('A2:K2')
-      const rTitleCell = wsRekap.getCell('A2')
-      rTitleCell.value     = 'Chung Chung Christian School'
-      rTitleCell.font      = { bold: true, size: 16, color: { argb: 'FF1F4E79' } }
-      rTitleCell.alignment = { horizontal: 'center', vertical: 'middle' }
-      wsRekap.getRow(2).height = 28
+      const workingDays = isPartTime ? (u.work_days_in_range || 0) : (u.work_days_in_range || 0)
+      const dayOffCount = Math.max(0, daysInMonth - workingDays)
 
-      wsRekap.addRow([sheetTitle])
-      wsRekap.mergeCells('A3:K3')
-      const rSubCell = wsRekap.getCell('A3')
-      rSubCell.value     = sheetTitle
-      rSubCell.font      = { bold: true, size: 13, color: { argb: 'FF374151' } }
-      rSubCell.alignment = { horizontal: 'center', vertical: 'middle' }
-      wsRekap.getRow(3).height = 22
+      const rkRow = wsRekap.addRow([
+        rkIdx++,
+        u.name,
+        u.role_name || u.unit_name || '—',
+        workingDays,
+        dayOffCount,
+        daysInMonth,
+        lateHMS,
+        totalAbsent,
+        leHMS,
+        annualLeaveCount,
+        remarksText
+      ])
+      rkRow.height = 18
 
-      wsRekap.addRow([])
-
-      // ── Merged header row 5 ─────────────────────────────────────────────────
-      wsRekap.addRow(['No', "Employee's Name", 'Position', '', '', '', 'Summary', '', '', '', 'Remarks'])
-      wsRekap.mergeCells('D5:F5')   // Summary label spans D-F (Working Day, Day Off, Days in Month)
-      wsRekap.mergeCells('G5:J5')   // Summary spans Late, Absent, Leave Early, Annual Leave
-      const hdr5 = wsRekap.getRow(5)
-      hdr5.height = 24
-      // merge No, Name, Position across rows 5-6 will be done via mergeCells below
-
-      // ── Sub-header row 6 ───────────────────────────────────────────────────
-      wsRekap.addRow(['', '', '', 'Working Day', 'Day Off', 'Days in a Month', 'Late (minutes)', 'Absent (Day)', 'Leave Early', 'Annual Leave', ''])
-      const hdr6 = wsRekap.getRow(6)
-      hdr6.height = 28
-
-      // Merge row 5-6 for No, Name, Position, Remarks
-      wsRekap.mergeCells('A5:A6')
-      wsRekap.mergeCells('B5:B6')
-      wsRekap.mergeCells('C5:C6')
-      wsRekap.mergeCells('K5:K6')
-
-      // Style row 5
-      hdr5.eachCell({ includeEmpty: true }, (cell, colNum) => {
-        cell.fill      = REKAP_HDR_FILL
-        cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
-        cell.border    = REKAP_BORDER
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-      })
-      // Style row 6
-      hdr6.eachCell({ includeEmpty: true }, (cell, colNum) => {
-        cell.fill      = REKAP_SUB_FILL
-        cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
-        cell.border    = REKAP_BORDER
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+      const baseFill = (rkIdx % 2 === 0) ? WHITE_FILL : ALT_FILL
+      rkRow.eachCell({ includeEmpty: true }, cell => {
+        cell.border = cellBorder
+        cell.alignment = { vertical: 'middle' }
+        cell.fill = baseFill
+        cell.font = { size: 9.5 }
       })
 
-      wsRekap.views = [{ state: 'frozen', ySplit: 6 }]
+      ;['no','workingDay','dayOff','daysInMonth','terlambat','absen','pulangCepat','annualLeave']
+        .forEach(k => { rkRow.getCell(k).alignment = { horizontal: 'center', vertical: 'middle' } })
 
-      // ── Data rows ──────────────────────────────────────────────────────────
-      const sortedRows = [...allRows].sort((a, b) => {
-        if (a.unit_name !== b.unit_name) return a.unit_name.localeCompare(b.unit_name)
-        return a.name.localeCompare(b.name)
-      })
-
-      sortedRows.forEach((r, idx) => {
-        const workDays   = r.work_days_in_range || 0
-        const dayOff     = daysInPeriod - workDays
-        const lateMins   = r.late_minutes_total || 0
-        const leMins     = r.leave_early_minutes_total || 0
-        const absentDays = r.absent_count || 0
-
-        // Annual leave = days with approved excuse
-        const annualLeave = (r.daily || []).filter(d =>
-          d.excused === true || d.excuse?.status === 'approved'
-        ).length
-
-        const lateTxt = minsToHMS(lateMins)
-        const leTxt   = minsToHMS(leMins)
-
-        const dr = wsRekap.addRow([
-          idx + 1,
-          r.name,
-          r.position || '',  // Position — dari user_position_history
-          workDays,
-          dayOff,
-          daysInPeriod,
-          lateTxt,
-          absentDays,
-          leTxt,
-          annualLeave,
-          '',               // Remarks — selalu kosong
-        ])
-        dr.height = 18
-
-        const fill = idx % 2 === 0 ? REKAP_WHT_FILL : REKAP_ALT_FILL
-        dr.eachCell({ includeEmpty: true }, cell => {
-          cell.fill      = fill
-          cell.border    = REKAP_BORDER
-          cell.alignment = { vertical: 'middle' }
-          cell.font      = { size: 10 }
-        })
-
-        // Center numeric and time columns
-        ;['no','workingDay','dayOff','daysInMonth','late','absent','leaveEarly','annualLeave']
-          .forEach(k => { dr.getCell(k).alignment = { horizontal: 'center', vertical: 'middle' } })
-
-        // Highlight late > 0
-        if (lateMins > 0) {
-          dr.getCell('late').font = { bold: true, size: 10, color: { argb: 'FF92400E' } }
-          dr.getCell('late').fill = LATE_FILL
-        }
-        // Highlight absent > 0
-        if (absentDays > 0) {
-          dr.getCell('absent').font = { bold: true, size: 10, color: { argb: 'FF6B21A8' } }
-          dr.getCell('absent').fill = ABS_FILL
-        }
-        // Highlight leave early > 0
-        if (leMins > 0) {
-          dr.getCell('leaveEarly').fill = LE_FILL
-        }
-        // Annual leave badge
-        if (annualLeave > 0) {
-          dr.getCell('annualLeave').font = { bold: true, size: 10, color: { argb: 'FF065F46' } }
-          dr.getCell('annualLeave').fill = APPR_FILL
-        }
-      })
+      if (lateMinsTotal > 0) {
+        rkRow.getCell('terlambat').fill = LATE_FILL
+        rkRow.getCell('terlambat').font = { bold: true, size: 9.5, color: { argb: 'FF92400E' } }
+      }
+      if (totalAbsent > 0) {
+        rkRow.getCell('absen').fill = ABS_FILL
+        rkRow.getCell('absen').font = { bold: true, size: 9.5, color: { argb: 'FF6B21A8' } }
+      }
+      if (annualLeaveCount > 0) {
+        rkRow.getCell('annualLeave').fill = APPR_FILL
+        rkRow.getCell('annualLeave').font = { bold: true, size: 9.5, color: { argb: 'FF065F46' } }
+      }
     }
 
-    const buffer = await wb.xlsx.writeBuffer()
-    const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url    = URL.createObjectURL(blob)
-    const a      = document.createElement('a')
-    a.href       = url
-    a.download   = `Presensi_${monthLabel.replace(' ', '_')}.xlsx`
+    wsRekap.getColumn('remarks').width = Math.min(100, Math.max(40, maxRemarksLen + 4))
+
+    const buf = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Presensi_${monthLabel.replace(/\s+/g, '_')}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  // ── Export Vendor Excel ────────────────────────────────────────────────────
+  // ── Export Excel for Vendor ───────────────────────────────────────────────
   const exportVendorExcel = async () => {
-    if (!report?.data?.length) return
+    if (!vendorRows.length) return
 
-    // Filter hanya user dengan role is_vendor = true
-    const vendorRows = (report.data || []).filter(r => r.is_vendor === true)
-    if (!vendorRows.length) {
-      alert('Tidak ada karyawan vendor dalam laporan ini. Pastikan sudah set is_vendor di Role Management.')
-      return
-    }
-
-    const ExcelJS = (await import('exceljs')).default
     const wb = new ExcelJS.Workbook()
+    wb.creator = 'School Admin System'
+    wb.created = new Date()
 
-    const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
-
-    const HDR_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD46B00' } }
-    const ALT_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3E0' } }
-    const WHT_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
-    const cellBorder = {
-      top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-      left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-      bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-      right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-    }
-
-    // Satu sheet "Presensi Vendor" berisi semua vendor karyawan
     const ws = wb.addWorksheet('Presensi Vendor')
-
     ws.columns = [
-      { key: 'nama',      width: 28 },
-      { key: 'hari',      width: 12 },
-      { key: 'tanggal',   width: 14 },
-      { key: 'scanMasuk', width: 14 },
-      { key: 'scanPulang',width: 14 },
+      { key: 'no',         width: 6  },
+      { key: 'nama',       width: 28 },
+      { key: 'hari',       width: 12 },
+      { key: 'tanggal',    width: 14 },
+      { key: 'scanMasuk',  width: 14 },
+      { key: 'scanPulang', width: 14 },
     ]
 
-    // Title rows
+    const cellBorder = {
+      top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      right:  { style: 'thin', color: { argb: 'FFD1D5DB' } },
+    }
+    const COL_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC2410C' } }
+    const WHITE_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
+    const ALT_FILL   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF7ED' } }
+
     ws.addRow([])
     ws.addRow(['Chung Chung Christian School'])
-    ws.mergeCells('A2:E2')
-    const r2 = ws.getCell('A2')
-    r2.value = 'Chung Chung Christian School'
-    r2.font      = { bold: true, size: 14 }
-    r2.alignment = { horizontal: 'center', vertical: 'middle' }
-    ws.getRow(2).height = 24
+    ws.mergeCells('A2:F2')
+    const tCell = ws.getCell('A2')
+    tCell.value = 'Chung Chung Christian School'
+    tCell.font  = { bold: true, size: 15, color: { argb: 'FF9A3412' } }
+    tCell.alignment = { horizontal: 'center', vertical: 'middle' }
+    ws.getRow(2).height = 26
 
-    ws.addRow([`Presensi ${monthLabel}`])
-    ws.mergeCells('A3:E3')
-    const r3 = ws.getCell('A3')
-    r3.value = `Presensi ${monthLabel}`
-    r3.font      = { bold: true, size: 12 }
-    r3.alignment = { horizontal: 'center', vertical: 'middle' }
+    ws.addRow([`Presensi Karyawan Vendor — ${monthLabel}`])
+    ws.mergeCells('A3:F3')
+    const sCell = ws.getCell('A3')
+    sCell.value = `Presensi Karyawan Vendor — ${monthLabel}`
+    sCell.font  = { bold: true, size: 12, color: { argb: 'FF374151' } }
+    sCell.alignment = { horizontal: 'center', vertical: 'middle' }
     ws.getRow(3).height = 20
 
     ws.addRow([])
 
-    // Header row
-    const hdrRow = ws.addRow({
-      nama: 'Nama', hari: 'Hari', tanggal: 'Tanggal', scanMasuk: 'Scan Masuk', scanPulang: 'Scan Pulang'
-    })
-    hdrRow.height = 20
-    hdrRow.eachCell({ includeEmpty: true }, cell => {
-      cell.fill      = HDR_FILL
-      cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+    const HDRS = ['No', 'Nama', 'Hari', 'Tanggal', 'Scan Masuk', 'Scan Pulang']
+    const hRow = ws.addRow(HDRS)
+    hRow.height = 28
+    hRow.eachCell({ includeEmpty: true }, cell => {
+      cell.fill = COL_FILL
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+      cell.border = cellBorder
       cell.alignment = { horizontal: 'center', vertical: 'middle' }
-      cell.border    = cellBorder
     })
     ws.views = [{ state: 'frozen', ySplit: 5 }]
 
-    // Kumpulkan semua baris: semua hari kalender (bukan hanya hari kerja)
-    // Build scan lookup per user: Map<userId, Map<date, {in, out}>>
+    const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
     const allVendorDays = []
     for (const user of vendorRows) {
-      // Build lookup dari daily (yang sudah ada scan datanya)
       const scanByDate = new Map()
       for (const d of (user.daily || [])) {
         scanByDate.set(d.date, {
@@ -609,7 +684,6 @@ export default function AttendanceReportPage() {
           scanPulang: d.checkout_time ? d.checkout_time.slice(0, 8) : '',
         })
       }
-      // Generate SEMUA hari dalam periode (dateStart s/d dateEnd)
       const [sY, sM, sD] = dateStart.split('-').map(Number)
       const [eY, eM, eD] = dateEnd.split('-').map(Number)
       const cur = new Date(sY, sM - 1, sD)
@@ -629,7 +703,6 @@ export default function AttendanceReportPage() {
         cur.setDate(cur.getDate() + 1)
       }
     }
-    // Sort: nama dulu → tanggal naik
     allVendorDays.sort((a, b) => {
       if (a.user.name !== b.user.name) return a.user.name.localeCompare(b.user.name)
       return a.dateStr.localeCompare(b.dateStr)
@@ -641,381 +714,593 @@ export default function AttendanceReportPage() {
       const hari = HARI_ID[dow]
 
       const dr = ws.addRow({
+        no: idx + 1,
         nama: user.name,
         hari,
-        tanggal:    dateStr,
+        tanggal: dateStr,
         scanMasuk,
         scanPulang,
       })
       dr.height = 18
 
-      // Alternating color per row — no holiday/dayoff distinction for vendor
-      const fill = idx % 2 === 0 ? WHT_FILL : ALT_FILL
+      const baseFill = idx % 2 === 0 ? WHITE_FILL : ALT_FILL
       dr.eachCell({ includeEmpty: true }, cell => {
-        cell.fill      = fill
         cell.border    = cellBorder
-        cell.font      = { size: 10 }
         cell.alignment = { vertical: 'middle' }
+        cell.fill      = baseFill
+        cell.font      = { size: 10 }
       })
-      ;['hari','tanggal','scanMasuk','scanPulang'].forEach(k => {
+
+      ;['no','hari','tanggal','scanMasuk','scanPulang'].forEach(k => {
         dr.getCell(k).alignment = { horizontal: 'center', vertical: 'middle' }
       })
     })
 
-    const buffer = await wb.xlsx.writeBuffer()
-    const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url    = URL.createObjectURL(blob)
-    const a      = document.createElement('a')
-    a.href       = url
-    a.download   = `Presensi_Vendor_${monthLabel.replace(' ', '_')}.xlsx`
+    const buf  = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `Presensi_Vendor_${monthLabel.replace(/\s+/g, '_')}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-  const inputStyle = {
-    background: theme.inputBg || theme.subtleBg,
-    border: `1px solid ${theme.border}`,
-    color: theme.textBody,
-    borderRadius: 8,
-    padding: '7px 12px',
-    fontSize: 13,
-  }
-
-  const tabStyle = (id) => ({
-    padding: '8px 16px',
-    borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-    borderBottom: activeTab === id ? `2px solid ${theme.blueText || '#2563eb'}` : '2px solid transparent',
-    color: activeTab === id ? (theme.blueText || '#2563eb') : theme.textSecondary,
-    fontWeight: activeTab === id ? 600 : 400,
-    background: 'transparent',
-    cursor: 'pointer',
-    fontSize: 13,
-    outline: 'none',
-    transition: 'all 0.15s',
-    whiteSpace: 'nowrap',
-  })
-
-  // Summary numbers for the current tab
-  const totals = filteredRows.reduce((acc, r) => ({
-    late:         acc.late         + r.late_count,
-    late_mins:    acc.late_mins    + r.late_minutes_total,
-    leave_early:  acc.leave_early  + r.leave_early_count,
-    le_mins:      acc.le_mins      + r.leave_early_minutes_total,
-    absent:       acc.absent       + r.absent_count,
-    no_checkout:  acc.no_checkout  + r.no_checkout_count,
-  }), { late: 0, late_mins: 0, leave_early: 0, le_mins: 0, absent: 0, no_checkout: 0 })
-
   return (
-    <div className="p-4 md:p-6 space-y-5" style={{ color: theme.textBody }}>
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+      
+      {/* ── HEADER & BREADCRUMBS (MATCHING /data/pyp LAYOUT) ─────────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold" style={{ color: theme.textPrimary }}>
-            📊 Laporan Rekap Absensi
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: theme.textSecondary }}>
-            Rekap keterlambatan, pulang awal, dan ketidakhadiran karyawan per periode
-          </p>
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1.5" style={{ color: textSecondary }}>
+            <span>[ADMINISTRATION]</span>
+            <span>/</span>
+            <span>[ATTENDANCE MASTER DATA]</span>
+            <span>/</span>
+            <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>[MONTHLY ATTENDANCE REPORT]</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded flex items-center justify-center border"
+              style={{
+                background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                borderColor: isDark ? '#2563EB' : '#BAE6FD',
+                color: isDark ? '#60A5FA' : '#0284C7'
+              }}
+            >
+              <FontAwesomeIcon icon={faChartLine} className="text-base" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+                Monthly Attendance &amp; Recap Report
+              </h1>
+              <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
+                Rekapitulasi keterlambatan, kepulangan awal, izin/cuti tahunan, dan presensi fisik staf per periode.
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={exportVendorExcel}
-            disabled={!report?.data?.length}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style={{
-              background: report?.data?.length ? '#ea580c' : theme.subtleBg,
-              color: report?.data?.length ? '#fff' : theme.textSecondary,
-              border: `1px solid ${report?.data?.length ? '#ea580c' : theme.border}`,
-            }}
-          >
-            🏭 Export Vendor
-          </button>
+
+        {/* Export Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {vendorRows.length > 0 && (
+            <button
+              onClick={exportVendorExcel}
+              disabled={!report?.data?.length}
+              className="px-3.5 py-2 text-xs font-semibold rounded-md border transition-all cursor-pointer flex items-center gap-2 hover:brightness-110 active:scale-95"
+              style={{
+                background: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED',
+                borderColor: isDark ? '#EA580C' : '#FDBA74',
+                color: isDark ? '#FB923C' : '#EA580C',
+                opacity: report?.data?.length ? 1 : 0.5,
+                cursor: report?.data?.length ? 'pointer' : 'not-allowed'
+              }}
+            >
+              <FontAwesomeIcon icon={faBuilding} className="text-xs" />
+              <span>Export Vendor</span>
+            </button>
+          )}
+
           <button
             onClick={exportExcel}
             disabled={!report?.data?.length}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            className="px-4 py-2 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-2 shadow-xs hover:brightness-110 active:scale-95 text-white"
             style={{
-              background: report?.data?.length ? '#16a34a' : theme.subtleBg,
-              color: report?.data?.length ? '#fff' : theme.textSecondary,
-              border: `1px solid ${report?.data?.length ? '#16a34a' : theme.border}`,
+              background: '#16A34A',
+              border: '1px solid #15803D',
+              opacity: report?.data?.length ? 1 : 0.5,
+              cursor: report?.data?.length ? 'pointer' : 'not-allowed'
             }}
           >
-            📥 Export Excel
+            <FontAwesomeIcon icon={faFileExcel} />
+            <span>Export Excel</span>
           </button>
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="p-4 rounded-xl flex flex-wrap gap-3 items-end" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-        <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Bulan</label>
-          <input
-            type="month"
-            style={inputStyle}
-            value={selectedMonth}
-            onChange={e => {
-              setSelectedMonth(e.target.value)
+      {/* ── FILTER CONTROL BAR (MATCHING /data/pyp) ─────────────────────────── */}
+      <div
+        className="p-3.5 rounded border mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4"
+        style={{ background: cardBg, borderColor, borderRadius: '8px' }}
+      >
+        <div className="flex items-center gap-4 flex-wrap flex-1">
+          {/* Month Selector */}
+          <div style={{ minWidth: '180px' }}>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+              1. Periode Bulan *
+            </label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
+              style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+            />
+          </div>
+
+          {/* Grace Minutes */}
+          <div style={{ width: '130px' }}>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>
+              2. Toleransi (Mnt)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="60"
+              value={graceMin}
+              onChange={e => setGraceMin(parseInt(e.target.value, 10) || 0)}
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+              style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+            />
+          </div>
+
+          {/* Search Query */}
+          <div style={{ minWidth: '220px', flex: 1 }}>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>
+              3. Cari Karyawan / PIN
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchName}
+                onChange={e => setSearchName(e.target.value)}
+                placeholder="Cari nama, role, atau PIN..."
+                className="w-full pl-7 pr-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                style={{ background: isDark ? '#18181B' : '#FFFFFF', borderColor, color: textPrimary, borderRadius: '4px' }}
+              />
+              <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: textSecondary }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Refresh / Fetch Button */}
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={fetchReport}
+            disabled={loading}
+            style={{
+              background: textPrimary,
+              color: isDark ? '#09090B' : '#FFFFFF',
+              fontSize: '12px',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}
-          />
+          >
+            <FontAwesomeIcon icon={loading ? faSpinner : faRotateRight} className={loading ? 'animate-spin' : ''} />
+            <span>{loading ? 'Memuat...' : 'Tampilkan'}</span>
+          </Button>
         </div>
-        <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Toleransi (mnt)</label>
-          <input type="number" min="0" max="60" style={{ ...inputStyle, width: 72 }}
-            value={graceMin} onChange={e => setGraceMin(parseInt(e.target.value, 10) || 0)} />
-        </div>
-        <button
-          onClick={fetchReport}
-          disabled={loading}
-          className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-          style={{ background: theme.blueText || '#2563eb', color: '#fff', opacity: loading ? 0.6 : 1 }}
-        >
-          {loading ? '⏳ Memuat...' : '🔍 Tampilkan'}
-        </button>
-        {report && (
-          <span className="text-xs self-center" style={{ color: theme.textSecondary }}>
-            {nonVendorRows.length} karyawan · {vendorRows.length} vendor · {report.dates?.length} hari kerja
-          </span>
-        )}
       </div>
 
+      {/* ── METADATA SUMMARY BENTO CARDS ───────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div
+          className="p-3.5 rounded-lg border flex flex-col justify-between"
+          style={{ background: cardBg, borderColor }}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: textSecondary }}>Total Karyawan</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold font-mono" style={{ color: textPrimary }}>{nonVendorRows.length}</span>
+            <span className="text-xs font-medium" style={{ color: textSecondary }}>staf internal</span>
+          </div>
+        </div>
+
+        <div
+          className="p-3.5 rounded-lg border flex flex-col justify-between"
+          style={{ background: cardBg, borderColor }}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: textSecondary }}>Terlambat</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold font-mono" style={{ color: isDark ? '#FBBF24' : '#B45309' }}>{totals.late}×</span>
+            <span className="text-xs font-medium" style={{ color: isDark ? '#FCD34D' : '#92400E' }}>({fmtMins(totals.late_mins)})</span>
+          </div>
+        </div>
+
+        <div
+          className="p-3.5 rounded-lg border flex flex-col justify-between"
+          style={{ background: cardBg, borderColor }}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: textSecondary }}>Pulang Awal</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold font-mono" style={{ color: isDark ? '#FB923C' : '#C2410C' }}>{totals.leave_early}×</span>
+            <span className="text-xs font-medium" style={{ color: isDark ? '#FDBA74' : '#9A3412' }}>({fmtMins(totals.le_mins)})</span>
+          </div>
+        </div>
+
+        <div
+          className="p-3.5 rounded-lg border flex flex-col justify-between"
+          style={{ background: cardBg, borderColor }}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: textSecondary }}>Tidak Masuk (Alpa)</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold font-mono" style={{ color: isDark ? '#C084FC' : '#7E22CE' }}>{totals.absent}</span>
+            <span className="text-xs font-medium" style={{ color: isDark ? '#D8B4FE' : '#6B21A8' }}>hari alpa</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ERROR NOTIFICATION ── */}
       {error && (
-        <div className="p-3.5 rounded-xl text-sm flex items-center justify-between gap-3 shadow-xs" style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>
-          <div>
-            <span className="font-bold block">❌ Gagal Memuat Data Presensi</span>
-            <span className="text-xs text-red-700">
-              {error.includes('fetch failed') || error.includes('Koneksi')
-                ? 'Koneksi jaringan ke Supabase terputus/timeout. Silakan klik tombol "Coba Lagi".'
-                : error}
-            </span>
+        <div
+          className="p-3.5 rounded-lg border text-xs flex items-center justify-between gap-3 mb-6"
+          style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}
+        >
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faExclamationTriangle} className="text-sm" />
+            <span>{error}</span>
           </div>
           <button
             onClick={fetchReport}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-xs"
+            className="px-2.5 py-1 rounded text-xs font-bold bg-red-700 text-white cursor-pointer"
           >
-            🔄 Coba Lagi
+            Coba Lagi
           </button>
         </div>
       )}
 
-      {/* Empty state */}
-      {!report && !loading && (
-        <div className="py-16 text-center" style={{ color: theme.textSecondary }}>
-          <div style={{ fontSize: 48 }}>📊</div>
-          <p className="text-sm mt-3">Pilih periode dan klik "Tampilkan" untuk melihat laporan</p>
+      {/* ── TABS NAVIGATION (MATCHING /data/pyp HORIZONTAL TABS) ───────────── */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '20px', gap: '24px', flexWrap: 'wrap' }}>
+        {unitTabs.map(tab => {
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: isActive ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: isActive ? textPrimary : textSecondary,
+                borderBottom: isActive ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={tab.id === 'vendor' ? faBuilding : faLayerGroup} style={{ fontSize: '13px' }} />
+              <span>{tab.name}</span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '1px 6px',
+                  borderRadius: '999px',
+                  background: isActive ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1F2937' : '#F4F4F5'),
+                  color: textSecondary,
+                  fontWeight: 700
+                }}
+              >
+                {tab.count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── MAIN TABLE VIEW ────────────────────────────────────────────────── */}
+      {loading ? (
+        <div style={{ padding: '64px 0', textAlign: 'center', color: textSecondary, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xl" />
+          <span style={{ fontSize: '13px' }}>Menghitung dan memuat data presensi bulanan...</span>
         </div>
-      )}
-
-      {loading && (
-        <div className="py-16 text-center" style={{ color: theme.textSecondary }}>
-          <div className="text-3xl mb-3" style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</div>
-          <p className="text-sm">Menghitung data absensi...</p>
+      ) : filteredRows.length === 0 ? (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '64px 20px',
+            borderRadius: '8px',
+            border: `1px dashed ${borderColor}`,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          <FontAwesomeIcon icon={faUserSlash} style={{ fontSize: '28px', color: textSecondary }} />
+          <p style={{ fontSize: '13px', color: textSecondary, margin: 0 }}>
+            Tidak ada data karyawan yang ditemukan untuk tab atau filter ini.
+          </p>
         </div>
-      )}
-
-      {/* Report content */}
-      {report && !loading && (
-        <div className="space-y-4">
-
-
-          {/* Unit tabs */}
-          <div style={{ borderBottom: `1px solid ${theme.border}`, overflowX: 'auto' }}>
-            <div style={{ display: 'flex', minWidth: 'max-content' }}>
-              {unitTabs.map(t => (
-                <button key={t.id} style={tabStyle(t.id)} onClick={() => setActiveTab(t.id)}>
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Table */}
-          {filteredRows.length === 0 ? (
-            <div className="py-12 text-center text-sm" style={{ color: theme.textSecondary }}>
-              Tidak ada data untuk unit ini
-            </div>
-          ) : (
-            <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ background: theme.subtleBg }}>
-                      {['Nama', 'Role', 'Unit', 'Hari Kerja', '🕐 Telat (×)', 'Total Mnt', '🚪 Pulang Awal (×)', 'Total Mnt', '❌ Tidak Masuk', '⚠️ No Checkout', ''].map((h, i) => (
-                        <th key={i} className="text-left px-3 py-3 text-xs font-semibold whitespace-nowrap" style={{ color: theme.textSecondary }}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.map((row, ri) => (
-                      <Fragment key={row.user_id}>
-                        <tr
-                          key={row.user_id}
-                          onClick={() => setExpandedUser(expandedUser === row.user_id ? null : row.user_id)}
-                          className="cursor-pointer transition-colors"
-                          style={{
-                            borderTop: ri > 0 ? `1px solid ${theme.border}` : 'none',
-                            background: expandedUser === row.user_id ? (theme.subtleBg) : theme.cardBg,
-                          }}
-                        >
-                          <td className="px-3 py-3 font-medium" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>
-                            <div className="flex items-center gap-2">
-                              <span>{row.name}</span>
-                              {row.user_pin && (
-                                <span className="text-xs px-1.5 py-0.5 rounded font-mono"
-                                  style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-                                  {row.user_pin}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-xs" style={{ color: theme.textSecondary }}>{row.role_name}</td>
-                          <td className="px-3 py-3 text-xs" style={{ color: theme.textSecondary }}>{row.unit_name}</td>
-                          <td className="px-3 py-3 text-center text-xs" style={{ color: theme.textSecondary }}>{row.work_days_in_range}</td>
-
-                          {/* Late */}
-                          <td className="px-3 py-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: row.late_count > 0 ? '#fef3c7' : 'transparent', color: row.late_count > 0 ? '#92400e' : theme.textSecondary }}>
-                              {row.late_count > 0 ? row.late_count : '—'}
+      ) : (
+        <div
+          style={{
+            background: cardBg,
+            border: `1px solid ${borderColor}`,
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr
+                  style={{
+                    background: isDark ? '#27272A' : '#FBFBFA',
+                    borderBottom: `1px solid ${borderColor}`,
+                    color: textSecondary
+                  }}
+                >
+                  <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Nama Karyawan</th>
+                  <th className="text-left px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Role</th>
+                  <th className="text-left px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Unit</th>
+                  <th className="text-center px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Hari Kerja</th>
+                  <th className="text-center px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Telat (×)</th>
+                  <th className="text-center px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Mnt Telat</th>
+                  <th className="text-center px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Pulang Awal (×)</th>
+                  <th className="text-center px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Mnt PA</th>
+                  <th className="text-center px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Alpa</th>
+                  <th className="text-center px-3 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Tanpa Scan Out</th>
+                  <th className="text-right px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Rincian</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ divideColor: borderColor }}>
+                {filteredRows.map((row, ri) => (
+                  <Fragment key={row.user_id}>
+                    <tr
+                      onClick={() => setExpandedUser(expandedUser === row.user_id ? null : row.user_id)}
+                      className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors"
+                      style={{
+                        background: expandedUser === row.user_id ? (isDark ? '#27272A' : '#F4F4F5') : 'transparent'
+                      }}
+                    >
+                      <td className="px-3.5 py-3 font-semibold" style={{ color: textPrimary }}>
+                        <div className="flex items-center gap-2">
+                          <span>{row.name}</span>
+                          {row.user_pin && (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
+                              style={{
+                                background: isDark ? '#1F2937' : '#F3F4F6',
+                                color: textSecondary,
+                                border: `1px solid ${borderColor}`
+                              }}
+                            >
+                              PIN {row.user_pin}
                             </span>
-                          </td>
-                          <td className="px-3 py-3 text-center text-xs" style={{ color: row.late_minutes_total > 0 ? '#92400e' : theme.textSecondary }}>
-                            {row.late_minutes_total > 0 ? fmtMins(row.late_minutes_total) : '—'}
-                          </td>
-
-                          {/* Leave early */}
-                          <td className="px-3 py-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: row.leave_early_count > 0 ? '#fee2e2' : 'transparent', color: row.leave_early_count > 0 ? '#991b1b' : theme.textSecondary }}>
-                              {row.leave_early_count > 0 ? row.leave_early_count : '—'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-center text-xs" style={{ color: row.leave_early_minutes_total > 0 ? '#991b1b' : theme.textSecondary }}>
-                            {row.leave_early_minutes_total > 0 ? fmtMins(row.leave_early_minutes_total) : '—'}
-                          </td>
-
-                          {/* Absent */}
-                          <td className="px-3 py-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: row.absent_count > 0 ? '#f3e8ff' : 'transparent', color: row.absent_count > 0 ? '#6b21a8' : theme.textSecondary }}>
-                              {row.absent_count > 0 ? row.absent_count : '—'}
-                            </span>
-                          </td>
-
-                          {/* No checkout */}
-                          <td className="px-3 py-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: row.no_checkout_count > 0 ? '#ffedd5' : 'transparent', color: row.no_checkout_count > 0 ? '#9a3412' : theme.textSecondary }}>
-                              {row.no_checkout_count > 0 ? row.no_checkout_count : '—'}
-                            </span>
-                          </td>
-
-                          {/* Expand toggle */}
-                          <td className="px-3 py-3 text-right">
-                            <span className="text-xs" style={{ color: theme.textSecondary }}>
-                              {expandedUser === row.user_id ? '▲' : '▼'}
-                            </span>
-                          </td>
-                        </tr>
-
-                        {/* ── Expanded daily breakdown ── */}
-                        {expandedUser === row.user_id && row.daily?.length > 0 && (
-                          <tr key={`${row.user_id}-detail`} style={{ background: theme.subtleBg }}>
-                            <td colSpan={11} className="px-4 py-3">
-                              <div className="text-xs font-semibold mb-2" style={{ color: theme.textSecondary }}>
-                                Detail Harian — {row.name}
-                                <span className="ml-2 font-normal">({row.expected_check_in} → {row.expected_check_out})</span>
-                              </div>
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-xs">
-                                  <thead>
-                                    <tr>
-                                      {['Tanggal', 'Check-In', 'Terlambat', 'Check-Out', 'Pulang Awal', 'Status'].map(h => (
-                                        <th key={h} className="text-left px-3 py-1.5 font-semibold" style={{ color: theme.textSecondary, borderBottom: `1px solid ${theme.border}` }}>{h}</th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                     {row.daily.map((d, di) => {
-                                      const hasProblem = d.issues.length > 0
-                                      const excLabel = !d.excuse && !d.excused && !d.excuse_pending ? null
-                                         : d.excuse?.status === 'approved' || d.excused ? { text: `✅ Disetujui${d.excuse?.excuse_type === 'temporary_exit' ? ' (Izin Keluar Jam Kerja' + (d.excuse.exit_time || d.excuse.return_time ? `: ${String(d.excuse.exit_time || '').slice(0,5)}–${String(d.excuse.return_time || '').slice(0,5)}` : '') + ')' : d.excuse?.excuse_type ? ` (${d.excuse.excuse_type})` : ''}`, bg: '#d1fae5', color: '#065f46' }
-                                        : d.excuse_pending ? { text: `⏳ Menunggu Persetujuan${d.excuse?.excuse_type === 'temporary_exit' ? ' (Izin Keluar Jam Kerja' + (d.excuse.exit_time || d.excuse.return_time ? `: ${String(d.excuse.exit_time || '').slice(0,5)}–${String(d.excuse.return_time || '').slice(0,5)}` : '') + ')' : d.excuse?.excuse_type ? ` (${d.excuse.excuse_type})` : ''}`, bg: '#fef9c3', color: '#854d0e' }
-                                        : d.excuse?.status === 'rejected' ? { text: `❌ Ditolak${d.excuse.rejected_note ? ' — ' + d.excuse.rejected_note : ''}`, bg: '#fee2e2', color: '#991b1b' }
-                                        : null
-                                      return (
-                                        <tr key={d.date} style={{ borderTop: di > 0 ? `1px solid ${theme.border}` : 'none' }}>
-                                          <td className="px-3 py-1.5 font-medium" style={{ color: theme.textPrimary }}>{d.date}</td>
-                                          <td className="px-3 py-1.5" style={{ color: d.late_minutes > 0 ? '#92400e' : theme.textBody }}>
-                                            {d.checkin_time || <span style={{ color: theme.textSecondary }}>—</span>}
-                                          </td>
-                                          <td className="px-3 py-1.5">
-                                            {d.late_minutes > 0
-                                              ? <span className="font-semibold" style={{ color: '#92400e' }}>+{fmtMins(d.late_minutes)}</span>
-                                              : <span style={{ color: theme.textSecondary }}>—</span>}
-                                          </td>
-                                          <td className="px-3 py-1.5" style={{ color: d.leave_early_minutes > 0 ? '#991b1b' : theme.textBody }}>
-                                            {d.checkout_time || <span style={{ color: theme.textSecondary }}>—</span>}
-                                          </td>
-                                          <td className="px-3 py-1.5">
-                                            {d.leave_early_minutes > 0
-                                              ? <span className="font-semibold" style={{ color: '#991b1b' }}>-{fmtMins(d.leave_early_minutes)}</span>
-                                              : <span style={{ color: theme.textSecondary }}>—</span>}
-                                          </td>
-                                          <td className="px-3 py-1.5">
-                                            <div className="flex flex-col gap-1">
-                                              {d.issues.length === 0 ? (
-                                                <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: '#dcfce7', color: '#166534' }}>✓ OK</span>
-                                              ) : d.status === 'absent' ? (
-                                                <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: '#f3e8ff', color: '#6b21a8' }}>❌ Tidak Masuk</span>
-                                              ) : (
-                                                <div className="flex flex-wrap gap-1">
-                                                  {d.issues.map(issue => {
-                                                    const m = STATUS_META[issue] || STATUS_META.multiple
-                                                    return (
-                                                      <span key={issue} className="px-1.5 py-0.5 rounded-full font-medium" style={{ background: m.bg, color: m.color }}>
-                                                        {m.label}
-                                                      </span>
-                                                    )
-                                                  })}
-                                                </div>
-                                              )}
-                                              {excLabel && (
-                                                <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: excLabel.bg, color: excLabel.color }}>
-                                                  {excLabel.text}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      )
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    ))}
-                  </tbody>
-                  {/* Footer totals */}
-                  <tfoot>
-                    <tr style={{ background: theme.subtleBg, borderTop: `2px solid ${theme.border}` }}>
-                      <td colSpan={4} className="px-3 py-2 text-xs font-semibold" style={{ color: theme.textPrimary }}>
-                        TOTAL ({filteredRows.length} karyawan)
+                          )}
+                        </div>
                       </td>
-                      <td className="px-3 py-2 text-center text-xs font-bold" style={{ color: '#92400e' }}>{totals.late || '—'}</td>
-                      <td className="px-3 py-2 text-center text-xs font-bold" style={{ color: '#92400e' }}>{fmtMins(totals.late_mins)}</td>
-                      <td className="px-3 py-2 text-center text-xs font-bold" style={{ color: '#991b1b' }}>{totals.leave_early || '—'}</td>
-                      <td className="px-3 py-2 text-center text-xs font-bold" style={{ color: '#991b1b' }}>{fmtMins(totals.le_mins)}</td>
-                      <td className="px-3 py-2 text-center text-xs font-bold" style={{ color: '#6b21a8' }}>{totals.absent || '—'}</td>
-                      <td className="px-3 py-2 text-center text-xs font-bold" style={{ color: '#9a3412' }}>{totals.no_checkout || '—'}</td>
-                      <td></td>
+                      <td className="px-3 py-3 text-neutral-500 dark:text-neutral-400">{row.role_name}</td>
+                      <td className="px-3 py-3 text-neutral-500 dark:text-neutral-400">{row.unit_name}</td>
+                      <td className="px-3 py-3 text-center font-mono font-medium">{row.work_days_in_range}</td>
+
+                      {/* Late Count */}
+                      <td className="px-3 py-3 text-center">
+                        {row.late_count > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full font-mono font-bold text-[11px]" style={{ background: isDark ? '#2A2618' : '#FBF3DB', color: isDark ? '#C4A24A' : '#956400', border: `1px solid ${isDark ? '#3D361F' : '#F2E3B6'}` }}>
+                            {row.late_count}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-300 dark:text-neutral-600">—</span>
+                        )}
+                      </td>
+
+                      {/* Late Minutes */}
+                      <td className="px-3 py-3 text-center font-mono" style={{ color: row.late_minutes_total > 0 ? (isDark ? '#C4A24A' : '#956400') : textSecondary }}>
+                        {row.late_minutes_total > 0 ? fmtMins(row.late_minutes_total) : '—'}
+                      </td>
+
+                      {/* Leave Early Count */}
+                      <td className="px-3 py-3 text-center">
+                        {row.leave_early_count > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full font-mono font-bold text-[11px]" style={{ background: isDark ? '#331B16' : '#FFEDD5', color: isDark ? '#FB923C' : '#9A3412', border: `1px solid ${isDark ? '#4A241C' : '#FED7AA'}` }}>
+                            {row.leave_early_count}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-300 dark:text-neutral-600">—</span>
+                        )}
+                      </td>
+
+                      {/* Leave Early Minutes */}
+                      <td className="px-3 py-3 text-center font-mono" style={{ color: row.leave_early_minutes_total > 0 ? (isDark ? '#FB923C' : '#9A3412') : textSecondary }}>
+                        {row.leave_early_minutes_total > 0 ? fmtMins(row.leave_early_minutes_total) : '—'}
+                      </td>
+
+                      {/* Absent */}
+                      <td className="px-3 py-3 text-center">
+                        {row.absent_count > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full font-mono font-bold text-[11px]" style={{ background: isDark ? '#3A1E1E' : '#FDEBEC', color: isDark ? '#DC8585' : '#9F2F2D', border: `1px solid ${isDark ? '#542626' : '#F8C9CC'}` }}>
+                            {row.absent_count}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-300 dark:text-neutral-600">—</span>
+                        )}
+                      </td>
+
+                      {/* No Checkout */}
+                      <td className="px-3 py-3 text-center">
+                        {row.no_checkout_count > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full font-mono font-bold text-[11px]" style={{ background: isDark ? '#331B16' : '#FFEDD5', color: isDark ? '#FB923C' : '#9A3412', border: `1px solid ${isDark ? '#4A241C' : '#FED7AA'}` }}>
+                            {row.no_checkout_count}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-300 dark:text-neutral-600">—</span>
+                        )}
+                      </td>
+
+                      {/* Expand Toggle */}
+                      <td className="px-3.5 py-3 text-right">
+                        <FontAwesomeIcon
+                          icon={expandedUser === row.user_id ? faChevronUp : faChevronDown}
+                          className="text-[11px] text-neutral-400"
+                        />
+                      </td>
                     </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
+
+                    {/* ── EXPANDED USER DAILY BREAKDOWN ── */}
+                    {expandedUser === row.user_id && row.daily?.length > 0 && (
+                      <tr key={`${row.user_id}-detail`}>
+                        <td colSpan={11} className="p-0">
+                          <div
+                            className="p-4 border-t border-b"
+                            style={{
+                              background: isDark ? '#0B0F17' : '#FBFBFA',
+                              borderColor
+                            }}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2 text-xs font-bold" style={{ color: textPrimary }}>
+                                <FontAwesomeIcon icon={faCalendarCheck} style={{ color: isDark ? '#60A5FA' : '#0284C7' }} />
+                                <span>Rincian Presensi Harian — {row.name}</span>
+                                <span className="font-normal font-mono text-[11px] text-neutral-400 ml-1">
+                                  (Jadwal Kerja: {row.expected_check_in || '07:30'} s/d {row.expected_check_out || '16:30'})
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="border rounded overflow-hidden" style={{ borderColor }}>
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr style={{ background: isDark ? '#1F2937' : '#F1F5F9', borderBottom: `1px solid ${borderColor}`, color: textSecondary }}>
+                                    <th className="text-left px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Tanggal</th>
+                                    <th className="text-center px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Scan Masuk</th>
+                                    <th className="text-center px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Terlambat</th>
+                                    <th className="text-center px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Scan Pulang</th>
+                                    <th className="text-center px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Pulang Awal</th>
+                                    <th className="text-left px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Status / Keterangan</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y" style={{ divideColor: borderColor, background: cardBg }}>
+                                  {row.daily.map((d) => {
+                                    const excDetail = formatExcuseDetail(d.excuse)
+                                    const excLabel = !d.excuse && !d.excused && !d.excuse_pending ? null
+                                      : d.excuse?.status === 'approved' || d.excused ? { text: excDetail || 'Disetujui', bg: isDark ? '#1E2E1E' : '#EDF3EC', border: isDark ? '#2B422B' : '#D5E6D3', color: isDark ? '#7BAF7B' : '#346538' }
+                                      : d.excuse_pending ? { text: excDetail || 'Diproses', bg: isDark ? '#2A2618' : '#FBF3DB', border: isDark ? '#3D361F' : '#F2E3B6', color: isDark ? '#C4A24A' : '#956400' }
+                                      : d.excuse?.status === 'rejected' ? { text: d.excuse.rejected_note ? `${excDetail || 'Izin'} (Ditolak: ${d.excuse.rejected_note})` : (excDetail || 'Ditolak'), bg: isDark ? '#3A1E1E' : '#FDEBEC', border: isDark ? '#542626' : '#F8C9CC', color: isDark ? '#DC8585' : '#9F2F2D' }
+                                      : null
+
+                                    return (
+                                      <tr key={d.date} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30">
+                                        <td className="px-3 py-2 font-medium font-mono text-[11px]" style={{ color: textPrimary }}>{d.date}</td>
+                                        
+                                        <td className="px-3 py-2 text-center font-mono" style={{ color: textPrimary }}>
+                                          {d.checkin_time || <span className="text-neutral-400 dark:text-neutral-600">—</span>}
+                                        </td>
+                                        
+                                        <td className="px-3 py-2 text-center font-mono">
+                                          {d.late_minutes > 0 ? (
+                                            <span className="font-bold" style={{ color: isDark ? '#FBBF24' : '#B45309' }}>+{fmtMins(d.late_minutes)}</span>
+                                          ) : (
+                                            <span className="text-neutral-400 dark:text-neutral-600">—</span>
+                                          )}
+                                        </td>
+                                        
+                                        <td className="px-3 py-2 text-center font-mono" style={{ color: textPrimary }}>
+                                          {d.checkout_time || <span className="text-neutral-400 dark:text-neutral-600">—</span>}
+                                        </td>
+                                        
+                                        <td className="px-3 py-2 text-center font-mono">
+                                          {d.leave_early_minutes > 0 ? (
+                                            <span className="font-bold" style={{ color: isDark ? '#FB923C' : '#C2410C' }}>-{fmtMins(d.leave_early_minutes)}</span>
+                                          ) : (
+                                            <span className="text-neutral-400 dark:text-neutral-600">—</span>
+                                          )}
+                                        </td>
+                                        
+                                        <td className="px-3 py-2">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            {d.status === 'holiday' ? (
+                                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: isDark ? '#2A2618' : '#FBF3DB', borderColor: isDark ? '#3D361F' : '#F2E3B6', color: isDark ? '#C4A24A' : '#956400' }}>
+                                                {d.holiday_name || 'Hari Libur'}
+                                              </span>
+                                            ) : d.status === 'dayoff' || d.status === 'off' ? (
+                                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: isDark ? '#232228' : '#F3F4F6', borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB', color: isDark ? '#8C8985' : '#4B5563' }}>
+                                                Day Off
+                                              </span>
+                                            ) : d.issues?.length === 0 ? (
+                                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: isDark ? '#1E2E1E' : '#EDF3EC', borderColor: isDark ? '#2B422B' : '#D5E6D3', color: isDark ? '#7BAF7B' : '#346538' }}>
+                                                Tepat Waktu
+                                              </span>
+                                            ) : d.status === 'absent' ? (
+                                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: isDark ? '#3A1E1E' : '#FDEBEC', borderColor: isDark ? '#542626' : '#F8C9CC', color: isDark ? '#DC8585' : '#9F2F2D' }}>
+                                                Tidak Masuk
+                                              </span>
+                                            ) : (
+                                              <div className="flex flex-wrap gap-1">
+                                                {d.issues.map(issue => {
+                                                  const m = STATUS_META[issue] || STATUS_META.multiple
+                                                  return (
+                                                    <span key={issue} className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: isDark ? m.darkBg : m.bg, borderColor: isDark ? m.darkBorder : m.border, color: isDark ? m.darkColor : m.color }}>
+                                                      {m.label}
+                                                    </span>
+                                                  )
+                                                })}
+                                              </div>
+                                            )}
+
+                                            {excLabel && (
+                                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: excLabel.bg, borderColor: excLabel.border, color: excLabel.color }}>
+                                                {excLabel.text}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+
+              {/* Footer Totals */}
+              <tfoot>
+                <tr
+                  style={{
+                    background: isDark ? '#27272A' : '#FBFBFA',
+                    borderTop: `2px solid ${borderColor}`,
+                    color: textPrimary
+                  }}
+                >
+                  <td colSpan={3} className="px-3.5 py-2.5 font-bold font-mono uppercase text-[10px]">
+                    TOTAL ({filteredRows.length} Karyawan)
+                  </td>
+                  <td className="px-3 py-2.5 text-center font-mono font-bold">—</td>
+                  <td className="px-3 py-2.5 text-center font-mono font-bold text-amber-700 dark:text-amber-400">{totals.late || '—'}</td>
+                  <td className="px-3 py-2.5 text-center font-mono font-bold text-amber-700 dark:text-amber-400">{fmtMins(totals.late_mins)}</td>
+                  <td className="px-3 py-2.5 text-center font-mono font-bold text-orange-700 dark:text-orange-400">{totals.leave_early || '—'}</td>
+                  <td className="px-3 py-2.5 text-center font-mono font-bold text-orange-700 dark:text-orange-400">{fmtMins(totals.le_mins)}</td>
+                  <td className="px-3 py-2.5 text-center font-mono font-bold text-purple-700 dark:text-purple-400">{totals.absent || '—'}</td>
+                  <td className="px-3 py-2.5 text-center font-mono font-bold text-orange-700 dark:text-orange-400">{totals.no_checkout || '—'}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
     </div>

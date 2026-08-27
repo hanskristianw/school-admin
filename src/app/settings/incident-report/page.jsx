@@ -1,13 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import NotificationModal from '@/components/ui/notification-modal'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -20,31 +17,42 @@ import {
   faEnvelope,
   faSpinner,
   faCheckCircle,
-  faArrowLeft,
-  faExclamationTriangle
+  faLayerGroup,
+  faShieldAlt,
+  faBell,
+  faPlus,
+  faTimes,
+  faUserSlash,
+  faCheck
 } from '@fortawesome/free-solid-svg-icons'
 
 export default function IncidentNotificationSettingsPage() {
   const router = useRouter()
   const { theme, isDark } = useTheme()
 
-  // Dynamic Styles tied to useTheme() (100% Light & Dark Mode Compatible)
-  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
-  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' }
-  const btnPrimaryStyle = { background: theme.textPrimary, color: isDark ? '#18171A' : '#FFFFFF', border: 'none' }
-  const btnSecondaryStyle = { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` }
+  // UI Theme Tokens matching /data/pyp
+  const pageBg = theme?.pageBg || (isDark ? '#09090B' : '#FBFBFA')
+  const cardBg = theme?.cardBg || (isDark ? '#18181B' : '#FFFFFF')
+  const borderColor = theme?.border || (isDark ? '#27272A' : '#EAEAEA')
+  const textPrimary = theme?.textPrimary || (isDark ? '#F4F4F5' : '#111111')
+  const textSecondary = theme?.textSecondary || (isDark ? '#A1A1AA' : '#787774')
+  const inputBg = theme?.inputBg || (isDark ? '#18181B' : '#FFFFFF')
 
   const [loading, setLoading] = useState(true)
   const [units, setUnits] = useState([])
   const [selectedUnitId, setSelectedUnitId] = useState('')
   const [recipients, setRecipients] = useState([])
   const [allUsers, setAllUsers] = useState([])
+  const [unitRecipientsMap, setUnitRecipientsMap] = useState({}) // { [unitId]: count }
 
   // User Autocomplete Search
   const [userSearchText, setUserSearchText] = useState('')
   const [selectedUserToAdd, setSelectedUserToAdd] = useState(null)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const userDropdownRef = useRef(null)
+
+  // List Search inside active unit
+  const [searchInList, setSearchInList] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
   const [notif, setNotif] = useState({ isOpen: false, title: '', message: '', type: 'success' })
@@ -53,9 +61,10 @@ export default function IncidentNotificationSettingsPage() {
   const fetchUnitsAndUsers = async () => {
     try {
       setLoading(true)
-      const [{ data: unitsData, error: uErr }, { data: usersData, error: usrErr }] = await Promise.all([
+      const [{ data: unitsData, error: uErr }, { data: usersData, error: usrErr }, { data: allRecipientsData, error: rErr }] = await Promise.all([
         supabase.from('unit').select('*').eq('is_school', true).order('unit_name'),
-        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_email, user_role_id, role:user_role_id(role_name)').eq('is_active', true).order('user_nama_depan')
+        supabase.from('users').select('user_id, user_nama_depan, user_nama_belakang, user_email, user_role_id, role:user_role_id(role_name)').eq('is_active', true).order('user_nama_depan'),
+        supabase.from('incident_unit_recipients').select('id, unit_id, user_id')
       ])
 
       if (uErr) throw uErr
@@ -63,6 +72,13 @@ export default function IncidentNotificationSettingsPage() {
 
       setUnits(unitsData || [])
       setAllUsers(usersData || [])
+
+      // Build count map
+      const countMap = {}
+      ;(allRecipientsData || []).forEach(r => {
+        countMap[r.unit_id] = (countMap[r.unit_id] || 0) + 1
+      })
+      setUnitRecipientsMap(countMap)
 
       if (unitsData && unitsData.length > 0) {
         setSelectedUnitId(String(unitsData[0].unit_id))
@@ -76,7 +92,7 @@ export default function IncidentNotificationSettingsPage() {
   }
 
   // Fetch recipients for selected unit
-  const fetchUnitRecipients = async (unitId) => {
+  const fetchUnitRecipients = useCallback(async (unitId) => {
     if (!unitId) return
     try {
       const { data, error } = await supabase
@@ -91,10 +107,11 @@ export default function IncidentNotificationSettingsPage() {
 
       if (error) throw error
       setRecipients(data || [])
+      setUnitRecipientsMap(prev => ({ ...prev, [unitId]: (data || []).length }))
     } catch (err) {
       console.error('Fetch recipients error:', err)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchUnitsAndUsers()
@@ -104,7 +121,7 @@ export default function IncidentNotificationSettingsPage() {
     if (selectedUnitId) {
       fetchUnitRecipients(selectedUnitId)
     }
-  }, [selectedUnitId])
+  }, [selectedUnitId, fetchUnitRecipients])
 
   // Handle click outside autocomplete
   useEffect(() => {
@@ -152,72 +169,107 @@ export default function IncidentNotificationSettingsPage() {
       setSelectedUserToAdd(null)
       setUserSearchText('')
       setShowUserDropdown(false)
-      setNotif({ isOpen: true, title: 'Success', message: 'Recipient added to unit notification list.', type: 'success' })
+      setNotif({ isOpen: true, title: 'Berhasil', message: 'Penerima notifikasi insiden berhasil ditambahkan.', type: 'success' })
       fetchUnitRecipients(selectedUnitId)
 
     } catch (err) {
       console.error('Add recipient error:', err)
-      setNotif({ isOpen: true, title: 'Error', message: err.message || 'Failed to add recipient', type: 'error' })
+      setNotif({ isOpen: true, title: 'Error', message: err.message || 'Gagal menambahkan penerima', type: 'error' })
     } finally {
       setSubmitting(false)
     }
   }
 
   // Remove Recipient
-  const handleRemoveRecipient = async (recipientId) => {
-    if (!confirm('Remove this recipient from unit notifications?')) return
+  const handleRemoveRecipient = async (recipient) => {
+    const staffName = `${recipient.user?.user_nama_depan || ''} ${recipient.user?.user_nama_belakang || ''}`.trim() || 'Staf'
+    if (!confirm(`Hapus ${staffName} dari daftar penerima notifikasi insiden unit ini?`)) return
     try {
       const { error } = await supabase
         .from('incident_unit_recipients')
         .delete()
-        .eq('id', recipientId)
+        .eq('id', recipient.id)
 
       if (error) throw error
 
-      setNotif({ isOpen: true, title: 'Removed', message: 'Recipient removed.', type: 'success' })
+      setNotif({ isOpen: true, title: 'Berhasil Dihapus', message: `${staffName} telah dihapus dari daftar penerima.`, type: 'success' })
       fetchUnitRecipients(selectedUnitId)
     } catch (err) {
       console.error('Remove recipient error:', err)
-      setNotif({ isOpen: true, title: 'Error', message: err.message || 'Failed to remove recipient', type: 'error' })
+      setNotif({ isOpen: true, title: 'Error', message: err.message || 'Gagal menghapus penerima', type: 'error' })
     }
   }
 
   const selectedUnitObj = units.find(u => String(u.unit_id) === String(selectedUnitId))
 
-  return (
-    <div className="min-h-screen p-4 sm:p-6 md:p-8 font-sans antialiased space-y-6" style={{ background: theme.pageBg, color: theme.textPrimary }}>
+  // Filtered recipients in current unit
+  const filteredRecipients = useMemo(() => {
+    if (!searchInList.trim()) return recipients
+    const q = searchInList.toLowerCase().trim()
+    return recipients.filter(r => {
+      const name = `${r.user?.user_nama_depan || ''} ${r.user?.user_nama_belakang || ''}`.toLowerCase()
+      const email = (r.user?.user_email || '').toLowerCase()
+      const role = (r.user?.role?.role_name || '').toLowerCase()
+      return name.includes(q) || email.includes(q) || role.includes(q)
+    })
+  }, [recipients, searchInList])
 
-      {/* ─── Minimalist Editorial Header ─── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b" style={{ borderColor: theme.border }}>
+  return (
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+
+      {/* ── HEADER & BREADCRUMBS (MATCHING /data/pyp LAYOUT) ─────────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
         <div>
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase mb-2" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-            <FontAwesomeIcon icon={faSliders} className="text-xs" />
-            <span>Incident Notification Recipients</span>
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1.5" style={{ color: textSecondary }}>
+            <span>[SETTINGS]</span>
+            <span>/</span>
+            <span>[SYSTEM CONFIGURATION]</span>
+            <span>/</span>
+            <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>[INCIDENT NOTIFICATION RECIPIENTS]</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: theme.textPrimary }}>
-            Incident Notification Settings
-          </h1>
-          <p className="text-xs sm:text-sm mt-1" style={{ color: theme.textSecondary }}>
-            Configure staff members who receive Email and Google Chat alerts for each school unit.
-          </p>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded flex items-center justify-center border"
+              style={{
+                background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                borderColor: isDark ? '#2563EB' : '#BAE6FD',
+                color: isDark ? '#60A5FA' : '#0284C7'
+              }}
+            >
+              <FontAwesomeIcon icon={faBell} className="text-base" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+                Incident Notification Settings
+              </h1>
+              <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
+                Konfigurasi staf dan manajemen penerima notifikasi otomatis (Email &amp; Google Chat) untuk laporan insiden setiap unit sekolah.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ─── Main Configuration Card ─── */}
-      <div className="rounded-lg border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border }}>
-        {/* Card Header & Unit Selector */}
-        <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: theme.border }}>
-          <div className="flex items-center gap-2">
-            <FontAwesomeIcon icon={faBuilding} className="text-xs" style={{ color: theme.textSecondary }} />
-            <h2 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>Select Unit Configuration</h2>
-          </div>
-
-          <div className="w-full sm:w-72">
+      {/* ── UNIT SELECTION & ADD RECIPIENT BAR (MATCHING /data/pyp) ───────── */}
+      <div
+        className="p-3.5 rounded border mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4"
+        style={{ background: cardBg, borderColor, borderRadius: '8px' }}
+      >
+        <div className="flex items-center gap-4 flex-wrap flex-1">
+          {/* Unit Selector */}
+          <div style={{ minWidth: '220px' }}>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+              1. School Unit *
+            </label>
             <select
               value={selectedUnitId}
-              onChange={e => setSelectedUnitId(e.target.value)}
-              className="w-full text-xs p-2 rounded-md font-semibold border cursor-pointer"
-              style={selectStyle}
+              onChange={e => {
+                setSelectedUnitId(e.target.value)
+                setSelectedUserToAdd(null)
+                setUserSearchText('')
+              }}
+              className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
+              style={{ background: inputBg, borderColor, color: textPrimary, borderRadius: '4px' }}
             >
               {units.map(u => (
                 <option key={u.unit_id} value={u.unit_id}>
@@ -226,187 +278,342 @@ export default function IncidentNotificationSettingsPage() {
               ))}
             </select>
           </div>
-        </div>
 
-        {/* Card Content Body */}
-        <div className="p-4 space-y-6">
-          {/* Add Recipient Section */}
-          <div className="p-4 rounded-lg border space-y-3" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-            <div className="text-xs font-semibold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-              <FontAwesomeIcon icon={faUserPlus} className="text-xs" style={{ color: theme.textSecondary }} />
-              <span>Add Specific Recipient for {selectedUnitObj?.unit_name || 'Unit'}</span>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-              {/* Autocomplete Input */}
-              <div className="relative flex-1 w-full" ref={userDropdownRef}>
-                <input
-                  type="text"
-                  placeholder="Search user by name or email to add..."
-                  value={selectedUserToAdd ? `${selectedUserToAdd.user_nama_depan} ${selectedUserToAdd.user_nama_belakang} (${selectedUserToAdd.user_email})` : userSearchText}
-                  onChange={e => {
+          {/* Add Staff Search Autocomplete */}
+          <div className="relative flex-1" style={{ minWidth: '260px' }} ref={userDropdownRef}>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>
+              2. Tambah Penerima Notifikasi (Staf)
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Ketik nama atau email staf untuk menambahkan..."
+                value={selectedUserToAdd ? `${selectedUserToAdd.user_nama_depan} ${selectedUserToAdd.user_nama_belakang} (${selectedUserToAdd.user_email})` : userSearchText}
+                onChange={e => {
+                  setSelectedUserToAdd(null)
+                  setUserSearchText(e.target.value)
+                  setShowUserDropdown(true)
+                }}
+                onFocus={() => {
+                  if (userSearchText.trim()) setShowUserDropdown(true)
+                }}
+                className="w-full pl-7 pr-7 py-1.5 text-xs font-mono rounded border outline-none"
+                style={{ background: inputBg, borderColor, color: textPrimary, borderRadius: '4px' }}
+              />
+              <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: textSecondary }} />
+              
+              {selectedUserToAdd && (
+                <button
+                  type="button"
+                  onClick={() => {
                     setSelectedUserToAdd(null)
-                    setUserSearchText(e.target.value)
-                    setShowUserDropdown(true)
+                    setUserSearchText('')
                   }}
-                  onFocus={() => {
-                    if (userSearchText.trim()) setShowUserDropdown(true)
-                  }}
-                  className="w-full text-xs px-3 py-2 rounded-md"
-                  style={inputStyle}
-                />
-                {selectedUserToAdd && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedUserToAdd(null)
-                      setUserSearchText('')
-                    }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold cursor-pointer"
-                    style={{ color: theme.textSecondary }}
-                  >
-                    ✕
-                  </button>
-                )}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs cursor-pointer"
+                  style={{ color: textSecondary }}
+                >
+                  <FontAwesomeIcon icon={faTimes} />
+                </button>
+              )}
+            </div>
 
-                {/* Dropdown Options */}
-                {showUserDropdown && !selectedUserToAdd && userSearchText.trim().length > 0 && (
-                  <div
-                    className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-md border shadow-md text-xs"
-                    style={{ background: theme.cardBg, borderColor: theme.border }}
-                  >
-                    {matchingUsers.length === 0 ? (
-                      <div className="p-3 italic text-center" style={{ color: theme.textSecondary }}>No user found matching "{userSearchText}"</div>
-                    ) : (
-                      matchingUsers.map(usr => {
-                        const name = `${usr.user_nama_depan} ${usr.user_nama_belakang}`
-                        return (
-                          <div
-                            key={usr.user_id}
-                            onClick={() => {
-                              setSelectedUserToAdd(usr)
-                              setShowUserDropdown(false)
-                            }}
-                            className="p-2.5 cursor-pointer flex items-center justify-between border-b last:border-b-0 transition-colors"
-                            style={{ borderColor: theme.border, color: theme.textPrimary }}
-                            onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                          >
-                            <div>
-                              <div className="font-semibold">{name}</div>
-                              <div className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>{usr.user_email}</div>
-                            </div>
-                            <span className="text-[10px] px-2 py-0.5 rounded font-mono" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                              {usr.role?.role_name || 'Staff'}
-                            </span>
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Add Button */}
-              <button
-                disabled={!selectedUserToAdd || submitting}
-                onClick={handleAddRecipient}
-                className="w-full sm:w-auto text-xs font-medium px-4 py-2 rounded-md transition-all cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
-                style={btnPrimaryStyle}
+            {/* Dropdown Options */}
+            {showUserDropdown && !selectedUserToAdd && userSearchText.trim().length > 0 && (
+              <div
+                className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-md border shadow-lg text-xs"
+                style={{ background: cardBg, borderColor }}
               >
-                {submitting ? (
-                  <FontAwesomeIcon icon={faSpinner} spin />
+                {matchingUsers.length === 0 ? (
+                  <div className="p-3 italic text-center font-mono text-[11px]" style={{ color: textSecondary }}>
+                    Tidak ada staf ditemukan dengan kata kunci "{userSearchText}"
+                  </div>
                 ) : (
-                  <>
-                    <FontAwesomeIcon icon={faUserPlus} className="text-xs" />
-                    <span>Add Recipient</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Configured Recipients List Table */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: theme.textSecondary }}>
-                Configured Recipients ({recipients.length})
-              </h3>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                Unit: {selectedUnitObj?.unit_name}
-              </span>
-            </div>
-
-            {loading ? (
-              <div className="py-8 text-center text-xs flex items-center justify-center gap-2" style={{ color: theme.textSecondary }}>
-                <FontAwesomeIcon icon={faSpinner} spin style={{ color: theme.textPrimary }} />
-                <span>Loading recipients...</span>
-              </div>
-            ) : recipients.length === 0 ? (
-              <div className="py-8 text-center text-xs border rounded-md" style={{ color: theme.textSecondary, borderColor: theme.border, background: theme.subtleBg }}>
-                No notification recipients configured for <strong>{selectedUnitObj?.unit_name}</strong> unit yet. Use the search bar above to add staff members.
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-md border" style={{ borderColor: theme.border }}>
-                <table className="min-w-full text-xs border-collapse">
-                  <thead>
-                    <tr className="text-left border-b font-semibold uppercase tracking-wider text-[10px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
-                      <th className="py-3 px-4">Name</th>
-                      <th className="py-3 px-4">Email Address</th>
-                      <th className="py-3 px-4">Role</th>
-                      <th className="py-3 px-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: theme.border }}>
-                    {recipients.map(r => {
-                      const name = `${r.user?.user_nama_depan || ''} ${r.user?.user_nama_belakang || ''}`.trim() || 'User'
-                      const email = r.user?.user_email || '-'
-                      const roleName = r.user?.role?.role_name || 'Staff'
-
-                      return (
-                        <tr
-                          key={r.id}
-                          className="transition-colors duration-150"
-                          style={{ borderBottom: `1px solid ${theme.border}` }}
-                          onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  matchingUsers.map(usr => {
+                    const name = `${usr.user_nama_depan} ${usr.user_nama_belakang}`
+                    return (
+                      <div
+                        key={usr.user_id}
+                        onClick={() => {
+                          setSelectedUserToAdd(usr)
+                          setShowUserDropdown(false)
+                        }}
+                        className="p-2.5 cursor-pointer flex items-center justify-between border-b last:border-b-0 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors"
+                        style={{ borderColor, color: textPrimary }}
+                      >
+                        <div>
+                          <div className="font-semibold">{name}</div>
+                          <div className="text-[10px] font-mono" style={{ color: textSecondary }}>{usr.user_email}</div>
+                        </div>
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded font-mono font-semibold"
+                          style={{
+                            background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                            color: isDark ? '#60A5FA' : '#1F6C9F'
+                          }}
                         >
-                          <td className="py-3 px-4 font-semibold" style={{ color: theme.textPrimary }}>
-                            {name}
-                          </td>
-                          <td className="py-3 px-4 font-mono text-[11px]" style={{ color: theme.textSecondary }}>
-                            <div className="flex items-center gap-1.5">
-                              <FontAwesomeIcon icon={faEnvelope} className="text-[10px]" style={{ color: theme.textSecondary }} />
-                              <span>{email}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider" style={{ background: theme.blueBg, color: theme.blueText }}>
-                              {roleName}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => handleRemoveRecipient(r.id)}
-                              className="px-2.5 py-1 text-xs font-medium rounded transition-colors cursor-pointer inline-flex items-center gap-1"
-                              style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.redBg}` }}
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                              <span>Remove</span>
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                          {usr.role?.role_name || 'Staff'}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             )}
           </div>
         </div>
+
+        {/* Add Button */}
+        <div>
+          <Button
+            disabled={!selectedUserToAdd || submitting}
+            onClick={handleAddRecipient}
+            style={{
+              background: textPrimary,
+              color: isDark ? '#09090B' : '#FFFFFF',
+              fontSize: '12px',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              opacity: (!selectedUserToAdd || submitting) ? 0.5 : 1
+            }}
+          >
+            {submitting ? (
+              <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+            ) : (
+              <FontAwesomeIcon icon={faPlus} />
+            )}
+            <span>{submitting ? 'Menambahkan...' : 'Tambah Penerima'}</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Notification Toast */}
+      {/* ── HORIZONTAL UNIT TABS (MATCHING /data/pyp TABS) ─────────────────── */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '20px', gap: '24px', flexWrap: 'wrap' }}>
+        {units.map(u => {
+          const isActive = String(u.unit_id) === String(selectedUnitId)
+          const count = unitRecipientsMap[u.unit_id] || 0
+          return (
+            <button
+              key={u.unit_id}
+              onClick={() => {
+                setSelectedUnitId(String(u.unit_id))
+                setSelectedUserToAdd(null)
+                setUserSearchText('')
+              }}
+              style={{
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: isActive ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: isActive ? textPrimary : textSecondary,
+                borderBottom: isActive ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={faBuilding} style={{ fontSize: '13px' }} />
+              <span>Unit: {u.unit_name}</span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '1px 6px',
+                  borderRadius: '999px',
+                  background: isActive ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1F2937' : '#F4F4F5'),
+                  color: textSecondary,
+                  fontWeight: 700
+                }}
+              >
+                {count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── CONFIGURED RECIPIENTS BENTO CARD ───────────────────────────────── */}
+      <div
+        style={{
+          background: cardBg,
+          border: `1px solid ${borderColor}`,
+          borderRadius: '8px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}
+      >
+        {/* Card Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="text-[10px] font-mono uppercase tracking-wider font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+                Unit: {selectedUnitObj?.unit_name || 'School Unit'}
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                  color: isDark ? '#60A5FA' : '#1F6C9F',
+                  fontFamily: 'monospace'
+                }}
+              >
+                {recipients.length} Penerima Dikonfigurasi
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: textSecondary, margin: '4px 0 0 0' }}>
+              Daftar staf yang otomatis menerima email &amp; webhook notifikasi saat ada insiden baru di unit {selectedUnitObj?.unit_name}.
+            </p>
+          </div>
+
+          {/* Filter Search within unit recipients list */}
+          {recipients.length > 4 && (
+            <div className="relative" style={{ width: '220px' }}>
+              <input
+                type="text"
+                placeholder="Filter penerima..."
+                value={searchInList}
+                onChange={e => setSearchInList(e.target.value)}
+                className="w-full pl-7 pr-2.5 py-1 text-xs font-mono rounded border outline-none"
+                style={{ background: inputBg, borderColor, color: textPrimary, borderRadius: '4px' }}
+              />
+              <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: textSecondary }} />
+            </div>
+          )}
+        </div>
+
+        {/* Recipients List Table */}
+        {loading ? (
+          <div style={{ padding: '48px 0', textAlign: 'center', color: textSecondary, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xl" />
+            <span style={{ fontSize: '13px' }}>Memuat daftar penerima notifikasi...</span>
+          </div>
+        ) : filteredRecipients.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '48px 20px',
+              borderRadius: '6px',
+              border: `1px dashed ${borderColor}`,
+              background: isDark ? '#151419' : '#FBFBFA',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            <FontAwesomeIcon icon={faUserSlash} style={{ fontSize: '24px', color: textSecondary }} />
+            <p style={{ fontSize: '13px', color: textSecondary, margin: 0 }}>
+              {searchInList
+                ? 'Tidak ada penerima yang cocok dengan kata kunci pencarian.'
+                : `Belum ada penerima notifikasi yang dikonfigurasi untuk unit ${selectedUnitObj?.unit_name}.`}
+            </p>
+            {!searchInList && (
+              <span style={{ fontSize: '11px', color: textSecondary, fontStyle: 'italic' }}>
+                Gunakan bilah pencarian di atas untuk menambahkan staf sebagai penerima notifikasi.
+              </span>
+            )}
+          </div>
+        ) : (
+          <div
+            style={{
+              border: `1px solid ${borderColor}`,
+              borderRadius: '6px',
+              overflow: 'hidden'
+            }}
+          >
+            <table className="w-full text-xs">
+              <thead>
+                <tr
+                  style={{
+                    background: isDark ? '#27272A' : '#FBFBFA',
+                    borderBottom: `1px solid ${borderColor}`,
+                    color: textSecondary
+                  }}
+                >
+                  <th className="text-left px-3.5 py-2.5 font-mono uppercase tracking-wider text-[10px] font-bold">#</th>
+                  <th className="text-left px-3.5 py-2.5 font-mono uppercase tracking-wider text-[10px] font-bold">Nama Staf</th>
+                  <th className="text-left px-3.5 py-2.5 font-mono uppercase tracking-wider text-[10px] font-bold">Email Notifikasi</th>
+                  <th className="text-left px-3.5 py-2.5 font-mono uppercase tracking-wider text-[10px] font-bold">Role / Jabatan</th>
+                  <th className="text-right px-3.5 py-2.5 font-mono uppercase tracking-wider text-[10px] font-bold">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ divideColor: borderColor, background: cardBg }}>
+                {filteredRecipients.map((r, idx) => {
+                  const name = `${r.user?.user_nama_depan || ''} ${r.user?.user_nama_belakang || ''}`.trim() || 'Staf'
+                  const email = r.user?.user_email || '—'
+                  const roleName = r.user?.role?.role_name || 'Staff'
+
+                  return (
+                    <tr
+                      key={r.id}
+                      className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors"
+                    >
+                      <td className="px-3.5 py-3 font-mono text-[11px]" style={{ color: textSecondary, width: '36px' }}>
+                        {idx + 1}
+                      </td>
+
+                      <td className="px-3.5 py-3 font-semibold" style={{ color: textPrimary }}>
+                        <div className="flex items-center gap-2">
+                          <FontAwesomeIcon icon={faUser} style={{ fontSize: '11px', color: textSecondary }} />
+                          <span>{name}</span>
+                        </div>
+                      </td>
+
+                      <td className="px-3.5 py-3 font-mono text-[11px]" style={{ color: textSecondary }}>
+                        <div className="flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faEnvelope} style={{ fontSize: '10px', color: textSecondary }} />
+                          <span>{email}</span>
+                        </div>
+                      </td>
+
+                      <td className="px-3.5 py-3">
+                        <span
+                          className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider"
+                          style={{
+                            background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                            border: `1px solid ${isDark ? '#2563EB' : '#BAE6FD'}`,
+                            color: isDark ? '#60A5FA' : '#1F6C9F'
+                          }}
+                        >
+                          {roleName}
+                        </span>
+                      </td>
+
+                      <td className="px-3.5 py-3 text-right">
+                        <button
+                          onClick={() => handleRemoveRecipient(r)}
+                          className="px-2.5 py-1 text-xs font-semibold rounded transition-colors cursor-pointer inline-flex items-center gap-1"
+                          style={{
+                            background: isDark ? '#3A1E1E' : '#FDEBEC',
+                            border: `1px solid ${isDark ? '#542626' : '#F8C9CC'}`,
+                            color: isDark ? '#DC8585' : '#9F2F2D'
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faTrash} style={{ fontSize: '10px' }} />
+                          <span>Hapus</span>
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── NOTIFICATION MODAL ─────────────────────────────────────────────── */}
       <NotificationModal
         isOpen={notif.isOpen}
         onClose={() => setNotif(p => ({ ...p, isOpen: false }))}

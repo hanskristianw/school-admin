@@ -264,13 +264,24 @@ export async function GET(request) {
     try {
       const { data: excuses } = await supabaseAdmin
         .from('attendance_excuses')
-        .select('user_id, excuse_type, attendance_date, exit_time, return_time, category, status, approver1_id, approver2_id, approver1_action, approver1_note, approver2_action, approver2_note')
+        .select('user_id, excuse_type, attendance_date, exit_time, return_time, category, other_reason, status, approver1_id, approver2_id, approver1_action, approver1_note, approver2_action, approver2_note')
         .in('user_id', userIds)
         .gte('attendance_date', start)
         .lte('attendance_date', end)
       for (const ex of (excuses || [])) {
         if (!excuseMap[ex.user_id]) excuseMap[ex.user_id] = {}
         excuseMap[ex.user_id][ex.attendance_date] = ex
+      }
+    } catch (_) {}
+
+    // Leave types dictionary for human-readable category labels
+    const leaveTypeMap = {}
+    try {
+      const { data: ltData } = await supabaseAdmin
+        .from('leave_types')
+        .select('code, name_id, name_en')
+      for (const lt of (ltData || [])) {
+        leaveTypeMap[lt.code] = lt.name_id || lt.name_en
       }
     } catch (_) {}
 
@@ -330,6 +341,7 @@ export async function GET(request) {
         leave_early_count:         0,
         leave_early_minutes_total: 0,
         absent_count:              0,
+        annual_leave_count:        0,
         no_checkout_count:         0,
         work_days_in_range:        0,
         daily: []
@@ -359,7 +371,7 @@ export async function GET(request) {
         if (user.join_date && dateStr < user.join_date) continue
 
         if (!isWorkDay) {
-          // Include non-workdays in daily[] for Excel (holiday/dayoff rows)
+          // Include non-workdays in daily[] for Excel & UI (holiday/dayoff rows)
           let statusType = 'dayoff'
           if (dayIsHoliday) {
             statusType = 'holiday'
@@ -368,10 +380,44 @@ export async function GET(request) {
             statusType = specialRule.keterangan ? 'holiday' : 'dayoff'
             dayHolidayName = specialRule.keterangan || null
           }
+
+          // Scan detection on non-work days (weekends, holidays, day-offs):
+          // Jika user melakukan scan, catat waktu kedatangan dan kepulangannya untuk display (tidak dihitung alpa/terlambat)
+          let nonWorkCheckIn = null
+          let nonWorkCheckOut = null
+          const nonWorkAtts = attMap[user.user_id]?.[dateStr] || []
+          if (nonWorkAtts.length > 0) {
+            const sorted = [...nonWorkAtts].sort((a, b) => new Date(a.scan_time) - new Date(b.scan_time))
+            if (sorted.length === 1) {
+              if (resolveIsCheckIn(sorted[0].scan_time, expectedIn, expectedOut)) {
+                nonWorkCheckIn = wibTimeStr(sorted[0].scan_time)
+              } else {
+                nonWorkCheckOut = wibTimeStr(sorted[0].scan_time)
+              }
+            } else if (sorted.length >= 2) {
+              const firstScan = sorted[0]
+              const lastScan  = sorted[sorted.length - 1]
+              const firstTime = new Date(firstScan.scan_time).getTime()
+              const lastTime  = new Date(lastScan.scan_time).getTime()
+              const gapMinutes = (lastTime - firstTime) / 60000
+
+              if (gapMinutes < 5) {
+                if (resolveIsCheckIn(firstScan.scan_time, expectedIn, expectedOut)) {
+                  nonWorkCheckIn = wibTimeStr(firstScan.scan_time)
+                } else {
+                  nonWorkCheckOut = wibTimeStr(lastScan.scan_time)
+                }
+              } else {
+                nonWorkCheckIn = wibTimeStr(firstScan.scan_time)
+                nonWorkCheckOut = wibTimeStr(lastScan.scan_time)
+              }
+            }
+          }
+
           summary.daily.push({
             date: dateStr, status: statusType,
             holiday_name: dayHolidayName,
-            checkin_time: null, checkout_time: null,
+            checkin_time: nonWorkCheckIn, checkout_time: nonWorkCheckOut,
             late_minutes: 0, leave_early_minutes: 0, issues: [],
           })
           continue
@@ -443,9 +489,14 @@ export async function GET(request) {
         const noCheckIn  = checkins.length === 0
         const noCheckOut = checkouts.length === 0
 
+        const isFutureDate = dateStr > defEnd
+
         if (noCheckIn && noCheckOut) {
           if (isPartTime || isOnCall) {
             // Part-time / On-Call: tidak masuk = tidak dicatat sebagai absen
+            dayRecord.status = 'ok'
+          } else if (isFutureDate) {
+            // Hari kerja di masa depan belum terjadi, tidak dicatat sebagai absen
             dayRecord.status = 'ok'
           } else {
             // ── Tidak masuk sama sekali ───────────────────────────────────
@@ -533,17 +584,36 @@ export async function GET(request) {
         const excuse = excuseMap[user.user_id]?.[dateStr]
         if (excuse) {
           dayRecord.excuse = {
-            status:       excuse.status,
-            excuse_type:  excuse.excuse_type,
-            exit_time:    excuse.exit_time,
-            return_time:  excuse.return_time,
-            category:     excuse.category,
+            status:         excuse.status,
+            excuse_type:    excuse.excuse_type,
+            exit_time:      excuse.exit_time,
+            return_time:    excuse.return_time,
+            category:       excuse.category,
+            category_label: leaveTypeMap[excuse.category] || null,
+            other_reason:   excuse.other_reason || null,
           }
 
           if (excuse.status === 'approved') {
-            // Disetujui: tandai sebagai excused — tidak ubah catatan terlambat,
-            // tapi flag agar laporan tampilkan "Dimaafkan"
+            // Disetujui: tandai sebagai excused
             dayRecord.excused = true
+
+            // Jika kategori adalah annual_leave, tambahkan ke annual_leave_count dan kurangi absent_count
+            if (excuse.category === 'annual_leave') {
+              summary.annual_leave_count = (summary.annual_leave_count || 0) + 1
+              if (dayRecord.issues.includes('absent')) {
+                summary.absent_count = Math.max(0, summary.absent_count - 1)
+              }
+            }
+
+          } else if (excuse.status === 'approved_1' || excuse.status === 'pending') {
+            // Dalam proses / disetujui tahap 1
+            dayRecord.excuse_pending = true
+            if (excuse.category === 'annual_leave') {
+              summary.annual_leave_count = (summary.annual_leave_count || 0) + 1
+              if (dayRecord.issues.includes('absent')) {
+                summary.absent_count = Math.max(0, summary.absent_count - 1)
+              }
+            }
 
           } else if (excuse.status === 'rejected') {
             // Ditolak: override jadi absent dengan catatan
@@ -568,10 +638,6 @@ export async function GET(request) {
             dayRecord.status  = 'absent'
             dayRecord.issues  = ['absent']
             dayRecord.excuse.rejected_note = rejectedBy
-
-          } else if (excuse.status === 'pending' || excuse.status === 'approved_1') {
-            // Dalam proses — tandai saja, jangan ubah status
-            dayRecord.excuse_pending = true
           }
         }
 

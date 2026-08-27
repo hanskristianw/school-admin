@@ -1,19 +1,59 @@
 "use client"
 
-import React, { Fragment, useEffect, useState } from 'react'
+import React, { Fragment, useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Modal from '@/components/ui/modal'
 import NotificationModal from '@/components/ui/notification-modal'
 import ExcelJS from 'exceljs'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faBoxes,
+  faTshirt,
+  faPlus,
+  faRotateRight,
+  faSearch,
+  faFileExcel,
+  faShieldAlt,
+  faFilter,
+  faChevronDown,
+  faChevronUp,
+  faTrash,
+  faPen,
+  faCheck,
+  faTimes,
+  faSpinner,
+  faHistory,
+  faLayerGroup,
+  faCalendarAlt,
+  faBuilding,
+  faExclamationTriangle,
+  faShoppingCart,
+  faArrowRight,
+  faTable,
+  faListUl,
+  faTag
+} from '@fortawesome/free-solid-svg-icons'
 
 export default function InitialStockPage() {
   const router = useRouter()
+  const { theme, isDark } = useTheme()
+
+  // UI Theme Tokens matching /data/pyp
+  const pageBg = theme?.pageBg || (isDark ? '#09090B' : '#FBFBFA')
+  const cardBg = theme?.cardBg || (isDark ? '#18181B' : '#FFFFFF')
+  const borderColor = theme?.border || (isDark ? '#27272A' : '#EAEAEA')
+  const textPrimary = theme?.textPrimary || (isDark ? '#F4F4F5' : '#111111')
+  const textSecondary = theme?.textSecondary || (isDark ? '#A1A1AA' : '#787774')
+  const inputBg = theme?.inputBg || (isDark ? '#18181B' : '#FFFFFF')
+
+  // Tabs state ('summary' | 'history')
+  const [activeTab, setActiveTab] = useState('summary')
+
   const [units, setUnits] = useState([])
   const [uniforms, setUniforms] = useState([])
   const [sizes, setSizes] = useState([])
@@ -31,8 +71,6 @@ export default function InitialStockPage() {
   const [success, setSuccess] = useState('')
   const [itemAddedSuccess, setItemAddedSuccess] = useState(false)
   const [saving, setSaving] = useState(false)
-
-  const { theme } = useTheme()
 
   // Helpers for sorting dropdowns and tables
   const getSupplierLabel = (s) => s ? (s.supplier_code ? `${s.supplier_code} - ${s.supplier_name}` : s.supplier_name) : ''
@@ -143,7 +181,7 @@ export default function InitialStockPage() {
       })
 
       map.forEach(val => aggregated.push(val))
-      setSummaryData(aggregated.filter(item => item.total_qty > 0))
+      setSummaryData(aggregated.filter(item => item.total_qty !== 0))
     } catch (e) {
       console.error('Error loading summary:', e)
     } finally {
@@ -449,59 +487,44 @@ export default function InitialStockPage() {
           .filter(t => !t.supplier_id || !supplierList.some(s => s.supplier_id === t.supplier_id))
           .reduce((sum, t) => sum + t.qty_delta, 0)
 
-        // Helper to allocate negative unallocated stock (POS sales without supplier_id) to supplier balances
-        const allocateUnallocated = (invQty, suppMap) => {
-          const resSuppMap = { ...suppMap }
-          let remInv = invQty
-          if (remInv < 0) {
-            let needed = Math.abs(remInv)
-            for (const s of supplierList) {
-              if (needed <= 0) break
-              const qty = resSuppMap[s.supplier_id] || 0
-              if (qty > 0) {
-                const deduct = Math.min(qty, needed)
-                resSuppMap[s.supplier_id] -= deduct
-                needed -= deduct
-              }
-            }
-            remInv = -needed
-          }
-          return { invQty: remInv, suppMap: resSuppMap }
-        }
-
-        const { invQty: stockAwalInv, suppMap: stockAwalBySupplier } = allocateUnallocated(rawStockAwalInv, rawStockAwalBySupplier)
-        const totalStockAwal = stockAwalInv + Object.values(stockAwalBySupplier).reduce((a, b) => a + b, 0)
-
-        const { invQty: stockAkhirInv, suppMap: stockAkhirBySupplier } = allocateUnallocated(rawStockAkhirInv, rawStockAkhirBySupplier)
-        const totalStockAkhir = stockAkhirInv + Object.values(stockAkhirBySupplier).reduce((a, b) => a + b, 0)
+        const totalStockAwal = rawStockAwalInv + Object.values(rawStockAwalBySupplier).reduce((a, b) => a + b, 0)
+        const totalStockAkhir = rawStockAkhirInv + Object.values(rawStockAkhirBySupplier).reduce((a, b) => a + b, 0)
 
         return {
           uniform_name: uniform.uniform_name,
-          stockAwalInv, stockAwalBySupplier, totalStockAwal, weightedAvgHpp,
-          purchaseByPo, totalPurchaseQty, avgPurchasePrice, totalPurchaseCost,
-          totalSoldQty, avgSellPrice, totalSaleRevenue, profit,
-          stockAkhirInv, stockAkhirBySupplier, totalStockAkhir
+          stockAwalInv: rawStockAwalInv,
+          stockAwalBySupplier: rawStockAwalBySupplier,
+          weightedAvgHpp,
+          totalStockAwal,
+          purchaseByPo,
+          totalPurchaseQty,
+          totalPurchaseCost,
+          avgPurchasePrice,
+          totalSoldQty,
+          avgSellPrice,
+          totalSaleRevenue,
+          profit,
+          stockAkhirInv: rawStockAkhirInv,
+          stockAkhirBySupplier: rawStockAkhirBySupplier,
+          totalStockAkhir
         }
-      }).filter(row => {
-        return row.totalStockAwal > 0 || row.totalPurchaseQty > 0 || row.totalSoldQty > 0 || row.totalStockAkhir !== 0
       })
 
-      // ============ BUILD EXCEL with ExcelJS ============
+      // ============ GENERATE EXCEL WORKBOOK ============
       const wb = new ExcelJS.Workbook()
-      wb.creator = 'School Admin'
+      wb.creator = 'School Admin System'
       wb.created = new Date()
 
-      // --- Helper: thin border style ---
       const thinBorder = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
+        top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
       }
 
-      const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E8D2' } } // light green
-      const groupFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } } // blue
-      const totalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } } // light yellow
+      const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E8D2' } }
+      const groupFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } }
+      const totalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } }
 
       // ---- Sheet 1: Comprehensive Report ----
       const ws = wb.addWorksheet('Laporan Stok')
@@ -509,7 +532,6 @@ export default function InitialStockPage() {
       const supplierCount = supplierList.length
       const poCount = Math.max(poList.length, 1)
 
-      // Column positions (1-based for ExcelJS)
       const C = {
         jenisSeragam: 1,
         inv: 2,
@@ -531,7 +553,6 @@ export default function InitialStockPage() {
       }
       const totalCols = C.totalStokAkhir
 
-      // Set column widths
       for (let i = 1; i <= totalCols; i++) ws.getColumn(i).width = 14
       ws.getColumn(C.jenisSeragam).width = 26
       ws.getColumn(C.akhirJenis).width = 26
@@ -539,7 +560,6 @@ export default function InitialStockPage() {
       ws.getColumn(C.jmlTerjual).width = 22
       ws.getColumn(C.keuntungan).width = 26
 
-      // Row 1: Title
       const startFormatted = new Date(start_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
       const endFormatted = new Date(end_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -547,15 +567,12 @@ export default function InitialStockPage() {
       titleRow.getCell(1).font = { bold: true, size: 14 }
       ws.mergeCells(1, 1, 1, totalCols)
 
-      // Row 2: Period
       const periodRow = ws.addRow([`Periode: ${startFormatted} - ${endFormatted}`])
       periodRow.getCell(1).font = { italic: true, size: 11 }
       ws.mergeCells(2, 1, 2, totalCols)
 
-      // Row 3: Empty
       ws.addRow([])
 
-      // Row 4: Group headers
       const groupHeaderRow = ws.addRow([])
       const groupHeaders = [
         { col: C.jenisSeragam, end: C.totalStokAwal, label: 'STOCK AWAL' },
@@ -571,14 +588,12 @@ export default function InitialStockPage() {
         cell.alignment = { horizontal: 'center' }
         cell.border = thinBorder
         ws.mergeCells(4, g.col, 4, g.end)
-        // Fill all merged cells with border
         for (let c = g.col + 1; c <= g.end; c++) {
           groupHeaderRow.getCell(c).border = thinBorder
           groupHeaderRow.getCell(c).fill = groupFill
         }
       })
 
-      // Row 5: Sub-headers
       const subHeaders = new Array(totalCols).fill('')
       subHeaders[C.jenisSeragam - 1] = 'Jenis Seragam'
       subHeaders[C.inv - 1] = 'Inv'
@@ -612,7 +627,6 @@ export default function InitialStockPage() {
         }
       })
 
-      // Data rows
       const totals = {
         inv: 0, suppAwal: {}, hppNilai: 0, totalStokAwal: 0,
         poQty: {}, totalPoQty: 0, totalPembelian: 0,
@@ -676,7 +690,6 @@ export default function InitialStockPage() {
           if (colNum <= totalCols) {
             cell.border = thinBorder
             cell.alignment = { vertical: 'middle' }
-            // Number formatting for currency columns
             if (typeof cell.value === 'number' && [C.hpp, C.nilai, C.hargaBeli, C.totalPembelian, C.hargaJual, C.totalPenjualan, C.keuntungan].includes(colNum)) {
               cell.numFmt = '#,##0'
             }
@@ -711,140 +724,46 @@ export default function InitialStockPage() {
           cell.font = { bold: true }
           cell.fill = totalFill
           cell.border = thinBorder
-          if (typeof cell.value === 'number') cell.numFmt = '#,##0'
+          cell.alignment = { vertical: 'middle' }
+          if (typeof cell.value === 'number' && [C.nilai, C.hargaBeli, C.totalPembelian, C.hargaJual, C.totalPenjualan, C.keuntungan].includes(colNum)) {
+            cell.numFmt = '#,##0'
+          }
         }
       })
 
-      // ---- Sheet 2+: Per-supplier summary (current stock matching Sheet 1) ----
-      const dataBySupplier = new Map()
-      dataBySupplier.set('Tanpa Supplier', [])
-
-      // Group allStockTxns directly by (uniform_id, size_id, supplier_id) up to end_date of period
-      const variantStockMap = new Map()
-      ;(allStockTxns || [])
-        .filter(t => !t.created_at || t.created_at <= end_date + 'T23:59:59')
-        .forEach(t => {
-        const uId = t.uniform_id
-        const sId = t.size_id
-        const suppId = t.supplier_id || 'null'
-        const key = `${uId}|${sId}|${suppId}`
-
-        if (!variantStockMap.has(key)) {
-          const uniform = (allUniforms || []).find(u => u.uniform_id === uId)
-          const sizeObj = (sizes || []).find(s => s.size_id === sId)
-          const suppObj = (allSuppliers || []).find(s => s.supplier_id === t.supplier_id)
-
-          variantStockMap.set(key, {
-            uniform_id: uId,
-            size_id: sId,
-            supplier_id: t.supplier_id,
-            uniform_name: uniform?.uniform_name || '',
-            size_name: sizeObj?.size_name || '',
-            supplier_name: suppObj ? `${suppObj.supplier_code} - ${suppObj.supplier_name}` : 'Tanpa Supplier',
-            is_universal: uniform?.is_universal || false,
-            net_qty: 0
-          })
-        }
-        variantStockMap.get(key).net_qty += t.qty_delta
-      })
-
-      // Group variant items by uniform_id
-      const variantByUniform = new Map()
-      variantStockMap.forEach(item => {
-        if (!variantByUniform.has(item.uniform_id)) variantByUniform.set(item.uniform_id, [])
-        variantByUniform.get(item.uniform_id).push(item)
-      })
-
-      // For each uniform, allocate negative unallocated stock (POS sales without supplier_id) across positive unallocated variant sizes
-      variantByUniform.forEach((items) => {
-        const unallocItems = items.filter(i => !i.supplier_id)
-        const totalNegativeUnalloc = unallocItems.filter(i => i.net_qty < 0).reduce((sum, i) => sum + Math.abs(i.net_qty), 0)
-
-        if (totalNegativeUnalloc > 0) {
-          let needed = totalNegativeUnalloc
-          unallocItems.forEach(i => {
-            if (i.net_qty > 0 && needed > 0) {
-              const deduct = Math.min(i.net_qty, needed)
-              i.net_qty -= deduct
-              needed -= deduct
-            }
-          })
-        }
-
-        items.forEach(item => {
-          if (item.net_qty <= 0) return
-          const key = item.supplier_name
-          if (!dataBySupplier.has(key)) dataBySupplier.set(key, [])
-          dataBySupplier.get(key).push({
-            seragam: item.uniform_name,
-            ukuran: item.size_name,
-            jumlah: item.net_qty,
-            universal: item.is_universal ? 'Ya' : 'Tidak'
-          })
-        })
-      })
-
-      dataBySupplier.forEach((items, supplierName) => {
-        if (items.length === 0) return
-        items.sort((a, b) => a.seragam.localeCompare(b.seragam) || a.ukuran.localeCompare(b.ukuran))
-
-        let sheetName = supplierName.replace(/[\\/*\[\]:?]/g, '').substring(0, 31)
-        const ssWs = wb.addWorksheet(sheetName)
-
-        const totalPcs = items.reduce((sum, i) => sum + i.jumlah, 0)
-        // Title rows
-        const r1 = ssWs.addRow([supplierName])
-        r1.getCell(1).font = { bold: true, size: 13 }
-        ssWs.mergeCells(1, 1, 1, 4)
-        const r2 = ssWs.addRow([`Total Stock: ${totalPcs} pcs`])
-        r2.getCell(1).font = { italic: true }
-        ssWs.addRow([`Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`])
-        ssWs.addRow([])
-
-        // Header
-        const hdr = ssWs.addRow(['Seragam', 'Ukuran', 'Jumlah', 'Universal'])
-        hdr.eachCell((cell) => {
-          cell.font = { bold: true }
-          cell.fill = headerFill
-          cell.border = thinBorder
-          cell.alignment = { horizontal: 'center' }
-        })
-
-        items.forEach(item => {
-          const row = ssWs.addRow([item.seragam, item.ukuran, item.jumlah, item.universal])
-          row.eachCell((cell) => { cell.border = thinBorder })
-        })
-
-        ssWs.getColumn(1).width = 30
-        ssWs.getColumn(2).width = 12
-        ssWs.getColumn(3).width = 10
-        ssWs.getColumn(4).width = 10
-      })
-
-      // Download
+      // Generate and download
       const buffer = await wb.xlsx.writeBuffer()
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = URL.createObjectURL(blob)
+      const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Laporan_Stok_Seragam_${year_name.replace(/[\/\\]/g, '-')}.xlsx`
+      a.download = `Laporan_Stok_Seragam_${year_name.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
 
       setShowExportModal(false)
-      setExportNotification({ isOpen: true, title: 'Berhasil', message: `Laporan berhasil di-export`, type: 'success' })
+      setExportNotification({ isOpen: true, title: 'Sukses', message: `Laporan stok seragam periode ${year_name} berhasil diekspor.`, type: 'success' })
 
     } catch (e) {
-      console.error('Error exporting report:', e)
-      setExportNotification({ isOpen: true, title: 'Error', message: 'Gagal export laporan: ' + e.message, type: 'error' })
+      console.error('Export error:', e)
+      setExportNotification({ isOpen: true, title: 'Error', message: 'Gagal mengekspor laporan: ' + e.message, type: 'error' })
     } finally {
       setExporting(false)
     }
   }
 
+  const toggleExpand = (uniformId) => {
+    setExpandedUniforms(prev => ({
+      ...prev,
+      [uniformId]: !prev[uniformId]
+    }))
+  }
+
   const openAddModal = () => {
     setFormData({
-      unit_id: units.length ? String(units[0].unit_id) : '',
+      unit_id: units.length > 0 ? String(units[0].unit_id) : '',
       uniform_id: '',
       size_id: '',
       supplier_id: '',
@@ -939,10 +858,8 @@ export default function InitialStockPage() {
     setSaving(true)
     setError('')
     try {
-      // Get user ID for created_by tracking
       const userId = parseInt(localStorage.getItem('kr_id'), 10) || null
       
-      // Create stock transactions for initial stock
       const transactions = initialStockItems.map(item => ({
         uniform_id: Number(item.uniform_id),
         size_id: Number(item.size_id),
@@ -964,8 +881,8 @@ export default function InitialStockPage() {
       setSuccess(`Berhasil menginput ${initialStockItems.length} item stock awal`)
       setTimeout(() => setSuccess(''), 3000)
       setInitialStockItems([])
-      fetchHistory() // Refresh history data
-      fetchSummary() // Refresh summary data
+      fetchHistory()
+      fetchSummary()
       closeModal()
     } catch (e) {
       setError(e.message)
@@ -974,857 +891,1052 @@ export default function InitialStockPage() {
     }
   }
 
-  // Filter uniforms: universal OR assigned to selected unit via junction table
   const uniformsFiltered = uniforms.filter(u => u.is_universal || (u.uniform_unit || []).some(uu => String(uu.unit_id) === String(formData.unit_id)))
   const totalItems = initialStockItems.reduce((sum, item) => sum + Number(item.qty), 0)
 
+  // Computed Summary Data
+  const { filteredSummaryData, groupedUniforms, totalSummaryStock } = useMemo(() => {
+    let filtered = summaryData
+    if (summarySupplierFilter !== 'all') {
+      if (summarySupplierFilter === 'null') {
+        filtered = summaryData.filter(row => !row.supplier)
+      } else {
+        filtered = summaryData.filter(row => row.supplier?.supplier_id === Number(summarySupplierFilter))
+      }
+    }
+    
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(row => {
+        const uniformName = (row.uniform?.uniform_name || '').toLowerCase()
+        const sizeName = (row.size?.size_name || '').toLowerCase()
+        const supplierName = (row.supplier?.supplier_name || '').toLowerCase()
+        return uniformName.includes(query) || sizeName.includes(query) || supplierName.includes(query)
+      })
+    }
+
+    // Group by uniform
+    const groups = {}
+    filtered.forEach(item => {
+      const uId = item.uniform?.uniform_id || 0
+      if (!groups[uId]) {
+        groups[uId] = {
+          uniform_id: uId,
+          uniform_name: item.uniform?.uniform_name || 'Tanpa Nama',
+          is_universal: item.uniform?.is_universal || false,
+          total_qty: 0,
+          items: []
+        }
+      }
+      groups[uId].total_qty += item.total_qty
+      groups[uId].items.push(item)
+    })
+
+    const groupList = Object.values(groups).sort((a, b) => a.uniform_name.localeCompare(b.uniform_name))
+    const totalStock = filtered.reduce((sum, row) => sum + (row.total_qty || 0), 0)
+
+    return {
+      filteredSummaryData: filtered,
+      groupedUniforms: groupList,
+      totalSummaryStock: totalStock
+    }
+  }, [summaryData, summarySupplierFilter, searchQuery])
+
+  // Computed History Data
+  const { filteredHistory, paginatedHistory, totalPages, uniqueSuppliers, hasNoSupplier, uniqueUniforms, uniqueSizes, historyMetrics } = useMemo(() => {
+    const uSuppliers = Array.from(
+      new Map(
+        historyData
+          .filter(row => row.supplier)
+          .map(row => [row.supplier.supplier_id, row.supplier])
+      ).values()
+    ).sort((a, b) => getSupplierLabel(a).localeCompare(getSupplierLabel(b), 'id', { sensitivity: 'base', numeric: true }))
+    
+    const noSupp = historyData.some(row => !row.supplier)
+    
+    const uUniforms = Array.from(
+      new Map(
+        historyData
+          .filter(row => row.uniform)
+          .map(row => [row.uniform.uniform_id, row.uniform])
+      ).values()
+    ).sort((a, b) => (a.uniform_name || '').localeCompare(b.uniform_name || '', 'id', { sensitivity: 'base', numeric: true }))
+    
+    const uSizes = Array.from(
+      new Map(
+        historyData
+          .filter(row => row.size)
+          .map(row => [row.size.size_id, row.size])
+      ).values()
+    ).sort((a, b) => {
+      if (a.display_order !== undefined && b.display_order !== undefined && a.display_order !== b.display_order) {
+        return (a.display_order || 0) - (b.display_order || 0)
+      }
+      return sortSizesHelper(a.size_name, b.size_name)
+    })
+
+    const filtered = historyData.filter(row => {
+      if (filterSupplier !== 'all') {
+        if (filterSupplier === 'null') {
+          if (row.supplier_id !== null && row.supplier !== null) return false
+        } else {
+          if (row.supplier_id !== Number(filterSupplier)) return false
+        }
+      }
+      if (filterUniform !== 'all' && row.uniform_id !== Number(filterUniform)) return false
+      if (filterSize !== 'all' && row.size_id !== Number(filterSize)) return false
+      return true
+    })
+
+    const pages = Math.ceil(filtered.length / itemsPerPage) || 1
+    const startIdx = (currentPage - 1) * itemsPerPage
+    const paginated = filtered.slice(startIdx, startIdx + itemsPerPage)
+
+    const netQty = filtered.reduce((acc, row) => acc + (row.qty_delta || 0), 0)
+    const qtyIn = filtered.reduce((acc, row) => acc + (row.qty_delta > 0 ? row.qty_delta : 0), 0)
+    const qtyOut = filtered.reduce((acc, row) => acc + (row.qty_delta < 0 ? Math.abs(row.qty_delta) : 0), 0)
+
+    return {
+      filteredHistory: filtered,
+      paginatedHistory: paginated,
+      totalPages: pages,
+      uniqueSuppliers: uSuppliers,
+      hasNoSupplier: noSupp,
+      uniqueUniforms: uUniforms,
+      uniqueSizes: uSizes,
+      historyMetrics: { netQty, qtyIn, qtyOut }
+    }
+  }, [historyData, filterSupplier, filterUniform, filterSize, currentPage, itemsPerPage])
+
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6" style={{ background: theme.pageBg, minHeight: '100%' }}>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+
+      {/* ── HEADER & BREADCRUMBS (MATCHING /data/pyp LAYOUT) ─────────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold" style={{ color: theme.textPrimary }}>Stok Seragam</h1>
-          <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>Pantau dan kelola stok seragam</p>
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider uppercase mb-1.5" style={{ color: textSecondary }}>
+            <span>[INVENTORY]</span>
+            <span>/</span>
+            <span>[UNIFORM MASTER DATA]</span>
+            <span>/</span>
+            <span className="font-semibold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>[INITIAL STOCK &amp; RECAP]</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded flex items-center justify-center border"
+              style={{
+                background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                borderColor: isDark ? '#2563EB' : '#BAE6FD',
+                color: isDark ? '#60A5FA' : '#0284C7'
+              }}
+            >
+              <FontAwesomeIcon icon={faBoxes} className="text-base" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+                Stok Seragam &amp; Saldo Awal
+              </h1>
+              <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
+                Pantau ringkasan saldo stok seragam berjalan, input stok awal per unit sekolah, serta audit log mutasi stok.
+              </p>
+            </div>
+          </div>
         </div>
-        <Button
-          onClick={openAddModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold w-full sm:w-auto"
-        >
-          + Input Stock Awal
-        </Button>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Audit Shortcut */}
+          <button
+            onClick={() => router.push('/stock/uniform/audit')}
+            className="px-3.5 py-2 text-xs font-semibold rounded-md border transition-all cursor-pointer flex items-center gap-2 hover:brightness-110 active:scale-95"
+            style={{
+              background: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
+              borderColor: isDark ? '#6366F1' : '#C7D2FE',
+              color: isDark ? '#818CF8' : '#4F46E5'
+            }}
+          >
+            <FontAwesomeIcon icon={faShieldAlt} className="text-xs" />
+            <span>Audit &amp; Resolusi</span>
+          </button>
+
+          {/* Export Laporan */}
+          <button
+            onClick={openExportModal}
+            className="px-4 py-2 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-2 shadow-xs hover:brightness-110 active:scale-95 text-white"
+            style={{
+              background: '#16A34A',
+              border: '1px solid #15803D'
+            }}
+          >
+            <FontAwesomeIcon icon={faFileExcel} />
+            <span>Export Laporan</span>
+          </button>
+
+          {/* Input Stock Awal Button */}
+          <Button
+            onClick={openAddModal}
+            style={{
+              background: textPrimary,
+              color: isDark ? '#09090B' : '#FFFFFF',
+              fontSize: '12px',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <FontAwesomeIcon icon={faPlus} />
+            <span>Input Stock Awal</span>
+          </Button>
+        </div>
       </div>
 
+      {/* ── NOTIFICATIONS & ERRORS ─────────────────────────────────────────── */}
       {error && !showModal && (
-        <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="p-3.5 rounded-lg border text-xs flex items-center justify-between gap-3 mb-6" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faExclamationTriangle} />
+            <span>{error}</span>
+          </div>
+          <button onClick={() => setError('')} className="cursor-pointer font-bold">✕</button>
         </div>
       )}
-      
+
       {success && (
-        <div className="bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded">
-          {success}
+        <div className="p-3.5 rounded-lg border text-xs flex items-center justify-between gap-3 mb-6" style={{ background: '#EDF3EC', borderColor: '#D5E6D3', color: '#346538' }}>
+          <div className="flex items-center gap-2">
+            <FontAwesomeIcon icon={faCheck} />
+            <span>{success}</span>
+          </div>
+          <button onClick={() => setSuccess('')} className="cursor-pointer font-bold">✕</button>
         </div>
       )}
 
-      {/* Ringkasan Stock */}
-      <Card className="p-4" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <h2 className="font-semibold" style={{ color: theme.textPrimary }}>📊 Ringkasan Stock Seragam</h2>
-          
-          <div className="flex flex-wrap gap-2 items-center">
-            {/* Audit & Resolution Shortcut */}
-            <Button
-              onClick={() => router.push('/stock/uniform/audit')}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-1.5 flex items-center gap-1.5 font-semibold"
-            >
-              <span>🔍 Audit & Resolusi Data</span>
-            </Button>
+      {/* ── PENDING ITEMS TO SUBMIT BANNER (IF ANY) ────────────────────────── */}
+      {initialStockItems.length > 0 && (
+        <div
+          className="p-4 rounded-lg border mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          style={{
+            background: isDark ? 'rgba(234, 88, 12, 0.12)' : '#FFF7ED',
+            borderColor: isDark ? '#EA580C' : '#FDBA74'
+          }}
+        >
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold" style={{ color: isDark ? '#FB923C' : '#EA580C' }}>
+              <FontAwesomeIcon icon={faLayerGroup} />
+              <span>Ada {initialStockItems.length} item stock awal yang belum di-submit ({totalItems} pcs).</span>
+            </div>
+            <p className="text-[11px] mt-0.5" style={{ color: textSecondary }}>
+              Periksa daftar item di bagian bawah lalu klik "Submit Semua" untuk mencatatnya secara permanen ke kartu stok.
+            </p>
+          </div>
+          <button
+            onClick={submitInitialStock}
+            disabled={saving}
+            className="px-4 py-2 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-2 text-white shadow-xs"
+            style={{
+              background: '#16A34A',
+              border: '1px solid #15803D',
+              opacity: saving ? 0.6 : 1
+            }}
+          >
+            {saving ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : <FontAwesomeIcon icon={faCheck} />}
+            <span>{saving ? 'Menyimpan...' : `Submit Semua (${initialStockItems.length} Item)`}</span>
+          </button>
+        </div>
+      )}
 
-            {/* Export Button */}
-            {summaryData.length > 0 && (
-              <Button
-                onClick={openExportModal}
-                className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2"
-              >
-                📥 Export Laporan
-              </Button>
-            )}
-            
-            <Button onClick={fetchSummary} className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 text-sm" disabled={loadingSummary}>
-              🔄 Refresh
-            </Button>
+      {/* ── METADATA BENTO SUMMARY CARDS ───────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div
+          className="p-3.5 rounded-lg border flex flex-col justify-between"
+          style={{ background: cardBg, borderColor }}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: textSecondary }}>Jenis Seragam</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold font-mono" style={{ color: textPrimary }}>{groupedUniforms.length}</span>
+            <span className="text-xs font-medium" style={{ color: textSecondary }}>kategori</span>
           </div>
         </div>
-        
-        {loadingSummary ? (
-          <div className="text-center py-8" style={{ color: theme.textSecondary }}>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p>Memuat data...</p>
+
+        <div
+          className="p-3.5 rounded-lg border flex flex-col justify-between"
+          style={{ background: cardBg, borderColor }}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: textSecondary }}>Total Kuantitas Fisik</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold font-mono" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{totalSummaryStock}</span>
+            <span className="text-xs font-medium" style={{ color: isDark ? '#93C5FD' : '#0369A1' }}>pcs stok</span>
           </div>
-        ) : summaryData.length === 0 ? (
-          <div className="text-center py-8" style={{ color: theme.textSecondary }}>
-            <div className="text-4xl mb-2">📦</div>
-            <p>Belum ada data stok</p>
+        </div>
+
+        <div
+          className="p-3.5 rounded-lg border flex flex-col justify-between"
+          style={{ background: cardBg, borderColor }}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: textSecondary }}>Total Varian SKU</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold font-mono" style={{ color: isDark ? '#34D399' : '#059669' }}>{filteredSummaryData.length}</span>
+            <span className="text-xs font-medium" style={{ color: isDark ? '#6EE7B7' : '#047857' }}>varian aktif</span>
           </div>
-        ) : (
-          <>
-            {/* Table View */}
-            {(() => {
-              // Apply supplier filter first
-              let filteredBySupplier = summaryData
-              if (summarySupplierFilter !== 'all') {
-                if (summarySupplierFilter === 'null') {
-                  filteredBySupplier = summaryData.filter(row => !row.supplier)
-                } else {
-                  filteredBySupplier = summaryData.filter(row => row.supplier?.supplier_id === Number(summarySupplierFilter))
-                }
-              }
-              
-              // Then apply search filter
-              const filteredData = filteredBySupplier.filter(row => {
-                if (!searchQuery.trim()) return true
-                const query = searchQuery.toLowerCase()
-                const uniformName = (row.uniform?.uniform_name || '').toLowerCase()
-                const sizeName = (row.size?.size_name || '').toLowerCase()
-                const supplierName = (row.supplier?.supplier_name || '').toLowerCase()
-                return uniformName.includes(query) || sizeName.includes(query) || supplierName.includes(query)
-              })
-              
-              // Apply sorting
-              const sortedData = [...filteredData]
-              if (sortConfig.key) {
-                sortedData.sort((a, b) => {
-                  let aVal, bVal
-                  
-                  switch(sortConfig.key) {
-                    case 'uniform':
-                      aVal = a.uniform?.uniform_name || ''
-                      bVal = b.uniform?.uniform_name || ''
-                      break
-                    case 'size':
-                      aVal = a.size?.size_name || ''
-                      bVal = b.size?.size_name || ''
-                      break
-                    case 'qty':
-                      aVal = a.total_qty
-                      bVal = b.total_qty
-                      break
-                    case 'supplier':
-                      aVal = a.supplier?.supplier_name || ''
-                      bVal = b.supplier?.supplier_name || ''
-                      break
-                    default:
-                      return 0
-                  }
-                  
-                  if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1
-                  if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
-                  return 0
-                })
-              }
-              
-              const handleSort = (key) => {
-                setSortConfig(prev => ({
-                  key,
-                  direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-                }))
-              }
-              
-              const SortIcon = ({ column }) => {
-                if (sortConfig.key !== column) {
-                  return <span className="text-gray-400">⇅</span>
-                }
-                return sortConfig.direction === 'asc' ? <span className="text-blue-600">↑</span> : <span className="text-blue-600">↓</span>
-              }
-              
-              // Extract unique suppliers from summaryData
-              const uniqueSuppliers = Array.from(
-                new Set(
-                  summaryData
-                    .filter(row => row.supplier)
-                    .map(row => row.supplier.supplier_id)
-                )
-              ).map(supplierId => 
-                summaryData.find(row => row.supplier?.supplier_id === supplierId).supplier
-              ).sort((a, b) => getSupplierLabel(a).localeCompare(getSupplierLabel(b), 'id', { sensitivity: 'base', numeric: true }))
+        </div>
 
-              // Group sortedData by uniform_id so identical uniforms collapse into a dropdown list
-              const groupedUniformsMap = new Map()
-
-              sortedData.forEach(row => {
-                const uId = row.uniform?.uniform_id || row.uniform?.uniform_name || 'unknown'
-                if (!groupedUniformsMap.has(uId)) {
-                  groupedUniformsMap.set(uId, {
-                    uniform_id: uId,
-                    uniform_name: row.uniform?.uniform_name || 'Tanpa Nama',
-                    is_universal: row.uniform?.is_universal || false,
-                    total_qty: 0,
-                    items: []
-                  })
-                }
-                const group = groupedUniformsMap.get(uId)
-                group.total_qty += row.total_qty
-                group.items.push(row)
-              })
-
-              const groupedUniforms = Array.from(groupedUniformsMap.values()).map(group => {
-                // Sort child items by size numerically (smallest to largest)
-                group.items.sort((a, b) => sortSizesHelper(a.size?.size_name, b.size?.size_name))
-                return group
-              })
-
-              const toggleExpand = (uId) => {
-                setExpandedUniforms(prev => ({
-                  ...prev,
-                  [uId]: !prev[uId]
-                }))
-              }
-
-              return (
-                <div className="space-y-3">
-                  {/* Filters */}
-                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                    {/* Search Input */}
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Cari seragam, ukuran, atau supplier..."
-                        className="w-full pl-10 pr-4 py-1.5 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
-                      />
-                      <svg className="absolute left-3 top-2 h-4 w-4" style={{ color: theme.textSecondary }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    
-                    {/* Supplier Filter */}
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm whitespace-nowrap" style={{ color: theme.textSecondary }}>Filter:</Label>
-                      <select
-                        value={summarySupplierFilter}
-                        onChange={(e) => setSummarySupplierFilter(e.target.value)}
-                        className="rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
-                      >
-                        <option value="all">Semua Supplier</option>
-                        <option value="null">Tanpa Supplier</option>
-                        {uniqueSuppliers.map(s => (
-                          <option key={s.supplier_id} value={s.supplier_id}>
-                            {s.supplier_code} - {s.supplier_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    {(searchQuery || summarySupplierFilter !== 'all') && (
-                      <button
-                        onClick={() => {
-                          setSearchQuery('')
-                          setSummarySupplierFilter('all')
-                        }}
-                        className="px-3 py-1.5 text-sm rounded font-medium"
-                        style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
-                      >
-                        Reset Filter
-                      </button>
-                    )}
-                  </div>
-                  
-                  {groupedUniforms.length === 0 ? (
-                    <div className="text-center py-8" style={{ color: theme.textSecondary }}>
-                      <div className="text-4xl mb-2">🔍</div>
-                      <p>Tidak ada data yang sesuai dengan filter</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-auto">
-                      <table className="min-w-full text-sm">
-                        <thead>
-                          <tr className="text-left border-b" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                            <th 
-                              className="py-2 px-3 font-semibold cursor-pointer select-none"
-                              style={{ color: theme.textSecondary }}
-                              onClick={() => handleSort('uniform')}
-                            >
-                              <div className="flex items-center gap-2">
-                                Seragam <SortIcon column="uniform" />
-                              </div>
-                            </th>
-                            <th 
-                              className="py-2 px-3 font-semibold cursor-pointer select-none"
-                              style={{ color: theme.textSecondary }}
-                              onClick={() => handleSort('size')}
-                            >
-                              <div className="flex items-center gap-2">
-                                Ukuran <SortIcon column="size" />
-                              </div>
-                            </th>
-                            <th 
-                              className="py-2 px-3 font-semibold cursor-pointer select-none"
-                              style={{ color: theme.textSecondary }}
-                              onClick={() => handleSort('qty')}
-                            >
-                              <div className="flex items-center gap-2">
-                                Total Qty <SortIcon column="qty" />
-                              </div>
-                            </th>
-                            <th 
-                              className="py-2 px-3 font-semibold cursor-pointer select-none"
-                              style={{ color: theme.textSecondary }}
-                              onClick={() => handleSort('supplier')}
-                            >
-                              <div className="flex items-center gap-2">
-                                Supplier <SortIcon column="supplier" />
-                              </div>
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {groupedUniforms.map((group) => {
-                            const isMultiple = group.items.length > 1
-                            const isExpanded = !!expandedUniforms[group.uniform_id] || Boolean(searchQuery.trim()) || summarySupplierFilter !== 'all'
-
-                            if (!isMultiple) {
-                              const item = group.items[0]
-                              return (
-                                <tr key={group.uniform_id} className="border-b hover:opacity-90" style={{ borderColor: theme.border }}>
-                                  <td className="py-2 px-3" style={{ color: theme.textBody }}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium">{group.uniform_name}</span>
-                                      {group.is_universal && <span className="text-xs">🌐</span>}
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-3" style={{ color: theme.textBody }}>
-                                    {item.size?.size_name || '-'}
-                                  </td>
-                                  <td className="py-2 px-3">
-                                    <span className="font-semibold text-blue-600">{group.total_qty}</span>
-                                  </td>
-                                  <td className="py-2 px-3">
-                                    {item.supplier ? (
-                                      <span style={{ color: theme.textBody }}>
-                                        {item.supplier.supplier_code} - {item.supplier.supplier_name}
-                                      </span>
-                                    ) : (
-                                      <span className="italic text-xs" style={{ color: theme.textSecondary }}>Stock Awal</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              )
-                            }
-
-                            // Multiple items for same uniform -> Accordion Parent + Child Rows
-                            const uniqueSizeNames = Array.from(new Set(group.items.map(i => i.size?.size_name).filter(Boolean))).sort(sortSizesHelper)
-                            const sizesList = uniqueSizeNames.join(', ')
-                            const uniqueSuppliersInGroup = Array.from(new Set(group.items.map(i => i.supplier ? `${i.supplier.supplier_code} - ${i.supplier.supplier_name}` : 'Stock Awal')))
-                            const supplierSummaryText = uniqueSuppliersInGroup.length === 1 ? uniqueSuppliersInGroup[0] : `${uniqueSuppliersInGroup.length} Supplier`
-
-                            return (
-                              <Fragment key={`group-frag-${group.uniform_id}`}>
-                                {/* Accordion Parent Row */}
-                                <tr
-                                  className="border-b cursor-pointer hover:bg-opacity-80 transition-colors"
-                                  style={{ borderColor: theme.border, background: theme.cardBg }}
-                                  onClick={() => toggleExpand(group.uniform_id)}
-                                >
-                                  <td className="py-2.5 px-3" style={{ color: theme.textBody }}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs text-blue-600 font-bold transition-transform duration-200" style={{ display: 'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
-                                        ▶
-                                      </span>
-                                      <span className="font-semibold" style={{ color: theme.textPrimary }}>{group.uniform_name}</span>
-                                      {group.is_universal && <span className="text-xs">🌐</span>}
-                                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-                                        {group.items.length} varian
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-xs font-medium" style={{ color: theme.textSecondary }}>
-                                    {sizesList || '-'}
-                                  </td>
-                                  <td className="py-2.5 px-3">
-                                    <span className="font-bold text-blue-600 text-base">{group.total_qty}</span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-xs" style={{ color: theme.textSecondary }}>
-                                    {supplierSummaryText}
-                                  </td>
-                                </tr>
-
-                                {/* Expanded Child Rows */}
-                                {isExpanded && group.items.map((item, iIdx) => (
-                                  <tr
-                                    key={`child-${group.uniform_id}-${iIdx}`}
-                                    className="border-b transition-colors"
-                                    style={{ borderColor: theme.border, background: theme.subtleBg }}
-                                  >
-                                    <td className="py-2 px-3 pl-8">
-                                      <div className="flex items-center gap-1.5 text-xs" style={{ color: theme.textSecondary }}>
-                                        <span className="text-blue-500 font-bold">↳</span>
-                                        <span>Rincian Varian</span>
-                                      </div>
-                                    </td>
-                                    <td className="py-2 px-3 text-xs font-medium" style={{ color: theme.textBody }}>
-                                      {item.size?.size_name || '-'}
-                                    </td>
-                                    <td className="py-2 px-3 text-xs">
-                                      <span className="font-semibold text-blue-600">{item.total_qty}</span>
-                                    </td>
-                                    <td className="py-2 px-3 text-xs">
-                                      {item.supplier ? (
-                                        <span style={{ color: theme.textBody }}>
-                                          {item.supplier.supplier_code} - {item.supplier.supplier_name}
-                                        </span>
-                                      ) : (
-                                        <span className="italic" style={{ color: theme.textSecondary }}>Stock Awal</span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </Fragment>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                      <div className="mt-4 text-xs" style={{ color: theme.textSecondary }}>
-                        {(searchQuery || summarySupplierFilter !== 'all') ? (
-                          <>
-                            Menampilkan: <span className="font-semibold">{groupedUniforms.length} jenis seragam</span> ({sortedData.length} varian)
-                            <span className="mx-2">•</span>
-                            Total Qty: <span className="font-semibold">{sortedData.reduce((sum, row) => sum + row.total_qty, 0)}</span>
-                          </>
-                        ) : (
-                          <>
-                            Total: <span className="font-semibold">{groupedUniforms.length} jenis seragam</span> ({summaryData.length} varian)
-                            <span className="mx-2">•</span>
-                            Total Qty: <span className="font-semibold">{summaryData.reduce((sum, row) => sum + row.total_qty, 0)}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-          </>
-        )}
-      </Card>
-
-      {/* History Table */}
-      <Card className="p-4" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
-        <h2 className="font-semibold mb-4" style={{ color: theme.textPrimary }}>Riwayat Transaksi Stock Seragam</h2>
-        
-        {loadingHistory ? (
-          <div className="text-center py-8" style={{ color: theme.textSecondary }}>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p>Memuat data...</p>
+        <div
+          className="p-3.5 rounded-lg border flex flex-col justify-between"
+          style={{ background: cardBg, borderColor }}
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: textSecondary }}>Total Transaksi Log</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold font-mono" style={{ color: isDark ? '#C084FC' : '#7E22CE' }}>{historyData.length}</span>
+            <span className="text-xs font-medium" style={{ color: isDark ? '#D8B4FE' : '#6B21A8' }}>mutasi tercatat</span>
           </div>
-        ) : (() => {
-          // Get unique values from historyData for filters
-          const uniqueSuppliers = Array.from(
-            new Map(
-              historyData
-                .filter(row => row.supplier)
-                .map(row => [row.supplier.supplier_id, row.supplier])
-            ).values()
-          ).sort((a, b) => getSupplierLabel(a).localeCompare(getSupplierLabel(b), 'id', { sensitivity: 'base', numeric: true }))
-          
-          const hasNoSupplier = historyData.some(row => !row.supplier)
-          
-          const uniqueUniforms = Array.from(
-            new Map(
-              historyData
-                .filter(row => row.uniform)
-                .map(row => [row.uniform.uniform_id, row.uniform])
-            ).values()
-          ).sort((a, b) => (a.uniform_name || '').localeCompare(b.uniform_name || '', 'id', { sensitivity: 'base', numeric: true }))
-          
-          const uniqueSizes = Array.from(
-            new Map(
-              historyData
-                .filter(row => row.size)
-                .map(row => [row.size.size_id, row.size])
-            ).values()
-          ).sort((a, b) => {
-            if (a.display_order !== undefined && b.display_order !== undefined && a.display_order !== b.display_order) {
-              return (a.display_order || 0) - (b.display_order || 0)
-            }
-            return sortSizesHelper(a.size_name, b.size_name)
-          })
-          
-          return (
-            <>
-              {/* Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="filterSupplier" className="text-sm" style={{ color: theme.textSecondary }}>Supplier:</Label>
-                  <select
-                    id="filterSupplier"
-                    value={filterSupplier}
-                    onChange={(e) => { setFilterSupplier(e.target.value); setCurrentPage(1) }}
-                    className="rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
-                  >
-                    <option value="all">Semua Supplier</option>
-                    {hasNoSupplier && <option value="null">Stock Awal (Tanpa Supplier)</option>}
-                    {uniqueSuppliers.map(s => (
-                      <option key={s.supplier_id} value={s.supplier_id}>
-                        {s.supplier_code} - {s.supplier_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="filterUniform" className="text-sm" style={{ color: theme.textSecondary }}>Seragam:</Label>
-                  <select
-                    id="filterUniform"
-                    value={filterUniform}
-                    onChange={(e) => { setFilterUniform(e.target.value); setCurrentPage(1) }}
-                    className="rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
-                  >
-                    <option value="all">Semua Seragam</option>
-                    {uniqueUniforms.map(u => (
-                      <option key={u.uniform_id} value={u.uniform_id}>
-                        {u.uniform_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="filterSize" className="text-sm" style={{ color: theme.textSecondary }}>Ukuran:</Label>
-                  <select
-                    id="filterSize"
-                    value={filterSize}
-                    onChange={(e) => { setFilterSize(e.target.value); setCurrentPage(1) }}
-                    className="rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
-                  >
-                    <option value="all">Semua Ukuran</option>
-                    {uniqueSizes.map(s => (
-                      <option key={s.size_id} value={s.size_id}>
-                        {s.size_name}
-                      </option>
-                    ))}
-                  </select>
+        </div>
+      </div>
+
+      {/* ── HORIZONTAL TABS (MATCHING /data/pyp) ────────────────────────────── */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '20px', gap: '24px', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setActiveTab('summary')}
+          style={{
+            padding: '12px 0',
+            fontSize: '14px',
+            fontWeight: activeTab === 'summary' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: activeTab === 'summary' ? textPrimary : textSecondary,
+            borderBottom: activeTab === 'summary' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faBoxes} style={{ fontSize: '13px' }} />
+          <span>Ringkasan Stok Seragam</span>
+          <span
+            style={{
+              fontSize: '11px',
+              padding: '1px 6px',
+              borderRadius: '999px',
+              background: activeTab === 'summary' ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1F2937' : '#F4F4F5'),
+              color: textSecondary,
+              fontWeight: 700
+            }}
+          >
+            {groupedUniforms.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('history')}
+          style={{
+            padding: '12px 0',
+            fontSize: '14px',
+            fontWeight: activeTab === 'history' ? 600 : 400,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: activeTab === 'history' ? textPrimary : textSecondary,
+            borderBottom: activeTab === 'history' ? `2px solid ${textPrimary}` : '2px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <FontAwesomeIcon icon={faHistory} style={{ fontSize: '13px' }} />
+          <span>Riwayat Mutasi &amp; Transaksi</span>
+          <span
+            style={{
+              fontSize: '11px',
+              padding: '1px 6px',
+              borderRadius: '999px',
+              background: activeTab === 'history' ? (isDark ? '#27272A' : '#EAEAEA') : (isDark ? '#1F2937' : '#F4F4F5'),
+              color: textSecondary,
+              fontWeight: 700
+            }}
+          >
+            {filteredHistory.length}
+          </span>
+        </button>
+      </div>
+
+      {/* ── TAB 1: RINGKASAN STOK SERAGAM ──────────────────────────────────── */}
+      {activeTab === 'summary' && (
+        <div className="space-y-6">
+          {/* Summary Filter Control Bar */}
+          <div
+            className="p-3.5 rounded border flex flex-col md:flex-row md:items-center justify-between gap-4"
+            style={{ background: cardBg, borderColor, borderRadius: '8px' }}
+          >
+            <div className="flex items-center gap-4 flex-wrap flex-1">
+              {/* Supplier Filter */}
+              <div style={{ minWidth: '220px' }}>
+                <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+                  1. Supplier / Vendor
+                </label>
+                <select
+                  value={summarySupplierFilter}
+                  onChange={e => setSummarySupplierFilter(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
+                  style={{ background: inputBg, borderColor, color: textPrimary, borderRadius: '4px' }}
+                >
+                  <option value="all">Semua Supplier &amp; Stok Awal</option>
+                  <option value="null">Stok Awal (Tanpa Supplier)</option>
+                  {suppliers.map(s => (
+                    <option key={s.supplier_id} value={s.supplier_id}>
+                      {s.supplier_code} - {s.supplier_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Search Query */}
+              <div style={{ minWidth: '260px', flex: 1 }}>
+                <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>
+                  2. Cari Seragam / Ukuran / Supplier
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Cari nama seragam, ukuran, atau kode supplier..."
+                    className="w-full pl-7 pr-2.5 py-1.5 text-xs font-mono rounded border outline-none"
+                    style={{ background: inputBg, borderColor, color: textPrimary, borderRadius: '4px' }}
+                  />
+                  <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: textSecondary }} />
                 </div>
               </div>
-              
-              {/* Table and Pagination */}
-              {(() => {
-                // Filter history based on selected filters
-                const filteredHistory = historyData.filter(row => {
-                  // Supplier filter
-                  if (filterSupplier !== 'all') {
-                    if (filterSupplier === 'null') {
-                      if (row.supplier_id !== null && row.supplier !== null) return false
-                    } else {
-                      if (row.supplier_id !== Number(filterSupplier)) return false
-                    }
-                  }
-                  
-                  // Uniform filter
-                  if (filterUniform !== 'all' && row.uniform_id !== Number(filterUniform)) {
-                    return false
-                  }
-                  
-                  // Size filter
-                  if (filterSize !== 'all' && row.size_id !== Number(filterSize)) {
-                    return false
-                  }
-                  
-                  return true
-                })
-                
-                // Pagination
-                const totalPages = Math.ceil(filteredHistory.length / itemsPerPage)
-                const startIndex = (currentPage - 1) * itemsPerPage
-                const endIndex = startIndex + itemsPerPage
-                const paginatedHistory = filteredHistory.slice(startIndex, endIndex)
-
-                // Calculate overall metrics for filtered history across all pages
-                const totalNetQty = filteredHistory.reduce((acc, row) => acc + (row.qty_delta || 0), 0)
-                const totalQtyIn = filteredHistory.reduce((acc, row) => acc + (row.qty_delta > 0 ? row.qty_delta : 0), 0)
-                const totalQtyOut = filteredHistory.reduce((acc, row) => acc + (row.qty_delta < 0 ? Math.abs(row.qty_delta) : 0), 0)
-                
-                return filteredHistory.length === 0 ? (
-            <div className="text-center py-8" style={{ color: theme.textSecondary }}>
-              <div className="text-4xl mb-2">📋</div>
-              <p>Belum ada data history</p>
             </div>
-          ) : (
-            <div className="overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left border-b" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Waktu</th>
-                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Seragam</th>
-                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Ukuran</th>
-                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Qty</th>
-                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Tipe</th>
-                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Supplier</th>
-                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Notes</th>
-                    <th className="py-2 px-3 font-semibold" style={{ color: theme.textSecondary }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedHistory.map((row, idx) => (
-                    <tr key={idx} className="border-b" style={{ borderColor: theme.border }}>
-                      <td className="py-2 px-3 whitespace-nowrap" style={{ color: theme.textBody }}>
-                        {new Date(row.created_at).toLocaleDateString('id-ID', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </td>
-                      <td className="py-2 px-3" style={{ color: theme.textBody }}>
-                        {row.uniform?.uniform_name || '-'}
-                        {row.uniform?.is_universal && (
-                          <span className="ml-1 text-xs">🌐</span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3" style={{ color: theme.textBody }}>{row.size?.size_name || '-'}</td>
-                      <td className="py-2 px-3">
-                        <span className={`font-semibold ${row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {row.qty_delta >= 0 ? '+' : ''}{row.qty_delta}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3">
-                        <span className="px-2 py-1 rounded text-xs font-medium" style={{ background: theme.subtleBg, color: theme.textBody }}>
-                          {row.txn_type}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3">
-                        {row.supplier ? (
-                          <span className="text-xs" style={{ color: theme.textBody }}>{row.supplier.supplier_code} - {row.supplier.supplier_name}</span>
-                        ) : (
-                          <span className="italic text-xs" style={{ color: theme.textSecondary }}>Stock Awal</span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-xs" style={{ color: theme.textSecondary }}>
-                        <div>{row.notes || '-'}</div>
-                        {row.buyer_name && (
-                          <div className="font-semibold text-blue-600 flex items-center gap-1 mt-0.5" title={`Terjual ke ${row.buyer_name}`}>
-                            <span>🛒</span>
-                            <span>Terjual ke: {row.buyer_name}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2 px-3">
-                        {row.txn_type === 'init' && (
-                          <button
-                            onClick={() => {
-                              setAdjustModal({
-                                open: true,
-                                txn_id: row.txn_id,
-                                uniform_name: row.uniform?.uniform_name || '-',
-                                size_name: row.size?.size_name || '-',
-                                supplier_name: row.supplier ? `${row.supplier.supplier_code} - ${row.supplier.supplier_name}` : 'Tanpa Supplier',
-                                current_qty: row.qty_delta,
-                                notes: row.notes || ''
-                              })
-                              setAdjustNewQty(String(row.qty_delta))
-                              setAdjustError('')
+
+            {/* Refresh Button */}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={fetchSummary}
+                disabled={loadingSummary}
+                style={{
+                  background: textPrimary,
+                  color: isDark ? '#09090B' : '#FFFFFF',
+                  fontSize: '12px',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <FontAwesomeIcon icon={loadingSummary ? faSpinner : faRotateRight} className={loadingSummary ? 'animate-spin' : ''} />
+                <span>{loadingSummary ? 'Memuat...' : 'Refresh'}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Grouped Uniform Accordion Table */}
+          <div
+            style={{
+              background: cardBg,
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
+              overflow: 'hidden'
+            }}
+          >
+            {loadingSummary ? (
+              <div style={{ padding: '48px 0', textAlign: 'center', color: textSecondary, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xl" />
+                <span style={{ fontSize: '13px' }}>Memuat ringkasan stok...</span>
+              </div>
+            ) : groupedUniforms.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '48px 20px',
+                  borderRadius: '6px',
+                  background: isDark ? '#151419' : '#FBFBFA',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <FontAwesomeIcon icon={faBoxes} style={{ fontSize: '28px', color: textSecondary }} />
+                <p style={{ fontSize: '13px', color: textSecondary, margin: 0 }}>
+                  {searchQuery || summarySupplierFilter !== 'all'
+                    ? 'Tidak ada stok seragam yang cocok dengan kriteria filter.'
+                    : 'Belum ada data stok seragam di sistem.'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr
+                      style={{
+                        background: isDark ? '#27272A' : '#FBFBFA',
+                        borderBottom: `1px solid ${borderColor}`,
+                        color: textSecondary
+                      }}
+                    >
+                      <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Nama Seragam &amp; Varian</th>
+                      <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Daftar Ukuran</th>
+                      <th className="text-center px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Total Stok (Pcs)</th>
+                      <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Supplier / Asal</th>
+                      <th className="text-right px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Rincian</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ divideColor: borderColor }}>
+                    {groupedUniforms.map((group) => {
+                      const isExpanded = expandedUniforms[group.uniform_id]
+                      const uniqueSizesInGroup = Array.from(new Set(group.items.map(i => i.size?.size_name).filter(Boolean))).sort(sortSizesHelper)
+                      const sizesList = uniqueSizesInGroup.join(', ')
+                      const uniqueSuppliersInGroup = Array.from(new Set(group.items.map(i => i.supplier ? (i.supplier.supplier_code ? `${i.supplier.supplier_code} - ${i.supplier.supplier_name}` : i.supplier.supplier_name) : 'Stock Awal').filter(Boolean)))
+                      const supplierSummaryText = uniqueSuppliersInGroup.length === 1 ? uniqueSuppliersInGroup[0] : `${uniqueSuppliersInGroup.length} Supplier`
+
+                      return (
+                        <Fragment key={`group-${group.uniform_id}`}>
+                          {/* Parent Row */}
+                          <tr
+                            onClick={() => toggleExpand(group.uniform_id)}
+                            className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors"
+                            style={{
+                              background: isExpanded ? (isDark ? '#27272A' : '#F4F4F5') : 'transparent'
                             }}
-                            className="text-xs px-2 py-1 rounded font-medium"
-                            style={{ background: theme.yellowBg, color: theme.yellowText, border: `1px solid ${theme.border}` }}
                           >
-                            ✏️ Edit Qty
-                          </button>
-                        )}
+                            <td className="px-3.5 py-3 font-semibold" style={{ color: textPrimary }}>
+                              <div className="flex items-center gap-2">
+                                <FontAwesomeIcon
+                                  icon={isExpanded ? faChevronUp : faChevronDown}
+                                  className="text-[11px] text-neutral-400"
+                                />
+                                <FontAwesomeIcon icon={faTshirt} style={{ color: isDark ? '#60A5FA' : '#0284C7', fontSize: '12px' }} />
+                                <span>{group.uniform_name}</span>
+                                {group.is_universal && (
+                                  <span
+                                    className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
+                                    style={{
+                                      background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                                      color: isDark ? '#60A5FA' : '#1F6C9F',
+                                      border: `1px solid ${isDark ? '#2563EB' : '#BAE6FD'}`
+                                    }}
+                                  >
+                                    Universal
+                                  </span>
+                                )}
+                                <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold" style={{ background: isDark ? '#1F2937' : '#F3F4F6', color: textSecondary }}>
+                                  {group.items.length} varian
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="px-3.5 py-3 font-mono text-[11px]" style={{ color: textSecondary }}>
+                              {sizesList || '—'}
+                            </td>
+
+                            <td className="px-3.5 py-3 text-center">
+                              <span
+                                className="px-2.5 py-0.5 rounded-full font-mono font-bold text-xs"
+                                style={{
+                                  background: group.total_qty < 0
+                                    ? (isDark ? '#3A1E1E' : '#FDEBEC')
+                                    : (isDark ? '#1E2E1E' : '#EDF3EC'),
+                                  color: group.total_qty < 0
+                                    ? (isDark ? '#DC8585' : '#9F2F2D')
+                                    : (isDark ? '#7BAF7B' : '#346538'),
+                                  border: `1px solid ${group.total_qty < 0 ? (isDark ? '#542626' : '#F8C9CC') : (isDark ? '#2B422B' : '#D5E6D3')}`
+                                }}
+                              >
+                                {group.total_qty} pcs
+                              </span>
+                            </td>
+
+                            <td className="px-3.5 py-3 font-mono text-[11px]" style={{ color: textSecondary }}>
+                              {supplierSummaryText}
+                            </td>
+
+                            <td className="px-3.5 py-3 text-right">
+                              <FontAwesomeIcon
+                                icon={isExpanded ? faChevronUp : faChevronDown}
+                                className="text-[11px] text-neutral-400"
+                              />
+                            </td>
+                          </tr>
+
+                          {/* Expanded Breakdown Table */}
+                          {isExpanded && (
+                            <tr key={`child-wrapper-${group.uniform_id}`}>
+                              <td colSpan={5} className="p-0">
+                                <div
+                                  className="p-4 border-t border-b"
+                                  style={{
+                                    background: isDark ? '#0B0F17' : '#FBFBFA',
+                                    borderColor
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2 text-xs font-bold" style={{ color: textPrimary }}>
+                                      <FontAwesomeIcon icon={faBoxes} style={{ color: isDark ? '#60A5FA' : '#0284C7' }} />
+                                      <span>Rincian Varian Ukuran &amp; Supplier — {group.uniform_name}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="border rounded overflow-hidden" style={{ borderColor }}>
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr style={{ background: isDark ? '#1F2937' : '#F1F5F9', borderBottom: `1px solid ${borderColor}`, color: textSecondary }}>
+                                          <th className="text-left px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">#</th>
+                                          <th className="text-left px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Ukuran</th>
+                                          <th className="text-center px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Jumlah (Qty)</th>
+                                          <th className="text-left px-3 py-2 font-mono uppercase tracking-wider text-[10px] font-bold">Supplier / Asal Mutasi</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y" style={{ divideColor: borderColor, background: cardBg }}>
+                                        {group.items.map((item, iIdx) => (
+                                          <tr key={`child-row-${group.uniform_id}-${iIdx}`} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30">
+                                            <td className="px-3 py-2 font-mono text-[11px]" style={{ color: textSecondary, width: '36px' }}>
+                                              {iIdx + 1}
+                                            </td>
+
+                                            <td className="px-3 py-2 font-semibold" style={{ color: textPrimary }}>
+                                              <span
+                                                className="px-2 py-0.5 rounded font-mono text-[11px] font-bold"
+                                                style={{
+                                                  background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                                                  color: isDark ? '#60A5FA' : '#1F6C9F',
+                                                  border: `1px solid ${isDark ? '#2563EB' : '#BAE6FD'}`
+                                                }}
+                                              >
+                                                {item.size?.size_name || '—'}
+                                              </span>
+                                            </td>
+
+                                            <td className="px-3 py-2 text-center font-mono font-bold">
+                                              {item.total_qty < 0 ? (
+                                                <span
+                                                  className="px-2 py-0.5 rounded-full font-bold text-[11px]"
+                                                  style={{
+                                                    background: isDark ? '#3A1E1E' : '#FDEBEC',
+                                                    color: isDark ? '#DC8585' : '#9F2F2D',
+                                                    border: `1px solid ${isDark ? '#542626' : '#F8C9CC'}`
+                                                  }}
+                                                >
+                                                  ⚠️ {item.total_qty} pcs (Minus)
+                                                </span>
+                                              ) : (
+                                                <span style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+                                                  {item.total_qty} pcs
+                                                </span>
+                                              )}
+                                            </td>
+
+                                            <td className="px-3 py-2 font-mono text-[11px]" style={{ color: textSecondary }}>
+                                              {item.supplier ? (
+                                                <span className="font-semibold" style={{ color: textPrimary }}>
+                                                  {item.supplier.supplier_code} - {item.supplier.supplier_name}
+                                                </span>
+                                              ) : (
+                                                <span className="italic" style={{ color: textSecondary }}>Stock Awal (Tanpa Supplier)</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                  {/* Table Footer */}
+                  <tfoot>
+                    <tr
+                      style={{
+                        background: isDark ? '#27272A' : '#FBFBFA',
+                        borderTop: `2px solid ${borderColor}`,
+                        color: textPrimary
+                      }}
+                    >
+                      <td colSpan={2} className="px-3.5 py-3 font-bold font-mono uppercase text-[10px]">
+                        TOTAL KESELURUHAN ({groupedUniforms.length} JENIS SERAGAM / {filteredSummaryData.length} VARIAN)
+                      </td>
+                      <td className="px-3.5 py-3 text-center font-bold font-mono text-xs" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+                        {totalSummaryStock} pcs
+                      </td>
+                      <td colSpan={2} className="px-3.5 py-3 text-right font-mono text-[11px]" style={{ color: textSecondary }}>
+                        Saldo Realtime
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot className="border-t font-semibold" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                  <tr>
-                    <td colSpan={3} className="py-2.5 px-3" style={{ color: theme.textPrimary }}>
-                      TOTAL (Seluruh {filteredHistory.length} Transaksi Filtered)
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={`font-extrabold text-sm ${totalNetQty >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {totalNetQty >= 0 ? '+' : ''}{totalNetQty.toLocaleString('id-ID')}
-                      </span>
-                      <div className="text-[10px] font-normal flex gap-1.5 mt-0.5 whitespace-nowrap">
-                        <span className="text-green-600">Masuk: +{totalQtyIn.toLocaleString('id-ID')}</span>
-                        <span className="text-red-600">Keluar: -{totalQtyOut.toLocaleString('id-ID')}</span>
-                      </div>
-                    </td>
-                    <td colSpan={4} className="py-2.5 px-3 text-xs font-normal" style={{ color: theme.textSecondary }}>
-                      Total terhitung dari seluruh {filteredHistory.length} transaksi yang sesuai filter
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-              
-              {/* Summary Cards Bar */}
-              <div className="mt-4 p-3 rounded-lg border flex flex-wrap items-center justify-between gap-3 text-xs" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                <div className="flex items-center gap-2">
-                  <span className="text-base">📦</span>
-                  <div>
-                    <span className="font-bold text-xs" style={{ color: theme.textPrimary }}>Total Jumlah Seragam (Filtered): </span>
-                    <span className={`font-extrabold text-sm ml-1 ${totalNetQty >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {totalNetQty >= 0 ? '+' : ''}{totalNetQty.toLocaleString('id-ID')} pcs
-                    </span>
-                  </div>
-                </div>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-1 rounded font-medium border" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
-                    Hasil Filter: <strong className="ml-1" style={{ color: theme.textPrimary }}>{filteredHistory.length} transaksi</strong>
-                  </span>
-                  <span className="px-2.5 py-1 rounded font-medium border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300">
-                    Masuk (+): <strong className="ml-1">+{totalQtyIn.toLocaleString('id-ID')} pcs</strong>
-                  </span>
-                  <span className="px-2.5 py-1 rounded font-medium border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300">
-                    Keluar (-): <strong className="ml-1">-{totalQtyOut.toLocaleString('id-ID')} pcs</strong>
-                  </span>
-                </div>
+      {/* ── TAB 2: RIWAYAT MUTASI & TRANSAKSI ──────────────────────────────── */}
+      {activeTab === 'history' && (
+        <div className="space-y-6">
+          {/* History Filter Control Bar */}
+          <div
+            className="p-3.5 rounded border flex flex-col md:flex-row md:items-center justify-between gap-4"
+            style={{ background: cardBg, borderColor, borderRadius: '8px' }}
+          >
+            <div className="flex items-center gap-4 flex-wrap flex-1">
+              {/* Supplier Filter */}
+              <div style={{ minWidth: '180px', flex: 1 }}>
+                <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>
+                  1. Supplier
+                </label>
+                <select
+                  value={filterSupplier}
+                  onChange={e => { setFilterSupplier(e.target.value); setCurrentPage(1) }}
+                  className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                  style={{ background: inputBg, borderColor, color: textPrimary, borderRadius: '4px' }}
+                >
+                  <option value="all">Semua Supplier</option>
+                  {hasNoSupplier && <option value="null">Stock Awal (Tanpa Supplier)</option>}
+                  {uniqueSuppliers.map(s => (
+                    <option key={s.supplier_id} value={s.supplier_id}>
+                      {s.supplier_code} - {s.supplier_name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="text-sm" style={{ color: theme.textSecondary }}>
-                    Halaman {currentPage} dari {totalPages}
-                    <span className="mx-2">•</span>
-                    Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredHistory.length)} dari {filteredHistory.length} transaksi
-                    {(filterSupplier !== 'all' || filterUniform !== 'all' || filterSize !== 'all') && (
-                      <>
-                        <span className="mx-2">•</span>
-                        Total: {historyData.length} transaksi
-                      </>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      ← Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next →
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              {totalPages <= 1 && (
-                <div className="mt-4 text-sm" style={{ color: theme.textSecondary }}>
-                  {(filterSupplier !== 'all' || filterUniform !== 'all' || filterSize !== 'all') ? (
-                    <>
-                      Menampilkan: <span className="font-semibold">{filteredHistory.length} transaksi</span>
-                      <span className="mx-2">•</span>
-                      Dari total: <span className="font-semibold">{historyData.length} transaksi</span>
-                    </>
-                  ) : (
-                    <>Total: <span className="font-semibold">{historyData.length} transaksi</span></>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })()}
-            </>
-          )
-        })()}
-      </Card>
-
-      {/* List of Items */}
-      <Card className="p-4" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
-        <h2 className="font-semibold mb-4" style={{ color: theme.textPrimary }}>Daftar Item Stock Awal (Pending Input)</h2>
-        
-        {initialStockItems.length === 0 ? (
-          <div className="text-center py-12" style={{ color: theme.textSecondary }}>
-            <div className="text-4xl mb-2">📦</div>
-            <p>Belum ada item pending. Klik "+ Input Stock Awal" untuk menambah.</p>
-          </div>
-        ) : (
-          <>
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left border-b" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Unit</th>
-                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Seragam</th>
-                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Ukuran</th>
-                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Supplier</th>
-                    <th className="py-3 px-3 font-semibold text-right" style={{ color: theme.textSecondary }}>Qty</th>
-                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Keterangan</th>
-                    <th className="py-3 px-3 font-semibold" style={{ color: theme.textSecondary }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {initialStockItems.map((item, idx) => (
-                    <tr key={idx} className="border-b" style={{ borderColor: theme.border }}>
-                      <td className="py-3 px-3" style={{ color: theme.textBody }}>{item.unit_name}</td>
-                      <td className="py-3 px-3" style={{ color: theme.textBody }}>{item.uniform_name}</td>
-                      <td className="py-3 px-3" style={{ color: theme.textBody }}>{item.size_name}</td>
-                      <td className="py-3 px-3">
-                        {item.supplier_name || <span className="italic" style={{ color: theme.textSecondary }}>Tanpa Supplier</span>}
-                      </td>
-                      <td className="py-3 px-3 text-right font-medium" style={{ color: theme.textBody }}>{item.qty}</td>
-                      <td className="py-3 px-3" style={{ color: theme.textSecondary }}>{item.notes || '-'}</td>
-                      <td className="py-3 px-3">
-                        <button
-                          onClick={() => removeItem(idx)}
-                          className="text-red-600 hover:text-red-800 text-sm"
-                        >
-                          🗑️ Hapus
-                        </button>
-                      </td>
-                    </tr>
+              {/* Uniform Filter */}
+              <div style={{ minWidth: '180px', flex: 1 }}>
+                <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>
+                  2. Seragam
+                </label>
+                <select
+                  value={filterUniform}
+                  onChange={e => { setFilterUniform(e.target.value); setCurrentPage(1) }}
+                  className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                  style={{ background: inputBg, borderColor, color: textPrimary, borderRadius: '4px' }}
+                >
+                  <option value="all">Semua Seragam</option>
+                  {uniqueUniforms.map(u => (
+                    <option key={u.uniform_id} value={u.uniform_id}>
+                      {u.uniform_name}
+                    </option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+              </div>
+
+              {/* Size Filter */}
+              <div style={{ minWidth: '140px' }}>
+                <label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>
+                  3. Ukuran
+                </label>
+                <select
+                  value={filterSize}
+                  onChange={e => { setFilterSize(e.target.value); setCurrentPage(1) }}
+                  className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none cursor-pointer"
+                  style={{ background: inputBg, borderColor, color: textPrimary, borderRadius: '4px' }}
+                >
+                  <option value="all">Semua Ukuran</option>
+                  {uniqueSizes.map(s => (
+                    <option key={s.size_id} value={s.size_id}>
+                      {s.size_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            {/* Mobile Cards */}
-            <div className="md:hidden space-y-3">
-              {initialStockItems.map((item, idx) => (
-                <div key={idx} className="border rounded-lg p-3" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textBody }}>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Unit:</span> {item.unit_name}</div>
-                    <div><span className="font-medium">Seragam:</span> {item.uniform_name}</div>
-                    <div><span className="font-medium">Ukuran:</span> {item.size_name}</div>
-                    <div>
-                      <span className="font-medium">Supplier:</span>{' '}
-                      {item.supplier_name || <span className="italic" style={{ color: theme.textSecondary }}>Tanpa Supplier</span>}
-                    </div>
-                    <div><span className="font-medium">Qty:</span> {item.qty}</div>
-                    <div><span className="font-medium">Keterangan:</span> {item.notes || '-'}</div>
-                  </div>
+            {/* Refresh Button */}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={fetchHistory}
+                disabled={loadingHistory}
+                style={{
+                  background: textPrimary,
+                  color: isDark ? '#09090B' : '#FFFFFF',
+                  fontSize: '12px',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <FontAwesomeIcon icon={loadingHistory ? faSpinner : faRotateRight} className={loadingHistory ? 'animate-spin' : ''} />
+                <span>{loadingHistory ? 'Memuat...' : 'Refresh'}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* History Metrics Mini Bar */}
+          <div className="flex items-center gap-4 text-xs font-mono p-3 rounded-lg border flex-wrap" style={{ background: cardBg, borderColor }}>
+            <span style={{ color: textSecondary }}>Metrik Filter:</span>
+            <span className="font-bold" style={{ color: textPrimary }}>Total Transaksi: {filteredHistory.length}</span>
+            <span style={{ color: borderColor }}>|</span>
+            <span className="font-bold text-green-600 dark:text-green-400">Total Masuk (+): +{historyMetrics.qtyIn}</span>
+            <span style={{ color: borderColor }}>|</span>
+            <span className="font-bold text-red-600 dark:text-red-400">Total Keluar (-): -{historyMetrics.qtyOut}</span>
+            <span style={{ color: borderColor }}>|</span>
+            <span className="font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>Net Saldo: {historyMetrics.netQty > 0 ? `+${historyMetrics.netQty}` : historyMetrics.netQty}</span>
+          </div>
+
+          {/* History Table */}
+          <div
+            style={{
+              background: cardBg,
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
+              overflow: 'hidden'
+            }}
+          >
+            {loadingHistory ? (
+              <div style={{ padding: '48px 0', textAlign: 'center', color: textSecondary, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xl" />
+                <span style={{ fontSize: '13px' }}>Memuat riwayat transaksi...</span>
+              </div>
+            ) : paginatedHistory.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '48px 20px',
+                  borderRadius: '6px',
+                  background: isDark ? '#151419' : '#FBFBFA',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <FontAwesomeIcon icon={faHistory} style={{ fontSize: '28px', color: textSecondary }} />
+                <p style={{ fontSize: '13px', color: textSecondary, margin: 0 }}>
+                  Belum ada data history transaksi sesuai filter.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr
+                      style={{
+                        background: isDark ? '#27272A' : '#FBFBFA',
+                        borderBottom: `1px solid ${borderColor}`,
+                        color: textSecondary
+                      }}
+                    >
+                      <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Waktu Transaksi</th>
+                      <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Seragam</th>
+                      <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Ukuran</th>
+                      <th className="text-center px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Qty (Mutasi)</th>
+                      <th className="text-center px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Tipe Mutasi</th>
+                      <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Supplier / Asal</th>
+                      <th className="text-left px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Catatan / Pembeli</th>
+                      <th className="text-right px-3.5 py-3 font-mono uppercase tracking-wider text-[10px] font-bold">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ divideColor: borderColor }}>
+                    {paginatedHistory.map((row) => (
+                      <tr key={row.txn_id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors">
+                        <td className="px-3.5 py-3 font-mono text-[11px]" style={{ color: textSecondary, whiteSpace: 'nowrap' }}>
+                          {new Date(row.created_at).toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+
+                        <td className="px-3.5 py-3 font-semibold" style={{ color: textPrimary }}>
+                          <div className="flex items-center gap-1.5">
+                            <span>{row.uniform?.uniform_name || '—'}</span>
+                            {row.uniform?.is_universal && (
+                              <span
+                                className="text-[9px] px-1 py-0.2 rounded font-mono font-bold"
+                                style={{
+                                  background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                                  color: isDark ? '#60A5FA' : '#1F6C9F',
+                                  border: `1px solid ${isDark ? '#2563EB' : '#BAE6FD'}`
+                                }}
+                              >
+                                Universal
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="px-3.5 py-3">
+                          <span
+                            className="px-2 py-0.5 rounded font-mono text-[11px] font-bold"
+                            style={{
+                              background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                              color: isDark ? '#60A5FA' : '#1F6C9F',
+                              border: `1px solid ${isDark ? '#2563EB' : '#BAE6FD'}`
+                            }}
+                          >
+                            {row.size?.size_name || '—'}
+                          </span>
+                        </td>
+
+                        <td className="px-3.5 py-3 text-center font-mono font-bold text-xs">
+                          <span className={row.qty_delta >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                            {row.qty_delta >= 0 ? `+${row.qty_delta}` : row.qty_delta}
+                          </span>
+                        </td>
+
+                        <td className="px-3.5 py-3 text-center">
+                          <span
+                            className="px-2 py-0.5 rounded text-[10px] uppercase font-mono font-bold"
+                            style={{
+                              background: isDark ? '#1F2937' : '#F3F4F6',
+                              color: textPrimary,
+                              border: `1px solid ${borderColor}`
+                            }}
+                          >
+                            {row.txn_type}
+                          </span>
+                        </td>
+
+                        <td className="px-3.5 py-3 font-mono text-[11px]" style={{ color: textSecondary }}>
+                          {row.supplier ? (
+                            <span>{row.supplier.supplier_code} - {row.supplier.supplier_name}</span>
+                          ) : (
+                            <span className="italic">Stock Awal</span>
+                          )}
+                        </td>
+
+                        <td className="px-3.5 py-3 text-xs" style={{ color: textSecondary }}>
+                          <div>{row.notes || '—'}</div>
+                          {row.buyer_name && (
+                            <div className="font-semibold flex items-center gap-1 mt-0.5" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
+                              <FontAwesomeIcon icon={faShoppingCart} className="text-[10px]" />
+                              <span>Terjual ke: {row.buyer_name}</span>
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="px-3.5 py-3 text-right">
+                          {row.txn_type === 'init' && (
+                            <button
+                              onClick={() => {
+                                setAdjustModal({
+                                  open: true,
+                                  txn_id: row.txn_id,
+                                  uniform_name: row.uniform?.uniform_name || '-',
+                                  size_name: row.size?.size_name || '-',
+                                  supplier_name: row.supplier ? (row.supplier.supplier_code ? `${row.supplier.supplier_code} - ${row.supplier.supplier_name}` : row.supplier.supplier_name) : 'Tanpa Supplier (Stock Awal)',
+                                  current_qty: row.qty_delta,
+                                  notes: row.notes || ''
+                                })
+                                setAdjustNewQty(String(row.qty_delta))
+                                setAdjustError('')
+                              }}
+                              className="px-2.5 py-1 text-xs font-semibold rounded transition-colors cursor-pointer inline-flex items-center gap-1"
+                              style={{
+                                background: isDark ? '#2A2618' : '#FBF3DB',
+                                border: `1px solid ${isDark ? '#3D361F' : '#F2E3B6'}`,
+                                color: isDark ? '#C4A24A' : '#956400'
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faPen} style={{ fontSize: '10px' }} />
+                              <span>Koreksi</span>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div
+                className="p-3 border-t flex items-center justify-between gap-3 flex-wrap"
+                style={{ borderColor, background: cardBg }}
+              >
+                <span className="text-xs font-mono" style={{ color: textSecondary }}>
+                  Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong> ({filteredHistory.length} total transaksi)
+                </span>
+
+                <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => removeItem(idx)}
-                    className="mt-3 text-red-600 hover:text-red-800 text-sm w-full text-center py-2 border border-red-300 rounded"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 text-xs font-mono rounded border cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: inputBg, borderColor, color: textPrimary }}
                   >
-                    🗑️ Hapus
+                    Sebelumnya
+                  </button>
+
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = i + 1
+                    if (totalPages > 5) {
+                      if (currentPage > 3) {
+                        pageNum = currentPage - 2 + i
+                        if (pageNum > totalPages) pageNum = totalPages - 4 + i
+                      }
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="px-2.5 py-1 text-xs font-mono rounded border cursor-pointer font-bold"
+                        style={{
+                          background: currentPage === pageNum ? textPrimary : inputBg,
+                          borderColor,
+                          color: currentPage === pageNum ? (isDark ? '#09090B' : '#FFFFFF') : textSecondary
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+
+                  <button
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="px-2.5 py-1 text-xs font-mono rounded border cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: inputBg, borderColor, color: textPrimary }}
+                  >
+                    Berikutnya
                   </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-            <div className="mt-4 flex justify-end">
-              <Button onClick={submitInitialStock} className="bg-green-600 hover:bg-green-700">
-                ✅ Submit Semua ({initialStockItems.length} item)
-              </Button>
-            </div>
-          </>
-        )}
-      </Card>
-
-      {/* Modal Add Item */}
+      {/* ── MODAL INPUT STOCK AWAL ─────────────────────────────────────────── */}
       <Modal
         isOpen={showModal}
         onClose={closeModal}
-        title="➕ Tambah Stock Awal"
+        title="➕ Tambah Stock Awal Seragam"
         size="md"
       >
-        <div className="space-y-4">
-          {/* Success Message */}
+        <div className="space-y-4 text-xs font-sans">
           {itemAddedSuccess && (
-            <div className="bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded flex items-center gap-2">
-              <span className="text-lg">✓</span>
-              <span className="font-medium">Item berhasil ditambahkan!</span>
+            <div className="p-3 rounded border flex items-center gap-2" style={{ background: '#EDF3EC', borderColor: '#D5E6D3', color: '#346538' }}>
+              <FontAwesomeIcon icon={faCheck} />
+              <span className="font-semibold">Item berhasil ditambahkan ke daftar pending!</span>
             </div>
           )}
-          
+
           <div>
-            <Label>Unit *</Label>
+            <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>1. Unit Sekolah *</Label>
             <select
-              className="w-full border rounded px-3 py-2 mt-1"
+              className="w-full px-2.5 py-2 text-xs font-mono rounded border outline-none cursor-pointer"
+              style={{ background: inputBg, borderColor, color: textPrimary }}
               value={formData.unit_id}
               onChange={e => setFormData(prev => ({ ...prev, unit_id: e.target.value, uniform_id: '', size_id: '' }))}
             >
@@ -1836,9 +1948,10 @@ export default function InitialStockPage() {
           </div>
 
           <div>
-            <Label>Seragam *</Label>
+            <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>2. Jenis Seragam *</Label>
             <select
-              className="w-full border rounded px-3 py-2 mt-1"
+              className="w-full px-2.5 py-2 text-xs font-mono rounded border outline-none cursor-pointer"
+              style={{ background: inputBg, borderColor, color: textPrimary }}
               value={formData.uniform_id}
               onChange={e => setFormData(prev => ({ ...prev, uniform_id: e.target.value }))}
               disabled={!formData.unit_id}
@@ -1846,16 +1959,17 @@ export default function InitialStockPage() {
               <option value="">-- Pilih Seragam --</option>
               {uniformsFiltered.map(u => (
                 <option key={u.uniform_id} value={u.uniform_id}>
-                  {u.uniform_name}{u.is_universal ? ' 🌐' : ''}
+                  {u.uniform_name}{u.is_universal ? ' (Universal)' : ''}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <Label>Ukuran *</Label>
+            <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>3. Ukuran *</Label>
             <select
-              className="w-full border rounded px-3 py-2 mt-1"
+              className="w-full px-2.5 py-2 text-xs font-mono rounded border outline-none cursor-pointer"
+              style={{ background: inputBg, borderColor, color: textPrimary }}
               value={formData.size_id}
               onChange={e => setFormData(prev => ({ ...prev, size_id: e.target.value }))}
               disabled={!formData.uniform_id}
@@ -1868,60 +1982,76 @@ export default function InitialStockPage() {
           </div>
 
           <div>
-            <Label>Supplier (Optional)</Label>
+            <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>4. Supplier / Vendor (Opsional)</Label>
             <select
-              className="w-full border rounded px-3 py-2 mt-1"
+              className="w-full px-2.5 py-2 text-xs font-mono rounded border outline-none cursor-pointer"
+              style={{ background: inputBg, borderColor, color: textPrimary }}
               value={formData.supplier_id}
               onChange={e => setFormData(prev => ({ ...prev, supplier_id: e.target.value }))}
             >
-              <option value="">Tanpa Supplier (Stock Awal/Lama)</option>
+              <option value="">Tanpa Supplier (Stock Awal / Stok Lama)</option>
               {suppliers.map(s => (
                 <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Kosongkan jika tidak tau dari supplier mana, atau memang stock lama tanpa supplier
+            <p className="text-[10px] mt-1 italic" style={{ color: textSecondary }}>
+              Kosongkan jika seragam merupakan stok awal lama sebelum integrasi sistem supplier.
             </p>
           </div>
 
           <div>
-            <Label>Jumlah (Qty) *</Label>
+            <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>5. Kuantitas (Jumlah Fisik) *</Label>
             <Input
               type="number"
-              min="0"
+              min="1"
               value={formData.qty}
               onChange={e => setFormData(prev => ({ ...prev, qty: e.target.value }))}
-              className="mt-1"
+              className="mt-1 font-mono font-bold text-xs"
               placeholder="0"
+              style={{ background: inputBg, borderColor, color: textPrimary }}
             />
           </div>
 
           <div>
-            <Label>Keterangan</Label>
+            <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>6. Catatan Tambahan</Label>
             <Input
-              placeholder="Opsional: catatan tambahan"
+              placeholder="Contoh: Stok opname per 1 Juli"
               value={formData.notes}
               onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              className="mt-1"
+              className="mt-1 text-xs"
+              style={{ background: inputBg, borderColor, color: textPrimary }}
             />
           </div>
 
           {error && (
-            <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded text-sm">
-              {error}
+            <div className="p-3 rounded border text-xs flex items-center gap-2" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+              <FontAwesomeIcon icon={faExclamationTriangle} />
+              <span>{error}</span>
             </div>
           )}
 
-          <div className="flex gap-3 pt-4 border-t">
+          <div className="flex gap-3 pt-4 border-t" style={{ borderColor }}>
             <Button
               onClick={closeModal}
-              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
+              style={{
+                background: isDark ? '#27272A' : '#F3F4F6',
+                color: textPrimary,
+                fontSize: '12px',
+                flex: 1,
+                border: `1px solid ${borderColor}`
+              }}
             >
               Tutup
             </Button>
             <Button
               onClick={addToList}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold"
+              style={{
+                background: textPrimary,
+                color: isDark ? '#09090B' : '#FFFFFF',
+                fontSize: '12px',
+                fontWeight: 600,
+                flex: 1
+              }}
             >
               ✓ Tambahkan ke Daftar
             </Button>
@@ -1929,22 +2059,23 @@ export default function InitialStockPage() {
         </div>
       </Modal>
 
-      {/* Export Report Modal */}
+      {/* ── MODAL EXPORT LAPORAN STOK ──────────────────────────────────────── */}
       <Modal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
         title="📥 Export Laporan Stok Seragam"
         size="md"
       >
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Pilih tahun ajaran untuk menghasilkan laporan komprehensif yang mencakup: Stock Awal, Realisasi Pembelian (per PO), Hasil Penjualan, dan Stock Akhir.
+        <div className="space-y-4 text-xs font-sans">
+          <p style={{ color: textSecondary }}>
+            Pilih tahun ajaran untuk menghasilkan laporan komprehensif Excel yang mencakup: Stock Awal, Realisasi Pembelian (per PO), Hasil Penjualan, dan Stock Akhir.
           </p>
 
           <div>
-            <Label>Tahun Ajaran *</Label>
+            <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>Tahun Ajaran *</Label>
             <select
-              className="w-full border rounded px-3 py-2 mt-1"
+              className="w-full px-2.5 py-2 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
+              style={{ background: inputBg, borderColor, color: textPrimary }}
               value={selectedYearId}
               onChange={(e) => setSelectedYearId(e.target.value)}
             >
@@ -1957,42 +2088,131 @@ export default function InitialStockPage() {
             </select>
           </div>
 
-          {exportYears.length === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded text-sm">
-              ⚠️ Tidak ada tahun ajaran dengan tanggal mulai dan berakhir. Silakan atur di menu <strong>Data → Tahun</strong>.
-            </div>
-          )}
-
           {selectedYearId && (() => {
             const y = exportYears.find(yr => yr.year_id === Number(selectedYearId))
             if (!y) return null
             return (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-700">
+              <div
+                className="p-3 rounded border text-xs"
+                style={{
+                  background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
+                  borderColor: isDark ? '#2563EB' : '#BAE6FD',
+                  color: isDark ? '#60A5FA' : '#1F6C9F'
+                }}
+              >
                 <strong>Periode:</strong> {new Date(y.start_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} — {new Date(y.end_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
             )
           })()}
 
-          <div className="flex gap-3 pt-4 border-t">
+          <div className="flex gap-3 pt-4 border-t" style={{ borderColor }}>
             <Button
               onClick={() => setShowExportModal(false)}
-              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
               disabled={exporting}
+              style={{
+                background: isDark ? '#27272A' : '#F3F4F6',
+                color: textPrimary,
+                fontSize: '12px',
+                flex: 1,
+                border: `1px solid ${borderColor}`
+              }}
+            >
+              Batal
+            </Button>
+            <button
+              onClick={handleExportToExcel}
+              disabled={!selectedYearId || exporting}
+              className="flex-1 py-2 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-2 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: '#16A34A',
+                border: '1px solid #15803D'
+              }}
+            >
+              {exporting ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : <FontAwesomeIcon icon={faFileExcel} />}
+              <span>{exporting ? 'Mengekspor...' : 'Export Excel'}</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── MODAL KOREKSI / ADJUST INIT STOCK ──────────────────────────────── */}
+      <Modal
+        isOpen={adjustModal.open}
+        onClose={() => setAdjustModal(prev => ({ ...prev, open: false }))}
+        title="✏️ Sesuaikan Stok Awal"
+        size="sm"
+      >
+        <div className="space-y-4 text-xs font-sans">
+          <div className="rounded p-3 text-xs space-y-1.5 border" style={{ background: isDark ? '#1F2937' : '#F8FAFC', borderColor }}>
+            <div style={{ color: textSecondary }}>Seragam: <strong style={{ color: textPrimary }}>{adjustModal.uniform_name}</strong></div>
+            <div style={{ color: textSecondary }}>Ukuran: <strong style={{ color: textPrimary }}>{adjustModal.size_name}</strong></div>
+            <div style={{ color: textSecondary }}>Supplier: <strong style={{ color: textPrimary }}>{adjustModal.supplier_name}</strong></div>
+            <div style={{ color: textSecondary }}>Qty saat ini: <strong style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>{adjustModal.current_qty} pcs</strong></div>
+          </div>
+
+          <div
+            className="p-3 rounded border text-xs"
+            style={{
+              background: isDark ? '#2A2618' : '#FBF3DB',
+              borderColor: isDark ? '#3D361F' : '#F2E3B6',
+              color: isDark ? '#C4A24A' : '#956400'
+            }}
+          >
+            ⚠️ Koreksi stok awal akan langsung memperbarui mutasi stok transaksi awal secara permanen.
+          </div>
+
+          <div>
+            <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>Kuantitas Baru (Qty) *</Label>
+            <input
+              type="number"
+              min="0"
+              value={adjustNewQty}
+              onChange={e => setAdjustNewQty(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded border outline-none"
+              style={{ background: inputBg, borderColor, color: textPrimary }}
+              placeholder="Masukkan jumlah baru"
+            />
+          </div>
+
+          {adjustError && (
+            <div className="p-3 rounded border text-xs flex items-center gap-2" style={{ background: '#FDEBEC', borderColor: '#F8C9CC', color: '#9F2F2D' }}>
+              <FontAwesomeIcon icon={faExclamationTriangle} />
+              <span>{adjustError}</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2 border-t" style={{ borderColor }}>
+            <Button
+              onClick={() => setAdjustModal(prev => ({ ...prev, open: false }))}
+              disabled={adjustSaving}
+              style={{
+                background: isDark ? '#27272A' : '#F3F4F6',
+                color: textPrimary,
+                fontSize: '12px',
+                flex: 1,
+                border: `1px solid ${borderColor}`
+              }}
             >
               Batal
             </Button>
             <Button
-              onClick={handleExportToExcel}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 font-semibold"
-              disabled={!selectedYearId || exporting}
+              onClick={saveAdjustInit}
+              disabled={adjustSaving || adjustNewQty === ''}
+              style={{
+                background: textPrimary,
+                color: isDark ? '#09090B' : '#FFFFFF',
+                fontSize: '12px',
+                fontWeight: 600,
+                flex: 1
+              }}
             >
-              {exporting ? '⏳ Mengekspor...' : '📥 Export Laporan'}
+              {adjustSaving ? 'Menyimpan...' : '✓ Simpan Perubahan'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Export Notification */}
+      {/* ── NOTIFICATION TOAST MODAL ───────────────────────────────────────── */}
       <NotificationModal
         isOpen={exportNotification.isOpen}
         onClose={() => setExportNotification(prev => ({ ...prev, isOpen: false }))}
@@ -2000,63 +2220,6 @@ export default function InitialStockPage() {
         message={exportNotification.message}
         type={exportNotification.type}
       />
-
-      {/* Adjust Init Stock Modal */}
-      <Modal
-        isOpen={adjustModal.open}
-        onClose={() => setAdjustModal(prev => ({ ...prev, open: false }))}
-        title="✏️ Sesuaikan Stok Awal"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <div className="rounded-lg p-3 text-sm space-y-1" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
-            <div style={{ color: theme.textSecondary }}>Seragam: <span className="font-medium" style={{ color: theme.textBody }}>{adjustModal.uniform_name}</span></div>
-            <div style={{ color: theme.textSecondary }}>Ukuran: <span className="font-medium" style={{ color: theme.textBody }}>{adjustModal.size_name}</span></div>
-            <div style={{ color: theme.textSecondary }}>Supplier: <span className="font-medium" style={{ color: theme.textBody }}>{adjustModal.supplier_name}</span></div>
-            <div style={{ color: theme.textSecondary }}>Qty saat ini: <span className="font-bold text-blue-600">{adjustModal.current_qty}</span></div>
-          </div>
-
-          <div className="rounded-lg px-3 py-2 text-xs" style={{ background: theme.yellowBg, color: theme.yellowText, border: `1px solid ${theme.border}` }}>
-            ⚠️ Fitur ini hanya untuk penyesuaian data selama masa trial. Riwayat transaksi akan langsung diperbarui.
-          </div>
-
-          <div>
-            <Label style={{ color: theme.textSecondary }}>Qty Baru *</Label>
-            <input
-              type="number"
-              min="0"
-              value={adjustNewQty}
-              onChange={e => setAdjustNewQty(e.target.value)}
-              className="w-full rounded px-3 py-2 mt-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{ border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.textBody }}
-              placeholder="Masukkan jumlah baru"
-            />
-          </div>
-
-          {adjustError && (
-            <div className="text-sm px-3 py-2 rounded" style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.border}` }}>
-              {adjustError}
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-2 border-t" style={{ borderColor: theme.border }}>
-            <Button
-              onClick={() => setAdjustModal(prev => ({ ...prev, open: false }))}
-              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
-              disabled={adjustSaving}
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={saveAdjustInit}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold"
-              disabled={adjustSaving || adjustNewQty === ''}
-            >
-              {adjustSaving ? '⏳ Menyimpan...' : '✓ Simpan Perubahan'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }
