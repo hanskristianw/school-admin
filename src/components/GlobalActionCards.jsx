@@ -243,16 +243,16 @@ export default function GlobalActionCards() {
 
     const checkRoleAndFetch = async () => {
       try {
-        // Check if user's role has is_flexible_hours, is_part_time_staff, or is_vendor flag
+        // Check if user's role has is_part_time_staff or is_vendor flag (exempt from attendance forms)
         const { data: userRow } = await supabase.from('users').select('user_role_id').eq('user_id', userId).single()
         if (userRow?.user_role_id) {
           const { data: roleRow } = await supabase
             .from('role')
-            .select('is_flexible_hours, is_part_time_staff, is_vendor')
+            .select('is_part_time_staff, is_vendor')
             .eq('role_id', userRow.user_role_id)
             .single()
 
-          if (roleRow?.is_flexible_hours || roleRow?.is_part_time_staff || roleRow?.is_vendor) {
+          if (roleRow?.is_part_time_staff || roleRow?.is_vendor) {
             setAttCount(0)
             setAttLoading(false)
             return

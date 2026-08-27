@@ -681,7 +681,7 @@ export default function AttendanceFormPage() {
   const [isTempExitModalOpen, setIsTempExitModalOpen] = useState(false)
   const [successDate, setSuccessDate] = useState(null)
   const [leaveTypes, setLeaveTypes]   = useState([])
-  const [isFlexibleRole, setIsFlexibleRole] = useState(false)
+  const [isExemptRole, setIsExemptRole] = useState(false)
 
   // i18n-driven configs
   const STATUS_CONFIG = {
@@ -718,19 +718,19 @@ export default function AttendanceFormPage() {
       if (userRow?.user_role_id) {
         const { data: roleRow } = await supabase
           .from('role')
-          .select('is_flexible_hours, is_part_time_staff, is_vendor')
+          .select('is_part_time_staff, is_vendor')
           .eq('role_id', userRow.user_role_id)
           .single()
 
-        if (roleRow?.is_flexible_hours || roleRow?.is_part_time_staff || roleRow?.is_vendor) {
-          setIsFlexibleRole(true)
+        if (roleRow?.is_part_time_staff || roleRow?.is_vendor) {
+          setIsExemptRole(true)
           setIssueRows([])
           setLoading(false)
           return
         }
       }
 
-      setIsFlexibleRole(false)
+      setIsExemptRole(false)
       const start = monthStart(ym)
       const today     = new Date()
       const yesterday = new Date(today)
@@ -841,13 +841,13 @@ export default function AttendanceFormPage() {
         <div className="py-16 text-center text-sm" style={{ color: theme.textSecondary }}>
           {t('attendanceForm.loading')}
         </div>
-      ) : isFlexibleRole ? (
+      ) : isExemptRole ? (
         <div className="p-6 text-center rounded-2xl border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 space-y-2">
           <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-xl mx-auto">
-            ⏰
+            🏢
           </div>
           <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
-            Flexible Working Hours
+            Part-Time / Vendor Role
           </h3>
           <p className="text-xs text-emerald-700 dark:text-emerald-400 max-w-sm mx-auto">
             Your role is exempt from HCM forms.
