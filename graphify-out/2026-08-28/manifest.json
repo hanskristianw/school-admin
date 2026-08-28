@@ -1160,8 +1160,8 @@
     "semantic_hash": "af076bafe761d17e04ef078e067b9b5f"
   },
   "src/app/sales/uniform/page.jsx": {
-    "mtime": 1787893806.56401,
-    "ast_hash": "c238454b5d0d465ca1a8b76adcdb582e",
+    "mtime": 1787821723.3048868,
+    "ast_hash": "c110be052517dceb0f45ec560ec03243",
     "semantic_hash": ""
   },
   "src/app/settings/ai-rule/page.jsx": {
@@ -1200,8 +1200,8 @@
     "semantic_hash": "f02d7c2aca735f37d3ca52372cef22ad"
   },
   "src/app/stock/uniform/initial/page.jsx": {
-    "mtime": 1787893753.524817,
-    "ast_hash": "3d27af32b398c33e96c0644572429384",
+    "mtime": 1787820714.4941125,
+    "ast_hash": "651e8d26baf2403a5a9a86b5906ba108",
     "semantic_hash": ""
   },
   "src/app/stock/uniform/po-settings/page.jsx": {
@@ -1720,8 +1720,8 @@
     "semantic_hash": ""
   },
   "src/app/stock/uniform/audit/page.jsx": {
-    "mtime": 1787893775.7945168,
-    "ast_hash": "83b5d00e28b529a1cf4c2b12efa1a8a5",
+    "mtime": 1787821076.8128705,
+    "ast_hash": "c3ce054068ba31dbfe31ea42c836e621",
     "semantic_hash": ""
   },
   "migrations/add-is-flexible-hours-to-special-day-rules.sql": {

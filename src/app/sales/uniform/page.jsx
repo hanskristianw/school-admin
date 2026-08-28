@@ -93,6 +93,26 @@ export default function UniformSalesPage() {
   const [exportingExcel, setExportingExcel] = useState(false)
   const [exportProgress, setExportProgress] = useState('')
 
+  // Helper to fetch all stock transactions across 1000 limit
+  const fetchFullStockTxns = async () => {
+    let allData = []
+    let page = 0
+    const pageSize = 1000
+    while (true) {
+      const { data, error } = await supabase
+        .from('uniform_stock_txn')
+        .select('uniform_id, size_id, supplier_id, qty_delta')
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+
+      if (error) throw error
+      if (!data || data.length === 0) break
+      allData = allData.concat(data)
+      if (data.length < pageSize) break
+      page++
+    }
+    return allData
+  }
+
   // Load initial data on mount
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -108,7 +128,7 @@ export default function UniformSalesPage() {
         if (roleErr) throw roleErr
         const studentRoleId = roleData?.role_id
 
-        const [studentsRes, unitsRes, uniformsRes, sizesRes, variantsRes, stockRes, suppRes] = await Promise.all([
+        const [studentsRes, unitsRes, uniformsRes, sizesRes, variantsRes, suppRes, allStockData] = await Promise.all([
           // Load all users with student role - include manual photos
           supabase
             .from('users')
@@ -122,8 +142,8 @@ export default function UniformSalesPage() {
           supabase.from('uniform').select('uniform_id, uniform_name, is_universal, uniform_unit(unit_id)').eq('is_active', true).order('uniform_name'),
           supabase.from('uniform_size').select('*').eq('is_active', true).order('display_order'),
           supabase.from('uniform_variant').select('uniform_id, size_id, hpp, price'),
-          supabase.from('uniform_stock_txn').select('uniform_id, size_id, supplier_id, qty_delta'),
-          supabase.from('uniform_supplier').select('*').eq('is_active', true).order('supplier_name')
+          supabase.from('uniform_supplier').select('*').eq('is_active', true).order('supplier_name'),
+          fetchFullStockTxns()
         ])
 
         if (studentsRes.error) throw studentsRes.error
@@ -131,7 +151,6 @@ export default function UniformSalesPage() {
         if (uniformsRes.error) throw uniformsRes.error
         if (sizesRes.error) throw sizesRes.error
         if (variantsRes.error) throw variantsRes.error
-        if (stockRes.error) throw stockRes.error
 
         // Create unit map for quick lookup
         const unitMap = new Map((unitsRes.data || []).map(u => [u.unit_id, u.unit_name]))
@@ -156,7 +175,7 @@ export default function UniformSalesPage() {
         // Calculate total stock and stock by supplier
         const sm = new Map()
         const sbs = new Map()
-        for (const row of (stockRes.data || [])) {
+        for (const row of (allStockData || [])) {
           const key = `${row.uniform_id}_${row.size_id}`
           const suppKey = `${row.uniform_id}_${row.size_id}_${row.supplier_id || 'null'}`
           sm.set(key, (sm.get(key) || 0) + Number(row.qty_delta))
@@ -388,7 +407,7 @@ export default function UniformSalesPage() {
         }).eq('sale_id', saleId)
 
         // Refresh stock map
-        const { data: st } = await supabase.from('uniform_stock_txn').select('uniform_id, size_id, supplier_id, qty_delta')
+        const st = await fetchFullStockTxns()
         const sm = new Map(); const sbs = new Map()
         for (const row of (st || [])) {
           const key = `${row.uniform_id}_${row.size_id}`
@@ -486,7 +505,7 @@ export default function UniformSalesPage() {
       
       setShowConfirm(false)
       // Refresh stock
-      const { data: st } = await supabase.from('uniform_stock_txn').select('uniform_id, size_id, supplier_id, qty_delta')
+      const st = await fetchFullStockTxns()
       const sm = new Map()
       const sbs = new Map()
       for (const row of (st || [])) {

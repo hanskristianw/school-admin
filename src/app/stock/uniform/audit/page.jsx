@@ -76,11 +76,21 @@ export default function StockAuditResolutionPage() {
     try {
       setLoading(true)
 
-      const [suppRes, unifRes, sizeRes, txnRes] = await Promise.all([
+      const [suppRes, unifRes, sizeRes] = await Promise.all([
         supabase.from('uniform_supplier').select('*').order('supplier_code'),
         supabase.from('uniform').select('*').order('uniform_name'),
-        supabase.from('uniform_size').select('*').order('display_order'),
-        supabase
+        supabase.from('uniform_size').select('*').order('display_order')
+      ])
+
+      if (suppRes.error) throw suppRes.error
+      if (unifRes.error) throw unifRes.error
+      if (sizeRes.error) throw sizeRes.error
+
+      let allTxnData = []
+      let auditPage = 0
+      const auditPageSize = 1000
+      while (true) {
+        const { data: chunk, error: txnErr } = await supabase
           .from('uniform_stock_txn')
           .select(`
             txn_id,
@@ -98,15 +108,17 @@ export default function StockAuditResolutionPage() {
             supplier:supplier_id(supplier_name, supplier_code)
           `)
           .order('created_at', { ascending: true })
-      ])
+          .range(auditPage * auditPageSize, (auditPage + 1) * auditPageSize - 1)
 
-      if (suppRes.error) throw suppRes.error
-      if (unifRes.error) throw unifRes.error
-      if (sizeRes.error) throw sizeRes.error
-      if (txnRes.error) throw txnRes.error
+        if (txnErr) throw txnErr
+        if (!chunk || chunk.length === 0) break
+        allTxnData = allTxnData.concat(chunk)
+        if (chunk.length < auditPageSize) break
+        auditPage++
+      }
 
       // Fetch buyer names for sale txns
-      const saleTxns = (txnRes.data || []).filter(t => t.ref_table === 'uniform_sale' && t.ref_id)
+      const saleTxns = allTxnData.filter(t => t.ref_table === 'uniform_sale' && t.ref_id)
       const saleIds = [...new Set(saleTxns.map(t => Number(t.ref_id)).filter(Boolean))]
 
       let buyerMap = new Map()
@@ -140,7 +152,7 @@ export default function StockAuditResolutionPage() {
         }
       }
 
-      const enriched = (txnRes.data || []).map(t => ({
+      const enriched = allTxnData.map(t => ({
         ...t,
         buyer_name: t.ref_table === 'uniform_sale' && t.ref_id ? buyerMap.get(Number(t.ref_id)) || null : null
       }))

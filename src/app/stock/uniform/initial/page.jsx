@@ -149,25 +149,36 @@ export default function InitialStockPage() {
   const fetchSummary = async () => {
     setLoadingSummary(true)
     try {
-      const { data, error } = await supabase
-        .from('uniform_stock_txn')
-        .select(`
-          uniform_id,
-          size_id,
-          supplier_id,
-          qty_delta,
-          uniform:uniform_id(uniform_id, uniform_name, is_universal),
-          size:size_id(size_id, size_name),
-          supplier:supplier_id(supplier_id, supplier_name, supplier_code)
-        `)
+      let allRows = []
+      let page = 0
+      const pageSize = 1000
 
-      if (error) throw error
+      while (true) {
+        const { data, error } = await supabase
+          .from('uniform_stock_txn')
+          .select(`
+            uniform_id,
+            size_id,
+            supplier_id,
+            qty_delta,
+            uniform:uniform_id(uniform_id, uniform_name, is_universal),
+            size:size_id(size_id, size_name),
+            supplier:supplier_id(supplier_id, supplier_name, supplier_code)
+          `)
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+
+        if (error) throw error
+        if (!data || data.length === 0) break
+        allRows = allRows.concat(data)
+        if (data.length < pageSize) break
+        page++
+      }
 
       // Aggregate qty by uniform_id + size_id + supplier_id
       const aggregated = []
       const map = new Map()
 
-      data.forEach(row => {
+      allRows.forEach(row => {
         const key = `${row.uniform_id}|${row.size_id}|${row.supplier_id || 'null'}`
         if (!map.has(key)) {
           map.set(key, {
@@ -192,26 +203,39 @@ export default function InitialStockPage() {
   const fetchHistory = async () => {
     setLoadingHistory(true)
     try {
-      const { data: txns, error } = await supabase
-        .from('uniform_stock_txn')
-        .select(`
-          txn_id,
-          txn_type,
-          qty_delta,
-          ref_table,
-          ref_id,
-          notes,
-          created_at,
-          uniform_id,
-          size_id,
-          supplier_id,
-          uniform:uniform_id(uniform_id, uniform_name, is_universal),
-          size:size_id(size_id, size_name, display_order),
-          supplier:supplier_id(supplier_id, supplier_name, supplier_code)
-        `)
-        .order('created_at', { ascending: false })
+      let allTxns = []
+      let page = 0
+      const pageSize = 1000
 
-      if (error) throw error
+      while (true) {
+        const { data, error } = await supabase
+          .from('uniform_stock_txn')
+          .select(`
+            txn_id,
+            txn_type,
+            qty_delta,
+            ref_table,
+            ref_id,
+            notes,
+            created_at,
+            uniform_id,
+            size_id,
+            supplier_id,
+            uniform:uniform_id(uniform_id, uniform_name, is_universal),
+            size:size_id(size_id, size_name, display_order),
+            supplier:supplier_id(supplier_id, supplier_name, supplier_code)
+          `)
+          .order('created_at', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+
+        if (error) throw error
+        if (!data || data.length === 0) break
+        allTxns = allTxns.concat(data)
+        if (data.length < pageSize) break
+        page++
+      }
+
+      const txns = allTxns
 
       // Get all sale_ids referenced by uniform_sale stock txns
       const saleTxns = (txns || []).filter(t => t.ref_table === 'uniform_sale' && t.ref_id)
@@ -319,9 +343,21 @@ export default function InitialStockPage() {
         .select('uniform_id, size_id, hpp, price')
 
       // 4. Fetch ALL stock transactions (for stock awal, stock akhir & HPP calculation)
-      const { data: allStockTxns } = await supabase
-        .from('uniform_stock_txn')
-        .select('uniform_id, size_id, supplier_id, qty_delta, txn_type, created_at')
+      let allStockTxns = []
+      let stPage = 0
+      const stPageSize = 1000
+      while (true) {
+        const { data: stChunk, error: stErr } = await supabase
+          .from('uniform_stock_txn')
+          .select('uniform_id, size_id, supplier_id, qty_delta, txn_type, created_at')
+          .range(stPage * stPageSize, (stPage + 1) * stPageSize - 1)
+
+        if (stErr) throw stErr
+        if (!stChunk || stChunk.length === 0) break
+        allStockTxns = allStockTxns.concat(stChunk)
+        if (stChunk.length < stPageSize) break
+        stPage++
+      }
 
       // 5. Fetch purchase orders within the year period
       const { data: purchases } = await supabase

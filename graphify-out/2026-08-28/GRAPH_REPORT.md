@@ -1,16 +1,16 @@
-# Graph Report - school-admin  (2026-08-28)
+# Graph Report - school-admin  (2026-08-27)
 
 ## Corpus Check
-- 365 files · ~592,889 words
+- 365 files · ~592,628 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2139 nodes · 2191 edges · 357 communities (252 shown, 105 thin omitted)
+- 2139 nodes · 2191 edges · 356 communities (252 shown, 104 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `cfe02daf`
+- Built from commit: `ff8a6c04`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -215,7 +215,6 @@
 - googleapis
 - @googleapis/chat
 - react-hook-form
-- browser-image-compression
 - bcryptjs
 - driver.js
 - 🔧 **Technical Implementation**
@@ -294,7 +293,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (357 total, 105 thin omitted)
+## Communities (356 total, 104 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.07
@@ -362,7 +361,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, docx, googleapis, dependencies, bcryptjs, docx, googleapis, pdf-lib (+3 more)
+Nodes (11): bcryptjs, browser-image-compression, googleapis, dependencies, bcryptjs, browser-image-compression, googleapis, pdf-lib (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -737,8 +736,8 @@ Cohesion: 0.11
 Nodes (17): 1. Meta Information & Core Directive, 2. THE "ABSOLUTE ZERO" DIRECTIVE (STRICT ANTI-PATTERNS), 3. THE CREATIVE VARIANCE ENGINE, 4. HAPTIC MICRO-AESTHETICS (COMPONENT MASTERY), 5. MOTION CHOREOGRAPHY (FLUID DYNAMICS), 6. PERFORMANCE GUARDRAILS, 7. EXECUTION PROTOCOL, 8. PRE-OUTPUT CHECKLIST (+9 more)
 
 ### Community 316 - "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION"
-Cohesion: 0.14
-Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
+Cohesion: 0.12
+Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
 
 ### Community 317 - "SKILL: Industrial Brutalism & Tactical Telemetry UI"
 Cohesion: 0.12
@@ -883,12 +882,12 @@ Nodes (4): 20. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 ## Knowledge Gaps
 - **1113 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1108 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **104 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `@fortawesome/react-fontawesome`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `browser-image-compression`, `bcryptjs`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `SKILL.md`, `google-auth-library`, `pngjs`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 131`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `docx`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `browser-image-compression`, `bcryptjs`, `@fortawesome/react-fontawesome`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `bcryptjs`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `SKILL.md`, `google-auth-library`, `pngjs`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `tasteskill: Anti-Slop Frontend Skill` connect `tasteskill: Anti-Slop Frontend Skill` to `4. DESIGN ENGINEERING DIRECTIVES (Bias Correction)`, `10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know)`, `8. DARK MODE PROTOCOL`, `9. AI TELLS (Forbidden Patterns)`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `0. BRIEF INFERENCE (Read the Room Before Anything Else)`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Appendix B - Canonical Sources (read these before reinventing)`, `bcryptjs`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._

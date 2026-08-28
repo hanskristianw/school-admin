@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 299,
-      "community_name": "browser-image-compression",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 299,
-      "community_name": "browser-image-compression",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 278,
+      "community_name": "docx",
       "norm_label": "docx"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 278,
+      "community_name": "docx",
       "norm_label": "docx"
     },
     {
@@ -14945,8 +14945,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 278,
-      "community_name": "docx",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "skill.md"
     },
     {
@@ -14956,8 +14956,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 278,
-      "community_name": "docx",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -14967,8 +14967,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 278,
-      "community_name": "docx",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -34093,7 +34093,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "src/app/sales/uniform/page.jsx",
-      "source_location": "L952",
+      "source_location": "L933",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_sales_uniform_page_uniformsalespage",
@@ -47947,5 +47947,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "cfe02dafa12aae60d0821ed359cef94bd377ebe8"
+  "built_at_commit": "ff8a6c04c5cb70007d02465b94231c106160ae60"
 }
