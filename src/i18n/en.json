@@ -394,6 +394,8 @@
     "selectWaliKelas": "Select Homeroom Teacher",
     "unitLabel": "Unit *",
     "selectUnit": "Select Unit",
+    "nurseryClassLabel": "🌱 Nursery Class",
+    "nurseryClassDesc": "Check this option if this class is a Nursery level (PYP unit only).",
     "yearLabel": "Academic Year *",
     "selectYear": "Select Academic Year",
     "cancel": "Cancel",

@@ -212,6 +212,7 @@ The main table for classes.
 | `kelas_unit_id` | `INTEGER` | FK to `unit(unit_id)` |
 | `kelas_year_id` | `INTEGER` | FK to `year(year_id)` |
 | `kelas_color_name` | `VARCHAR(20)` | UI badge color ('success', 'warning', 'error') |
+| `is_nursery` | `BOOLEAN` | Default `false`, flag for Nursery classes (strictly restricted to PYP unit `is_pyp = true`) |
 
 #### `detail_kelas`
 Maps a class to a specific subject, and assigns a teacher who will teach that subject for that class.
@@ -231,6 +232,46 @@ Assigns a student to a specific class.
 | `detail_siswa_id` | `SERIAL` | Primary Key |
 | `detail_siswa_kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` |
 | `detail_siswa_user_id` | `INTEGER` | FK to `users(user_id)` (The Student) |
+
+#### `class_development_areas`
+Parent table storing configured Areas of Development per class (specifically for Nursery classes).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `area_id` | `SERIAL` | Primary Key |
+| `kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` ON DELETE CASCADE |
+| `area_name` | `VARCHAR(255)` | Area of Development title |
+| `sort_order` | `INTEGER` | Ordering integer (default 0) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `class_development_criteria`
+Child table storing specific evaluation criteria and their Indonesian translations under an Area of Development.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `criteria_id` | `SERIAL` | Primary Key |
+| `area_id` | `INTEGER` | FK to `class_development_areas(area_id)` ON DELETE CASCADE |
+| `criteria_text` | `TEXT` | Criteria statement in English |
+| `criteria_translation` | `TEXT` | Indonesian translation of the criteria |
+| `sort_order` | `INTEGER` | Ordering integer (default 0) |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+#### `nursery_student_progress`
+Stores developmental milestone evaluation scores (0 to 3 yellow boxes) for Nursery students per criteria and term (1 to 4).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `progress_id` | `SERIAL` | Primary Key |
+| `kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` ON DELETE CASCADE |
+| `student_user_id` | `INTEGER` | FK to `users(user_id)` ON DELETE CASCADE |
+| `criteria_id` | `INTEGER` | FK to `class_development_criteria(criteria_id)` ON DELETE CASCADE |
+| `term` | `INTEGER` | Term number (1, 2, 3, or 4) |
+| `score` | `INTEGER` | Score: 0 (Not Assessed), 1 (Beginning), 2 (In Progress), 3 (Achieved) |
+| `notes` | `TEXT` | Optional teacher notes for this criteria and term |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
 
 #### `topic`
 Stores IB MYP Unit Planners / Topics created via `/data/topic-new`.

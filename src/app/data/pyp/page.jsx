@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
@@ -46,9 +46,10 @@ import {
   faUpload,
   faImage,
   faTimes,
-  faHouseUser
+  faHouseUser,
+  faSeedling
 } from '@fortawesome/free-solid-svg-icons'
-import { generatePypClassReportPDF } from './lib/pypPdfGenerator'
+import { generatePypClassReportPDF, generateNurseryLearningProgressionPDF } from './lib/pypPdfGenerator'
 
 // PYP Transdisciplinary Themes (Standard IB PYP Framework)
 const TRANSDISCIPLINARY_THEMES = [
@@ -351,6 +352,24 @@ export default function PypPage() {
   const [printBatchProgress, setPrintBatchProgress] = useState({ current: 0, total: 0, name: '' })
   const [showPrintDropdown, setShowPrintDropdown] = useState(false)
   const printDropdownRef = useRef(null)
+
+  // -------------------------------------------------------------
+  // NURSERY LEARNING PROGRESSION (DEVELOPMENTAL MILESTONES) STATES
+  // -------------------------------------------------------------
+  const [showNurseryMilestoneModal, setShowNurseryMilestoneModal] = useState(false)
+  const [nurserySelectedStudentId, setNurserySelectedStudentId] = useState('')
+  const [nurseryMilestoneAreas, setNurseryMilestoneAreas] = useState([])
+  const [nurseryStudentScores, setNurseryStudentScores] = useState({}) // `${criteria_id}_${term}` -> score (0-3)
+  const [nurseryScoresLoading, setNurseryScoresLoading] = useState(false)
+  const [nurseryScoresSaving, setNurseryScoresSaving] = useState(false)
+  const [nurseryHasUnsavedChanges, setNurseryHasUnsavedChanges] = useState(false)
+  const [showNurseryPrintModal, setShowNurseryPrintModal] = useState(false)
+  const [nurseryPrintScope, setNurseryPrintScope] = useState('single') // 'single' | 'batch'
+  const [nurseryPrintStartDate, setNurseryPrintStartDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [nurseryPrintEndDate, setNurseryPrintEndDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [nurseryPrintTeachers, setNurseryPrintTeachers] = useState('')
+  const [nurseryIsPrinting, setNurseryIsPrinting] = useState(false)
+  const [nurseryPrintProgress, setNurseryPrintProgress] = useState({ current: 0, total: 0, status: '' })
 
   // Close print dropdown when clicking outside
   useEffect(() => {
@@ -681,6 +700,268 @@ export default function PypPage() {
     } catch (err) {
       console.error('Error fetching class students:', err)
       setClassStudents([])
+    }
+  }
+
+  // -------------------------------------------------------------
+  // NURSERY LEARNING PROGRESSION (DEVELOPMENTAL MILESTONES) HANDLERS
+  // -------------------------------------------------------------
+  const fetchNurseryStudentScores = async (classId, studentId) => {
+    if (!classId || !studentId) {
+      setNurseryStudentScores({})
+      return
+    }
+    try {
+      const { data: progressRows, error: pErr } = await supabase
+        .from('nursery_student_progress')
+        .select('criteria_id, term, score, notes')
+        .eq('kelas_id', Number(classId))
+        .eq('student_user_id', Number(studentId))
+
+      if (pErr) throw new Error(pErr.message)
+
+      const scoresMap = {}
+      ;(progressRows || []).forEach(r => {
+        scoresMap[`${r.criteria_id}_${r.term}`] = r.score
+      })
+
+      setNurseryStudentScores(scoresMap)
+      setNurseryHasUnsavedChanges(false)
+    } catch (err) {
+      console.error('Error fetching student scores:', err)
+    }
+  }
+
+  const handleOpenNurseryMilestoneModal = async () => {
+    if (!currentSelectedClassObj) return
+    setShowNurseryMilestoneModal(true)
+    setNurseryScoresLoading(true)
+
+    try {
+      // 1. Fetch developmental areas and criteria for this class
+      const { data: areas, error: aErr } = await supabase
+        .from('class_development_areas')
+        .select(`
+          area_id,
+          area_name,
+          sort_order,
+          criteria:class_development_criteria(
+            criteria_id,
+            criteria_text,
+            criteria_translation,
+            sort_order
+          )
+        `)
+        .eq('kelas_id', currentSelectedClassObj.kelas_id)
+        .order('sort_order', { ascending: true })
+        .order('area_id', { ascending: true })
+
+      if (aErr) throw new Error(aErr.message)
+
+      const sortedAreas = (areas || []).map(a => ({
+        ...a,
+        criteria: (a.criteria || []).sort((c1, c2) => (c1.sort_order || 0) - (c2.sort_order || 0))
+      }))
+      setNurseryMilestoneAreas(sortedAreas)
+
+      // 2. Select initial student from classStudents
+      let activeStudentId = nurserySelectedStudentId
+      if (!activeStudentId || !classStudents.some(s => s.user_id.toString() === activeStudentId.toString())) {
+        if (classStudents.length > 0) {
+          activeStudentId = classStudents[0].user_id.toString()
+          setNurserySelectedStudentId(activeStudentId)
+        }
+      }
+
+      // 3. Load student scores
+      if (activeStudentId) {
+        await fetchNurseryStudentScores(currentSelectedClassObj.kelas_id, activeStudentId)
+      }
+    } catch (err) {
+      console.error('Error opening milestone modal:', err)
+      setNotif({
+        isOpen: true,
+        type: 'error',
+        title: 'Error Loading Milestones',
+        message: err.message
+      })
+    } finally {
+      setNurseryScoresLoading(false)
+    }
+  }
+
+  const handleChangeNurseryStudent = async (newStudentId) => {
+    if (nurseryHasUnsavedChanges) {
+      if (!confirm('You have unsaved milestone scores. Do you want to discard them and switch student?')) {
+        return
+      }
+    }
+    setNurserySelectedStudentId(newStudentId)
+    setNurseryScoresLoading(true)
+    await fetchNurseryStudentScores(currentSelectedClassObj.kelas_id, newStudentId)
+    setNurseryScoresLoading(false)
+  }
+
+  const handleToggleScore = (criteriaId, term, clickedBoxNumber) => {
+    const key = `${criteriaId}_${term}`
+    const currentScore = nurseryStudentScores[key] || 0
+
+    let newScore = clickedBoxNumber
+    if (currentScore === clickedBoxNumber) {
+      newScore = 0
+    }
+
+    setNurseryStudentScores(prev => ({
+      ...prev,
+      [key]: newScore
+    }))
+    setNurseryHasUnsavedChanges(true)
+  }
+
+  const handleSaveNurseryScores = async () => {
+    if (!currentSelectedClassObj || !nurserySelectedStudentId) return
+    setNurseryScoresSaving(true)
+
+    try {
+      const rows = []
+      nurseryMilestoneAreas.forEach(area => {
+        (area.criteria || []).forEach(crit => {
+          for (let term = 1; term <= 4; term++) {
+            const score = nurseryStudentScores[`${crit.criteria_id}_${term}`] || 0
+            rows.push({
+              kelas_id: currentSelectedClassObj.kelas_id,
+              student_user_id: Number(nurserySelectedStudentId),
+              criteria_id: crit.criteria_id,
+              term: term,
+              score: score,
+              updated_at: new Date().toISOString()
+            })
+          }
+        })
+      })
+
+      if (rows.length > 0) {
+        const { error: upsertErr } = await supabase
+          .from('nursery_student_progress')
+          .upsert(rows, { onConflict: 'student_user_id, criteria_id, term' })
+
+        if (upsertErr) throw new Error(upsertErr.message)
+      }
+
+      setNurseryHasUnsavedChanges(false)
+      setNotif({
+        isOpen: true,
+        type: 'success',
+        title: 'Scores Saved',
+        message: 'Learning progression scores saved successfully!'
+      })
+    } catch (err) {
+      console.error('Error saving nursery scores:', err)
+      setNotif({
+        isOpen: true,
+        type: 'error',
+        title: 'Failed to Save Scores',
+        message: err.message
+      })
+    } finally {
+      setNurseryScoresSaving(false)
+    }
+  }
+
+  const formatNurseryDatePreview = (startDate, endDate) => {
+    const formatDateLong = (dateStr) => {
+      if (!dateStr) return ''
+      const parts = dateStr.split('-')
+      if (parts.length === 3) {
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+        const day = parts[2]
+        const mIdx = parseInt(parts[1], 10) - 1
+        const year = parts[0]
+        return `${day} ${months[mIdx] || ''} ${year}`
+      }
+      return dateStr
+    }
+    const s = formatDateLong(startDate)
+    const e = formatDateLong(endDate)
+    if (s && e) return `(${s} - ${e})`
+    if (s || e) return `(${s || e})`
+    return ''
+  }
+
+  const handleOpenNurseryPrintModal = async () => {
+    setShowNurseryPrintModal(true)
+    if (!nurseryPrintTeachers && currentSelectedClassObj?.kelas_user_id) {
+      try {
+        const { data: uData } = await supabase
+          .from('users')
+          .select('user_nama_depan, user_nama_belakang')
+          .eq('user_id', currentSelectedClassObj.kelas_user_id)
+          .single()
+        if (uData) {
+          const tName = `${uData.user_nama_depan || ''} ${uData.user_nama_belakang || ''}`.trim()
+          setNurseryPrintTeachers(tName)
+        }
+      } catch (err) {
+        console.warn('Could not prefill homeroom teacher:', err)
+      }
+    }
+  }
+
+  const handleExecuteNurseryPrint = async () => {
+    if (!currentSelectedClassObj) return
+    setNurseryIsPrinting(true)
+    setNurseryPrintProgress({ current: 0, total: 0, status: 'Preparing document...' })
+
+    try {
+      let targetStudents = []
+      if (nurseryPrintScope === 'single') {
+        const found = classStudents.find(s => s.user_id.toString() === nurserySelectedStudentId)
+        if (found) {
+          targetStudents = [found]
+        } else if (classStudents.length > 0) {
+          targetStudents = [classStudents[0]]
+        }
+      } else {
+        targetStudents = classStudents
+      }
+
+      if (targetStudents.length === 0) {
+        alert('No students found in this class to print.')
+        setNurseryIsPrinting(false)
+        return
+      }
+
+      await generateNurseryLearningProgressionPDF({
+        classId: currentSelectedClassObj.kelas_id,
+        className: currentSelectedClassObj.kelas_nama,
+        studentsList: targetStudents,
+        startDate: nurseryPrintStartDate,
+        endDate: nurseryPrintEndDate,
+        homeroomTeachers: nurseryPrintTeachers,
+        onProgress: (cur, tot, status) => {
+          setNurseryPrintProgress({ current: cur, total: tot, status })
+        },
+        onError: (err) => {
+          setNotif({
+            isOpen: true,
+            type: 'error',
+            title: 'Print Error',
+            message: err.message || 'Failed to generate PDF'
+          })
+        }
+      })
+
+      setShowNurseryPrintModal(false)
+    } catch (err) {
+      console.error('Print execution error:', err)
+      setNotif({
+        isOpen: true,
+        type: 'error',
+        title: 'Print Error',
+        message: err.message || 'Failed to generate PDF'
+      })
+    } finally {
+      setNurseryIsPrinting(false)
     }
   }
 
@@ -2869,36 +3150,83 @@ export default function PypPage() {
             <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 4px 0', color: textPrimary }}>
-                    PYP School Classes
-                  </h3>
-                  <p style={{ fontSize: '13px', color: textSecondary, margin: 0 }}>
-                    Select a PYP Class to manage its Units of Inquiry.
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: textPrimary }}>
+                      PYP School Classes
+                    </h3>
+                    {currentSelectedClassObj?.is_nursery && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        background: '#FEF3C7',
+                        color: '#92400E',
+                        border: '1px solid #FDE68A'
+                      }}>
+                        🌱 Nursery
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '13px', color: textSecondary, margin: '4px 0 0 0' }}>
+                    Select a PYP Class to manage its Units of Inquiry{currentSelectedClassObj?.is_nursery ? ' and Learning Progression' : ''}.
                   </p>
                 </div>
 
-                <div style={{ minWidth: '240px', maxWidth: '360px', width: '100%' }}>
-                  <select
-                    value={selectedClassId || ''}
-                    onChange={(e) => setSelectedClassId(e.target.value)}
-                    style={{
-                      ...selectStyle,
-                      width: '100%',
-                      padding: '10px 14px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {pypClasses.length === 0 ? (
-                      <option value="">No PYP classes found</option>
-                    ) : (
-                      pypClasses.map(cls => (
-                        <option key={cls.kelas_id} value={cls.kelas_id.toString()}>
-                          {cls.kelas_nama}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: '220px', maxWidth: '320px' }}>
+                    <select
+                      value={selectedClassId || ''}
+                      onChange={(e) => setSelectedClassId(e.target.value)}
+                      style={{
+                        ...selectStyle,
+                        width: '100%',
+                        padding: '10px 14px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {pypClasses.length === 0 ? (
+                        <option value="">No PYP classes found</option>
+                      ) : (
+                        pypClasses.map(cls => (
+                          <option key={cls.kelas_id} value={cls.kelas_id.toString()}>
+                            {cls.kelas_nama} {cls.is_nursery ? '🌱 (Nursery)' : ''}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  {currentSelectedClassObj?.is_nursery && (
+                    <Button
+                      type="button"
+                      onClick={handleOpenNurseryMilestoneModal}
+                      style={{
+                        background: '#FEF3C7',
+                        color: '#92400E',
+                        border: '1px solid #FDE68A',
+                        borderRadius: '6px',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        padding: '10px 14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#FDE68A' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#FEF3C7' }}
+                    >
+                      <FontAwesomeIcon icon={faSeedling} />
+                      <span>Learning Progression</span>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -6755,6 +7083,630 @@ export default function PypPage() {
           </Modal>
         )
       })()}
+
+      {/* ------------------------------------------------------------- */}
+      {/* NURSERY LEARNING PROGRESSION (DEVELOPMENTAL MILESTONES) MODAL */}
+      {/* ------------------------------------------------------------- */}
+      {showNurseryMilestoneModal && (
+        <Modal
+          isOpen={showNurseryMilestoneModal}
+          onClose={() => {
+            if (nurseryHasUnsavedChanges) {
+              if (!confirm('You have unsaved changes. Are you sure you want to close?')) return
+            }
+            setShowNurseryMilestoneModal(false)
+          }}
+          disableBackdropClose={true}
+          size="xl"
+          title={`Nursery Learning Progression — ${currentSelectedClassObj?.kelas_nama || 'Class'}`}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+            {/* Header: Student Selector & Info & Top Actions */}
+            <div
+              style={{
+                background: isDark ? 'rgba(39, 39, 42, 0.6)' : '#F9FAFB',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                padding: '14px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}
+            >
+              {/* Left: Student & Class Info */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '240px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: textPrimary }}>
+                    Name :
+                  </span>
+                  <div style={{ minWidth: '220px', maxWidth: '320px' }}>
+                    <select
+                      value={nurserySelectedStudentId || ''}
+                      onChange={(e) => handleChangeNurseryStudent(e.target.value)}
+                      style={{
+                        ...selectStyle,
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {classStudents.length === 0 ? (
+                        <option value="">No students in this class</option>
+                      ) : (
+                        classStudents.map(s => (
+                          <option key={s.user_id} value={s.user_id.toString()}>
+                            {s.user_nama_depan} {s.user_nama_belakang}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '12.5px', color: textSecondary }}>
+                  <strong style={{ color: textPrimary }}>Class :</strong> {currentSelectedClassObj?.kelas_nama}
+                </div>
+              </div>
+
+              {/* Right: Status Indicator & Action Buttons (Print, Close, Save) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                {/* Status Indicator */}
+                <div style={{ marginRight: '2px' }}>
+                  {nurseryHasUnsavedChanges ? (
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#D97706', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
+                      Unsaved changes detected
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '12px', color: textSecondary, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FontAwesomeIcon icon={faCheckCircle} style={{ color: isDark ? '#4ADE80' : '#15803D' }} />
+                      All changes are up to date.
+                    </span>
+                  )}
+                </div>
+
+                {/* Print Button */}
+                <Button
+                  type="button"
+                  onClick={handleOpenNurseryPrintModal}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 13px',
+                    background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                    border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`,
+                    color: isDark ? '#93C5FD' : '#1D4ED8',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <FontAwesomeIcon icon={faPrint} />
+                  <span>Print Learning Progression</span>
+                </Button>
+
+                {/* Close Button */}
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (nurseryHasUnsavedChanges) {
+                      if (!confirm('You have unsaved changes. Are you sure you want to close?')) return
+                    }
+                    setShowNurseryMilestoneModal(false)
+                  }}
+                  style={{
+                    background: isDark ? '#27272A' : '#F4F4F5',
+                    color: textPrimary,
+                    border: `1px solid ${borderColor}`,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '7px 15px',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </Button>
+
+                {/* Save Progress Button */}
+                <Button
+                  type="button"
+                  onClick={handleSaveNurseryScores}
+                  disabled={nurseryScoresSaving || nurseryScoresLoading || nurseryMilestoneAreas.length === 0}
+                  style={{
+                    background: '#F59E0B',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    padding: '7px 18px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)',
+                    opacity: (nurseryScoresSaving || nurseryScoresLoading || nurseryMilestoneAreas.length === 0) ? 0.5 : 1
+                  }}
+                >
+                  {nurseryScoresSaving ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} spin />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faSave} />
+                      <span>Save Progress</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Rubric / Legend Card (from user reference image) */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '12px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                background: isDark ? 'rgba(39, 39, 42, 0.4)' : '#FFFFFF',
+                border: `1px solid ${borderColor}`,
+                fontSize: '11px'
+              }}
+            >
+              {/* Not Assessed */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'inline-flex', border: '1px solid #4B5563', borderRadius: '2px', overflow: 'hidden' }}>
+                  <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB', borderRight: '1px solid #4B5563' }} />
+                  <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB', borderRight: '1px solid #4B5563' }} />
+                  <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB' }} />
+                </div>
+                <div>
+                  <strong style={{ color: textPrimary }}>: Not Assessed</strong>
+                </div>
+              </div>
+
+              {/* Beginning */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ display: 'inline-flex', border: '1px solid #4B5563', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}>
+                  <span style={{ width: '13px', height: '13px', background: '#FEF08A', borderRight: '1px solid #4B5563' }} />
+                  <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB', borderRight: '1px solid #4B5563' }} />
+                  <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB' }} />
+                </div>
+                <div>
+                  <strong style={{ color: textPrimary }}>: Beginning</strong>
+                  <div style={{ fontSize: '10px', color: textSecondary, fontStyle: 'italic' }}>
+                    Has not yet shown the skill or just starting.
+                  </div>
+                </div>
+              </div>
+
+              {/* In Progress */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ display: 'inline-flex', border: '1px solid #4B5563', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}>
+                  <span style={{ width: '13px', height: '13px', background: '#FEF08A', borderRight: '1px solid #4B5563' }} />
+                  <span style={{ width: '13px', height: '13px', background: '#FEF08A', borderRight: '1px solid #4B5563' }} />
+                  <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB' }} />
+                </div>
+                <div>
+                  <strong style={{ color: textPrimary }}>: In Progress</strong>
+                  <div style={{ fontSize: '10px', color: textSecondary, fontStyle: 'italic' }}>
+                    Demonstrates the skill with help or inconsistently.
+                  </div>
+                </div>
+              </div>
+
+              {/* Achieved */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ display: 'inline-flex', border: '1px solid #4B5563', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}>
+                  <span style={{ width: '13px', height: '13px', background: '#FEF08A', borderRight: '1px solid #4B5563' }} />
+                  <span style={{ width: '13px', height: '13px', background: '#FEF08A', borderRight: '1px solid #4B5563' }} />
+                  <span style={{ width: '13px', height: '13px', background: '#FEF08A' }} />
+                </div>
+                <div>
+                  <strong style={{ color: textPrimary }}>: Achieved</strong>
+                  <div style={{ fontSize: '10px', color: textSecondary, fontStyle: 'italic' }}>
+                    Demonstrates the skill independently and consistently.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Assessment Matrix Table */}
+            <div
+              style={{
+                overflowX: 'auto',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                background: cardBg,
+                maxHeight: '480px'
+              }}
+            >
+              {nurseryScoresLoading ? (
+                <div style={{ padding: '48px', textAlign: 'center', color: textSecondary }}>
+                  <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: '22px', marginBottom: '10px', color: '#F59E0B' }} />
+                  <p style={{ margin: 0, fontSize: '13px' }}>Loading learning progression &amp; student scores...</p>
+                </div>
+              ) : nurseryMilestoneAreas.length === 0 ? (
+                <div style={{ padding: '48px', textAlign: 'center', color: textSecondary }}>
+                  <FontAwesomeIcon icon={faSeedling} style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.3 }} />
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 600, color: textPrimary }}>
+                    No Area of Development Configured
+                  </h4>
+                  <p style={{ margin: '0 0 16px 0', fontSize: '13px', maxWidth: '380px', marginInline: 'auto' }}>
+                    This class does not have any developmental areas or criteria set up yet.
+                  </p>
+                  <Link
+                    href="/data/class"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 16px',
+                      background: '#F59E0B',
+                      color: '#FFFFFF',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      fontSize: '12px',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    <span>Configure in /data/class →</span>
+                  </Link>
+                </div>
+              ) : !nurserySelectedStudentId ? (
+                <div style={{ padding: '48px', textAlign: 'center', color: textSecondary }}>
+                  <p style={{ margin: 0, fontSize: '13px' }}>Please select a student from the dropdown above to view scores.</p>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                  <thead>
+                    <tr style={{ background: isDark ? '#27272A' : '#F4F4F5', borderBottom: `2px solid ${borderColor}` }}>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: textPrimary, width: '56%' }}>
+                        Term Developmental Milestone
+                      </th>
+                      {[1, 2, 3, 4].map(tNum => (
+                        <th key={tNum} style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700, color: textPrimary, width: '11%' }}>
+                          Term {tNum}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nurseryMilestoneAreas.map((area, aIdx) => (
+                      <React.Fragment key={area.area_id || aIdx}>
+                        {/* Area of Development Group Header */}
+                        <tr style={{ background: isDark ? 'rgba(39, 39, 42, 0.4)' : '#FAF9F5', borderTop: `1px solid ${borderColor}`, borderBottom: `1px solid ${borderColor}` }}>
+                          <td
+                            colSpan={5}
+                            style={{
+                              padding: '10px 16px',
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              color: textPrimary
+                            }}
+                          >
+                            {aIdx + 1}. {area.area_name}
+                          </td>
+                        </tr>
+
+                        {/* Criteria Rows */}
+                        {(area.criteria || []).map((crit, cIdx) => {
+                          const letter = String.fromCharCode(97 + cIdx) // 'a', 'b', 'c', ...
+                          return (
+                            <tr
+                              key={crit.criteria_id || cIdx}
+                              style={{
+                                borderBottom: `1px solid ${borderColor}`,
+                                transition: 'background-color 0.1s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent'
+                              }}
+                            >
+                              {/* Milestone Statement & Translation */}
+                              <td style={{ padding: '10px 16px', verticalAlign: 'top' }}>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                  <span style={{ fontWeight: 600, color: textSecondary, minWidth: '18px' }}>
+                                    {letter}.
+                                  </span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                    <span style={{ color: textPrimary, lineHeight: 1.4 }}>
+                                      {crit.criteria_text}
+                                    </span>
+                                    {crit.criteria_translation && (
+                                      <span style={{ fontSize: '11.5px', color: textSecondary, fontStyle: 'italic', lineHeight: 1.3 }}>
+                                        {crit.criteria_translation}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Terms 1 to 4: 3-Box Clickable Component */}
+                              {[1, 2, 3, 4].map(tNum => {
+                                const score = nurseryStudentScores[`${crit.criteria_id}_${tNum}`] || 0
+                                return (
+                                  <td
+                                    key={tNum}
+                                    style={{
+                                      padding: '10px 8px',
+                                      textAlign: 'center',
+                                      verticalAlign: 'middle'
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        border: '1px solid #4B5563',
+                                        borderRadius: '3px',
+                                        overflow: 'hidden',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                        userSelect: 'none'
+                                      }}
+                                      title={`Term ${tNum} - Score: ${score}/3. Click box to set (or click current score to reset)`}
+                                    >
+                                      {[1, 2, 3].map(boxNum => {
+                                        const isFilled = score >= boxNum
+                                        return (
+                                          <div
+                                            key={boxNum}
+                                            onClick={() => handleToggleScore(crit.criteria_id, tNum, boxNum)}
+                                            style={{
+                                              width: '18px',
+                                              height: '18px',
+                                              background: isFilled ? '#FEF08A' : (isDark ? '#3F3F46' : '#E5E7EB'),
+                                              borderRight: boxNum < 3 ? '1px solid #4B5563' : 'none',
+                                              transition: 'all 0.1s ease'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.filter = 'brightness(1.15)'
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.filter = 'none'
+                                            }}
+                                          />
+                                        )
+                                      })}
+                                    </div>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+          </div>
+        </Modal>
+      )}
+
+      {/* NURSERY LEARNING PROGRESSION PRINT SETTINGS MODAL */}
+      {showNurseryPrintModal && (
+        <Modal
+          isOpen={showNurseryPrintModal}
+          onClose={() => {
+            if (!nurseryIsPrinting) setShowNurseryPrintModal(false)
+          }}
+          title="Print Nursery Learning Progression"
+          size="md"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+            {/* Print Scope */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: textPrimary, marginBottom: '8px' }}>
+                Print Scope:
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    border: `1px solid ${nurseryPrintScope === 'single' ? '#F59E0B' : borderColor}`,
+                    background: nurseryPrintScope === 'single' ? (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7') : 'transparent',
+                    cursor: 'pointer',
+                    fontSize: '13px'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="nurseryPrintScope"
+                    value="single"
+                    checked={nurseryPrintScope === 'single'}
+                    onChange={() => setNurseryPrintScope('single')}
+                  />
+                  <div>
+                    <strong style={{ color: textPrimary }}>Selected Student Only</strong>
+                    <div style={{ fontSize: '11.5px', color: textSecondary }}>
+                      {(() => {
+                        const sel = classStudents.find(s => s.user_id.toString() === nurserySelectedStudentId)
+                        return sel ? `${sel.user_nama_depan} ${sel.user_nama_belakang}` : (classStudents[0] ? `${classStudents[0].user_nama_depan} ${classStudents[0].user_nama_belakang}` : 'Current student')
+                      })()}
+                    </div>
+                  </div>
+                </label>
+
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    border: `1px solid ${nurseryPrintScope === 'batch' ? '#F59E0B' : borderColor}`,
+                    background: nurseryPrintScope === 'batch' ? (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7') : 'transparent',
+                    cursor: 'pointer',
+                    fontSize: '13px'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="nurseryPrintScope"
+                    value="batch"
+                    checked={nurseryPrintScope === 'batch'}
+                    onChange={() => setNurseryPrintScope('batch')}
+                  />
+                  <div>
+                    <strong style={{ color: textPrimary }}>All Students in Class (Batch Print)</strong>
+                    <div style={{ fontSize: '11.5px', color: textSecondary }}>
+                      Generate combined report card for all {classStudents.length} students in {currentSelectedClassObj?.kelas_nama}
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Date Range */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: textPrimary, marginBottom: '6px' }}>
+                Date Range / Period:
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <span style={{ fontSize: '11.5px', color: textSecondary, display: 'block', marginBottom: '3px' }}>Start Date</span>
+                  <input
+                    type="date"
+                    value={nurseryPrintStartDate}
+                    onChange={(e) => setNurseryPrintStartDate(e.target.value)}
+                    style={{
+                      ...inputStyle,
+                      width: '100%',
+                      padding: '8px 10px',
+                      fontSize: '12.5px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <span style={{ fontSize: '11.5px', color: textSecondary, display: 'block', marginBottom: '3px' }}>End Date</span>
+                  <input
+                    type="date"
+                    value={nurseryPrintEndDate}
+                    onChange={(e) => setNurseryPrintEndDate(e.target.value)}
+                    style={{
+                      ...inputStyle,
+                      width: '100%',
+                      padding: '8px 10px',
+                      fontSize: '12.5px'
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: '6px', fontSize: '11.5px', color: textSecondary }}>
+                Printed Header: <span style={{ fontWeight: 600, color: textPrimary }}>{formatNurseryDatePreview(nurseryPrintStartDate, nurseryPrintEndDate)}</span>
+              </div>
+            </div>
+
+            {/* Homeroom Teacher */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: textPrimary, marginBottom: '4px' }}>
+                Homeroom Teacher(s):
+              </label>
+              <input
+                type="text"
+                value={nurseryPrintTeachers}
+                onChange={(e) => setNurseryPrintTeachers(e.target.value)}
+                placeholder="e.g. Widya Astuti & Ellika John"
+                style={{
+                  ...inputStyle,
+                  width: '100%',
+                  padding: '8px 10px',
+                  fontSize: '12.5px'
+                }}
+              />
+              <span style={{ fontSize: '11px', color: textSecondary, marginTop: '3px', display: 'block' }}>
+                Will appear on the cover page under "Homeroom Teacher". You can list multiple teachers separated with "&amp;".
+              </span>
+            </div>
+
+            {/* Progress status */}
+            {nurseryIsPrinting && (
+              <div style={{ padding: '10px 14px', borderRadius: '6px', background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF', border: '1px solid #BFDBFE', fontSize: '12px', color: isDark ? '#93C5FD' : '#1D4ED8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FontAwesomeIcon icon={faSpinner} spin />
+                <span>{nurseryPrintProgress.status || 'Generating PDF document, please wait...'}</span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: `1px solid ${borderColor}` }}>
+              <Button
+                type="button"
+                onClick={() => setShowNurseryPrintModal(false)}
+                disabled={nurseryIsPrinting}
+                style={{
+                  background: isDark ? '#27272A' : '#F4F4F5',
+                  color: textPrimary,
+                  border: `1px solid ${borderColor}`,
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleExecuteNurseryPrint}
+                disabled={nurseryIsPrinting || classStudents.length === 0}
+                style={{
+                  background: '#F59E0B',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  padding: '8px 20px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)',
+                  opacity: (nurseryIsPrinting || classStudents.length === 0) ? 0.5 : 1
+                }}
+              >
+                {nurseryIsPrinting ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faPrint} />
+                    <span>Download PDF</span>
+                  </>
+                )}
+              </Button>
+            </div>
+
+          </div>
+        </Modal>
+      )}
 
       {/* NOTIFICATION MODAL */}
       {notif.isOpen && (

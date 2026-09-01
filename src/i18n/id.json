@@ -394,6 +394,8 @@
     "selectWaliKelas": "Pilih Wali Kelas",
     "unitLabel": "Unit *",
     "selectUnit": "Pilih Unit",
+    "nurseryClassLabel": "🌱 Kelas Nursery",
+    "nurseryClassDesc": "Centang opsi ini jika kelas ini adalah tingkatan Nursery (khusus unit PYP).",
     "yearLabel": "Tahun Ajaran *",
     "selectYear": "Pilih Tahun Ajaran",
     "cancel": "Batal",

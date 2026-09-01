@@ -31,7 +31,9 @@ import {
   faTimesCircle,
   faExclamationTriangle,
   faUserCheck,
-  faTimes
+  faTimes,
+  faSeedling,
+  faCopy
 } from '@fortawesome/free-solid-svg-icons';
 
 export default function ClassManagement() {
@@ -59,7 +61,8 @@ export default function ClassManagement() {
     kelas_nama: '',
     kelas_user_id: '',
     kelas_unit_id: '',
-    kelas_year_id: ''
+    kelas_year_id: '',
+    is_nursery: false
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -92,6 +95,18 @@ export default function ClassManagement() {
   const [rosterModalOpen, setRosterModalOpen] = useState(false);
   const [selectedClassForRoster, setSelectedClassForRoster] = useState(null);
   const [rosterSearch, setRosterSearch] = useState('');
+  
+  // Area of Development modal states (strictly for Nursery classes)
+  const [devAreaModalOpen, setDevAreaModalOpen] = useState(false);
+  const [selectedClassForDevArea, setSelectedClassForDevArea] = useState(null);
+  const [devAreas, setDevAreas] = useState([]);
+  const [devAreasLoading, setDevAreasLoading] = useState(false);
+  const [devAreasSaving, setDevAreasSaving] = useState(false);
+  const [deletedAreaIds, setDeletedAreaIds] = useState([]);
+  const [deletedCriteriaIds, setDeletedCriteriaIds] = useState([]);
+  const [copyableClasses, setCopyableClasses] = useState([]);
+  const [sourceClassIdForCopy, setSourceClassIdForCopy] = useState('');
+  const [copyingDevArea, setCopyingDevArea] = useState(false);
   
   // Notification modal states
   const [notification, setNotification] = useState({
@@ -142,7 +157,7 @@ export default function ClassManagement() {
       
       const { data: classesData, error: classesError } = await supabase
         .from('kelas')
-        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id')
+        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id, is_nursery')
         .order('kelas_id');
 
       if (classesError) {
@@ -204,6 +219,7 @@ export default function ClassManagement() {
           user_nama_belakang: user?.user_nama_belakang || '',
           unit_name: unit?.unit_name || '',
           is_pyp: isPyp,
+          is_nursery: Boolean(kelas.is_nursery),
           year_name: year?.year_name || '',
           student_count: studentList.length,
           students: studentList,
@@ -538,6 +554,341 @@ export default function ClassManagement() {
     }
   };
 
+  // ─── AREA OF DEVELOPMENT (NURSERY ONLY) HANDLERS ───
+  const openManageDevAreas = async (kelas) => {
+    setSelectedClassForDevArea(kelas);
+    setDevAreaModalOpen(true);
+    setDevAreasLoading(true);
+    setDeletedAreaIds([]);
+    setDeletedCriteriaIds([]);
+
+    try {
+      const { data: areas, error: aErr } = await supabase
+        .from('class_development_areas')
+        .select(`
+          area_id,
+          area_name,
+          sort_order,
+          criteria:class_development_criteria(
+            criteria_id,
+            criteria_text,
+            criteria_translation,
+            sort_order
+          )
+        `)
+        .eq('kelas_id', kelas.kelas_id)
+        .order('sort_order', { ascending: true })
+        .order('area_id', { ascending: true });
+
+      if (aErr) throw new Error(aErr.message);
+
+      if (areas && areas.length > 0) {
+        const formatted = areas.map(a => ({
+          area_id: a.area_id,
+          area_name: a.area_name || '',
+          criteria: (a.criteria || [])
+            .sort((c1, c2) => (c1.sort_order || 0) - (c2.sort_order || 0))
+            .map(c => ({
+              criteria_id: c.criteria_id,
+              criteria_text: c.criteria_text || '',
+              criteria_translation: c.criteria_translation || ''
+            }))
+        }));
+        setDevAreas(formatted);
+      } else {
+        setDevAreas([
+          {
+            area_id: null,
+            area_name: '',
+            criteria: [
+              {
+                criteria_id: null,
+                criteria_text: '',
+                criteria_translation: ''
+              }
+            ]
+          }
+        ]);
+      }
+
+      // Fetch classes that have development areas configured (excluding current class)
+      const { data: allDevAreas } = await supabase
+        .from('class_development_areas')
+        .select('kelas_id')
+        .neq('kelas_id', kelas.kelas_id);
+
+      if (allDevAreas && allDevAreas.length > 0) {
+        const counts = {};
+        allDevAreas.forEach(row => {
+          counts[row.kelas_id] = (counts[row.kelas_id] || 0) + 1;
+        });
+
+        const list = Object.keys(counts)
+          .map(kId => {
+            const classObj = classes.find(c => Number(c.kelas_id) === Number(kId));
+            if (!classObj) return null;
+            return {
+              kelas_id: classObj.kelas_id,
+              kelas_nama: classObj.kelas_nama,
+              year_name: classObj.year_name,
+              area_count: counts[kId]
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama));
+
+        setCopyableClasses(list);
+      } else {
+        setCopyableClasses([]);
+      }
+      setSourceClassIdForCopy('');
+    } catch (err) {
+      console.error('Error fetching dev areas:', err);
+      showNotification('Error', 'Failed to load Area of Development: ' + err.message, 'error');
+      setDevAreas([]);
+    } finally {
+      setDevAreasLoading(false);
+    }
+  };
+
+  const handleCopyFromClass = async () => {
+    if (!sourceClassIdForCopy) return;
+
+    const sourceClass = copyableClasses.find(c => String(c.kelas_id) === String(sourceClassIdForCopy));
+    const hasExistingContent = devAreas.some(a => (a.area_name || '').trim() || (a.criteria || []).some(c => (c.criteria_text || '').trim()));
+
+    if (hasExistingContent) {
+      if (!confirm(`Copying will replace the current areas in this modal with areas from "${sourceClass?.kelas_nama || 'selected class'}". Do you want to continue?`)) {
+        return;
+      }
+    }
+
+    setCopyingDevArea(true);
+    try {
+      const { data: srcAreas, error: sErr } = await supabase
+        .from('class_development_areas')
+        .select(`
+          area_name,
+          sort_order,
+          criteria:class_development_criteria(
+            criteria_text,
+            criteria_translation,
+            sort_order
+          )
+        `)
+        .eq('kelas_id', Number(sourceClassIdForCopy))
+        .order('sort_order', { ascending: true })
+        .order('area_id', { ascending: true });
+
+      if (sErr) throw new Error(sErr.message);
+
+      if (!srcAreas || srcAreas.length === 0) {
+        showNotification('Notice', 'The selected class has no Area of Development configured.', 'info');
+        return;
+      }
+
+      const currentDbAreaIds = devAreas.map(a => a.area_id).filter(Boolean);
+      if (currentDbAreaIds.length > 0) {
+        setDeletedAreaIds(prev => [...prev, ...currentDbAreaIds]);
+      }
+
+      const cloned = srcAreas.map(a => ({
+        area_id: null,
+        area_name: a.area_name || '',
+        criteria: (a.criteria || [])
+          .sort((c1, c2) => (c1.sort_order || 0) - (c2.sort_order || 0))
+          .map(c => ({
+            criteria_id: null,
+            criteria_text: c.criteria_text || '',
+            criteria_translation: c.criteria_translation || ''
+          }))
+      }));
+
+      setDevAreas(cloned);
+      setSourceClassIdForCopy('');
+      showNotification(
+        'Success',
+        `Successfully copied ${cloned.length} areas from ${sourceClass?.kelas_nama || 'class'}! Remember to click "Save Changes" to save.`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Error copying dev areas:', err);
+      showNotification('Error', 'Failed to copy Area of Development: ' + err.message, 'error');
+    } finally {
+      setCopyingDevArea(false);
+    }
+  };
+
+  const addArea = () => {
+    setDevAreas(prev => [
+      ...prev,
+      {
+        area_id: null,
+        area_name: '',
+        criteria: [
+          { criteria_id: null, criteria_text: '', criteria_translation: '' }
+        ]
+      }
+    ]);
+  };
+
+  const removeArea = (areaIndex) => {
+    setDevAreas(prev => {
+      const target = prev[areaIndex];
+      if (target?.area_id) {
+        setDeletedAreaIds(d => [...d, target.area_id]);
+      }
+      return prev.filter((_, idx) => idx !== areaIndex);
+    });
+  };
+
+  const updateAreaName = (areaIndex, value) => {
+    setDevAreas(prev => {
+      const copy = [...prev];
+      copy[areaIndex] = { ...copy[areaIndex], area_name: value };
+      return copy;
+    });
+  };
+
+  const addCriterion = (areaIndex) => {
+    setDevAreas(prev => {
+      const copy = [...prev];
+      const area = copy[areaIndex];
+      copy[areaIndex] = {
+        ...area,
+        criteria: [
+          ...(area.criteria || []),
+          { criteria_id: null, criteria_text: '', criteria_translation: '' }
+        ]
+      };
+      return copy;
+    });
+  };
+
+  const removeCriterion = (areaIndex, critIndex) => {
+    setDevAreas(prev => {
+      const copy = [...prev];
+      const area = copy[areaIndex];
+      const target = area.criteria[critIndex];
+      if (target?.criteria_id) {
+        setDeletedCriteriaIds(d => [...d, target.criteria_id]);
+      }
+      copy[areaIndex] = {
+        ...area,
+        criteria: area.criteria.filter((_, idx) => idx !== critIndex)
+      };
+      return copy;
+    });
+  };
+
+  const updateCriterion = (areaIndex, critIndex, field, value) => {
+    setDevAreas(prev => {
+      const copy = [...prev];
+      const area = copy[areaIndex];
+      const crits = [...area.criteria];
+      crits[critIndex] = { ...crits[critIndex], [field]: value };
+      copy[areaIndex] = { ...area, criteria: crits };
+      return copy;
+    });
+  };
+
+  const handleSaveDevAreas = async () => {
+    if (!selectedClassForDevArea) return;
+    setDevAreasSaving(true);
+
+    try {
+      if (deletedAreaIds.length > 0) {
+        const { error: delAreaErr } = await supabase
+          .from('class_development_areas')
+          .delete()
+          .in('area_id', deletedAreaIds);
+        if (delAreaErr) throw new Error(delAreaErr.message);
+      }
+
+      if (deletedCriteriaIds.length > 0) {
+        const { error: delCritErr } = await supabase
+          .from('class_development_criteria')
+          .delete()
+          .in('criteria_id', deletedCriteriaIds);
+        if (delCritErr) throw new Error(delCritErr.message);
+      }
+
+      for (let aIdx = 0; aIdx < devAreas.length; aIdx++) {
+        const area = devAreas[aIdx];
+        const trimmedAreaName = (area.area_name || '').trim();
+
+        if (!trimmedAreaName && (!area.criteria || area.criteria.length === 0)) continue;
+
+        let currentAreaId = area.area_id;
+
+        if (currentAreaId) {
+          const { error: uErr } = await supabase
+            .from('class_development_areas')
+            .update({
+              area_name: trimmedAreaName || 'Untitled Area',
+              sort_order: aIdx,
+              updated_at: new Date().toISOString()
+            })
+            .eq('area_id', currentAreaId);
+          if (uErr) throw new Error(uErr.message);
+        } else {
+          const { data: newArea, error: iErr } = await supabase
+            .from('class_development_areas')
+            .insert({
+              kelas_id: selectedClassForDevArea.kelas_id,
+              area_name: trimmedAreaName || 'Untitled Area',
+              sort_order: aIdx
+            })
+            .select('area_id')
+            .single();
+          if (iErr) throw new Error(iErr.message);
+          currentAreaId = newArea.area_id;
+        }
+
+        const criteriaList = area.criteria || [];
+        for (let cIdx = 0; cIdx < criteriaList.length; cIdx++) {
+          const crit = criteriaList[cIdx];
+          const trimmedText = (crit.criteria_text || '').trim();
+          const trimmedTrans = (crit.criteria_translation || '').trim();
+
+          if (!trimmedText && !trimmedTrans) continue;
+
+          if (crit.criteria_id) {
+            const { error: cUpErr } = await supabase
+              .from('class_development_criteria')
+              .update({
+                criteria_text: trimmedText,
+                criteria_translation: trimmedTrans,
+                sort_order: cIdx,
+                updated_at: new Date().toISOString()
+              })
+              .eq('criteria_id', crit.criteria_id);
+            if (cUpErr) throw new Error(cUpErr.message);
+          } else {
+            const { error: cInErr } = await supabase
+              .from('class_development_criteria')
+              .insert({
+                area_id: currentAreaId,
+                criteria_text: trimmedText,
+                criteria_translation: trimmedTrans,
+                sort_order: cIdx
+              });
+            if (cInErr) throw new Error(cInErr.message);
+          }
+        }
+      }
+
+      showNotification('Success', 'Area of Development settings saved successfully.', 'success');
+      setDevAreaModalOpen(false);
+      setSelectedClassForDevArea(null);
+    } catch (err) {
+      console.error('Error saving dev areas:', err);
+      showNotification('Error', 'Failed to save Area of Development: ' + err.message, 'error');
+    } finally {
+      setDevAreasSaving(false);
+    }
+  };
+
   const processErrorMessage = (errorMessage) => {
     const message = errorMessage?.toLowerCase() || '';
     if (message.includes('duplicate key value violates unique constraint') && message.includes('kelas_nama')) {
@@ -611,11 +962,15 @@ export default function ClassManagement() {
 
     setSubmitting(true);
     try {
+      const selectedUnitObj = units.find(u => Number(u.unit_id) === Number(formData.kelas_unit_id));
+      const isPypUnit = Boolean(selectedUnitObj?.is_pyp) || (selectedUnitObj?.unit_name || '').toUpperCase().includes('PYP');
+
       const submitData = {
         kelas_nama: formData.kelas_nama.trim(),
         kelas_user_id: Number(formData.kelas_user_id),
         kelas_unit_id: Number(formData.kelas_unit_id),
-        kelas_year_id: Number(formData.kelas_year_id)
+        kelas_year_id: Number(formData.kelas_year_id),
+        is_nursery: isPypUnit ? Boolean(formData.is_nursery) : false
       };
 
       let result;
@@ -635,7 +990,7 @@ export default function ClassManagement() {
       await fetchClasses();
       setShowForm(false);
       setEditingClass(null);
-      setFormData({ kelas_nama: '', kelas_user_id: '', kelas_unit_id: '', kelas_year_id: '' });
+      setFormData({ kelas_nama: '', kelas_user_id: '', kelas_unit_id: '', kelas_year_id: '', is_nursery: false });
       setError('');
       showNotification(
         t('classManagement.notifSuccessTitle') || 'Success',
@@ -656,7 +1011,8 @@ export default function ClassManagement() {
       kelas_nama: kelas.kelas_nama,
       kelas_user_id: kelas.kelas_user_id,
       kelas_unit_id: kelas.kelas_unit_id,
-      kelas_year_id: kelas.kelas_year_id
+      kelas_year_id: kelas.kelas_year_id,
+      is_nursery: Boolean(kelas.is_nursery)
     });
     setShowForm(true);
     setFormErrors({});
@@ -694,7 +1050,8 @@ export default function ClassManagement() {
       kelas_nama: '',
       kelas_user_id: '',
       kelas_unit_id: '',
-      kelas_year_id: ''
+      kelas_year_id: '',
+      is_nursery: false
     });
     setShowForm(true);
     setFormErrors({});
@@ -909,10 +1266,17 @@ export default function ClassManagement() {
                 {/* Header Tag & Class Name */}
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
-                      <FontAwesomeIcon icon={faBuilding} className="text-[9px]" />
-                      {kelas.unit_name || 'Unit'}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
+                        <FontAwesomeIcon icon={faBuilding} className="text-[9px]" />
+                        {kelas.unit_name || 'Unit'}
+                      </span>
+                      {kelas.is_nursery && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                          🌱 Nursery
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-base font-bold mt-2 tracking-tight" style={{ color: theme.textPrimary }}>
                       {kelas.kelas_nama}
                     </h3>
@@ -972,9 +1336,19 @@ export default function ClassManagement() {
                     </button>
                   )}
 
+                  {kelas.is_nursery && (
+                    <button
+                      onClick={() => openManageDevAreas(kelas)}
+                      className="px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] bg-[#FEF3C7] text-[#92400E] border-[#FDE68A] hover:bg-[#FDE68A]"
+                    >
+                      <FontAwesomeIcon icon={faSeedling} className="text-[10px]" />
+                      <span>Area of Dev</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => openManageStudents(kelas)}
-                    className={`px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${kelas.is_pyp ? 'col-span-2' : ''}`}
+                    className={`px-2.5 py-1.5 text-xs font-bold rounded border transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${kelas.is_pyp && !kelas.is_nursery ? 'col-span-2' : ''}`}
                     style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
                   >
                     <FontAwesomeIcon icon={faUserGraduate} className="text-[10px]" />
@@ -1030,7 +1404,14 @@ export default function ClassManagement() {
                       #{kelas.kelas_id}
                     </td>
                     <td className="p-3 font-bold" style={{ color: theme.textPrimary }}>
-                      {kelas.kelas_nama}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{kelas.kelas_nama}</span>
+                        {kelas.is_nursery && (
+                          <span className="inline-flex items-center text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                            🌱 Nursery
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3 font-medium" style={{ color: theme.textPrimary }}>
                       {kelas.user_nama_depan} {kelas.user_nama_belakang}
@@ -1061,6 +1442,15 @@ export default function ClassManagement() {
                           style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
                         >
                           Subjects
+                        </button>
+                      )}
+                      {kelas.is_nursery && (
+                        <button
+                          onClick={() => openManageDevAreas(kelas)}
+                          className="px-2.5 py-1 text-xs font-bold rounded border cursor-pointer inline-flex items-center gap-1 bg-[#FEF3C7] text-[#92400E] border-[#FDE68A] hover:bg-[#FDE68A]"
+                        >
+                          <FontAwesomeIcon icon={faSeedling} className="text-[10px]" />
+                          <span>Area of Dev</span>
                         </button>
                       )}
                       <button
@@ -1158,7 +1548,16 @@ export default function ClassManagement() {
                 id="kelas_unit_id"
                 required
                 value={formData.kelas_unit_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, kelas_unit_id: e.target.value }))}
+                onChange={(e) => {
+                  const newUnitId = e.target.value;
+                  const unitObj = units.find(u => Number(u.unit_id) === Number(newUnitId));
+                  const isPyp = Boolean(unitObj?.is_pyp) || (unitObj?.unit_name || '').toUpperCase().includes('PYP');
+                  setFormData(prev => ({
+                    ...prev,
+                    kelas_unit_id: newUnitId,
+                    is_nursery: isPyp ? prev.is_nursery : false
+                  }));
+                }}
                 style={selectStyle}
                 className="w-full p-2.5 text-xs font-semibold focus:outline-none"
               >
@@ -1173,6 +1572,32 @@ export default function ClassManagement() {
                 <p className="text-red-500 text-[11px] mt-1">{formErrors.kelas_unit_id}</p>
               )}
             </div>
+
+            {(() => {
+              const selectedUnit = units.find(u => Number(u.unit_id) === Number(formData.kelas_unit_id));
+              const isPyp = Boolean(selectedUnit?.is_pyp) || (selectedUnit?.unit_name || '').toUpperCase().includes('PYP');
+              if (!isPyp) return null;
+
+              return (
+                <div className="p-3 rounded-lg border flex items-center justify-between transition-all" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                  <div>
+                    <Label htmlFor="is_nursery" className="block font-bold text-xs cursor-pointer select-none" style={{ color: theme.textPrimary }}>
+                      {t('classManagement.nurseryClassLabel') || '🌱 Nursery Class'}
+                    </Label>
+                    <p className="text-[11px] select-none" style={{ color: theme.textSecondary }}>
+                      {t('classManagement.nurseryClassDesc') || 'Check this option if this class is a Nursery level (PYP unit only).'}
+                    </p>
+                  </div>
+                  <input
+                    id="is_nursery"
+                    type="checkbox"
+                    checked={Boolean(formData.is_nursery)}
+                    onChange={(e) => setFormData(prev => ({ ...prev, is_nursery: e.target.checked }))}
+                    className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                  />
+                </div>
+              );
+            })()}
 
             <div>
               <Label htmlFor="kelas_year_id" className="block font-semibold mb-1" style={{ color: theme.textPrimary }}>{t('classManagement.yearLabel') || 'Academic Year *'}</Label>
@@ -1601,6 +2026,222 @@ export default function ClassManagement() {
               style={btnSecondaryStyle}
             >
               Tutup
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─── MODAL 4: MANAGE AREA OF DEVELOPMENT (NURSERY ONLY) ─── */}
+      <Modal
+        isOpen={devAreaModalOpen}
+        onClose={() => setDevAreaModalOpen(false)}
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="border-b pb-3 flex items-start justify-between" style={{ borderColor: theme.border }}>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                  🌱 Nursery
+                </span>
+                <h2 className="text-base font-bold" style={{ color: theme.textPrimary }}>
+                  Setting Area of Development
+                </h2>
+              </div>
+              <p className="text-[11px] mt-1" style={{ color: theme.textSecondary }}>
+                Configure developmental areas and evaluation criteria for <strong>{selectedClassForDevArea?.kelas_nama}</strong>.
+              </p>
+            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
+              #{selectedClassForDevArea?.kelas_id}
+            </span>
+          </div>
+
+          {/* Copy from another class toolbar */}
+          {copyableClasses.length > 0 && (
+            <div
+              className="p-2.5 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 transition-all"
+              style={{ background: theme.subtleBg, borderColor: theme.border }}
+            >
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faCopy} className="text-blue-500 text-xs" />
+                <span className="font-semibold text-xs" style={{ color: theme.textPrimary }}>
+                  Copy configuration from:
+                </span>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <select
+                  value={sourceClassIdForCopy}
+                  onChange={(e) => setSourceClassIdForCopy(e.target.value)}
+                  style={selectStyle}
+                  className="p-1.5 text-xs font-semibold focus:outline-none flex-1 sm:w-64"
+                >
+                  <option value="">-- Choose Class to Copy --</option>
+                  {copyableClasses.map((c) => (
+                    <option key={c.kelas_id} value={c.kelas_id}>
+                      {c.kelas_nama} ({c.year_name || 'No Year'}) - {c.area_count} Area(s)
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleCopyFromClass}
+                  disabled={!sourceClassIdForCopy || copyingDevArea}
+                  className="px-3 py-1.5 text-xs font-bold rounded cursor-pointer whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-40 transition-all"
+                  style={{ background: '#E1F3FE', color: '#1F6C9F', border: '1px solid #BDE3FC' }}
+                >
+                  {copyingDevArea ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} spin className="text-[10px]" />
+                      <span>Copying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faCopy} className="text-[10px]" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {devAreasLoading ? (
+            <div className="py-12 text-center" style={{ color: theme.textSecondary }}>
+              <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-2 text-blue-500" />
+              <p className="font-semibold">Loading Area of Development settings...</p>
+            </div>
+          ) : (
+            <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+              {devAreas.length === 0 ? (
+                <div className="p-8 text-center rounded-xl border border-dashed" style={{ borderColor: theme.border, color: theme.textSecondary }}>
+                  <FontAwesomeIcon icon={faSeedling} className="text-3xl mb-2 opacity-30" />
+                  <p className="font-bold text-sm" style={{ color: theme.textPrimary }}>No Areas Configured</p>
+                  <p className="text-[11px] mt-1">Click the button below to add your first Area of Development.</p>
+                </div>
+              ) : (
+                devAreas.map((area, aIdx) => (
+                  <div
+                    key={aIdx}
+                    className="p-4 rounded-xl border space-y-3 transition-all"
+                    style={{ background: theme.cardBg, borderColor: theme.border }}
+                  >
+                    {/* Level 1: Area of Development Header & Input */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <Input
+                          type="text"
+                          placeholder="Area of Development"
+                          value={area.area_name}
+                          onChange={(e) => updateAreaName(aIdx, e.target.value)}
+                          style={inputStyle}
+                          className="w-full text-xs font-semibold"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeArea(aIdx)}
+                        title="Delete Area of Development"
+                        className="w-8 h-8 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
+                      >
+                        <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                      </button>
+                    </div>
+
+                    {/* Level 2: Indented Criteria Items */}
+                    <div className="pl-6 space-y-3 border-l-2 ml-3" style={{ borderColor: 'rgba(99, 102, 241, 0.2)' }}>
+                      {(area.criteria || []).map((crit, cIdx) => (
+                        <div key={cIdx} className="space-y-1.5 p-2.5 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                          {/* Criteria English Input with trash button */}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="text"
+                              placeholder="Criteria"
+                              value={crit.criteria_text}
+                              onChange={(e) => updateCriterion(aIdx, cIdx, 'criteria_text', e.target.value)}
+                              style={inputStyle}
+                              className="w-full text-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeCriterion(aIdx, cIdx)}
+                              title="Delete Criteria"
+                              className="w-7 h-7 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
+                            >
+                              <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
+                            </button>
+                          </div>
+
+                          {/* translate in Bahasa Input */}
+                          <div>
+                            <Input
+                              type="text"
+                              placeholder="translate in Bahasa"
+                              value={crit.criteria_translation}
+                              onChange={(e) => updateCriterion(aIdx, cIdx, 'criteria_translation', e.target.value)}
+                              style={inputStyle}
+                              className="w-full text-xs"
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Button to add criteria to this area */}
+                      <button
+                        type="button"
+                        onClick={() => addCriterion(aIdx)}
+                        className="px-3 py-1.5 rounded-md border text-[11px] font-bold cursor-pointer transition-all hover:opacity-80 inline-flex items-center gap-1.5"
+                        style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
+                      >
+                        <FontAwesomeIcon icon={faPlus} className="text-[9px]" />
+                        <span>Add Criteria</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* Button to add a new Area of Development */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={addArea}
+                  className="w-full py-2.5 rounded-xl border-2 border-dashed font-bold text-xs cursor-pointer transition-all hover:bg-black/5 dark:hover:bg-white/5 inline-flex items-center justify-center gap-2"
+                  style={{ borderColor: theme.border, color: theme.textPrimary }}
+                >
+                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                  <span>Add Area of Development</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Footer Actions */}
+          <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: theme.border }}>
+            <button
+              type="button"
+              onClick={() => setDevAreaModalOpen(false)}
+              disabled={devAreasSaving}
+              className="px-4 py-2 text-xs font-medium rounded-md cursor-pointer"
+              style={btnSecondaryStyle}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveDevAreas}
+              disabled={devAreasSaving || devAreasLoading}
+              className="px-5 py-2 text-xs font-bold rounded-md cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5 shadow-sm"
+              style={btnPrimaryStyle}
+            >
+              {devAreasSaving ? (
+                <>
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
             </button>
           </div>
         </div>

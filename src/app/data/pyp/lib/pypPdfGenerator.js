@@ -2406,3 +2406,561 @@ export const generatePypClassReportPDF = async ({
     onLoading(false)
   }
 }
+
+// ---------------------------------------------------------------------------
+// NURSERY LEARNING PROGRESSION PDF REPORT GENERATORS
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders Page 1 (Cover & Rubric Legend) for Nursery Learning Progression
+ */
+export const renderNurseryLearningProgressionPage1 = (doc, {
+  studentName = '',
+  className = '',
+  dateRangeText = '',
+  homeroomTeachers = '',
+  logoBase64 = null,
+  ibLogoBase64 = null
+}) => {
+  const pw = doc.internal.pageSize.getWidth()   // 210mm
+  const ph = doc.internal.pageSize.getHeight()  // 297mm
+  const ml = 18
+  const mr = 18
+  const mt = 18
+
+  // 1. Watermark
+  if (logoBase64) {
+    try {
+      doc.saveGraphicsState()
+      doc.setGState(new doc.GState({ opacity: 0.05 }))
+      const wmW = 105
+      const imgProps = doc.getImageProperties(logoBase64)
+      const wmH = (imgProps.height / imgProps.width) * wmW
+      doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH)
+      doc.restoreGraphicsState()
+    } catch (e) {}
+  }
+
+  // 2. Header
+  let y = mt
+  let logoW = 0
+  if (logoBase64) {
+    try {
+      const logoH = 22
+      const imgProps = doc.getImageProperties(logoBase64)
+      logoW = (imgProps.width / imgProps.height) * logoH
+      doc.addImage(logoBase64, 'PNG', ml, y, logoW, logoH)
+    } catch (e) {
+      logoW = 0
+    }
+  }
+
+  const txStart = ml + (logoW > 0 ? logoW + 5 : 0)
+
+  // School Title & Report Name & Date Range
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(15)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Chung Chung Christian School', txStart, y + 6.5)
+
+  doc.setFontSize(12.5)
+  doc.text('Learning Progression', txStart, y + 13)
+
+  if (dateRangeText) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9.5)
+    doc.setTextColor(17, 24, 39)
+    doc.text(`(${dateRangeText})`, txStart, y + 19)
+  }
+
+  // Top Right: IB Primary Years Programme Logo
+  const ibW = 42
+  const ibH = 14
+  const ibX = pw - mr - ibW
+  if (ibLogoBase64) {
+    try {
+      doc.addImage(ibLogoBase64, 'JPEG', ibX, y + 1.5, ibW, ibH)
+    } catch (e) {
+      drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
+    }
+  } else {
+    drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
+  }
+
+  // 3. Student & Class Details
+  y = mt + 36
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Name :', ml, y)
+  doc.text(studentName, ml + 16, y)
+
+  y += 7.5
+  doc.text('Class :', ml, y)
+  doc.text(className, ml + 16, y)
+
+  // 4. Rubric / Progression Legend (matching media_1788253652718.png)
+  y += 18
+  const legendX = ml + 20
+  const boxW = 8.5
+  const boxH = 7.5
+
+  const drawRubricBoxes = (startX, startY, filledCount) => {
+    doc.saveGraphicsState()
+    doc.setDrawColor(75, 85, 99)
+    doc.setLineWidth(0.25)
+    for (let i = 0; i < 3; i++) {
+      if (i < filledCount) {
+        doc.setFillColor(254, 240, 138) // #FEF08A
+      } else {
+        doc.setFillColor(229, 231, 235) // #E5E7EB
+      }
+      doc.rect(startX + (i * boxW), startY, boxW, boxH, 'FD')
+    }
+    doc.restoreGraphicsState()
+  }
+
+  const labelX = legendX + (boxW * 3) + 12
+
+  // Item 1: Not Assessed (0 filled)
+  drawRubricBoxes(legendX, y, 0)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setTextColor(17, 24, 39)
+  doc.text(': Not Assessed', labelX, y + 5)
+
+  // Item 2: Beginning (1 filled)
+  y += 15
+  drawRubricBoxes(legendX, y, 1)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setTextColor(17, 24, 39)
+  doc.text(': Beginning', labelX, y + 4.5)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(9)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Has not yet shown the skill or just starting.', labelX + 3, y + 10)
+
+  // Item 3: In Progress (2 filled)
+  y += 18
+  drawRubricBoxes(legendX, y, 2)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setTextColor(17, 24, 39)
+  doc.text(': In Progress', labelX, y + 4.5)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(9)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Demonstrates the skill with help or inconsistently.', labelX + 3, y + 10)
+
+  // Item 4: Achieved (3 filled)
+  y += 18
+  drawRubricBoxes(legendX, y, 3)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setTextColor(17, 24, 39)
+  doc.text(': Achieved', labelX, y + 4.5)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(9)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Demonstrates the skill independently and consistently.', labelX + 3, y + 10)
+
+  // 5. Homeroom Teacher
+  y += 28
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10.5)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Homeroom Teacher', ml, y)
+
+  y += 6.5
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(17, 24, 39)
+  doc.text(homeroomTeachers || '-', ml, y)
+
+  // 6. Footer
+  renderPypReportFooter(doc)
+}
+
+/**
+ * Renders Table Pages (Page 2+) containing the Developmental Milestone assessment table
+ */
+export const renderNurseryLearningProgressionTablePages = (doc, {
+  studentName = '',
+  className = '',
+  areasWithCriteria = [],
+  studentScores = {},
+  logoBase64 = null
+}) => {
+  const pw = doc.internal.pageSize.getWidth()   // 210mm
+  const ph = doc.internal.pageSize.getHeight()  // 297mm
+  const ml = 18
+  const mr = 18
+  const mt = 18
+  const bottomLimit = ph - 22 // leaving room for footer
+
+  const colWidths = {
+    milestone: 118,
+    term1: 14,
+    term2: 14,
+    term3: 14,
+    term4: 14
+  }
+
+  const drawPageBackgroundAndHeader = (yPos) => {
+    // Watermark
+    if (logoBase64) {
+      try {
+        doc.saveGraphicsState()
+        doc.setGState(new doc.GState({ opacity: 0.05 }))
+        const wmW = 105
+        const imgProps = doc.getImageProperties(logoBase64)
+        const wmH = (imgProps.height / imgProps.width) * wmW
+        doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH)
+        doc.restoreGraphicsState()
+      } catch (e) {}
+    }
+
+    // Student & Class Header
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10.5)
+    doc.setTextColor(17, 24, 39)
+    doc.text('Name :', ml, yPos)
+    doc.text(studentName, ml + 16, yPos)
+
+    doc.text('Class :', ml, yPos + 6.5)
+    doc.text(className, ml + 16, yPos + 6.5)
+
+    return yPos + 14
+  }
+
+  const drawTableHeader = (yPos) => {
+    const h = 8.5
+    doc.saveGraphicsState()
+    doc.setFillColor(243, 244, 246) // #F3F4F6
+    doc.setDrawColor(75, 85, 99)
+    doc.setLineWidth(0.3)
+    doc.rect(ml, yPos, pw - ml - mr, h, 'FD')
+
+    // Column separators
+    let x = ml + colWidths.milestone
+    for (let i = 0; i < 4; i++) {
+      doc.line(x, yPos, x, yPos + h)
+      x += 14
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.5)
+    doc.setTextColor(17, 24, 39)
+    doc.text('Term Developmental Milestone', ml + 4, yPos + 5.5)
+
+    doc.text('Term 1', ml + colWidths.milestone + 7, yPos + 5.5, { align: 'center' })
+    doc.text('Term 2', ml + colWidths.milestone + 14 + 7, yPos + 5.5, { align: 'center' })
+    doc.text('Term 3', ml + colWidths.milestone + 28 + 7, yPos + 5.5, { align: 'center' })
+    doc.text('Term 4', ml + colWidths.milestone + 42 + 7, yPos + 5.5, { align: 'center' })
+    doc.restoreGraphicsState()
+
+    return yPos + h
+  }
+
+  const drawTermBoxesInCell = (cellX, cellY, cellW, cellH, score) => {
+    const boxW = 3.4
+    const boxH = 3.4
+    const totalW = boxW * 3
+    const startX = cellX + (cellW - totalW) / 2
+    const startY = cellY + (cellH - boxH) / 2
+
+    doc.saveGraphicsState()
+    doc.setDrawColor(75, 85, 99)
+    doc.setLineWidth(0.2)
+    for (let i = 0; i < 3; i++) {
+      if (i < score) {
+        doc.setFillColor(254, 240, 138) // yellow #FEF08A
+      } else {
+        doc.setFillColor(229, 231, 235) // grey #E5E7EB
+      }
+      doc.rect(startX + (i * boxW), startY, boxW, boxH, 'FD')
+    }
+    doc.restoreGraphicsState()
+  }
+
+  // Page 2 starts
+  let currentY = drawPageBackgroundAndHeader(mt)
+  currentY = drawTableHeader(currentY)
+
+  for (let aIdx = 0; aIdx < areasWithCriteria.length; aIdx++) {
+    const area = areasWithCriteria[aIdx]
+    const areaTitle = `${aIdx + 1}. ${area.area_name}`
+    const areaRowH = 7.5
+
+    // Check if area row exceeds page
+    if (currentY + areaRowH > bottomLimit) {
+      renderPypReportFooter(doc)
+      doc.addPage()
+      currentY = drawPageBackgroundAndHeader(mt)
+      currentY = drawTableHeader(currentY)
+    }
+
+    // Draw Area Row Header
+    doc.saveGraphicsState()
+    doc.setFillColor(250, 249, 245) // subtle warm tint #FAF9F5
+    doc.setDrawColor(75, 85, 99)
+    doc.setLineWidth(0.25)
+    doc.rect(ml, currentY, pw - ml - mr, areaRowH, 'FD')
+
+    // Column separators across the area row
+    let xSep = ml + colWidths.milestone
+    for (let i = 0; i < 4; i++) {
+      doc.line(xSep, currentY, xSep, currentY + areaRowH)
+      xSep += 14
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(17, 24, 39)
+    doc.text(areaTitle, ml + 4, currentY + 5)
+    doc.restoreGraphicsState()
+
+    currentY += areaRowH
+
+    // Criteria Rows under this area
+    const criteriaList = area.criteria || []
+    for (let cIdx = 0; cIdx < criteriaList.length; cIdx++) {
+      const crit = criteriaList[cIdx]
+      const letter = String.fromCharCode(97 + cIdx) // 'a', 'b', ...
+      const bullet = `${letter}.`
+
+      // Split lines for English text and translation
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      const engLines = doc.splitTextToSize(crit.criteria_text || '', 108)
+
+      let transLines = []
+      if (crit.criteria_translation) {
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(7.5)
+        transLines = doc.splitTextToSize(crit.criteria_translation, 108)
+      }
+
+      const engLineHeight = 3.8
+      const transLineHeight = 3.4
+      const textBlockHeight = (engLines.length * engLineHeight) + (transLines.length > 0 ? (transLines.length * transLineHeight) + 1.5 : 0)
+      const rowH = Math.max(8.5, textBlockHeight + 4)
+
+      // Pagination check
+      if (currentY + rowH > bottomLimit) {
+        renderPypReportFooter(doc)
+        doc.addPage()
+        currentY = drawPageBackgroundAndHeader(mt)
+        currentY = drawTableHeader(currentY)
+
+        // Re-draw Area sub-header to indicate continuation
+        doc.saveGraphicsState()
+        doc.setFillColor(250, 249, 245)
+        doc.setDrawColor(75, 85, 99)
+        doc.setLineWidth(0.25)
+        doc.rect(ml, currentY, pw - ml - mr, areaRowH, 'FD')
+        let xSep2 = ml + colWidths.milestone
+        for (let i = 0; i < 4; i++) {
+          doc.line(xSep2, currentY, xSep2, currentY + areaRowH)
+          xSep2 += 14
+        }
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(17, 24, 39)
+        doc.text(`${areaTitle} (cont.)`, ml + 4, currentY + 5)
+        doc.restoreGraphicsState()
+        currentY += areaRowH
+      }
+
+      // Draw Row Border
+      doc.saveGraphicsState()
+      doc.setDrawColor(156, 163, 175) // #9CA3AF
+      doc.setLineWidth(0.2)
+      doc.rect(ml, currentY, pw - ml - mr, rowH)
+
+      // Column vertical borders
+      let xCol = ml + colWidths.milestone
+      for (let i = 0; i < 4; i++) {
+        doc.line(xCol, currentY, xCol, currentY + rowH)
+        xCol += 14
+      }
+
+      // Render Text in Col 1
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8.5)
+      doc.setTextColor(75, 85, 99)
+      doc.text(bullet, ml + 3, currentY + 4.5)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(17, 24, 39)
+      let textY = currentY + 4.5
+      engLines.forEach((line) => {
+        doc.text(line, ml + 7.5, textY)
+        textY += engLineHeight
+      })
+
+      if (transLines.length > 0) {
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(7.5)
+        doc.setTextColor(107, 114, 128)
+        textY += 0.5
+        transLines.forEach((line) => {
+          doc.text(line, ml + 7.5, textY)
+          textY += transLineHeight
+        })
+      }
+
+      // Render 3-box indicator in Terms 1-4
+      let termCellX = ml + colWidths.milestone
+      for (let tNum = 1; tNum <= 4; tNum++) {
+        const score = studentScores[`${crit.criteria_id}_${tNum}`] || 0
+        drawTermBoxesInCell(termCellX, currentY, 14, rowH, score)
+        termCellX += 14
+      }
+
+      doc.restoreGraphicsState()
+      currentY += rowH
+    }
+  }
+
+  // Footer on the last table page
+  renderPypReportFooter(doc)
+}
+
+/**
+ * Master generator for Nursery Learning Progression PDF Report
+ */
+export const generateNurseryLearningProgressionPDF = async ({
+  classId,
+  className,
+  studentsList = [],
+  startDate = '',
+  endDate = '',
+  homeroomTeachers = '',
+  onProgress = () => {},
+  onError = (e) => { alert(e.message || e) }
+}) => {
+  try {
+    if (!classId || !studentsList || studentsList.length === 0) {
+      throw new Error('No students selected for printing')
+    }
+
+    // 1. Fetch Area of Development & Criteria
+    const { data: areasData, error: aErr } = await supabase
+      .from('class_development_areas')
+      .select(`
+        area_id,
+        kelas_id,
+        area_name,
+        sort_order,
+        class_development_criteria (
+          criteria_id,
+          area_id,
+          criteria_text,
+          criteria_translation,
+          sort_order
+        )
+      `)
+      .eq('kelas_id', Number(classId))
+      .order('sort_order', { ascending: true })
+
+    if (aErr) throw aErr
+
+    const areasWithCriteria = (areasData || []).map(a => ({
+      ...a,
+      criteria: (a.class_development_criteria || []).sort((x, y) => (x.sort_order || 0) - (y.sort_order || 0))
+    }))
+
+    // 2. Fetch all scores for this class
+    const { data: scoresData, error: sErr } = await supabase
+      .from('nursery_student_progress')
+      .select('student_user_id, criteria_id, term, score')
+      .eq('kelas_id', Number(classId))
+
+    if (sErr) throw sErr
+
+    // Map scores by student: studentScoresMap[studentId][`${criteriaId}_${term}`] = score
+    const studentScoresMap = {}
+    ;(scoresData || []).forEach(sc => {
+      if (!studentScoresMap[sc.student_user_id]) {
+        studentScoresMap[sc.student_user_id] = {}
+      }
+      studentScoresMap[sc.student_user_id][`${sc.criteria_id}_${sc.term}`] = sc.score
+    })
+
+    // 3. Load logos
+    const [logoBase64, ibLogoBase64] = await Promise.all([
+      loadImgBase64('/images/login-logo.png'),
+      loadImgBase64('/images/ib-pyp-logo.jpg')
+    ])
+
+    // Format date range text: "01 September 2026 - 01 September 2026"
+    const formatDateLong = (dateStr) => {
+      if (!dateStr) return ''
+      const parts = dateStr.split('-')
+      if (parts.length === 3) {
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+        const day = parts[2]
+        const mIdx = parseInt(parts[1], 10) - 1
+        const year = parts[0]
+        return `${day} ${months[mIdx] || ''} ${year}`
+      }
+      return dateStr
+    }
+
+    const sFmt = formatDateLong(startDate)
+    const eFmt = formatDateLong(endDate)
+    const dateRangeText = sFmt && eFmt ? `${sFmt} - ${eFmt}` : (sFmt || eFmt || '')
+
+    // 4. Build jsPDF doc
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+    for (let sIdx = 0; sIdx < studentsList.length; sIdx++) {
+      const st = studentsList[sIdx]
+      const fullName = `${st.user_nama_depan || ''} ${st.user_nama_belakang || ''}`.trim() || `Student ${sIdx + 1}`
+
+      onProgress(sIdx + 1, studentsList.length, `Generating ${fullName} (${sIdx + 1}/${studentsList.length})...`)
+
+      if (sIdx > 0) {
+        doc.addPage()
+      }
+
+      // Page 1: Cover / Rubric Legend
+      renderNurseryLearningProgressionPage1(doc, {
+        studentName: fullName,
+        className: className,
+        dateRangeText: dateRangeText,
+        homeroomTeachers: homeroomTeachers,
+        logoBase64,
+        ibLogoBase64
+      })
+
+      // Page 2+: Milestone Table
+      doc.addPage()
+      renderNurseryLearningProgressionTablePages(doc, {
+        studentName: fullName,
+        className: className,
+        areasWithCriteria,
+        studentScores: studentScoresMap[st.user_id] || {},
+        logoBase64
+      })
+    }
+
+    // 5. Trigger download
+    const safeClassName = (className || 'Nursery').replace(/[^a-zA-Z0-9\s\-]/g, '').trim().replace(/\s+/g, '_')
+    let filename = `Learning_Progression_${safeClassName}.pdf`
+    if (studentsList.length === 1) {
+      const safeName = `${studentsList[0].user_nama_depan || ''}_${studentsList[0].user_nama_belakang || ''}`.trim().replace(/[^a-zA-Z0-9\s\-]/g, '').replace(/\s+/g, '_')
+      filename = `Learning_Progression_${safeName}_${safeClassName}.pdf`
+    } else {
+      filename = `Learning_Progression_Batch_${safeClassName}.pdf`
+    }
+
+    doc.save(filename)
+  } catch (err) {
+    console.error('Error generating nursery learning progression PDF:', err)
+    onError(err)
+  }
+}
+

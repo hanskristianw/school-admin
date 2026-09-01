@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 286,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 286,
+      "community_name": "browser-image-compression",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "class-variance-authority"
     },
     {
@@ -7721,39 +7721,6 @@
       "community": 0,
       "community_name": "Admission Management",
       "norm_label": "generatepypclassreportpdf()"
-    },
-    {
-      "label": "renderNurseryLearningProgressionPage1()",
-      "file_type": "code",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2417",
-      "_origin": "ast",
-      "id": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressionpage1",
-      "community": 0,
-      "community_name": "Admission Management",
-      "norm_label": "rendernurserylearningprogressionpage1()"
-    },
-    {
-      "label": "renderNurseryLearningProgressionTablePages()",
-      "file_type": "code",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2588",
-      "_origin": "ast",
-      "id": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressiontablepages",
-      "community": 0,
-      "community_name": "Admission Management",
-      "norm_label": "rendernurserylearningprogressiontablepages()"
-    },
-    {
-      "label": "generateNurseryLearningProgressionPDF()",
-      "file_type": "code",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2834",
-      "_origin": "ast",
-      "id": "src_app_data_pyp_lib_pyppdfgenerator_generatenurserylearningprogressionpdf",
-      "community": 0,
-      "community_name": "Admission Management",
-      "norm_label": "generatenurserylearningprogressionpdf()"
     },
     {
       "label": "page.jsx",
@@ -19125,8 +19092,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "main_documentation_2026_07_16_timetable_refactor_weekly_plan_dates_weekly_overview",
-      "community": 255,
-      "community_name": "\ud83d\udccc Changelog",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "2026-07-16 \u2014 timetable refactor + weekly plan dates + weekly overview"
     },
     {
@@ -19136,8 +19103,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "main_documentation_timetable_refactor_data_timetable",
-      "community": 255,
-      "community_name": "\ud83d\udccc Changelog",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "timetable refactor (`/data/timetable`)"
     },
     {
@@ -19147,8 +19114,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "main_documentation_timetable_exceptions_timetable_exception_new_table",
-      "community": 255,
-      "community_name": "\ud83d\udccc Changelog",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "timetable exceptions (`timetable_exception`) \u2014 new table"
     },
     {
@@ -19158,8 +19125,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "main_documentation_weekly_plan_dates_topic_weekly_plan_week_date",
-      "community": 255,
-      "community_name": "\ud83d\udccc Changelog",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "weekly plan dates \u2014 `topic_weekly_plan.week_date`"
     },
     {
@@ -19169,8 +19136,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_data_weekly_overview_new_page",
-      "community": 255,
-      "community_name": "\ud83d\udccc Changelog",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "weekly overview (`/data/weekly-overview`) \u2014 new page"
     },
     {
@@ -19180,8 +19147,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "main_documentation_weekly_overview_draft_table_new",
-      "community": 255,
-      "community_name": "\ud83d\udccc Changelog",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "`weekly_overview_draft` table \u2014 new"
     },
     {
@@ -19191,8 +19158,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "main_documentation_topic_weekly_plan_complete_schema_reference",
-      "community": 255,
-      "community_name": "\ud83d\udccc Changelog",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "`topic_weekly_plan` \u2014 complete schema reference"
     },
     {
@@ -19202,8 +19169,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "main_documentation_full_data_flow_timetable_weekly_overview",
-      "community": 255,
-      "community_name": "\ud83d\udccc Changelog",
+      "community": 127,
+      "community_name": "bcryptjs",
       "norm_label": "full data flow: timetable \u2192 weekly overview"
     },
     {
@@ -19433,8 +19400,8 @@
       "source_location": "L618",
       "_origin": "ast",
       "id": "main_documentation_3_assessment_system",
-      "community": 277,
-      "community_name": "6.1 Tables",
+      "community": 257,
+      "community_name": "\ud83c\udfaf **System Modules & Features**",
       "norm_label": "**3. assessment system**"
     },
     {
@@ -19444,8 +19411,8 @@
       "source_location": "L619",
       "_origin": "ast",
       "id": "main_documentation_teacher_workflow",
-      "community": 277,
-      "community_name": "6.1 Tables",
+      "community": 257,
+      "community_name": "\ud83c\udfaf **System Modules & Features**",
       "norm_label": "**teacher workflow**:"
     },
     {
@@ -19455,8 +19422,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "main_documentation_admin_workflow",
-      "community": 277,
-      "community_name": "6.1 Tables",
+      "community": 257,
+      "community_name": "\ud83c\udfaf **System Modules & Features**",
       "norm_label": "**admin workflow**:"
     },
     {
@@ -19631,8 +19598,8 @@
       "source_location": "L881",
       "_origin": "ast",
       "id": "main_documentation_setup_deployment",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "\ud83d\ude80 **setup & deployment**"
     },
     {
@@ -19642,8 +19609,8 @@
       "source_location": "L883",
       "_origin": "ast",
       "id": "main_documentation_database_migration_files_execute_in_order",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "**database migration files (execute in order):**"
     },
     {
@@ -19653,8 +19620,8 @@
       "source_location": "L911",
       "_origin": "ast",
       "id": "main_documentation_development",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "**development:**"
     },
     {
@@ -19664,8 +19631,8 @@
       "source_location": "L918",
       "_origin": "ast",
       "id": "main_documentation_key_environment",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "**key environment:**"
     },
     {
@@ -19675,8 +19642,8 @@
       "source_location": "L928",
       "_origin": "ast",
       "id": "main_documentation_additional_files",
-      "community": 265,
-      "community_name": "School Admin System - Complete Documentation",
+      "community": 277,
+      "community_name": "6.1 Tables",
       "norm_label": "**additional files:**"
     },
     {
@@ -19939,8 +19906,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "main_documentation_key_components",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "**key components**"
     },
     {
@@ -19950,8 +19917,8 @@
       "source_location": "L1121",
       "_origin": "ast",
       "id": "main_documentation_1_myp_year_level_selection",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "**1. myp year level selection**"
     },
     {
@@ -19961,8 +19928,8 @@
       "source_location": "L1128",
       "_origin": "ast",
       "id": "main_documentation_2_criterion_grades_a_b_c_d",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "**2. criterion grades (a, b, c, d)**"
     },
     {
@@ -19972,8 +19939,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "main_documentation_3_strand_grades",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "**3. strand grades**"
     },
     {
@@ -19983,8 +19950,8 @@
       "source_location": "L1147",
       "_origin": "ast",
       "id": "main_documentation_4_final_grade_1_7",
-      "community": 127,
-      "community_name": "bcryptjs",
+      "community": 269,
+      "community_name": "\ud83c\udf93 **IB MYP Assessment Grading System**",
       "norm_label": "**4. final grade (1-7)**"
     },
     {
@@ -20060,8 +20027,8 @@
       "source_location": "L1221",
       "_origin": "ast",
       "id": "main_documentation_project_structure",
-      "community": 286,
-      "community_name": "browser-image-compression",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "\ud83d\udcc1 **project structure**"
     },
     {
@@ -20071,8 +20038,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "main_documentation_key_directories",
-      "community": 286,
-      "community_name": "browser-image-compression",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**key directories:**"
     },
     {
@@ -20082,8 +20049,8 @@
       "source_location": "L1229",
       "_origin": "ast",
       "id": "main_documentation_important_files",
-      "community": 286,
-      "community_name": "browser-image-compression",
+      "community": 265,
+      "community_name": "School Admin System - Complete Documentation",
       "norm_label": "**important files:**"
     },
     {
@@ -26927,46 +26894,10 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2926",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_generatenurserylearningprogressionpdf",
-      "target": "package_dependencies_jspdf"
-    },
-    {
-      "relation": "references",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
       "source_location": "L2267",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_pyp_lib_pyppdfgenerator_generatepypclassreportpdf",
-      "target": "package_dependencies_jspdf"
-    },
-    {
-      "relation": "references",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2434",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressionpage1",
-      "target": "package_dependencies_jspdf"
-    },
-    {
-      "relation": "references",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2614",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressiontablepages",
       "target": "package_dependencies_jspdf"
     },
     {
@@ -31760,17 +31691,6 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2834",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_generatenurserylearningprogressionpdf",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
       "source_location": "L1728",
       "weight": 1.0,
       "_origin": "ast",
@@ -31787,28 +31707,6 @@
       "_origin": "ast",
       "source": "src_app_data_pyp_lib_pyppdfgenerator",
       "target": "src_app_data_pyp_lib_pyppdfgenerator_loadimgbase64",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2417",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressionpage1",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2588",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressiontablepages",
       "confidence_score": 1.0
     },
     {
@@ -31927,18 +31825,6 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2894",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_generatenurserylearningprogressionpdf",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_loadimgbase64",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
       "source_location": "L2000",
       "weight": 1.0,
       "_origin": "ast",
@@ -31956,18 +31842,6 @@
       "_origin": "ast",
       "source": "src_app_data_pyp_lib_pyppdfgenerator_renderpypreportpage1",
       "target": "src_app_data_pyp_lib_pyppdfgenerator_loadimgbase64",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2484",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressionpage1",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_drawibpyplogo",
       "confidence_score": 1.0
     },
     {
@@ -32003,30 +31877,6 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_pyp_lib_pyppdfgenerator_renderpypreportpage1",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_renderpypreportfooter",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2582",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressionpage1",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_renderpypreportfooter",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2698",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressiontablepages",
       "target": "src_app_data_pyp_lib_pyppdfgenerator_renderpypreportfooter",
       "confidence_score": 1.0
     },
@@ -32228,59 +32078,11 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/pyp/page.jsx",
-      "source_location": "L455",
+      "source_location": "L448",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_pyp_page_pyppage",
       "target": "src_app_data_pyp_lib_pyppdfgenerator_generatepypclassreportpdf"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2930",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_generatenurserylearningprogressionpdf",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressionpage1",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/lib/pypPdfGenerator.js",
-      "source_location": "L2941",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_lib_pyppdfgenerator_generatenurserylearningprogressionpdf",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_rendernurserylearningprogressiontablepages",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/data/pyp/page.jsx",
-      "source_location": "L52",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_page",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_generatenurserylearningprogressionpdf",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/app/data/pyp/page.jsx",
-      "source_location": "L934",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_data_pyp_page_pyppage",
-      "target": "src_app_data_pyp_lib_pyppdfgenerator_generatenurserylearningprogressionpdf"
     },
     {
       "relation": "contains",
@@ -32376,7 +32178,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/pyp/page.jsx",
-      "source_location": "L2469",
+      "source_location": "L2365",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_pyp_page_pyppage",
@@ -32388,7 +32190,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/pyp/page.jsx",
-      "source_location": "L6945",
+      "source_location": "L6841",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_pyp_page_pyppage",
