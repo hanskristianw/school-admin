@@ -360,6 +360,7 @@ export default function PypPage() {
   const [nurserySelectedStudentId, setNurserySelectedStudentId] = useState('')
   const [nurseryMilestoneAreas, setNurseryMilestoneAreas] = useState([])
   const [nurseryStudentScores, setNurseryStudentScores] = useState({}) // `${criteria_id}_${term}` -> score (0-3)
+  const [nurseryStudentSuggestion, setNurseryStudentSuggestion] = useState('')
   const [nurseryScoresLoading, setNurseryScoresLoading] = useState(false)
   const [nurseryScoresSaving, setNurseryScoresSaving] = useState(false)
   const [nurseryHasUnsavedChanges, setNurseryHasUnsavedChanges] = useState(false)
@@ -726,9 +727,28 @@ export default function PypPage() {
       })
 
       setNurseryStudentScores(scoresMap)
+
+      // Fetch suggestion to move forward for this student
+      try {
+        const { data: sgData, error: sgErr } = await supabase
+          .from('nursery_student_suggestion')
+          .select('suggestion_text')
+          .eq('kelas_id', Number(classId))
+          .eq('student_user_id', Number(studentId))
+          .maybeSingle()
+
+        if (!sgErr && sgData) {
+          setNurseryStudentSuggestion(sgData.suggestion_text || '')
+        } else {
+          setNurseryStudentSuggestion('')
+        }
+      } catch (e) {
+        setNurseryStudentSuggestion('')
+      }
+
       setNurseryHasUnsavedChanges(false)
     } catch (err) {
-      console.error('Error fetching student scores:', err)
+      console.error('Error fetching student scores and suggestions:', err)
     }
   }
 
@@ -848,12 +868,32 @@ export default function PypPage() {
         if (upsertErr) throw new Error(upsertErr.message)
       }
 
+      // Save suggestion to move forward
+      try {
+        const { error: sgSaveErr } = await supabase
+          .from('nursery_student_suggestion')
+          .upsert([
+            {
+              kelas_id: currentSelectedClassObj.kelas_id,
+              student_user_id: Number(nurserySelectedStudentId),
+              suggestion_text: nurseryStudentSuggestion || '',
+              updated_at: new Date().toISOString()
+            }
+          ], { onConflict: 'kelas_id, student_user_id' })
+
+        if (sgSaveErr) {
+          console.warn('Error saving suggestion:', sgSaveErr)
+        }
+      } catch (sgEx) {
+        console.warn('Error saving suggestion to move forward:', sgEx)
+      }
+
       setNurseryHasUnsavedChanges(false)
       setNotif({
         isOpen: true,
         type: 'success',
-        title: 'Scores Saved',
-        message: 'Learning progression scores saved successfully!'
+        title: 'Saved Successfully',
+        message: 'Learning progression scores and suggestions saved successfully!'
       })
     } catch (err) {
       console.error('Error saving nursery scores:', err)
@@ -7496,6 +7536,48 @@ export default function PypPage() {
                 </table>
               )}
             </div>
+
+            {/* Suggestion to Move Forward Section */}
+            {nurserySelectedStudentId && nurseryMilestoneAreas.length > 0 && !nurseryScoresLoading && (
+              <div
+                style={{
+                  background: isDark ? 'rgba(39, 39, 42, 0.4)' : '#FFFFFF',
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: '8px',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>Suggestion to move forward:</span>
+                  </label>
+                  <span style={{ fontSize: '11px', color: textSecondary }}>
+                    Will be printed on the final page of the report card.
+                  </span>
+                </div>
+                <textarea
+                  rows={3}
+                  value={nurseryStudentSuggestion}
+                  onChange={(e) => {
+                    setNurseryStudentSuggestion(e.target.value)
+                    setNurseryHasUnsavedChanges(true)
+                  }}
+                  placeholder="Write developmental suggestions or recommendations for this student..."
+                  style={{
+                    ...inputStyle,
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: '12.5px',
+                    lineHeight: 1.5,
+                    borderRadius: '6px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            )}
 
           </div>
         </Modal>

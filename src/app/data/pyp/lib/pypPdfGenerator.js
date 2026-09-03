@@ -2829,6 +2829,124 @@ export const renderNurseryLearningProgressionTablePages = (doc, {
 }
 
 /**
+ * Renders the Final Page (Suggestion to Move Forward) for Nursery Learning Progression
+ */
+export const renderNurseryLearningProgressionSuggestionPage = (doc, {
+  studentName = '',
+  className = '',
+  dateRangeText = '',
+  suggestionText = '',
+  logoBase64 = null,
+  ibLogoBase64 = null
+}) => {
+  const pw = doc.internal.pageSize.getWidth()   // 210mm
+  const ph = doc.internal.pageSize.getHeight()  // 297mm
+  const ml = 18
+  const mr = 18
+  const mt = 18
+  const cw = pw - ml - mr // 174mm
+
+  // 1. Watermark
+  if (logoBase64) {
+    try {
+      doc.saveGraphicsState()
+      doc.setGState(new doc.GState({ opacity: 0.05 }))
+      const wmW = 105
+      const imgProps = doc.getImageProperties(logoBase64)
+      const wmH = (imgProps.height / imgProps.width) * wmW
+      doc.addImage(logoBase64, 'PNG', (pw - wmW) / 2, (ph - wmH) / 2, wmW, wmH)
+      doc.restoreGraphicsState()
+    } catch (e) {}
+  }
+
+  // 2. Top Header (matching Page 1)
+  let y = mt
+  let logoW = 0
+  if (logoBase64) {
+    try {
+      const logoH = 22
+      const imgProps = doc.getImageProperties(logoBase64)
+      logoW = (imgProps.width / imgProps.height) * logoH
+      doc.addImage(logoBase64, 'PNG', ml, y, logoW, logoH)
+    } catch (e) {
+      logoW = 0
+    }
+  }
+
+  const txStart = ml + (logoW > 0 ? logoW + 5 : 0)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(15)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Chung Chung Christian School', txStart, y + 6.5)
+
+  doc.setFontSize(12.5)
+  doc.text('Learning Progression', txStart, y + 13)
+
+  if (dateRangeText) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9.5)
+    doc.setTextColor(17, 24, 39)
+    doc.text(`(${dateRangeText})`, txStart, y + 19)
+  }
+
+  // Top Right: IB Primary Years Programme Logo
+  const ibW = 42
+  const ibH = 14
+  const ibX = pw - mr - ibW
+  if (ibLogoBase64) {
+    try {
+      doc.addImage(ibLogoBase64, 'JPEG', ibX, y + 1.5, ibW, ibH)
+    } catch (e) {
+      drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
+    }
+  } else {
+    drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
+  }
+
+  // 3. Student & Class Details
+  y = mt + 36
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Name :', ml, y)
+  doc.text(studentName, ml + 16, y)
+
+  y += 7.5
+  doc.text('Class :', ml, y)
+  doc.text(className, ml + 16, y)
+
+  // 4. Section: Suggestion to move forward (per user screenshot)
+  y += 18
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11.5)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Suggestion to move forward', ml, y)
+
+  y += 8
+  const trimmed = (suggestionText || '').trim()
+  if (trimmed) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    doc.setTextColor(31, 41, 55) // #1F2937
+    const lines = doc.splitTextToSize(trimmed, cw)
+    const lineHeight = 5.2
+    lines.forEach((line) => {
+      doc.text(line, ml, y)
+      y += lineHeight
+    })
+  } else {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10)
+    doc.setTextColor(107, 114, 128)
+    doc.text('-', ml, y)
+  }
+
+  // 5. Footer
+  renderPypReportFooter(doc)
+}
+
+/**
  * Master generator for Nursery Learning Progression PDF Report
  */
 export const generateNurseryLearningProgressionPDF = async ({
@@ -2889,7 +3007,18 @@ export const generateNurseryLearningProgressionPDF = async ({
       studentScoresMap[sc.student_user_id][`${sc.criteria_id}_${sc.term}`] = sc.score
     })
 
-    // 3. Load logos
+    // 3. Fetch student suggestions for this class
+    const { data: suggestionsData } = await supabase
+      .from('nursery_student_suggestion')
+      .select('student_user_id, suggestion_text')
+      .eq('kelas_id', Number(classId))
+
+    const suggestionsMap = {}
+    ;(suggestionsData || []).forEach(sg => {
+      suggestionsMap[sg.student_user_id] = sg.suggestion_text || ''
+    })
+
+    // 4. Load logos
     const [logoBase64, ibLogoBase64] = await Promise.all([
       loadImgBase64('/images/login-logo.png'),
       loadImgBase64('/images/ib-pyp-logo.jpg')
@@ -2913,7 +3042,7 @@ export const generateNurseryLearningProgressionPDF = async ({
     const eFmt = formatDateLong(endDate)
     const dateRangeText = sFmt && eFmt ? `${sFmt} - ${eFmt}` : (sFmt || eFmt || '')
 
-    // 4. Build jsPDF doc
+    // 5. Build jsPDF doc
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
     for (let sIdx = 0; sIdx < studentsList.length; sIdx++) {
@@ -2945,9 +3074,20 @@ export const generateNurseryLearningProgressionPDF = async ({
         studentScores: studentScoresMap[st.user_id] || {},
         logoBase64
       })
+
+      // Final Page: Suggestion to move forward (per media_1788325586302.png)
+      doc.addPage()
+      renderNurseryLearningProgressionSuggestionPage(doc, {
+        studentName: fullName,
+        className: className,
+        dateRangeText: dateRangeText,
+        suggestionText: suggestionsMap[st.user_id] || '',
+        logoBase64,
+        ibLogoBase64
+      })
     }
 
-    // 5. Trigger download
+    // 6. Trigger download
     const safeClassName = (className || 'Nursery').replace(/[^a-zA-Z0-9\s\-]/g, '').trim().replace(/\s+/g, '_')
     let filename = `Learning_Progression_${safeClassName}.pdf`
     if (studentsList.length === 1) {

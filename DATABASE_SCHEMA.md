@@ -273,6 +273,20 @@ Stores developmental milestone evaluation scores (0 to 3 yellow boxes) for Nurse
 | `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
 | `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
 
+#### `nursery_student_suggestion`
+Stores holistic "Suggestion to move forward" evaluation notes per student per Nursery class, printed on the final page of the Nursery Learning Progression report card.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `suggestion_id` | `SERIAL` | Primary Key |
+| `kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` ON DELETE CASCADE |
+| `student_user_id` | `INTEGER` | FK to `users(user_id)` ON DELETE CASCADE |
+| `suggestion_text` | `TEXT` | Suggestion / developmental recommendation text |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `(kelas_id, student_user_id)` | `UNIQUE` | Unique constraint per student per class |
+
+
 #### `topic`
 Stores IB MYP Unit Planners / Topics created via `/data/topic-new`.
 

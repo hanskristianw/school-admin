@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1788325621.228107,
-    "ast_hash": "b6d74f3af25c96f92476ed4b7ad972d3",
+    "mtime": 1788249697.9877114,
+    "ast_hash": "db1f675fa0e60b44001b740e91c1dec6",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -1840,8 +1840,8 @@
     "semantic_hash": ""
   },
   "src/app/data/pyp/page.jsx": {
-    "mtime": 1788325681.207085,
-    "ast_hash": "b19e745767acd4fd63de382b6ce70e88",
+    "mtime": 1788254695.8422318,
+    "ast_hash": "4ed37a94d03b020c4cfa5e50b8fa0e8c",
     "semantic_hash": ""
   },
   "src/app/data/topic-pyp/page.jsx": {
@@ -1890,8 +1890,8 @@
     "semantic_hash": ""
   },
   "src/app/data/pyp/lib/pypPdfGenerator.js": {
-    "mtime": 1788325639.6377196,
-    "ast_hash": "a1a6fe221d48aced4dfca70c6af07827",
+    "mtime": 1788254621.8502314,
+    "ast_hash": "392f1186971ed10fa994c149f9b66192",
     "semantic_hash": ""
   },
   "public/images/pyp-descriptor-icon.png": {
@@ -2067,11 +2067,6 @@
   "migrations/add-nursery-student-progress.sql": {
     "mtime": 1788249310.1597853,
     "ast_hash": "eecf3a368b8914c46ee148e54da8204d",
-    "semantic_hash": ""
-  },
-  "migrations/add-nursery-student-suggestion.sql": {
-    "mtime": 1788325614.4428978,
-    "ast_hash": "75d55bfef68ba794ca8388d830a50998",
     "semantic_hash": ""
   }
 }
