@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "docx"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "docx"
     },
     {
@@ -30969,7 +30969,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/attendance-settings/page.jsx",
-      "source_location": "L937",
+      "source_location": "L979",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_attendance_settings_page_attendancesettingspage",

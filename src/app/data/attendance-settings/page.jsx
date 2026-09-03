@@ -1,8 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
+import Modal from '@/components/ui/modal'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faClock,
+  faCalendarCheck,
+  faCalendarAlt,
+  faCalendarDay,
+  faStar,
+  faUserCheck,
+  faCog,
+  faEnvelope,
+  faPlus,
+  faEdit,
+  faTrash,
+  faCheck,
+  faSave,
+  faSpinner,
+  faInfoCircle,
+  faPaperPlane,
+  faExclamationTriangle,
+  faSearch,
+  faSlidersH,
+  faSyncAlt,
+  faCheckCircle,
+  faTimes,
+  faShieldAlt,
+  faFilter,
+  faUserTie,
+  faUsers,
+  faArrowRight
+} from '@fortawesome/free-solid-svg-icons'
 
 const DAY_LABELS = [
   { num: 1, short: 'Sen', full: 'Senin' },
@@ -15,10 +46,10 @@ const DAY_LABELS = [
 ]
 
 const NOTIF_TYPES = {
-  late:        { label: '🕐 Terlambat',       bg: '#fef3c7', color: '#92400e' },
-  leave_early: { label: '🚪 Pulang Awal',      bg: '#fee2e2', color: '#991b1b' },
-  no_checkin:  { label: '❌ Tidak Check-In',   bg: '#ede9fe', color: '#5b21b6' },
-  no_checkout: { label: '⚠️ Tidak Check-Out',  bg: '#ffedd5', color: '#9a3412' },
+  late:        { label: 'Terlambat',       bg: '#FBF3DB', color: '#956400', border: '#FDE68A' },
+  leave_early: { label: 'Pulang Awal',     bg: '#FDEBEC', color: '#9F2F2D', border: '#FECACA' },
+  no_checkin:  { label: 'Tidak Check-In',  bg: '#F3E8FF', color: '#6B21A8', border: '#E9D5FF' },
+  no_checkout: { label: 'Tidak Check-Out', bg: '#FEE2E2', color: '#991B1B', border: '#FECACA' },
 }
 
 function formatDateRange(start, end) {
@@ -42,6 +73,16 @@ function diffDays(start, end) {
 
 export default function AttendanceSettingsPage() {
   const { theme } = useTheme()
+  const isDark = theme?.mode === 'dark'
+
+  // Minimalist-UI Theme Tokens (Matching /data/pyp)
+  const pageBg        = isDark ? '#09090B' : '#FAFAF9'
+  const cardBg        = isDark ? '#18181B' : '#FFFFFF'
+  const subtleBg      = isDark ? '#27272A' : '#F7F6F3'
+  const borderColor   = isDark ? '#27272A' : '#EAEAEA'
+  const textPrimary   = isDark ? '#F4F4F5' : '#111111'
+  const textSecondary = isDark ? '#A1A1AA' : '#787774'
+
   const [tab, setTab] = useState('workdays')
 
   // ── Tab 1: Work Days ───────────────────────────────────────────────────────
@@ -73,7 +114,7 @@ export default function AttendanceSettingsPage() {
   const [uaMsg, setUaMsg]                   = useState('')
   const [savingUa, setSavingUa]             = useState(null) // role_id being saved
 
-  // ── Tab 4: Hari Khusus (Special Day Rules) ─────────────────────────────────────
+  // ── Tab 4: Hari Khusus (Special Day Rules) ─────────────────────────────────
   const [specialRules, setSpecialRules]     = useState([])
   const [allUsers, setAllUsers]             = useState([])
   const [srMsg, setSrMsg]                   = useState('')
@@ -81,7 +122,7 @@ export default function AttendanceSettingsPage() {
   // form fields
   const [srTanggal, setSrTanggal]           = useState('')
   const [srScope, setSrScope]               = useState('all')
-  const [srRoleIds, setSrRoleIds]           = useState(new Set()) // multi-checkbox untuk jabatan
+  const [srRoleIds, setSrRoleIds]           = useState(new Set())
   const [srUserId, setSrUserId]             = useState('')
   const [srIsWorkDay, setSrIsWorkDay]       = useState(true)
   const [srIsFlexibleHours, setSrIsFlexibleHours] = useState(false)
@@ -89,6 +130,21 @@ export default function AttendanceSettingsPage() {
   const [srCheckOut, setSrCheckOut]         = useState('')
   const [srKet, setSrKet]                   = useState('')
   const [savingSr, setSavingSr]             = useState(false)
+
+  // Edit Modal states for Hari Khusus
+  const [showEditSrModal, setShowEditSrModal] = useState(false)
+  const [editSrRule, setEditSrRule] = useState(null)
+  const [editSrTanggal, setEditSrTanggal] = useState('')
+  const [editSrScope, setEditSrScope] = useState('all')
+  const [editSrRoleId, setEditSrRoleId] = useState('')
+  const [editSrUserId, setEditSrUserId] = useState('')
+  const [editSrIsWorkDay, setEditSrIsWorkDay] = useState(true)
+  const [editSrIsFlexibleHours, setEditSrIsFlexibleHours] = useState(false)
+  const [editSrCheckIn, setEditSrCheckIn] = useState('')
+  const [editSrCheckOut, setEditSrCheckOut] = useState('')
+  const [editSrKet, setEditSrKet] = useState('')
+  const [savingEditSr, setSavingEditSr] = useState(false)
+  const [editSrMsg, setEditSrMsg] = useState('')
 
   // ── Tab 3: Settings & Log ──────────────────────────────────────────────────
   const [adminEmails, setAdminEmails]   = useState('')
@@ -114,20 +170,25 @@ export default function AttendanceSettingsPage() {
     fetchRoleApprovers()
   }, [])
 
-
-  // auto-fill end date when start changes (default to same day)
   useEffect(() => {
     if (newDateStart && !newDateEnd) setNewDateEnd(newDateStart)
   }, [newDateStart])
 
   const resetSrForm = () => {
-    setSrTanggal(''); setSrScope('all'); setSrRoleIds(new Set()); setSrUserId('')
-    setSrIsWorkDay(true); setSrIsFlexibleHours(false); setSrCheckIn(''); setSrCheckOut(''); setSrKet('')
+    setSrTanggal('')
+    setSrScope('all')
+    setSrRoleIds(new Set())
+    setSrUserId('')
+    setSrIsWorkDay(true)
+    setSrIsFlexibleHours(false)
+    setSrCheckIn('')
+    setSrCheckOut('')
+    setSrKet('')
     setEditingSrId(null)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ROLES
+  // FETCH & ACTIONS
   // ─────────────────────────────────────────────────────────────────────────
   const fetchRoles = async () => {
     const { data } = await supabase.from('role').select('role_id, role_name, work_days').order('role_id')
@@ -195,16 +256,13 @@ export default function AttendanceSettingsPage() {
       const res = await fetch('/api/attendance/special-day-rules')
       const json = await res.json()
       if (json.success) setSpecialRules(json.data || [])
-    } catch (_) {
-      setSpecialRules([])
-    }
+    } catch (_) {}
   }
 
-
   const saveSr = async () => {
-    if (!srTanggal) { setSrMsg('\u274c Tanggal wajib diisi'); return }
-    if (srScope === 'role' && srRoleIds.size === 0) { setSrMsg('\u274c Pilih minimal satu jabatan'); return }
-    if (srScope === 'user' && !srUserId) { setSrMsg('\u274c Pilih karyawan'); return }
+    if (!srTanggal) { setSrMsg('❌ Tanggal wajib diisi'); return }
+    if (srScope === 'role' && srRoleIds.size === 0) { setSrMsg('❌ Pilih minimal satu jabatan'); return }
+    if (srScope === 'user' && !srUserId) { setSrMsg('❌ Pilih karyawan terlebih dahulu'); return }
     setSavingSr(true); setSrMsg('')
 
     const basePayload = {
@@ -217,24 +275,7 @@ export default function AttendanceSettingsPage() {
     }
 
     try {
-      if (editingSrId) {
-        // Edit: selalu single row
-        const payload = {
-          ...basePayload,
-          scope_type: srScope,
-          role_id: srScope === 'role' ? [...srRoleIds][0] : null,
-          user_id: srScope === 'user' ? parseInt(srUserId, 10) : null,
-          id: editingSrId,
-        }
-        const res = await fetch('/api/attendance/special-day-rules', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-        const json = await res.json()
-        if (!json.success) throw new Error(json.message)
-      } else if (srScope === 'role') {
-        // Tambah: insert satu baris per jabatan yang dipilih
+      if (srScope === 'role') {
         const inserts = [...srRoleIds].map(rid =>
           fetch('/api/attendance/special-day-rules', {
             method: 'POST',
@@ -246,7 +287,6 @@ export default function AttendanceSettingsPage() {
         const failed = results.filter(r => !r.success)
         if (failed.length > 0) throw new Error(failed[0].message)
       } else {
-        // scope = all or user
         const payload = {
           ...basePayload,
           scope_type: srScope,
@@ -262,7 +302,7 @@ export default function AttendanceSettingsPage() {
         if (!json.success) throw new Error(json.message)
       }
 
-      setSrMsg(editingSrId ? '✅ Aturan berhasil diperbarui' : '✅ Aturan berhasil ditambahkan')
+      setSrMsg('✅ Aturan berhasil ditambahkan')
       resetSrForm()
       fetchSpecialRules()
       setTimeout(() => setSrMsg(''), 3000)
@@ -274,28 +314,66 @@ export default function AttendanceSettingsPage() {
   }
 
   const startEditSr = (r) => {
-    setEditingSrId(r.id)
-    setSrTanggal(r.tanggal)
-    setSrScope(r.scope_type)
-    setSrRoleIds(r.role_id ? new Set([r.role_id]) : new Set())
-    setSrUserId(r.user_id ? String(r.user_id) : '')
-    setSrIsWorkDay(r.is_work_day)
-    setSrIsFlexibleHours(!!r.is_flexible_hours || (r.keterangan || '').includes('[BEBAS_JAM]'))
-    setSrCheckIn(r.custom_check_in  ? String(r.custom_check_in).slice(0,5)  : '')
-    setSrCheckOut(r.custom_check_out ? String(r.custom_check_out).slice(0,5) : '')
-    // Clean tag from keterangan for display in edit form
+    setEditSrRule(r)
+    setEditSrTanggal(r.tanggal || '')
+    setEditSrScope(r.scope_type || 'all')
+    setEditSrRoleId(r.role_id ? String(r.role_id) : '')
+    setEditSrUserId(r.user_id ? String(r.user_id) : '')
+    setEditSrIsWorkDay(r.is_work_day ?? true)
+    setEditSrIsFlexibleHours(!!r.is_flexible_hours || (r.keterangan || '').includes('[BEBAS_JAM]'))
+    setEditSrCheckIn(r.custom_check_in ? String(r.custom_check_in).slice(0, 5) : '')
+    setEditSrCheckOut(r.custom_check_out ? String(r.custom_check_out).slice(0, 5) : '')
     const cleanKetDisplay = (r.keterangan || '').replace('[BEBAS_JAM]', '').trim()
-    setSrKet(cleanKetDisplay)
-    setSrMsg('')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setEditSrKet(cleanKetDisplay)
+    setEditSrMsg('')
+    setShowEditSrModal(true)
+  }
+
+  const saveEditSr = async () => {
+    if (!editSrTanggal) { setEditSrMsg('❌ Tanggal wajib diisi'); return }
+    if (editSrScope === 'role' && !editSrRoleId) { setEditSrMsg('❌ Pilih jabatan terlebih dahulu'); return }
+    if (editSrScope === 'user' && !editSrUserId) { setEditSrMsg('❌ Pilih karyawan terlebih dahulu'); return }
+    setSavingEditSr(true); setEditSrMsg('')
+
+    try {
+      const payload = {
+        id: editSrRule.id,
+        tanggal: editSrTanggal,
+        scope_type: editSrScope,
+        role_id: editSrScope === 'role' ? parseInt(editSrRoleId, 10) : null,
+        user_id: editSrScope === 'user' ? parseInt(editSrUserId, 10) : null,
+        is_work_day: editSrIsWorkDay,
+        is_flexible_hours: editSrIsFlexibleHours,
+        custom_check_in: editSrCheckIn || null,
+        custom_check_out: editSrCheckOut || null,
+        keterangan: editSrKet.trim() || null,
+      }
+
+      const res = await fetch('/api/attendance/special-day-rules', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.message)
+
+      setShowEditSrModal(false)
+      fetchSpecialRules()
+      setSrMsg('✅ Aturan hari khusus berhasil diperbarui')
+      setTimeout(() => setSrMsg(''), 3000)
+    } catch (err) {
+      setEditSrMsg('❌ ' + err.message)
+    } finally {
+      setSavingEditSr(false)
+    }
   }
 
   const deleteSr = async (id) => {
-    if (!confirm('Hapus aturan ini?')) return
+    if (!confirm('Hapus aturan hari khusus ini?')) return
     const res = await fetch(`/api/attendance/special-day-rules?id=${id}`, { method: 'DELETE' })
     const json = await res.json()
-    if (!json.success) { setSrMsg('\u274c ' + json.message); return }
-    setSrMsg('\u2705 Aturan dihapus')
+    if (!json.success) { setSrMsg('❌ ' + json.message); return }
+    setSrMsg('✅ Aturan dihapus')
     fetchSpecialRules()
     setTimeout(() => setSrMsg(''), 2000)
   }
@@ -327,9 +405,6 @@ export default function AttendanceSettingsPage() {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // HOLIDAYS
-  // ─────────────────────────────────────────────────────────────────────────
   const fetchHolidays = async () => {
     const { data } = await supabase
       .from('school_holidays')
@@ -338,26 +413,19 @@ export default function AttendanceSettingsPage() {
     setHolidays(data || [])
   }
 
-  /**
-   * Cek apakah range [start, end] untuk role tertentu bentrok dengan
-   * holiday lain yang sudah ada (exclude excludeId jika sedang edit).
-   * Hari libur global bentrok dengan global. Role-specific hanya bentrok sesama role.
-   */
   const checkHolidayOverlap = (start, end, roleId, excludeId = null) => {
     return holidays.filter(h => {
       if (excludeId && h.id === excludeId) return false
-      // Cek apakah role sama (null === null, atau id sama)
       const sameRole = (h.role_id === null && roleId === null) ||
                        (h.role_id !== null && roleId !== null && h.role_id === roleId)
       if (!sameRole) return false
-      // Cek date overlap: tidak overlap hanya jika end < h.date_start OR start > h.date_end
       return !(end < h.date_start || start > h.date_end)
     })
   }
 
   const addHoliday = async () => {
     if (!newDateStart || !newName.trim()) {
-      setHolidayMsg('❌ Tanggal mulai dan nama wajib diisi')
+      setHolidayMsg('❌ Tanggal mulai dan nama libur wajib diisi')
       return
     }
     const endDate = newDateEnd || newDateStart
@@ -366,12 +434,11 @@ export default function AttendanceSettingsPage() {
       return
     }
 
-    // Conflict check
     const roleIdVal = newRoleId ? parseInt(newRoleId, 10) : null
     const overlaps = checkHolidayOverlap(newDateStart, endDate, roleIdVal)
     if (overlaps.length > 0) {
       const o = overlaps[0]
-      setHolidayMsg(`❌ Bentrok dengan hari libur "${o.name}" (${formatDateRange(o.date_start, o.date_end)}) untuk role yang sama`)
+      setHolidayMsg(`❌ Bentrok dengan hari libur "${o.name}" (${formatDateRange(o.date_start, o.date_end)})`)
       return
     }
 
@@ -379,7 +446,7 @@ export default function AttendanceSettingsPage() {
     setHolidayMsg('')
     const payload = {
       name: newName.trim(),
-      date: newDateStart,          // backward compat
+      date: newDateStart,
       date_start: newDateStart,
       date_end: endDate,
       role_id: roleIdVal,
@@ -413,7 +480,7 @@ export default function AttendanceSettingsPage() {
 
   const saveEditHoliday = async () => {
     if (!editDateStart || !editName.trim()) {
-      setEditMsg('❌ Tanggal mulai dan nama wajib diisi')
+      setEditMsg('❌ Tanggal mulai dan nama libur wajib diisi')
       return
     }
     const endDate = editDateEnd || editDateStart
@@ -422,12 +489,11 @@ export default function AttendanceSettingsPage() {
       return
     }
 
-    // Conflict check — exclude current record
     const roleIdVal = editRoleId ? parseInt(editRoleId, 10) : null
     const overlaps = checkHolidayOverlap(editDateStart, endDate, roleIdVal, editingId)
     if (overlaps.length > 0) {
       const o = overlaps[0]
-      setEditMsg(`❌ Bentrok dengan "${o.name}" (${formatDateRange(o.date_start, o.date_end)}) untuk role yang sama`)
+      setEditMsg(`❌ Bentrok dengan "${o.name}" (${formatDateRange(o.date_start, o.date_end)})`)
       return
     }
 
@@ -457,16 +523,12 @@ export default function AttendanceSettingsPage() {
     else alert('Gagal menghapus: ' + error.message)
   }
 
-  // Filter displayed holidays
   const displayedHolidays = holidays.filter(h => {
     if (filterRoleId === 'all') return true
     if (filterRoleId === 'global') return h.role_id === null
     return String(h.role_id) === filterRoleId
   })
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SETTINGS
-  // ─────────────────────────────────────────────────────────────────────────
   const fetchSettings = async () => {
     const { data } = await supabase
       .from('settings')
@@ -496,7 +558,6 @@ export default function AttendanceSettingsPage() {
     setTimeout(() => setSettingsMsg(''), 3000)
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
   const sendTestEmail = async () => {
     if (!testEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail.trim())) {
       setTestResult({ success: false, message: 'Masukkan alamat email yang valid' })
@@ -523,9 +584,11 @@ export default function AttendanceSettingsPage() {
     const { data } = await supabase
       .from('attendance_notification_log')
       .select('*, user:user_id (user_nama_depan, user_nama_belakang)')
+      .or('scheduled_time.is.null,scheduled_time.not.ilike.duty:%')
       .order('sent_at', { ascending: false })
       .limit(50)
-    setNotifLogs(data || [])
+    const filtered = (data || []).filter(log => !log.scheduled_time?.startsWith('duty:'))
+    setNotifLogs(filtered)
     setLogsLoading(false)
   }
 
@@ -537,7 +600,6 @@ export default function AttendanceSettingsPage() {
       .limit(30)
     setRunLogs(data || [])
   }
-
 
   const triggerTestRun = async () => {
     setTestRunning(true)
@@ -561,24 +623,22 @@ export default function AttendanceSettingsPage() {
     setTestRunning(false)
   }
 
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER HELPERS
-  // ─────────────────────────────────────────────────────────────────────────
-  const tabStyle = (t) => ({
-    padding: '10px 20px',
-    borderTop: 'none',
-    borderLeft: 'none',
-    borderRight: 'none',
-    borderBottom: tab === t ? `2px solid ${theme.blueText || '#2563eb'}` : '2px solid transparent',
-    color: tab === t ? (theme.blueText || '#2563eb') : (theme.textSecondary || '#6b7280'),
-    fontWeight: tab === t ? 600 : 400,
-    cursor: 'pointer',
-    fontSize: '14px',
-    background: 'transparent',
-    transition: 'all 0.15s',
+  // ── Input & Select Styles (Minimalist-UI Standard) ──────────────────────────
+  const inputStyle = {
+    background: isDark ? '#18181B' : '#FFFFFF',
+    border: `1px solid ${borderColor}`,
+    color: textPrimary,
+    borderRadius: '6px',
+    padding: '8px 12px',
+    fontSize: '13px',
+    width: '100%',
     outline: 'none',
-  })
+  }
+
+  const selectStyle = {
+    ...inputStyle,
+    cursor: 'pointer',
+  }
 
   const getRoleName = (roleId) => {
     if (roleId === null || roleId === undefined) return null
@@ -586,103 +646,145 @@ export default function AttendanceSettingsPage() {
     return r?.role_name || `Role #${roleId}`
   }
 
-  const inputStyle = {
-    background: theme.inputBg || theme.subtleBg,
-    border: `1px solid ${theme.border}`,
-    color: theme.textBody,
-    borderRadius: '8px',
-    padding: '8px 12px',
-    fontSize: '13px',
-    width: '100%',
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-6 space-y-6" style={{ color: theme.textBody }}>
-      {/* Header */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-semibold" style={{ color: theme.textPrimary }}>
-          ⏰ Pengaturan Notifikasi Absensi
-        </h1>
-        <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>
-          Konfigurasi hari kerja per role, kalender libur, dan pengaturan email notifikasi keterlambatan
-        </p>
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+      
+      {/* ── HEADER ────────────────────────────────────────────────────────── */}
+      <div className="pb-4 border-b flex items-center justify-between gap-4 mb-6" style={{ borderColor }}>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center border" style={{ background: subtleBg, borderColor, color: textPrimary }}>
+            <FontAwesomeIcon icon={faSlidersH} className="text-sm" />
+          </div>
+          <h1 className="text-lg font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.01em', margin: 0 }}>
+            Pengaturan Absensi
+          </h1>
+        </div>
       </div>
 
-      {/* Info banner */}
-      <div className="p-4 rounded-xl text-sm" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>
-        <strong>ℹ️ Cara kerja:</strong> Setiap hari jam 00:01 WIB, sistem menganalisa absensi kemarin dan mengirim email notifikasi
-        untuk keterlambatan, pulang awal, tidak check-in, dan tidak check-out — kecuali hari libur.
+      {/* ── TABS NAVIGATION (/data/pyp STYLE) ────────────────────────────────── */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '24px', gap: '28px', flexWrap: 'wrap' }}>
+        {[
+          { id: 'workdays',  label: 'Hari Kerja per Jabatan', icon: faCalendarAlt },
+          { id: 'holidays',  label: 'Kalender Libur',         icon: faCalendarDay },
+          { id: 'special',   label: 'Hari Khusus',            icon: faStar },
+          { id: 'approvers', label: 'Approval Hierarki',      icon: faUserCheck },
+          { id: 'settings',  label: 'Pengaturan & Log',       icon: faCog },
+        ].map(t => {
+          const active = tab === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                padding: '12px 0',
+                fontSize: '13px',
+                fontWeight: active ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: active ? textPrimary : textSecondary,
+                borderBottom: active ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={t.icon} style={{ fontSize: '12px', color: active ? (isDark ? '#60A5FA' : '#0284C7') : textSecondary }} />
+              {t.label}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Tabs */}
-      <div style={{ borderBottom: `1px solid ${theme.border}` }}>
-        <button style={tabStyle('workdays')} onClick={() => setTab('workdays')}>📅 Hari Kerja per Role</button>
-        <button style={tabStyle('holidays')} onClick={() => setTab('holidays')}>🗓️ Kalender Libur</button>
-        <button style={tabStyle('special')}  onClick={() => setTab('special')}>⭐ Hari Khusus</button>
-        <button style={tabStyle('approvers')} onClick={() => setTab('approvers')}>👥 Approver per Unit</button>
-        <button style={tabStyle('settings')} onClick={() => setTab('settings')}>⚙️ Pengaturan &amp; Log</button>
-      </div>
-
-      {/* ══════════════════ TAB 1: WORK DAYS ══════════════════ */}
+      {/* ════════════════════ TAB 1: WORK DAYS ════════════════════ */}
       {tab === 'workdays' && (
         <div className="space-y-4">
           {rolesMsg && (
-            <div className="p-3 rounded-lg text-sm" style={{
-              background: rolesMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-              color: rolesMsg.startsWith('✅') ? '#166534' : '#991b1b'
+            <div className="px-3 py-1.5 rounded text-xs font-medium" style={{
+              background: rolesMsg.startsWith('✅') ? '#EDF3EC' : '#FDEBEC',
+              color: rolesMsg.startsWith('✅') ? '#346538' : '#9F2F2D',
+              border: `1px solid ${rolesMsg.startsWith('✅') ? '#B2D8B4' : '#F8B4B4'}`
             }}>
               {rolesMsg}
             </div>
           )}
-          <p className="text-sm" style={{ color: theme.textSecondary }}>
-            Centang hari kerja untuk setiap role. Notifikasi absensi hanya dikirim pada hari yang dicentang.
-          </p>
-          <div className="space-y-3">
+
+          {/* Bento Grid: Role Work Days Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {roles.map(role => {
               const activeDays = (role.work_days || '1,2,3,4,5').split(',').map(Number)
+              const isSaving = savingRole === role.role_id
+
               return (
-                <div key={role.role_id} className="p-4 rounded-xl" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div>
-                      <div className="font-semibold text-sm" style={{ color: theme.textPrimary }}>{role.role_name}</div>
-                      <div className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
-                        {activeDays.length === 0
-                          ? 'Tidak ada hari kerja — tidak akan ada notifikasi'
-                          : `${activeDays.length} hari kerja aktif`}
-                      </div>
+                <div
+                  key={role.role_id}
+                  className="p-4 rounded-lg border flex flex-col justify-between transition-all"
+                  style={{ background: cardBg, borderColor }}
+                >
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="font-semibold text-sm" style={{ color: textPrimary }}>
+                      {role.role_name}
                     </div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {DAY_LABELS.map(day => {
-                        const active = activeDays.includes(day.num)
-                        return (
-                          <button
-                            key={day.num}
-                            onClick={() => toggleDay(role.role_id, day.num)}
-                            className="w-10 h-10 rounded-lg text-xs font-semibold transition-all"
-                            style={{
-                              background: active ? (theme.blueText || '#2563eb') : (theme.subtleBg || '#f3f4f6'),
-                              color: active ? '#fff' : (theme.textSecondary || '#6b7280'),
-                              border: `1px solid ${active ? (theme.blueText || '#2563eb') : (theme.border || '#e5e7eb')}`,
-                            }}
-                            title={day.full}
-                          >
-                            {day.short}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <button
-                      onClick={() => saveRoleWorkDays(role)}
-                      disabled={savingRole === role.role_id}
-                      className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                    <span
+                      className="px-2 py-0.5 rounded text-xs font-medium"
                       style={{
-                        background: theme.blueText || '#2563eb',
-                        color: '#fff',
-                        opacity: savingRole === role.role_id ? 0.6 : 1
+                        background: activeDays.length > 0 ? '#EDF3EC' : '#FDEBEC',
+                        color: activeDays.length > 0 ? '#346538' : '#9F2F2D',
+                        border: `1px solid ${activeDays.length > 0 ? '#B2D8B4' : '#F8B4B4'}`
                       }}
                     >
-                      {savingRole === role.role_id ? 'Menyimpan...' : 'Simpan'}
+                      {activeDays.length} hari kerja
+                    </span>
+                  </div>
+
+                  {/* Day Buttons */}
+                  <div className="flex gap-1.5 justify-between my-2">
+                    {DAY_LABELS.map(day => {
+                      const active = activeDays.includes(day.num)
+                      return (
+                        <button
+                          key={day.num}
+                          type="button"
+                          onClick={() => toggleDay(role.role_id, day.num)}
+                          className="flex-1 h-8 rounded text-xs font-mono font-medium transition-all"
+                          style={{
+                            background: active
+                              ? (isDark ? '#F4F4F5' : '#111111')
+                              : subtleBg,
+                            color: active
+                              ? (isDark ? '#111111' : '#FFFFFF')
+                              : textSecondary,
+                            border: `1px solid ${active ? (isDark ? '#F4F4F5' : '#111111') : borderColor}`,
+                          }}
+                          title={day.full}
+                        >
+                          {day.short}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Card Footer: Save Button */}
+                  <div className="pt-3 mt-1 border-t flex justify-end" style={{ borderColor }}>
+                    <button
+                      type="button"
+                      onClick={() => saveRoleWorkDays(role)}
+                      disabled={isSaving}
+                      className="px-3.5 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                      style={{
+                        background: isDark ? '#F4F4F5' : '#111111',
+                        color: isDark ? '#111111' : '#FFFFFF',
+                        opacity: isSaving ? 0.6 : 1,
+                        cursor: isSaving ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isSaving ? (
+                        <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</>
+                      ) : (
+                        <><FontAwesomeIcon icon={faSave} /> Simpan</>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -692,65 +794,101 @@ export default function AttendanceSettingsPage() {
         </div>
       )}
 
-      {/* ══════════════════ TAB 2: HOLIDAYS ══════════════════ */}
+      {/* ════════════════════ TAB 2: SCHOOL HOLIDAYS ════════════════════ */}
       {tab === 'holidays' && (
-        <div className="space-y-5">
+        <div className="space-y-6">
+          {/* Top Filter Bar (matching /data/pyp filter container) */}
+          <div className="p-3.5 rounded-lg border flex items-center justify-between flex-wrap gap-4" style={{ background: cardBg, borderColor }}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded flex items-center justify-center border text-xs" style={{ background: subtleBg, borderColor, color: textSecondary }}>
+                <FontAwesomeIcon icon={faFilter} />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase block font-semibold tracking-wider" style={{ color: textSecondary }}>
+                  Filter Berdasarkan Role
+                </label>
+                <select
+                  value={filterRoleId}
+                  onChange={e => setFilterRoleId(e.target.value)}
+                  className="mt-0.5 text-xs font-medium outline-none cursor-pointer"
+                  style={{ background: 'transparent', color: textPrimary, border: 'none' }}
+                >
+                  <option value="all">Semua Hari Libur ({holidays.length})</option>
+                  <option value="global">🌐 Khusus Libur Global</option>
+                  {roles.map(r => (
+                    <option key={r.role_id} value={String(r.role_id)}>👤 {r.role_name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-          {/* Add form */}
-          <div className="p-5 rounded-xl space-y-4" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-            <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>➕ Tambah Hari Libur</h3>
+            <div className="text-xs" style={{ color: textSecondary }}>
+              Total: <strong style={{ color: textPrimary }}>{displayedHolidays.length}</strong> hari libur
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Name */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Nama Hari Libur *</label>
+          {/* Form Tambah Hari Libur */}
+          <div className="p-4 rounded-lg border space-y-3" style={{ background: cardBg, borderColor }}>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold flex items-center gap-2" style={{ color: textPrimary }}>
+                <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                Tambah Hari Libur Baru
+              </div>
+              {holidayMsg && (
+                <div className="px-2.5 py-1 rounded text-xs font-medium font-mono" style={{
+                  background: holidayMsg.startsWith('✅') ? '#EDF3EC' : '#FDEBEC',
+                  color: holidayMsg.startsWith('✅') ? '#346538' : '#9F2F2D',
+                  border: `1px solid ${holidayMsg.startsWith('✅') ? '#B2D8B4' : '#F8B4B4'}`
+                }}>
+                  {holidayMsg}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Nama Libur *</label>
                 <input
-                  style={inputStyle}
                   type="text"
+                  placeholder="Contoh: Libur Semester, Idul Fitri"
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
-                  placeholder="Contoh: Libur Semester Ganjil"
+                  style={inputStyle}
                 />
               </div>
 
-              {/* Date Start */}
               <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Tanggal Mulai *</label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Tanggal Mulai *</label>
                 <input
-                  style={inputStyle}
                   type="date"
                   value={newDateStart}
-                  onChange={e => { setNewDateStart(e.target.value); if (!newDateEnd || newDateEnd < e.target.value) setNewDateEnd(e.target.value) }}
+                  onChange={e => {
+                    setNewDateStart(e.target.value)
+                    if (!newDateEnd || newDateEnd < e.target.value) setNewDateEnd(e.target.value)
+                  }}
+                  style={inputStyle}
                 />
               </div>
 
-              {/* Date End */}
               <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>
-                  Tanggal Akhir
-                  <span className="ml-1 font-normal" style={{ color: theme.textSecondary }}>(kosongkan jika 1 hari)</span>
-                </label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Tanggal Selesai *</label>
                 <input
-                  style={inputStyle}
                   type="date"
                   value={newDateEnd}
                   min={newDateStart}
                   onChange={e => setNewDateEnd(e.target.value)}
+                  style={inputStyle}
                 />
               </div>
 
-              {/* Role */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>
-                  Berlaku untuk Role
-                  <span className="ml-1 font-normal">(kosongkan = berlaku untuk semua/global)</span>
-                </label>
+              <div>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Berlaku Untuk Role</label>
                 <select
-                  style={inputStyle}
                   value={newRoleId}
                   onChange={e => setNewRoleId(e.target.value)}
+                  style={selectStyle}
                 >
-                  <option value="">🌐 Global (semua role)</option>
+                  <option value="">🌐 Global (Semua Role)</option>
                   {roles.map(r => (
                     <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
                   ))}
@@ -758,128 +896,73 @@ export default function AttendanceSettingsPage() {
               </div>
             </div>
 
-            {/* Preview */}
-            {newDateStart && (
-              <div className="p-3 rounded-lg text-xs" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                <strong style={{ color: theme.textPrimary }}>Preview:</strong>{' '}
-                <span style={{ color: '#16a34a', fontWeight: 600 }}>{newName || '(nama belum diisi)'}</span>
-                {' '}—{' '}{formatDateRange(newDateStart, newDateEnd || newDateStart)}
-                {newDateStart !== (newDateEnd || newDateStart) && (
-                  <span> ({diffDays(newDateStart, newDateEnd || newDateStart)} hari)</span>
-                )}
-                {' '}—{' '}
-                {newRoleId ? <span>{getRoleName(parseInt(newRoleId)) || '...'}</span> : <span>🌐 Global</span>}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
+            <div className="flex justify-end pt-1">
               <button
+                type="button"
                 onClick={addHoliday}
                 disabled={addingHoliday}
-                className="px-5 py-2 rounded-lg text-sm font-medium"
-                style={{ background: '#16a34a', color: '#fff', opacity: addingHoliday ? 0.6 : 1 }}
+                className="px-4 py-2 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                style={{
+                  background: isDark ? '#F4F4F5' : '#111111',
+                  color: isDark ? '#111111' : '#FFFFFF',
+                  opacity: addingHoliday ? 0.6 : 1
+                }}
               >
-                {addingHoliday ? 'Menambah...' : '+ Tambah Libur'}
+                {addingHoliday ? <><FontAwesomeIcon icon={faSpinner} spin /> Menambahkan...</> : <><FontAwesomeIcon icon={faPlus} /> Tambah Hari Libur</>}
               </button>
-              {holidayMsg && (
-                <span className="text-sm" style={{ color: holidayMsg.startsWith('✅') ? '#166534' : '#991b1b' }}>
-                  {holidayMsg}
-                </span>
-              )}
             </div>
           </div>
 
-          {/* Filter + List */}
-          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
-            {/* Filter bar */}
-            <div className="px-4 py-3 flex items-center gap-3 flex-wrap" style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-              <span className="text-xs font-semibold" style={{ color: theme.textSecondary }}>FILTER:</span>
-              {[
-                { val: 'all',    label: `Semua (${holidays.length})` },
-                { val: 'global', label: `🌐 Global (${holidays.filter(h => h.role_id === null).length})` },
-                ...roles.map(r => ({
-                  val: String(r.role_id),
-                  label: `${r.role_name} (${holidays.filter(h => h.role_id === r.role_id).length})`
-                }))
-              ].map(f => (
-                <button
-                  key={f.val}
-                  onClick={() => setFilterRoleId(f.val)}
-                  className="px-3 py-1 rounded-full text-xs font-medium transition-all"
-                  style={{
-                    background: filterRoleId === f.val ? (theme.blueText || '#2563eb') : 'transparent',
-                    color: filterRoleId === f.val ? '#fff' : (theme.textSecondary),
-                    border: `1px solid ${filterRoleId === f.val ? (theme.blueText || '#2563eb') : (theme.border)}`,
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
-            {displayedHolidays.length === 0 ? (
-              <div className="p-8 text-center text-sm" style={{ color: theme.textSecondary }}>
-                Belum ada hari libur terdaftar
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ background: theme.subtleBg }}>
-                    {['Periode', 'Durasi', 'Nama Hari Libur', 'Berlaku untuk', ''].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: theme.textSecondary }}>{h}</th>
-                    ))}
+          {/* Table of Holidays */}
+          <div className="rounded-lg border overflow-hidden" style={{ borderColor }}>
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b" style={{ background: subtleBg, borderColor }}>
+                  <th className="px-4 py-2.5 font-mono uppercase text-[10px] tracking-wider" style={{ color: textSecondary }}>Periode Libur</th>
+                  <th className="px-4 py-2.5 font-mono uppercase text-[10px] tracking-wider" style={{ color: textSecondary }}>Durasi</th>
+                  <th className="px-4 py-2.5 font-mono uppercase text-[10px] tracking-wider" style={{ color: textSecondary }}>Nama Hari Libur</th>
+                  <th className="px-4 py-2.5 font-mono uppercase text-[10px] tracking-wider" style={{ color: textSecondary }}>Lingkup</th>
+                  <th className="px-4 py-2.5 font-mono uppercase text-[10px] tracking-wider text-right" style={{ color: textSecondary }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor }}>
+                {displayedHolidays.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center" style={{ color: textSecondary }}>
+                      Tidak ada data hari libur yang sesuai filter.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {displayedHolidays.map((h, i) => {
-                    const days = diffDays(h.date_start, h.date_end)
-                    const roleName = getRoleName(h.role_id)
-                    const isEditing = editingId === h.id
+                )}
+                {displayedHolidays.map((h, i) => {
+                  const days = diffDays(h.date_start, h.date_end)
+                  const roleName = getRoleName(h.role_id)
+                  const isEditing = editingId === h.id
 
-                    // ── Inline edit row ──────────────────────────────────────
-                    if (isEditing) return (
-                      <tr key={h.id} style={{ borderTop: i > 0 ? `1px solid ${theme.border}` : 'none', background: theme.subtleBg }}>
-                        <td colSpan={5} className="px-4 py-3">
+                  if (isEditing) {
+                    return (
+                      <tr key={h.id} style={{ background: isDark ? 'rgba(59,130,246,0.08)' : '#F0F9FF' }}>
+                        <td colSpan={5} className="p-4">
                           <div className="space-y-3">
-                            <div className="text-xs font-semibold" style={{ color: theme.textSecondary }}>✏️ Edit Hari Libur</div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              {/* Name */}
-                              <div className="sm:col-span-2">
-                                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Nama *</label>
-                                <input
-                                  style={inputStyle}
-                                  type="text"
-                                  value={editName}
-                                  onChange={e => setEditName(e.target.value)}
-                                  placeholder="Nama hari libur"
-                                />
-                              </div>
-                              {/* Date Start */}
+                            <div className="font-semibold text-xs" style={{ color: textPrimary }}>
+                              ✏️ Edit Hari Libur #{h.id}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                               <div>
-                                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Tanggal Mulai *</label>
-                                <input
-                                  style={inputStyle}
-                                  type="date"
-                                  value={editDateStart}
-                                  onChange={e => { setEditDateStart(e.target.value); if (editDateEnd < e.target.value) setEditDateEnd(e.target.value) }}
-                                />
+                                <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: textSecondary }}>Nama Libur</label>
+                                <input type="text" value={editName} onChange={e => setEditName(e.target.value)} style={inputStyle} />
                               </div>
-                              {/* Date End */}
                               <div>
-                                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Tanggal Akhir</label>
-                                <input
-                                  style={inputStyle}
-                                  type="date"
-                                  value={editDateEnd}
-                                  min={editDateStart}
-                                  onChange={e => setEditDateEnd(e.target.value)}
-                                />
+                                <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: textSecondary }}>Mulai</label>
+                                <input type="date" value={editDateStart} onChange={e => setEditDateStart(e.target.value)} style={inputStyle} />
                               </div>
-                              {/* Role */}
-                              <div className="sm:col-span-2">
-                                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>Berlaku untuk Role</label>
-                                <select style={inputStyle} value={editRoleId} onChange={e => setEditRoleId(e.target.value)}>
-                                  <option value="">🌐 Global (semua role)</option>
+                              <div>
+                                <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: textSecondary }}>Selesai</label>
+                                <input type="date" value={editDateEnd} min={editDateStart} onChange={e => setEditDateEnd(e.target.value)} style={inputStyle} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-mono uppercase block mb-1" style={{ color: textSecondary }}>Role</label>
+                                <select value={editRoleId} onChange={e => setEditRoleId(e.target.value)} style={selectStyle}>
+                                  <option value="">🌐 Global (Semua Role)</option>
                                   {roles.map(r => (
                                     <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
                                   ))}
@@ -887,24 +970,23 @@ export default function AttendanceSettingsPage() {
                               </div>
                             </div>
                             {editMsg && (
-                              <div className="text-xs px-3 py-2 rounded-lg" style={{
-                                background: editMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-                                color: editMsg.startsWith('✅') ? '#166534' : '#991b1b'
-                              }}>{editMsg}</div>
+                              <div className="text-xs text-red-600">{editMsg}</div>
                             )}
-                            <div className="flex items-center gap-2">
+                            <div className="flex gap-2">
                               <button
+                                type="button"
                                 onClick={saveEditHoliday}
                                 disabled={savingEdit}
-                                className="px-4 py-1.5 rounded-lg text-xs font-medium"
-                                style={{ background: '#2563eb', color: '#fff', opacity: savingEdit ? 0.6 : 1 }}
+                                className="px-3 py-1.5 rounded text-xs font-semibold"
+                                style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF' }}
                               >
-                                {savingEdit ? 'Menyimpan...' : '💾 Simpan'}
+                                {savingEdit ? 'Menyimpan...' : '💾 Simpan Perubahan'}
                               </button>
                               <button
+                                type="button"
                                 onClick={cancelEdit}
-                                className="px-4 py-1.5 rounded-lg text-xs font-medium"
-                                style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}
+                                className="px-3 py-1.5 rounded text-xs"
+                                style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}
                               >
                                 Batal
                               </button>
@@ -913,425 +995,399 @@ export default function AttendanceSettingsPage() {
                         </td>
                       </tr>
                     )
+                  }
 
-                    // ── Normal view row ───────────────────────────────────────
-                    return (
-                      <tr key={h.id} style={{ borderTop: i > 0 ? `1px solid ${theme.border}` : 'none', background: theme.cardBg }}>
-                        <td className="px-4 py-3 text-sm font-medium" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>
-                          {formatDateRange(h.date_start, h.date_end)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#f0f9ff', color: '#0369a1' }}>
-                            {days === 1 ? '1 hari' : `${days} hari`}
+                  return (
+                    <tr key={h.id} style={{ background: cardBg }}>
+                      <td className="px-4 py-2.5 font-medium whitespace-nowrap font-mono" style={{ color: textPrimary }}>
+                        {formatDateRange(h.date_start, h.date_end)}
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#E1F3FE', color: '#1F6C9F', border: '1px solid #BAE6FD' }}>
+                          {days === 1 ? '1 hari' : `${days} hari`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 font-medium" style={{ color: textPrimary }}>
+                        {h.name}
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        {roleName ? (
+                          <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#FBF3DB', color: '#956400', border: '1px solid #FDE68A' }}>
+                            {roleName}
                           </span>
-                        </td>
-                        <td className="px-4 py-3" style={{ color: theme.textPrimary }}>{h.name}</td>
-                        <td className="px-4 py-3">
-                          {roleName ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#fef3c7', color: '#92400e' }}>
-                              👤 {roleName}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#f0fdf4', color: '#166534' }}>
-                              🌐 Global
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right" style={{ whiteSpace: 'nowrap' }}>
-                          <button
-                            onClick={() => startEditHoliday(h)}
-                            className="text-xs px-3 py-1 rounded-lg font-medium mr-2"
-                            style={{ color: '#2563eb', background: '#eff6ff' }}
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            onClick={() => deleteHoliday(h.id)}
-                            className="text-xs px-3 py-1 rounded-lg font-medium"
-                            style={{ color: '#dc2626', background: '#fee2e2' }}
-                          >
-                            Hapus
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#EDF3EC', color: '#346538', border: '1px solid #B2D8B4' }}>
+                            Global
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => startEditHoliday(h)}
+                          className="px-2.5 py-1 rounded text-xs font-medium mr-1.5 transition-all"
+                          style={{ background: subtleBg, color: textPrimary, border: `1px solid ${borderColor}` }}
+                        >
+                          <FontAwesomeIcon icon={faEdit} className="mr-1 text-[10px]" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteHoliday(h.id)}
+                          className="px-2.5 py-1 rounded text-xs font-medium transition-all"
+                          style={{ background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }}
+                        >
+                          <FontAwesomeIcon icon={faTrash} className="mr-1 text-[10px]" />
+                          Hapus
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* ══════════════════ TAB 3: SETTINGS & LOG ══════════════════ */}
+      {/* ════════════════════ TAB 3: SETTINGS & LOG ════════════════════ */}
       {tab === 'settings' && (
         <div className="space-y-6">
-          {/* Settings form */}
-          <div className="p-5 rounded-xl space-y-5" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-            <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>Pengaturan Notifikasi</h3>
-
-            {/* Enable toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium" style={{ color: theme.textPrimary }}>Aktifkan Notifikasi</div>
-                <div className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>Matikan untuk menonaktifkan semua notifikasi absensi</div>
-              </div>
-              <button
-                onClick={() => setNotifEnabled(!notifEnabled)}
-                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                style={{ background: notifEnabled ? (theme.blueText || '#2563eb') : '#d1d5db' }}
-              >
-                <span
-                  className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                  style={{ transform: notifEnabled ? 'translateX(22px)' : 'translateX(2px)' }}
-                />
-              </button>
-            </div>
-
-            {/* Grace period */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: theme.textPrimary }}>
-                Toleransi Keterlambatan (menit)
-              </label>
-              <input
-                type="number" min="0" max="60"
-                value={graceMinutes}
-                onChange={e => setGraceMinutes(e.target.value)}
-                className="w-24 px-3 py-2 rounded-lg border text-sm"
-                style={{ background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
-              />
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-                Jika 5, maka hadir 5 menit setelah jadwal dianggap tepat waktu. Default: 0
-              </p>
-            </div>
-
-            {/* Admin emails */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: theme.textPrimary }}>
-                Email Admin/HR (penerima rekap harian)
-              </label>
-              <input
-                type="text"
-                value={adminEmails}
-                onChange={e => setAdminEmails(e.target.value)}
-                placeholder="hr@ccs.sch.id, admin@ccs.sch.id"
-                className="w-full px-3 py-2 rounded-lg border text-sm"
-                style={{ background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
-              />
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-                Pisahkan dengan koma untuk beberapa email.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                onClick={saveSettings}
-                disabled={savingSettings}
-                className="px-5 py-2 rounded-lg text-sm font-medium"
-                style={{ background: theme.blueText || '#2563eb', color: '#fff', opacity: savingSettings ? 0.6 : 1 }}
-              >
-                {savingSettings ? 'Menyimpan...' : '💾 Simpan Pengaturan'}
-              </button>
-              {settingsMsg && (
-                <span className="text-sm" style={{ color: settingsMsg.startsWith('✅') ? '#166534' : '#991b1b' }}>
-                  {settingsMsg}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* ── Test Email ────────────────────────────────────────────────── */}
-          <div className="p-5 rounded-xl space-y-4" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-            <div>
-              <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>🧪 Test Kirim Email</h3>
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-                Kirim 6 email contoh (semua jenis pelanggaran) ke alamat email yang Anda tentukan.
-                Subject akan diawali <code style={{ background: theme.subtleBg, padding: '1px 4px', borderRadius: 3 }}>[TEST]</code> agar mudah diidentifikasi.
-              </p>
-            </div>
-
-            {/* Email input + button */}
-            <div className="flex gap-3 items-end flex-wrap">
-              <div className="flex-1 min-w-[220px]">
-                <label className="block text-xs font-medium mb-1" style={{ color: theme.textSecondary }}>
-                  Kirim test ke email:
-                </label>
-                <input
-                  type="email"
-                  value={testEmail}
-                  onChange={e => setTestEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendTestEmail()}
-                  placeholder="contoh@email.com"
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
-                  style={{ background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody }}
-                />
-              </div>
-              <button
-                onClick={sendTestEmail}
-                disabled={testRunning}
-                className="px-5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all"
-                style={{ background: '#d97706', color: '#fff', opacity: testRunning ? 0.6 : 1, whiteSpace: 'nowrap' }}
-              >
-                {testRunning
-                  ? <><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span> Mengirim...</>
-                  : '📨 Kirim Test Email'}
-              </button>
-            </div>
-
-            {/* Results */}
-            {testResult && (
-              <div>
-                {/* Summary banner */}
-                <div className="p-3 rounded-lg text-sm mb-3 flex items-center gap-2" style={{
-                  background: testResult.success ? '#f0fdf4' : (testResult.failed > 0 ? '#fff7ed' : '#fef2f2'),
-                  color:      testResult.success ? '#166534' : (testResult.failed > 0 ? '#92400e' : '#991b1b'),
-                  border: `1px solid ${testResult.success ? '#bbf7d0' : (testResult.failed > 0 ? '#fed7aa' : '#fecaca')}`
-                }}>
-                  <span style={{ fontSize: 18 }}>{testResult.success ? '✅' : testResult.failed > 0 ? '⚠️' : '❌'}</span>
-                  <div>
-                    <div className="font-semibold">{testResult.message}</div>
-                    {testResult.from && (
-                      <div className="text-xs mt-0.5" style={{ opacity: 0.8 }}>
-                        Dikirim dari: <strong>{testResult.from}</strong> → ke: <strong>{testResult.sentTo}</strong>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Per-type results table */}
-                {testResult.results && (
-                  <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr style={{ background: theme.subtleBg }}>
-                          <th className="text-left px-4 py-2 text-xs font-semibold" style={{ color: theme.textSecondary }}>JENIS EMAIL</th>
-                          <th className="text-left px-4 py-2 text-xs font-semibold" style={{ color: theme.textSecondary }}>STATUS</th>
-                          <th className="text-left px-4 py-2 text-xs font-semibold" style={{ color: theme.textSecondary }}>KETERANGAN</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testResult.results.map((r, i) => (
-                          <tr key={i} style={{ borderTop: i > 0 ? `1px solid ${theme.border}` : 'none', background: theme.cardBg }}>
-                            <td className="px-4 py-2.5 text-sm" style={{ color: theme.textPrimary }}>{r.label}</td>
-                            <td className="px-4 py-2.5">
-                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{
-                                background: r.status === 'ok' ? '#dcfce7' : '#fee2e2',
-                                color:      r.status === 'ok' ? '#166534' : '#991b1b'
-                              }}>
-                                {r.status === 'ok' ? '✓ Terkirim' : '✗ Gagal'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-xs" style={{ color: theme.textSecondary }}>
-                              {r.status === 'ok' ? 'Cek inbox / spam folder' : (r.error || 'Error tidak diketahui')}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          {/* Top Bento Cards: Configuration & Test Trigger */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Bento Card 1: Notification Policy Parameters */}
+            <div className="p-4 rounded-lg border space-y-4" style={{ background: cardBg, borderColor }}>
+              <div className="flex items-center justify-between border-b pb-3" style={{ borderColor }}>
+                <h3 className="font-semibold text-sm" style={{ color: textPrimary }}>Notifikasi Otomatis</h3>
+                {settingsMsg && (
+                  <div className="px-2.5 py-0.5 rounded text-xs font-mono font-medium" style={{
+                    background: settingsMsg.startsWith('✅') ? '#EDF3EC' : '#FDEBEC',
+                    color: settingsMsg.startsWith('✅') ? '#346538' : '#9F2F2D',
+                  }}>
+                    {settingsMsg}
                   </div>
                 )}
               </div>
-            )}
 
-            {/* Info: what emails are sent */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[
-                { icon: '🕐', label: 'Terlambat',         desc: 'Check-in melebihi jadwal' },
-                { icon: '🚪', label: 'Pulang Awal',        desc: 'Check-out sebelum jadwal' },
-                { icon: '❌', label: 'Tidak Check-In',     desc: 'Tidak ada data check-in' },
-                { icon: '⚠️', label: 'Tidak Check-Out',    desc: 'Tidak ada data check-out' },
-                { icon: '🔀', label: 'Gabungan',           desc: 'Terlambat + Pulang Awal' },
-                { icon: '📋', label: 'Rekap Admin',        desc: 'Tabel semua pelanggaran' },
-              ].map(item => (
-                <div key={item.label} className="p-2.5 rounded-lg text-xs" style={{ background: theme.subtleBg }}>
-                  <div className="font-semibold" style={{ color: theme.textPrimary }}>{item.icon} {item.label}</div>
-                  <div style={{ color: theme.textSecondary }}>{item.desc}</div>
+              {/* Toggle Notifikasi */}
+              <div className="flex items-center justify-between p-3 rounded" style={{ background: subtleBg }}>
+                <div className="text-xs font-medium" style={{ color: textPrimary }}>Kirim Notifikasi Email Otomatis</div>
+                <button
+                  type="button"
+                  onClick={() => setNotifEnabled(!notifEnabled)}
+                  className="relative inline-flex h-5 w-10 items-center rounded-full transition-colors"
+                  style={{ background: notifEnabled ? (isDark ? '#3B82F6' : '#111111') : '#D1D5DB' }}
+                >
+                  <span
+                    className="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+                    style={{ transform: notifEnabled ? 'translateX(22px)' : 'translateX(2px)' }}
+                  />
+                </button>
+              </div>
+
+              {/* Grace Period */}
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: textPrimary }}>
+                  Toleransi Keterlambatan (Menit)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="0" max="60"
+                    value={graceMinutes}
+                    onChange={e => setGraceMinutes(e.target.value)}
+                    style={{ ...inputStyle, width: '100px' }}
+                  />
+                  <span className="text-xs" style={{ color: textSecondary }}>menit setelah jam jadwal</span>
                 </div>
-              ))}
+              </div>
+
+              {/* Admin Emails */}
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: textPrimary }}>
+                  Email Rekap Admin / HR
+                </label>
+                <input
+                  type="text"
+                  value={adminEmails}
+                  onChange={e => setAdminEmails(e.target.value)}
+                  placeholder="hr@ccs.sch.id, admin@ccs.sch.id"
+                  style={inputStyle}
+                />
+                <p className="text-[11px] mt-1" style={{ color: textSecondary }}>Pisahkan dengan koma jika lebih dari satu.</p>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={saveSettings}
+                  disabled={savingSettings}
+                  className="px-4 py-2 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                  style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', opacity: savingSettings ? 0.6 : 1 }}
+                >
+                  {savingSettings ? <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</> : <><FontAwesomeIcon icon={faSave} /> Simpan Pengaturan</>}
+                </button>
+              </div>
+            </div>
+
+            {/* Bento Card 2: Manual Testing & Diagnostics */}
+            <div className="p-4 rounded-lg border space-y-4" style={{ background: cardBg, borderColor }}>
+              <div className="border-b pb-3" style={{ borderColor }}>
+                <h3 className="font-semibold text-sm" style={{ color: textPrimary }}>Uji Coba Email</h3>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: textSecondary }}>
+                  Kirim Sampel ke Email Tujuan:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={testEmail}
+                    onChange={e => setTestEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendTestEmail()}
+                    placeholder="nama@email.com"
+                    style={inputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={sendTestEmail}
+                    disabled={testRunning}
+                    className="px-4 py-2 rounded text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all"
+                    style={{ background: subtleBg, color: textPrimary, border: `1px solid ${borderColor}`, opacity: testRunning ? 0.6 : 1 }}
+                  >
+                    {testRunning ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faPaperPlane} />}
+                    Kirim Sampel
+                  </button>
+                </div>
+              </div>
+
+              {testResult && (
+                <div className="p-3 rounded border text-xs font-mono" style={{
+                  background: testResult.success ? '#EDF3EC' : '#FDEBEC',
+                  borderColor: testResult.success ? '#B2D8B4' : '#F8B4B4',
+                  color: testResult.success ? '#346538' : '#9F2F2D'
+                }}>
+                  <div className="font-bold mb-1">{testResult.success ? '✅ SUKSES' : '❌ GAGAL'}: {testResult.message || testResult.error}</div>
+                  {testResult.sentTo && <div className="text-[11px]">Tujuan: {testResult.sentTo}</div>}
+                </div>
+              )}
+
+              {/* Trigger Manual Cron */}
+              <div className="pt-2 border-t flex items-center justify-between" style={{ borderColor }}>
+                <div className="text-xs font-medium" style={{ color: textPrimary }}>Jalankan Audit Absensi Manual</div>
+                <button
+                  type="button"
+                  onClick={triggerTestRun}
+                  disabled={testRunning}
+                  className="px-3.5 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                  style={{ background: '#E1F3FE', color: '#1F6C9F', border: '1px solid #BAE6FD', opacity: testRunning ? 0.6 : 1 }}
+                >
+                  <FontAwesomeIcon icon={faSyncAlt} spin={testRunning} />
+                  Jalankan Audit
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* ── Riwayat Kirim Harian (run log) ── */}
-          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
-            <div className="px-4 py-3 flex items-center justify-between" style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-              <div>
-                <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>🗓️ Riwayat Eksekusi Cron (per hari)</h3>
-                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>Setiap cron berjalan mencatat 1 baris di sini — termasuk skip & error.</p>
-              </div>
-              <button onClick={fetchRunLogs} className="text-xs px-3 py-1 rounded-lg" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textSecondary, cursor: 'pointer' }}>↻ Refresh</button>
+          {/* Table 1: Riwayat Eksekusi Cron */}
+          <div className="rounded-lg border overflow-hidden" style={{ borderColor }}>
+            <div className="px-4 py-3 border-b flex items-center justify-between" style={{ background: subtleBg, borderColor }}>
+              <h3 className="font-semibold text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                Riwayat Eksekusi Cron
+              </h3>
+              <button
+                type="button"
+                onClick={fetchRunLogs}
+                className="px-2.5 py-1 rounded text-xs font-mono"
+                style={{ background: cardBg, color: textSecondary, border: `1px solid ${borderColor}` }}
+              >
+                <FontAwesomeIcon icon={faSyncAlt} className="mr-1" />
+                REFRESH
+              </button>
             </div>
-            {runLogs.length === 0 ? (
-              <div className="p-6 text-center text-sm" style={{ color: theme.textSecondary }}>Belum ada data — cron belum pernah berjalan atau tabel belum dibuat.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ background: theme.subtleBg }}>
-                      {['Dijalankan (WIB)', 'Tgl Proses', 'User', 'Pelanggaran', 'Email OK', 'Email Gagal', 'Admin Email', 'Keterangan'].map(h => (
-                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold" style={{ color: theme.textSecondary, whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {runLogs.map(r => {
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b font-mono text-[10px] uppercase tracking-wider" style={{ background: cardBg, borderColor, color: textSecondary }}>
+                    <th className="px-4 py-2.5">Waktu (WIB)</th>
+                    <th className="px-4 py-2.5">Tgl Target</th>
+                    <th className="px-4 py-2.5 text-center">User</th>
+                    <th className="px-4 py-2.5 text-center">Pelanggaran</th>
+                    <th className="px-4 py-2.5 text-center">Email OK</th>
+                    <th className="px-4 py-2.5 text-center">Email Gagal</th>
+                    <th className="px-4 py-2.5">Status Admin</th>
+                    <th className="px-4 py-2.5">Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor }}>
+                  {runLogs.length === 0 ? (
+                    <tr><td colSpan={8} className="px-4 py-6 text-center" style={{ color: textSecondary }}>Belum ada riwayat eksekusi cron.</td></tr>
+                  ) : (
+                    runLogs.map(r => {
                       const ranAtWIB = r.ran_at ? new Date(new Date(r.ran_at).getTime() + 7*60*60*1000) : null
                       const ranStr = ranAtWIB
                         ? `${String(ranAtWIB.getUTCDate()).padStart(2,'0')}/${String(ranAtWIB.getUTCMonth()+1).padStart(2,'0')} ${String(ranAtWIB.getUTCHours()).padStart(2,'0')}:${String(ranAtWIB.getUTCMinutes()).padStart(2,'0')}`
                         : '—'
                       const isSkip  = !!r.skipped_reason
                       const isError = !!r.error_message
-                      const rowBg   = isError ? '#fef2f2' : isSkip ? (theme.subtleBg) : theme.cardBg
                       return (
-                        <tr key={r.id} style={{ borderTop: `1px solid ${theme.border}`, background: rowBg }}>
-                          <td className="px-3 py-2 text-xs font-mono" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>{ranStr}</td>
-                          <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>{r.target_date || '—'}</td>
-                          <td className="px-3 py-2 text-xs text-center" style={{ color: theme.textBody }}>{isSkip || isError ? '—' : r.users_processed}</td>
-                          <td className="px-3 py-2 text-xs text-center" style={{ color: r.violations_found > 0 ? '#92400e' : theme.textSecondary }}>
+                        <tr key={r.id} style={{ background: cardBg }}>
+                          <td className="px-4 py-2 font-mono whitespace-nowrap" style={{ color: textPrimary }}>{ranStr}</td>
+                          <td className="px-4 py-2 font-mono whitespace-nowrap" style={{ color: textSecondary }}>{r.target_date || '—'}</td>
+                          <td className="px-4 py-2 font-mono text-center" style={{ color: textPrimary }}>{isSkip || isError ? '—' : r.users_processed}</td>
+                          <td className="px-4 py-2 font-mono text-center font-semibold" style={{ color: r.violations_found > 0 ? '#956400' : textSecondary }}>
                             {isSkip || isError ? '—' : r.violations_found}
                           </td>
-                          <td className="px-3 py-2 text-xs text-center">
-                            {isSkip || isError ? <span style={{ color: theme.textSecondary }}>—</span>
-                              : <span style={{ fontWeight: 600, color: r.emails_sent > 0 ? '#166534' : theme.textSecondary }}>{r.emails_sent}</span>}
+                          <td className="px-4 py-2 font-mono text-center">
+                            {isSkip || isError ? '—' : <span className="text-emerald-600 font-semibold">{r.emails_sent}</span>}
                           </td>
-                          <td className="px-3 py-2 text-xs text-center">
-                            {isSkip || isError ? <span style={{ color: theme.textSecondary }}>—</span>
-                              : r.emails_failed > 0
-                                ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#fee2e2', color: '#991b1b' }}>❌ {r.emails_failed}</span>
-                                : <span style={{ color: theme.textSecondary }}>0</span>}
+                          <td className="px-4 py-2 font-mono text-center">
+                            {isSkip || isError ? '—' : r.emails_failed > 0 ? <span className="text-red-600 font-bold">{r.emails_failed}</span> : '0'}
                           </td>
-                          <td className="px-3 py-2 text-xs">
-                            {r.admin_email_ok === true  && <span className="px-2 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#166534', fontSize: 11, fontWeight: 600 }}>✓ {(r.admin_emails||[]).join(', ')}</span>}
-                            {r.admin_email_ok === false && <span className="px-2 py-0.5 rounded-full" style={{ background: '#fee2e2', color: '#991b1b', fontSize: 11, fontWeight: 600 }}>✗ Gagal</span>}
-                            {r.admin_email_ok === null  && <span style={{ color: theme.textSecondary, fontSize: 11 }}>—</span>}
+                          <td className="px-4 py-2 whitespace-nowrap">
+                            {r.admin_email_ok === true  && <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#EDF3EC', color: '#346538', border: '1px solid #B2D8B4' }}>Terkirim</span>}
+                            {r.admin_email_ok === false && <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }}>Gagal</span>}
+                            {r.admin_email_ok === null  && <span className="text-gray-400 font-mono text-xs">—</span>}
                           </td>
-                          <td className="px-3 py-2 text-xs" style={{ color: isError ? '#991b1b' : isSkip ? '#92400e' : theme.textSecondary }}>
-                            {isError ? `⚠️ ${r.error_message}` : isSkip ? `⏭ ${r.skipped_reason}` : '✓ Normal'}
+                          <td className="px-4 py-2 text-[11px]" style={{ color: isError ? '#9F2F2D' : isSkip ? '#956400' : textSecondary }}>
+                            {isError ? `Error: ${r.error_message}` : isSkip ? r.skipped_reason : 'Normal'}
                           </td>
                         </tr>
                       )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {/* ── Log Notifikasi per Karyawan ── */}
-          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
-            <div className="px-4 py-3 flex items-center justify-between" style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-              <div>
-                <h3 className="font-semibold text-sm" style={{ color: theme.textPrimary }}>📋 Log Notifikasi per Karyawan</h3>
-                <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>Tiap baris = satu pelanggaran satu karyawan. Status email per orang.</p>
-              </div>
-              {logsLoading && <span className="text-xs" style={{ color: theme.textSecondary }}>Memuat...</span>}
+          {/* Table 2: Log Notifikasi per Karyawan */}
+          <div className="rounded-lg border overflow-hidden" style={{ borderColor }}>
+            <div className="px-4 py-3 border-b flex items-center justify-between" style={{ background: subtleBg, borderColor }}>
+              <h3 className="font-semibold text-xs font-mono uppercase tracking-wider" style={{ color: textPrimary }}>
+                Log Notifikasi Karyawan
+              </h3>
+              <button
+                type="button"
+                onClick={fetchLogs}
+                className="px-2.5 py-1 rounded text-xs font-mono"
+                style={{ background: cardBg, color: textSecondary, border: `1px solid ${borderColor}` }}
+              >
+                <FontAwesomeIcon icon={faSyncAlt} className="mr-1" />
+                REFRESH
+              </button>
             </div>
-            {notifLogs.length === 0 ? (
-              <div className="p-6 text-center text-sm" style={{ color: theme.textSecondary }}>Belum ada log notifikasi</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ background: theme.subtleBg }}>
-                      {['Dikirim (WIB)', 'Nama', 'Tgl Kejadian', 'Jenis', 'Terjadwal', 'Aktual', 'Email Ke', 'Status Email'].map(h => (
-                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold" style={{ color: theme.textSecondary, whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {notifLogs.map(log => {
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b font-mono text-[10px] uppercase tracking-wider" style={{ background: cardBg, borderColor, color: textSecondary }}>
+                    <th className="px-4 py-2.5">Waktu Kirim</th>
+                    <th className="px-4 py-2.5">Nama Karyawan</th>
+                    <th className="px-4 py-2.5">Tgl Kejadian</th>
+                    <th className="px-4 py-2.5">Jenis Pelanggaran</th>
+                    <th className="px-4 py-2.5">Jadwal</th>
+                    <th className="px-4 py-2.5">Aktual</th>
+                    <th className="px-4 py-2.5">Email Penerima</th>
+                    <th className="px-4 py-2.5 text-right">Status Email</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor }}>
+                  {notifLogs.length === 0 ? (
+                    <tr><td colSpan={8} className="px-4 py-6 text-center" style={{ color: textSecondary }}>Belum ada log pengiriman email absensi.</td></tr>
+                  ) : (
+                    notifLogs.map(log => {
                       const nm = log.user
                         ? `${log.user.user_nama_depan || ''} ${log.user.user_nama_belakang || ''}`.trim()
                         : `User #${log.user_id}`
-                      const notifInfo = NOTIF_TYPES[log.notif_type] || { label: log.notif_type, bg: '#f3f4f6', color: '#374151' }
+                      const notifInfo = NOTIF_TYPES[log.notif_type] || { label: log.notif_type, bg: '#F4F4F5', color: '#111111', border: '#E4E4E7' }
                       const sentAtWIB = log.sent_at ? new Date(new Date(log.sent_at).getTime() + 7*60*60*1000) : null
                       const sentStr = sentAtWIB
                         ? `${String(sentAtWIB.getUTCDate()).padStart(2,'0')}/${String(sentAtWIB.getUTCMonth()+1).padStart(2,'0')} ${String(sentAtWIB.getUTCHours()).padStart(2,'0')}:${String(sentAtWIB.getUTCMinutes()).padStart(2,'0')}`
                         : '—'
-                      // 3-state: true=sent, false=failed, null=no email configured
-                      const statusBadge = log.success === true
-                        ? { bg: '#dcfce7', color: '#166534', label: '✓ Terkirim' }
-                        : log.success === false
-                        ? { bg: '#fee2e2', color: '#991b1b', label: '✗ Gagal' }
-                        : { bg: '#f3f4f6', color: '#6b7280', label: '— Tidak ada email' }
+
                       return (
-                        <tr key={log.id} style={{ borderTop: `1px solid ${theme.border}`, background: theme.cardBg }}>
-                          <td className="px-3 py-2 text-xs font-mono" style={{ color: theme.textSecondary, whiteSpace: 'nowrap' }}>{sentStr}</td>
-                          <td className="px-3 py-2 text-xs font-medium" style={{ color: theme.textPrimary }}>{nm}</td>
-                          <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>{log.notif_date}</td>
-                          <td className="px-3 py-2">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: notifInfo.bg, color: notifInfo.color }}>
+                        <tr key={log.id} style={{ background: cardBg }}>
+                          <td className="px-4 py-2 font-mono whitespace-nowrap" style={{ color: textSecondary }}>{sentStr}</td>
+                          <td className="px-4 py-2 font-medium" style={{ color: textPrimary }}>{nm}</td>
+                          <td className="px-4 py-2 font-mono whitespace-nowrap" style={{ color: textSecondary }}>{log.notif_date}</td>
+                          <td className="px-4 py-2 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded text-xs" style={{ background: notifInfo.bg, color: notifInfo.color, border: `1px solid ${notifInfo.border}` }}>
                               {notifInfo.label}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>{log.scheduled_time || '—'}</td>
-                          <td className="px-3 py-2 text-xs" style={{ color: theme.textPrimary }}>{log.actual_time || '—'}</td>
-                          <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>
-                            {(log.email_to || []).join(', ') || '—'}
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: statusBadge.bg, color: statusBadge.color }}>
-                              {statusBadge.label}
-                            </span>
+                          <td className="px-4 py-2 font-mono" style={{ color: textSecondary }}>{log.scheduled_time || '—'}</td>
+                          <td className="px-4 py-2 font-mono" style={{ color: textPrimary }}>{log.actual_time || '—'}</td>
+                          <td className="px-4 py-2 font-mono text-[11px]" style={{ color: textSecondary }}>{(log.email_to || []).join(', ') || '—'}</td>
+                          <td className="px-4 py-2 text-right whitespace-nowrap">
+                            {log.success === true ? (
+                              <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#EDF3EC', color: '#346538', border: '1px solid #B2D8B4' }}>
+                                Terkirim
+                              </span>
+                            ) : log.success === false ? (
+                              <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }}>
+                                Gagal
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-xs" style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}>
+                                Tanpa Email
+                              </span>
+                            )}
                           </td>
                         </tr>
                       )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {/* ════════════════════ TAB 4: HARI KHUSUS ════════════════════ */}
       {tab === 'special' && (
-        <div className="space-y-4">
-          <p className="text-sm" style={{ color: theme.textSecondary }}>
-            Atur hari khusus: Sabtu wajib masuk, jam pulang lebih awal (misal 17 Agustus), dsb.
-            Berlaku untuk semua karyawan, jabatan tertentu, atau karyawan tertentu.
-          </p>
-
-          {srMsg && (
-            <div className="p-3 rounded-lg text-sm" style={{
-              background: srMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-              color: srMsg.startsWith('✅') ? '#166534' : '#991b1b'
-            }}>{srMsg}</div>
-          )}
-
-          {/* Form tambah/edit */}
-          <div className="p-4 rounded-xl space-y-4" style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-            <div className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
-              {editingSrId ? '✏️ Edit Aturan Hari Khusus' : '➕ Tambah Aturan Hari Khusus'}
+        <div className="space-y-6">
+          {/* Form Tambah Aturan Hari Khusus */}
+          <div className="p-4 rounded-lg border space-y-4" style={{ background: cardBg, borderColor }}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor }}>
+              <div className="text-sm font-semibold flex items-center gap-2" style={{ color: textPrimary }}>
+                <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                Tambah Aturan Hari Khusus
+              </div>
+              {srMsg && (
+                <div className="px-2.5 py-1 rounded text-xs font-mono font-medium" style={{
+                  background: srMsg.startsWith('✅') ? '#EDF3EC' : '#FDEBEC',
+                  color: srMsg.startsWith('✅') ? '#346538' : '#9F2F2D',
+                  border: `1px solid ${srMsg.startsWith('✅') ? '#B2D8B4' : '#F8B4B4'}`
+                }}>
+                  {srMsg}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Tanggal */}
               <div>
-                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Tanggal</label>
-                <input type="date" value={srTanggal} onChange={e => setSrTanggal(e.target.value)}
-                  style={inputStyle} />
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Tanggal *</label>
+                <input type="date" value={srTanggal} onChange={e => setSrTanggal(e.target.value)} style={inputStyle} />
               </div>
 
-              {/* Berlaku untuk */}
               <div>
-                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Berlaku untuk</label>
-                <select value={srScope} onChange={e => { setSrScope(e.target.value); setSrRoleIds(new Set()); setSrUserId('') }}
-                  style={inputStyle}>
-                  <option value="all">Semua karyawan</option>
-                  <option value="role">Jabatan tertentu</option>
-                  <option value="user">Karyawan tertentu</option>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Berlaku Untuk *</label>
+                <select value={srScope} onChange={e => { setSrScope(e.target.value); setSrRoleIds(new Set()); setSrUserId('') }} style={selectStyle}>
+                  <option value="all">👥 Semua Karyawan</option>
+                  <option value="role">🏷️ Jabatan Tertentu</option>
+                  <option value="user">👤 Karyawan Tertentu</option>
                 </select>
               </div>
 
-              {/* Jabatan (jika scope = role) — multi-checkbox */}
               {srScope === 'role' && (
                 <div className="md:col-span-2">
-                  <label className="text-xs font-medium block mb-2" style={{ color: theme.textSecondary }}>
-                    Pilih Jabatan
-                    {srRoleIds.size > 0 && <span className="ml-2 text-blue-600">({srRoleIds.size} dipilih)</span>}
+                  <label className="text-[11px] font-medium block mb-1.5" style={{ color: textSecondary }}>
+                    Pilih Jabatan {srRoleIds.size > 0 && <span className="font-mono text-emerald-600">({srRoleIds.size} dipilih)</span>}
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {roles.map(r => {
                       const checked = srRoleIds.has(r.role_id)
                       return (
@@ -1346,14 +1402,14 @@ export default function AttendanceSettingsPage() {
                               return next
                             })
                           }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+                          className="px-2.5 py-1 rounded text-xs font-medium transition-all"
                           style={{
-                            background: checked ? (theme.blueText || '#2563eb') : (theme.subtleBg || '#f3f4f6'),
-                            color: checked ? '#fff' : (theme.textBody),
-                            border: `1px solid ${checked ? (theme.blueText || '#2563eb') : (theme.border || '#e5e7eb')}`,
+                            background: checked ? (isDark ? '#F4F4F5' : '#111111') : subtleBg,
+                            color: checked ? (isDark ? '#111111' : '#FFFFFF') : textSecondary,
+                            border: `1px solid ${checked ? (isDark ? '#F4F4F5' : '#111111') : borderColor}`,
                           }}
                         >
-                          {checked ? '✓' : ''} {r.role_name}
+                          {checked ? '✓ ' : ''}{r.role_name}
                         </button>
                       )
                     })}
@@ -1361,12 +1417,11 @@ export default function AttendanceSettingsPage() {
                 </div>
               )}
 
-              {/* Karyawan (jika scope = user) */}
               {srScope === 'user' && (
-                <div>
-                  <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Karyawan</label>
-                  <select value={srUserId} onChange={e => setSrUserId(e.target.value)} style={inputStyle}>
-                    <option value="">-- Pilih karyawan --</option>
+                <div className="md:col-span-2">
+                  <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Pilih Karyawan *</label>
+                  <select value={srUserId} onChange={e => setSrUserId(e.target.value)} style={selectStyle}>
+                    <option value="">-- Pilih Karyawan --</option>
                     {allUsers.map(u => (
                       <option key={u.user_id} value={u.user_id}>
                         {u.user_nama_depan} {u.user_nama_belakang}{u.user_pin ? ` (PIN: ${u.user_pin})` : ''}
@@ -1376,201 +1431,382 @@ export default function AttendanceSettingsPage() {
                 </div>
               )}
 
-              {/* Jam masuk custom */}
               <div>
-                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Jam Masuk (kosong = pakai jam normal)</label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Jam Masuk Custom (Kosong = Normal)</label>
                 <input type="time" value={srCheckIn} onChange={e => setSrCheckIn(e.target.value)} style={inputStyle} />
               </div>
 
-              {/* Jam keluar custom */}
               <div>
-                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Jam Keluar (kosong = pakai jam normal)</label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Jam Keluar Custom (Kosong = Normal)</label>
                 <input type="time" value={srCheckOut} onChange={e => setSrCheckOut(e.target.value)} style={inputStyle} />
               </div>
 
-              {/* Keterangan */}
               <div className="md:col-span-2">
-                <label className="text-xs font-medium" style={{ color: theme.textSecondary }}>Keterangan</label>
-                <input type="text" value={srKet} onChange={e => setSrKet(e.target.value)}
-                  placeholder="Contoh: Sabtu Wajib Masuk, Upacara 17 Agustus"
-                  style={inputStyle} />
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Keterangan *</label>
+                <input
+                  type="text"
+                  value={srKet}
+                  onChange={e => setSrKet(e.target.value)}
+                  placeholder="Contoh: Sabtu Wajib Masuk, Upacara Hari Kemerdekaan"
+                  style={inputStyle}
+                />
               </div>
             </div>
 
-            {/* Toggles: Is Work Day & Is Flexible Hours */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={() => setSrIsWorkDay(!srIsWorkDay)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
-                  style={{
-                    background: srIsWorkDay ? '#dcfce7' : '#fee2e2',
-                    color: srIsWorkDay ? '#166534' : '#991b1b',
-                    border: `1px solid ${srIsWorkDay ? '#bbf7d0' : '#fecaca'}`
-                  }}
-                >
-                  {srIsWorkDay ? '✅ Dihitung hari kerja' : '❌ Bukan hari kerja (libur pengganti)'}
-                </button>
-                <span className="text-xs" style={{ color: theme.textSecondary }}>
-                  {srIsWorkDay
-                    ? 'Karyawan yang tidak hadir akan dihitung tidak masuk'
-                    : 'Karyawan tidak diwajibkan hadir (tidak masuk tidak dihitung absen)'}
-                </span>
-              </div>
+            {/* Policy Toggles */}
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setSrIsWorkDay(!srIsWorkDay)}
+                className="px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                style={{
+                  background: srIsWorkDay ? '#EDF3EC' : '#FDEBEC',
+                  color: srIsWorkDay ? '#346538' : '#9F2F2D',
+                  border: `1px solid ${srIsWorkDay ? '#B2D8B4' : '#F8B4B4'}`
+                }}
+              >
+                {srIsWorkDay ? 'Hari Kerja' : 'Bukan Hari Kerja (Libur)'}
+              </button>
 
               {srIsWorkDay && (
-                <div className="flex items-center gap-3 flex-wrap">
-                  <button
-                    onClick={() => setSrIsFlexibleHours(!srIsFlexibleHours)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
-                    style={{
-                      background: srIsFlexibleHours ? '#fef3c7' : (theme.subtleBg || '#f3f4f6'),
-                      color: srIsFlexibleHours ? '#92400e' : (theme.textSecondary || '#4b5563'),
-                      border: `1px solid ${srIsFlexibleHours ? '#fde68a' : (theme.border || '#e5e7eb')}`
-                    }}
-                  >
-                    {srIsFlexibleHours ? '✨ Bebas Sanksi Terlambat & Pulang Awal (Bebas Jam)' : '⏱️ Jam Kerja Normal (Diuji Terlambat & Pulang Awal)'}
-                  </button>
-                  <span className="text-xs" style={{ color: theme.textSecondary }}>
-                    {srIsFlexibleHours
-                      ? 'Karyawan WAJIB hadir & scan absensi, tetapi TIDAK dihitung terlambat atau pulang awal.'
-                      : 'Karyawan diuji terlambat dan pulang awal sesuai jam masuk/keluar.'}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setSrIsFlexibleHours(!srIsFlexibleHours)}
+                  className="px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                  style={{
+                    background: srIsFlexibleHours ? '#FBF3DB' : subtleBg,
+                    color: srIsFlexibleHours ? '#956400' : textSecondary,
+                    border: `1px solid ${srIsFlexibleHours ? '#FDE68A' : borderColor}`
+                  }}
+                >
+                  {srIsFlexibleHours ? 'Bebas Jam (Tanpa Sanksi)' : 'Jam Kerja Standar'}
+                </button>
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex justify-end pt-2">
               <button
+                type="button"
                 onClick={saveSr}
                 disabled={savingSr}
-                className="px-4 py-2 rounded-lg text-sm font-medium"
-                style={{ background: theme.blueText || '#2563eb', color: '#fff', opacity: savingSr ? 0.6 : 1 }}
+                className="px-4 py-2 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', opacity: savingSr ? 0.6 : 1 }}
               >
-                {savingSr ? 'Menyimpan...' : editingSrId ? 'Perbarui Aturan' : 'Tambah Aturan'}
+                {savingSr ? <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</> : <><FontAwesomeIcon icon={faPlus} /> Tambah Aturan Hari Khusus</>}
               </button>
-              {editingSrId && (
-                <button onClick={resetSrForm} className="px-4 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                  Batal
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Daftar aturan */}
-          <div className="overflow-x-auto rounded-xl" style={{ border: `1px solid ${theme.border}` }}>
-            <table className="w-full text-sm">
+          {/* Table of Special Day Rules */}
+          <div className="rounded-lg border overflow-hidden" style={{ borderColor }}>
+            <table className="w-full text-left text-xs">
               <thead>
-                <tr style={{ background: theme.subtleBg, borderBottom: `1px solid ${theme.border}` }}>
-                  {['Tanggal', 'Berlaku untuk', 'Jam Masuk', 'Jam Keluar', 'Hari Kerja & Sifat', 'Keterangan', ''].map(h => (
-                    <th key={h} className="text-left px-3 py-2 text-xs font-semibold"
-                      style={{ color: theme.textSecondary }}>{h}</th>
-                  ))}
+                <tr className="border-b font-mono text-[10px] uppercase tracking-wider" style={{ background: subtleBg, borderColor, color: textSecondary }}>
+                  <th className="px-4 py-2.5">Tanggal</th>
+                  <th className="px-4 py-2.5">Berlaku Untuk</th>
+                  <th className="px-4 py-2.5">Jam Masuk</th>
+                  <th className="px-4 py-2.5">Jam Keluar</th>
+                  <th className="px-4 py-2.5">Sifat Kehadiran</th>
+                  <th className="px-4 py-2.5">Keterangan</th>
+                  <th className="px-4 py-2.5 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody>
-                {specialRules.length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-6 text-center text-sm" style={{ color: theme.textSecondary }}>
-                    Belum ada aturan hari khusus
-                  </td></tr>
+              <tbody className="divide-y" style={{ borderColor }}>
+                {specialRules.length === 0 ? (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: textSecondary }}>Belum ada aturan hari khusus.</td></tr>
+                ) : (
+                  specialRules.map(r => {
+                    const scopeLabel = r.scope_type === 'all'
+                      ? 'Semua Karyawan'
+                      : r.scope_type === 'role'
+                        ? (r.role?.role_name || 'Jabatan')
+                        : `${r.user?.user_nama_depan || ''} ${r.user?.user_nama_belakang || ''}`
+                    const isFlexRule = !!r.is_flexible_hours || (r.keterangan || '').includes('[BEBAS_JAM]')
+                    const displayKet = (r.keterangan || '').replace('[BEBAS_JAM]', '').trim()
+
+                    return (
+                      <tr key={r.id} style={{ background: cardBg }}>
+                        <td className="px-4 py-2.5 font-mono font-medium whitespace-nowrap" style={{ color: textPrimary }}>{r.tanggal}</td>
+                        <td className="px-4 py-2.5 font-medium" style={{ color: textPrimary }}>{scopeLabel}</td>
+                        <td className="px-4 py-2.5 font-mono" style={{ color: textSecondary }}>
+                          {r.custom_check_in ? String(r.custom_check_in).slice(0,5) : '—'}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono" style={{ color: textSecondary }}>
+                          {r.custom_check_out ? String(r.custom_check_out).slice(0,5) : '—'}
+                        </td>
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded text-xs" style={{
+                              background: r.is_work_day ? '#EDF3EC' : '#FDEBEC',
+                              color: r.is_work_day ? '#346538' : '#9F2F2D',
+                              border: `1px solid ${r.is_work_day ? '#B2D8B4' : '#F8B4B4'}`
+                            }}>
+                              {r.is_work_day ? 'Hari Kerja' : 'Libur'}
+                            </span>
+                            {r.is_work_day && isFlexRule && (
+                              <span className="px-2 py-0.5 rounded text-xs" style={{
+                                background: '#FBF3DB',
+                                color: '#956400',
+                                border: '1px solid #FDE68A'
+                              }}>
+                                Bebas Jam
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5" style={{ color: textSecondary }}>{displayKet || '—'}</td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => startEditSr(r)}
+                            className="px-2.5 py-1 rounded text-xs font-medium mr-1.5 transition-all"
+                            style={{ background: subtleBg, color: textPrimary, border: `1px solid ${borderColor}` }}
+                          >
+                            <FontAwesomeIcon icon={faEdit} className="mr-1 text-[10px]" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteSr(r.id)}
+                            className="px-2.5 py-1 rounded text-xs font-medium transition-all"
+                            style={{ background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }}
+                          >
+                            <FontAwesomeIcon icon={faTrash} className="mr-1 text-[10px]" />
+                            Hapus
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
-                {specialRules.map((r, ri) => {
-                  const scopeLabel = r.scope_type === 'all'
-                    ? '👥 Semua karyawan'
-                    : r.scope_type === 'role'
-                      ? `🏷️ ${r.role?.role_name || 'Jabatan'}`
-                      : `👤 ${r.user?.user_nama_depan || ''} ${r.user?.user_nama_belakang || ''}`
-                  const isFlexRule = !!r.is_flexible_hours || (r.keterangan || '').includes('[BEBAS_JAM]')
-                  const displayKet = (r.keterangan || '').replace('[BEBAS_JAM]', '').trim()
-
-                  return (
-                    <tr key={r.id} style={{ borderTop: ri > 0 ? `1px solid ${theme.border}` : 'none' }}>
-                      <td className="px-3 py-2 font-medium" style={{ color: theme.textPrimary, whiteSpace: 'nowrap' }}>
-                        {r.tanggal}
-                      </td>
-                      <td className="px-3 py-2 text-xs" style={{ color: theme.textBody }}>{scopeLabel}</td>
-                      <td className="px-3 py-2 text-xs" style={{ color: theme.textBody }}>
-                        {r.custom_check_in ? String(r.custom_check_in).slice(0,5) : <span style={{ color: theme.textSecondary }}>—</span>}
-                      </td>
-                      <td className="px-3 py-2 text-xs" style={{ color: theme.textBody }}>
-                        {r.custom_check_out ? String(r.custom_check_out).slice(0,5) : <span style={{ color: theme.textSecondary }}>—</span>}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
-                            background: r.is_work_day ? '#dcfce7' : '#fee2e2',
-                            color:      r.is_work_day ? '#166534' : '#991b1b'
-                          }}>{r.is_work_day ? 'Hari Kerja' : 'Libur'}</span>
-
-                          {r.is_work_day && isFlexRule && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
-                              background: '#fef3c7',
-                              color: '#92400e'
-                            }}>✨ Bebas Jam</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-xs" style={{ color: theme.textSecondary }}>
-                        {displayKet || '—'}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-1">
-                          <button onClick={() => startEditSr(r)}
-                            className="px-2 py-1 rounded text-xs font-medium"
-                            style={{ background: '#eff6ff', color: '#1d4ed8' }}>Edit</button>
-                          <button onClick={() => deleteSr(r.id)}
-                            className="px-2 py-1 rounded text-xs font-medium"
-                            style={{ background: '#fef2f2', color: '#991b1b' }}>Hapus</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
               </tbody>
             </table>
           </div>
+
+          {/* Modal Edit Aturan Hari Khusus (Minimalist UI Standard) */}
+          {showEditSrModal && (
+            <Modal
+              isOpen={showEditSrModal}
+              onClose={() => { if (!savingEditSr) setShowEditSrModal(false) }}
+              title="✏️ Edit Aturan Hari Khusus"
+              size="md"
+            >
+              <div className="space-y-4 text-xs">
+                {editSrMsg && (
+                  <div className="p-3 rounded text-xs font-medium font-mono" style={{
+                    background: editSrMsg.startsWith('✅') ? '#EDF3EC' : '#FDEBEC',
+                    color: editSrMsg.startsWith('✅') ? '#346538' : '#9F2F2D',
+                    border: `1px solid ${editSrMsg.startsWith('✅') ? '#B2D8B4' : '#F8B4B4'}`
+                  }}>
+                    {editSrMsg}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Tanggal *</label>
+                    <input
+                      type="date"
+                      value={editSrTanggal}
+                      onChange={e => setEditSrTanggal(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Berlaku Untuk *</label>
+                    <select
+                      value={editSrScope}
+                      onChange={e => {
+                        setEditSrScope(e.target.value)
+                        if (e.target.value !== 'role') setEditSrRoleId('')
+                        if (e.target.value !== 'user') setEditSrUserId('')
+                      }}
+                      style={selectStyle}
+                    >
+                      <option value="all">👥 Semua Karyawan</option>
+                      <option value="role">🏷️ Jabatan Tertentu</option>
+                      <option value="user">👤 Karyawan Tertentu</option>
+                    </select>
+                  </div>
+
+                  {editSrScope === 'role' && (
+                    <div className="md:col-span-2">
+                      <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Pilih Jabatan *</label>
+                      <select
+                        value={editSrRoleId}
+                        onChange={e => setEditSrRoleId(e.target.value)}
+                        style={selectStyle}
+                      >
+                        <option value="">-- Pilih Jabatan --</option>
+                        {roles.map(r => (
+                          <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {editSrScope === 'user' && (
+                    <div className="md:col-span-2">
+                      <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Pilih Karyawan *</label>
+                      <select
+                        value={editSrUserId}
+                        onChange={e => setEditSrUserId(e.target.value)}
+                        style={selectStyle}
+                      >
+                        <option value="">-- Pilih Karyawan --</option>
+                        {allUsers.map(u => (
+                          <option key={u.user_id} value={u.user_id}>
+                            {u.user_nama_depan} {u.user_nama_belakang}{u.user_pin ? ` (PIN: ${u.user_pin})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Jam Masuk Custom (Kosong = Normal)</label>
+                    <input
+                      type="time"
+                      value={editSrCheckIn}
+                      onChange={e => setEditSrCheckIn(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Jam Keluar Custom (Kosong = Normal)</label>
+                    <input
+                      type="time"
+                      value={editSrCheckOut}
+                      onChange={e => setEditSrCheckOut(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>Keterangan *</label>
+                    <input
+                      type="text"
+                      value={editSrKet}
+                      onChange={e => setEditSrKet(e.target.value)}
+                      placeholder="Contoh: Shift 2 Expo, Upacara 17 Agustus"
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+
+                {/* Toggles */}
+                <div className="flex items-center gap-3 pt-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setEditSrIsWorkDay(!editSrIsWorkDay)}
+                    className="px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                    style={{
+                      background: editSrIsWorkDay ? '#EDF3EC' : '#FDEBEC',
+                      color: editSrIsWorkDay ? '#346538' : '#9F2F2D',
+                      border: `1px solid ${editSrIsWorkDay ? '#B2D8B4' : '#F8B4B4'}`
+                    }}
+                  >
+                    {editSrIsWorkDay ? 'Hari Kerja' : 'Bukan Hari Kerja (Libur)'}
+                  </button>
+
+                  {editSrIsWorkDay && (
+                    <button
+                      type="button"
+                      onClick={() => setEditSrIsFlexibleHours(!editSrIsFlexibleHours)}
+                      className="px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                      style={{
+                        background: editSrIsFlexibleHours ? '#FBF3DB' : subtleBg,
+                        color: editSrIsFlexibleHours ? '#956400' : textSecondary,
+                        border: `1px solid ${editSrIsFlexibleHours ? '#FDE68A' : borderColor}`
+                      }}
+                    >
+                      {editSrIsFlexibleHours ? 'Bebas Jam (Tanpa Sanksi)' : 'Jam Kerja Standar'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t" style={{ borderColor }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditSrModal(false)}
+                    disabled={savingEditSr}
+                    className="px-4 py-2 rounded text-xs font-medium"
+                    style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveEditSr}
+                    disabled={savingEditSr}
+                    className="px-5 py-2 rounded text-xs font-semibold flex items-center gap-1.5"
+                    style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', opacity: savingEditSr ? 0.6 : 1 }}
+                  >
+                    {savingEditSr ? <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</> : <><FontAwesomeIcon icon={faSave} /> Simpan Perubahan</>}
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          )}
         </div>
       )}
+
       {/* ════════════════════ TAB 5: APPROVER PER JABATAN ════════════════════ */}
       {tab === 'approvers' && (
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: theme.textSecondary }}>
-            Tentukan siapa <strong>Approver 1</strong> (wajib) dan <strong>Approver 2</strong> (opsional) untuk setiap jabatan.
-            Jika hanya Approver 1 yang diset, pengajuan langsung disetujui setelah Approver 1 menyetujui.
-            Konfigurasi ini digunakan saat karyawan mengajukan surat keterangan absensi — approver ditentukan
-            berdasarkan jabatan karyawan yang bersangkutan.
-          </p>
-
           {uaMsg && (
-            <div className="p-3 rounded-lg text-sm" style={{
-              background: uaMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-              color: uaMsg.startsWith('✅') ? '#166534' : '#991b1b',
-            }}>{uaMsg}</div>
+            <div className="px-3 py-1.5 rounded text-xs font-medium" style={{
+              background: uaMsg.startsWith('✅') ? '#EDF3EC' : '#FDEBEC',
+              color: uaMsg.startsWith('✅') ? '#346538' : '#9F2F2D',
+              border: `1px solid ${uaMsg.startsWith('✅') ? '#B2D8B4' : '#F8B4B4'}`
+            }}>
+              {uaMsg}
+            </div>
           )}
 
-          <div className="space-y-3">
+          {/* Bento Grid: Role Approvers */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {roleApprovers.map(role => {
               const edit = uaEdits[role.role_id] || { approver1_id: '', approver2_id: '' }
-              const configured = role.approver1 || role.approver2
+              const isConfigured = !!edit.approver1_id
+              const isSaving = savingUa === role.role_id
 
               return (
-                <div key={role.role_id} className="p-4 rounded-xl"
-                  style={{ background: theme.cardBg, border: `1px solid ${theme.border}` }}>
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    {/* Role name */}
-                    <div className="font-semibold text-sm min-w-[160px]" style={{ color: theme.textPrimary }}>
-                      {role.role_name}
+                <div
+                  key={role.role_id}
+                  className="p-4 rounded-lg border flex flex-col justify-between transition-all"
+                  style={{ background: cardBg, borderColor }}
+                >
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="font-semibold text-sm" style={{ color: textPrimary }}>
+                        {role.role_name}
+                      </div>
+                      <span
+                        className="px-2 py-0.5 rounded text-xs font-medium"
+                        style={{
+                          background: isConfigured ? '#EDF3EC' : '#FBF3DB',
+                          color: isConfigured ? '#346538' : '#956400',
+                          border: `1px solid ${isConfigured ? '#B2D8B4' : '#FDE68A'}`
+                        }}
+                      >
+                        {isConfigured ? 'Terkonfigurasi' : 'Belum Diatur'}
+                      </span>
                     </div>
 
-                    {/* Approver selects */}
-                    <div className="flex gap-3 flex-1 flex-wrap">
-                      <div className="flex-1 min-w-[180px]">
-                        <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Approver 1</label>
+                    {/* Approver Selects */}
+                    <div className="space-y-2.5 my-2">
+                      <div>
+                        <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>
+                          Approver 1 (Atasan Langsung / Principal) *
+                        </label>
                         <select
                           value={edit.approver1_id}
                           onChange={e => setUaEdits(prev => ({ ...prev, [role.role_id]: { ...prev[role.role_id], approver1_id: e.target.value } }))}
-                          style={inputStyle}
+                          style={selectStyle}
                         >
                           <option value="">-- Pilih Approver 1 --</option>
                           {allUsers.map(u => (
@@ -1581,12 +1817,14 @@ export default function AttendanceSettingsPage() {
                         </select>
                       </div>
 
-                      <div className="flex-1 min-w-[180px]">
-                        <label className="text-xs font-medium block mb-1" style={{ color: theme.textSecondary }}>Approver 2 <span style={{ fontWeight: 400, color: theme.textSecondary }}>(opsional)</span></label>
+                      <div>
+                        <label className="text-[11px] font-medium block mb-1" style={{ color: textSecondary }}>
+                          Approver 2 (Opsional / Head of School)
+                        </label>
                         <select
                           value={edit.approver2_id}
                           onChange={e => setUaEdits(prev => ({ ...prev, [role.role_id]: { ...prev[role.role_id], approver2_id: e.target.value } }))}
-                          style={inputStyle}
+                          style={selectStyle}
                         >
                           <option value="">-- Tanpa Approver 2 --</option>
                           {allUsers.map(u => (
@@ -1597,47 +1835,25 @@ export default function AttendanceSettingsPage() {
                         </select>
                       </div>
                     </div>
-
-                    {/* Save button */}
-                    <button
-                      onClick={() => saveRoleApprover(role.role_id)}
-                      disabled={savingUa === role.role_id}
-                      className="px-4 py-2 rounded-lg text-sm font-medium"
-                      style={{
-                        background: theme.blueText || '#2563eb',
-                        color: '#fff',
-                        opacity: savingUa === role.role_id ? 0.6 : 1,
-                        alignSelf: 'flex-end',
-                        marginBottom: '2px',
-                      }}
-                    >
-                      {savingUa === role.role_id ? 'Menyimpan...' : 'Simpan'}
-                    </button>
                   </div>
 
-                  {/* Current saved config */}
-                  {configured ? (
-                    <div className="mt-2 text-xs flex items-center gap-1" style={{ color: theme.textSecondary }}>
-                      <span>Tersimpan:</span>
-                      <span className="font-medium" style={{ color: theme.textBody }}>
-                        {role.approver1 ? `${role.approver1.user_nama_depan} ${role.approver1.user_nama_belakang}` : '—'}
-                      </span>
-                      {role.approver2 ? (
-                        <>
-                          <span>→</span>
-                          <span className="font-medium" style={{ color: theme.textBody }}>
-                            {role.approver2.user_nama_depan} {role.approver2.user_nama_belakang}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: '#f3f4f6', color: '#6b7280' }}>1 Approver</span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-2 text-xs" style={{ color: theme.textSecondary }}>
-                      Belum dikonfigurasi
-                    </div>
-                  )}
+                  {/* Footer */}
+                  <div className="pt-3 mt-2 border-t flex justify-end" style={{ borderColor }}>
+                    <button
+                      type="button"
+                      onClick={() => saveRoleApprover(role.role_id)}
+                      disabled={isSaving}
+                      className="px-3.5 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all"
+                      style={{
+                        background: isDark ? '#F4F4F5' : '#111111',
+                        color: isDark ? '#111111' : '#FFFFFF',
+                        opacity: isSaving ? 0.6 : 1,
+                        cursor: isSaving ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isSaving ? <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</> : <><FontAwesomeIcon icon={faSave} /> Simpan</>}
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -1648,4 +1864,3 @@ export default function AttendanceSettingsPage() {
     </div>
   )
 }
-
