@@ -169,6 +169,7 @@ export default function AddUniformStockPage() {
       .from('uniform_purchase')
       .select(`
         purchase_id, 
+        po_number,
         purchase_date, 
         invoice_no, 
         status, 
@@ -187,6 +188,7 @@ export default function AddUniformStockPage() {
       .from('uniform_purchase')
       .select(`
         purchase_id, 
+        po_number,
         purchase_date, 
         invoice_no, 
         status, 
@@ -661,7 +663,7 @@ export default function AddUniformStockPage() {
     // Header
     const { data: hdr } = await supabase
       .from('uniform_purchase')
-      .select('purchase_id, purchase_date, invoice_no, notes, status, supplier:uniform_supplier(supplier_name)')
+      .select('purchase_id, po_number, purchase_date, invoice_no, notes, status, supplier:uniform_supplier(supplier_name)')
       .eq('purchase_id', pid)
       .single()
     setHistoryHeader(hdr || null)
@@ -1875,6 +1877,7 @@ export default function AddUniformStockPage() {
               <thead>
                 <tr className="text-left border-b">
                   <th className="py-2 pr-4">#</th>
+                  <th className="py-2 pr-4">No. PO</th>
                   <th className="py-2 pr-4">Tanggal</th>
                   <th className="py-2 pr-4">Supplier</th>
                   <th className="py-2 pr-4">Unit</th>
@@ -1890,6 +1893,11 @@ export default function AddUniformStockPage() {
                   return (
                     <tr key={p.purchase_id} className="border-b hover:bg-gray-50">
                       <td className="py-2 pr-4">#{p.purchase_id}</td>
+                      <td className="py-2 pr-4">
+                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                          {p.po_number || '-'}
+                        </span>
+                      </td>
                       <td className="py-2 pr-4">{p.purchase_date}</td>
                       <td className="py-2 pr-4">{p.supplier?.supplier_name || '-'}</td>
                       <td className="py-2 pr-4">
@@ -1927,7 +1935,7 @@ export default function AddUniformStockPage() {
                 })}
                 {!pending.length && (
                   <tr>
-                    <td className="py-8 text-gray-500 text-center" colSpan={7}>
+                    <td className="py-8 text-gray-500 text-center" colSpan={8}>
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-4xl">✅</span>
                         <span>Tidak ada order pending.</span>
@@ -2205,12 +2213,13 @@ export default function AddUniformStockPage() {
 
       <Modal isOpen={showHistory} onClose={()=>setShowHistory(false)} title="📋 Detail Riwayat Transaksi" size="lg">
         {historyHeader && (
-          <div className="mb-4 text-sm">
+          <div className="mb-4 text-sm bg-gray-50 p-3 rounded grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div>No. PO: <strong className="font-mono text-xs bg-white px-2 py-0.5 border rounded">{historyHeader.po_number || '-'}</strong></div>
             <div>Invoice: <strong>{historyHeader.invoice_no || '-'}</strong></div>
-            <div>Tanggal: {historyHeader.purchase_date}</div>
-            <div>Supplier: {historyHeader.supplier?.supplier_name || '-'}</div>
-            <div>Status: {historyHeader.status}</div>
-            {historyHeader.notes && <div>Catatan: {historyHeader.notes}</div>}
+            <div>Tanggal: <strong>{historyHeader.purchase_date}</strong></div>
+            <div>Supplier: <strong>{historyHeader.supplier?.supplier_name || '-'}</strong></div>
+            <div>Status: <span className="uppercase text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">{historyHeader.status}</span></div>
+            {historyHeader.notes && <div className="col-span-full text-xs text-gray-600">Catatan: {historyHeader.notes}</div>}
           </div>
         )}
         <div className="mb-4">
