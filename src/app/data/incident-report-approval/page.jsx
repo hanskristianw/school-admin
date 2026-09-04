@@ -100,7 +100,7 @@ export default function IncidentHandlingApprovalPage() {
   // Incident Search & Filter State
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('all')
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState('active')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
 
   // Notification Toast
   const [notif, setNotif] = useState({ isOpen: false, title: '', message: '', type: 'success' })
@@ -565,26 +565,43 @@ export default function IncidentHandlingApprovalPage() {
   // Filtered Incident Reports
   const filteredReports = useMemo(() => {
     return scopedReports.filter(r => {
-      if (selectedStatusFilter === 'active') {
-        if (r.status === 'completed') return false
-      } else if (selectedStatusFilter !== 'all') {
-        if (selectedStatusFilter === 'on_progress' || selectedStatusFilter === 'in_progress') {
-          if (r.status !== 'on_progress' && r.status !== 'in_progress') return false
-        } else if (r.status !== selectedStatusFilter) {
-          return false
+      // If user enters a search query, search across all statuses unless a specific status filter is actively picked
+      if (searchQuery.trim()) {
+        if (selectedStatusFilter !== 'all' && selectedStatusFilter !== 'active') {
+          if (selectedStatusFilter === 'on_progress' || selectedStatusFilter === 'in_progress') {
+            if (r.status !== 'on_progress' && r.status !== 'in_progress') return false
+          } else if (r.status !== selectedStatusFilter) {
+            return false
+          }
+        }
+      } else {
+        if (selectedStatusFilter === 'active') {
+          if (r.status === 'completed') return false
+        } else if (selectedStatusFilter !== 'all') {
+          if (selectedStatusFilter === 'on_progress' || selectedStatusFilter === 'in_progress') {
+            if (r.status !== 'on_progress' && r.status !== 'in_progress') return false
+          } else if (r.status !== selectedStatusFilter) {
+            return false
+          }
         }
       }
+
       if (!isUnitScopedPrincipal && selectedUnitFilter !== 'all' && String(r.unit_id) !== selectedUnitFilter) {
         return false
       }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const titleMatch = (r.title || '').toLowerCase().includes(q)
         const recordMatch = (r.incident_record || '').toLowerCase().includes(q)
         const studentName = `${r.student?.user_nama_depan || ''} ${r.student?.user_nama_belakang || ''}`.toLowerCase()
+        const studentMatch = studentName.includes(q)
         const reporterName = `${r.reporter?.user_nama_depan || ''} ${r.reporter?.user_nama_belakang || ''}`.toLowerCase()
+        const reporterMatch = reporterName.includes(q)
         const incNumMatch = (r.incident_number || '').toLowerCase().includes(q)
-        return titleMatch || recordMatch || studentName || reporterName || incNumMatch
+        const venueMatch = (r.place_of_incident || '').toLowerCase().includes(q)
+        const descMatch = (r.description || '').toLowerCase().includes(q)
+        return titleMatch || recordMatch || studentMatch || reporterMatch || incNumMatch || venueMatch || descMatch
       }
       return true
     })

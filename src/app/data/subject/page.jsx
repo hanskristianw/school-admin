@@ -1,10 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Modal from '@/components/ui/modal';
 import NotificationModal from '@/components/ui/notification-modal';
 import { supabase } from '@/lib/supabase';
@@ -14,24 +10,31 @@ import {
   faBookOpen,
   faPlus,
   faSearch,
-  faFilter,
   faEdit,
   faTrash,
   faSpinner,
   faLayerGroup,
   faExternalLinkAlt,
-  faChevronDown,
-  faChevronRight,
   faCopy,
-  faCheckCircle,
-  faExclamationTriangle,
   faAward,
   faListCheck,
-  faSliders
+  faUserTie,
+  faFilter,
+  faSave,
+  faTimes,
+  faCheck
 } from '@fortawesome/free-solid-svg-icons';
 
 export default function SubjectManagement() {
   const { theme, isDark } = useTheme();
+
+  // Minimalist-UI Theme Tokens (Matching /data/pyp)
+  const pageBg        = isDark ? '#09090B' : '#FAFAF9';
+  const cardBg        = isDark ? '#18181B' : '#FFFFFF';
+  const subtleBg      = isDark ? '#27272A' : '#F7F6F3';
+  const borderColor   = isDark ? '#27272A' : '#EAEAEA';
+  const textPrimary   = isDark ? '#F4F4F5' : '#111111';
+  const textSecondary = isDark ? '#A1A1AA' : '#787774';
 
   // Primary Data States
   const [subjects, setSubjects] = useState([]);
@@ -40,6 +43,9 @@ export default function SubjectManagement() {
   const [subjectGroups, setSubjectGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Active Tab: 'all' | 'core' | 'other'
+  const [activeTab, setActiveTab] = useState('all');
 
   // Form & Edit States
   const [showForm, setShowForm] = useState(false);
@@ -74,7 +80,6 @@ export default function SubjectManagement() {
   const [strands, setStrands] = useState([]);
   const [rubrics, setRubrics] = useState([]);
   const [loadingCriteria, setLoadingCriteria] = useState(false);
-  const [expandedStrands, setExpandedStrands] = useState(new Set());
 
   // Sub-forms inside Criteria Modal
   const [showCriteriaForm, setShowCriteriaForm] = useState(false);
@@ -113,7 +118,7 @@ export default function SubjectManagement() {
     unit: '',
     teacher: '',
     search: '',
-    type: 'all' // 'all' | 'core' | 'other'
+    subjectGroup: ''
   });
 
   useEffect(() => {
@@ -191,7 +196,7 @@ export default function SubjectManagement() {
       setSubjects(transformed);
     } catch (err) {
       console.error('Error fetching subjects:', err);
-      setError('Failed to fetch subjects: ' + err.message);
+      setError('Gagal memuat mata pelajaran: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -199,23 +204,13 @@ export default function SubjectManagement() {
 
   const fetchUsers = async () => {
     try {
-      const { data: usersData, error: usersErr } = await supabase
+      const { data, error: sbErr } = await supabase
         .from('users')
-        .select('user_id, user_nama_depan, user_nama_belakang, user_role_id')
+        .select('user_id, user_nama_depan, user_nama_belakang')
         .eq('is_active', true)
         .order('user_nama_depan');
-
-      if (usersErr) throw usersErr;
-
-      const { data: rolesData } = await supabase
-        .from('role')
-        .select('role_id, role_name, is_teacher')
-        .eq('is_teacher', true);
-
-      const teacherRoleIds = (rolesData || []).map(r => r.role_id);
-      const teacherUsers = (usersData || []).filter(u => teacherRoleIds.includes(u.user_role_id));
-
-      setUsers(teacherUsers.length > 0 ? teacherUsers : (usersData || []));
+      if (sbErr) throw sbErr;
+      setUsers(data || []);
     } catch (err) {
       console.error('Error fetching users:', err);
     }
@@ -248,11 +243,14 @@ export default function SubjectManagement() {
     }
   };
 
-  // Filtered Subjects Computation
+  // Filter computation
   const filteredSubjects = useMemo(() => {
     return subjects.filter(subject => {
       // Unit Filter
       if (filters.unit && subject.unit_name !== filters.unit) return false;
+
+      // Subject Group Filter
+      if (filters.subjectGroup && String(subject.subject_group_id) !== filters.subjectGroup) return false;
 
       // Teacher Filter
       if (filters.teacher) {
@@ -268,31 +266,68 @@ export default function SubjectManagement() {
         if (!nameMatch && !codeMatch) return false;
       }
 
-      // Type Filter
-      if (filters.type === 'core' && !subject.core_subject) return false;
-      if (filters.type === 'other' && subject.core_subject) return false;
+      // Active Tab Filter
+      if (activeTab === 'core' && !subject.core_subject) return false;
+      if (activeTab === 'other' && subject.core_subject) return false;
 
       return true;
     });
+  }, [subjects, filters, activeTab]);
+
+  // Counts for tabs
+  const totalCount = useMemo(() => {
+    return subjects.filter(subject => {
+      if (filters.unit && subject.unit_name !== filters.unit) return false;
+      if (filters.subjectGroup && String(subject.subject_group_id) !== filters.subjectGroup) return false;
+      if (filters.teacher) {
+        const fullName = `${subject.user_nama_depan} ${subject.user_nama_belakang}`.toLowerCase();
+        if (!fullName.includes(filters.teacher.toLowerCase())) return false;
+      }
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const nameMatch = subject.subject_name.toLowerCase().includes(q);
+        const codeMatch = subject.subject_code.toLowerCase().includes(q);
+        if (!nameMatch && !codeMatch) return false;
+      }
+      return true;
+    }).length;
   }, [subjects, filters]);
 
-  const coreSubjectsList = useMemo(() => filteredSubjects.filter(s => s.core_subject), [filteredSubjects]);
-  const otherSubjectsList = useMemo(() => filteredSubjects.filter(s => !s.core_subject), [filteredSubjects]);
+  const coreCount = useMemo(() => {
+    return subjects.filter(subject => {
+      if (!subject.core_subject) return false;
+      if (filters.unit && subject.unit_name !== filters.unit) return false;
+      if (filters.subjectGroup && String(subject.subject_group_id) !== filters.subjectGroup) return false;
+      if (filters.teacher) {
+        const fullName = `${subject.user_nama_depan} ${subject.user_nama_belakang}`.toLowerCase();
+        if (!fullName.includes(filters.teacher.toLowerCase())) return false;
+      }
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const nameMatch = subject.subject_name.toLowerCase().includes(q);
+        const codeMatch = subject.subject_code.toLowerCase().includes(q);
+        if (!nameMatch && !codeMatch) return false;
+      }
+      return true;
+    }).length;
+  }, [subjects, filters]);
+
+  const otherCount = totalCount - coreCount;
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.subject_name.trim()) errors.subject_name = 'Subject name is required';
-    if (!formData.subject_user_id) errors.subject_user_id = 'Teacher selection is required';
-    if (!formData.subject_unit_id) errors.subject_unit_id = 'Unit selection is required';
+    if (!formData.subject_name.trim()) errors.subject_name = 'Nama mata pelajaran wajib diisi';
+    if (!formData.subject_user_id) errors.subject_user_id = 'Pilih guru koordinator';
+    if (!formData.subject_unit_id) errors.subject_unit_id = 'Pilih unit sekolah';
     if (formData.subject_code && formData.subject_code.length > 12) {
-      errors.subject_code = 'Subject code must be 12 characters or less';
+      errors.subject_code = 'Kode mapel maksimal 12 karakter';
     }
     if (formData.subject_guide && formData.subject_guide.trim()) {
       try {
         const u = new URL(formData.subject_guide.trim());
         if (!/^https?:$/.test(u.protocol)) throw new Error();
       } catch {
-        errors.subject_guide = 'Must be a valid URL (e.g. https://drive.google.com/...)';
+        errors.subject_guide = 'URL harus valid (contoh: https://drive.google.com/...)';
       }
     }
     setFormErrors(errors);
@@ -351,14 +386,14 @@ export default function SubjectManagement() {
           .eq('subject_id', editingSubject.subject_id);
 
         if (updateErr) throw updateErr;
-        showNotification('Success', 'Subject updated successfully.', 'success');
+        showNotification('Sukses', 'Mata pelajaran berhasil diperbarui.', 'success');
       } else {
         const { error: insertErr } = await supabase
           .from('subject')
           .insert([submitData]);
 
         if (insertErr) throw insertErr;
-        showNotification('Success', 'New subject added successfully.', 'success');
+        showNotification('Sukses', 'Mata pelajaran baru berhasil ditambahkan.', 'success');
       }
 
       setShowForm(false);
@@ -366,7 +401,7 @@ export default function SubjectManagement() {
       await fetchSubjects();
     } catch (err) {
       console.error('Error saving subject:', err);
-      showNotification('Error', 'Failed to save subject: ' + err.message, 'error');
+      showNotification('Error', 'Gagal menyimpan: ' + err.message, 'error');
     } finally {
       setSubmitting(false);
       setUploadingIcon(false);
@@ -419,16 +454,16 @@ export default function SubjectManagement() {
   };
 
   const handleDelete = async (subject) => {
-    if (!confirm(`Are you sure you want to delete "${subject.subject_name}"?`)) return;
+    if (!confirm(`Hapus mata pelajaran "${subject.subject_name}"?`)) return;
 
     try {
       const { error: delErr } = await supabase.from('subject').delete().eq('subject_id', subject.subject_id);
       if (delErr) throw delErr;
 
       await fetchSubjects();
-      showNotification('Success', 'Subject deleted successfully.', 'success');
+      showNotification('Sukses', 'Mata pelajaran berhasil dihapus.', 'success');
     } catch (err) {
-      showNotification('Error', 'Failed to delete subject: ' + err.message, 'error');
+      showNotification('Error', 'Gagal menghapus: ' + err.message, 'error');
     }
   };
 
@@ -503,7 +538,7 @@ export default function SubjectManagement() {
         setRubrics([]);
       }
     } catch (err) {
-      showNotification('Error', 'Failed to fetch criteria: ' + err.message, 'error');
+      showNotification('Error', 'Gagal memuat kriteria: ' + err.message, 'error');
     } finally {
       setLoadingCriteria(false);
     }
@@ -511,7 +546,7 @@ export default function SubjectManagement() {
 
   const handleSaveCriteria = async () => {
     if (!criteriaFormData.code.trim() || !criteriaFormData.name.trim()) {
-      showNotification('Error', 'Code and Name are required.', 'error');
+      showNotification('Error', 'Kode dan nama kriteria wajib diisi.', 'error');
       return;
     }
 
@@ -535,14 +570,14 @@ export default function SubjectManagement() {
 
       await fetchCriteria(selectedSubject.subject_id);
       setShowCriteriaForm(false);
-      showNotification('Success', editingCriterion ? 'Criterion updated.' : 'Criterion added.', 'success');
+      showNotification('Sukses', editingCriterion ? 'Kriteria berhasil diperbarui.' : 'Kriteria berhasil ditambahkan.', 'success');
     } catch (err) {
       showNotification('Error', err.message, 'error');
     }
   };
 
   const handleDeleteCriteria = async (criterion) => {
-    if (!confirm(`Delete Criterion ${criterion.code}? All strands and rubrics will also be removed.`)) return;
+    if (!confirm(`Hapus Kriteria ${criterion.code}? Semua strand dan rubrik terkait akan ikut terhapus.`)) return;
 
     try {
       const criterionStrands = strands.filter(s => s.criterion_id === criterion.criterion_id);
@@ -560,15 +595,15 @@ export default function SubjectManagement() {
       if (critErr) throw critErr;
 
       await fetchCriteria(selectedSubject.subject_id);
-      showNotification('Success', 'Criterion deleted.', 'success');
+      showNotification('Sukses', 'Kriteria berhasil dihapus.', 'success');
     } catch (err) {
-      showNotification('Error', 'Failed to delete criterion: ' + err.message, 'error');
+      showNotification('Error', 'Gagal menghapus kriteria: ' + err.message, 'error');
     }
   };
 
   const handleSaveStrand = async () => {
     if (!strandFormData.criterion_id || !strandFormData.year_level || !strandFormData.content.trim()) {
-      showNotification('Error', 'Criterion, Year Level, and Content are required.', 'error');
+      showNotification('Error', 'Kriteria, Year Level, dan Deskripsi wajib diisi.', 'error');
       return;
     }
 
@@ -590,14 +625,14 @@ export default function SubjectManagement() {
 
       await fetchCriteria(selectedSubject.subject_id);
       setShowStrandForm(false);
-      showNotification('Success', editingStrand ? 'Strand updated.' : 'Strand added.', 'success');
+      showNotification('Sukses', editingStrand ? 'Strand berhasil diperbarui.' : 'Strand berhasil ditambahkan.', 'success');
     } catch (err) {
       showNotification('Error', err.message, 'error');
     }
   };
 
   const handleDeleteStrand = async (strand) => {
-    if (!confirm('Delete this strand and its rubrics?')) return;
+    if (!confirm('Hapus strand ini beserta rubriknya?')) return;
     try {
       const { error: rErr } = await supabase.from('rubrics').delete().eq('strand_id', strand.strand_id);
       if (rErr) throw rErr;
@@ -606,7 +641,7 @@ export default function SubjectManagement() {
       if (sErr) throw sErr;
 
       await fetchCriteria(selectedSubject.subject_id);
-      showNotification('Success', 'Strand deleted.', 'success');
+      showNotification('Sukses', 'Strand berhasil dihapus.', 'success');
     } catch (err) {
       showNotification('Error', err.message, 'error');
     }
@@ -614,7 +649,7 @@ export default function SubjectManagement() {
 
   const handleSaveRubric = async () => {
     if (!rubricFormData.band_label.trim() || !rubricFormData.description.trim()) {
-      showNotification('Error', 'Band Label and Description are required.', 'error');
+      showNotification('Error', 'Band label dan deskripsi rubrik wajib diisi.', 'error');
       return;
     }
 
@@ -637,20 +672,20 @@ export default function SubjectManagement() {
 
       await fetchCriteria(selectedSubject.subject_id);
       setShowRubricForm(false);
-      showNotification('Success', editingRubric ? 'Rubric updated.' : 'Rubric added.', 'success');
+      showNotification('Sukses', editingRubric ? 'Rubrik diperbarui.' : 'Rubrik ditambahkan.', 'success');
     } catch (err) {
       showNotification('Error', err.message, 'error');
     }
   };
 
   const handleDeleteRubric = async (rubric) => {
-    if (!confirm('Delete this rubric?')) return;
+    if (!confirm('Hapus rubrik ini?')) return;
     try {
       const { error: rErr } = await supabase.from('rubrics').delete().eq('rubric_id', rubric.rubric_id);
       if (rErr) throw rErr;
 
       await fetchCriteria(selectedSubject.subject_id);
-      showNotification('Success', 'Rubric deleted.', 'success');
+      showNotification('Sukses', 'Rubrik berhasil dihapus.', 'success');
     } catch (err) {
       showNotification('Error', err.message, 'error');
     }
@@ -664,7 +699,7 @@ export default function SubjectManagement() {
       if (errC) throw errC;
 
       if (!sourceCriteria || sourceCriteria.length === 0) {
-        showNotification('Error', 'Source subject has no criteria to copy.', 'error');
+        showNotification('Error', 'Mata pelajaran sumber belum memiliki kriteria.', 'error');
         setIsCopying(false);
         return;
       }
@@ -723,407 +758,361 @@ export default function SubjectManagement() {
       }
 
       await fetchCriteria(targetId);
-      showNotification('Success', 'Criteria successfully synced!', 'success');
+      showNotification('Sukses', 'Kriteria berhasil disalin!', 'success');
       setCopySourceSubjectId('');
     } catch (err) {
-      showNotification('Error', 'Failed to copy criteria: ' + err.message, 'error');
+      showNotification('Error', 'Gagal menyalin kriteria: ' + err.message, 'error');
     } finally {
       setIsCopying(false);
     }
   };
 
-  // Minimalist Styling Tokens (strictly 1px #EAEAEA borders, crisp Geist/SF font, muted pastels)
-  const pageBg = isDark ? '#09090B' : '#FBFBFA';
-  const cardBg = isDark ? '#18181B' : '#FFFFFF';
-  const borderColor = isDark ? '#27272A' : '#EAEAEA';
-  const textPrimary = isDark ? '#F4F4F5' : '#111111';
-  const textSecondary = isDark ? '#A1A1AA' : '#787774';
-
+  // Minimalist-UI Input Styles
   const inputStyle = {
-    background: isDark ? '#27272A' : '#FFFFFF',
+    background: isDark ? '#18181B' : '#FFFFFF',
     border: `1px solid ${borderColor}`,
     color: textPrimary,
-    borderRadius: '8px',
-    fontSize: '13px'
+    borderRadius: '6px',
+    padding: '8px 12px',
+    fontSize: '13px',
+    width: '100%',
+    outline: 'none',
   };
 
   const selectStyle = {
-    background: isDark ? '#27272A' : '#FFFFFF',
-    border: `1px solid ${borderColor}`,
-    color: textPrimary,
-    borderRadius: '8px',
-    fontSize: '13px',
-    padding: '8px 12px'
+    ...inputStyle,
+    cursor: 'pointer',
   };
 
   return (
-    <div style={{ background: pageBg, minHeight: '100vh', padding: '32px 24px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
       
-      {/* ------------------------------------------------------------- */}
-      {/* PAGE HEADER */}
-      {/* ------------------------------------------------------------- */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto 32px auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+      {/* ── HEADER (MATCHING /data/pyp) ────────────────────────────────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center border shadow-xs" style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', borderColor: isDark ? '#2563EB' : '#BAE6FD', color: isDark ? '#60A5FA' : '#0284C7' }}>
+            <FontAwesomeIcon icon={faBookOpen} className="text-base" />
+          </div>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '9999px', background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '8px' }}>
-              <FontAwesomeIcon icon={faBookOpen} style={{ fontSize: '10px' }} />
-              Curriculum & Subject Directory
-            </div>
-            <h1 style={{ fontSize: '28px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: textPrimary }}>
-              Subject Management
+            <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+              Mata Pelajaran
             </h1>
-            <p style={{ margin: '6px 0 0 0', color: textSecondary, fontSize: '14px', lineHeight: 1.5 }}>
-              Configure academic subjects, teacher coordinators, grading methods, and IB MYP criteria rubrics.
+            <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
+              Daftar mata pelajaran, koordinator guru, kriteria penilaian, dan rubrik MYP.
             </p>
-          </div>
-
-          <Button
-            onClick={handleAddNew}
-            style={{
-              background: textPrimary,
-              color: isDark ? '#09090B' : '#FFFFFF',
-              border: 'none',
-              borderRadius: '6px',
-              fontWeight: 600,
-              fontSize: '13px',
-              padding: '10px 16px',
-              boxShadow: 'none'
-            }}
-          >
-            <FontAwesomeIcon icon={faPlus} style={{ marginRight: '8px' }} />
-            Add New Subject
-          </Button>
-        </div>
-
-        {/* ------------------------------------------------------------- */}
-        {/* FILTER & SEARCH BAR */}
-        {/* ------------------------------------------------------------- */}
-        <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'center' }}>
-            
-            {/* Search Input */}
-            <div>
-              <Label style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: textSecondary, marginBottom: '6px', display: 'block' }}>
-                Search Subject
-              </Label>
-              <div style={{ position: 'relative' }}>
-                <Input
-                  type="text"
-                  placeholder="Subject name or code..."
-                  value={filters.search}
-                  onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                  style={{ ...inputStyle, width: '100%', paddingLeft: '32px', height: '36px' }}
-                />
-                <FontAwesomeIcon icon={faSearch} style={{ position: 'absolute', left: '10px', top: '11px', color: textSecondary, fontSize: '12px' }} />
-              </div>
-            </div>
-
-            {/* School Unit Filter */}
-            <div>
-              <Label style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: textSecondary, marginBottom: '6px', display: 'block' }}>
-                School Unit
-              </Label>
-              <select
-                value={filters.unit}
-                onChange={e => setFilters(prev => ({ ...prev, unit: e.target.value }))}
-                style={{ ...selectStyle, width: '100%' }}
-              >
-                <option value="">All Units</option>
-                {units.map(u => (
-                  <option key={u.unit_id} value={u.unit_name}>{u.unit_name} (MYP)</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Teacher Search Filter */}
-            <div>
-              <Label style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: textSecondary, marginBottom: '6px', display: 'block' }}>
-                Teacher / Coordinator
-              </Label>
-              <Input
-                type="text"
-                placeholder="Teacher name..."
-                value={filters.teacher}
-                onChange={e => setFilters(prev => ({ ...prev, teacher: e.target.value }))}
-                style={{ ...inputStyle, height: '36px' }}
-              />
-            </div>
-
-            {/* Subject Category Type */}
-            <div>
-              <Label style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: textSecondary, marginBottom: '6px', display: 'block' }}>
-                Subject Type
-              </Label>
-              <select
-                value={filters.type}
-                onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))}
-                style={{ ...selectStyle, width: '100%' }}
-              >
-                <option value="all">All Types</option>
-                <option value="core">Core Subjects Only</option>
-                <option value="other">Other Subjects</option>
-              </select>
-            </div>
-
           </div>
         </div>
 
-        {/* Error Alert if any */}
-        {error && (
-          <div style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', border: `1px solid ${isDark ? '#EF4444' : '#F87171'}`, borderRadius: '8px', padding: '12px 16px', color: isDark ? '#FCA5A5' : '#9F2F2D', fontSize: '13px', marginBottom: '24px' }}>
-            {error}
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* SUBJECTS DIRECTORY LIST / TABLES */}
-        {/* ------------------------------------------------------------- */}
-        {loading ? (
-          <div style={{ padding: '64px', textAlign: 'center', color: textSecondary }}>
-            <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: '20px', marginBottom: '12px' }} />
-            <p style={{ margin: 0, fontSize: '13px' }}>Loading subject directory...</p>
-          </div>
-        ) : filteredSubjects.length === 0 ? (
-          /* CLEAN ELEGANT EMPTY STATE */
-          <div style={{ background: cardBg, border: `1px dashed ${borderColor}`, borderRadius: '12px', padding: '56px 24px', textAlign: 'center' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: isDark ? '#27272A' : '#F4F4F5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', color: textSecondary }}>
-              <FontAwesomeIcon icon={faBookOpen} style={{ fontSize: '18px' }} />
-            </div>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 6px 0', color: textPrimary }}>
-              No Subjects Found
-            </h3>
-            <p style={{ fontSize: '13px', color: textSecondary, margin: '0 0 20px 0', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
-              No subjects match your selected filters. Try clearing filters or add a new subject.
-            </p>
-            <Button
-              onClick={handleAddNew}
-              style={{
-                background: textPrimary,
-                color: isDark ? '#09090B' : '#FFFFFF',
-                border: 'none',
-                borderRadius: '6px',
-                fontWeight: 600,
-                fontSize: '13px',
-                padding: '8px 16px'
-              }}
-            >
-              <FontAwesomeIcon icon={faPlus} style={{ marginRight: '8px' }} />
-              Add Subject
-            </Button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            
-            {/* CORE SUBJECTS SECTION */}
-            {coreSubjectsList.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: isDark ? '#60A5FA' : '#1F6C9F' }}>
-                    Core Subjects
-                  </span>
-                  <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '9999px', background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', fontFamily: 'monospace' }}>
-                    {coreSubjectsList.length}
-                  </span>
-                </div>
-
-                <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ background: isDark ? '#27272A' : '#F9F9F8', borderBottom: `1px solid ${borderColor}`, color: textSecondary, fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                        <th style={{ padding: '12px 16px', width: '40px' }}>#</th>
-                        <th style={{ padding: '12px 16px', width: '50px' }}>Icon</th>
-                        <th style={{ padding: '12px 16px' }}>Subject Name</th>
-                        <th style={{ padding: '12px 16px', width: '100px' }}>Code</th>
-                        <th style={{ padding: '12px 16px', width: '90px' }}>Print</th>
-                        <th style={{ padding: '12px 16px' }}>Teacher / Coordinator</th>
-                        <th style={{ padding: '12px 16px', width: '120px' }}>Unit</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'right', width: '220px' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {coreSubjectsList.map((subject, idx) => (
-                        <tr key={subject.subject_id} style={{ borderBottom: `1px solid ${borderColor}` }}>
-                          <td style={{ padding: '14px 16px', color: textSecondary, fontFamily: 'monospace' }}>{idx + 1}</td>
-                          <td style={{ padding: '14px 16px' }}>
-                            {subject.subject_icon ? (
-                              <img src={subject.subject_icon} alt={subject.subject_name} style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} />
-                            ) : (
-                              <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
-                                {subject.subject_name?.charAt(0)?.toUpperCase()}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ padding: '14px 16px', fontWeight: 600, color: textPrimary }}>
-                            <div>{subject.subject_name}</div>
-                            {subject.subject_guide && (
-                              <a href={subject.subject_guide} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: isDark ? '#60A5FA' : '#1F6C9F', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                                Subject Guide <FontAwesomeIcon icon={faExternalLinkAlt} style={{ fontSize: '9px' }} />
-                              </a>
-                            )}
-                          </td>
-                          <td style={{ padding: '14px 16px', fontFamily: 'monospace', color: textSecondary, fontSize: '12px' }}>
-                            {subject.subject_code || '-'}
-                          </td>
-                          <td style={{ padding: '14px 16px' }}>
-                            {subject.include_in_print !== false ? (
-                              <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '9999px', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', color: isDark ? '#4ADE80' : '#346538', textTransform: 'uppercase' }}>Included</span>
-                            ) : (
-                              <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '9999px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, textTransform: 'uppercase' }}>Hidden</span>
-                            )}
-                          </td>
-                          <td style={{ padding: '14px 16px', color: textPrimary }}>
-                            {subject.user_nama_depan ? `${subject.user_nama_depan} ${subject.user_nama_belakang}` : '-'}
-                          </td>
-                          <td style={{ padding: '14px 16px', color: textSecondary }}>
-                            {subject.unit_name || '-'}
-                          </td>
-                          <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                              <Button size="sm" onClick={() => handleEdit(subject)} style={{ background: isDark ? '#27272A' : '#F4F4F5', color: textPrimary, border: `1px solid ${borderColor}`, padding: '4px 10px', fontSize: '12px' }}>
-                                Edit
-                              </Button>
-                              <Button size="sm" onClick={() => handleManageCriteria(subject)} style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', border: `1px solid ${isDark ? '#2563EB' : '#BAE6FD'}`, padding: '4px 10px', fontSize: '12px' }}>
-                                Criteria
-                              </Button>
-                              <Button size="sm" onClick={() => handleDelete(subject)} style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', color: isDark ? '#FCA5A5' : '#9F2F2D', border: `1px solid ${isDark ? '#EF4444' : '#FCA5A5'}`, padding: '4px 10px', fontSize: '12px' }}>
-                                Delete
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* OTHER SUBJECTS SECTION */}
-            {otherSubjectsList.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: textSecondary }}>
-                    Other Subjects
-                  </span>
-                  <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '9999px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, fontFamily: 'monospace' }}>
-                    {otherSubjectsList.length}
-                  </span>
-                </div>
-
-                <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ background: isDark ? '#27272A' : '#F9F9F8', borderBottom: `1px solid ${borderColor}`, color: textSecondary, fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                        <th style={{ padding: '12px 16px', width: '40px' }}>#</th>
-                        <th style={{ padding: '12px 16px', width: '50px' }}>Icon</th>
-                        <th style={{ padding: '12px 16px' }}>Subject Name</th>
-                        <th style={{ padding: '12px 16px', width: '100px' }}>Code</th>
-                        <th style={{ padding: '12px 16px', width: '90px' }}>Print</th>
-                        <th style={{ padding: '12px 16px' }}>Teacher / Coordinator</th>
-                        <th style={{ padding: '12px 16px', width: '120px' }}>Unit</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'right', width: '220px' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {otherSubjectsList.map((subject, idx) => (
-                        <tr key={subject.subject_id} style={{ borderBottom: `1px solid ${borderColor}` }}>
-                          <td style={{ padding: '14px 16px', color: textSecondary, fontFamily: 'monospace' }}>{idx + 1}</td>
-                          <td style={{ padding: '14px 16px' }}>
-                            {subject.subject_icon ? (
-                              <img src={subject.subject_icon} alt={subject.subject_name} style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} />
-                            ) : (
-                              <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
-                                {subject.subject_name?.charAt(0)?.toUpperCase()}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ padding: '14px 16px', fontWeight: 600, color: textPrimary }}>
-                            <div>{subject.subject_name}</div>
-                            {subject.subject_guide && (
-                              <a href={subject.subject_guide} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: isDark ? '#60A5FA' : '#1F6C9F', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                                Subject Guide <FontAwesomeIcon icon={faExternalLinkAlt} style={{ fontSize: '9px' }} />
-                              </a>
-                            )}
-                          </td>
-                          <td style={{ padding: '14px 16px', fontFamily: 'monospace', color: textSecondary, fontSize: '12px' }}>
-                            {subject.subject_code || '-'}
-                          </td>
-                          <td style={{ padding: '14px 16px' }}>
-                            {subject.include_in_print !== false ? (
-                              <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '9999px', background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', color: isDark ? '#4ADE80' : '#346538', textTransform: 'uppercase' }}>Included</span>
-                            ) : (
-                              <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '9999px', background: isDark ? '#27272A' : '#F4F4F5', color: textSecondary, textTransform: 'uppercase' }}>Hidden</span>
-                            )}
-                          </td>
-                          <td style={{ padding: '14px 16px', color: textPrimary }}>
-                            {subject.user_nama_depan ? `${subject.user_nama_depan} ${subject.user_nama_belakang}` : '-'}
-                          </td>
-                          <td style={{ padding: '14px 16px', color: textSecondary }}>
-                            {subject.unit_name || '-'}
-                          </td>
-                          <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                              <Button size="sm" onClick={() => handleEdit(subject)} style={{ background: isDark ? '#27272A' : '#F4F4F5', color: textPrimary, border: `1px solid ${borderColor}`, padding: '4px 10px', fontSize: '12px' }}>
-                                Edit
-                              </Button>
-                              <Button size="sm" onClick={() => handleManageCriteria(subject)} style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', border: `1px solid ${isDark ? '#2563EB' : '#BAE6FD'}`, padding: '4px 10px', fontSize: '12px' }}>
-                                Criteria
-                              </Button>
-                              <Button size="sm" onClick={() => handleDelete(subject)} style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', color: isDark ? '#FCA5A5' : '#9F2F2D', border: `1px solid ${isDark ? '#EF4444' : '#FCA5A5'}`, padding: '4px 10px', fontSize: '12px' }}>
-                                Delete
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={handleAddNew}
+          className="px-4 py-2 rounded text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+          style={{
+            background: isDark ? '#F4F4F5' : '#111111',
+            color: isDark ? '#111111' : '#FFFFFF',
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} className="text-xs" />
+          <span>Tambah Mata Pelajaran</span>
+        </button>
       </div>
 
-      {/* ------------------------------------------------------------- */}
-      {/* MODAL: ADD / EDIT SUBJECT */}
-      {/* ------------------------------------------------------------- */}
+      {/* ── BENTO FILTER BAR ─────────────────────────────────────────────────── */}
+      <div className="p-3.5 rounded-lg border mb-6" style={{ background: cardBg, borderColor }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Search Input */}
+          <div>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-semibold tracking-wider" style={{ color: textSecondary }}>
+              Pencarian
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Cari nama atau kode mapel..."
+                value={filters.search}
+                onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                style={{ ...inputStyle, paddingLeft: '32px' }}
+              />
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-3 text-xs" style={{ color: textSecondary }} />
+            </div>
+          </div>
+
+          {/* School Unit Filter */}
+          <div>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-semibold tracking-wider" style={{ color: textSecondary }}>
+              Unit Sekolah
+            </label>
+            <select
+              value={filters.unit}
+              onChange={e => setFilters(prev => ({ ...prev, unit: e.target.value }))}
+              style={selectStyle}
+            >
+              <option value="">Semua Unit</option>
+              {units.map(u => (
+                <option key={u.unit_id} value={u.unit_name}>{u.unit_name} (MYP)</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subject Group Filter */}
+          <div>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-semibold tracking-wider" style={{ color: textSecondary }}>
+              Kelompok Mapel
+            </label>
+            <select
+              value={filters.subjectGroup}
+              onChange={e => setFilters(prev => ({ ...prev, subjectGroup: e.target.value }))}
+              style={selectStyle}
+            >
+              <option value="">Semua Kelompok</option>
+              {subjectGroups.map(sg => (
+                <option key={sg.id} value={String(sg.id)}>{sg.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Teacher Filter */}
+          <div>
+            <label className="text-[10px] font-mono uppercase block mb-1 font-semibold tracking-wider" style={{ color: textSecondary }}>
+              Guru Koordinator
+            </label>
+            <input
+              type="text"
+              placeholder="Nama guru koordinator..."
+              value={filters.teacher}
+              onChange={e => setFilters(prev => ({ ...prev, teacher: e.target.value }))}
+              style={inputStyle}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── TABS NAVIGATION (/data/pyp STYLE) ────────────────────────────────── */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '24px', gap: '24px', flexWrap: 'wrap' }}>
+        {[
+          { id: 'all',   label: 'Semua Mata Pelajaran', count: totalCount, icon: faBookOpen },
+          { id: 'core',  label: 'Mata Pelajaran Wajib', count: coreCount,  icon: faAward },
+          { id: 'other', label: 'Mata Pelajaran Pilihan', count: otherCount, icon: faLayerGroup },
+        ].map(t => {
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              style={{
+                padding: '12px 0',
+                fontSize: '13px',
+                fontWeight: active ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: active ? textPrimary : textSecondary,
+                borderBottom: active ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={t.icon} style={{ fontSize: '12px', color: active ? (isDark ? '#60A5FA' : '#0284C7') : textSecondary }} />
+              <span>{t.label}</span>
+              <span
+                className="px-2 py-0.5 rounded text-[11px] font-mono font-medium"
+                style={{
+                  background: active ? (isDark ? '#27272A' : '#E1F3FE') : subtleBg,
+                  color: active ? (isDark ? '#F4F4F5' : '#1F6C9F') : textSecondary
+                }}
+              >
+                {t.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── ERROR MESSAGE IF ANY ─────────────────────────────────────────────── */}
+      {error && (
+        <div className="p-3.5 rounded-lg border mb-6 text-xs font-mono" style={{ background: '#FDEBEC', borderColor: '#FECACA', color: '#9F2F2D' }}>
+          {error}
+        </div>
+      )}
+
+      {/* ── SUBJECTS TABLE ───────────────────────────────────────────────────── */}
+      {loading ? (
+        <div className="p-16 text-center" style={{ color: textSecondary }}>
+          <FontAwesomeIcon icon={faSpinner} spin className="text-xl mb-3" />
+          <p className="text-xs m-0">Memuat daftar mata pelajaran...</p>
+        </div>
+      ) : filteredSubjects.length === 0 ? (
+        <div className="p-12 text-center rounded-lg border" style={{ background: cardBg, borderColor, borderStyle: 'dashed' }}>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: subtleBg, color: textSecondary }}>
+            <FontAwesomeIcon icon={faBookOpen} className="text-base" />
+          </div>
+          <h3 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>
+            Tidak ada mata pelajaran
+          </h3>
+          <p className="text-xs mb-4 max-w-sm mx-auto" style={{ color: textSecondary }}>
+            Tidak ada mata pelajaran yang cocok dengan filter yang Anda tentukan.
+          </p>
+          <button
+            type="button"
+            onClick={handleAddNew}
+            className="px-3.5 py-1.5 rounded text-xs font-semibold"
+            style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF' }}
+          >
+            + Tambah Mata Pelajaran
+          </button>
+        </div>
+      ) : (
+        <div className="rounded-lg border overflow-hidden" style={{ borderColor }}>
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b font-mono text-[10px] uppercase tracking-wider" style={{ background: subtleBg, borderColor, color: textSecondary }}>
+                <th className="px-4 py-2.5 w-10">#</th>
+                <th className="px-4 py-2.5 w-12">Ikon</th>
+                <th className="px-4 py-2.5">Nama Mata Pelajaran</th>
+                <th className="px-4 py-2.5 w-24">Kode</th>
+                <th className="px-4 py-2.5">Kelompok Mapel</th>
+                <th className="px-4 py-2.5">Koordinator Guru</th>
+                <th className="px-4 py-2.5 w-28">Unit</th>
+                <th className="px-4 py-2.5 w-24">Raport</th>
+                <th className="px-4 py-2.5 text-right w-52">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y" style={{ borderColor }}>
+              {filteredSubjects.map((subject, idx) => (
+                <tr key={subject.subject_id} style={{ background: cardBg }}>
+                  <td className="px-4 py-3 font-mono text-secondary">{idx + 1}</td>
+                  <td className="px-4 py-3">
+                    {subject.subject_icon ? (
+                      <img src={subject.subject_icon} alt={subject.subject_name} className="w-7 h-7 rounded object-cover border" style={{ borderColor }} />
+                    ) : (
+                      <div className="w-7 h-7 rounded flex items-center justify-center font-bold text-xs" style={{ background: subtleBg, color: textSecondary }}>
+                        {subject.subject_name?.charAt(0)?.toUpperCase()}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-semibold" style={{ color: textPrimary }}>
+                      {subject.subject_name}
+                    </div>
+                    {subject.subject_guide && (
+                      <a
+                        href={subject.subject_guide}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-0.5 text-[11px] hover:underline"
+                        style={{ color: isDark ? '#60A5FA' : '#0284C7' }}
+                      >
+                        <span>Panduan Mapel</span>
+                        <FontAwesomeIcon icon={faExternalLinkAlt} className="text-[9px]" />
+                      </a>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs" style={{ color: textSecondary }}>
+                    {subject.subject_code || '—'}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {subject.subject_group_name ? (
+                      <span className="px-2 py-0.5 rounded text-xs" style={{ background: '#FBF3DB', color: '#956400', border: '1px solid #FDE68A' }}>
+                        {subject.subject_group_name}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: textPrimary }}>
+                    {subject.user_nama_depan ? `${subject.user_nama_depan} ${subject.user_nama_belakang}` : '—'}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs" style={{ color: textSecondary }}>
+                    {subject.unit_name || '—'}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {subject.include_in_print !== false ? (
+                      <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ background: '#EDF3EC', color: '#346538', border: '1px solid #B2D8B4' }}>
+                        Cetak
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-xs" style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}>
+                        Sembunyi
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(subject)}
+                        className="px-2.5 py-1 rounded text-xs font-medium transition-all"
+                        style={{ background: subtleBg, color: textPrimary, border: `1px solid ${borderColor}` }}
+                      >
+                        <FontAwesomeIcon icon={faEdit} className="mr-1 text-[10px]" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleManageCriteria(subject)}
+                        className="px-2.5 py-1 rounded text-xs font-medium transition-all"
+                        style={{ background: '#E1F3FE', color: '#1F6C9F', border: '1px solid #BAE6FD' }}
+                      >
+                        <FontAwesomeIcon icon={faListCheck} className="mr-1 text-[10px]" />
+                        Kriteria
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(subject)}
+                        className="px-2.5 py-1 rounded text-xs font-medium transition-all"
+                        style={{ background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }}
+                      >
+                        <FontAwesomeIcon icon={faTrash} className="mr-1 text-[10px]" />
+                        Hapus
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── MODAL: ADD / EDIT SUBJECT ────────────────────────────────────────── */}
       {showForm && (
         <Modal
           isOpen={showForm}
           onClose={() => setShowForm(false)}
-          title={editingSubject ? 'Edit Subject' : 'Add New Subject'}
+          title={editingSubject ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran Baru'}
+          size="md"
         >
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             {/* Subject Name */}
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '6px', display: 'block' }}>
-                Subject Name *
-              </Label>
-              <Input
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Nama Mata Pelajaran *
+              </label>
+              <input
                 type="text"
                 required
-                placeholder="e.g. Mathematics Standard Level"
+                placeholder="Contoh: Mathematics Standard Level"
                 value={formData.subject_name}
                 onChange={e => setFormData({ ...formData, subject_name: e.target.value })}
                 style={inputStyle}
               />
               {formErrors.subject_name && (
-                <p style={{ color: '#EF4444', fontSize: '11px', marginTop: '4px' }}>{formErrors.subject_name}</p>
+                <p className="text-red-500 text-[11px] mt-1">{formErrors.subject_name}</p>
               )}
             </div>
 
-            {/* Subject Code & Unit */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* Code & Unit */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '6px', display: 'block' }}>
-                  Subject Code
-                </Label>
-                <Input
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                  Kode Mapel
+                </label>
+                <input
                   type="text"
-                  placeholder="e.g. MATH7A"
+                  placeholder="Contoh: MATH7A"
                   value={formData.subject_code}
                   onChange={e => setFormData({ ...formData, subject_code: e.target.value })}
                   style={inputStyle}
@@ -1131,9 +1120,9 @@ export default function SubjectManagement() {
               </div>
 
               <div>
-                <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '6px', display: 'block' }}>
-                  School Unit *
-                </Label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                  Unit Sekolah *
+                </label>
                 <select
                   required
                   value={formData.subject_unit_id || (units[0]?.unit_id ? String(units[0].unit_id) : '')}
@@ -1141,7 +1130,6 @@ export default function SubjectManagement() {
                   onChange={e => setFormData({ ...formData, subject_unit_id: e.target.value })}
                   style={{
                     ...selectStyle,
-                    width: '100%',
                     opacity: units.length <= 1 ? 0.9 : 1,
                     cursor: units.length <= 1 ? 'not-allowed' : 'pointer'
                   }}
@@ -1150,25 +1138,22 @@ export default function SubjectManagement() {
                     <option key={u.unit_id} value={u.unit_id}>{u.unit_name} (MYP)</option>
                   ))}
                 </select>
-                <p style={{ fontSize: '11px', color: textSecondary, marginTop: '4px' }}>
-                  Locked to MYP Unit (IB Middle Years Programme)
-                </p>
               </div>
             </div>
 
-            {/* Teacher Assignment & Subject Group */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* Teacher & Subject Group */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '6px', display: 'block' }}>
-                  Teacher / Coordinator *
-                </Label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                  Guru Koordinator *
+                </label>
                 <select
                   required
                   value={formData.subject_user_id}
                   onChange={e => setFormData({ ...formData, subject_user_id: e.target.value })}
-                  style={{ ...selectStyle, width: '100%' }}
+                  style={selectStyle}
                 >
-                  <option value="">Select Teacher</option>
+                  <option value="">Pilih Guru Koordinator</option>
                   {users.map(u => (
                     <option key={u.user_id} value={u.user_id}>
                       {u.user_nama_depan} {u.user_nama_belakang}
@@ -1178,15 +1163,15 @@ export default function SubjectManagement() {
               </div>
 
               <div>
-                <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '6px', display: 'block' }}>
-                  MYP Subject Group
-                </Label>
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                  Kelompok Mapel (MYP Subject Group)
+                </label>
                 <select
                   value={formData.subject_group_id}
                   onChange={e => setFormData({ ...formData, subject_group_id: e.target.value })}
-                  style={{ ...selectStyle, width: '100%' }}
+                  style={selectStyle}
                 >
-                  <option value="">Select Subject Group</option>
+                  <option value="">Pilih Kelompok Mapel</option>
                   {subjectGroups.map(sg => (
                     <option key={sg.id} value={sg.id}>{sg.name}</option>
                   ))}
@@ -1194,12 +1179,12 @@ export default function SubjectManagement() {
               </div>
             </div>
 
-            {/* Subject Guide Link */}
+            {/* Subject Guide */}
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '6px', display: 'block' }}>
-                Subject Guide URL (Google Drive / PDF)
-              </Label>
-              <Input
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Link Panduan Mapel (Google Drive / URL PDF)
+              </label>
+              <input
                 type="url"
                 placeholder="https://drive.google.com/..."
                 value={formData.subject_guide}
@@ -1210,352 +1195,516 @@ export default function SubjectManagement() {
 
             {/* Grading Calculation Method */}
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '6px', display: 'block' }}>
-                Grading Calculation Method
-              </Label>
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Metode Kalkulasi Nilai Akhir
+              </label>
               <select
                 value={formData.grading_method}
                 onChange={e => setFormData({ ...formData, grading_method: e.target.value })}
-                style={{ ...selectStyle, width: '100%' }}
+                style={selectStyle}
               >
-                <option value="highest">Highest (Best-fit) - IB MYP Standard</option>
-                <option value="average">Average (Mean of all strands)</option>
-                <option value="median">Median (Middle value)</option>
-                <option value="mode">Mode (Most frequent grade)</option>
+                <option value="highest">Highest (Best-fit) — Standar IB MYP</option>
+                <option value="average">Average (Rata-rata seluruh strand)</option>
+                <option value="median">Median (Nilai tengah)</option>
+                <option value="mode">Mode (Nilai paling sering muncul)</option>
               </select>
             </div>
 
-            {/* Checkboxes Options */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '4px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+            {/* Checkboxes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
                 <input
                   type="checkbox"
                   checked={formData.core_subject}
                   onChange={e => setFormData({ ...formData, core_subject: e.target.checked })}
+                  className="rounded"
                 />
-                <span>Core Subject</span>
+                <span style={{ color: textPrimary }}>Mata Pelajaran Wajib (Core)</span>
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
                 <input
                   type="checkbox"
                   checked={formData.include_in_print}
                   onChange={e => setFormData({ ...formData, include_in_print: e.target.checked })}
+                  className="rounded"
                 />
-                <span>Include in Report Cards</span>
+                <span style={{ color: textPrimary }}>Tampilkan di Cetak Raport</span>
               </label>
             </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
-              <Button
+            {/* Form Actions */}
+            <div className="flex justify-end gap-2 pt-4 border-t" style={{ borderColor }}>
+              <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                style={{ background: 'none', border: `1px solid ${borderColor}`, color: textPrimary, fontSize: '13px' }}
+                className="px-4 py-2 rounded text-xs font-medium"
+                style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}
               >
-                Cancel
-              </Button>
-              <Button
+                Batal
+              </button>
+              <button
                 type="submit"
                 disabled={submitting}
-                style={{ background: textPrimary, color: isDark ? '#09090B' : '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '13px' }}
+                className="px-5 py-2 rounded text-xs font-semibold flex items-center gap-1.5"
+                style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', opacity: submitting ? 0.6 : 1 }}
               >
-                {submitting ? 'Saving...' : 'Save Subject'}
-              </Button>
+                {submitting ? <><FontAwesomeIcon icon={faSpinner} spin /> Menyimpan...</> : <><FontAwesomeIcon icon={faSave} /> Simpan Mata Pelajaran</>}
+              </button>
             </div>
           </form>
         </Modal>
       )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* MODAL: MANAGE CRITERIA & RUBRICS */}
-      {/* ------------------------------------------------------------- */}
+      {/* ── MODAL: MANAGE CRITERIA & RUBRICS ─────────────────────────────────── */}
       {showCriteriaModal && selectedSubject && (
         <Modal
           isOpen={showCriteriaModal}
           onClose={() => setShowCriteriaModal(false)}
-          title={`IB Criteria & Rubrics — ${selectedSubject.subject_name}`}
+          title={`Kriteria & Rubrik — ${selectedSubject.subject_name}`}
+          size="lg"
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
+          <div className="space-y-5 text-xs">
             {/* Sync / Copy Tool */}
-            <div style={{ background: isDark ? '#27272A' : '#F9F9F8', border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 500, color: textSecondary }}>
-                Copy criteria structure from another subject:
-              </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="p-3 rounded-lg border flex items-center justify-between flex-wrap gap-3" style={{ background: subtleBg, borderColor }}>
+              <span className="text-xs" style={{ color: textSecondary }}>
+                Salin susunan kriteria dari mata pelajaran lain:
+              </span>
+              <div className="flex gap-2 items-center">
                 <select
                   value={copySourceSubjectId}
                   onChange={e => setCopySourceSubjectId(e.target.value)}
-                  style={{ ...selectStyle, padding: '4px 8px', fontSize: '12px' }}
+                  style={{ ...selectStyle, width: 'auto', padding: '4px 8px', fontSize: '12px' }}
                 >
-                  <option value="">Select Source Subject</option>
+                  <option value="">Pilih Mapel Sumber</option>
                   {subjects.filter(s => s.subject_id !== selectedSubject.subject_id).map(s => (
                     <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
                   ))}
                 </select>
-                <Button
-                  size="sm"
+                <button
+                  type="button"
                   disabled={!copySourceSubjectId || isCopying}
                   onClick={() => handleCopyCriteria(copySourceSubjectId, selectedSubject.subject_id)}
-                  style={{ background: textPrimary, color: isDark ? '#09090B' : '#FFFFFF', border: 'none', fontSize: '12px', padding: '4px 10px' }}
+                  className="px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all"
+                  style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', opacity: (!copySourceSubjectId || isCopying) ? 0.5 : 1 }}
                 >
-                  <FontAwesomeIcon icon={faCopy} style={{ marginRight: '6px' }} />
-                  {isCopying ? 'Syncing...' : 'Sync Criteria'}
-                </Button>
+                  <FontAwesomeIcon icon={faCopy} />
+                  <span>{isCopying ? 'Menyalin...' : 'Salin Kriteria'}</span>
+                </button>
               </div>
             </div>
 
             {/* Criteria Header Action */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: textPrimary }}>
-                Criteria List ({criteria.length})
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-mono uppercase font-bold tracking-wider" style={{ color: textPrimary }}>
+                Daftar Kriteria ({criteria.length})
               </h3>
-              <Button
-                size="sm"
+              <button
+                type="button"
                 onClick={() => {
                   setEditingCriterion(null);
                   setCriteriaFormData({ code: '', name: '' });
                   setShowCriteriaForm(true);
                 }}
-                style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', border: `1px solid ${isDark ? '#2563EB' : '#BAE6FD'}`, fontSize: '12px' }}
+                className="px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5"
+                style={{ background: '#E1F3FE', color: '#1F6C9F', border: '1px solid #BAE6FD' }}
               >
-                <FontAwesomeIcon icon={faPlus} style={{ marginRight: '6px' }} /> Add Criterion
-              </Button>
+                <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
+                <span>Tambah Kriteria</span>
+              </button>
             </div>
 
             {/* Loading / Empty State */}
             {loadingCriteria ? (
-              <div style={{ padding: '32px', textAlign: 'center', color: textSecondary }}>
-                <FontAwesomeIcon icon={faSpinner} spin style={{ fontSize: '18px', marginBottom: '8px' }} />
-                <p style={{ margin: 0, fontSize: '13px' }}>Loading criteria & rubrics...</p>
+              <div className="p-8 text-center" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faSpinner} spin className="text-lg mb-2" />
+                <p className="text-xs m-0">Memuat kriteria &amp; rubrik...</p>
               </div>
             ) : criteria.length === 0 ? (
-              <div style={{ border: `1px dashed ${borderColor}`, borderRadius: '8px', padding: '32px', textAlign: 'center', color: textSecondary }}>
-                <p style={{ margin: 0, fontSize: '13px' }}>No assessment criteria configured for this subject yet.</p>
+              <div className="p-8 text-center rounded-lg border" style={{ borderColor, borderStyle: 'dashed', color: textSecondary }}>
+                Belum ada kriteria penilaian yang ditambahkan untuk mata pelajaran ini.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="space-y-4">
                 {criteria.map(crit => {
                   const critStrands = strands.filter(s => s.criterion_id === crit.criterion_id);
 
                   return (
-                    <div key={crit.criterion_id} style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '16px' }}>
-                      
+                    <div key={crit.criterion_id} className="p-4 rounded-lg border" style={{ background: cardBg, borderColor }}>
                       {/* Criterion Header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ width: '28px', height: '28px', borderRadius: '6px', background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', color: isDark ? '#60A5FA' : '#1F6C9F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontFamily: 'monospace', fontSize: '13px' }}>
+                      <div className="flex items-center justify-between pb-2 mb-3 border-b" style={{ borderColor }}>
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-7 h-7 rounded flex items-center justify-center font-mono font-bold text-xs" style={{ background: '#E1F3FE', color: '#1F6C9F', border: '1px solid #BAE6FD' }}>
                             {crit.code}
                           </span>
-                          <span style={{ fontSize: '14px', fontWeight: 600, color: textPrimary }}>
+                          <span className="font-semibold text-sm" style={{ color: textPrimary }}>
                             {crit.name}
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <Button size="sm" onClick={() => {
-                            setEditingCriterion(crit);
-                            setCriteriaFormData({ code: crit.code, name: crit.name });
-                            setShowCriteriaForm(true);
-                          }} style={{ background: 'none', border: `1px solid ${borderColor}`, color: textPrimary, fontSize: '11px', padding: '2px 8px' }}>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCriterion(crit);
+                              setCriteriaFormData({ code: crit.code, name: crit.name });
+                              setShowCriteriaForm(true);
+                            }}
+                            className="px-2.5 py-1 rounded text-xs"
+                            style={{ background: subtleBg, color: textPrimary, border: `1px solid ${borderColor}` }}
+                          >
                             Edit
-                          </Button>
-
-                          <Button size="sm" onClick={() => handleDeleteCriteria(crit)} style={{ background: 'none', border: `1px solid ${borderColor}`, color: '#EF4444', fontSize: '11px', padding: '2px 8px' }}>
-                            Delete
-                          </Button>
-
-                          <Button size="sm" onClick={() => {
-                            setEditingStrand(null);
-                            setStrandFormData({ criterion_id: crit.criterion_id, year_level: '1', label: '', content: '' });
-                            setShowStrandForm(true);
-                          }} style={{ background: textPrimary, color: isDark ? '#09090B' : '#FFFFFF', border: 'none', fontSize: '11px', padding: '2px 8px' }}>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCriteria(crit)}
+                            className="px-2.5 py-1 rounded text-xs"
+                            style={{ background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }}
+                          >
+                            Hapus
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingStrand(null);
+                              setStrandFormData({ criterion_id: crit.criterion_id, year_level: '1', label: '', content: '' });
+                              setShowStrandForm(true);
+                            }}
+                            className="px-2.5 py-1 rounded text-xs font-semibold"
+                            style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF' }}
+                          >
                             + Strand
-                          </Button>
+                          </button>
                         </div>
                       </div>
 
                       {/* Strands List */}
                       {critStrands.length === 0 ? (
-                        <div style={{ fontSize: '12px', color: textSecondary, fontStyle: 'italic', padding: '8px 0' }}>
-                          No strands added for Criterion {crit.code}.
+                        <div className="text-xs italic py-2" style={{ color: textSecondary }}>
+                          Belum ada strand untuk Kriteria {crit.code}.
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+                        <div className="space-y-3">
                           {critStrands.map(st => {
                             const strandRubrics = rubrics.filter(r => r.strand_id === st.strand_id).sort((a, b) => (a.min_score || 0) - (b.min_score || 0));
 
                             return (
-                              <div key={st.strand_id} style={{ background: isDark ? '#27272A' : '#FBFBFA', border: `1px solid ${borderColor}`, borderRadius: '6px', padding: '12px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                              <div key={st.strand_id} className="p-3 rounded-lg border" style={{ background: subtleBg, borderColor }}>
+                                <div className="flex items-start justify-between gap-3">
                                   <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                      <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: isDark ? '#3F3F46' : '#EAEAEA', color: textPrimary, fontFamily: 'monospace' }}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium" style={{ background: cardBg, color: textPrimary, border: `1px solid ${borderColor}` }}>
                                         MYP Year {st.year_level}
                                       </span>
                                       {st.label && (
-                                        <span style={{ fontSize: '11px', fontWeight: 600, color: textSecondary }}>
-                                          Strand ({st.label})
+                                        <span className="text-xs font-medium" style={{ color: textSecondary }}>
+                                          Strand {st.label}
                                         </span>
                                       )}
                                     </div>
-                                    <p style={{ fontSize: '13px', margin: 0, color: textPrimary, lineHeight: 1.4 }}>
+                                    <p className="text-xs m-0 leading-relaxed" style={{ color: textPrimary }}>
                                       {st.content}
                                     </p>
                                   </div>
 
-                                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                    <Button size="sm" onClick={() => {
-                                      setEditingStrand(st);
-                                      setStrandFormData({ criterion_id: st.criterion_id, year_level: st.year_level, label: st.label || '', content: st.content });
-                                      setShowStrandForm(true);
-                                    }} style={{ background: 'none', border: 'none', color: textSecondary, fontSize: '11px' }}>
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingStrand(st);
+                                        setStrandFormData({ criterion_id: st.criterion_id, year_level: st.year_level, label: st.label || '', content: st.content });
+                                        setShowStrandForm(true);
+                                      }}
+                                      className="px-2 py-0.5 rounded text-[11px]"
+                                      style={{ background: cardBg, color: textSecondary, border: `1px solid ${borderColor}` }}
+                                    >
                                       Edit
-                                    </Button>
-
-                                    <Button size="sm" onClick={() => handleDeleteStrand(st)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '11px' }}>
-                                      Delete
-                                    </Button>
-
-                                    <Button size="sm" onClick={() => {
-                                      setSelectedStrandForRubric(st);
-                                      setEditingRubric(null);
-                                      setRubricFormData({ strand_id: st.strand_id, band_label: '1-2', min_score: '1', max_score: '2', description: '' });
-                                      setShowRubricForm(true);
-                                    }} style={{ background: isDark ? '#3F3F46' : '#EAEAEA', color: textPrimary, border: 'none', fontSize: '11px', padding: '2px 6px' }}>
-                                      + Rubric Band
-                                    </Button>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteStrand(st)}
+                                      className="px-2 py-0.5 rounded text-[11px]"
+                                      style={{ background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }}
+                                    >
+                                      Hapus
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedStrandForRubric(st);
+                                        setEditingRubric(null);
+                                        setRubricFormData({ strand_id: st.strand_id, band_label: '1-2', min_score: '1', max_score: '2', description: '' });
+                                        setShowRubricForm(true);
+                                      }}
+                                      className="px-2 py-0.5 rounded text-[11px] font-medium"
+                                      style={{ background: '#E1F3FE', color: '#1F6C9F', border: '1px solid #BAE6FD' }}
+                                    >
+                                      + Rubrik
+                                    </button>
                                   </div>
                                 </div>
 
-                                {/* Rubrics Display Grid */}
+                                {/* Rubric Bands */}
                                 {strandRubrics.length > 0 && (
-                                  <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: `1px solid ${borderColor}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
+                                  <div className="mt-3 pt-2.5 border-t grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2" style={{ borderColor }}>
                                     {strandRubrics.map(rub => (
-                                      <div key={rub.rubric_id} style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '8px 10px', fontSize: '12px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                          <span style={{ fontWeight: 700, fontFamily: 'monospace', color: isDark ? '#60A5FA' : '#1F6C9F' }}>
+                                      <div key={rub.rubric_id} className="p-2.5 rounded border" style={{ background: cardBg, borderColor }}>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="font-mono text-xs font-bold" style={{ color: isDark ? '#60A5FA' : '#0284C7' }}>
                                             Band {rub.band_label}
                                           </span>
-                                          <div style={{ display: 'flex', gap: '4px' }}>
-                                            <button onClick={() => {
-                                              setEditingRubric(rub);
-                                              setRubricFormData({ strand_id: rub.strand_id, band_label: rub.band_label, min_score: rub.min_score || '', max_score: rub.max_score || '', description: rub.description });
-                                              setShowRubricForm(true);
-                                            }} style={{ background: 'none', border: 'none', color: textSecondary, fontSize: '10px', cursor: 'pointer' }}>
+                                          <div className="flex gap-1.5 text-[10px]">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setEditingRubric(rub);
+                                                setRubricFormData({ strand_id: rub.strand_id, band_label: rub.band_label, min_score: rub.min_score || '', max_score: rub.max_score || '', description: rub.description });
+                                                setShowRubricForm(true);
+                                              }}
+                                              style={{ color: textSecondary }}
+                                            >
                                               edit
                                             </button>
-                                            <button onClick={() => handleDeleteRubric(rub)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '10px', cursor: 'pointer' }}>
-                                              del
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDeleteRubric(rub)}
+                                              style={{ color: '#EF4444' }}
+                                            >
+                                              hapus
                                             </button>
                                           </div>
                                         </div>
-                                        <p style={{ margin: 0, color: textSecondary, fontSize: '11px', lineHeight: 1.3 }}>
+                                        <p className="text-[11px] leading-relaxed m-0" style={{ color: textSecondary }}>
                                           {rub.description}
                                         </p>
                                       </div>
                                     ))}
                                   </div>
                                 )}
-
                               </div>
                             );
                           })}
                         </div>
                       )}
-
                     </div>
                   );
                 })}
               </div>
             )}
-
           </div>
         </Modal>
       )}
 
-      {/* SUB-MODAL: ADD/EDIT CRITERION */}
+      {/* ── SUB-MODAL: ADD/EDIT CRITERION ────────────────────────────────────── */}
       {showCriteriaForm && (
-        <Modal isOpen={showCriteriaForm} onClose={() => setShowCriteriaForm(false)} title={editingCriterion ? 'Edit Criterion' : 'Add Criterion'}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <Modal
+          isOpen={showCriteriaForm}
+          onClose={() => setShowCriteriaForm(false)}
+          title={editingCriterion ? 'Edit Kriteria' : 'Tambah Kriteria'}
+          size="sm"
+        >
+          <div className="space-y-3 text-xs">
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>Code (e.g. A, B, C, D) *</Label>
-              <Input type="text" maxLength={2} value={criteriaFormData.code} onChange={e => setCriteriaFormData({ ...criteriaFormData, code: e.target.value })} style={inputStyle} />
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Kode Kriteria (contoh: A, B, C, D) *
+              </label>
+              <input
+                type="text"
+                maxLength={2}
+                value={criteriaFormData.code}
+                onChange={e => setCriteriaFormData({ ...criteriaFormData, code: e.target.value })}
+                style={inputStyle}
+              />
             </div>
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>Criterion Name *</Label>
-              <Input type="text" placeholder="e.g. Knowing and Understanding" value={criteriaFormData.name} onChange={e => setCriteriaFormData({ ...criteriaFormData, name: e.target.value })} style={inputStyle} />
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Nama Kriteria *
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Knowing and Understanding"
+                value={criteriaFormData.name}
+                onChange={e => setCriteriaFormData({ ...criteriaFormData, name: e.target.value })}
+                style={inputStyle}
+              />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-              <Button onClick={() => setShowCriteriaForm(false)} style={{ background: 'none', border: `1px solid ${borderColor}`, color: textPrimary, fontSize: '12px' }}>Cancel</Button>
-              <Button onClick={handleSaveCriteria} style={{ background: textPrimary, color: isDark ? '#09090B' : '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '12px' }}>Save</Button>
+            <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
+              <button
+                type="button"
+                onClick={() => setShowCriteriaForm(false)}
+                className="px-3.5 py-1.5 rounded text-xs"
+                style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCriteria}
+                className="px-4 py-1.5 rounded text-xs font-semibold"
+                style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF' }}
+              >
+                Simpan
+              </button>
             </div>
           </div>
         </Modal>
       )}
 
-      {/* SUB-MODAL: ADD/EDIT STRAND */}
+      {/* ── SUB-MODAL: ADD/EDIT STRAND ───────────────────────────────────────── */}
       {showStrandForm && (
-        <Modal isOpen={showStrandForm} onClose={() => setShowStrandForm(false)} title={editingStrand ? 'Edit Strand' : 'Add Strand'}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <Modal
+          isOpen={showStrandForm}
+          onClose={() => setShowStrandForm(false)}
+          title={editingStrand ? 'Edit Strand' : 'Tambah Strand'}
+          size="md"
+        >
+          <div className="space-y-3 text-xs">
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>MYP Year Level *</Label>
-              <select value={strandFormData.year_level} onChange={e => setStrandFormData({ ...strandFormData, year_level: e.target.value })} style={{ ...selectStyle, width: '100%' }}>
-                <option value="1">MYP Year 1 (Grade 6)</option>
-                <option value="2">MYP Year 2 (Grade 7)</option>
-                <option value="3">MYP Year 3 (Grade 8)</option>
-                <option value="4">MYP Year 4 (Grade 9)</option>
-                <option value="5">MYP Year 5 (Grade 10)</option>
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Tingkat Kelas (MYP Year Level) *
+              </label>
+              <select
+                value={strandFormData.year_level}
+                onChange={e => setStrandFormData({ ...strandFormData, year_level: e.target.value })}
+                style={selectStyle}
+              >
+                <option value="1">MYP Year 1 (Kelas 6)</option>
+                <option value="2">MYP Year 2 (Kelas 7)</option>
+                <option value="3">MYP Year 3 (Kelas 8)</option>
+                <option value="4">MYP Year 4 (Kelas 9)</option>
+                <option value="5">MYP Year 5 (Kelas 10)</option>
               </select>
             </div>
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>Label / Roman Numeral (e.g. i, ii, iii)</Label>
-              <Input type="text" placeholder="e.g. i" value={strandFormData.label} onChange={e => setStrandFormData({ ...strandFormData, label: e.target.value })} style={inputStyle} />
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Label Romawi (contoh: i, ii, iii)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: i"
+                value={strandFormData.label}
+                onChange={e => setStrandFormData({ ...strandFormData, label: e.target.value })}
+                style={inputStyle}
+              />
             </div>
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>Strand Content Description *</Label>
-              <textarea rows={3} placeholder="Describe what students should be able to do..." value={strandFormData.content} onChange={e => setStrandFormData({ ...strandFormData, content: e.target.value })} style={{ ...inputStyle, width: '100%', padding: '8px 12px', resize: 'vertical' }} />
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Deskripsi Capaian Strand *
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Deskripsikan apa yang harus dicapai siswa pada strand ini..."
+                value={strandFormData.content}
+                onChange={e => setStrandFormData({ ...strandFormData, content: e.target.value })}
+                style={{ ...inputStyle, resize: 'vertical' }}
+              />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-              <Button onClick={() => setShowStrandForm(false)} style={{ background: 'none', border: `1px solid ${borderColor}`, color: textPrimary, fontSize: '12px' }}>Cancel</Button>
-              <Button onClick={handleSaveStrand} style={{ background: textPrimary, color: isDark ? '#09090B' : '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '12px' }}>Save</Button>
+            <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
+              <button
+                type="button"
+                onClick={() => setShowStrandForm(false)}
+                className="px-3.5 py-1.5 rounded text-xs"
+                style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveStrand}
+                className="px-4 py-1.5 rounded text-xs font-semibold"
+                style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF' }}
+              >
+                Simpan
+              </button>
             </div>
           </div>
         </Modal>
       )}
 
-      {/* SUB-MODAL: ADD/EDIT RUBRIC */}
+      {/* ── SUB-MODAL: ADD/EDIT RUBRIC ───────────────────────────────────────── */}
       {showRubricForm && (
-        <Modal isOpen={showRubricForm} onClose={() => setShowRubricForm(false)} title={editingRubric ? 'Edit Rubric Band' : 'Add Rubric Band'}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+        <Modal
+          isOpen={showRubricForm}
+          onClose={() => setShowRubricForm(false)}
+          title={editingRubric ? 'Edit Rubrik Band' : 'Tambah Rubrik Band'}
+          size="md"
+        >
+          <div className="space-y-3 text-xs">
+            <div className="grid grid-cols-3 gap-2">
               <div>
-                <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>Band Label *</Label>
-                <Input type="text" placeholder="1-2" value={rubricFormData.band_label} onChange={e => setRubricFormData({ ...rubricFormData, band_label: e.target.value })} style={inputStyle} />
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                  Label Band *
+                </label>
+                <input
+                  type="text"
+                  placeholder="1-2"
+                  value={rubricFormData.band_label}
+                  onChange={e => setRubricFormData({ ...rubricFormData, band_label: e.target.value })}
+                  style={inputStyle}
+                />
               </div>
               <div>
-                <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>Min Score</Label>
-                <Input type="number" placeholder="1" value={rubricFormData.min_score} onChange={e => setRubricFormData({ ...rubricFormData, min_score: e.target.value })} style={inputStyle} />
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                  Skor Min
+                </label>
+                <input
+                  type="number"
+                  placeholder="1"
+                  value={rubricFormData.min_score}
+                  onChange={e => setRubricFormData({ ...rubricFormData, min_score: e.target.value })}
+                  style={inputStyle}
+                />
               </div>
               <div>
-                <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>Max Score</Label>
-                <Input type="number" placeholder="2" value={rubricFormData.max_score} onChange={e => setRubricFormData({ ...rubricFormData, max_score: e.target.value })} style={inputStyle} />
+                <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                  Skor Max
+                </label>
+                <input
+                  type="number"
+                  placeholder="2"
+                  value={rubricFormData.max_score}
+                  onChange={e => setRubricFormData({ ...rubricFormData, max_score: e.target.value })}
+                  style={inputStyle}
+                />
               </div>
             </div>
+
             <div>
-              <Label style={{ fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '4px', display: 'block' }}>Level Achievement Description *</Label>
-              <textarea rows={4} placeholder="Describe the student achievement at this level..." value={rubricFormData.description} onChange={e => setRubricFormData({ ...rubricFormData, description: e.target.value })} style={{ ...inputStyle, width: '100%', padding: '8px 12px', resize: 'vertical' }} />
+              <label className="text-[11px] font-medium block mb-1" style={{ color: textPrimary }}>
+                Deskripsi Kualitatif Level *
+              </label>
+              <textarea
+                rows={4}
+                placeholder="Deskripsikan capaian siswa pada rentang skor ini..."
+                value={rubricFormData.description}
+                onChange={e => setRubricFormData({ ...rubricFormData, description: e.target.value })}
+                style={{ ...inputStyle, resize: 'vertical' }}
+              />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-              <Button onClick={() => setShowRubricForm(false)} style={{ background: 'none', border: `1px solid ${borderColor}`, color: textPrimary, fontSize: '12px' }}>Cancel</Button>
-              <Button onClick={handleSaveRubric} style={{ background: textPrimary, color: isDark ? '#09090B' : '#FFFFFF', border: 'none', fontWeight: 600, fontSize: '12px' }}>Save</Button>
+
+            <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor }}>
+              <button
+                type="button"
+                onClick={() => setShowRubricForm(false)}
+                className="px-3.5 py-1.5 rounded text-xs"
+                style={{ background: subtleBg, color: textSecondary, border: `1px solid ${borderColor}` }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveRubric}
+                className="px-4 py-1.5 rounded text-xs font-semibold"
+                style={{ background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF' }}
+              >
+                Simpan
+              </button>
             </div>
           </div>
         </Modal>
       )}
 
-      {/* NOTIFICATION MODAL */}
+      {/* ── NOTIFICATION MODAL ───────────────────────────────────────────────── */}
       {notification.isOpen && (
         <NotificationModal
           isOpen={notification.isOpen}

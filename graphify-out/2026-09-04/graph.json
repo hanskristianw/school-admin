@@ -8166,7 +8166,7 @@
       "label": "SubjectManagement()",
       "file_type": "code",
       "source_file": "src/app/data/subject/page.jsx",
-      "source_location": "L28",
+      "source_location": "L33",
       "_origin": "ast",
       "id": "src_app_data_subject_page_subjectmanagement",
       "community": 195,
@@ -32843,7 +32843,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/data/subject/page.jsx",
-      "source_location": "L28",
+      "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_subject_page",
@@ -48303,5 +48303,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "9e800378a6324b0800dc5c4339516079ac76dfad"
+  "built_at_commit": "a854e005754f04938726e746749c5852d7ecda52"
 }
