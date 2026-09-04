@@ -1100,8 +1100,8 @@
     "semantic_hash": "bce3c75e8857dcb89848e4614700e6e8"
   },
   "src/app/data/user/page.jsx": {
-    "mtime": 1787815889.7416387,
-    "ast_hash": "ae8d6e8ea4e8579756dc2339b17c7bd6",
+    "mtime": 1788496563.5058181,
+    "ast_hash": "b60f97976ecab24ff4f02b6aa2c70542",
     "semantic_hash": ""
   },
   "src/app/data/year/page.jsx": {
@@ -1200,8 +1200,8 @@
     "semantic_hash": "f02d7c2aca735f37d3ca52372cef22ad"
   },
   "src/app/stock/uniform/initial/page.jsx": {
-    "mtime": 1787893753.524817,
-    "ast_hash": "3d27af32b398c33e96c0644572429384",
+    "mtime": 1788500772.8695555,
+    "ast_hash": "de7e63200213b322854e70bc655707b2",
     "semantic_hash": ""
   },
   "src/app/stock/uniform/po-settings/page.jsx": {
@@ -1710,8 +1710,8 @@
     "semantic_hash": ""
   },
   "src/app/settings/incident-report/page.jsx": {
-    "mtime": 1787820241.14668,
-    "ast_hash": "2fb816442d421e666114e365c2df7036",
+    "mtime": 1788498551.5320203,
+    "ast_hash": "f5775fcc24cb385f849dc270022a32fe",
     "semantic_hash": ""
   },
   "src/app/data/incident-report-approval/page.jsx": {

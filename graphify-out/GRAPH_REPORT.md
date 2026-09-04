@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-09-04)
 
 ## Corpus Check
-- 369 files · ~601,628 words
+- 369 files · ~601,816 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2147 nodes · 2214 edges · 357 communities (253 shown, 104 thin omitted)
+- 2148 nodes · 2215 edges · 357 communities (253 shown, 104 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9e800378`
+- Built from commit: `2b424ccd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -541,8 +541,8 @@ Cohesion: 0.05
 Nodes (43): 1. Logo Cover, 1. Monogram + Meaning, 2 × 3 REFERENCE-STYLE LAYOUT, 2. Logo Construction, 2. Product Action, 3. Digital Application, 3. Metaphor Fusion, 4. Brand Essence (+35 more)
 
 ### Community 130 - "bcryptjs"
-Cohesion: 0.18
-Nodes (10): 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands` (+2 more)
+Cohesion: 0.40
+Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
 
 ### Community 132 - "Module 132"
 Cohesion: 0.06
@@ -553,8 +553,8 @@ Cohesion: 0.06
 Nodes (34): 1. Tab "Receive" (Terima Barang), 2. Modal: Tambah Item Baru, 2. Tab "History" (Riwayat Transaksi Selesai), 3. Step 2 - Item Yang Dipesan, After Migration, After (New Schema), Before Migration, Before (Old Schema) (+26 more)
 
 ### Community 142 - "2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview"
-Cohesion: 0.40
-Nodes (5): 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), `menu_permissions`, `menus`
+Cohesion: 0.18
+Nodes (10): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 7.1 Tables, 7.2 ERD / Relationships (Menu Domain), 7. Menu & Role Permissions Domain (`/data/menu_management`), Database Schema & Relationships (+2 more)
 
 ### Community 143 - "Module 143"
 Cohesion: 0.20
@@ -621,8 +621,8 @@ Cohesion: 0.14
 Nodes (13): Active/Current Migrations, Core Attendance System, Database Migrations, 🚀 How to Run Migrations, ⚠️ Important Notes, 📋 Migration Checklist, Other Systems (Unrelated to Attendance), 🔄 Recent Changes (October 2025) (+5 more)
 
 ### Community 261 - "5.1 Tables"
-Cohesion: 0.15
-Nodes (13): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance`, `leave_quotas`, `leave_types` (+5 more)
+Cohesion: 0.13
+Nodes (15): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance` (+7 more)
 
 ### Community 262 - "sendGoogleChatMessage"
 Cohesion: 0.80
@@ -633,8 +633,8 @@ Cohesion: 0.20
 Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject` (+2 more)
 
 ### Community 264 - "4.1 Tables"
-Cohesion: 0.20
-Nodes (10): 4.1 Tables, `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items`, `fpb_revisions`, `fpb_role_approvers` (+2 more)
+Cohesion: 0.17
+Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
 
 ### Community 265 - "School Admin System - Complete Documentation"
 Cohesion: 0.18
@@ -665,8 +665,8 @@ Cohesion: 0.29
 Nodes (7): 9.1 Tables, 9.2 ERD / Relationships (Timetable & Schedule Domain), 9. Timetable & Schedule Management Domain (`/data/timetable`, `/data/weekly-overview`), `timetable`, `timetable_exception`, `topic_weekly_plan`, `weekly_overview_draft`
 
 ### Community 272 - "Database Schema & Relationships"
-Cohesion: 0.11
-Nodes (18): 11.1 Tables, 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), `uniform`, `uniform_po_settings`, `uniform_purchase` (+10 more)
+Cohesion: 0.14
+Nodes (14): 11.1 Tables, `uniform`, `uniform_po_settings`, `uniform_purchase`, `uniform_purchase_item`, `uniform_purchase_receipt`, `uniform_purchase_receipt_item`, `uniform_sale` (+6 more)
 
 ### Community 273 - "8.1 Tables"
 Cohesion: 0.33
@@ -896,7 +896,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `tasteskill: Anti-Slop Frontend Skill` connect `tasteskill: Anti-Slop Frontend Skill` to `4. DESIGN ENGINEERING DIRECTIVES (Bias Correction)`, `10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know)`, `7.1 Tables`, `8. DARK MODE PROTOCOL`, `9. AI TELLS (Forbidden Patterns)`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `0. BRIEF INFERENCE (Read the Room Before Anything Else)`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Appendix B - Canonical Sources (read these before reinventing)`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
-- **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
+- **Why does `Database Schema & Relationships` connect `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview` to `bcryptjs`, `5.1 Tables`, `3.1 Tables`, `4.1 Tables`, `1.1 Tables`, `2.1 Tables`, `Module 143`, `9.1 Tables`, `8.1 Tables`, `**3. Assessment System**`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
   _1117 weakly-connected nodes found - possible documentation gaps or missing edges._

@@ -113,6 +113,8 @@ export default function InitialStockPage() {
   const [showExportModal, setShowExportModal] = useState(false)
   const [exportYears, setExportYears] = useState([])
   const [selectedYearId, setSelectedYearId] = useState('')
+  const [exportStartDate, setExportStartDate] = useState('')
+  const [exportEndDate, setExportEndDate] = useState('')
   const [exporting, setExporting] = useState(false)
   const [exportNotification, setExportNotification] = useState({ isOpen: false, title: '', message: '', type: 'success' })
 
@@ -307,7 +309,26 @@ export default function InitialStockPage() {
   const openExportModal = () => {
     fetchExportYears()
     setSelectedYearId('')
+    setExportStartDate('')
+    setExportEndDate('')
     setShowExportModal(true)
+  }
+
+  const handleExportYearSelect = (yearId) => {
+    setSelectedYearId(yearId)
+    const y = exportYears.find(yr => yr.year_id === Number(yearId))
+    if (y) {
+      // 2026/2027 uniform procurement cycle started in March 2026 (PO 11 & PPDB sales)
+      if (y.year_name.includes('2026') || y.year_name.includes('26/27')) {
+        setExportStartDate('2026-03-01')
+      } else {
+        setExportStartDate(y.start_date || '')
+      }
+      setExportEndDate(y.end_date || '')
+    } else {
+      setExportStartDate('')
+      setExportEndDate('')
+    }
   }
 
   const handleExportToExcel = async () => {
@@ -321,7 +342,9 @@ export default function InitialStockPage() {
 
     setExporting(true)
     try {
-      const { start_date, end_date, year_name } = selectedYear
+      const start_date = exportStartDate || selectedYear.start_date
+      const end_date = exportEndDate || selectedYear.end_date
+      const year_name = selectedYear.year_name
 
       // 1. Fetch all suppliers
       const { data: allSuppliers } = await supabase
@@ -399,9 +422,11 @@ export default function InitialStockPage() {
           receiptData = (rItems || []).map(ri => {
             const receipt = receipts.find(r => r.receipt_id === ri.receipt_id)
             const pItem = purchaseItems.find(pi => pi.item_id === ri.purchase_item_id)
+            const purchase = purchases.find(p => p.purchase_id === receipt?.purchase_id)
             return {
               ...ri,
               purchase_id: receipt?.purchase_id,
+              supplier_id: purchase?.supplier_id,
               receipt_date: receipt?.receipt_date,
               uniform_id: pItem?.uniform_id,
               size_id: pItem?.size_id
@@ -447,26 +472,34 @@ export default function InitialStockPage() {
         poLabel: `PO ${idx + 1}`
       }))
 
+      const isFirstCycle = start_date <= '2026-07-01'
+
       const reportRows = uniformList.map(uniform => {
         const uId = uniform.uniform_id
         const variants = (allVariants || []).filter(v => v.uniform_id === uId)
 
-        // -- STOCK AWAL = Sum of transactions created BEFORE start_date (or init txns) --
+        // -- STOCK AWAL --
+        // For the baseline 2026/2027 cycle, Stock Awal is baseline initial stock (txn_type === 'init').
+        // For future periods, it represents cumulative stock balance before start_date.
         const stockAwalTxns = (allStockTxns || []).filter(t => 
           t.uniform_id === uId && (
-            t.txn_type === 'init' || 
-            (t.created_at && t.created_at < start_date + 'T00:00:00')
+            isFirstCycle
+              ? t.txn_type === 'init'
+              : (t.txn_type === 'init' || (t.created_at && t.created_at < start_date + 'T00:00:00'))
           )
         )
         const rawStockAwalBySupplier = {}
         supplierList.forEach(s => {
-          rawStockAwalBySupplier[s.supplier_id] = stockAwalTxns
+          const qty = stockAwalTxns
             .filter(t => t.supplier_id === s.supplier_id)
             .reduce((sum, t) => sum + t.qty_delta, 0)
+          rawStockAwalBySupplier[s.supplier_id] = Math.max(0, qty)
         })
-        const rawStockAwalInv = stockAwalTxns
+        const rawStockAwalInv = Math.max(0, stockAwalTxns
           .filter(t => !t.supplier_id || !supplierList.some(s => s.supplier_id === t.supplier_id))
-          .reduce((sum, t) => sum + t.qty_delta, 0)
+          .reduce((sum, t) => sum + t.qty_delta, 0))
+
+        const totalStockAwal = rawStockAwalInv + Object.values(rawStockAwalBySupplier).reduce((a, b) => a + b, 0)
 
         // -- HPP (weighted average from init txns + variant HPP) --
         let totalHppQty = 0
@@ -495,8 +528,8 @@ export default function InitialStockPage() {
             .reduce((sum, ri) => sum + (ri.qty_received * Number(ri.unit_cost || 0)), 0)
           purchaseByPo[po.purchase_id] = { qty: qtyForPo, cost: costForPo }
         })
-        const totalPurchaseQty = Object.values(purchaseByPo).reduce((a, b) => a + b.qty, 0)
-        const totalPurchaseCost = Object.values(purchaseByPo).reduce((a, b) => a + b.cost, 0)
+        const totalPurchaseQty = Object.values(purchaseByPo).reduce((sum, item) => sum + (item?.qty || 0), 0)
+        const totalPurchaseCost = Object.values(purchaseByPo).reduce((sum, item) => sum + (item?.cost || 0), 0)
         const avgPurchasePrice = totalPurchaseQty > 0 ? Math.round(totalPurchaseCost / totalPurchaseQty) : 0
 
         // -- HASIL PENJUALAN --
@@ -515,15 +548,15 @@ export default function InitialStockPage() {
         )
         const rawStockAkhirBySupplier = {}
         supplierList.forEach(s => {
-          rawStockAkhirBySupplier[s.supplier_id] = stockAkhirTxns
+          const qty = stockAkhirTxns
             .filter(t => t.supplier_id === s.supplier_id)
             .reduce((sum, t) => sum + t.qty_delta, 0)
+          rawStockAkhirBySupplier[s.supplier_id] = Math.max(0, qty)
         })
-        const rawStockAkhirInv = stockAkhirTxns
+        const rawStockAkhirInv = Math.max(0, stockAkhirTxns
           .filter(t => !t.supplier_id || !supplierList.some(s => s.supplier_id === t.supplier_id))
-          .reduce((sum, t) => sum + t.qty_delta, 0)
+          .reduce((sum, t) => sum + t.qty_delta, 0))
 
-        const totalStockAwal = rawStockAwalInv + Object.values(rawStockAwalBySupplier).reduce((a, b) => a + b, 0)
         const totalStockAkhir = rawStockAkhirInv + Object.values(rawStockAkhirBySupplier).reduce((a, b) => a + b, 0)
 
         return {
@@ -2113,7 +2146,7 @@ export default function InitialStockPage() {
               className="w-full px-2.5 py-2 text-xs font-mono rounded border outline-none cursor-pointer font-bold"
               style={{ background: inputBg, borderColor, color: textPrimary }}
               value={selectedYearId}
-              onChange={(e) => setSelectedYearId(e.target.value)}
+              onChange={(e) => handleExportYearSelect(e.target.value)}
             >
               <option value="">-- Pilih Tahun Ajaran --</option>
               {exportYears.map(y => (
@@ -2124,22 +2157,48 @@ export default function InitialStockPage() {
             </select>
           </div>
 
-          {selectedYearId && (() => {
-            const y = exportYears.find(yr => yr.year_id === Number(selectedYearId))
-            if (!y) return null
-            return (
+          {selectedYearId && (
+            <div className="space-y-3 pt-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>Dari Tanggal</Label>
+                  <input
+                    type="date"
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none font-medium"
+                    style={{ background: inputBg, borderColor, color: textPrimary }}
+                    value={exportStartDate}
+                    onChange={(e) => setExportStartDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] font-mono uppercase block mb-1 font-bold" style={{ color: textSecondary }}>Sampai Tanggal</Label>
+                  <input
+                    type="date"
+                    className="w-full px-2.5 py-1.5 text-xs font-mono rounded border outline-none font-medium"
+                    style={{ background: inputBg, borderColor, color: textPrimary }}
+                    value={exportEndDate}
+                    onChange={(e) => setExportEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
               <div
-                className="p-3 rounded border text-xs"
+                className="p-3 rounded border text-xs leading-relaxed"
                 style={{
-                  background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE',
-                  borderColor: isDark ? '#2563EB' : '#BAE6FD',
-                  color: isDark ? '#60A5FA' : '#1F6C9F'
+                  background: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
+                  borderColor: isDark ? '#1D4ED8' : '#BFDBFE',
+                  color: isDark ? '#93C5FD' : '#1E40AF'
                 }}
               >
-                <strong>Periode:</strong> {new Date(y.start_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} — {new Date(y.end_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                <div className="font-semibold mb-1 flex items-center gap-1.5 text-[11px]">
+                  <span>💡 Informasi Periode Laporan</span>
+                </div>
+                <p className="text-[11px] leading-normal opacity-90">
+                  Untuk tahun 2026/2027, periode default dimulai <strong>01 Maret 2026</strong> agar seluruh siklus pengadaan (PO 11 dst.) serta penjualan awal tahun terhitung lengkap dan stok tidak menjadi minus.
+                </p>
               </div>
-            )
-          })()}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4 border-t" style={{ borderColor }}>
             <Button

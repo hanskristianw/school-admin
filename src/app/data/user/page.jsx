@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,8 @@ import {
   faUsers,
   faUserCheck,
   faUserTimes,
-  faUserShield
+  faUserShield,
+  faEdit
 } from '@fortawesome/free-solid-svg-icons';
 
 // Bulletproof User Avatar Component with automatic fallback on broken image URLs
@@ -60,12 +61,20 @@ export default function UserManagement() {
   const { theme, isDark } = useTheme();
   const { t } = useI18n();
 
-  // Dynamic Styles tied to useTheme() (Works 100% in Light & Dark mode)
-  const inputStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' };
-  const selectStyle = { background: theme.inputBg, border: `1px solid ${theme.border}`, color: theme.textPrimary, borderRadius: '6px' };
-  const btnPrimaryStyle = { background: theme.textPrimary, color: isDark ? '#18171A' : '#FFFFFF', border: 'none' };
-  const btnSecondaryStyle = { background: theme.cardBg, color: theme.textPrimary, border: `1px solid ${theme.border}` };
+  // Minimalist-UI Tokens (Matching /data/pyp)
+  const pageBg        = isDark ? '#09090B' : '#FAFAF9';
+  const cardBg        = isDark ? '#18181B' : '#FFFFFF';
+  const subtleBg      = isDark ? '#27272A' : '#F7F6F3';
+  const borderColor   = isDark ? '#27272A' : '#EAEAEA';
+  const textPrimary   = isDark ? '#F4F4F5' : '#111111';
+  const textSecondary = isDark ? '#A1A1AA' : '#787774';
 
+  const inputStyle = { background: isDark ? '#18181B' : '#FFFFFF', border: `1px solid ${borderColor}`, color: textPrimary, borderRadius: '6px', fontSize: '13px' };
+  const selectStyle = { ...inputStyle, cursor: 'pointer' };
+  const btnPrimaryStyle = { background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', border: 'none' };
+  const btnSecondaryStyle = { background: subtleBg, color: textPrimary, border: `1px solid ${borderColor}` };
+
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'staff' | 'student' | 'admin' | 'inactive'
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [units, setUnits] = useState([]);
@@ -414,12 +423,20 @@ export default function UserManagement() {
 
   const getFilteredUsers = () => {
     return users.filter(user => {
+      // Active tab filter
+      if (activeTab === 'staff' && (isStudentUser(user) || !user.is_active)) return false;
+      if (activeTab === 'student' && (!isStudentUser(user) || !user.is_active)) return false;
+      if (activeTab === 'admin' && (!user.is_admin || !user.is_active)) return false;
+      if (activeTab === 'inactive' && user.is_active) return false;
+
       const q = (filters.search || '').toLowerCase().trim();
       const fullName = `${user.user_nama_depan || ''} ${user.user_nama_belakang || ''}`.toLowerCase();
+      const pinStr = (user.user_pin ? String(user.user_pin) : '').toLowerCase();
       const searchMatch = !q ||
         fullName.includes(q) ||
         (user.user_email || '').toLowerCase().includes(q) ||
-        (user.role_name || '').toLowerCase().includes(q);
+        (user.role_name || '').toLowerCase().includes(q) ||
+        pinStr.includes(q);
       const roleMatch = !filters.role || user.role_name === filters.role;
       const statusMatch = !filters.status ||
         (filters.status === 'active' && user.is_active) ||
@@ -874,12 +891,38 @@ export default function UserManagement() {
     }
   };
 
+  // Summary counts for tabs
+  const tabCounts = useMemo(() => {
+    let staff = 0;
+    let student = 0;
+    let admin = 0;
+    let inactive = 0;
+
+    users.forEach(u => {
+      if (!u.is_active) {
+        inactive++;
+      } else {
+        if (u.is_admin) admin++;
+        if (isStudentUser(u)) student++;
+        else staff++;
+      }
+    });
+
+    return {
+      all: users.length,
+      staff,
+      student,
+      admin,
+      inactive
+    };
+  }, [users]);
+
   if (loading) {
     return (
-      <div className="min-h-screen p-6 flex items-center justify-center font-sans" style={{ background: theme.pageBg }}>
-        <div className="flex items-center gap-3 text-sm font-medium tracking-tight" style={{ color: theme.textSecondary }}>
-          <FontAwesomeIcon icon={faSpinner} spin style={{ color: theme.textPrimary }} />
-          <span>Loading user data...</span>
+      <div className="min-h-screen p-6 flex items-center justify-center font-sans" style={{ background: pageBg }}>
+        <div className="flex items-center gap-3 text-sm font-medium tracking-tight" style={{ color: textSecondary }}>
+          <FontAwesomeIcon icon={faSpinner} spin style={{ color: textPrimary }} />
+          <span>Memuat data pengguna...</span>
         </div>
       </div>
     );
@@ -887,263 +930,147 @@ export default function UserManagement() {
 
   const filteredUsers = getFilteredUsers();
 
-  // Summary counts for bento cards
-  const totalUserCount = users.length;
-  const activeUserCount = users.filter(u => u.is_active).length;
-  const inactiveUserCount = totalUserCount - activeUserCount;
-  const adminRoleCount = users.filter(u => u.is_admin).length;
-
   return (
-    <div className="min-h-screen p-4 sm:p-6 md:p-8 font-sans antialiased" style={{ background: theme.pageBg, color: theme.textPrimary }}>
-      <div className="max-w-7xl mx-auto space-y-6">
-
-        {/* ─── Minimalist Editorial Header Section ─── */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b" style={{ borderColor: theme.border }}>
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
+      
+      {/* ── HEADER (MATCHING /data/pyp) ────────────────────────────────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center border shadow-xs" style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', borderColor: isDark ? '#2563EB' : '#BAE6FD', color: isDark ? '#60A5FA' : '#0284C7' }}>
+            <FontAwesomeIcon icon={faUsers} className="text-base" />
+          </div>
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase mb-2" style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-              <span>User Management System</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: theme.textPrimary }}>
-              User Accounts
+            <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+              Data Pengguna
             </h1>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium px-4 py-2.5 rounded-md transition-all duration-200 cursor-pointer active:scale-[0.98]"
-              style={btnPrimaryStyle}
-            >
-              <FontAwesomeIcon icon={faPlus} className="text-xs" />
-              <span>Add User</span>
-            </button>
-
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium px-3.5 py-2.5 rounded-md transition-all duration-200 cursor-pointer"
-              style={btnSecondaryStyle}
-            >
-              <FontAwesomeIcon icon={faFileImport} className="text-xs" style={{ color: theme.textSecondary }} />
-              <span>Import CSV</span>
-            </button>
-
-            <div className="inline-flex items-center rounded-md border p-0.5" style={{ background: theme.cardBg, borderColor: theme.border }}>
-              <button
-                onClick={() => downloadTemplate(false)}
-                className="px-2.5 py-1.5 text-xs font-mono rounded transition-colors"
-                style={{ color: theme.textSecondary }}
-                title="Download CSV template (comma ,)"
-              >
-                Template (,)
-              </button>
-              <span className="w-px h-4" style={{ background: theme.border }}></span>
-              <button
-                onClick={() => downloadTemplate(true)}
-                className="px-2.5 py-1.5 text-xs font-mono rounded transition-colors"
-                style={{ color: theme.textSecondary }}
-                title="Download CSV template (semicolon ;)"
-              >
-                Template (;)
-              </button>
-            </div>
+            <p className="text-xs" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
+              Kelola akun staf, guru, siswa, peran akses, foto profil, dan PIN mesin absensi.
+            </p>
           </div>
         </div>
 
-        {/* ─── Bento Summary Grid Cards ─── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-          <div className="p-4 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
-            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>
-              <span>Total Users</span>
-              <FontAwesomeIcon icon={faUsers} style={{ color: theme.textSecondary }} />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-semibold font-mono tracking-tight" style={{ color: theme.textPrimary }}>{totalUserCount}</span>
-              <span className="text-xs" style={{ color: theme.textSecondary }}>registered</span>
-            </div>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-4 py-2 rounded text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+            style={{
+              background: isDark ? '#F4F4F5' : '#111111',
+              color: isDark ? '#111111' : '#FFFFFF',
+            }}
+          >
+            <FontAwesomeIcon icon={faPlus} className="text-xs" />
+            <span>Tambah Pengguna</span>
+          </button>
 
-          <div className="p-4 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
-            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>
-              <span>Active Users</span>
-              <FontAwesomeIcon icon={faUserCheck} style={{ color: theme.greenText }} />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-semibold font-mono tracking-tight" style={{ color: theme.greenText }}>{activeUserCount}</span>
-              <span className="text-xs" style={{ color: theme.textSecondary }}>active</span>
-            </div>
-          </div>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-3.5 py-2 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer border"
+            style={{
+              background: cardBg,
+              borderColor,
+              color: textPrimary
+            }}
+          >
+            <FontAwesomeIcon icon={faFileImport} className="text-xs" style={{ color: textSecondary }} />
+            <span>Import CSV</span>
+          </button>
 
-          <div className="p-4 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
-            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>
-              <span>Inactive Users</span>
-              <FontAwesomeIcon icon={faUserTimes} style={{ color: theme.redText }} />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-semibold font-mono tracking-tight" style={{ color: theme.redText }}>{inactiveUserCount}</span>
-              <span className="text-xs" style={{ color: theme.textSecondary }}>inactive</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-lg border flex flex-col justify-between" style={{ background: theme.cardBg, borderColor: theme.border }}>
-            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider" style={{ color: theme.textSecondary }}>
-              <span>Admin Access</span>
-              <FontAwesomeIcon icon={faUserShield} style={{ color: theme.blueText }} />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-semibold font-mono tracking-tight" style={{ color: theme.blueText }}>{adminRoleCount}</span>
-              <span className="text-xs" style={{ color: theme.textSecondary }}>administrators</span>
-            </div>
+          <div className="inline-flex items-center rounded border p-0.5" style={{ background: cardBg, borderColor }}>
+            <button
+              onClick={() => downloadTemplate(false)}
+              className="px-2.5 py-1.5 text-xs font-mono rounded transition-colors cursor-pointer"
+              style={{ color: textSecondary }}
+              title="Download template CSV (koma ,)"
+            >
+              Template (,)
+            </button>
+            <span className="w-px h-3.5" style={{ background: borderColor }}></span>
+            <button
+              onClick={() => downloadTemplate(true)}
+              className="px-2.5 py-1.5 text-xs font-mono rounded transition-colors cursor-pointer"
+              style={{ color: textSecondary }}
+              title="Download template CSV (titik koma ;)"
+            >
+              Template (;)
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* ─── Search & Filter Controls ─── */}
-        <div className="rounded-lg p-4 border space-y-3" style={{ background: theme.cardBg, borderColor: theme.border }}>
-          {/* Search Input with Keyboard Shortcut Hint */}
-          <div className="relative">
-            <FontAwesomeIcon icon={faSearch} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: theme.textSecondary }} />
+      {/* ── BENTO FILTER TOOLBAR ─────────────────────────────────────────────── */}
+      <div className="p-3.5 rounded-lg border mb-6" style={{ background: cardBg, borderColor }}>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: textSecondary }} />
             <input
               id="user-search"
               type="text"
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
-              placeholder="Search by user name, email, or role..."
-              className="w-full pl-9 pr-16 py-2 rounded-md text-xs sm:text-sm focus:outline-none transition-colors"
+              placeholder="Cari nama, email, peran, atau PIN mesin..."
+              className="w-full pl-8 pr-8 py-1.5 rounded text-xs outline-none"
               style={inputStyle}
             />
-            {filters.search ? (
+            {filters.search && (
               <button
                 onClick={() => handleFilterChange('search', '')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-                style={{ color: theme.textSecondary }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs cursor-pointer"
+                style={{ color: textSecondary }}
               >
                 ✕
               </button>
-            ) : (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-block">
-                <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded border" style={{ background: theme.subtleBg, color: theme.textSecondary, borderColor: theme.border }}>⌘F</kbd>
-              </span>
             )}
           </div>
 
-          {/* Filter Dropdowns Row */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 border-t" style={{ borderColor: theme.border }}>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 flex-1">
-              <div>
-                <select
-                  id="role-filter"
-                  value={filters.role}
-                  onChange={(e) => handleFilterChange('role', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-md"
-                  style={selectStyle}
-                >
-                  <option value="">All Roles</option>
-                  {getUniqueRoles().map(role => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <select
-                  id="unit-filter"
-                  value={filters.unit}
-                  onChange={(e) => handleFilterChange('unit', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-md"
-                  style={selectStyle}
-                >
-                  <option value="">All Units</option>
-                  {getUniqueUnits().map(unit => (
-                    <option key={unit} value={unit}>{unit}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <select
-                  id="status-filter"
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-md"
-                  style={selectStyle}
-                >
-                  <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Clear Button */}
-            {(filters.search || filters.role || filters.status || filters.unit) && (
-              <button
-                onClick={clearFilters}
-                className="px-3 py-1.5 text-xs font-medium border rounded-md transition-colors"
-                style={btnSecondaryStyle}
+          {/* Filter Dropdowns & Column Selector */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="w-40">
+              <select
+                value={filters.unit}
+                onChange={(e) => handleFilterChange('unit', e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs rounded outline-none"
+                style={selectStyle}
               >
-                Reset Filters
-              </button>
-            )}
-          </div>
-
-          {/* Filter Badges Active */}
-          {(filters.role || filters.status || filters.unit) && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[11px]" style={{ color: theme.textSecondary }}>Active filters:</span>
-              {filters.role && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono" style={{ background: theme.blueBg, color: theme.blueText }}>
-                  Role: {filters.role}
-                  <button onClick={() => handleFilterChange('role', '')} className="hover:opacity-75">✕</button>
-                </span>
-              )}
-              {filters.unit && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono" style={{ background: theme.yellowBg, color: theme.yellowText }}>
-                  Unit: {filters.unit}
-                  <button onClick={() => handleFilterChange('unit', '')} className="hover:opacity-75">✕</button>
-                </span>
-              )}
-              {filters.status && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono" style={{ background: theme.greenBg, color: theme.greenText }}>
-                  Status: {filters.status === 'active' ? 'Active' : 'Inactive'}
-                  <button onClick={() => handleFilterChange('status', '')} className="hover:opacity-75">✕</button>
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ─── Main User Table Card ─── */}
-        <div className="rounded-lg border overflow-hidden" style={{ background: theme.cardBg, borderColor: theme.border }}>
-          {/* Card Table Header Toolbar */}
-          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: theme.border }}>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
-                User List ({filteredUsers.length} of {users.length})
-              </h2>
-              {(filters.search || filters.role || filters.status || filters.unit) && (
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                  filtered
-                </span>
-              )}
+                <option value="">Semua Unit</option>
+                {getUniqueUnits().map(unit => (
+                  <option key={unit} value={unit}>{unit}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Desktop Column Selector */}
-            <div className="relative hidden md:block" ref={columnSelectorRef}>
+            <div className="w-44">
+              <select
+                value={filters.role}
+                onChange={(e) => handleFilterChange('role', e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs rounded outline-none"
+                style={selectStyle}
+              >
+                <option value="">Semua Peran (Role)</option>
+                {getUniqueRoles().map(role => (
+                  <option key={role} value={role}>{role}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Column Selector */}
+            <div className="relative" ref={columnSelectorRef}>
               <button
                 onClick={() => setShowColumnSelector(v => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors cursor-pointer"
-                style={btnSecondaryStyle}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors cursor-pointer"
+                style={{ background: subtleBg, borderColor, color: textPrimary }}
               >
-                <FontAwesomeIcon icon={faColumns} className="text-xs" style={{ color: theme.textSecondary }} />
-                <span>Columns</span>
+                <FontAwesomeIcon icon={faColumns} className="text-xs" style={{ color: textSecondary }} />
+                <span>Kolom</span>
               </button>
 
               {showColumnSelector && (
-                <div className="absolute right-0 top-full mt-1 border rounded-md shadow-sm z-30 p-3 min-w-[190px]" style={{ background: theme.cardBg, borderColor: theme.border }}>
-                  <p className="text-[10px] font-semibold tracking-wider uppercase mb-2" style={{ color: theme.textSecondary }}>Show Columns</p>
+                <div className="absolute right-0 top-full mt-1 border rounded-lg shadow-sm z-30 p-3 min-w-[190px]" style={{ background: cardBg, borderColor }}>
+                  <p className="text-[10px] font-mono uppercase tracking-wider mb-2 font-semibold" style={{ color: textSecondary }}>Tampilkan Kolom</p>
                   <div className="space-y-1">
                     {ALL_COLUMNS.map(col => (
-                      <label key={col.key} className="flex items-center gap-2 py-1 text-xs cursor-pointer px-1 rounded" style={{ color: theme.textPrimary }}>
+                      <label key={col.key} className="flex items-center gap-2 py-1 text-xs cursor-pointer px-1 rounded" style={{ color: textPrimary }}>
                         <input
                           type="checkbox"
                           checked={visibleColumns.has(col.key)}
@@ -1154,223 +1081,296 @@ export default function UserManagement() {
                       </label>
                     ))}
                   </div>
-                  <div className="mt-2 pt-2 border-t" style={{ borderColor: theme.border }}>
+                  <div className="mt-2 pt-2 border-t" style={{ borderColor }}>
                     <button
                       onClick={() => {
                         setVisibleColumns(DEFAULT_COLUMNS);
                         try { localStorage.removeItem('user_table_columns'); } catch(e) {}
                       }}
-                      className="text-[11px] hover:underline"
-                      style={{ color: theme.blueText }}
+                      className="text-[11px] hover:underline cursor-pointer"
+                      style={{ color: isDark ? '#60A5FA' : '#0284C7' }}
                     >
-                      Reset to default
+                      Reset default
                     </button>
                   </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="border-b font-medium tracking-wider uppercase text-[10px]" style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textSecondary }}>
-                  {visibleColumns.has('id') && <th className="px-4 py-3 font-mono">ID</th>}
-                  {visibleColumns.has('nama') && <th className="px-4 py-3">Full Name</th>}
-                  {visibleColumns.has('email') && <th className="px-4 py-3">Email</th>}
-                  {visibleColumns.has('tanggal_lahir') && <th className="px-4 py-3">Birth Date</th>}
-                  {visibleColumns.has('role') && <th className="px-4 py-3">Role</th>}
-                  {visibleColumns.has('unit') && <th className="px-4 py-3">Unit</th>}
-                  {visibleColumns.has('status') && <th className="px-4 py-3">Status</th>}
-                  {visibleColumns.has('pin') && <th className="px-4 py-3 font-mono">Machine PIN</th>}
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: theme.border }}>
-                {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={visibleColumns.size + 1} className="px-4 py-8 text-center text-xs" style={{ color: theme.textSecondary }}>
-                      No users match the selected filters.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUsers.map(user => (
-                    <tr
-                      key={user.user_id}
-                      className="transition-colors duration-150"
-                      onMouseEnter={e => { e.currentTarget.style.background = theme.subtleBg }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                    >
-                      {visibleColumns.has('id') && (
-                        <td className="px-4 py-3 font-mono" style={{ color: theme.textSecondary }}>
-                          #{user.user_id}
-                        </td>
-                      )}
-
-                      {visibleColumns.has('nama') && (
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <UserAvatar user={user} theme={theme} size="w-7 h-7" />
-                            <span className="font-medium" style={{ color: theme.textPrimary }}>
-                              {user.user_nama_depan} {user.user_nama_belakang}
-                            </span>
-                          </div>
-                        </td>
-                      )}
-
-                      {visibleColumns.has('email') && (
-                        <td className="px-4 py-3 font-mono text-[11px]" style={{ color: theme.textSecondary }}>
-                          {user.user_email || <span className="italic opacity-60">—</span>}
-                        </td>
-                      )}
-
-                      {visibleColumns.has('tanggal_lahir') && (
-                        <td className="px-4 py-3" style={{ color: theme.textSecondary }}>
-                          {user.user_tanggal_lahir ? toDisplayDate(user.user_tanggal_lahir) : <span className="italic opacity-60">—</span>}
-                        </td>
-                      )}
-
-                      {visibleColumns.has('role') && (
-                        <td className="px-4 py-3">
-                          <span
-                            className="inline-block px-2.5 py-0.5 rounded-full text-[10px] uppercase font-semibold tracking-wider"
-                            style={
-                              user.is_admin
-                                ? { background: theme.redBg, color: theme.redText }
-                                : isStudentUser(user)
-                                ? { background: theme.yellowBg, color: theme.yellowText }
-                                : { background: theme.blueBg, color: theme.blueText }
-                            }
-                          >
-                            {user.role_name}
-                          </span>
-                        </td>
-                      )}
-
-                      {visibleColumns.has('unit') && (
-                        <td className="px-4 py-3">
-                          {user.unit_name ? (
-                            <span className="inline-block px-2 py-0.5 rounded text-[11px]" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                              {user.unit_name}
-                            </span>
-                          ) : (
-                            <span className="italic opacity-60">—</span>
-                          )}
-                        </td>
-                      )}
-
-                      {visibleColumns.has('status') && (
-                        <td className="px-4 py-3">
-                          <span
-                            className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider"
-                            style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.redBg, color: theme.redText }}
-                          >
-                            {user.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                      )}
-
-                      {visibleColumns.has('pin') && (
-                        <td className="px-4 py-3 font-mono text-[11px]">
-                          {user.user_pin ? (
-                            <span className="px-1.5 py-0.5 rounded border" style={{ background: theme.subtleBg, color: theme.textPrimary, borderColor: theme.border }}>
-                              {user.user_pin}
-                            </span>
-                          ) : (
-                            <span className="italic opacity-60">—</span>
-                          )}
-                        </td>
-                      )}
-
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="px-2.5 py-1 text-xs font-medium rounded transition-colors cursor-pointer"
-                            style={btnSecondaryStyle}
-                          >
-                            Edit
-                          </button>
-                          {isStudentUser(user) && (
-                            <button
-                              onClick={() => handleStartDeleteUser(user)}
-                              className="px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer"
-                              style={{ background: theme.redBg, color: theme.redText, border: `1px solid ${theme.redBg}` }}
-                              title="Delete user"
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Table/Cards View */}
-          <div className="block md:hidden divide-y" style={{ borderColor: theme.border }}>
-            {filteredUsers.length === 0 ? (
-              <div className="p-6 text-center text-xs" style={{ color: theme.textSecondary }}>
-                No users match the selected filters.
-              </div>
-            ) : (
-              filteredUsers.map(user => (
-                <div key={user.user_id} className="p-4 space-y-2.5" style={{ background: theme.cardBg }}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <UserAvatar user={user} theme={theme} size="w-8 h-8" />
-                      <div>
-                        <h3 className="text-sm font-semibold" style={{ color: theme.textPrimary }}>
-                          {user.user_nama_depan} {user.user_nama_belakang}
-                        </h3>
-                        <p className="text-xs font-mono" style={{ color: theme.textSecondary }}>{user.user_email || '-'}</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono opacity-60">#{user.user_id}</span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold" style={user.is_admin ? { background: theme.redBg, color: theme.redText } : { background: theme.blueBg, color: theme.blueText }}>
-                      {user.role_name}
-                    </span>
-                    {user.unit_name && (
-                      <span className="px-2 py-0.5 rounded text-[10px]" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
-                        {user.unit_name}
-                      </span>
-                    )}
-                    <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold" style={user.is_active ? { background: theme.greenBg, color: theme.greenText } : { background: theme.redBg, color: theme.redText }}>
-                      {user.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2 pt-2 border-t" style={{ borderColor: theme.border }}>
-                    <button
-                      onClick={() => handleEdit(user)}
-                      className="flex-1 py-1.5 text-xs font-medium rounded border cursor-pointer"
-                      style={btnSecondaryStyle}
-                    >
-                      Edit User
-                    </button>
-                    {isStudentUser(user) && (
-                      <button
-                        onClick={() => handleStartDeleteUser(user)}
-                        className="px-3 py-1.5 text-xs font-medium rounded border cursor-pointer"
-                        style={{ background: theme.redBg, color: theme.redText, borderColor: theme.redBg }}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
+            {/* Reset Filters */}
+            {(filters.search || filters.role || filters.status || filters.unit) && (
+              <button
+                onClick={clearFilters}
+                className="px-2.5 py-1.5 text-xs font-medium border rounded transition-colors cursor-pointer"
+                style={{ background: subtleBg, borderColor, color: textSecondary }}
+              >
+                Reset
+              </button>
             )}
           </div>
         </div>
+      </div>
 
+      {/* ── TABS NAVIGATION (/data/pyp STYLE) ────────────────────────────────── */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '24px', gap: '24px', flexWrap: 'wrap' }}>
+        {[
+          { id: 'all',      label: 'Semua Pengguna', count: tabCounts.all,      icon: faUsers },
+          { id: 'staff',    label: 'Staf & Guru',    count: tabCounts.staff,    icon: faUserCheck },
+          { id: 'student',  label: 'Siswa',          count: tabCounts.student,  icon: faUsers },
+          { id: 'admin',    label: 'Administrator',  count: tabCounts.admin,    icon: faUserShield },
+          { id: 'inactive', label: 'Nonaktif',       count: tabCounts.inactive, icon: faUserTimes },
+        ].map(t => {
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              style={{
+                padding: '12px 0',
+                fontSize: '13px',
+                fontWeight: active ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: active ? textPrimary : textSecondary,
+                borderBottom: active ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={t.icon} style={{ fontSize: '12px', color: active ? (isDark ? '#60A5FA' : '#0284C7') : textSecondary }} />
+              <span>{t.label}</span>
+              <span
+                className="px-2 py-0.5 rounded text-[11px] font-mono font-medium"
+                style={{
+                  background: active ? (isDark ? '#27272A' : '#E1F3FE') : subtleBg,
+                  color: active ? (isDark ? '#F4F4F5' : '#1F6C9F') : textSecondary
+                }}
+              >
+                {t.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── MAIN USER TABLE ─────────────────────────────────────────────────── */}
+      <div className="rounded-lg border overflow-hidden" style={{ background: cardBg, borderColor }}>
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr className="border-b font-mono text-[10px] uppercase tracking-wider" style={{ background: subtleBg, borderColor, color: textSecondary }}>
+                {visibleColumns.has('id') && <th className="px-4 py-2.5 w-14">ID</th>}
+                {visibleColumns.has('nama') && <th className="px-4 py-2.5">Nama Pengguna</th>}
+                {visibleColumns.has('email') && <th className="px-4 py-2.5">Email</th>}
+                {visibleColumns.has('tanggal_lahir') && <th className="px-4 py-2.5">Tgl Lahir</th>}
+                {visibleColumns.has('role') && <th className="px-4 py-2.5">Peran</th>}
+                {visibleColumns.has('unit') && <th className="px-4 py-2.5">Unit</th>}
+                {visibleColumns.has('status') && <th className="px-4 py-2.5 w-24">Status</th>}
+                {visibleColumns.has('pin') && <th className="px-4 py-2.5 w-24 font-mono">PIN Mesin</th>}
+                <th className="px-4 py-2.5 text-right w-28">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y" style={{ borderColor }}>
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={visibleColumns.size + 1} className="px-4 py-12 text-center text-xs" style={{ color: textSecondary }}>
+                    Tidak ada pengguna yang cocok dengan kriteria filter.
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map(user => (
+                  <tr
+                    key={user.user_id}
+                    className="transition-colors"
+                    style={{ background: cardBg }}
+                  >
+                    {visibleColumns.has('id') && (
+                      <td className="px-4 py-3 font-mono text-secondary">
+                        #{user.user_id}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('nama') && (
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <UserAvatar user={user} theme={{ border: borderColor, subtleBg, textSecondary }} size="w-7 h-7" />
+                          <span className="font-semibold" style={{ color: textPrimary }}>
+                            {user.user_nama_depan} {user.user_nama_belakang}
+                          </span>
+                        </div>
+                      </td>
+                    )}
+
+                    {visibleColumns.has('email') && (
+                      <td className="px-4 py-3 font-mono text-[11px]" style={{ color: textSecondary }}>
+                        {user.user_email || <span className="italic opacity-60">—</span>}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('tanggal_lahir') && (
+                      <td className="px-4 py-3 font-mono text-xs" style={{ color: textSecondary }}>
+                        {user.user_tanggal_lahir ? toDisplayDate(user.user_tanggal_lahir) : <span className="italic opacity-60">—</span>}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('role') && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className="inline-block px-2 py-0.5 rounded text-xs font-medium"
+                          style={
+                            user.is_admin
+                              ? { background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }
+                              : isStudentUser(user)
+                              ? { background: '#FBF3DB', color: '#956400', border: '1px solid #FDE68A' }
+                              : { background: '#E1F3FE', color: '#1F6C9F', border: '1px solid #BAE6FD' }
+                          }
+                        >
+                          {user.role_name}
+                        </span>
+                      </td>
+                    )}
+
+                    {visibleColumns.has('unit') && (
+                      <td className="px-4 py-3 font-mono text-xs" style={{ color: textSecondary }}>
+                        {user.unit_name || <span className="italic opacity-60">—</span>}
+                      </td>
+                    )}
+
+                    {visibleColumns.has('status') && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className="inline-block px-2 py-0.5 rounded text-xs font-medium"
+                          style={
+                            user.is_active
+                              ? { background: '#EDF3EC', color: '#346538', border: '1px solid #B2D8B4' }
+                              : { background: '#FDEBEC', color: '#9F2F2D', border: '1px solid #FECACA' }
+                          }
+                        >
+                          {user.is_active ? 'Aktif' : 'Nonaktif'}
+                        </span>
+                      </td>
+                    )}
+
+                    {visibleColumns.has('pin') && (
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {user.user_pin ? (
+                          <span className="px-1.5 py-0.5 rounded border" style={{ background: subtleBg, color: textPrimary, borderColor }}>
+                            {user.user_pin}
+                          </span>
+                        ) : (
+                          <span className="italic opacity-60">—</span>
+                        )}
+                      </td>
+                    )}
+
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="px-2.5 py-1 text-xs font-medium rounded transition-colors cursor-pointer border"
+                          style={{ background: subtleBg, borderColor, color: textPrimary }}
+                        >
+                          <FontAwesomeIcon icon={faEdit} className="mr-1 text-[10px]" />
+                          Edit
+                        </button>
+                        {isStudentUser(user) && (
+                          <button
+                            onClick={() => handleStartDeleteUser(user)}
+                            className="px-2.5 py-1 text-xs font-medium rounded transition-colors cursor-pointer border"
+                            style={{ background: '#FDEBEC', color: '#9F2F2D', borderColor: '#FECACA' }}
+                            title="Hapus pengguna"
+                          >
+                            <FontAwesomeIcon icon={faTrash} className="mr-1 text-[10px]" />
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="block md:hidden divide-y" style={{ borderColor }}>
+          {filteredUsers.length === 0 ? (
+            <div className="p-6 text-center text-xs" style={{ color: textSecondary }}>
+              Tidak ada pengguna yang cocok.
+            </div>
+          ) : (
+            filteredUsers.map(user => (
+              <div key={user.user_id} className="p-4 space-y-2.5" style={{ background: cardBg }}>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <UserAvatar user={user} theme={{ border: borderColor, subtleBg, textSecondary }} size="w-8 h-8" />
+                    <div>
+                      <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
+                        {user.user_nama_depan} {user.user_nama_belakang}
+                      </h3>
+                      <p className="text-xs font-mono" style={{ color: textSecondary }}>{user.user_email || '-'}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono opacity-60">#{user.user_id}</span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span
+                    className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase"
+                    style={
+                      user.is_admin
+                        ? { background: '#FDEBEC', color: '#9F2F2D' }
+                        : isStudentUser(user)
+                        ? { background: '#FBF3DB', color: '#956400' }
+                        : { background: '#E1F3FE', color: '#1F6C9F' }
+                    }
+                  >
+                    {user.role_name}
+                  </span>
+                  {user.unit_name && (
+                    <span className="px-2 py-0.5 rounded text-[10px]" style={{ background: subtleBg, color: textSecondary }}>
+                      {user.unit_name}
+                    </span>
+                  )}
+                  <span
+                    className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase"
+                    style={
+                      user.is_active
+                        ? { background: '#EDF3EC', color: '#346538' }
+                        : { background: '#FDEBEC', color: '#9F2F2D' }
+                    }
+                  >
+                    {user.is_active ? 'Aktif' : 'Nonaktif'}
+                  </span>
+                </div>
+
+                <div className="flex gap-2 pt-2 border-t" style={{ borderColor }}>
+                  <button
+                    onClick={() => handleEdit(user)}
+                    className="flex-1 py-1.5 text-xs font-medium rounded border cursor-pointer"
+                    style={{ background: subtleBg, borderColor, color: textPrimary }}
+                  >
+                    Edit
+                  </button>
+                  {isStudentUser(user) && (
+                    <button
+                      onClick={() => handleStartDeleteUser(user)}
+                      className="px-3 py-1.5 text-xs font-medium rounded border cursor-pointer"
+                      style={{ background: '#FDEBEC', color: '#9F2F2D', borderColor: '#FECACA' }}
+                    >
+                      Hapus
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* ─── User Form Modal ─── */}
