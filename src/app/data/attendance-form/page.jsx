@@ -7,6 +7,27 @@ import { supabase } from '@/lib/supabase'
 import { useI18n } from '@/lib/i18n'
 import Cropper from 'react-easy-crop'
 import imageCompression from 'browser-image-compression'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faClipboardList,
+  faDoorOpen,
+  faCalendarAlt,
+  faClock,
+  faExclamationTriangle,
+  faCheckCircle,
+  faTimesCircle,
+  faHourglassHalf,
+  faSyncAlt,
+  faSignOutAlt,
+  faPaperclip,
+  faTrash,
+  faBuilding,
+  faPen,
+  faTimes,
+  faSpinner,
+  faCalendarCheck,
+  faExclamationCircle
+} from '@fortawesome/free-solid-svg-icons'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -59,6 +80,11 @@ function monthEnd(ym) {
   return `${ym}-${String(last.getDate()).padStart(2, '0')}`
 }
 
+function stripEmoji(str) {
+  if (!str) return ''
+  return str.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/gu, '').trim()
+}
+
 // ─── Image helpers ───────────────────────────────────────────────────────────
 
 function createImage(url) {
@@ -89,12 +115,19 @@ async function compressImage(file) {
 // ─── Crop Modal ───────────────────────────────────────────────────────────────
 
 function ImageCropModal({ src, onDone, onCancel }) {
-  const { theme } = useTheme()
+  const { theme, isDark: themeIsDark } = useTheme()
+  const isDark = themeIsDark || theme.type === 'dark' || theme.name === 'dark' || theme.cardBg?.includes('#1') || theme.cardBg?.includes('#2')
   const { t } = useI18n()
   const [crop, setCrop]               = useState({ x: 0, y: 0 })
   const [zoom, setZoom]               = useState(1)
   const [croppedArea, setCroppedArea] = useState(null)
   const [applying, setApplying]       = useState(false)
+
+  const cardBg        = isDark ? '#18181B' : '#FFFFFF'
+  const subtleBg      = isDark ? '#27272A' : '#F7F6F3'
+  const borderColor   = isDark ? '#27272A' : '#EAEAEA'
+  const textPrimary   = isDark ? '#F4F4F5' : '#111111'
+  const textSecondary = isDark ? '#A1A1AA' : '#787774'
 
   const handleCropComplete = useCallback((_, croppedAreaPixels) => { setCroppedArea(croppedAreaPixels) }, [])
 
@@ -106,28 +139,36 @@ function ImageCropModal({ src, onDone, onCancel }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div style={{ width: '100%', maxWidth: 480, background: theme.cardBg, borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.5)', border: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ width: '100%', maxWidth: 480, background: cardBg, borderRadius: '12px', overflow: 'hidden', border: `1px solid ${borderColor}`, display: 'flex', flexDirection: 'column', boxShadow: isDark ? '0 20px 50px rgba(0,0,0,0.6)' : '0 20px 40px rgba(0,0,0,0.1)' }}>
         {/* Title */}
-        <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: theme.textPrimary }}>{t('attendanceForm.cropModal.title')}</div>
-          <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>{t('attendanceForm.cropModal.subtitle')}</div>
+        <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'between' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: textPrimary, letterSpacing: '-0.01em' }}>{t('attendanceForm.cropModal.title')}</div>
+            <div style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>{t('attendanceForm.cropModal.subtitle')}</div>
+          </div>
+          <button onClick={onCancel} style={{ color: textSecondary, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <FontAwesomeIcon icon={faTimes} className="text-sm" />
+          </button>
         </div>
         {/* Crop area */}
-        <div style={{ position: 'relative', width: '100%', height: 300, background: '#000' }}>
+        <div style={{ position: 'relative', width: '100%', height: 300, background: '#09090B' }}>
           <Cropper image={src} crop={crop} zoom={zoom} aspect={undefined} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={handleCropComplete} style={{ containerStyle: { borderRadius: 0 } }} />
         </div>
         {/* Zoom slider */}
-        <div style={{ padding: '12px 20px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
-          <div style={{ fontSize: 11, color: theme.textSecondary, marginBottom: 6 }}>{t('attendanceForm.cropModal.zoom')} {zoom.toFixed(1)}×</div>
-          <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={e => setZoom(Number(e.target.value))} style={{ width: '100%', accentColor: '#2563eb' }} />
+        <div style={{ padding: '12px 20px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, color: textSecondary }}>{t('attendanceForm.cropModal.zoom')}</span>
+            <span style={{ fontSize: 11, color: textPrimary, fontFamily: 'monospace' }}>{zoom.toFixed(1)}×</span>
+          </div>
+          <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={e => setZoom(Number(e.target.value))} style={{ width: '100%', accentColor: isDark ? '#F4F4F5' : '#111111' }} />
         </div>
         {/* Buttons */}
         <div style={{ display: 'flex', gap: 8, padding: '0 20px 20px' }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: `1px solid ${theme.border}`, background: theme.subtleBg, color: theme.textSecondary, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textPrimary, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
             {t('attendanceForm.cropModal.btnCancel')}
           </button>
-          <button onClick={handleApply} disabled={applying} style={{ flex: 2, padding: '9px 0', borderRadius: 9, border: 'none', background: applying ? '#9ca3af' : '#2563eb', color: '#fff', fontSize: 13, fontWeight: 600, cursor: applying ? 'default' : 'pointer' }}>
+          <button onClick={handleApply} disabled={applying} style={{ flex: 2, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: 12, fontWeight: 600, cursor: applying ? 'default' : 'pointer', opacity: applying ? 0.6 : 1 }}>
             {applying ? t('attendanceForm.cropModal.btnApplying') : t('attendanceForm.cropModal.btnApply')}
           </button>
         </div>
@@ -139,9 +180,16 @@ function ImageCropModal({ src, onDone, onCancel }) {
 // ─── Excuse Modal (Submit + Edit) ────────────────────────────────────────────
 
 function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess }) {
-  const { theme } = useTheme()
+  const { theme, isDark: themeIsDark } = useTheme()
+  const isDark = themeIsDark || theme.type === 'dark' || theme.name === 'dark' || theme.cardBg?.includes('#1') || theme.cardBg?.includes('#2')
   const { t } = useI18n()
   const isEdit = !!excuse
+
+  const cardBg        = isDark ? '#18181B' : '#FFFFFF'
+  const subtleBg      = isDark ? '#27272A' : '#F7F6F3'
+  const borderColor   = isDark ? '#27272A' : '#EAEAEA'
+  const textPrimary   = isDark ? '#F4F4F5' : '#111111'
+  const textSecondary = isDark ? '#A1A1AA' : '#787774'
 
   const [category, setCategory]       = useState(excuse?.category || '')
   const [otherReason, setOtherReason] = useState(excuse?.other_reason || '')
@@ -176,12 +224,13 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
     no_checkout: t('attendanceForm.issueNoCheckout'),
     no_checkin:  t('attendanceForm.issueNoCheckin'),
   }
+
   const ISSUE_CONFIG = {
-    late:        { label: issueLabel.late,        color: '#92400e', bg: '#fef3c7', icon: '🕐' },
-    leave_early: { label: issueLabel.leave_early,  color: '#9a3412', bg: '#ffedd5', icon: '🚪' },
-    absent:      { label: issueLabel.absent,       color: '#6b21a8', bg: '#f3e8ff', icon: '❌' },
-    no_checkout: { label: issueLabel.no_checkout,  color: '#1e40af', bg: '#dbeafe', icon: '⚠️' },
-    no_checkin:  { label: issueLabel.no_checkin,   color: '#9d174d', bg: '#fce7f3', icon: '🔴' },
+    late:        { label: issueLabel.late,        color: isDark ? '#FCD34D' : '#92400E', bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', icon: faClock },
+    leave_early: { label: issueLabel.leave_early,  color: isDark ? '#FB923C' : '#9A3412', bg: isDark ? 'rgba(249, 115, 22, 0.15)' : '#FFEDD5', icon: faSignOutAlt },
+    absent:      { label: issueLabel.absent,       color: isDark ? '#D8B4FE' : '#6B21A8', bg: isDark ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF', icon: faTimesCircle },
+    no_checkout: { label: issueLabel.no_checkout,  color: isDark ? '#93C5FD' : '#1E40AF', bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', icon: faExclamationTriangle },
+    no_checkin:  { label: issueLabel.no_checkin,   color: isDark ? '#F472B6' : '#9D174D', bg: isDark ? 'rgba(236, 72, 153, 0.15)' : '#FCE7F3', icon: faExclamationCircle },
   }
 
   const fetchQuota = async (catCode) => {
@@ -258,42 +307,45 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
         if (!json.success) throw new Error(json.message)
       }
       onSuccess()
-    } catch (err) { setMsg('❌ ' + err.message); setSubmitting(false) }
+    } catch (err) { setMsg(err.message); setSubmitting(false) }
   }
 
   const handleBackdrop = (e) => { if (e.target === e.currentTarget) onClose() }
-  const inputStyle = { width: '100%', background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '8px', padding: '10px 12px', fontSize: '14px', outline: 'none' }
+  const inputStyle = { width: '100%', background: cardBg, border: `1px solid ${borderColor}`, color: textPrimary, borderRadius: '6px', padding: '9px 12px', fontSize: '13px', outline: 'none' }
 
   return (
     <>
-    <div onClick={handleBackdrop} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div style={{ background: theme.cardBg, borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 32px)', marginTop: 'auto', marginBottom: 'auto', alignSelf: 'center' }}>
+    <div onClick={handleBackdrop} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
+      <div style={{ background: cardBg, borderRadius: '12px', width: '100%', maxWidth: '480px', border: `1px solid ${borderColor}`, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 32px)', boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.6)' : '0 20px 40px rgba(0,0,0,0.08)' }}>
         {/* Header */}
-        <div className="flex items-start justify-between" style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
+        <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <h2 className="text-base font-semibold" style={{ color: theme.textPrimary }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 600, color: textPrimary, letterSpacing: '-0.01em', margin: 0 }}>
               {isEdit ? t('attendanceForm.modal.titleEdit') : t('attendanceForm.modal.titleNew')}
             </h2>
-            <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px', margin: '2px 0 0 0' }}>
               {isEdit ? t('attendanceForm.modal.subtitleEdit') : t('attendanceForm.modal.subtitleNew')}
             </p>
           </div>
-          <button onClick={onClose} className="text-lg leading-none ml-3" style={{ color: theme.textSecondary }}>×</button>
+          <button onClick={onClose} style={{ color: textSecondary, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <FontAwesomeIcon icon={faTimes} className="text-sm" />
+          </button>
         </div>
 
         {/* Scrollable body */}
-        <div style={{ overflowY: 'auto', padding: '16px 24px', flex: 1 }}>
+        <div style={{ overflowY: 'auto', padding: '16px 24px', flex: 1 }} className="space-y-4">
           {/* Record info */}
-          <div className="rounded-xl p-3 mb-4 space-y-1.5" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: ic.bg, color: ic.color }}>
-                {ic.icon} {ic.label}
+          <div style={{ background: subtleBg, border: `1px solid ${borderColor}`, borderRadius: '8px', padding: '12px 14px' }}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs px-2 py-0.5 rounded font-medium inline-flex items-center gap-1.5" style={{ background: ic.bg, color: ic.color }}>
+                <FontAwesomeIcon icon={ic.icon} className="text-[10px]" />
+                <span>{ic.label}</span>
               </span>
-              {duration > 0 && <span className="text-xs font-semibold" style={{ color: ic.color }}>+{fmtMins(duration)}</span>}
+              {duration > 0 && <span className="text-xs font-semibold font-mono" style={{ color: ic.color }}>+{fmtMins(duration)}</span>}
             </div>
-            <div className="text-sm font-medium" style={{ color: theme.textPrimary }}>{record.date}</div>
+            <div className="text-sm font-semibold font-mono" style={{ color: textPrimary }}>{record.date}</div>
             {record.checkin_time && (
-              <div className="text-xs" style={{ color: theme.textSecondary }}>
+              <div className="text-xs font-mono mt-0.5" style={{ color: textSecondary }}>
                 {t('attendanceForm.modal.labelCheckIn')} {record.checkin_time}
                 {record.checkout_time && <span> · {t('attendanceForm.modal.labelCheckOut')} {record.checkout_time}</span>}
               </div>
@@ -301,42 +353,60 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
           </div>
 
           {/* Category */}
-          <div className="mb-3">
-            <label className="text-xs font-medium block mb-1.5" style={{ color: theme.textSecondary }}>
+          <div>
+            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
               {t('attendanceForm.modal.labelCause')} <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <div className="space-y-1.5">
-              {categories.map(c => (
-                <label key={c.value} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer"
-                  style={{ background: category === c.value ? (theme.blueText ? `${theme.blueText}18` : '#eff6ff') : 'transparent', border: `1px solid ${category === c.value ? (theme.blueText || '#2563eb') : theme.border}` }}>
-                  <input type="radio" name="category" value={c.value} checked={category === c.value}
-                    onChange={() => { setCategory(c.value); setUploadFile(null); setQuotaInfo(null); fetchQuota(c.value) }}
-                    style={{ accentColor: theme.blueText || '#2563eb', marginTop: '2px', flexShrink: 0 }} />
-                  <div>
-                    <span className="text-sm" style={{ color: theme.textBody }}>{c.label}</span>
-                    {c.requireUpload && (
-                      <span className="text-xs ml-1 px-1.5 py-0.5 rounded" style={{ background: '#fef3c7', color: '#92400e' }}>
-                        📎 {t('attendanceForm.modal.mandatory')}
-                      </span>
-                    )}
-                  </div>
-                </label>
-              ))}
+              {categories.map(c => {
+                const isSelected = category === c.value
+                return (
+                  <label key={c.value} className="flex items-start gap-2.5 px-3 py-2 rounded-md cursor-pointer transition-all"
+                    style={{
+                      background: isSelected ? (isDark ? '#27272A' : '#F7F6F3') : 'transparent',
+                      border: `1px solid ${isSelected ? (isDark ? '#52525B' : '#111111') : borderColor}`
+                    }}>
+                    <input type="radio" name="category" value={c.value} checked={isSelected}
+                      onChange={() => { setCategory(c.value); setUploadFile(null); setQuotaInfo(null); fetchQuota(c.value) }}
+                      style={{ accentColor: isDark ? '#F4F4F5' : '#111111', marginTop: '3px', flexShrink: 0 }} />
+                    <div className="flex-1 flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium" style={{ color: textPrimary }}>{c.label}</span>
+                      {c.requireUpload && (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded inline-flex items-center gap-1 font-mono" style={{ background: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', color: isDark ? '#FCD34D' : '#956400' }}>
+                          <FontAwesomeIcon icon={faPaperclip} className="text-[9px]" />
+                          <span>{t('attendanceForm.modal.mandatory')}</span>
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
             </div>
           </div>
 
           {/* Quota info */}
           {quotaInfo && !quotaInfo.notFound && (
-            <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>
+            <div className="px-3 py-2.5 rounded-md" style={{ background: subtleBg, border: `1px solid ${borderColor}` }}>
               {quotaLoading ? (
-                <span className="text-xs" style={{ color: theme.textSecondary }}>{t('attendanceForm.modal.quotaLoading')}</span>
+                <div className="flex items-center gap-2 text-xs" style={{ color: textSecondary }}>
+                  <FontAwesomeIcon icon={faSpinner} spin className="text-xs" />
+                  <span>{t('attendanceForm.modal.quotaLoading')}</span>
+                </div>
               ) : quotaInfo ? (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: theme.textSecondary }}>
-                    📋 {t('attendanceForm.modal.quotaLabel')} {selectedCat?.label} · {quotaInfo.year_name}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs flex items-center gap-1.5" style={{ color: textSecondary }}>
+                    <FontAwesomeIcon icon={faCalendarCheck} className="text-xs text-stone-500" />
+                    <span>{t('attendanceForm.modal.quotaLabel')} {selectedCat?.label} · {quotaInfo.year_name}</span>
                   </span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ background: (quotaInfo.total_days - quotaInfo.used_days) <= 0 ? '#fee2e2' : '#dcfce7', color: (quotaInfo.total_days - quotaInfo.used_days) <= 0 ? '#991b1b' : '#166534' }}>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded font-mono"
+                    style={{
+                      background: (quotaInfo.total_days - quotaInfo.used_days) <= 0
+                        ? (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC')
+                        : (isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC'),
+                      color: (quotaInfo.total_days - quotaInfo.used_days) <= 0
+                        ? (isDark ? '#FCA5A5' : '#9B1C1C')
+                        : (isDark ? '#86EFAC' : '#2A6335')
+                    }}>
                     {t('attendanceForm.modal.quotaRemaining')} {quotaInfo.total_days - quotaInfo.used_days} / {quotaInfo.total_days} {t('attendanceForm.modal.quotaDays')}
                   </span>
                 </div>
@@ -346,33 +416,38 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
 
           {/* File upload */}
           {requireUpload && (
-            <div className="mb-3">
-              <label className="text-xs font-medium block mb-1.5" style={{ color: theme.textSecondary }}>
+            <div>
+              <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
                 {selectedCat?.uploadLabel || t('attendanceForm.modal.labelRequired')} <span style={{ color: '#ef4444' }}>*</span>
               </label>
               {isEdit && excuse?.attachment_url && !uploadFile && (
-                <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
-                  📎 <a href={excuse.attachment_url} target="_blank" rel="noreferrer" style={{ color: '#15803d', textDecoration: 'underline' }}>{t('attendanceForm.modal.attachedFile')}</a>
-                  <span style={{ color: theme.textSecondary }}>{t('attendanceForm.modal.replaceHint')}</span>
+                <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC', border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'}`, color: isDark ? '#86EFAC' : '#2A6335' }}>
+                  <FontAwesomeIcon icon={faPaperclip} className="text-xs" />
+                  <a href={excuse.attachment_url} target="_blank" rel="noreferrer" style={{ color: isDark ? '#86EFAC' : '#2A6335', textDecoration: 'underline', fontWeight: 600 }}>
+                    {t('attendanceForm.modal.attachedFile')}
+                  </a>
+                  <span style={{ color: textSecondary }}>{t('attendanceForm.modal.replaceHint')}</span>
                 </div>
               )}
               {compressing && (
-                <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>
-                  {t('attendanceForm.modal.compressing')}
+                <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(59, 130, 246, 0.1)' : '#E1F3FE', border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE'}`, color: isDark ? '#93C5FD' : '#185ADB' }}>
+                  <FontAwesomeIcon icon={faSpinner} spin className="text-xs" />
+                  <span>{t('attendanceForm.modal.compressing')}</span>
                 </div>
               )}
               {fileToUpload && !compressing && (
-                <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
-                  ✅ {fileToUpload.name}
-                  <span style={{ color: '#6b7280', marginLeft: 4 }}>({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
-                  {isImage(uploadFile) && <span style={{ color: '#15803d', marginLeft: 2 }}>{t('attendanceForm.modal.croppedBadge')}</span>}
+                <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC', border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'}`, color: isDark ? '#86EFAC' : '#2A6335' }}>
+                  <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
+                  <span className="font-medium">{fileToUpload.name}</span>
+                  <span style={{ color: textSecondary, marginLeft: 4 }} className="font-mono">({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
+                  {isImage(uploadFile) && <span style={{ color: isDark ? '#86EFAC' : '#2A6335', marginLeft: 2 }}>{t('attendanceForm.modal.croppedBadge')}</span>}
                 </div>
               )}
               <div className="flex items-center gap-2">
                 <label className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg" style={{ border: `1px dashed ${theme.border}`, background: theme.subtleBg }}>
-                    <span className="text-lg">📎</span>
-                    <span className="text-xs" style={{ color: theme.textSecondary }}>
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-md" style={{ border: `1px dashed ${borderColor}`, background: subtleBg }}>
+                    <FontAwesomeIcon icon={faPaperclip} style={{ color: textSecondary }} />
+                    <span className="text-xs" style={{ color: textSecondary }}>
                       {uploadFile
                         ? (isImage(uploadFile) ? t('attendanceForm.modal.fileReplaceImage') : t('attendanceForm.modal.fileReplaceDoc'))
                         : t('attendanceForm.modal.fileHint')}
@@ -380,16 +455,20 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
                   </div>
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => handleFileSelect(e.target.files[0] || null)} />
                 </label>
-                {uploadFile && <button onClick={clearFile} className="text-xs px-2 py-1 rounded" style={{ background: '#fee2e2', color: '#991b1b' }}>✕</button>}
+                {uploadFile && (
+                  <button onClick={clearFile} className="text-xs px-2.5 py-2 rounded-md cursor-pointer border" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA', color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+                    <FontAwesomeIcon icon={faTimes} />
+                  </button>
+                )}
               </div>
-              <p className="text-xs mt-1.5" style={{ color: theme.textSecondary }}>{t('attendanceForm.modal.fileNote')}</p>
+              <p className="text-xs mt-1.5" style={{ color: textSecondary }}>{t('attendanceForm.modal.fileNote')}</p>
             </div>
           )}
 
           {/* Other reason */}
           {category === 'other' && (
-            <div className="mb-3">
-              <label className="text-xs font-medium block mb-1.5" style={{ color: theme.textSecondary }}>
+            <div>
+              <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
                 {t('attendanceForm.modal.labelOther')} <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <textarea rows={3} value={otherReason} onChange={e => setOtherReason(e.target.value)}
@@ -399,16 +478,20 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
           )}
 
           {/* Error msg */}
-          {msg && <div className="mb-3 p-2.5 rounded-lg text-sm" style={{ background: '#fef2f2', color: '#991b1b' }}>{msg}</div>}
+          {msg && (
+            <div className="p-2.5 rounded-md text-xs flex items-center gap-2" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA'}`, color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-xs" />
+              <span>{msg}</span>
+            </div>
+          )}
         </div>
 
         {/* Footer buttons */}
-        <div className="flex gap-2" style={{ padding: '12px 24px 20px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
-          <button onClick={onClose} className="px-4 py-2.5 rounded-lg text-sm font-medium flex-1" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+        <div style={{ display: 'flex', gap: '8px', padding: '14px 24px 18px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textPrimary, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
             {t('attendanceForm.modal.btnCancel')}
           </button>
-          <button onClick={handleSubmit} disabled={submitting || compressing} className="px-4 py-2.5 rounded-lg text-sm font-semibold flex-1"
-            style={{ background: theme.blueText || '#2563eb', color: '#fff', opacity: (submitting || compressing) ? 0.7 : 1 }}>
+          <button onClick={handleSubmit} disabled={submitting || compressing} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: '12px', fontWeight: 600, cursor: (submitting || compressing) ? 'default' : 'pointer', opacity: (submitting || compressing) ? 0.6 : 1 }}>
             {compressing
               ? t('attendanceForm.modal.btnProcessing')
               : submitting
@@ -428,10 +511,17 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
 // ─── Delete Confirm Modal ─────────────────────────────────────────────────────
 
 function DeleteConfirmModal({ excuse, onClose, onSuccess }) {
-  const { theme } = useTheme()
+  const { theme, isDark: themeIsDark } = useTheme()
+  const isDark = themeIsDark || theme.type === 'dark' || theme.name === 'dark' || theme.cardBg?.includes('#1') || theme.cardBg?.includes('#2')
   const { t } = useI18n()
   const [deleting, setDeleting] = useState(false)
   const [msg, setMsg] = useState('')
+
+  const cardBg        = isDark ? '#18181B' : '#FFFFFF'
+  const subtleBg      = isDark ? '#27272A' : '#F7F6F3'
+  const borderColor   = isDark ? '#27272A' : '#EAEAEA'
+  const textPrimary   = isDark ? '#F4F4F5' : '#111111'
+  const textSecondary = isDark ? '#A1A1AA' : '#787774'
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -440,24 +530,31 @@ function DeleteConfirmModal({ excuse, onClose, onSuccess }) {
       const json = await res.json()
       if (!json.success) throw new Error(json.message)
       onSuccess()
-    } catch (err) { setMsg('❌ ' + err.message); setDeleting(false) }
+    } catch (err) { setMsg(err.message); setDeleting(false) }
   }
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div style={{ background: theme.cardBg, borderRadius: '16px', width: '100%', maxWidth: '380px', padding: '28px 24px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: `1px solid ${theme.border}` }}>
-        <div className="text-2xl mb-3 text-center">🗑️</div>
-        <h2 className="text-base font-semibold text-center mb-1" style={{ color: theme.textPrimary }}>{t('attendanceForm.deleteModal.title')}</h2>
-        <p className="text-sm text-center mb-4" style={{ color: theme.textSecondary }}>
-          {t('attendanceForm.deleteModal.body')} <strong>{excuse.attendance_date}</strong> {t('attendanceForm.deleteModal.bodySuffix')}
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ background: cardBg, borderRadius: '12px', width: '100%', maxWidth: '380px', padding: '24px', border: `1px solid ${borderColor}`, boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.6)' : '0 20px 40px rgba(0,0,0,0.08)' }}>
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center border mx-auto mb-3" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA', color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+          <FontAwesomeIcon icon={faTrash} className="text-sm" />
+        </div>
+        <h2 className="text-sm font-semibold text-center mb-1" style={{ color: textPrimary }}>{t('attendanceForm.deleteModal.title')}</h2>
+        <p className="text-xs text-center mb-4 leading-relaxed" style={{ color: textSecondary }}>
+          {t('attendanceForm.deleteModal.body')} <strong className="font-mono text-stone-900 dark:text-stone-100">{excuse.attendance_date}</strong> {t('attendanceForm.deleteModal.bodySuffix')}
         </p>
-        {msg && <div className="mb-3 p-2.5 rounded-lg text-sm" style={{ background: '#fef2f2', color: '#991b1b' }}>{msg}</div>}
+        {msg && (
+          <div className="mb-3 p-2 rounded-md text-xs flex items-center gap-1.5" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+            <FontAwesomeIcon icon={faExclamationTriangle} />
+            <span>{msg}</span>
+          </div>
+        )}
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+          <button onClick={onClose} className="flex-1 py-2 rounded-md text-xs font-medium cursor-pointer border" style={{ background: subtleBg, borderColor, color: textPrimary }}>
             {t('attendanceForm.deleteModal.btnCancel')}
           </button>
-          <button onClick={handleDelete} disabled={deleting} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold" style={{ background: '#dc2626', color: '#fff', opacity: deleting ? 0.7 : 1 }}>
+          <button onClick={handleDelete} disabled={deleting} className="flex-1 py-2 rounded-md text-xs font-semibold cursor-pointer border border-transparent" style={{ background: '#dc2626', color: '#fff', opacity: deleting ? 0.7 : 1 }}>
             {deleting ? t('attendanceForm.deleteModal.btnDeleting') : t('attendanceForm.deleteModal.btnDelete')}
           </button>
         </div>
@@ -466,12 +563,17 @@ function DeleteConfirmModal({ excuse, onClose, onSuccess }) {
   )
 }
 
-// ─── Voluntary Excuse Modal (Submit Izin Keluar Jam Kerja / Cuti Mandiri) ───
-
 // ─── Temporary Exit Modal (Khusus Form Izin Keluar Jam Kerja) ───────────────
 
 function TemporaryExitModal({ userId, onClose, onSuccess }) {
-  const { theme } = useTheme()
+  const { theme, isDark: themeIsDark } = useTheme()
+  const isDark = themeIsDark || theme.type === 'dark' || theme.name === 'dark' || theme.cardBg?.includes('#1') || theme.cardBg?.includes('#2')
+
+  const cardBg        = isDark ? '#18181B' : '#FFFFFF'
+  const subtleBg      = isDark ? '#27272A' : '#F7F6F3'
+  const borderColor   = isDark ? '#27272A' : '#EAEAEA'
+  const textPrimary   = isDark ? '#F4F4F5' : '#111111'
+  const textSecondary = isDark ? '#A1A1AA' : '#787774'
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const [targetDate, setTargetDate]   = useState(todayStr)
@@ -552,77 +654,85 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
       const json = await res.json()
       if (!json.success) throw new Error(json.message)
       onSuccess()
-    } catch (err) { setMsg('❌ ' + err.message); setSubmitting(false) }
+    } catch (err) { setMsg(err.message); setSubmitting(false) }
   }
 
-  const inputStyle = { width: '100%', background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '8px', padding: '9px 12px', fontSize: '13px', outline: 'none' }
+  const inputStyle = { width: '100%', background: cardBg, border: `1px solid ${borderColor}`, color: textPrimary, borderRadius: '6px', padding: '9px 12px', fontSize: '13px', outline: 'none' }
 
   return (
     <>
-    <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
-      <div style={{ background: theme.cardBg, borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 32px)' }}>
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
+      <div style={{ background: cardBg, borderRadius: '12px', width: '100%', maxWidth: '480px', border: `1px solid ${borderColor}`, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 32px)', boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.6)' : '0 20px 40px rgba(0,0,0,0.08)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between" style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
+        <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-              🚪 Temporary Exit Permission Form
+            <h2 style={{ fontSize: '15px', fontWeight: 600, color: textPrimary, letterSpacing: '-0.01em', margin: 0 }} className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faDoorOpen} className="text-stone-500 text-sm" />
+              <span>Temporary Exit Permission Form</span>
             </h2>
-            <p className="text-xs mt-0.5" style={{ color: theme.textSecondary }}>
+            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px', margin: '2px 0 0 0' }}>
               This submission will be forwarded to your Unit Principal & Approver for review.
             </p>
           </div>
-          <button onClick={onClose} className="text-lg leading-none cursor-pointer" style={{ color: theme.textSecondary }}>×</button>
+          <button onClick={onClose} style={{ color: textSecondary, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <FontAwesomeIcon icon={faTimes} className="text-sm" />
+          </button>
         </div>
 
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '16px 24px', flex: 1 }} className="space-y-4">
           {/* Tanggal */}
           <div>
-            <label className="text-xs font-semibold block mb-1.5" style={{ color: theme.textSecondary }}>
+            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
               Permission Date <span style={{ color: '#ef4444' }}>*</span>
             </label>
-            <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={inputStyle} />
+            <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
           </div>
 
           {/* Jam Keluar & Jam Kembali */}
-          <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border" style={{ background: subtleBg, borderColor }}>
             <div>
-              <label className="text-xs font-semibold block mb-1 text-amber-900 dark:text-amber-300">
-                ⏱️ Exit Time
+              <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faClock} className="text-[11px]" />
+                <span>Exit Time</span>
               </label>
-              <input type="time" value={exitTime} onChange={e => setExitTime(e.target.value)} style={inputStyle} />
+              <input type="time" value={exitTime} onChange={e => setExitTime(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
             </div>
             <div>
-              <label className="text-xs font-semibold block mb-1 text-amber-900 dark:text-amber-300">
-                ⏱️ Return Time
+              <label className="text-xs font-medium block mb-1 flex items-center gap-1.5" style={{ color: textSecondary }}>
+                <FontAwesomeIcon icon={faClock} className="text-[11px]" />
+                <span>Return Time</span>
               </label>
-              <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} style={inputStyle} />
+              <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
             </div>
           </div>
 
           {/* Kategori Alasan */}
           <div>
-            <label className="text-xs font-semibold block mb-1.5" style={{ color: theme.textSecondary }}>
+            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
               Reason Category <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <div className="space-y-1.5">
-              {categories.map(c => (
-                <label key={c.value} className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all"
-                  style={{
-                    background: category === c.value ? (theme.blueText ? `${theme.blueText}18` : '#eff6ff') : 'transparent',
-                    border: `1px solid ${category === c.value ? (theme.blueText || '#2563eb') : theme.border}`
-                  }}>
-                  <input type="radio" name="temp_exit_category" value={c.value} checked={category === c.value}
-                    onChange={() => setCategory(c.value)} style={{ accentColor: '#2563eb' }} />
-                  <span className="text-xs font-medium" style={{ color: theme.textBody }}>{c.label}</span>
-                </label>
-              ))}
+              {categories.map(c => {
+                const isSelected = category === c.value
+                return (
+                  <label key={c.value} className="flex items-center gap-2.5 px-3 py-2 rounded-md cursor-pointer transition-all"
+                    style={{
+                      background: isSelected ? (isDark ? '#27272A' : '#F7F6F3') : 'transparent',
+                      border: `1px solid ${isSelected ? (isDark ? '#52525B' : '#111111') : borderColor}`
+                    }}>
+                    <input type="radio" name="temp_exit_category" value={c.value} checked={isSelected}
+                      onChange={() => setCategory(c.value)} style={{ accentColor: isDark ? '#F4F4F5' : '#111111' }} />
+                    <span className="text-xs font-medium" style={{ color: textPrimary }}>{c.label}</span>
+                  </label>
+                )
+              })}
             </div>
           </div>
 
           {/* Keterangan Detail */}
           <div>
-            <label className="text-xs font-semibold block mb-1.5" style={{ color: theme.textSecondary }}>
+            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
               Additional Details / Description {category === 'other' && <span style={{ color: '#ef4444' }}>*</span>}
             </label>
             <textarea rows={2} value={otherReason} onChange={e => setOtherReason(e.target.value)}
@@ -632,27 +742,47 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
 
           {/* Lampiran */}
           <div>
-            <label className="text-xs font-semibold block mb-1.5" style={{ color: theme.textSecondary }}>
+            <label className="text-xs font-medium block mb-1.5" style={{ color: textSecondary }}>
               Attachment / Official Document (Optional)
             </label>
             {fileToUpload && !compressing && (
-              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
-                ✅ {fileToUpload.name}
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md text-xs" style={{ background: isDark ? 'rgba(34, 197, 94, 0.1)' : '#EDF3EC', border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD'}`, color: isDark ? '#86EFAC' : '#2A6335' }}>
+                <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
+                <span className="font-medium">{fileToUpload.name}</span>
               </div>
             )}
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => handleFileSelect(e.target.files[0] || null)} className="text-xs" />
+            <div className="flex items-center gap-2">
+              <label className="flex-1 cursor-pointer">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{ border: `1px dashed ${borderColor}`, background: subtleBg }}>
+                  <FontAwesomeIcon icon={faPaperclip} style={{ color: textSecondary }} />
+                  <span className="text-xs" style={{ color: textSecondary }}>
+                    {uploadFile ? uploadFile.name : 'Click to select an image or PDF document'}
+                  </span>
+                </div>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => handleFileSelect(e.target.files[0] || null)} className="hidden" />
+              </label>
+              {uploadFile && (
+                <button onClick={() => { setUploadFile(null); setProcessedFile(null) }} className="text-xs px-2.5 py-2 rounded-md cursor-pointer border" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA', color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+                  <FontAwesomeIcon icon={faTimes} />
+                </button>
+              )}
+            </div>
           </div>
 
-          {msg && <div className="p-2.5 rounded-lg text-xs font-medium" style={{ background: '#fef2f2', color: '#991b1b' }}>{msg}</div>}
+          {msg && (
+            <div className="p-2.5 rounded-md text-xs flex items-center gap-2" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA'}`, color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-xs" />
+              <span>{msg}</span>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2" style={{ padding: '12px 24px 18px', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
-          <button onClick={onClose} className="px-4 py-2.5 rounded-lg text-xs font-medium flex-1 cursor-pointer" style={{ background: theme.subtleBg, color: theme.textSecondary }}>
+        <div style={{ display: 'flex', gap: '8px', padding: '14px 24px 18px', borderTop: `1px solid ${borderColor}`, flexShrink: 0 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: `1px solid ${borderColor}`, background: subtleBg, color: textPrimary, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={handleSubmit} disabled={submitting || compressing} className="px-4 py-2.5 rounded-lg text-xs font-bold flex-1 cursor-pointer"
-            style={{ background: theme.blueText || '#2563eb', color: '#fff', opacity: (submitting || compressing) ? 0.7 : 1 }}>
+          <button onClick={handleSubmit} disabled={submitting || compressing} style={{ flex: 1, padding: '9px 0', borderRadius: '6px', border: 'none', background: isDark ? '#F4F4F5' : '#111111', color: isDark ? '#111111' : '#FFFFFF', fontSize: '12px', fontWeight: 600, cursor: (submitting || compressing) ? 'default' : 'pointer', opacity: (submitting || compressing) ? 0.6 : 1 }}>
             {submitting ? 'Submitting...' : 'Submit Request'}
           </button>
         </div>
@@ -666,9 +796,17 @@ function TemporaryExitModal({ userId, onClose, onSuccess }) {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function AttendanceFormPage() {
-  const { theme } = useTheme()
+  const { theme, isDark: themeIsDark } = useTheme()
+  const isDark = themeIsDark || theme.type === 'dark' || theme.name === 'dark' || theme.cardBg?.includes('#1') || theme.cardBg?.includes('#2')
   const { t } = useI18n()
   const router = useRouter()
+
+  const pageBg        = isDark ? '#09090B' : '#FAFAF9'
+  const cardBg        = isDark ? '#18181B' : '#FFFFFF'
+  const subtleBg      = isDark ? '#27272A' : '#F7F6F3'
+  const borderColor   = isDark ? '#27272A' : '#EAEAEA'
+  const textPrimary   = isDark ? '#F4F4F5' : '#111111'
+  const textSecondary = isDark ? '#A1A1AA' : '#787774'
 
   const [userId, setUserId]           = useState(null)
   const [month, setMonth]             = useState(() => new Date().toISOString().slice(0, 7))
@@ -683,20 +821,21 @@ export default function AttendanceFormPage() {
   const [leaveTypes, setLeaveTypes]   = useState([])
   const [isExemptRole, setIsExemptRole] = useState(false)
 
-  // i18n-driven configs
+  // i18n-driven configs with minimalist pastel tokens & FontAwesome icons
   const STATUS_CONFIG = {
-    pending:    { label: t('attendanceForm.statusPending'),   color: '#92400e', bg: '#fef3c7', icon: '⏳' },
-    approved_1: { label: t('attendanceForm.statusApproved1'), color: '#1e40af', bg: '#dbeafe', icon: '🔄' },
-    approved:   { label: t('attendanceForm.statusApproved'),  color: '#166534', bg: '#dcfce7', icon: '✅' },
-    rejected:   { label: t('attendanceForm.statusRejected'),  color: '#991b1b', bg: '#fee2e2', icon: '❌' },
+    pending:    { label: t('attendanceForm.statusPending'),   color: isDark ? '#FCD34D' : '#956400', bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', icon: faHourglassHalf },
+    approved_1: { label: t('attendanceForm.statusApproved1'), color: isDark ? '#93C5FD' : '#185ADB', bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', icon: faSyncAlt },
+    approved:   { label: t('attendanceForm.statusApproved'),  color: isDark ? '#86EFAC' : '#2A6335', bg: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC', icon: faCheckCircle },
+    rejected:   { label: t('attendanceForm.statusRejected'),  color: isDark ? '#FCA5A5' : '#9B1C1C', bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC', icon: faTimesCircle },
   }
+
   const ISSUE_CONFIG = {
-    late:           { label: t('attendanceForm.issueLate'),        color: '#92400e', bg: '#fef3c7', icon: '🕐' },
-    leave_early:    { label: t('attendanceForm.issueLeaveEarly'),  color: '#9a3412', bg: '#ffedd5', icon: '🚪' },
-    absent:         { label: t('attendanceForm.issueAbsent'),      color: '#6b21a8', bg: '#f3e8ff', icon: '❌' },
-    no_checkout:    { label: t('attendanceForm.issueNoCheckout'),  color: '#1e40af', bg: '#dbeafe', icon: '⚠️' },
-    no_checkin:     { label: t('attendanceForm.issueNoCheckin'),   color: '#9d174d', bg: '#fce7f3', icon: '🔴' },
-    temporary_exit: { label: '🚪 Temporary Exit',                  color: '#b45309', bg: '#fef3c7', icon: '🚪' },
+    late:           { label: t('attendanceForm.issueLate'),        color: isDark ? '#FCD34D' : '#92400E', bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FBF3DB', icon: faClock },
+    leave_early:    { label: t('attendanceForm.issueLeaveEarly'),  color: isDark ? '#FB923C' : '#9A3412', bg: isDark ? 'rgba(249, 115, 22, 0.15)' : '#FFEDD5', icon: faSignOutAlt },
+    absent:         { label: t('attendanceForm.issueAbsent'),      color: isDark ? '#D8B4FE' : '#6B21A8', bg: isDark ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF', icon: faTimesCircle },
+    no_checkout:    { label: t('attendanceForm.issueNoCheckout'),  color: isDark ? '#93C5FD' : '#1E40AF', bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', icon: faExclamationTriangle },
+    no_checkin:     { label: t('attendanceForm.issueNoCheckin'),   color: isDark ? '#F472B6' : '#9D174D', bg: isDark ? 'rgba(236, 72, 153, 0.15)' : '#FCE7F3', icon: faExclamationCircle },
+    temporary_exit: { label: 'Temporary Exit',                     color: isDark ? '#FCD34D' : '#B45309', bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7', icon: faDoorOpen },
   }
 
   useEffect(() => {
@@ -785,29 +924,44 @@ export default function AttendanceFormPage() {
 
   const handleDeleteSuccess = () => { setDeleteExcuse(null); loadData(userId, month) }
   const noExcuseCount = issueRows.filter(r => !excuseMap[r.date]).length
-  const cardStyle = { background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '12px', padding: '14px 16px' }
 
   return (
-    <div className="p-4 md:p-6 space-y-5" style={{ color: theme.textBody }}>
+    <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
 
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4 border-b pb-4" style={{ borderColor: theme.border }}>
+      {/* ── HEADER (Minimalist-UI, matching /data/user & /data/pyp) ─────────── */}
+      <div className="pb-5 border-b flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6" style={{ borderColor }}>
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-            📝 {t('attendanceForm.pageTitle')}
-          </h1>
-          <p className="text-sm mt-1" style={{ color: theme.textSecondary }}>
-            {t('attendanceForm.pageSubtitle')} <strong>{t('attendanceForm.pageSubtitleAction')}</strong> {t('attendanceForm.pageSubtitleSuffix')}
-          </p>
+          {/* Subtle breadcrumb */}
+          <div className="text-[10px] tracking-wider uppercase font-mono mb-1.5" style={{ color: textSecondary }}>
+            WORKSPACE / HCM &amp; ATTENDANCE / ATTENDANCE FORM
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center border shadow-xs" style={{ background: isDark ? 'rgba(59, 130, 246, 0.15)' : '#E1F3FE', borderColor: isDark ? '#2563EB' : '#BAE6FD', color: isDark ? '#60A5FA' : '#0284C7' }}>
+              <FontAwesomeIcon icon={faClipboardList} className="text-base" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: textPrimary, letterSpacing: '-0.02em', margin: 0 }}>
+                {t('attendanceForm.pageTitle')}
+              </h1>
+              <p className="text-xs mt-0.5" style={{ color: textSecondary, margin: '2px 0 0 0' }}>
+                {t('attendanceForm.pageSubtitle')} <strong className="font-semibold text-stone-900 dark:text-stone-100">{t('attendanceForm.pageSubtitleAction')}</strong> {t('attendanceForm.pageSubtitleSuffix')}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Action Button for Temporary Exit ONLY */}
+        {/* Action Toolbar */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={() => setIsTempExitModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-xs border"
+            style={{
+              background: isDark ? '#F4F4F5' : '#111111',
+              color: isDark ? '#111111' : '#FFFFFF',
+              borderColor: isDark ? '#F4F4F5' : '#111111'
+            }}
           >
-            <span>🚪</span>
+            <FontAwesomeIcon icon={faDoorOpen} className="text-xs" />
             <span>Temporary Exit Request</span>
           </button>
 
@@ -815,53 +969,84 @@ export default function AttendanceFormPage() {
             type="month"
             value={month}
             onChange={e => setMonth(e.target.value)}
-            style={{ background: theme.inputBg || theme.subtleBg, border: `1px solid ${theme.border}`, color: theme.textBody, borderRadius: '10px', padding: '7px 12px', fontSize: '13px' }}
+            className="px-3 py-1.5 rounded text-xs font-mono border cursor-pointer outline-none"
+            style={{
+              background: cardBg,
+              borderColor,
+              color: textPrimary
+            }}
           />
         </div>
       </div>
 
       {/* Summary banner */}
       {!loading && noExcuseCount > 0 && (
-        <div className="p-3.5 rounded-xl flex items-center gap-3 text-sm shadow-2xs"
-          style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e' }}>
-          ⚠️ {t('attendanceForm.summaryBanner')} <strong>{noExcuseCount} {t('attendanceForm.summaryBannerMid')}</strong> {t('attendanceForm.summaryBannerSuffix')}
+        <div className="p-3.5 rounded-lg flex items-center gap-2.5 text-xs mb-5 border transition-all"
+          style={{
+            background: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FBF3DB',
+            borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#F5E8B7',
+            color: isDark ? '#FCD34D' : '#956400'
+          }}>
+          <FontAwesomeIcon icon={faExclamationTriangle} className="text-sm shrink-0" />
+          <div>
+            {t('attendanceForm.summaryBanner')} <strong>{noExcuseCount} {t('attendanceForm.summaryBannerMid')}</strong> {t('attendanceForm.summaryBannerSuffix')}
+          </div>
         </div>
       )}
 
       {/* Success banner */}
       {successDate && (
-        <div className="p-3.5 rounded-xl flex items-center gap-2 text-sm shadow-2xs"
-          style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
-          ✅ {t('attendanceForm.successBanner')} <strong>{successDate}</strong> {t('attendanceForm.successBannerSuffix')}
+        <div className="p-3.5 rounded-lg flex items-center gap-2.5 text-xs mb-5 border transition-all"
+          style={{
+            background: isDark ? 'rgba(34, 197, 94, 0.12)' : '#EDF3EC',
+            borderColor: isDark ? 'rgba(34, 197, 94, 0.25)' : '#D1E7DD',
+            color: isDark ? '#86EFAC' : '#2A6335'
+          }}>
+          <FontAwesomeIcon icon={faCheckCircle} className="text-sm shrink-0" />
+          <div>
+            {t('attendanceForm.successBanner')} <strong className="font-mono">{successDate}</strong> {t('attendanceForm.successBannerSuffix')}
+          </div>
         </div>
       )}
 
       {/* Content */}
       {loading ? (
-        <div className="py-16 text-center text-sm" style={{ color: theme.textSecondary }}>
-          {t('attendanceForm.loading')}
+        <div className="py-20 text-center text-xs flex flex-col items-center justify-center gap-3 font-mono" style={{ color: textSecondary }}>
+          <FontAwesomeIcon icon={faSpinner} spin className="text-lg" style={{ color: textPrimary }} />
+          <span>{stripEmoji(t('attendanceForm.loading'))}</span>
         </div>
       ) : isExemptRole ? (
-        <div className="p-6 text-center rounded-2xl border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 space-y-2">
-          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-xl mx-auto">
-            🏢
+        <div className="p-8 text-center rounded-xl border space-y-2 max-w-md mx-auto my-12"
+          style={{
+            background: cardBg,
+            borderColor
+          }}>
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center border mx-auto mb-3"
+            style={{
+              background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC',
+              borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD',
+              color: isDark ? '#86EFAC' : '#2A6335'
+            }}>
+            <FontAwesomeIcon icon={faBuilding} className="text-base" />
           </div>
-          <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
+          <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
             Part-Time / Vendor Role
           </h3>
-          <p className="text-xs text-emerald-700 dark:text-emerald-400 max-w-sm mx-auto">
+          <p className="text-xs leading-relaxed" style={{ color: textSecondary }}>
             Your role is exempt from HCM forms.
           </p>
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Machine Anomaly Form Submissions Section (Original System) */}
+          {/* Machine Anomaly Form Submissions Section */}
           {issueRows.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: theme.textPrimary }}>
-                <span>📋</span>
-                <span>HCM Form(s) This Month ({issueRows.length})</span>
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-wider font-mono flex items-center gap-2" style={{ color: textSecondary }}>
+                  <FontAwesomeIcon icon={faCalendarAlt} className="text-xs" />
+                  <span>HCM Form(s) This Month ({issueRows.length})</span>
+                </h2>
+              </div>
 
               <div className="space-y-2">
                 {issueRows.map(day => {
@@ -874,16 +1059,30 @@ export default function AttendanceFormPage() {
                   const canEditDelete = excuse && excuse.status === 'pending'
 
                   return (
-                    <div key={day.date} style={cardStyle} className="flex items-center justify-between gap-4 flex-wrap">
+                    <div
+                      key={day.date}
+                      className="p-3.5 rounded-lg border flex items-center justify-between gap-4 flex-wrap transition-all hover:shadow-2xs"
+                      style={{
+                        background: cardBg,
+                        borderColor
+                      }}
+                    >
                       {/* Left: date + issue type */}
                       <div className="flex items-center gap-3 flex-wrap">
-                        <div className="text-sm font-semibold min-w-[90px]" style={{ color: theme.textPrimary }}>{day.date}</div>
-                        <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: ic.bg, color: ic.color }}>
-                          {ic.icon} {ic.label}
+                        <div className="text-xs font-semibold font-mono min-w-[95px]" style={{ color: textPrimary }}>
+                          {day.date}
+                        </div>
+                        <span className="text-xs px-2.5 py-0.5 rounded font-medium inline-flex items-center gap-1.5" style={{ background: ic.bg, color: ic.color }}>
+                          <FontAwesomeIcon icon={ic.icon} className="text-[10px]" />
+                          <span>{ic.label}</span>
                         </span>
-                        {duration > 0 && <span className="text-xs font-semibold" style={{ color: ic.color }}>+{fmtMins(duration)}</span>}
+                        {duration > 0 && (
+                          <span className="text-xs font-semibold font-mono" style={{ color: ic.color }}>
+                            +{fmtMins(duration)}
+                          </span>
+                        )}
                         {day.checkin_time && (
-                          <span className="text-xs" style={{ color: theme.textSecondary }}>
+                          <span className="text-xs font-mono" style={{ color: textSecondary }}>
                             {day.checkin_time}{day.checkout_time && <span> – {day.checkout_time}</span>}
                           </span>
                         )}
@@ -893,30 +1092,54 @@ export default function AttendanceFormPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         {excuse ? (
                           <>
-                            <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: st.bg, color: st.color }}>
-                              {st.icon} {st.label}
+                            <span className="text-xs px-2.5 py-0.5 rounded font-medium inline-flex items-center gap-1.5" style={{ background: st.bg, color: st.color }}>
+                              <FontAwesomeIcon icon={st.icon} className="text-[10px]" />
+                              <span>{st.label}</span>
                             </span>
-                            {excuse.status === 'rejected' && <span className="text-xs" style={{ color: '#991b1b' }}>({rejectedBy})</span>}
+                            {excuse.status === 'rejected' && (
+                              <span className="text-xs font-medium" style={{ color: isDark ? '#FCA5A5' : '#9B1C1C' }}>
+                                ({rejectedBy})
+                              </span>
+                            )}
                             {canEditDelete && (
-                              <>
-                                <button onClick={() => setModalRecord({ record: { ...day, issues: [primaryIssue] }, excuse })}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
-                                  style={{ background: theme.subtleBg, color: theme.textSecondary, border: `1px solid ${theme.border}` }}>
-                                  {t('attendanceForm.btnEdit')}
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => setModalRecord({ record: { ...day, issues: [primaryIssue] }, excuse })}
+                                  className="px-2.5 py-1 rounded text-xs font-medium cursor-pointer border flex items-center gap-1.5 transition-all"
+                                  style={{
+                                    background: subtleBg,
+                                    borderColor,
+                                    color: textPrimary
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faPen} className="text-[10px]" style={{ color: textSecondary }} />
+                                  <span>{stripEmoji(t('attendanceForm.btnEdit'))}</span>
                                 </button>
-                                <button onClick={() => setDeleteExcuse(excuse)}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
-                                  style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }}>
-                                  🗑️
+                                <button
+                                  onClick={() => setDeleteExcuse(excuse)}
+                                  className="px-2.5 py-1 rounded text-xs font-medium cursor-pointer border flex items-center gap-1 transition-all"
+                                  style={{
+                                    background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FDEBEC',
+                                    borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA',
+                                    color: isDark ? '#FCA5A5' : '#9B1C1C'
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
                                 </button>
-                              </>
+                              </div>
                             )}
                           </>
                         ) : (
-                          <button onClick={() => setModalRecord({ record: day })}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shadow-2xs"
-                            style={{ background: theme.blueText || '#2563eb', color: '#fff' }}>
-                            {t('attendanceForm.btnSubmit')}
+                          <button
+                            onClick={() => setModalRecord({ record: day })}
+                            className="px-3 py-1 rounded text-xs font-semibold cursor-pointer border transition-all"
+                            style={{
+                              background: isDark ? '#F4F4F5' : '#111111',
+                              color: isDark ? '#111111' : '#FFFFFF',
+                              borderColor: isDark ? '#F4F4F5' : '#111111'
+                            }}
+                          >
+                            {stripEmoji(t('attendanceForm.btnSubmit'))}
                           </button>
                         )}
                       </div>
@@ -927,11 +1150,20 @@ export default function AttendanceFormPage() {
             </div>
           )}
 
-          {/* Empty Anomaly State - Clean original UI */}
+          {/* Empty Anomaly State */}
           {issueRows.length === 0 && (
-            <div className="py-16 text-center" style={{ color: theme.textSecondary }}>
-              <div className="text-4xl mb-3">🎉</div>
-              <p className="text-sm font-medium">{t('attendanceForm.noIssues')}</p>
+            <div className="py-20 text-center rounded-xl border space-y-2" style={{ background: cardBg, borderColor }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center border mx-auto mb-2"
+                style={{
+                  background: isDark ? 'rgba(34, 197, 94, 0.15)' : '#EDF3EC',
+                  borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : '#D1E7DD',
+                  color: isDark ? '#86EFAC' : '#2A6335'
+                }}>
+                <FontAwesomeIcon icon={faCheckCircle} className="text-base" />
+              </div>
+              <p className="text-xs font-medium" style={{ color: textSecondary }}>
+                {t('attendanceForm.noIssues')}
+              </p>
             </div>
           )}
         </div>
