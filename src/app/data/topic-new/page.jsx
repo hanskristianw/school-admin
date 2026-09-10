@@ -283,6 +283,7 @@ export default function TopicNewPage() {
   const [savingWeeklyPlans, setSavingWeeklyPlans] = useState(false)
   const [isWeeklyPlanDirty, setIsWeeklyPlanDirty] = useState(false)
   const [weeklyPlanNotification, setWeeklyPlanNotification] = useState({ show: false, message: '', type: 'success' })
+  const [activeSessionByWeek, setActiveSessionByWeek] = useState({})
   const [unsavedModalOpen, setUnsavedModalOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
 
@@ -2373,20 +2374,29 @@ export default function TopicNewPage() {
   }
   
   const handleWeeklyPlanChange = (targetPlan, field, value) => {
-    setWeeklyPlans(prev => 
-      prev.map(plan => {
+    setWeeklyPlans(prev => {
+      const exists = prev.some(plan => {
+        return (plan.id && targetPlan.id && plan._sessionIndex !== undefined)
+          ? (plan.id === targetPlan.id && plan._sessionIndex === targetPlan._sessionIndex)
+          : (plan.id ? plan.id === targetPlan.id : plan._tempId === targetPlan._tempId)
+      })
+      if (!exists) {
+        return [...prev, { ...targetPlan, [field]: value }]
+      }
+      return prev.map(plan => {
         const isMatch = (plan.id && targetPlan.id && plan._sessionIndex !== undefined)
           ? (plan.id === targetPlan.id && plan._sessionIndex === targetPlan._sessionIndex)
           : (plan.id ? plan.id === targetPlan.id : plan._tempId === targetPlan._tempId)
         return isMatch ? { ...plan, [field]: value } : plan
       })
-    )
+    })
+    setIsWeeklyPlanDirty(true)
   }
 
   const handleAddSessionToWeek = (weekNumber) => {
-    setWeeklyPlans(prev => [
-      ...prev,
-      {
+    setWeeklyPlans(prev => {
+      const existing = prev.filter(p => p.week_number === weekNumber)
+      const newSession = {
         _tempId: `temp_${Date.now()}_${Math.random()}`,
         topic_id: selectedTopicForWeekly?.topic_id,
         week_number: weekNumber,
@@ -2396,7 +2406,25 @@ export default function TopicNewPage() {
         week_resources: '',
         week_reflection: '',
       }
-    ])
+      let nextPlans = [...prev]
+      if (existing.length === 0) {
+        nextPlans.push({
+          _tempId: `default_${weekNumber}`,
+          topic_id: selectedTopicForWeekly?.topic_id,
+          week_number: weekNumber,
+          week_date: '',
+          week_objectives: '',
+          week_activities: '',
+          week_resources: '',
+          week_reflection: '',
+        })
+      }
+      nextPlans.push(newSession)
+      const newIndex = nextPlans.filter(p => p.week_number === weekNumber).length - 1
+      setActiveSessionByWeek(a => ({ ...a, [weekNumber]: newIndex }))
+      return nextPlans
+    })
+    setIsWeeklyPlanDirty(true)
   }
 
   const handleRemoveSession = (planToRemove) => {
@@ -2408,6 +2436,20 @@ export default function TopicNewPage() {
         return plan.id ? plan.id !== planToRemove.id : plan._tempId !== planToRemove._tempId
       })
     )
+    setActiveSessionByWeek(prev => {
+      const currentIdx = prev[planToRemove.week_number] || 0
+      const remainingForWeek = weeklyPlans.filter(p => p.week_number === planToRemove.week_number && (
+        planToRemove.id && p.id && planToRemove._sessionIndex !== undefined
+          ? !(p.id === planToRemove.id && p._sessionIndex === planToRemove._sessionIndex)
+          : (p.id ? p.id !== planToRemove.id : p._tempId !== planToRemove._tempId)
+      ))
+      const maxIdx = Math.max(0, remainingForWeek.length - 2)
+      return {
+        ...prev,
+        [planToRemove.week_number]: Math.min(currentIdx, maxIdx)
+      }
+    })
+    setIsWeeklyPlanDirty(true)
   }
   
   const saveWeeklyPlans = async () => {
@@ -2683,25 +2725,22 @@ ASSESSMENT:
 ${context.specialRequests ? `SPECIAL REQUESTS:\n${context.specialRequests}\n` : ''}
 
 Please create a detailed weekly plan for all ${context.duration} weeks. For each week, provide:
-1. **week_objectives**: Clear learning objectives for that week (what students will learn/understand)
-2. **week_activities**: Specific learning activities and teaching strategies (MAXIMUM 300 characters)
-3. **week_resources**: Materials and resources needed
+1. **week_objectives**: Clear learning goals for that week (what students will learn/understand)
+2. **week_resources**: Materials and resources needed
 
 Important guidelines:
 - Build progressively toward the summative assessment
 - Integrate ATL skills throughout
 - Connect to the Statement of Inquiry
-- Make activities engaging and age-appropriate for MYP Year ${context.mypYear}
+- Make the learning goals engaging and age-appropriate for MYP Year ${context.mypYear}
 - Include formative assessment opportunities
 - Reserve the last ${context.assessmentDuration} week(s) for summative assessment execution and completion
-- **CRITICAL: Keep week_activities under 300 characters - be concise and direct**
 
 Return ONLY a valid JSON array with ${context.duration} objects, each with this structure:
 [
   {
     "week_number": 1,
     "week_objectives": "...",
-    "week_activities": "...",
     "week_resources": "..."
   },
   ...
@@ -5814,26 +5853,40 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="mb-6" style={{ borderBottom: `1px solid ${theme.border}` }}>
-        <nav className="flex gap-0" aria-label="Tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => handleGuardedAction(() => setActiveTab(tab.id))}
-              className="inline-flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors"
-              style={{
-                borderBottom: activeTab === tab.id ? `2px solid ${theme.textPrimary}` : '2px solid transparent',
-                color: activeTab === tab.id ? theme.textPrimary : theme.textSecondary,
-                background: 'transparent',
-                fontFamily: "'Helvetica Neue', sans-serif",
-                marginBottom: '-1px',
-              }}
-            >
-              <FontAwesomeIcon icon={tab.icon} className="w-3 h-3" />
-              {tab.label}
-            </button>
-          ))}
+      {/* Tab Navigation (Segmented Pill Style matching Overview/Weekly Plan switcher) */}
+      <div className="mb-6">
+        <nav
+          className="inline-flex flex-wrap items-center gap-1 p-1 rounded-lg border shadow-2xs"
+          aria-label="Tabs"
+          style={{
+            background: theme.cardBg,
+            borderColor: theme.border,
+            borderRadius: '8px'
+          }}
+        >
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleGuardedAction(() => setActiveTab(tab.id))}
+                className={`inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono font-semibold rounded transition-all cursor-pointer ${
+                  isActive
+                    ? 'shadow-2xs'
+                    : 'hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100/80 dark:hover:bg-stone-800/60'
+                }`}
+                style={{
+                  background: isActive ? theme.textPrimary : 'transparent',
+                  color: isActive ? theme.cardBg : theme.textSecondary,
+                  borderRadius: '6px'
+                }}
+              >
+                <FontAwesomeIcon icon={tab.icon} className="text-xs" />
+                <span>{tab.label}</span>
+              </button>
+            )
+          })}
         </nav>
       </div>
 
@@ -6599,8 +6652,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       </div>
                     )}
 
-                    {/* Weekly Plan Forms Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Weekly Plan Forms - 1 Row Per Week Layout with Google Chrome-style Session Tabs */}
+                    <div className="space-y-8">
                       {Array.from({ length: selectedTopicForWeekly?.topic_duration || 5 }).map((_, wIdx) => {
                         const weekNum = wIdx + 1
                         const weekSessions = weeklyPlans.filter(p => p.week_number === weekNum)
@@ -6615,140 +6668,190 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                           week_reflection: ''
                         }]
 
+                        const activeIdx = Math.min(activeSessionByWeek[weekNum] || 0, Math.max(0, sessionsToRender.length - 1))
+                        const activePlan = sessionsToRender[activeIdx] || sessionsToRender[0]
+
                         return (
                           <div
                             key={weekNum}
-                            className="p-4 border rounded space-y-3"
-                            style={{ background: theme.cardBg, borderColor: theme.border, borderRadius: '8px' }}
+                            className="border rounded-xl overflow-hidden shadow-xs transition-all"
+                            style={{ background: theme.cardBg, borderColor: isDark ? '#2E2E33' : '#E2E2E6' }}
                           >
+                            {/* Top Accent Strip (2px Minimalist Monochrome Rule) */}
+                            <div className="h-[2px] w-full" style={{ background: theme.textPrimary }} />
+
                             {/* Week Header */}
-                            <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: theme.border }}>
-                              <h3 className="text-xs font-mono font-bold flex items-center gap-1.5" style={{ color: theme.textPrimary }}>
-                                <span className="px-1.5 py-0.5 rounded bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
-                                  W{weekNum}
+                            <div
+                              className="flex items-center justify-between px-5 py-3 border-b"
+                              style={{ borderColor: theme.border, background: theme.subtleBg }}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span
+                                  className="px-3 py-1 rounded-md text-xs font-mono font-bold shadow-2xs tracking-wide"
+                                  style={{ background: theme.textPrimary, color: theme.cardBg }}
+                                >
+                                  {t('topicNew.weeklyPlanTab.week') || 'Week'} {weekNum}
                                 </span>
-                                <span>{t('topicNew.weeklyPlanTab.week') || 'Week'} {weekNum}</span>
-                              </h3>
+                                <span className="text-[11px] font-mono px-2 py-0.5 rounded border" style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textSecondary }}>
+                                  {sessionsToRender.length === 1 ? '1 Session' : `${sessionsToRender.length} Sessions`}
+                                </span>
+                              </div>
+
                               <button
                                 type="button"
                                 onClick={() => handleAddSessionToWeek(weekNum)}
-                                className="text-[11px] font-mono font-bold px-2 py-1 rounded border transition-colors cursor-pointer"
-                                style={{ background: theme.subtleBg, borderColor: theme.border, color: theme.textPrimary }}
+                                className="text-xs font-mono font-semibold px-3 py-1.5 rounded-md border transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                                style={{ background: theme.cardBg, borderColor: theme.border, color: theme.textPrimary }}
                               >
-                                <FontAwesomeIcon icon={faPlus} className="text-[10px] mr-1" />
+                                <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
                                 <span>Session</span>
                               </button>
                             </div>
 
-                            {/* Sessions inside Week */}
-                            {sessionsToRender.map((plan, sIdx) => (
-                              <div
-                                key={plan._tempId || (plan.id ? `${plan.id}_${sIdx}` : sIdx)}
-                                className="p-3 rounded border space-y-2.5"
-                                style={{ background: theme.subtleBg, borderColor: theme.border, borderRadius: '6px' }}
-                              >
-                                {/* Session Header & Date */}
-                                <div className="flex items-center justify-between gap-2 pb-1 border-b" style={{ borderColor: theme.border }}>
-                                  <span className="text-[11px] font-mono font-bold" style={{ color: theme.textPrimary }}>
-                                    {sessionsToRender.length > 1 ? `Session ${sIdx + 1}` : 'Main Session'}
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    <label className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>
-                                      {t('topicNew.weeklyPlanTab.dateLabel') || 'Date'}:
-                                    </label>
-                                    <input
-                                      type="date"
-                                      value={plan.week_date || ''}
-                                      onChange={e => handleWeeklyPlanChange(plan, 'week_date', e.target.value)}
-                                      className="px-2 py-0.5 text-xs font-mono rounded border outline-none"
-                                      style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
-                                    />
+                            {/* Google Chrome-style Session Tab Bar */}
+                            <div
+                              className="flex items-end gap-1 px-4 pt-2.5 border-b overflow-x-auto select-none"
+                              style={{
+                                borderColor: theme.border,
+                                background: isDark ? '#1C1C1F' : '#EBEBEF'
+                              }}
+                            >
+                              {sessionsToRender.map((plan, sIdx) => {
+                                const isActive = sIdx === activeIdx
+                                const sessionLabel = sessionsToRender.length > 1 ? `Session ${sIdx + 1}` : 'Main Session'
+                                return (
+                                  <div
+                                    key={plan._tempId || (plan.id ? `${plan.id}_${sIdx}` : sIdx)}
+                                    onClick={() => setActiveSessionByWeek(prev => ({ ...prev, [weekNum]: sIdx }))}
+                                    className={`group relative flex items-center gap-2 px-4 py-2 text-xs font-mono cursor-pointer transition-all border-x ${
+                                      isActive
+                                        ? 'font-bold -mb-[1px] rounded-t-lg z-10 shadow-xs'
+                                        : 'opacity-70 hover:opacity-100 hover:bg-stone-300/40 dark:hover:bg-stone-800/60 rounded-t-lg border-t'
+                                    }`}
+                                    style={{
+                                      background: isActive ? theme.cardBg : 'transparent',
+                                      borderColor: isActive ? theme.border : 'transparent',
+                                      color: isActive ? theme.textPrimary : theme.textSecondary,
+                                      borderBottomColor: isActive ? theme.cardBg : undefined,
+                                      borderTop: isActive ? `2px solid ${theme.textPrimary}` : undefined,
+                                    }}
+                                  >
+                                    {(plan.week_objectives || plan.week_activities || plan.week_date) && (
+                                      <span
+                                        className="w-1.5 h-1.5 rounded-full"
+                                        style={{ background: isActive ? theme.textPrimary : (isDark ? '#71717A' : '#A1A1AA') }}
+                                      />
+                                    )}
+                                    <span className="truncate max-w-[150px]">{sessionLabel}</span>
+                                    {plan.week_date && (
+                                      <span className="text-[10px] opacity-60 font-normal">
+                                        ({plan.week_date.slice(5)})
+                                      </span>
+                                    )}
                                     {sessionsToRender.length > 1 && (
                                       <button
                                         type="button"
-                                        onClick={() => handleRemoveSession(plan)}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleRemoveSession(plan)
+                                        }}
                                         title="Remove Session"
-                                        className="text-red-500 hover:text-red-700 p-0.5 text-xs cursor-pointer"
+                                        className="w-4 h-4 rounded-full flex items-center justify-center opacity-40 hover:opacity-100 hover:bg-red-500 hover:text-white transition-all cursor-pointer ml-1"
                                       >
-                                        <FontAwesomeIcon icon={faTrash} />
+                                        <FontAwesomeIcon icon={faTimes} className="text-[9px]" />
                                       </button>
                                     )}
                                   </div>
+                                )
+                              })}
+
+                              {/* Plus button inside Tab Bar like Google Chrome */}
+                              <button
+                                type="button"
+                                onClick={() => handleAddSessionToWeek(weekNum)}
+                                title="Add New Session Tab"
+                                className="flex items-center justify-center w-7 h-7 mb-1 rounded-md hover:bg-stone-300/60 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors cursor-pointer"
+                              >
+                                <FontAwesomeIcon icon={faPlus} className="text-[11px]" />
+                              </button>
+                            </div>
+
+                            {/* Active Session Content Form */}
+                            {activePlan && (
+                              <div className="p-5 space-y-4" style={{ background: theme.cardBg }}>
+                                {/* Session Header & Date */}
+                                <div className="flex items-center justify-between gap-3 pb-3 border-b" style={{ borderColor: theme.border }}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: theme.textPrimary }}>
+                                      {sessionsToRender.length > 1 ? `Session ${activeIdx + 1} Details` : 'Main Session Details'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <label className="text-[10px] font-mono uppercase font-semibold" style={{ color: theme.textSecondary }}>
+                                      {t('topicNew.weeklyPlanTab.dateLabel') || 'DATE OF USE'}:
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={activePlan.week_date || ''}
+                                      onChange={e => handleWeeklyPlanChange(activePlan, 'week_date', e.target.value)}
+                                      className="px-2.5 py-1 text-xs font-mono rounded border outline-none cursor-pointer"
+                                      style={{ borderColor: theme.border, background: theme.inputBg || theme.subtleBg, color: theme.textPrimary, borderRadius: '6px' }}
+                                    />
+                                  </div>
                                 </div>
 
-                                {getDayWarningForDate(plan.week_date) && (
+                                {getDayWarningForDate(activePlan.week_date) && (
                                   <div className="text-[10px] font-mono p-1.5 rounded bg-[#FDEBEC] text-[#D44C47] border border-[#F7C5C4]">
-                                    ⚠️ {getDayWarningForDate(plan.week_date)}
+                                    ⚠️ {getDayWarningForDate(activePlan.week_date)}
                                   </div>
                                 )}
 
-                                {/* Objectives */}
+                                {/* Learning Goal */}
                                 <div>
-                                  <label className="block text-[10px] font-mono uppercase mb-0.5" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.objectives') || 'Objectives'}
+                                  <label className="block text-[10px] font-mono uppercase mb-1" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.objectives') || 'LEARNING GOAL'}
                                   </label>
                                   <textarea
-                                    value={plan.week_objectives || ''}
-                                    onChange={(e) => handleWeeklyPlanChange(plan, 'week_objectives', e.target.value)}
+                                    value={activePlan.week_objectives || ''}
+                                    onChange={(e) => handleWeeklyPlanChange(activePlan, 'week_objectives', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.objectivesPlaceholder')}
-                                    rows={2}
-                                    className="w-full p-2 text-xs font-sans rounded border outline-none resize-y"
-                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
-                                  />
-                                </div>
-
-                                {/* Activities */}
-                                <div>
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <label className="text-[10px] font-mono uppercase" style={{ color: theme.textSecondary }}>
-                                      {t('topicNew.weeklyPlanTab.activities') || 'Activities'}
-                                    </label>
-                                    <span className="text-[10px] font-mono" style={{ color: theme.textSecondary }}>
-                                      {(plan.week_activities || '').length}/300
-                                    </span>
-                                  </div>
-                                  <textarea
-                                    value={plan.week_activities || ''}
-                                    onChange={(e) => handleWeeklyPlanChange(plan, 'week_activities', e.target.value)}
-                                    placeholder={t('topicNew.weeklyPlanTab.activitiesPlaceholder')}
-                                    rows={3}
-                                    maxLength={300}
-                                    className="w-full p-2 text-xs font-sans rounded border outline-none resize-y"
-                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
+                                    rows={5}
+                                    className="w-full p-3 text-xs font-sans rounded border outline-none resize-y min-h-[120px] leading-relaxed"
+                                    style={{ borderColor: theme.border, background: theme.inputBg || theme.subtleBg, color: theme.textPrimary, borderRadius: '4px' }}
                                   />
                                 </div>
 
                                 {/* Resources */}
                                 <div>
-                                  <label className="block text-[10px] font-mono uppercase mb-0.5" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.resources') || 'Resources'}
+                                  <label className="block text-[10px] font-mono uppercase mb-1" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.resources') || 'RESOURCES NEEDED'}
                                   </label>
                                   <textarea
-                                    value={plan.week_resources || ''}
-                                    onChange={(e) => handleWeeklyPlanChange(plan, 'week_resources', e.target.value)}
+                                    value={activePlan.week_resources || ''}
+                                    onChange={(e) => handleWeeklyPlanChange(activePlan, 'week_resources', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.resourcesPlaceholder')}
                                     rows={2}
-                                    className="w-full p-2 text-xs font-sans rounded border outline-none resize-y"
-                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
+                                    className="w-full p-2.5 text-xs font-sans rounded border outline-none resize-y"
+                                    style={{ borderColor: theme.border, background: theme.inputBg || theme.subtleBg, color: theme.textPrimary, borderRadius: '4px' }}
                                   />
                                 </div>
 
                                 {/* Reflection */}
                                 <div>
-                                  <label className="block text-[10px] font-mono uppercase mb-0.5" style={{ color: theme.textSecondary }}>
-                                    {t('topicNew.weeklyPlanTab.reflection') || 'Reflection (During Teaching)'}
+                                  <label className="block text-[10px] font-mono uppercase mb-1" style={{ color: theme.textSecondary }}>
+                                    {t('topicNew.weeklyPlanTab.reflection') || 'REFLECTION'}
                                   </label>
                                   <textarea
-                                    value={plan.week_reflection || ''}
-                                    onChange={(e) => handleWeeklyPlanChange(plan, 'week_reflection', e.target.value)}
+                                    value={activePlan.week_reflection || ''}
+                                    onChange={(e) => handleWeeklyPlanChange(activePlan, 'week_reflection', e.target.value)}
                                     placeholder={t('topicNew.weeklyPlanTab.reflectionPlaceholder')}
                                     rows={2}
-                                    className="w-full p-2 text-xs font-sans rounded border outline-none resize-y"
-                                    style={{ borderColor: theme.border, background: theme.inputBg, color: theme.textPrimary, borderRadius: '4px' }}
+                                    className="w-full p-2.5 text-xs font-sans rounded border outline-none resize-y"
+                                    style={{ borderColor: theme.border, background: theme.inputBg || theme.subtleBg, color: theme.textPrimary, borderRadius: '4px' }}
                                   />
                                 </div>
                               </div>
-                            ))}
+                            )}
                           </div>
                         )
                       })}
@@ -10713,12 +10816,8 @@ ${refineOriginal}`
                     
                     <div className="space-y-2 text-sm">
                       <div>
-                        <span className="font-medium text-gray-700">Objectives:</span>
+                        <span className="font-medium text-gray-700">Learning Goal:</span>
                         <p className="text-gray-600 mt-1">{week.week_objectives}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Activities:</span>
-                        <p className="text-gray-600 mt-1">{week.week_activities}</p>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Resources:</span>
@@ -11038,13 +11137,6 @@ ${refineOriginal}`
                                       <div className="mb-1.5">
                                         <div className={`text-[10px] font-semibold uppercase tracking-wide ${labelClass}`}>Learning Goals:</div>
                                         <div className={`text-xs leading-relaxed whitespace-pre-wrap ${textClass}`}>{item.objectives}</div>
-                                      </div>
-                                    )}
-
-                                    {item.activities && (
-                                      <div className="mb-1.5">
-                                        <div className={`text-[10px] font-semibold uppercase tracking-wide ${labelClass}`}>Activity:</div>
-                                        <div className={`text-xs leading-relaxed whitespace-pre-wrap ${textClass}`}>{item.activities}</div>
                                       </div>
                                     )}
 

@@ -421,10 +421,6 @@ function buildWeeklyOverviewDocx({ kelasNama, weekLabel, timeSlots, days, cells,
               cellChildren.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: "Learning Goals:", size: 17, color: "4B5563" })] }));
               cellChildren.push(...makeTextParagraphs(item.objectives, { size: 18, after: 60 }));
             }
-            if (item.activities) {
-              cellChildren.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: "Activity:", size: 17, color: "4B5563" })] }));
-              cellChildren.push(...makeTextParagraphs(item.activities, { size: 18, after: 60 }));
-            }
             if (item.resources) {
               cellChildren.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: "Resource:", size: 17, color: "4B5563" })] }));
               cellChildren.push(...makeTextParagraphs(item.resources, { size: 18, after: 60 }));

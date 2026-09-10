@@ -3032,8 +3032,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "package_dependencies_class_variance_authority",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3043,8 +3043,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "class_variance_authority",
-      "community": 331,
-      "community_name": "class-variance-authority",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "class-variance-authority"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 290,
+      "community_name": "docx",
       "norm_label": "docx"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 290,
+      "community_name": "docx",
       "norm_label": "docx"
     },
     {
@@ -12558,8 +12558,8 @@
       "source_location": "L552",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_7_dial_definitions_technical_reference",
-      "community": 290,
-      "community_name": "7.1 Tables",
+      "community": 131,
+      "community_name": "docx",
       "norm_label": "7. dial definitions (technical reference)"
     },
     {
@@ -12569,8 +12569,8 @@
       "source_location": "L554",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_design_variance_level_1_10",
-      "community": 290,
-      "community_name": "7.1 Tables",
+      "community": 131,
+      "community_name": "docx",
       "norm_label": "design_variance (level 1-10)"
     },
     {
@@ -12580,8 +12580,8 @@
       "source_location": "L560",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_motion_intensity_level_1_10",
-      "community": 290,
-      "community_name": "7.1 Tables",
+      "community": 131,
+      "community_name": "docx",
       "norm_label": "motion_intensity (level 1-10)"
     },
     {
@@ -12591,8 +12591,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "agents_skills_design_taste_frontend_skill_visual_density_level_1_10",
-      "community": 290,
-      "community_name": "7.1 Tables",
+      "community": 131,
+      "community_name": "docx",
       "norm_label": "visual_density (level 1-10)"
     },
     {
@@ -15011,8 +15011,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 131,
-      "community_name": "docx",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "skill.md"
     },
     {
@@ -15022,8 +15022,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 131,
-      "community_name": "docx",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -15033,8 +15033,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 131,
-      "community_name": "docx",
+      "community": 316,
+      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -29472,7 +29472,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/weekly-overview-docx/route.js",
-      "source_location": "L485",
+      "source_location": "L481",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_weekly_overview_docx_route_buildweeklyoverviewdocx",
@@ -29496,7 +29496,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/weekly-overview-docx/route.js",
-      "source_location": "L473",
+      "source_location": "L469",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_weekly_overview_docx_route_buildweeklyoverviewdocx",
@@ -33449,7 +33449,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5327",
+      "source_location": "L5366",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33665,7 +33665,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5336",
+      "source_location": "L5375",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33689,7 +33689,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5350",
+      "source_location": "L5389",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33713,7 +33713,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5365",
+      "source_location": "L5404",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33737,7 +33737,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5377",
+      "source_location": "L5416",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33785,7 +33785,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3296",
+      "source_location": "L3335",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33809,7 +33809,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3310",
+      "source_location": "L3349",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33833,7 +33833,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L3326",
+      "source_location": "L3365",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33880,7 +33880,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L4681",
+      "source_location": "L4720",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -48359,5 +48359,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "dfbe61e5d105ad901c46f63b0fa7e6ef04c5617f"
+  "built_at_commit": "b7eb42d73349436777c831a65c0c6410e378e6cf"
 }
