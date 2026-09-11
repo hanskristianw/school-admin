@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-09-11)
 
 ## Corpus Check
-- 371 files · ~610,007 words
+- 371 files · ~610,743 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3cefcce6`
+- Built from commit: `90829592`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -210,7 +210,6 @@
 - graphify
 - graphify.md
 - bcryptjs
-- docx
 - @fortawesome/react-fontawesome
 - googleapis
 - @googleapis/chat
@@ -266,6 +265,7 @@
 - 37. EXAMPLE INTERPRETATIONS
 - 15. DEFAULT SITE PACKS
 - 20. EXAMPLE INTERPRETATIONS
+- clsx
 - pngjs
 
 ## God Nodes (most connected - your core abstractions)
@@ -551,7 +551,7 @@ Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assess
 
 ### Community 131 - "docx"
 Cohesion: 0.50
-Nodes (4): 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10), VISUAL_DENSITY (Level 1-10)
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
 
 ### Community 132 - "Module 132"
 Cohesion: 0.06
@@ -767,7 +767,7 @@ Nodes (10): 10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know), Anim
 
 ### Community 322 - "tasteskill: Anti-Slop Frontend Skill"
 Cohesion: 0.20
-Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration), 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system (+2 more)
+Nodes (10): 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages), 2.B When the brief is an aesthetic, not a system, 2. BRIEF → DESIGN SYSTEM MAP, 7. DIAL DEFINITIONS (Technical Reference), DESIGN_VARIANCE (Level 1-10), MOTION_INTENSITY (Level 1-10) (+2 more)
 
 ### Community 323 - "CORE DIRECTIVE: AWWWARDS-LEVEL DESIGN ENGINEERING"
 Cohesion: 0.20
@@ -897,7 +897,7 @@ Nodes (4): 20. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `docx`, `@fortawesome/react-fontawesome`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `browser-image-compression`, `dotenv`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `SKILL.md`, `google-auth-library`, `pngjs`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `@fortawesome/react-fontawesome`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `browser-image-compression`, `dotenv`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `SKILL.md`, `google-auth-library`, `clsx`, `pngjs`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `tasteskill: Anti-Slop Frontend Skill` connect `tasteskill: Anti-Slop Frontend Skill` to `4. DESIGN ENGINEERING DIRECTIVES (Bias Correction)`, `10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know)`, `docx`, `8. DARK MODE PROTOCOL`, `9. AI TELLS (Forbidden Patterns)`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `0. BRIEF INFERENCE (Read the Room Before Anything Else)`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Appendix B - Canonical Sources (read these before reinventing)`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._

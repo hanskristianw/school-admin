@@ -289,7 +289,6 @@
   "287": "graphify",
   "288": "graphify.md",
   "289": "bcryptjs",
-  "290": "docx",
   "291": "@fortawesome/react-fontawesome",
   "292": "googleapis",
   "293": "@googleapis/chat",
@@ -355,6 +354,7 @@
   "353": "15. DEFAULT SITE PACKS",
   "354": "20. EXAMPLE INTERPRETATIONS",
   "355": "page.jsx",
+  "356": "clsx",
   "358": "route.js",
   "359": "pngjs"
 }

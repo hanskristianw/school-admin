@@ -30,6 +30,26 @@ export const loadImgBase64 = async (url) => {
 export const yieldToMain = (ms = 25) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
+ * Sanitizes text to standard ASCII / WinAnsi compatible characters.
+ * Prevents jsPDF from falling back to UTF-16BE encoding (which renders wide spacing between letters
+ * like 'e x a m p l e' and turns symbols like '→' into '!'' in standard Helvetica fonts).
+ */
+export const sanitizePdfText = (str) => {
+  if (!str || typeof str !== 'string') return ''
+  return str
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'") // single curly quotes / apostrophes
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"') // double curly quotes
+    .replace(/[\u2013\u2014\u2015]/g, '-')       // en-dash, em-dash, horizontal bar
+    .replace(/\u2026/g, '...')                   // horizontal ellipsis
+    .replace(/[\u2192\u21D2]/g, '->')             // right arrows →, ⇒
+    .replace(/[\u2190\u21D0]/g, '<-')             // left arrows ←, ⇐
+    .replace(/[\u2194\u21D4]/g, '<->')            // bi-directional arrows ↔, ⇔
+    .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '-') // bullets
+    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ') // non-breaking & wide spaces
+    .replace(/[^\x00-\xFF]/g, '')                // strip characters > 255 to prevent UTF-16BE space glitch
+}
+
+/**
  * Draws the IB Primary Years Programme Logo vector badge on jsPDF
  */
 export const drawIbPypLogo = (doc, x, y, width = 42, height = 14) => {
@@ -2499,6 +2519,7 @@ export const renderNurseryLearningProgressionPage1 = (doc, {
   const ml = 18
   const mr = 18
   const mt = 18
+  const cw = pw - ml - mr // 174mm
 
   // 1. Watermark
   if (logoBase64) {
@@ -2577,7 +2598,7 @@ export const renderNurseryLearningProgressionPage1 = (doc, {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.setTextColor(31, 41, 55)
-  doc.text(studentName, ml + 16, y)
+  doc.text(sanitizePdfText(studentName), ml + 16, y)
 
   // Left: Grade
   doc.setFont('helvetica', 'bold')
@@ -2588,7 +2609,7 @@ export const renderNurseryLearningProgressionPage1 = (doc, {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.setTextColor(31, 41, 55)
-  doc.text(className, ml + 16, y + 7.5)
+  doc.text(sanitizePdfText(className), ml + 16, y + 7.5)
 
   // Right: Homeroom Teacher (aligned horizontally with Name at y)
   const rightX = 115
@@ -2601,15 +2622,34 @@ export const renderNurseryLearningProgressionPage1 = (doc, {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.setTextColor(31, 41, 55)
-  const teacherLines = doc.splitTextToSize(teacherStr, pw - mr - rightX)
+  const teacherLines = doc.splitTextToSize(sanitizePdfText(teacherStr), pw - mr - rightX)
   let tY = y + 7.5
   teacherLines.forEach(line => {
     doc.text(line, rightX, tY)
     tY += 5
   })
 
-  // 4. Rubric / Progression Legend (matching media_1788253652718.png)
-  y = Math.max(y + 7.5, tY - 5) + 18
+  // 4. Letter to Parents (Dear Parents, ...)
+  const infoEndY = Math.max(y + 7.5, tY - 5)
+  y = infoEndY + 18
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9.5)
+  doc.setTextColor(31, 41, 55)
+  doc.text('Dear Parents,', ml, y)
+
+  // Enter / blank line after "Dear Parents,"
+  y += 8
+
+  const letterBodyText = "At Chung Chung Christian School, we believe early childhood is a time of wonder, discovery, and joyful learning. Our goal is to nurture each child's natural curiosity, encouraging students to courageously explore new ideas and build confidence in their unique abilities. While foundational skills are essential, our commitment goes far beyond standard milestone. We aim to help every child uncover the excitement of learning something new every day. This progress report is designed to reflect each child's continuous growth, offering a clear view of individual development across each term. Through active collaboration between home and school, a supportive environment is created where young learners flourish step-by-step."
+
+  const splitLetterLines = doc.splitTextToSize(letterBodyText, cw)
+  doc.text(letterBodyText, ml, y, { align: 'justify', maxWidth: cw, lineHeightFactor: 1.65 })
+
+  const letterHeight = splitLetterLines.length * (9.5 * 0.352778 * 1.65)
+
+  // 5. Rubric / Progression Legend (matching media_1788253652718.png)
+  y = y + letterHeight + 14
   const legendX = ml + 20
   const boxW = 8.5
   const boxH = 7.5
@@ -2786,7 +2826,7 @@ export const renderNurseryLearningProgressionTablePages = (doc, {
 
   for (let aIdx = 0; aIdx < areasWithCriteria.length; aIdx++) {
     const area = areasWithCriteria[aIdx]
-    const areaTitle = `${aIdx + 1}. ${area.area_name}`
+    const areaTitle = `${aIdx + 1}. ${sanitizePdfText(area.area_name || '')}`
     const areaRowH = 7.5
 
     // Check if area row exceeds page
@@ -2826,16 +2866,16 @@ export const renderNurseryLearningProgressionTablePages = (doc, {
       const letter = String.fromCharCode(97 + cIdx) // 'a', 'b', ...
       const bullet = `${letter}.`
 
-      // Split lines for English text and translation
+      // Split lines for English text and translation (sanitized to prevent UTF-16BE letter spacing glitch)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8.5)
-      const engLines = doc.splitTextToSize(crit.criteria_text || '', 108)
+      const engLines = doc.splitTextToSize(sanitizePdfText(crit.criteria_text || ''), 108)
 
       let transLines = []
       if (crit.criteria_translation) {
         doc.setFont('helvetica', 'italic')
         doc.setFontSize(7.5)
-        transLines = doc.splitTextToSize(crit.criteria_translation, 108)
+        transLines = doc.splitTextToSize(sanitizePdfText(crit.criteria_translation || ''), 108)
       }
 
       const engLineHeight = 3.8
@@ -3008,15 +3048,15 @@ export const renderNurseryLearningProgressionSuggestionPage = (doc, {
     drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
   }
 
-  // 3. Section: Suggestion to move forward (per user screenshot)
+  // 3. Section: Suggestion(s) to move forward (per user screenshot)
   y = mt + 32
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11.5)
   doc.setTextColor(17, 24, 39)
-  doc.text('Suggestion to move forward', ml, y)
+  doc.text('Suggestion(s) to move forward', ml, y)
 
   y += 8
-  const trimmed = (suggestionText || '').trim()
+  const trimmed = sanitizePdfText(suggestionText || '').trim()
   if (trimmed) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)

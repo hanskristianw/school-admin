@@ -7765,7 +7765,7 @@ export default function PypPage() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                   <label style={{ fontSize: '13px', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>Suggestion to move forward:</span>
+                    <span>Suggestion(s) to move forward:</span>
                   </label>
                   <span style={{ fontSize: '11px', color: textSecondary }}>
                     Will be printed on the final page of the report card.

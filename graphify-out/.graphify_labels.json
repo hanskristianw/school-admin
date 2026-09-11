@@ -289,7 +289,6 @@
   "287": "graphify",
   "288": "graphify.md",
   "289": "bcryptjs",
-  "290": "docx",
   "291": "@fortawesome/react-fontawesome",
   "292": "googleapis",
   "293": "@googleapis/chat",
@@ -330,7 +329,6 @@
   "328": "9. AI TELLS (Forbidden Patterns)",
   "329": "12. THE COMBINATORIAL VARIATION ENGINE",
   "330": "8. ANTI-AI-SLOP RULES",
-  "331": "Database Schema & Relationships",
   "332": "11. REDESIGN PROTOCOL",
   "333": "3. DEFAULT ARCHITECTURE & CONVENTIONS",
   "334": "6. PERFORMANCE & ACCESSIBILITY GUARDRAILS",
@@ -355,6 +353,7 @@
   "353": "15. DEFAULT SITE PACKS",
   "354": "20. EXAMPLE INTERPRETATIONS",
   "355": "page.jsx",
+  "356": "clsx",
   "358": "route.js",
   "359": "pngjs"
 }
