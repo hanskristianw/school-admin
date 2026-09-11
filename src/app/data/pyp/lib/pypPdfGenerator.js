@@ -24,6 +24,12 @@ export const loadImgBase64 = async (url) => {
 }
 
 /**
+ * Yields execution to the browser event loop so the UI remains responsive,
+ * DOM paints happen smoothly, and Chromium doesn't trigger "Page Unresponsive".
+ */
+export const yieldToMain = (ms = 25) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
  * Draws the IB Primary Years Programme Logo vector badge on jsPDF
  */
 export const drawIbPypLogo = (doc, x, y, width = 42, height = 14) => {
@@ -433,7 +439,7 @@ export const renderPypReportPage1 = async (doc, {
 /**
  * Renders the standardized School Footer on the current page
  */
-export const renderPypReportFooter = (doc) => {
+export const renderPypReportFooter = (doc, pageText = '') => {
   try {
     const pw = doc.internal.pageSize.getWidth()
     const ph = doc.internal.pageSize.getHeight()
@@ -464,9 +470,39 @@ export const renderPypReportFooter = (doc) => {
     doc.setTextColor(75, 85, 99) // #4B5563
     doc.text('Raya Gunung Anyar Sawah No 18 Surabaya, East Java - 60294', pw / 2, line2Y, { align: 'center' })
 
+    // Optional Right: Page number (e.g. Page 1 of 3)
+    if (pageText) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(75, 85, 99)
+      doc.text(pageText, pw - mr, line1Y, { align: 'right' })
+    }
+
     doc.restoreGraphicsState()
   } catch (e) {
     console.warn('Failed to render PYP footer:', e)
+  }
+}
+
+/**
+ * Stamps page number into the right side of the footer on the current page
+ */
+export const renderPypFooterPageNumber = (doc, pageText) => {
+  if (!pageText) return
+  try {
+    const pw = doc.internal.pageSize.getWidth()
+    const ph = doc.internal.pageSize.getHeight()
+    const mr = 18
+    const line1Y = ph - 11
+
+    doc.saveGraphicsState()
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(75, 85, 99)
+    doc.text(pageText, pw - mr, line1Y, { align: 'right' })
+    doc.restoreGraphicsState()
+  } catch (e) {
+    console.warn('Failed to stamp footer page number:', e)
   }
 }
 
@@ -1742,25 +1778,42 @@ export const generatePypClassReportPDF = async ({
     onLoading(true)
     onProgress(0, 1, 'Fetching class & student details...')
 
-    // 1. Fetch Class details & Homeroom teacher
-    const { data: classData } = await supabase
+    // 1. Fetch Class details & Homeroom teacher(s)
+    let classData = null
+    const resClass = await supabase
       .from('kelas')
-      .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id')
+      .select('kelas_id, kelas_nama, kelas_user_id, kelas_user_id_2, kelas_unit_id, kelas_year_id')
       .eq('kelas_id', Number(classId))
       .single()
+
+    if (resClass.error && resClass.error.message?.includes('kelas_user_id_2')) {
+      const resFallback = await supabase
+        .from('kelas')
+        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id')
+        .eq('kelas_id', Number(classId))
+        .single()
+      classData = resFallback.data
+    } else {
+      classData = resClass.data
+    }
 
     const activeClassName = className || classData?.kelas_nama || 'PYP Class'
 
     let homeroomTeachers = []
-    if (classData?.kelas_user_id) {
-      const { data: teacherData } = await supabase
+    const teacherIds = [classData?.kelas_user_id, classData?.kelas_user_id_2].filter(Boolean)
+    if (teacherIds.length > 0) {
+      const { data: teachersData } = await supabase
         .from('users')
-        .select('user_nama_depan, user_nama_belakang')
-        .eq('user_id', classData.kelas_user_id)
-        .single()
+        .select('user_id, user_nama_depan, user_nama_belakang')
+        .in('user_id', teacherIds)
 
-      if (teacherData) {
-        homeroomTeachers.push(`${teacherData.user_nama_depan || ''} ${teacherData.user_nama_belakang || ''}`.trim())
+      if (teachersData && teachersData.length > 0) {
+        teacherIds.forEach(id => {
+          const t = teachersData.find(u => u.user_id === id)
+          if (t) {
+            homeroomTeachers.push(`${t.user_nama_depan || ''} ${t.user_nama_belakang || ''}`.trim())
+          }
+        })
       }
     }
     if (homeroomTeachers.length === 0) {
@@ -2355,6 +2408,14 @@ export const generatePypClassReportPDF = async ({
         })
       }
 
+      // Stamp page numbers into footer: "Page X of Y"
+      const totalStudentPages = doc.internal.getNumberOfPages()
+      for (let p = 1; p <= totalStudentPages; p++) {
+        doc.setPage(p)
+        renderPypFooterPageNumber(doc, `Page ${p} of ${totalStudentPages}`)
+      }
+      doc.setPage(totalStudentPages)
+
       return doc
     }
 
@@ -2374,12 +2435,15 @@ export const generatePypClassReportPDF = async ({
         const fullName = `${st.user_nama_depan || ''} ${st.user_nama_belakang || ''}`.trim() || `Student-${i + 1}`
         
         onProgress(i + 1, students.length, `${fullName} (${i + 1}/${students.length})`)
+        await yieldToMain(25)
 
         const doc = await generateStudentPdfDoc(st)
         const pdfBlob = doc.output('blob')
         const safeName = fullName.replace(/[^a-zA-Z0-9\s\-]/g, '').trim() || `Student-${i + 1}`
         zip.file(`${safeName}.pdf`, pdfBlob)
         generated++
+
+        await yieldToMain(10)
       }
 
       if (generated === 0) {
@@ -2388,7 +2452,15 @@ export const generatePypClassReportPDF = async ({
       }
 
       onProgress(students.length, students.length, 'Creating ZIP archive...')
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      await yieldToMain(30)
+      const zipBlob = await zip.generateAsync(
+        { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 4 } },
+        (metadata) => {
+          if (metadata.percent) {
+            onProgress(students.length, students.length, `Creating ZIP (${Math.round(metadata.percent)}%)...`)
+          }
+        }
+      )
       const zipUrl = URL.createObjectURL(zipBlob)
       const a = document.createElement('a')
       a.href = zipUrl
@@ -2470,37 +2542,74 @@ export const renderNurseryLearningProgressionPage1 = (doc, {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9.5)
     doc.setTextColor(17, 24, 39)
-    doc.text(`(${dateRangeText})`, txStart, y + 19)
+    doc.text(dateRangeText, txStart, y + 19)
   }
 
   // Top Right: IB Primary Years Programme Logo
-  const ibW = 42
-  const ibH = 14
-  const ibX = pw - mr - ibW
   if (ibLogoBase64) {
     try {
+      const ibH = 14
+      const imgProps = doc.getImageProperties(ibLogoBase64)
+      const ibW = (imgProps.width / imgProps.height) * ibH
+      const ibX = pw - mr - ibW
       doc.addImage(ibLogoBase64, 'JPEG', ibX, y + 1.5, ibW, ibH)
     } catch (e) {
-      drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
+      const ibW = 40
+      const ibH = 13
+      drawIbPypLogo(doc, pw - mr - ibW, y + 1.5, ibW, ibH)
     }
   } else {
+    const ibW = 40
+    const ibH = 13
+    const ibX = pw - mr - ibW
     drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
   }
 
-  // 3. Student & Class Details
+  // 3. Student & Grade Details (Left) + Homeroom Teacher (Right)
   y = mt + 36
+
+  // Left: Name
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(17, 24, 39)
   doc.text('Name :', ml, y)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(31, 41, 55)
   doc.text(studentName, ml + 16, y)
 
-  y += 7.5
-  doc.text('Class :', ml, y)
-  doc.text(className, ml + 16, y)
+  // Left: Grade
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Grade :', ml, y + 7.5)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(31, 41, 55)
+  doc.text(className, ml + 16, y + 7.5)
+
+  // Right: Homeroom Teacher (aligned horizontally with Name at y)
+  const rightX = 115
+  const teacherStr = Array.isArray(homeroomTeachers) ? homeroomTeachers.join(' & ') : (homeroomTeachers || '-')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(17, 24, 39)
+  doc.text('Homeroom Teacher :', rightX, y)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(31, 41, 55)
+  const teacherLines = doc.splitTextToSize(teacherStr, pw - mr - rightX)
+  let tY = y + 7.5
+  teacherLines.forEach(line => {
+    doc.text(line, rightX, tY)
+    tY += 5
+  })
 
   // 4. Rubric / Progression Legend (matching media_1788253652718.png)
-  y += 18
+  y = Math.max(y + 7.5, tY - 5) + 18
   const legendX = ml + 20
   const boxW = 8.5
   const boxH = 7.5
@@ -2527,10 +2636,14 @@ export const renderNurseryLearningProgressionPage1 = (doc, {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(17, 24, 39)
-  doc.text(': Not Assessed', labelX, y + 5)
+  doc.text(': Not Assessed', labelX, y + 4.5)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(9)
+  doc.setTextColor(17, 24, 39)
+  doc.text('The skill has not been assessed yet.', labelX + 3, y + 10)
 
   // Item 2: Beginning (1 filled)
-  y += 15
+  y += 18
   drawRubricBoxes(legendX, y, 1)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
@@ -2565,20 +2678,7 @@ export const renderNurseryLearningProgressionPage1 = (doc, {
   doc.setTextColor(17, 24, 39)
   doc.text('Demonstrates the skill independently and consistently.', labelX + 3, y + 10)
 
-  // 5. Homeroom Teacher
-  y += 28
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10.5)
-  doc.setTextColor(17, 24, 39)
-  doc.text('Homeroom Teacher', ml, y)
-
-  y += 6.5
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.setTextColor(17, 24, 39)
-  doc.text(homeroomTeachers || '-', ml, y)
-
-  // 6. Footer
+  // 5. Footer
   renderPypReportFooter(doc)
 }
 
@@ -2590,8 +2690,13 @@ export const renderNurseryLearningProgressionTablePages = (doc, {
   className = '',
   areasWithCriteria = [],
   studentScores = {},
+  homeroomTeachers = '',
+  selectedTerm = null,
   logoBase64 = null
 }) => {
+  const parsedTerm = selectedTerm ? parseInt(String(selectedTerm).replace(/\D/g, ''), 10) : null
+  const maxTerm = (parsedTerm && !isNaN(parsedTerm) && parsedTerm >= 1 && parsedTerm <= 4) ? parsedTerm : 4
+
   const pw = doc.internal.pageSize.getWidth()   // 210mm
   const ph = doc.internal.pageSize.getHeight()  // 297mm
   const ml = 18
@@ -2621,17 +2726,8 @@ export const renderNurseryLearningProgressionTablePages = (doc, {
       } catch (e) {}
     }
 
-    // Student & Class Header
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10.5)
-    doc.setTextColor(17, 24, 39)
-    doc.text('Name :', ml, yPos)
-    doc.text(studentName, ml + 16, yPos)
-
-    doc.text('Class :', ml, yPos + 6.5)
-    doc.text(className, ml + 16, yPos + 6.5)
-
-    return yPos + 14
+    // Data siswa/kelas/guru hanya ditampilkan di halaman 1, tidak diulang di halaman tabel
+    return yPos
   }
 
   const drawTableHeader = (yPos) => {
@@ -2814,7 +2910,8 @@ export const renderNurseryLearningProgressionTablePages = (doc, {
       // Render 3-box indicator in Terms 1-4
       let termCellX = ml + colWidths.milestone
       for (let tNum = 1; tNum <= 4; tNum++) {
-        const score = studentScores[`${crit.criteria_id}_${tNum}`] || 0
+        // Only display scores up to the selected term; future terms remain unassessed/blank (score = 0)
+        const score = (maxTerm && tNum > maxTerm) ? 0 : (studentScores[`${crit.criteria_id}_${tNum}`] || 0)
         drawTermBoxesInCell(termCellX, currentY, 14, rowH, score)
         termCellX += 14
       }
@@ -2836,6 +2933,7 @@ export const renderNurseryLearningProgressionSuggestionPage = (doc, {
   className = '',
   dateRangeText = '',
   suggestionText = '',
+  homeroomTeachers = '',
   logoBase64 = null,
   ibLogoBase64 = null
 }) => {
@@ -2887,37 +2985,31 @@ export const renderNurseryLearningProgressionSuggestionPage = (doc, {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9.5)
     doc.setTextColor(17, 24, 39)
-    doc.text(`(${dateRangeText})`, txStart, y + 19)
+    doc.text(dateRangeText, txStart, y + 19)
   }
 
   // Top Right: IB Primary Years Programme Logo
-  const ibW = 42
-  const ibH = 14
-  const ibX = pw - mr - ibW
   if (ibLogoBase64) {
     try {
+      const ibH = 14
+      const imgProps = doc.getImageProperties(ibLogoBase64)
+      const ibW = (imgProps.width / imgProps.height) * ibH
+      const ibX = pw - mr - ibW
       doc.addImage(ibLogoBase64, 'JPEG', ibX, y + 1.5, ibW, ibH)
     } catch (e) {
-      drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
+      const ibW = 40
+      const ibH = 13
+      drawIbPypLogo(doc, pw - mr - ibW, y + 1.5, ibW, ibH)
     }
   } else {
+    const ibW = 40
+    const ibH = 13
+    const ibX = pw - mr - ibW
     drawIbPypLogo(doc, ibX, y + 1.5, ibW, ibH)
   }
 
-  // 3. Student & Class Details
-  y = mt + 36
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.setTextColor(17, 24, 39)
-  doc.text('Name :', ml, y)
-  doc.text(studentName, ml + 16, y)
-
-  y += 7.5
-  doc.text('Class :', ml, y)
-  doc.text(className, ml + 16, y)
-
-  // 4. Section: Suggestion to move forward (per user screenshot)
-  y += 18
+  // 3. Section: Suggestion to move forward (per user screenshot)
+  y = mt + 32
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11.5)
   doc.setTextColor(17, 24, 39)
@@ -2953,6 +3045,7 @@ export const generateNurseryLearningProgressionPDF = async ({
   classId,
   className,
   studentsList = [],
+  term = null,
   startDate = '',
   endDate = '',
   homeroomTeachers = '',
@@ -3040,27 +3133,56 @@ export const generateNurseryLearningProgressionPDF = async ({
 
     const sFmt = formatDateLong(startDate)
     const eFmt = formatDateLong(endDate)
-    const dateRangeText = sFmt && eFmt ? `${sFmt} - ${eFmt}` : (sFmt || eFmt || '')
+    const rawDateRange = sFmt && eFmt ? `${sFmt} - ${eFmt}` : (sFmt || eFmt || '')
+    const termLabel = term ? (String(term).toLowerCase().startsWith('term') ? term : `Term ${term}`) : ''
+    let dateRangeText = ''
+    if (termLabel && rawDateRange) {
+      dateRangeText = `${termLabel} (${rawDateRange})`
+    } else if (termLabel) {
+      dateRangeText = termLabel
+    } else if (rawDateRange) {
+      dateRangeText = `(${rawDateRange})`
+    }
 
-    // 5. Build jsPDF doc
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-
-    for (let sIdx = 0; sIdx < studentsList.length; sIdx++) {
-      const st = studentsList[sIdx]
-      const fullName = `${st.user_nama_depan || ''} ${st.user_nama_belakang || ''}`.trim() || `Student ${sIdx + 1}`
-
-      onProgress(sIdx + 1, studentsList.length, `Generating ${fullName} (${sIdx + 1}/${studentsList.length})...`)
-
-      if (sIdx > 0) {
-        doc.addPage()
+    // Auto-fetch Homeroom Teacher(s) from class if not passed
+    let activeTeachers = homeroomTeachers || ''
+    if (!activeTeachers && classId) {
+      try {
+        const { data: cData } = await supabase
+          .from('kelas')
+          .select('kelas_user_id, kelas_user_id_2')
+          .eq('kelas_id', Number(classId))
+          .single()
+        const tIds = [cData?.kelas_user_id, cData?.kelas_user_id_2].filter(Boolean)
+        if (tIds.length > 0) {
+          const { data: uData } = await supabase
+            .from('users')
+            .select('user_id, user_nama_depan, user_nama_belakang')
+            .in('user_id', tIds)
+          if (uData) {
+            const names = tIds
+              .map(id => uData.find(u => u.user_id === id))
+              .filter(Boolean)
+              .map(u => `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim())
+            activeTeachers = names.join(' & ')
+          }
+        }
+      } catch (err) {
+        console.warn('Could not auto-fetch homeroom teachers for nursery PDF:', err)
       }
+    }
+
+    // 5. Helper to build a single student's jsPDF doc
+    const buildStudentDoc = (st, sIdx) => {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const fullName = `${st.user_nama_depan || ''} ${st.user_nama_belakang || ''}`.trim() || `Student ${sIdx + 1}`
 
       // Page 1: Cover / Rubric Legend
       renderNurseryLearningProgressionPage1(doc, {
         studentName: fullName,
         className: className,
         dateRangeText: dateRangeText,
-        homeroomTeachers: homeroomTeachers,
+        homeroomTeachers: activeTeachers,
         logoBase64,
         ibLogoBase64
       })
@@ -3072,6 +3194,8 @@ export const generateNurseryLearningProgressionPDF = async ({
         className: className,
         areasWithCriteria,
         studentScores: studentScoresMap[st.user_id] || {},
+        homeroomTeachers: activeTeachers,
+        selectedTerm: term,
         logoBase64
       })
 
@@ -3082,22 +3206,83 @@ export const generateNurseryLearningProgressionPDF = async ({
         className: className,
         dateRangeText: dateRangeText,
         suggestionText: suggestionsMap[st.user_id] || '',
+        homeroomTeachers: activeTeachers,
         logoBase64,
         ibLogoBase64
       })
+
+      // Stamp per-student page numbers in footer: "Page X of Y"
+      const totalStudentPages = doc.internal.getNumberOfPages()
+      for (let p = 1; p <= totalStudentPages; p++) {
+        doc.setPage(p)
+        renderPypFooterPageNumber(doc, `Page ${p} of ${totalStudentPages}`)
+      }
+
+      return { doc, fullName }
     }
 
-    // 6. Trigger download
     const safeClassName = (className || 'Nursery').replace(/[^a-zA-Z0-9\s\-]/g, '').trim().replace(/\s+/g, '_')
-    let filename = `Learning_Progression_${safeClassName}.pdf`
-    if (studentsList.length === 1) {
-      const safeName = `${studentsList[0].user_nama_depan || ''}_${studentsList[0].user_nama_belakang || ''}`.trim().replace(/[^a-zA-Z0-9\s\-]/g, '').replace(/\s+/g, '_')
-      filename = `Learning_Progression_${safeName}_${safeClassName}.pdf`
-    } else {
-      filename = `Learning_Progression_Batch_${safeClassName}.pdf`
-    }
+    const termSuffix = term ? `_Term_${term}` : ''
 
-    doc.save(filename)
+    // 6. Single student: Direct PDF download
+    if (studentsList.length === 1) {
+      const st = studentsList[0]
+      onProgress(1, 1, `Generating ${st.user_nama_depan || 'Student'}...`)
+      await yieldToMain(25)
+      const { doc, fullName } = buildStudentDoc(st, 0)
+      const safeName = fullName.replace(/[^a-zA-Z0-9\s\-]/g, '').trim().replace(/\s+/g, '_') || 'Student'
+      const filename = `Learning_Progression_${safeName}_${safeClassName}${termSuffix}.pdf`
+      doc.save(filename)
+    } else {
+      // 7. Multiple students: Batch print packaged as ZIP (matching /data/topic-new pattern)
+      const zip = new JSZip()
+      let generated = 0
+
+      for (let sIdx = 0; sIdx < studentsList.length; sIdx++) {
+        const st = studentsList[sIdx]
+        const fullName = `${st.user_nama_depan || ''} ${st.user_nama_belakang || ''}`.trim() || `Student ${sIdx + 1}`
+        onProgress(sIdx + 1, studentsList.length, `Generating ${fullName} (${sIdx + 1}/${studentsList.length})...`)
+
+        // Yield control to browser so UI remains responsive, spinner updates, and watchdog doesn't trigger
+        await yieldToMain(25)
+
+        const { doc } = buildStudentDoc(st, sIdx)
+        const pdfBlob = doc.output('blob')
+        const safeName = fullName.replace(/[^a-zA-Z0-9\s\-]/g, '').trim() || `Student_${sIdx + 1}`
+        let pdfFilename = `${safeName}.pdf`
+        if (zip.file(pdfFilename)) {
+          pdfFilename = `${safeName}_${sIdx + 1}.pdf`
+        }
+        zip.file(pdfFilename, pdfBlob)
+        generated++
+
+        // Brief yield after blob encoding to ensure UI responsiveness
+        await yieldToMain(10)
+      }
+
+      if (generated === 0) {
+        throw new Error('No student reports generated')
+      }
+
+      onProgress(studentsList.length, studentsList.length, 'Creating ZIP archive...')
+      await yieldToMain(30)
+      const zipBlob = await zip.generateAsync(
+        { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 4 } },
+        (metadata) => {
+          if (metadata.percent) {
+            onProgress(studentsList.length, studentsList.length, `Compressing ZIP (${Math.round(metadata.percent)}%)...`)
+          }
+        }
+      )
+      const zipUrl = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = zipUrl
+      a.download = `Learning_Progression_${safeClassName}${termSuffix}.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(zipUrl)
+    }
   } catch (err) {
     console.error('Error generating nursery learning progression PDF:', err)
     onError(err)

@@ -22,6 +22,7 @@ import {
 } from './lib/pdfGenerators'
 import useAiHelp from './lib/useAiHelp'
 import WizardStepContent from './components/WizardStepContent'
+import UnitPlannerDocumentEditor from './components/UnitPlannerDocumentEditor'
 import CommunityProjectTab from './components/CommunityProjectTab'
 import 'driver.js/dist/driver.css'
 
@@ -8542,405 +8543,65 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         )}
       </div>
 
-      {/* Detail Modal with smooth animation */}
-      {modalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black bg-opacity-50 transition-opacity duration-300"
-        >
-          <div className="w-full flex justify-center items-start gap-4 max-w-[1400px] mt-8" onClick={(e) => e.stopPropagation()}>
-            <div 
-              className="bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100"
-              style={{
-                animation: 'modalSlideIn 0.3s ease-out',
-                width: (aiInputModalOpen || aiResultModalOpen) ? 'calc(100% - 420px)' : '900px',
-                maxWidth: (aiInputModalOpen || aiResultModalOpen) ? 'calc(100% - 420px)' : '900px'
-              }}
-            >
-              {selectedTopic && (
-                <>
-                {/* Modal Header */}
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
-                  {isAddMode ? (
-                    /* Wizard Header */
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-800">{t('topicNew.modal.addTitle')}</h2>
-                          <p className="text-sm text-gray-500 mt-1">{t('topicNew.title')}</p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setModalOpen(false)
-                            setIsAddMode(false)
-                            setCurrentStep(0)
-                          }}
-                          className="text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      
-                      {/* Progress Bar */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between text-sm mb-2">
-                          <span className="font-medium text-gray-700">
-                            Step {currentStep + 1} of {plannerSteps.length}
-                          </span>
-                          <span className="text-gray-500">
-                            {getCompletionProgress().completed} / {getCompletionProgress().total} completed
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-cyan-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(getCompletionProgress().completed / getCompletionProgress().total) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Stepper */}
-                      <div className="flex items-center justify-between">
-                        {plannerSteps.map((step, index) => (
-                          <div key={step.id} className="flex-1 flex items-center justify-center relative">
-                            {/* Connector line */}
-                            {index > 0 && (
-                              <div className={`absolute top-1/2 right-1/2 w-full h-1 -translate-y-1/2 -z-10 ${
-                                isStepCompleted(index - 1) ? 'bg-green-500' : 'bg-gray-300'
-                              }`} />
-                            )}
-                            <button
-                              onClick={() => goToStep(index)}
-                              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all z-10 ${
-                                index === currentStep
-                                  ? 'bg-cyan-500 text-white scale-110'
-                                  : isStepCompleted(index)
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-gray-300 text-gray-600'
-                              }`}
-                              title={step.title}
-                            >
-                              {isStepCompleted(index) ? (
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              ) : (
-                                index + 1
-                              )}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    /* Edit Mode Header - Now Using Wizard */
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-800">Edit Unit Plan</h2>
-                          <p className="text-sm text-gray-500 mt-1">{selectedTopic.topic_nama || 'Unit Plan'}</p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setModalOpen(false)
-                            setIsAddMode(false)
-                            setCurrentStep(0)
-                          }}
-                          className="text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
+      {/* Toddle-Style WYSIWYG IB Unit Planner Document Editor */}
+      {modalOpen && selectedTopic && (
+        <UnitPlannerDocumentEditor
+          isOpen={modalOpen}
+          onClose={() => {
+            setModalOpen(false)
+            setIsAddMode(false)
+            setCurrentStep(0)
+          }}
+          isAddMode={isAddMode}
+          selectedTopic={selectedTopic}
+          setSelectedTopic={setSelectedTopic}
+          wizardAssessment={wizardAssessment}
+          setWizardAssessment={setWizardAssessment}
+          wizardCriteria={wizardCriteria}
+          wizardStrands={wizardStrands}
+          wizardRubrics={wizardRubrics}
+          loadingStrands={loadingStrands}
+          subjects={subjects}
+          allKelas={wizardKelasOptions}
+          allKelasRaw={allowedKelasRaw}
+          yearOptions={yearOptions}
+          wizardYear={wizardYear}
+          onWizardYearChange={(yr) => {
+            setWizardYear(yr)
+            setSelectedTopic(prev => ({ ...prev, topic_kelas_id: '', topic_subject_id: '' }))
+            setSubjectsForSelectedKelas([])
+          }}
+          onKelasChange={(kelasId) => {
+            setSelectedTopic(prev => ({ ...prev, topic_kelas_id: kelasId, topic_subject_id: '' }))
+            setSubjectsForSelectedKelas([])
+            if (kelasId) fetchSubjectsForKelas(kelasId)
+          }}
+          subjectsForSelectedKelas={subjectsForSelectedKelas}
+          keyConcepts={keyConcepts}
+          globalContexts={globalContexts}
+          globalContextExplorations={globalContextExplorations}
+          learnerProfiles={learnerProfiles}
+          saving={saving}
+          onSave={(isDraft) => isAddMode ? saveNewTopic(isDraft) : updateExistingTopic(isDraft)}
+          onExportPDF={selectedTopic?.topic_id ? () => handleGeneratePDF(selectedTopic) : null}
+          onExportAssessmentPDF={handleGenerateAssessmentPDF}
+          aiLoading={aiLoading}
+          openAiInputModal={openAiInputModal}
+          requestAiHelp={requestAiHelp}
+          requestAiHelpAtl={requestAiHelpAtl}
+          requestAiHelpTSC={requestAiHelpTSC}
+          fetchCriteriaForSubject={fetchCriteriaForSubject}
+          fetchStrandsForCriteria={fetchStrandsForCriteria}
+          t={t}
+          isDark={isDark}
+          theme={theme}
+        />
+      )}
 
-                      {/* Wizard Progress Bar */}
-                      <div className="flex items-start justify-between mb-6">
-                        {plannerSteps.map((step, index) => (
-                          <button 
-                            key={step.id} 
-                            type="button"
-                            onClick={() => goToStep(index)}
-                            className="flex-1 flex flex-col items-center relative group cursor-pointer"
-                            title={`Go to ${step.title}`}
-                          >
-                            {/* Connector line - before circle */}
-                            {index > 0 && (
-                              <div className={`absolute top-5 right-1/2 w-full h-1 -z-10 ${
-                                isStepCompleted(index - 1) ? 'bg-green-500' : 'bg-gray-200'
-                              }`} />
-                            )}
-                            {/* Circle */}
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all z-10 group-hover:scale-110 ${
-                              index === currentStep 
-                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white ring-4 ring-cyan-200' 
-                                : isStepCompleted(index)
-                                ? 'bg-green-500 text-white group-hover:bg-green-600' 
-                                : 'bg-gray-200 text-gray-500 group-hover:bg-gray-300'
-                            }`}>
-                              {isStepCompleted(index) ? (
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                              ) : (
-                                <span>{index + 1}</span>
-                              )}
-                            </div>
-                            {/* Label */}
-                            <span className={`text-xs mt-2 text-center font-medium leading-tight max-w-[80px] group-hover:text-cyan-600 transition-colors ${
-                              index === currentStep ? 'text-cyan-600' : 'text-gray-500'
-                            }`}>
-                              {step.title}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Modal Content */}
-                <div className="px-6 py-6">
-                  {/* Wizard Content (both add and edit mode) */}
-                    <div className="space-y-6">
-                      {/* Step Title, Description & Collapsible IB Guidance */}
-                      <div className="bg-cyan-50/80 border border-cyan-200 rounded-md overflow-hidden transition-all">
-                        <button
-                          type="button"
-                          onClick={() => setShowStepGuidance(prev => !prev)}
-                          className="w-full px-3.5 py-2 flex items-center justify-between hover:bg-cyan-100/60 transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-2 flex-wrap min-w-0 pr-2">
-                            <span className="text-xs font-bold text-cyan-900">
-                              {plannerSteps[currentStep].title}
-                            </span>
-                            <span className="text-[11px] text-cyan-700 hidden sm:inline border-l border-cyan-300 pl-2 truncate max-w-md">
-                              {plannerSteps[currentStep].description}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs text-cyan-700 font-medium flex-shrink-0">
-                            <span className="text-[10px] bg-cyan-100 px-2 py-0.5 rounded text-cyan-800 border border-cyan-200">
-                              💡 IB Guidance
-                            </span>
-                            <svg
-                              className={`w-3.5 h-3.5 transform transition-transform ${showStepGuidance ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </button>
-                        
-                        {showStepGuidance && (
-                          <div className="px-3.5 pb-3 pt-1 border-t border-cyan-200/80 bg-white/95 space-y-1.5">
-                            <p className="text-cyan-800 font-medium text-xs sm:hidden">
-                              {plannerSteps[currentStep].description}
-                            </p>
-                            <div className="bg-cyan-50/60 p-2.5 rounded border border-cyan-100 text-[11px] text-gray-700 leading-normal">
-                              <p className="font-semibold text-cyan-700 text-xs mb-0.5">💡 IB Guidance:</p>
-                              <p>{plannerSteps[currentStep].guidance}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Step Fields */}
-                      <WizardStepContent
-                        currentStep={currentStep}
-                        selectedTopic={selectedTopic}
-                        setSelectedTopic={setSelectedTopic}
-                        wizardAssessment={wizardAssessment}
-                        setWizardAssessment={setWizardAssessment}
-                        wizardCriteria={wizardCriteria}
-                        wizardStrands={wizardStrands}
-                        wizardRubrics={wizardRubrics}
-                        loadingStrands={loadingStrands}
-                        subjects={subjects}
-                        allKelas={wizardKelasOptions}
-                        kelasLoading={kelasLoading}
-                        keyConcepts={keyConcepts}
-                        globalContexts={globalContexts}
-                        globalContextExplorations={globalContextExplorations}
-                        learnerProfiles={learnerProfiles}
-                        isAddMode={isAddMode}
-                        topicAssessment={topicAssessment}
-                        aiLoading={aiLoading}
-                        openAiInputModal={openAiInputModal}
-                        requestAiHelp={requestAiHelp}
-                        requestAiHelpAtl={requestAiHelpAtl}
-                        requestAiHelpTSC={requestAiHelpTSC}
-                        setAiHelpType={setAiHelpType}
-                        setAiError={setAiError}
-                        setAiResultModalOpen={setAiResultModalOpen}
-                        setSelectedKeyConcepts={setSelectedKeyConcepts}
-                        setSelectedRelatedConcepts={setSelectedRelatedConcepts}
-                        setSelectedGlobalContexts={setSelectedGlobalContexts}
-                        setSelectedStatements={setSelectedStatements}
-                        setSelectedConceptualUnderstanding={setSelectedConceptualUnderstanding}
-                        setSelectedLearnerProfiles={setSelectedLearnerProfiles}
-                        setSelectedServiceLearning={setSelectedServiceLearning}
-                        setSelectedResources={setSelectedResources}
-                        setSelectedAtlSkills={setSelectedAtlSkills}
-                        isStepCompleted={isStepCompleted}
-                        fetchKelasForSubject={fetchKelasForSubject}
-                        fetchCriteriaForSubject={fetchCriteriaForSubject}
-                        setAllKelas={setAllKelas}
-                        fetchStrandsForCriteria={fetchStrandsForCriteria}
-                        yearOptions={yearOptions}
-                        allKelasRaw={allowedKelasRaw}
-                        wizardYear={wizardYear}
-                        subjectsForSelectedKelas={subjectsForSelectedKelas}
-                        onKelasChange={(kelasId) => {
-                          setSelectedTopic(prev => ({ ...prev, topic_kelas_id: kelasId, topic_subject_id: '' }))
-                          setSubjectsForSelectedKelas([])
-                          if (kelasId) fetchSubjectsForKelas(kelasId)
-                        }}
-                        onWizardYearChange={(yr) => {
-                          setWizardYear(yr)
-                          setSelectedTopic(prev => ({ ...prev, topic_kelas_id: '', topic_subject_id: '' }))
-                          setSubjectsForSelectedKelas([])
-                        }}
-                        t={t}
-                      />
-                      {/* Navigation Buttons */}
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={goToPreviousStep}
-                            disabled={currentStep === 0}
-                            className="px-3.5 py-2 border border-gray-300 text-gray-700 rounded-md text-xs font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                            Previous
-                          </button>
-                        </div>
-                        
-                        <div className="text-center flex-1">
-                          {(() => {
-                            const missingFields = getMissingFields()
-                            const progress = getCompletionProgress()
-                            
-                            if (progress.completed === plannerSteps.length) {
-                              return (
-                                <div className="flex items-center justify-center gap-1.5 text-green-600">
-                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                  </svg>
-                                  <span className="text-xs font-medium">All steps completed - Ready to save!</span>
-                                </div>
-                              )
-                            } else if (missingFields.length > 0) {
-                              const groupedByStep = missingFields.reduce((acc, item) => {
-                                if (!acc[item.step]) acc[item.step] = []
-                                acc[item.step].push(item.field)
-                                return acc
-                              }, {})
-                              
-                              return (
-                                <div className="text-left px-2">
-                                  <p className="text-[11px] text-red-600 font-semibold mb-0.5">⚠️ Missing required fields:</p>
-                                  <div className="max-h-16 overflow-y-auto">
-                                    {Object.entries(groupedByStep).map(([step, fields]) => (
-                                      <p key={step} className="text-[11px] text-gray-600">
-                                        <span className="font-medium text-red-500">Step {step}:</span> {fields.join(', ')}
-                                      </p>
-                                    ))}
-                                  </div>
-                                </div>
-                              )
-                            } else {
-                              return <p className="text-xs text-gray-500">Fill all required fields</p>
-                            }
-                          })()}
-                        </div>
-                        
-                        {(() => {
-                          const isDraftTopic = isAddMode || selectedTopic?.topic_status === 'draft' || selectedTopic?.topic_status === 'Draft'
-                          
-                          if (currentStep < plannerSteps.length - 1) {
-                            return (
-                              <div className="flex items-center gap-2">
-                                {isDraftTopic && (
-                                  <button
-                                    onClick={() => isAddMode ? saveNewTopic(true) : updateExistingTopic(true)}
-                                    disabled={saving}
-                                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
-                                    title="Save progress as draft without publishing"
-                                  >
-                                    {saving ? (
-                                      <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
-                                    ) : (
-                                      <span>📝 Save Draft</span>
-                                    )}
-                                  </button>
-                                )}
-                                <button
-                                  onClick={goToNextStep}
-                                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
-                                >
-                                  Next
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                  </svg>
-                                </button>
-                              </div>
-                            )
-                          } else {
-                            return (
-                              <div className="flex items-center gap-2">
-                                {isDraftTopic && (
-                                  <button
-                                    onClick={() => isAddMode ? saveNewTopic(true) : updateExistingTopic(true)}
-                                    disabled={saving}
-                                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
-                                    title="Save progress as draft without publishing"
-                                  >
-                                    {saving ? (
-                                      <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
-                                    ) : (
-                                      <span>📝 Save Draft</span>
-                                    )}
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => isAddMode ? saveNewTopic(false) : updateExistingTopic(false)}
-                                  disabled={saving}
-                                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
-                                >
-                                  {saving ? (
-                                    <>
-                                      <FontAwesomeIcon icon={faSpinner} className="animate-spin text-xs" />
-                                      {isDraftTopic ? 'Publishing...' : 'Updating...'}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                      </svg>
-                                      {isDraftTopic ? 'Publish Unit' : 'Update Unit'}
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            )
-                          }
-                        })()}
-                      </div>
-                    </div>
-                </div>
-              </>
-            )}
-            </div>
-
-            {(aiInputModalOpen || aiResultModalOpen) && (
-              <div className="flex-shrink-0 h-[90vh]" onClick={(e) => e.stopPropagation()}>
-                {aiInputModalOpen && !aiResultModalOpen && (
-                  <div className="bg-white rounded-2xl shadow-2xl h-full flex flex-col" style={{ width: '400px' }}>
+      {/* Standalone AI Input Modal Dialog */}
+      {aiInputModalOpen && !aiResultModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" onClick={() => setAiInputModalOpen(false)}>
+          <div className="bg-white dark:bg-stone-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
                     <div className="px-6 py-4 border-b border-gray-200 bg-purple-50 flex-shrink-0 rounded-t-2xl">
                       <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-gray-900">
@@ -9004,16 +8665,18 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                       </button>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
                 
-                {aiResultModalOpen && (
-                  <SlideOver
-                    isOpen={true}
-                    inline={true}
-                    onClose={() => setAiResultModalOpen(false)}
-                    title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'conceptualUnderstanding' ? 'AI Suggestions: Conceptual Understanding' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'formativeAssessment' ? 'AI Suggestions: Formative Assessment' : aiHelpType === 'atl' ? 'AI Suggestions: ATL Skills' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
-                    size="md"
-                  >
+              {/* Standalone AI Result SlideOver Drawer */}
+              {aiResultModalOpen && (
+                <SlideOver
+                  isOpen={true}
+                  inline={false}
+                  onClose={() => setAiResultModalOpen(false)}
+                  title={aiHelpType === 'inquiryQuestion' ? 'AI Suggestions: Inquiry Questions' : aiHelpType === 'keyConcept' ? 'AI Suggestions: Key Concepts' : aiHelpType === 'relatedConcept' ? 'AI Suggestions: Related Concepts' : aiHelpType === 'globalContext' ? 'AI Suggestions: Global Context' : aiHelpType === 'conceptualUnderstanding' ? 'AI Suggestions: Conceptual Understanding' : aiHelpType === 'statement' ? 'AI Suggestions: Statement of Inquiry' : aiHelpType === 'learnerProfile' ? 'AI Suggestions: Learner Profile' : aiHelpType === 'serviceLearning' ? 'AI Suggestions: Service Learning' : aiHelpType === 'formativeAssessment' ? 'AI Suggestions: Formative Assessment' : aiHelpType === 'atl' ? 'AI Suggestions: ATL Skills' : aiHelpType === 'resources' ? 'AI Suggestions: Resources' : aiHelpType === 'assessmentName' ? 'AI Suggestions: Assessment Details' : aiHelpType === 'assessmentRelationship' ? 'AI Suggestions: Assessment Relationship' : 'AI Suggestions: Unit Title'}
+                  size="lg"
+                >
                     <div className="flex flex-col h-full">
                       <div 
                         ref={aiScrollRef} 
@@ -9551,11 +9214,6 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
                     </div>
                   </SlideOver>
                 )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Save Notification Toast */}
       {saveNotification && (

@@ -24,18 +24,31 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from('kelas')
-      .select('kelas_id, kelas_nama, kelas_year_id, kelas_unit_id')
+      .select('kelas_id, kelas_nama, kelas_year_id, kelas_unit_id, kelas_user_id, kelas_user_id_2')
       .order('kelas_nama')
 
     if (userId) {
-      query = query.eq('kelas_user_id', parseInt(userId))
+      const uid = parseInt(userId)
+      query = query.or(`kelas_user_id.eq.${uid},kelas_user_id_2.eq.${uid}`)
     }
     if (yearId) {
       query = query.eq('kelas_year_id', parseInt(yearId))
     }
 
-    const { data, error } = await query
-    if (error) throw error
+    let { data, error } = await query
+    if (error && error.message?.includes('kelas_user_id_2')) {
+      let fallbackQuery = supabaseAdmin
+        .from('kelas')
+        .select('kelas_id, kelas_nama, kelas_year_id, kelas_unit_id, kelas_user_id')
+        .order('kelas_nama')
+      if (userId) fallbackQuery = fallbackQuery.eq('kelas_user_id', parseInt(userId))
+      if (yearId) fallbackQuery = fallbackQuery.eq('kelas_year_id', parseInt(yearId))
+      const fallbackRes = await fallbackQuery
+      if (fallbackRes.error) throw fallbackRes.error
+      data = fallbackRes.data
+    } else if (error) {
+      throw error
+    }
 
     let result = data || []
 

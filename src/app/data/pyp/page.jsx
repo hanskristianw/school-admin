@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/lib/theme'
+import { getUserData } from '@/lib/permissions'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -366,6 +367,7 @@ export default function PypPage() {
   const [nurseryHasUnsavedChanges, setNurseryHasUnsavedChanges] = useState(false)
   const [showNurseryPrintModal, setShowNurseryPrintModal] = useState(false)
   const [nurseryPrintScope, setNurseryPrintScope] = useState('single') // 'single' | 'batch'
+  const [nurseryPrintTerm, setNurseryPrintTerm] = useState(1) // 1 | 2 | 3 | 4
   const [nurseryPrintStartDate, setNurseryPrintStartDate] = useState(() => new Date().toISOString().split('T')[0])
   const [nurseryPrintEndDate, setNurseryPrintEndDate] = useState(() => new Date().toISOString().split('T')[0])
   const [nurseryPrintTeachers, setNurseryPrintTeachers] = useState('')
@@ -475,13 +477,138 @@ export default function PypPage() {
     }
   }
 
+  // Auth & Permissions States
+  const [currentUser, setCurrentUser] = useState(null)
+  const [userIsAdmin, setUserIsAdmin] = useState(false)
+  const [userIsPrincipal, setUserIsPrincipal] = useState(false)
+  const [allRawClasses, setAllRawClasses] = useState([])
+  const [allPypClassesList, setAllPypClassesList] = useState([])
+  const [authChecked, setAuthChecked] = useState(false)
+
   // Master Database Data States
   const [years, setYears] = useState([])
   const [units, setUnits] = useState([])
-  const [pypClasses, setPypClasses] = useState([])
   const [subjects, setSubjects] = useState([])
   const [pypUnitsList, setPypUnitsList] = useState([]) // From dedicated `pyp_unit` table
   const [loading, setLoading] = useState(true)
+
+  // Auth Initialization Effect
+  useEffect(() => {
+    async function initAuth() {
+      try {
+        const u = getUserData()
+        if (u) {
+          setCurrentUser(u)
+          const uid = u.user_id || u.userID || u.id
+          let adminFlag = Boolean(u.isAdmin || u.is_admin)
+          let principalFlag = Boolean(u.isPrincipal || u.is_principal)
+
+          if (uid) {
+            try {
+              const { data: dbUser } = await supabase
+                .from('users')
+                .select('user_id, user_role_id, role:user_role_id(role_id, role_name, is_admin, is_principal)')
+                .eq('user_id', Number(uid))
+                .single()
+
+              if (dbUser?.role) {
+                if (dbUser.role.is_admin) adminFlag = true
+                if (dbUser.role.is_principal) principalFlag = true
+              }
+            } catch (err) {
+              console.warn('Error verifying user role from DB:', err)
+            }
+          }
+
+          setUserIsAdmin(adminFlag)
+          setUserIsPrincipal(principalFlag)
+        }
+      } finally {
+        setAuthChecked(true)
+      }
+    }
+    initAuth()
+  }, [])
+
+  // Check if user has EVER been a homeroom teacher in ANY academic year (homeroom 1 or 2)
+  const isHomeroomEver = useMemo(() => {
+    if (userIsAdmin) return true
+    const uid = currentUser?.user_id || currentUser?.userID || currentUser?.id
+    if (!uid) return false
+    return allRawClasses.some(k => 
+      Number(k.kelas_user_id) === Number(uid) || 
+      Number(k.kelas_user_id_2) === Number(uid)
+    )
+  }, [allRawClasses, currentUser, userIsAdmin])
+
+  // PYP Classes accessible to the current user (strictly filtered by role and homeroom assignment)
+  const pypClasses = useMemo(() => {
+    const uid = currentUser?.user_id || currentUser?.userID || currentUser?.id
+    let classes = userIsAdmin
+      ? allPypClassesList
+      : allPypClassesList.filter(k => 
+          Number(k.kelas_user_id) === Number(uid) || 
+          Number(k.kelas_user_id_2) === Number(uid)
+        )
+
+    if (selectedYearId) {
+      const yearFiltered = classes.filter(k => !k.kelas_year_id || String(k.kelas_year_id) === String(selectedYearId))
+      if (yearFiltered.length > 0) {
+        classes = yearFiltered
+      }
+    }
+
+    return classes
+  }, [allPypClassesList, userIsAdmin, currentUser, selectedYearId])
+
+  // Keep selectedClassId pointing to a valid accessible class
+  useEffect(() => {
+    if (pypClasses.length > 0) {
+      const exists = pypClasses.some(c => c.kelas_id.toString() === selectedClassId)
+      if (!exists) {
+        setSelectedClassId(pypClasses[0].kelas_id.toString())
+      }
+    } else {
+      setSelectedClassId('')
+    }
+  }, [pypClasses, selectedClassId])
+
+  // Access permissions
+  const canAccessTemplates = useMemo(() => {
+    return userIsAdmin || userIsPrincipal
+  }, [userIsAdmin, userIsPrincipal])
+
+  const canAccessClassAndHomeroom = useMemo(() => {
+    return userIsAdmin || isHomeroomEver
+  }, [userIsAdmin, isHomeroomEver])
+
+  const canAccessSubjects = useMemo(() => {
+    return userIsAdmin
+  }, [userIsAdmin])
+
+  const allowedTabs = useMemo(() => {
+    const tabs = []
+    if (canAccessTemplates) tabs.push('templates')
+    if (canAccessClassAndHomeroom) tabs.push('poi')
+    if (canAccessSubjects) {
+      tabs.push('subject')
+      tabs.push('comment')
+    }
+    if (canAccessClassAndHomeroom) tabs.push('homeroom_comment')
+    return tabs
+  }, [canAccessTemplates, canAccessClassAndHomeroom, canAccessSubjects])
+
+  // Automatically switch activeTab if current tab is not permitted
+  useEffect(() => {
+    if (!authChecked) return
+    if (allowedTabs.length > 0 && !allowedTabs.includes(activeTab)) {
+      if (allowedTabs.includes('poi')) {
+        setActiveTab('poi')
+      } else {
+        setActiveTab(allowedTabs[0])
+      }
+    }
+  }, [allowedTabs, activeTab, authChecked])
 
   // Master Lists Data States (pyp_ci_list, pyp_loi_list, pyp_atls_list, pyp_kc_list)
   const [ciList, setCiList] = useState([])
@@ -823,18 +950,60 @@ export default function PypPage() {
   }
 
   const handleToggleScore = (criteriaId, term, clickedBoxNumber) => {
-    const key = `${criteriaId}_${term}`
-    const currentScore = nurseryStudentScores[key] || 0
+    const getTermScore = (t) => nurseryStudentScores[`${criteriaId}_${t}`] || 0
+    const currentScore = getTermScore(term)
 
-    let newScore = clickedBoxNumber
-    if (currentScore === clickedBoxNumber) {
-      newScore = 0
+    // Calculate minimum allowed score based on previous terms
+    // (Next term cannot be lower than previous terms: Term T >= Term T-1)
+    let minAllowed = 0
+    for (let t = 1; t < term; t++) {
+      const prevScore = getTermScore(t)
+      if (prevScore > minAllowed) {
+        minAllowed = prevScore
+      }
     }
 
-    setNurseryStudentScores(prev => ({
-      ...prev,
-      [key]: newScore
-    }))
+    let targetScore = clickedBoxNumber
+
+    if (currentScore === clickedBoxNumber) {
+      if (currentScore > minAllowed) {
+        targetScore = minAllowed
+      } else {
+        setNotif({
+          isOpen: true,
+          type: 'warning',
+          title: 'Score Progression Limit',
+          message: `Term ${term} score cannot be less than Term ${term - 1} (minimum ${minAllowed}).`
+        })
+        return
+      }
+    } else if (clickedBoxNumber < minAllowed) {
+      setNotif({
+        isOpen: true,
+        type: 'warning',
+        title: 'Score Progression Limit',
+        message: `Term ${term} score cannot be less than Term ${term - 1} (minimum ${minAllowed}).`
+      })
+      return
+    }
+
+    setNurseryStudentScores(prev => {
+      const nextScores = { ...prev }
+      nextScores[`${criteriaId}_${term}`] = targetScore
+
+      // Auto-propagate to subsequent terms: "misal ketika term 1 sudah 3, maka term 2, 3, 4 otomatis 3"
+      if (targetScore > 0) {
+        for (let nextT = term + 1; nextT <= 4; nextT++) {
+          const nextKey = `${criteriaId}_${nextT}`
+          const currentNextScore = nextScores[nextKey] || 0
+          if (currentNextScore < targetScore) {
+            nextScores[nextKey] = targetScore
+          }
+        }
+      }
+
+      return nextScores
+    })
     setNurseryHasUnsavedChanges(true)
   }
 
@@ -908,7 +1077,7 @@ export default function PypPage() {
     }
   }
 
-  const formatNurseryDatePreview = (startDate, endDate) => {
+  const formatNurseryDatePreview = (startDate, endDate, term = null) => {
     const formatDateLong = (dateStr) => {
       if (!dateStr) return ''
       const parts = dateStr.split('-')
@@ -923,23 +1092,29 @@ export default function PypPage() {
     }
     const s = formatDateLong(startDate)
     const e = formatDateLong(endDate)
-    if (s && e) return `(${s} - ${e})`
-    if (s || e) return `(${s || e})`
+    const rawDateRange = (s && e) ? `${s} - ${e}` : (s || e || '')
+    const termLabel = term ? (String(term).toLowerCase().startsWith('term') ? term : `Term ${term}`) : ''
+    if (termLabel && rawDateRange) return `${termLabel} (${rawDateRange})`
+    if (termLabel) return termLabel
+    if (rawDateRange) return `(${rawDateRange})`
     return ''
   }
 
   const handleOpenNurseryPrintModal = async () => {
     setShowNurseryPrintModal(true)
-    if (!nurseryPrintTeachers && currentSelectedClassObj?.kelas_user_id) {
+    if (!nurseryPrintTeachers && (currentSelectedClassObj?.kelas_user_id || currentSelectedClassObj?.kelas_user_id_2)) {
       try {
+        const teacherIds = [currentSelectedClassObj.kelas_user_id, currentSelectedClassObj.kelas_user_id_2].filter(Boolean)
         const { data: uData } = await supabase
           .from('users')
-          .select('user_nama_depan, user_nama_belakang')
-          .eq('user_id', currentSelectedClassObj.kelas_user_id)
-          .single()
-        if (uData) {
-          const tName = `${uData.user_nama_depan || ''} ${uData.user_nama_belakang || ''}`.trim()
-          setNurseryPrintTeachers(tName)
+          .select('user_id, user_nama_depan, user_nama_belakang')
+          .in('user_id', teacherIds)
+        if (uData && uData.length > 0) {
+          const names = teacherIds
+            .map(id => uData.find(u => u.user_id === id))
+            .filter(Boolean)
+            .map(u => `${u.user_nama_depan || ''} ${u.user_nama_belakang || ''}`.trim())
+          setNurseryPrintTeachers(names.join(' & '))
         }
       } catch (err) {
         console.warn('Could not prefill homeroom teacher:', err)
@@ -971,10 +1146,14 @@ export default function PypPage() {
         return
       }
 
+      // Yield to React to ensure modal spinner and progress bar render cleanly
+      await new Promise(r => setTimeout(r, 50))
+
       await generateNurseryLearningProgressionPDF({
         classId: currentSelectedClassObj.kelas_id,
         className: currentSelectedClassObj.kelas_nama,
         studentsList: targetStudents,
+        term: nurseryPrintTerm,
         startDate: nurseryPrintStartDate,
         endDate: nurseryPrintEndDate,
         homeroomTeachers: nurseryPrintTeachers,
@@ -1145,16 +1324,15 @@ export default function PypPage() {
         }
 
         // 2. Filter Classes strictly belonging to PYP Units (is_pyp === true)
+        const rawClasses = resClasses.data || []
+        setAllRawClasses(rawClasses)
+
         const pypUnitsListRaw = resUnits.data || []
         setUnits(pypUnitsListRaw)
 
         const pypUnitIdSet = new Set(pypUnitsListRaw.map(u => u.unit_id))
-        const pypClassesList = (resClasses.data || []).filter(k => k.kelas_unit_id && pypUnitIdSet.has(k.kelas_unit_id))
-        
-        setPypClasses(pypClassesList)
-        if (pypClassesList.length > 0) {
-          setSelectedClassId(pypClassesList[0].kelas_id.toString())
-        }
+        const pypClassesList = rawClasses.filter(k => k.kelas_unit_id && pypUnitIdSet.has(k.kelas_unit_id))
+        setAllPypClassesList(pypClassesList)
 
         if (resSubjects.data) setSubjects(resSubjects.data)
 
@@ -2708,121 +2886,144 @@ export default function PypPage() {
         <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}`, marginBottom: '24px', gap: '24px', flexWrap: 'wrap' }}>
           
           {/* TAB 1: Master Templates */}
-          <button
-            onClick={() => setActiveTab('templates')}
-            style={{
-              padding: '12px 0',
-              fontSize: '14px',
-              fontWeight: activeTab === 'templates' ? 600 : 400,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              color: activeTab === 'templates' ? textPrimary : textSecondary,
-              borderBottom: activeTab === 'templates' ? `2px solid ${textPrimary}` : '2px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <FontAwesomeIcon icon={faCopy} style={{ fontSize: '13px' }} />
-            Master Templates
-          </button>
+          {canAccessTemplates && (
+            <button
+              onClick={() => setActiveTab('templates')}
+              style={{
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: activeTab === 'templates' ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: activeTab === 'templates' ? textPrimary : textSecondary,
+                borderBottom: activeTab === 'templates' ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={faCopy} style={{ fontSize: '13px' }} />
+              Master Templates
+            </button>
+          )}
 
           {/* TAB 2: Class */}
-          <button
-            onClick={() => setActiveTab('poi')}
-            style={{
-              padding: '12px 0',
-              fontSize: '14px',
-              fontWeight: activeTab === 'poi' ? 600 : 400,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              color: activeTab === 'poi' ? textPrimary : textSecondary,
-              borderBottom: activeTab === 'poi' ? `2px solid ${textPrimary}` : '2px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <FontAwesomeIcon icon={faChalkboardUser} style={{ fontSize: '13px' }} />
-            Class ({pypClasses.length})
-          </button>
+          {canAccessClassAndHomeroom && (
+            <button
+              onClick={() => setActiveTab('poi')}
+              style={{
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: activeTab === 'poi' ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: activeTab === 'poi' ? textPrimary : textSecondary,
+                borderBottom: activeTab === 'poi' ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={faChalkboardUser} style={{ fontSize: '13px' }} />
+              Class ({pypClasses.length})
+            </button>
+          )}
 
           {/* TAB 3: Subject */}
-          <button
-            onClick={() => setActiveTab('subject')}
-            style={{
-              padding: '12px 0',
-              fontSize: '14px',
-              fontWeight: activeTab === 'subject' ? 600 : 400,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              color: activeTab === 'subject' ? textPrimary : textSecondary,
-              borderBottom: activeTab === 'subject' ? `2px solid ${textPrimary}` : '2px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <FontAwesomeIcon icon={faBookOpen} style={{ fontSize: '13px' }} />
-            Subject
-          </button>
+          {canAccessSubjects && (
+            <button
+              onClick={() => setActiveTab('subject')}
+              style={{
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: activeTab === 'subject' ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: activeTab === 'subject' ? textPrimary : textSecondary,
+                borderBottom: activeTab === 'subject' ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={faBookOpen} style={{ fontSize: '13px' }} />
+              Subject
+            </button>
+          )}
 
           {/* TAB 4: Subject Comment */}
-          <button
-            onClick={() => setActiveTab('comment')}
-            style={{
-              padding: '12px 0',
-              fontSize: '14px',
-              fontWeight: activeTab === 'comment' ? 600 : 400,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              color: activeTab === 'comment' ? textPrimary : textSecondary,
-              borderBottom: activeTab === 'comment' ? `2px solid ${textPrimary}` : '2px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <FontAwesomeIcon icon={faComments} style={{ fontSize: '13px' }} />
-            Subject Comment
-          </button>
+          {canAccessSubjects && (
+            <button
+              onClick={() => setActiveTab('comment')}
+              style={{
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: activeTab === 'comment' ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: activeTab === 'comment' ? textPrimary : textSecondary,
+                borderBottom: activeTab === 'comment' ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={faComments} style={{ fontSize: '13px' }} />
+              Subject Comment
+            </button>
+          )}
 
           {/* TAB 5: Homeroom Comment */}
-          <button
-            onClick={() => setActiveTab('homeroom_comment')}
-            style={{
-              padding: '12px 0',
-              fontSize: '14px',
-              fontWeight: activeTab === 'homeroom_comment' ? 600 : 400,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              color: activeTab === 'homeroom_comment' ? textPrimary : textSecondary,
-              borderBottom: activeTab === 'homeroom_comment' ? `2px solid ${textPrimary}` : '2px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <FontAwesomeIcon icon={faHouseUser} style={{ fontSize: '13px' }} />
-            Homeroom Comment
-          </button>
+          {canAccessClassAndHomeroom && (
+            <button
+              onClick={() => setActiveTab('homeroom_comment')}
+              style={{
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: activeTab === 'homeroom_comment' ? 600 : 400,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: activeTab === 'homeroom_comment' ? textPrimary : textSecondary,
+                borderBottom: activeTab === 'homeroom_comment' ? `2px solid ${textPrimary}` : '2px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <FontAwesomeIcon icon={faHouseUser} style={{ fontSize: '13px' }} />
+              Homeroom Comment
+            </button>
+          )}
 
         </div>
+
+        {/* Access Restricted Notice if user has no allowed tabs */}
+        {authChecked && !loading && allowedTabs.length === 0 && (
+          <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '40px 20px', textAlign: 'center', marginBottom: '24px' }}>
+            <FontAwesomeIcon icon={faExclamationTriangle} style={{ fontSize: '36px', color: '#F59E0B', marginBottom: '16px' }} />
+            <h3 style={{ fontSize: '18px', fontWeight: 600, color: textPrimary, marginBottom: '8px' }}>
+              Access Restricted
+            </h3>
+            <p style={{ fontSize: '14px', color: textSecondary, maxWidth: '520px', margin: '0 auto' }}>
+              You do not have access to the PYP Portal. The Class and Homeroom Comment sections are only accessible to Homeroom Teachers, and Master Templates is accessible to Principals and Administrators.
+            </p>
+          </div>
+        )}
 
         {/* ------------------------------------------------------------- */}
         {/* TAB 1: MASTER DATA LISTS (DB STRICT) */}
         {/* ------------------------------------------------------------- */}
-        {activeTab === 'templates' && (
+        {activeTab === 'templates' && canAccessTemplates && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
             <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '20px' }}>
@@ -3183,7 +3384,7 @@ export default function PypPage() {
         {/* ------------------------------------------------------------- */}
         {/* TAB 2: CLASS (FILTERED STRICTLY BY is_pyp === true) */}
         {/* ------------------------------------------------------------- */}
-        {activeTab === 'poi' && (
+        {activeTab === 'poi' && canAccessClassAndHomeroom && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
             {/* PYP Class Selector Bar */}
@@ -3717,7 +3918,7 @@ export default function PypPage() {
         {/* ----------------------------------------------------------        {/* ------------------------------------------------------------- */}
         {/* TAB 3: SUBJECT & STRAND ASSESSMENT (STREAMLINED MATRIX) */}
         {/* ------------------------------------------------------------- */}
-        {activeTab === 'subject' && (
+        {activeTab === 'subject' && canAccessSubjects && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                  {/* Database Setup Notice if table does not exist */}
             {dbAssessSetupNeeded && (
@@ -4387,7 +4588,7 @@ export default function PypPage() {
         {/* ------------------------------------------------------------- */}
         {/* TAB 4: TEACHER'S COMMENT */}
         {/* ------------------------------------------------------------- */}
-        {activeTab === 'comment' && (
+        {activeTab === 'comment' && canAccessSubjects && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Database Setup Alert (If Table Doesn't Exist) */}
@@ -4843,7 +5044,7 @@ export default function PypPage() {
         {/* ------------------------------------------------------------- */}
         {/* TAB 5: HOMEROOM TEACHER COMMENTS & ATTENDANCE */}
         {/* ------------------------------------------------------------- */}
-        {activeTab === 'homeroom_comment' && (
+        {activeTab === 'homeroom_comment' && canAccessClassAndHomeroom && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Main Container */}
@@ -7189,7 +7390,7 @@ export default function PypPage() {
                 </div>
 
                 <div style={{ fontSize: '12.5px', color: textSecondary }}>
-                  <strong style={{ color: textPrimary }}>Class :</strong> {currentSelectedClassObj?.kelas_nama}
+                  <strong style={{ color: textPrimary }}>Grade :</strong> {currentSelectedClassObj?.kelas_nama}
                 </div>
               </div>
 
@@ -7305,14 +7506,17 @@ export default function PypPage() {
               }}
             >
               {/* Not Assessed */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ display: 'inline-flex', border: '1px solid #4B5563', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ display: 'inline-flex', border: '1px solid #4B5563', borderRadius: '2px', overflow: 'hidden', marginTop: '2px' }}>
                   <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB', borderRight: '1px solid #4B5563' }} />
                   <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB', borderRight: '1px solid #4B5563' }} />
                   <span style={{ width: '13px', height: '13px', background: isDark ? '#3F3F46' : '#E5E7EB' }} />
                 </div>
                 <div>
                   <strong style={{ color: textPrimary }}>: Not Assessed</strong>
+                  <div style={{ fontSize: '10px', color: textSecondary, fontStyle: 'italic' }}>
+                    The skill has not been assessed yet.
+                  </div>
                 </div>
               </div>
 
@@ -7479,6 +7683,11 @@ export default function PypPage() {
                               {/* Terms 1 to 4: 3-Box Clickable Component */}
                               {[1, 2, 3, 4].map(tNum => {
                                 const score = nurseryStudentScores[`${crit.criteria_id}_${tNum}`] || 0
+                                let prevScore = 0
+                                for (let p = 1; p < tNum; p++) {
+                                  const ps = nurseryStudentScores[`${crit.criteria_id}_${p}`] || 0
+                                  if (ps > prevScore) prevScore = ps
+                                }
                                 return (
                                   <td
                                     key={tNum}
@@ -7499,23 +7708,27 @@ export default function PypPage() {
                                         boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                                         userSelect: 'none'
                                       }}
-                                      title={`Term ${tNum} - Score: ${score}/3. Click box to set (or click current score to reset)`}
+                                      title={prevScore > 0 ? `Term ${tNum} - Score: ${score}/3 (Minimum ${prevScore} from previous Term)` : `Term ${tNum} - Score: ${score}/3`}
                                     >
                                       {[1, 2, 3].map(boxNum => {
                                         const isFilled = score >= boxNum
+                                        const isLocked = boxNum < prevScore
                                         return (
                                           <div
                                             key={boxNum}
                                             onClick={() => handleToggleScore(crit.criteria_id, tNum, boxNum)}
+                                            title={isLocked ? `Cannot be set to ${boxNum} because the previous Term is ${prevScore}` : `Term ${tNum} - ${boxNum}/3`}
                                             style={{
                                               width: '18px',
                                               height: '18px',
                                               background: isFilled ? '#FEF08A' : (isDark ? '#3F3F46' : '#E5E7EB'),
                                               borderRight: boxNum < 3 ? '1px solid #4B5563' : 'none',
+                                              cursor: isLocked ? 'not-allowed' : 'pointer',
+                                              opacity: isLocked && !isFilled ? 0.4 : 1,
                                               transition: 'all 0.1s ease'
                                             }}
                                             onMouseEnter={(e) => {
-                                              e.currentTarget.style.filter = 'brightness(1.15)'
+                                              if (!isLocked) e.currentTarget.style.filter = 'brightness(1.15)'
                                             }}
                                             onMouseLeave={(e) => {
                                               e.currentTarget.style.filter = 'none'
@@ -7655,10 +7868,53 @@ export default function PypPage() {
                   <div>
                     <strong style={{ color: textPrimary }}>All Students in Class (Batch Print)</strong>
                     <div style={{ fontSize: '11.5px', color: textSecondary }}>
-                      Generate combined report card for all {classStudents.length} students in {currentSelectedClassObj?.kelas_nama}
+                      Generate individual PDFs packaged as a ZIP archive for all {classStudents.length} students in {currentSelectedClassObj?.kelas_nama}
                     </div>
                   </div>
                 </label>
+              </div>
+            </div>
+
+            {/* Term Selection */}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: textPrimary, marginBottom: '6px' }}>
+                Term:
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {[1, 2, 3, 4].map((t) => {
+                  const isSelected = nurseryPrintTerm === t
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setNurseryPrintTerm(t)}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: `1.5px solid ${isSelected ? '#F59E0B' : borderColor}`,
+                        background: isSelected ? (isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7') : (isDark ? '#27272A' : '#FFFFFF'),
+                        color: isSelected ? (isDark ? '#FDE68A' : '#92400E') : textPrimary,
+                        fontWeight: isSelected ? 700 : 500,
+                        fontSize: '12.5px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="nurseryTermSelection"
+                        checked={isSelected}
+                        onChange={() => setNurseryPrintTerm(t)}
+                        style={{ accentColor: '#F59E0B', cursor: 'pointer', margin: 0 }}
+                      />
+                      <span>Term {t}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -7698,30 +7954,8 @@ export default function PypPage() {
                 </div>
               </div>
               <div style={{ marginTop: '6px', fontSize: '11.5px', color: textSecondary }}>
-                Printed Header: <span style={{ fontWeight: 600, color: textPrimary }}>{formatNurseryDatePreview(nurseryPrintStartDate, nurseryPrintEndDate)}</span>
+                Printed Header: <span style={{ fontWeight: 600, color: textPrimary }}>{formatNurseryDatePreview(nurseryPrintStartDate, nurseryPrintEndDate, nurseryPrintTerm)}</span>
               </div>
-            </div>
-
-            {/* Homeroom Teacher */}
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: textPrimary, marginBottom: '4px' }}>
-                Homeroom Teacher(s):
-              </label>
-              <input
-                type="text"
-                value={nurseryPrintTeachers}
-                onChange={(e) => setNurseryPrintTeachers(e.target.value)}
-                placeholder="e.g. Widya Astuti & Ellika John"
-                style={{
-                  ...inputStyle,
-                  width: '100%',
-                  padding: '8px 10px',
-                  fontSize: '12.5px'
-                }}
-              />
-              <span style={{ fontSize: '11px', color: textSecondary, marginTop: '3px', display: 'block' }}>
-                Will appear on the cover page under "Homeroom Teacher". You can list multiple teachers separated with "&amp;".
-              </span>
             </div>
 
             {/* Progress status */}
@@ -7780,7 +8014,7 @@ export default function PypPage() {
                 ) : (
                   <>
                     <FontAwesomeIcon icon={faPrint} />
-                    <span>Download PDF</span>
+                    <span>{nurseryPrintScope === 'batch' ? 'Download ZIP' : 'Download PDF'}</span>
                   </>
                 )}
               </Button>

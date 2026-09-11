@@ -173,7 +173,7 @@ erDiagram
 
 ### 1.3 Tables referencing `users`
 Many tables in the system reference `users` for ownership, assignment or action tracking:
-- **Academic Setup:** `kelas` (`kelas_user_id` as Wali Kelas)
+- **Academic Setup:** `kelas` (`kelas_user_id` as Wali Kelas 1, `kelas_user_id_2` as Wali Kelas 2 / Co-Teacher for PYP)
 - **Subjects:** `subject` (`subject_user_id` as Teacher)
 - **Assessments:** `assessment` (`assessment_user_id` as Teacher)
 - **Timetable:** `detail_kelas` (`teacher_user_id`), `weekly_overview_draft` (`created_by`) *(Note: `timetable.timetable_user_id` was dropped in favor of single source of truth in `detail_kelas`)*
@@ -208,7 +208,8 @@ The main table for classes.
 | --- | --- | --- |
 | `kelas_id` | `SERIAL` | Primary Key |
 | `kelas_nama` | `VARCHAR(50)` | Name of the class (e.g. "7A") |
-| `kelas_user_id` | `INTEGER` | FK to `users(user_id)` (Wali Kelas / Homeroom Teacher) |
+| `kelas_user_id` | `INTEGER` | FK to `users(user_id)` (Wali Kelas / Homeroom Teacher 1) |
+| `kelas_user_id_2` | `INTEGER` | Nullable FK to `users(user_id)` (Wali Kelas 2 / Co-Teacher, optional for PYP units `is_pyp = true`) |
 | `kelas_unit_id` | `INTEGER` | FK to `unit(unit_id)` |
 | `kelas_year_id` | `INTEGER` | FK to `year(year_id)` |
 | `kelas_color_name` | `VARCHAR(20)` | UI badge color ('success', 'warning', 'error') |
@@ -344,6 +345,7 @@ erDiagram
         int kelas_id PK
         string kelas_nama
         int kelas_user_id FK
+        int kelas_user_id_2 FK
         int kelas_unit_id FK
         int kelas_year_id FK
     }

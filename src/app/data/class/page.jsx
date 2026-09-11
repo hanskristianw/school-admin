@@ -60,6 +60,7 @@ export default function ClassManagement() {
   const [formData, setFormData] = useState({
     kelas_nama: '',
     kelas_user_id: '',
+    kelas_user_id_2: '',
     kelas_unit_id: '',
     kelas_year_id: '',
     is_nursery: false
@@ -155,13 +156,23 @@ export default function ClassManagement() {
       setLoading(true);
       setError('');
       
-      const { data: classesData, error: classesError } = await supabase
+      let classesData = [];
+      const resClassesWithCoTeacher = await supabase
         .from('kelas')
-        .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id, is_nursery')
+        .select('kelas_id, kelas_nama, kelas_user_id, kelas_user_id_2, kelas_unit_id, kelas_year_id, is_nursery')
         .order('kelas_id');
 
-      if (classesError) {
-        throw new Error(classesError.message);
+      if (resClassesWithCoTeacher.error && resClassesWithCoTeacher.error.message?.includes('kelas_user_id_2')) {
+        const resFallback = await supabase
+          .from('kelas')
+          .select('kelas_id, kelas_nama, kelas_user_id, kelas_unit_id, kelas_year_id, is_nursery')
+          .order('kelas_id');
+        if (resFallback.error) throw new Error(resFallback.error.message);
+        classesData = resFallback.data || [];
+      } else if (resClassesWithCoTeacher.error) {
+        throw new Error(resClassesWithCoTeacher.error.message);
+      } else {
+        classesData = resClassesWithCoTeacher.data || [];
       }
 
       const { data: usersData, error: usersError } = await supabase
@@ -204,6 +215,7 @@ export default function ClassManagement() {
 
       const transformedData = classesData.map(kelas => {
         const user = usersData.find(u => u.user_id === kelas.kelas_user_id);
+        const user2 = kelas.kelas_user_id_2 ? usersData.find(u => u.user_id === kelas.kelas_user_id_2) : null;
         const unit = unitsData.find(u => u.unit_id === kelas.kelas_unit_id);
         const year = yearsData.find(y => y.year_id === kelas.kelas_year_id);
         const studentList = studentsByClass[kelas.kelas_id] || [];
@@ -213,10 +225,13 @@ export default function ClassManagement() {
           kelas_id: kelas.kelas_id,
           kelas_nama: kelas.kelas_nama,
           kelas_user_id: kelas.kelas_user_id,
+          kelas_user_id_2: kelas.kelas_user_id_2 || null,
           kelas_unit_id: kelas.kelas_unit_id,
           kelas_year_id: kelas.kelas_year_id,
           user_nama_depan: user?.user_nama_depan || '',
           user_nama_belakang: user?.user_nama_belakang || '',
+          user2_nama_depan: user2?.user_nama_depan || '',
+          user2_nama_belakang: user2?.user_nama_belakang || '',
           unit_name: unit?.unit_name || '',
           is_pyp: isPyp,
           is_nursery: Boolean(kelas.is_nursery),
@@ -952,6 +967,14 @@ export default function ClassManagement() {
     if (!formData.kelas_year_id) {
       errors.kelas_year_id = t('classManagement.validation.yearRequired') || 'Academic year is required';
     }
+
+    // Validation for secondary teacher
+    const selectedUnitObj = units.find(u => Number(u.unit_id) === Number(formData.kelas_unit_id));
+    const isPypUnit = Boolean(selectedUnitObj?.is_pyp) || (selectedUnitObj?.unit_name || '').toUpperCase().includes('PYP');
+    if (isPypUnit && formData.kelas_user_id_2 && String(formData.kelas_user_id_2) === String(formData.kelas_user_id)) {
+      errors.kelas_user_id_2 = 'Homeroom Teacher 2 cannot be the same person as Homeroom Teacher 1';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -973,6 +996,12 @@ export default function ClassManagement() {
         is_nursery: isPypUnit ? Boolean(formData.is_nursery) : false
       };
 
+      if (isPypUnit && formData.kelas_user_id_2) {
+        submitData.kelas_user_id_2 = Number(formData.kelas_user_id_2);
+      } else {
+        submitData.kelas_user_id_2 = null;
+      }
+
       let result;
       if (editingClass) {
         result = await supabase
@@ -985,12 +1014,17 @@ export default function ClassManagement() {
           .insert([submitData]);
       }
 
-      if (result.error) throw new Error(result.error.message);
+      if (result.error) {
+        if (result.error.message?.includes('kelas_user_id_2')) {
+          throw new Error("Column 'kelas_user_id_2' does not exist in the database yet. Please run 'migrations/add-kelas-user-id-2.sql' in your Supabase SQL Editor first.");
+        }
+        throw new Error(result.error.message);
+      }
 
       await fetchClasses();
       setShowForm(false);
       setEditingClass(null);
-      setFormData({ kelas_nama: '', kelas_user_id: '', kelas_unit_id: '', kelas_year_id: '', is_nursery: false });
+      setFormData({ kelas_nama: '', kelas_user_id: '', kelas_user_id_2: '', kelas_unit_id: '', kelas_year_id: '', is_nursery: false });
       setError('');
       showNotification(
         t('classManagement.notifSuccessTitle') || 'Success',
@@ -1010,6 +1044,7 @@ export default function ClassManagement() {
     setFormData({
       kelas_nama: kelas.kelas_nama,
       kelas_user_id: kelas.kelas_user_id,
+      kelas_user_id_2: kelas.kelas_user_id_2 || '',
       kelas_unit_id: kelas.kelas_unit_id,
       kelas_year_id: kelas.kelas_year_id,
       is_nursery: Boolean(kelas.is_nursery)
@@ -1049,6 +1084,7 @@ export default function ClassManagement() {
     setFormData({
       kelas_nama: '',
       kelas_user_id: '',
+      kelas_user_id_2: '',
       kelas_unit_id: '',
       kelas_year_id: '',
       is_nursery: false
@@ -1256,6 +1292,7 @@ export default function ClassManagement() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredClasses.map((kelas) => {
             const teacherName = `${kelas.user_nama_depan || ''} ${kelas.user_nama_belakang || ''}`.trim() || 'Unassigned Teacher';
+            const teacher2Name = `${kelas.user2_nama_depan || ''} ${kelas.user2_nama_belakang || ''}`.trim();
 
             return (
               <div
@@ -1289,12 +1326,20 @@ export default function ClassManagement() {
 
                 {/* Metadata info */}
                 <div className="space-y-2 pt-3 border-t text-xs" style={{ borderColor: theme.border }}>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.textSecondary }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="flex items-center gap-1.5 font-medium shrink-0 pt-0.5" style={{ color: theme.textSecondary }}>
                       <FontAwesomeIcon icon={faChalkboardTeacher} className="text-[11px]" />
-                      Homeroom Teacher:
+                      {teacher2Name ? 'Homeroom Teachers:' : 'Homeroom Teacher:'}
                     </span>
-                    <span className="font-bold" style={{ color: theme.textPrimary }}>{teacherName}</span>
+                    <div className="text-right">
+                      <div className="font-bold" style={{ color: theme.textPrimary }}>{teacherName}</div>
+                      {teacher2Name && (
+                        <div className="text-[11px] font-medium mt-0.5" style={{ color: theme.textSecondary }}>
+                          <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase mr-1" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>Co-Teacher</span>
+                          {teacher2Name}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -1413,8 +1458,16 @@ export default function ClassManagement() {
                         )}
                       </div>
                     </td>
-                    <td className="p-3 font-medium" style={{ color: theme.textPrimary }}>
-                      {kelas.user_nama_depan} {kelas.user_nama_belakang}
+                    <td className="p-3" style={{ color: theme.textPrimary }}>
+                      <div className="font-medium">
+                        {kelas.user_nama_depan} {kelas.user_nama_belakang}
+                      </div>
+                      {(kelas.user2_nama_depan || kelas.user2_nama_belakang) && (
+                        <div className="text-[10px] flex items-center gap-1 mt-0.5" style={{ color: theme.textSecondary }}>
+                          <span className="px-1 py-0.2 rounded text-[9px] font-semibold uppercase" style={{ background: theme.subtleBg, border: `1px solid ${theme.border}` }}>Co</span>
+                          <span>{kelas.user2_nama_depan} {kelas.user2_nama_belakang}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="p-3">
                       <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E1F3FE] text-[#1F6C9F] border border-[#BDE3FC]">
@@ -1519,30 +1572,6 @@ export default function ClassManagement() {
             </div>
 
             <div>
-              <Label htmlFor="kelas_user_id" className="block font-semibold mb-1" style={{ color: theme.textPrimary }}>{t('classManagement.waliKelasLabel') || 'Homeroom Teacher *'}</Label>
-              <select
-                id="kelas_user_id"
-                required
-                value={formData.kelas_user_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, kelas_user_id: e.target.value }))}
-                style={selectStyle}
-                className="w-full p-2.5 text-xs font-semibold focus:outline-none"
-              >
-                <option value="">{t('classManagement.selectWaliKelas') || '-- Select Homeroom Teacher --'}</option>
-                {users
-                  .filter(user => user.is_teacher || String(user.user_id) === String(formData.kelas_user_id))
-                  .map((user) => (
-                    <option key={user.user_id} value={user.user_id}>
-                      {user.user_nama_depan} {user.user_nama_belakang} ({user.role_name})
-                    </option>
-                  ))}
-              </select>
-              {formErrors.kelas_user_id && (
-                <p className="text-red-500 text-[11px] mt-1">{formErrors.kelas_user_id}</p>
-              )}
-            </div>
-
-            <div>
               <Label htmlFor="kelas_unit_id" className="block font-semibold mb-1" style={{ color: theme.textPrimary }}>{t('classManagement.unitLabel') || 'Unit *'}</Label>
               <select
                 id="kelas_unit_id"
@@ -1555,6 +1584,7 @@ export default function ClassManagement() {
                   setFormData(prev => ({
                     ...prev,
                     kelas_unit_id: newUnitId,
+                    kelas_user_id_2: isPyp ? prev.kelas_user_id_2 : '',
                     is_nursery: isPyp ? prev.is_nursery : false
                   }));
                 }}
@@ -1576,26 +1606,99 @@ export default function ClassManagement() {
             {(() => {
               const selectedUnit = units.find(u => Number(u.unit_id) === Number(formData.kelas_unit_id));
               const isPyp = Boolean(selectedUnit?.is_pyp) || (selectedUnit?.unit_name || '').toUpperCase().includes('PYP');
-              if (!isPyp) return null;
 
               return (
-                <div className="p-3 rounded-lg border flex items-center justify-between transition-all" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                <>
                   <div>
-                    <Label htmlFor="is_nursery" className="block font-bold text-xs cursor-pointer select-none" style={{ color: theme.textPrimary }}>
-                      {t('classManagement.nurseryClassLabel') || '🌱 Nursery Class'}
+                    <Label htmlFor="kelas_user_id" className="block font-semibold mb-1" style={{ color: theme.textPrimary }}>
+                      {isPyp ? (t('classManagement.waliKelas1Label') || 'Homeroom Teacher 1 *') : (t('classManagement.waliKelasLabel') || 'Homeroom Teacher *')}
                     </Label>
-                    <p className="text-[11px] select-none" style={{ color: theme.textSecondary }}>
-                      {t('classManagement.nurseryClassDesc') || 'Check this option if this class is a Nursery level (PYP unit only).'}
-                    </p>
+                    <select
+                      id="kelas_user_id"
+                      required
+                      value={formData.kelas_user_id}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          kelas_user_id: val,
+                          kelas_user_id_2: String(prev.kelas_user_id_2) === String(val) ? '' : prev.kelas_user_id_2
+                        }));
+                      }}
+                      style={selectStyle}
+                      className="w-full p-2.5 text-xs font-semibold focus:outline-none"
+                    >
+                      <option value="">{t('classManagement.selectWaliKelas') || '-- Select Homeroom Teacher --'}</option>
+                      {users
+                        .filter(user => user.is_teacher || String(user.user_id) === String(formData.kelas_user_id))
+                        .map((user) => (
+                          <option key={user.user_id} value={user.user_id}>
+                            {user.user_nama_depan} {user.user_nama_belakang} ({user.role_name})
+                          </option>
+                        ))}
+                    </select>
+                    {formErrors.kelas_user_id && (
+                      <p className="text-red-500 text-[11px] mt-1">{formErrors.kelas_user_id}</p>
+                    )}
                   </div>
-                  <input
-                    id="is_nursery"
-                    type="checkbox"
-                    checked={Boolean(formData.is_nursery)}
-                    onChange={(e) => setFormData(prev => ({ ...prev, is_nursery: e.target.checked }))}
-                    className="w-4 h-4 rounded cursor-pointer accent-blue-600"
-                  />
-                </div>
+
+                  {/* Homeroom Teacher 2 (Only for PYP) */}
+                  {isPyp && (
+                    <div className="p-3 rounded-lg border space-y-1.5" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="kelas_user_id_2" className="block font-bold text-xs" style={{ color: theme.textPrimary }}>
+                          {t('classManagement.waliKelas2Label') || 'Homeroom Teacher 2 (Co-Teacher)'}
+                        </Label>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded border bg-[#E1F3FE] text-[#1F6C9F] border-[#BDE3FC]">
+                          PYP Co-Teacher
+                        </span>
+                      </div>
+                      <p className="text-[11px]" style={{ color: theme.textSecondary }}>
+                        {t('classManagement.waliKelas2Desc') || 'Optional second homeroom teacher for PYP classes and report cards.'}
+                      </p>
+                      <select
+                        id="kelas_user_id_2"
+                        value={formData.kelas_user_id_2}
+                        onChange={(e) => setFormData(prev => ({ ...prev, kelas_user_id_2: e.target.value }))}
+                        style={selectStyle}
+                        className="w-full p-2.5 text-xs font-semibold focus:outline-none"
+                      >
+                        <option value="">{t('classManagement.selectWaliKelas2') || '-- None / No Co-Teacher --'}</option>
+                        {users
+                          .filter(user => (user.is_teacher || String(user.user_id) === String(formData.kelas_user_id_2)) && String(user.user_id) !== String(formData.kelas_user_id))
+                          .map((user) => (
+                            <option key={user.user_id} value={user.user_id}>
+                              {user.user_nama_depan} {user.user_nama_belakang} ({user.role_name})
+                            </option>
+                          ))}
+                      </select>
+                      {formErrors.kelas_user_id_2 && (
+                        <p className="text-red-500 text-[11px] mt-1">{formErrors.kelas_user_id_2}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Nursery Flag (Only for PYP) */}
+                  {isPyp && (
+                    <div className="p-3 rounded-lg border flex items-center justify-between transition-all" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                      <div>
+                        <Label htmlFor="is_nursery" className="block font-bold text-xs cursor-pointer select-none" style={{ color: theme.textPrimary }}>
+                          {t('classManagement.nurseryClassLabel') || '🌱 Nursery Class'}
+                        </Label>
+                        <p className="text-[11px] select-none" style={{ color: theme.textSecondary }}>
+                          {t('classManagement.nurseryClassDesc') || 'Check this option if this class is a Nursery level (PYP unit only).'}
+                        </p>
+                      </div>
+                      <input
+                        id="is_nursery"
+                        type="checkbox"
+                        checked={Boolean(formData.is_nursery)}
+                        onChange={(e) => setFormData(prev => ({ ...prev, is_nursery: e.target.checked }))}
+                        className="w-4 h-4 rounded cursor-pointer accent-blue-600"
+                      />
+                    </div>
+                  )}
+                </>
               );
             })()}
 
