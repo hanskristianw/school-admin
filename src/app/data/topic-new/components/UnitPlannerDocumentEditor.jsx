@@ -21,6 +21,61 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 
 /**
+ * AutoExpandingTextarea
+ * Textarea that automatically expands its height to fit all content,
+ * completely eliminating scrollbars and manual resize handles.
+ */
+function AutoExpandingTextarea({
+  value,
+  onChange,
+  placeholder,
+  className = '',
+  minHeight = 80,
+  triggerResize = null,
+  ...props
+}) {
+  const textareaRef = useRef(null)
+
+  const adjustHeight = () => {
+    const el = textareaRef.current
+    if (el) {
+      el.style.height = 'auto'
+      if (el.scrollHeight > 0) {
+        el.style.height = `${Math.max(minHeight, el.scrollHeight)}px`
+      }
+    }
+  }
+
+  useEffect(() => {
+    adjustHeight()
+    const timer1 = setTimeout(adjustHeight, 20)
+    const timer2 = setTimeout(adjustHeight, 100)
+    const handleResize = () => adjustHeight()
+    window.addEventListener('resize', handleResize)
+    return () => {
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [value, triggerResize])
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange?.(e)
+        adjustHeight()
+      }}
+      onInput={adjustHeight}
+      placeholder={placeholder}
+      className={`overflow-hidden resize-none ${className}`}
+      {...props}
+    />
+  )
+}
+
+/**
  * UnitPlannerDocumentEditor
  * 
  * 100% WYSIWYG IB MYP Editor supporting both:
@@ -441,9 +496,9 @@ export default function UnitPlannerDocumentEditor({
                   {/* Row 0: Class & Academic Year */}
                   <tr>
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
-                      Class <span className="text-red-500">*</span>
+                      Class {isAddMode && <span className="text-red-500">*</span>}
                     </td>
-                    <td className="w-[40%] border border-black px-2.5 py-1.5 align-middle">
+                    <td className={`w-[40%] border border-black px-2.5 py-1.5 align-middle ${!isAddMode ? 'bg-[#F2F2F2]' : ''}`}>
                       <select
                         disabled={!isAddMode}
                         value={selectedTopic.topic_kelas_id || ''}
@@ -470,7 +525,7 @@ export default function UnitPlannerDocumentEditor({
                         }}
                         className={`w-full bg-transparent font-semibold outline-none ${
                           !isAddMode 
-                            ? 'cursor-not-allowed opacity-80 text-gray-800' 
+                            ? 'cursor-not-allowed text-gray-700' 
                             : !selectedTopic.topic_kelas_id 
                               ? 'text-gray-500 font-normal italic cursor-pointer hover:bg-yellow-50 focus:bg-white' 
                               : 'text-black cursor-pointer hover:bg-yellow-50 focus:bg-white'
@@ -490,7 +545,7 @@ export default function UnitPlannerDocumentEditor({
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
                       Academic Year
                     </td>
-                    <td className="w-[30%] border border-black px-2.5 py-1.5 align-middle" colSpan={3}>
+                    <td className={`w-[30%] border border-black px-2.5 py-1.5 align-middle ${!isAddMode ? 'bg-[#F2F2F2]' : ''}`} colSpan={3}>
                       <select
                         disabled={!isAddMode}
                         value={wizardYear || ''}
@@ -500,7 +555,7 @@ export default function UnitPlannerDocumentEditor({
                         }}
                         className={`w-full bg-transparent font-semibold outline-none ${
                           !isAddMode 
-                            ? 'cursor-not-allowed opacity-80 text-gray-800' 
+                            ? 'cursor-not-allowed text-gray-700' 
                             : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
                         }`}
                         title={!isAddMode ? 'Academic Year cannot be changed on existing units' : ''}
@@ -518,13 +573,13 @@ export default function UnitPlannerDocumentEditor({
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
                       Teacher(s)
                     </td>
-                    <td className="w-[40%] border border-black px-2.5 py-1.5 align-middle">
-                      <div className="font-semibold text-black">{teacherName}</div>
+                    <td className="w-[40%] bg-[#F2F2F2] border border-black px-2.5 py-1.5 align-middle">
+                      <div className="font-semibold text-gray-700 select-none cursor-not-allowed" title="Auto-assigned based on class and subject assignment">{teacherName}</div>
                     </td>
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
                       Subject groups
                     </td>
-                    <td className="w-[30%] border border-black px-2.5 py-1.5 align-middle" colSpan={3}>
+                    <td className={`w-[30%] border border-black px-2.5 py-1.5 align-middle ${!isAddMode ? 'bg-[#F2F2F2]' : ''}`} colSpan={3}>
                       <select
                         disabled={!isAddMode}
                         value={selectedTopic.topic_subject_id || ''}
@@ -535,7 +590,7 @@ export default function UnitPlannerDocumentEditor({
                         }}
                         className={`w-full bg-transparent font-semibold outline-none ${
                           !isAddMode 
-                            ? 'cursor-not-allowed opacity-80 text-gray-800' 
+                            ? 'cursor-not-allowed text-gray-700' 
                             : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
                         }`}
                         title={!isAddMode ? 'Subject cannot be changed on existing units to maintain criteria & assessment integrity' : ''}
@@ -575,7 +630,7 @@ export default function UnitPlannerDocumentEditor({
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
                       MYP year
                     </td>
-                    <td className="w-[12%] border border-black px-2.5 py-1.5 align-middle">
+                    <td className={`w-[12%] border border-black px-2.5 py-1.5 align-middle ${!isAddMode ? 'bg-[#F2F2F2]' : ''}`}>
                       <select
                         disabled={!isAddMode}
                         value={selectedTopic.topic_year || ''}
@@ -588,7 +643,7 @@ export default function UnitPlannerDocumentEditor({
                         }}
                         className={`w-full bg-transparent font-semibold outline-none ${
                           !isAddMode 
-                            ? 'cursor-not-allowed opacity-80 text-gray-800' 
+                            ? 'cursor-not-allowed text-gray-700' 
                             : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
                         }`}
                         title={!isAddMode ? 'MYP Year cannot be changed on existing units' : ''}
@@ -805,13 +860,13 @@ export default function UnitPlannerDocumentEditor({
                   {/* Row 6: Inquiry questions Content (Single Clean Textarea matching DATABASE_SCHEMA topic_inquiry_question) */}
                   <tr>
                     <td colSpan={3} className="border border-black p-2.5 align-top">
-                      <textarea
+                      <AutoExpandingTextarea
                         value={selectedTopic.topic_inquiry_question || ''}
                         onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: e.target.value }))}
-                        onInput={handleAutoResize}
-                        rows={Math.max(6, (selectedTopic.topic_inquiry_question || '').split('\n').length)}
+                        triggerResize={`${activeTab}-${isOpen}-${activeDoc}`}
                         placeholder={"Factual:\n- What is a ratio?\n- What is a proportion?\n\nConceptual:\n- Why are proportional relationships useful in everyday life?\n\nDebatable:\n- Is using proportions always the best way to compare situations?"}
-                        className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px] min-h-[130px] font-sans"
+                        minHeight={130}
+                        className="w-full bg-transparent text-black outline-none leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px] font-sans"
                       />
                     </td>
                   </tr>
@@ -920,17 +975,17 @@ export default function UnitPlannerDocumentEditor({
                         />
                       </div>
 
-                      <textarea
+                      <AutoExpandingTextarea
                         value={wizardAssessment?.assessment_task_specific_description || wizardAssessment?.assessment_instructions || ''}
                         onChange={(e) => setWizardAssessment(prev => ({
                           ...prev,
                           assessment_task_specific_description: e.target.value,
                           assessment_instructions: e.target.value,
                         }))}
-                        onInput={handleAutoResize}
-                        placeholder="You will present the preliminary research highlights of your poster project which include:\n- identifying the need for the poster in your classroom (literacy skill)\n- planning of the research (self-management skill)\n- analysis of existing product (critical thinking skill)\n- presentation of the research findings (communication skill)"
-                        rows={12}
-                        className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px]"
+                        triggerResize={`${activeTab}-${isOpen}-${activeDoc}`}
+                        placeholder={"You will present the preliminary research highlights of your poster project which include:\n- identifying the need for the poster in your classroom (literacy skill)\n- planning of the research (self-management skill)\n- analysis of existing product (critical thinking skill)\n- presentation of the research findings (communication skill)"}
+                        minHeight={150}
+                        className="w-full bg-transparent text-black outline-none leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px]"
                       />
                     </td>
 
@@ -940,13 +995,13 @@ export default function UnitPlannerDocumentEditor({
                         Connections with the Global Context:
                       </div>
 
-                      <textarea
+                      <AutoExpandingTextarea
                         value={selectedTopic.topic_connections_global_context || ''}
                         onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_connections_global_context: e.target.value }))}
-                        onInput={handleAutoResize}
+                        triggerResize={`${activeTab}-${isOpen}-${activeDoc}`}
                         placeholder="Enter how students will make connections with the global context through this assessment..."
-                        rows={10}
-                        className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px]"
+                        minHeight={150}
+                        className="w-full bg-transparent text-black outline-none leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px]"
                       />
                     </td>
                   </tr>
@@ -1031,23 +1086,23 @@ export default function UnitPlannerDocumentEditor({
                       />
                     </td>
 
-                    <td className="w-[67%] border border-black p-2.5 align-top bg-[#fafafa]">
+                    <td className="w-[67%] border border-black p-2.5 align-top bg-[#F2F2F2] cursor-not-allowed" title="Learning process is managed via Weekly Planner">
                       <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-gray-300">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <FontAwesomeIcon icon={faBookOpen} className="text-[10px] text-gray-400" />
+                        <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faBookOpen} className="text-[10px] text-gray-500" />
                           Weekly Plan Summary
                         </span>
-                        <span className="text-[9px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
+                        <span className="text-[9px] bg-gray-300 text-gray-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                           Read-only (Managed in Weekly Planner)
                         </span>
                       </div>
                       {selectedTopic.topic_learning_process ? (
-                        <div className="whitespace-pre-wrap leading-relaxed text-black select-text">
+                        <div className="whitespace-pre-wrap leading-relaxed text-gray-700 select-text font-normal text-[11px]">
                           {selectedTopic.topic_learning_process}
                         </div>
                       ) : (
-                        <div className="text-gray-400 italic py-6 text-center">
-                          Not filled yet - Record weekly meetings and objectives in the Weekly Planner modal.
+                        <div className="text-gray-500 italic py-6 text-center text-xs">
+                          Not filled yet — Record weekly meetings and objectives in the Weekly Planner tab.
                         </div>
                       )}
                     </td>
@@ -1354,13 +1409,13 @@ export default function UnitPlannerDocumentEditor({
                       Task Specific Description
                     </td>
                     <td className="border border-black p-2">
-                      <textarea
+                      <AutoExpandingTextarea
                         value={wizardAssessment.assessment_task_specific_description || ''}
                         onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_task_specific_description: e.target.value }))}
-                        onInput={handleAutoResize}
+                        triggerResize={`${activeTab}-${isOpen}-${activeDoc}`}
                         placeholder="Detailed outline of what students are required to do and produce..."
-                        rows={3}
-                        className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[11pt]"
+                        minHeight={70}
+                        className="w-full bg-transparent text-black outline-none leading-relaxed hover:bg-yellow-50 focus:bg-white text-[11pt]"
                       />
                     </td>
                   </tr>
@@ -1373,13 +1428,13 @@ export default function UnitPlannerDocumentEditor({
               <div className="font-bold text-[11pt] text-black uppercase mb-1">
                 INSTRUCTIONS:
               </div>
-              <textarea
+              <AutoExpandingTextarea
                 value={wizardAssessment.assessment_instructions || ''}
                 onChange={(e) => setWizardAssessment(prev => ({ ...prev, assessment_instructions: e.target.value }))}
-                onInput={handleAutoResize}
-                placeholder="1. Read all criteria carefully before starting your work.\n2. Ensure all research findings are documented with citations.\n3. Complete the task within the designated timeline."
-                rows={4}
-                className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[11pt] border border-gray-300 p-2.5 rounded"
+                triggerResize={`${activeTab}-${isOpen}-${activeDoc}`}
+                placeholder={"1. Read all criteria carefully before starting your work.\n2. Ensure all research findings are documented with citations.\n3. Complete the task within the designated timeline."}
+                minHeight={90}
+                className="w-full bg-transparent text-black outline-none leading-relaxed hover:bg-yellow-50 focus:bg-white text-[11pt] border border-gray-300 p-2.5 rounded"
               />
             </div>
 

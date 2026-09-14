@@ -728,7 +728,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       styles: { font: activeFont, fontSize: 9.5, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, valign: 'top', textColor: [0, 0, 0] } });
     yPos = pdf.lastAutoTable.finalY + 5;
 
-    // Content & Learning process (Unpack JSON stringified rows if any)
+    // Unpack JSON stringified weekly plans for Learning process & Reflections
     const unpackedWeeklyPlans = [];
     (weeklyPlans || []).forEach(row => {
       if (row.week_objectives && String(row.week_objectives).trim().startsWith('[')) {
@@ -764,23 +764,21 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       });
     }
 
-    // Learning process: prioritize custom text from topic_learning_process, fallback to weekly plans
+    // Content & Learning process: prioritize custom text from topic_learning_process, fallback to weekly plans
     let learningProcessContent = topicData.topic_learning_process?.trim() || formatWeeklyPlansToLearningProcess(weeklyPlans);
+    const learningProcessCell = learningProcessContent.trim()
+      ? cleanPdfText(learningProcessContent.trim())
+      : formatEmptyField(null, 6);
 
-    const formativeContent = topicData.topic_formative_assessment 
-      ? `Formative Assessment\n${topicData.topic_formative_assessment}`
-      : 'Formative Assessment\nNot filled yet';
+    const formativeCell = topicData.topic_formative_assessment?.trim()
+      ? cleanPdfText(topicData.topic_formative_assessment.trim())
+      : formatEmptyField(null, 3);
 
-    const differentiationContent = topicData.topic_differentiation
-      ? `Differentiation\n${topicData.topic_differentiation}`
-      : 'Differentiation\nNot filled yet';
-
-    const initialPageNum = pdf.getNumberOfPages();
+    const diffCell = topicData.topic_differentiation?.trim()
+      ? cleanPdfText(topicData.topic_differentiation.trim())
+      : formatEmptyField(null, 3);
 
     const contentCell = formatEmptyField(topicData.topic_content, 6);
-    const contentCellObj = (typeof contentCell === 'object' && contentCell !== null) 
-      ? { ...contentCell, rowSpan: 3, styles: { cellPadding: 3, ...(contentCell.styles || {}) } }
-      : { content: contentCell, rowSpan: 3, styles: { cellPadding: 3 } };
 
     autoTable(pdf, {
       startY: yPos,
@@ -792,14 +790,24 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
           { content: 'Learning process', styles: { fontStyle: 'bold', fillColor: [232, 232, 232] }},
         ],
         [
-          contentCellObj,
-          formatEmptyField(learningProcessContent, 6),
+          contentCell,
+          learningProcessCell,
         ],
         [
-          { content: cleanPdfText(formativeContent), styles: { cellPadding: 3 }},
+          { content: '', styles: { cellPadding: 0 } },
+          { content: 'Formative Assessment', styles: { fontStyle: 'bold', fillColor: [242, 242, 242] } },
         ],
         [
-          { content: cleanPdfText(differentiationContent), styles: { cellPadding: 3 }},
+          { content: '', styles: { cellPadding: 0 } },
+          formativeCell,
+        ],
+        [
+          { content: '', styles: { cellPadding: 0 } },
+          { content: 'Differentiation', styles: { fontStyle: 'bold', fillColor: [242, 242, 242] } },
+        ],
+        [
+          { content: '', styles: { cellPadding: 0 } },
+          diffCell,
         ],
       ],
       theme: 'grid',
@@ -808,96 +816,20 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
         0: { cellWidth: availableWidth * 0.33 },
         1: { cellWidth: availableWidth * 0.67 } },
       didDrawCell: (data) => {
-        if (data.section === 'body') {
+        // In Column 0, seamlessly merge rows below row 1 by erasing internal horizontal dividing lines
+        if (data.column.index === 0 && data.section === 'body') {
           const cell = data.cell;
-          if (data.row.index === 1 && data.column.index === 1 && learningProcessContent.trim()) { // Learning process
-            pdf.setFillColor(255, 255, 255);
-            pdf.rect(cell.x + 0.2, cell.y + 0.2, cell.width - 0.4, cell.height - 0.4, 'F');
-            
-            let currentY = cell.y + 4.5;
-            const textLines = Array.isArray(cell.text) ? cell.text : (cell.text ? [cell.text] : []);
-            
-            textLines.forEach(lineStr => {
-              if (currentY + 3.5 > cell.y + cell.height) return;
-              const trimmed = String(lineStr).trim();
-              if (/^(Week|Meeting)\b/i.test(trimmed)) {
-                pdf.setFont(activeFont, 'bold');
-                pdf.setFontSize(9.5);
-                pdf.setTextColor(0, 0, 0);
-              } else {
-                pdf.setFont(activeFont, 'normal');
-                pdf.setFontSize(9.5);
-                pdf.setTextColor(0, 0, 0);
-              }
-              pdf.text(lineStr, cell.x + 3, currentY);
-              currentY += 4.2;
-            });
-          } else if (data.row.index === 2) { // Formative Assessment
-            pdf.setFillColor(255, 255, 255);
-            pdf.rect(cell.x + 0.2, cell.y + 0.2, cell.width - 0.4, cell.height - 0.4, 'F');
-            
-            pdf.setFont(activeFont, 'bold');
-            pdf.setFontSize(9.5);
-            pdf.setTextColor(0, 0, 0);
-            let currentY = cell.y + 4.5;
-            pdf.text('Formative Assessment', cell.x + 3, currentY);
-            
-            currentY += 5;
-            const bodyStr = topicData.topic_formative_assessment ? String(topicData.topic_formative_assessment).trim() : '';
-            if (bodyStr) {
-              pdf.setFont(activeFont, 'normal');
-              const lines = pdf.splitTextToSize(cleanPdfText(bodyStr), cell.width - 6);
-              pdf.text(lines, cell.x + 3, currentY);
-            } else {
-              pdf.setFont(activeFont, 'bold');
-              pdf.setTextColor(220, 38, 38);
-              pdf.text('Not filled yet', cell.x + 3, currentY);
-            }
-          } else if (data.row.index === 3) { // Differentiation
-            pdf.setFillColor(255, 255, 255);
-            pdf.rect(cell.x + 0.2, cell.y + 0.2, cell.width - 0.4, cell.height - 0.4, 'F');
-            
-            pdf.setFont(activeFont, 'bold');
-            pdf.setFontSize(9.5);
-            pdf.setTextColor(0, 0, 0);
-            let currentY = cell.y + 4.5;
-            pdf.text('Differentiation', cell.x + 3, currentY);
-            
-            currentY += 5;
-            const bodyStr = topicData.topic_differentiation ? String(topicData.topic_differentiation).trim() : '';
-            if (bodyStr) {
-              pdf.setFont(activeFont, 'normal');
-              const lines = pdf.splitTextToSize(cleanPdfText(bodyStr), cell.width - 6);
-              pdf.text(lines, cell.x + 3, currentY);
-            } else {
-              pdf.setFont(activeFont, 'bold');
-              pdf.setTextColor(220, 38, 38);
-              pdf.text('Not filled yet', cell.x + 3, currentY);
+          if (data.row.index >= 2) {
+            const isTopEdge = Math.abs(cell.y - data.table.settings.startY) < 0.5 ||
+                              Math.abs(cell.y - (data.table.settings.margin?.top || 14.11)) < 0.5;
+            if (!isTopEdge) {
+              pdf.setFillColor(255, 255, 255);
+              pdf.rect(cell.x + 0.2, cell.y - 0.2, cell.width - 0.4, 0.4, 'F');
             }
           }
         }
-      } });
-
-    const totalPagesAfterTable = pdf.getNumberOfPages();
-    const tableFinalY = pdf.lastAutoTable.finalY;
-
-    if (totalPagesAfterTable > initialPageNum) {
-      for (let p = initialPageNum + 1; p <= totalPagesAfterTable; p++) {
-        pdf.setPage(p);
-        const pageTopY = margin;
-        const pageBottomY = (p === totalPagesAfterTable) ? tableFinalY : (pdf.internal.pageSize.getHeight() - margin);
-        const boxHeight = pageBottomY - pageTopY;
-
-        // Erase any internal horizontal lines inside Column 0 on page p
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(margin + 0.1, pageTopY + 0.1, availableWidth * 0.33 - 0.2, boxHeight - 0.2, 'F');
-
-        // Draw clean outer border for Column 0 on page p
-        pdf.setLineWidth(0.2);
-        pdf.setDrawColor(0, 0, 0);
-        pdf.rect(margin, pageTopY, availableWidth * 0.33, boxHeight);
       }
-    }
+    });
 
     yPos = pdf.lastAutoTable.finalY + 5;
 

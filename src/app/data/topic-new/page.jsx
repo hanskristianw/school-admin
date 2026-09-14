@@ -422,6 +422,7 @@ export default function TopicNewPage() {
   const [deleteTopicModalOpen, setDeleteTopicModalOpen] = useState(false)
   const [topicToDelete, setTopicToDelete] = useState(null)
   const [deleteTopicBlocked, setDeleteTopicBlocked] = useState(false)
+  const [deleteTopicGradeCount, setDeleteTopicGradeCount] = useState(0)
   const [deleteTopicChecking, setDeleteTopicChecking] = useState(false)
   const [deleteTopicLoading, setDeleteTopicLoading] = useState(false)
 
@@ -444,6 +445,7 @@ export default function TopicNewPage() {
     setDeleteTopicModalOpen(true)
     setDeleteTopicChecking(true)
     setDeleteTopicBlocked(false)
+    setDeleteTopicGradeCount(0)
 
     try {
       // 1. Fetch all assessments connected to this topic
@@ -464,11 +466,14 @@ export default function TopicNewPage() {
         if (gradeError) throw gradeError
 
         if (gradeCount && gradeCount > 0) {
+          setDeleteTopicGradeCount(gradeCount)
           setDeleteTopicBlocked(true)
         }
       }
     } catch (err) {
       console.error('Error checking topic grades before deletion:', err)
+      // Safety fail-safe: block deletion if checking encounters error
+      setDeleteTopicBlocked(true)
     } finally {
       setDeleteTopicChecking(false)
     }
@@ -479,14 +484,30 @@ export default function TopicNewPage() {
     try {
       setDeleteTopicLoading(true)
 
-      // 1. Find connected assessments
-      const { data: topicAssessments } = await supabase
+      // 0. Strict Safety Guard: Re-verify that NO assessment_grades exist
+      const { data: topicAssessments, error: assError } = await supabase
         .from('assessment')
         .select('assessment_id')
         .eq('assessment_topic_id', topicToDelete.topic_id)
 
+      if (assError) throw assError
+
       if (topicAssessments && topicAssessments.length > 0) {
         const assessmentIds = topicAssessments.map(a => a.assessment_id)
+        const { count: gradeCount, error: gradeError } = await supabase
+          .from('assessment_grades')
+          .select('grade_id', { count: 'exact', head: true })
+          .in('assessment_id', assessmentIds)
+
+        if (gradeError) throw gradeError
+
+        if (gradeCount && gradeCount > 0) {
+          alert(`Cannot delete unit! Found ${gradeCount} student grade record(s) already saved for assessments in this unit.`)
+          setDeleteTopicGradeCount(gradeCount)
+          setDeleteTopicBlocked(true)
+          setDeleteTopicLoading(false)
+          return
+        }
 
         // Delete assessment_criteria
         await supabase
@@ -529,7 +550,7 @@ export default function TopicNewPage() {
       setTopicToDelete(null)
     } catch (err) {
       console.error('Error deleting topic:', err)
-      alert('Failed to delete topic. Please try again.')
+      alert('Gagal menghapus unit: ' + (err.message || 'Terjadi kesalahan sistem.'))
     } finally {
       setDeleteTopicLoading(false)
     }
@@ -11093,28 +11114,30 @@ ${refineOriginal}`
             {deleteTopicChecking ? (
               <div className="flex flex-col items-center justify-center py-6 gap-2">
                 <FontAwesomeIcon icon={faSpinner} spin className="text-xl text-blue-600" />
-                <p className="text-xs text-gray-500">Checking unit assessment grades...</p>
+                <p className="text-xs text-gray-500">Checking student grades on unit assessments...</p>
               </div>
             ) : deleteTopicBlocked ? (
               <>
-                <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-3 p-3.5 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800">
                   <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold text-base flex-shrink-0">
                     ⚠️
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-amber-900 dark:text-amber-300">
-                      Deletion Blocked by Student Grades
+                      Deletion Blocked by System (Student Grades Found)
                     </h4>
                     <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 leading-relaxed">
-                      This unit cannot be deleted because student grades have already been entered for its associated assessment(s).
+                      This unit <strong>cannot be deleted</strong> because <strong>{deleteTopicGradeCount} student grade record(s)</strong> have already been entered for assessment(s) in this unit.
                     </p>
                   </div>
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-300">
-                  Unit Name: <span className="font-bold text-gray-900 dark:text-gray-100">{topicToDelete?.topic_nama}</span>
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  To delete this unit, please clear or remove the student grades from the assessment grading tab first.
+                <div className="p-3 bg-gray-50 dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700 space-y-1 text-xs">
+                  <div><span className="text-gray-500">Unit:</span> <span className="font-bold text-gray-900 dark:text-gray-100">Unit {topicToDelete?.topic_urutan || '-'} — {topicToDelete?.topic_nama}</span></div>
+                  {topicToDelete?.topic_subject_id && <div><span className="text-gray-500">Subject:</span> <span className="font-medium text-gray-700 dark:text-gray-300">{subjectMap.get(topicToDelete.topic_subject_id)}</span></div>}
+                  {topicToDelete?.topic_kelas_id && <div><span className="text-gray-500">Class:</span> <span className="font-medium text-gray-700 dark:text-gray-300">{kelasNameMap.get(topicToDelete.topic_kelas_id)}</span></div>}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  In accordance with system security rules, deleting a unit with existing grades is strictly prohibited to protect the integrity of student report cards. If you truly need to delete this unit, please remove all student grade entries first via the <em>Assessment Grading</em> tab.
                 </p>
                 <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-700">
                   <button
@@ -11132,11 +11155,20 @@ ${refineOriginal}`
             ) : (
               <>
                 <div className="p-3.5 bg-red-50 dark:bg-red-950/40 rounded-lg border border-red-200 dark:border-red-900/60">
-                  <p className="text-xs font-semibold text-red-900 dark:text-red-300">
-                    Are you sure you want to delete this unit?
+                  <div className="flex items-center gap-2 text-red-900 dark:text-red-300 font-bold text-xs">
+                    <span>⚠️</span>
+                    <span>STRICT WARNING: Permanent Deletion</span>
+                  </div>
+                  <p className="text-xs text-red-700 dark:text-red-400 mt-1.5 leading-relaxed">
+                    This unit does not have student grades yet. However, deleting this unit will <strong>permanently remove all associated data</strong>:
                   </p>
-                  <p className="text-xs text-red-700 dark:text-red-400 mt-1">
-                    This action is permanent and cannot be undone.
+                  <ul className="mt-1.5 list-disc list-inside text-[11px] text-red-800 dark:text-red-300 space-y-0.5">
+                    <li>IB Unit Planner document design & reflections</li>
+                    <li>Associated assessments & criteria rubrics</li>
+                    <li>Weekly learning plans & schedules (weekly plan)</li>
+                  </ul>
+                  <p className="text-[11px] text-red-600 dark:text-red-400 font-semibold mt-1.5">
+                    This action is permanent and CANNOT BE UNDONE.
                   </p>
                 </div>
 
@@ -11165,7 +11197,7 @@ ${refineOriginal}`
                     className="px-4 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {deleteTopicLoading ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faTrash} />}
-                    Delete Unit
+                    Yes, Delete All Data for This Unit
                   </button>
                 </div>
               </>

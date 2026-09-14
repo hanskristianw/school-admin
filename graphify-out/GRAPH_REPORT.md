@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-09-14)
 
 ## Corpus Check
-- 371 files · ~611,598 words
+- 371 files · ~611,758 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2156 nodes · 2239 edges · 359 communities (255 shown, 104 thin omitted)
+- 2157 nodes · 2240 edges · 359 communities (255 shown, 104 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `016de5ba`
+- Built from commit: `0758c2b8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -266,7 +266,7 @@
 - 37. EXAMPLE INTERPRETATIONS
 - 15. DEFAULT SITE PACKS
 - 20. EXAMPLE INTERPRETATIONS
-- clsx
+- docx
 - pngjs
 
 ## God Nodes (most connected - your core abstractions)
@@ -902,7 +902,7 @@ Nodes (4): 20. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `browser-image-compression`, `dotenv`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `docx`, `SKILL.md`, `google-auth-library`, `clsx`, `pngjs`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `browser-image-compression`, `dotenv`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `docx`, `SKILL.md`, `google-auth-library`, `docx`, `pngjs`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`, `@fortawesome/react-fontawesome`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
@@ -911,7 +911,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
   _1117 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
-  _Cohesion score 0.07330618289522399 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07171171171171171 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Should `RLS & Migration Scripts` be split into smaller, more focused modules?**
