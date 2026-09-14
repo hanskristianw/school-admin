@@ -200,6 +200,115 @@ export const buildAssessmentCriteriaForPdf = ({
   return result;
 };
 
+// ─── Weekly Planner & Learning Process Formatting ───────────────────────────
+
+export const formatDateDisplay = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = String(dateStr).split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return dateStr;
+};
+
+export const formatWeeklyPlansToLearningProcess = (rows) => {
+  if (!rows || rows.length === 0) return '';
+
+  const unpacked = [];
+  (rows || []).forEach(row => {
+    if (row.week_objectives && String(row.week_objectives).trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(row.week_objectives);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed.forEach((item, idx) => {
+            unpacked.push({
+              id: row.id,
+              topic_id: row.topic_id,
+              week_number: row.week_number,
+              _sessionIndex: idx,
+              week_date: item.week_date !== undefined ? item.week_date : (idx === 0 ? (row.week_date || '') : ''),
+              week_objectives: item.week_objectives || '',
+              week_activities: item.week_activities || '',
+              week_resources: item.week_resources || '',
+              week_reflection: item.week_reflection || '',
+            });
+          });
+          return;
+        }
+      } catch (e) {}
+    }
+    unpacked.push(row);
+  });
+
+  const plansByWeek = {};
+  unpacked.forEach(plan => {
+    const wNum = plan.week_number || 1;
+    if (!plansByWeek[wNum]) plansByWeek[wNum] = [];
+    plansByWeek[wNum].push(plan);
+  });
+
+  const sortedWeekNumbers = Object.keys(plansByWeek).map(Number).sort((a, b) => a - b);
+  let globalMeetingNumber = 1;
+
+  const resultBlocks = [];
+
+  sortedWeekNumbers.forEach(wNum => {
+    const sessions = plansByWeek[wNum];
+    const sessionBlocks = [];
+
+    sessions.forEach(sess => {
+      const hasObj = sess.week_objectives && String(sess.week_objectives).trim();
+      const hasAct = sess.week_activities && String(sess.week_activities).trim();
+      
+      // Skip session if completely blank
+      if (!hasObj && !hasAct) return;
+
+      const dateStr = sess.week_date ? ` (${formatDateDisplay(sess.week_date)})` : '';
+      let headerLine;
+      if (sessions.length > 1) {
+        headerLine = `Meeting ${globalMeetingNumber++}${dateStr}`;
+      } else {
+        headerLine = `Week ${wNum}${dateStr}`;
+        globalMeetingNumber++;
+      }
+
+      const lines = [];
+      if (hasObj) {
+        let objText = String(sess.week_objectives).trim();
+        if (objText.startsWith('{') || objText.startsWith('[')) {
+          try {
+            const obj = JSON.parse(objText);
+            if (Array.isArray(obj)) objText = obj.map(o => o.week_objectives || o.week_activities || '').filter(Boolean).join('\n');
+            else if (typeof obj === 'object') objText = obj.week_objectives || obj.week_activities || '';
+          } catch (e) {}
+        }
+        lines.push(`  • Objectives: ${objText}`);
+      }
+      if (hasAct) {
+        let actText = String(sess.week_activities).trim();
+        if (actText.startsWith('{') || actText.startsWith('[')) {
+          try {
+            const obj = JSON.parse(actText);
+            if (Array.isArray(obj)) actText = obj.map(o => o.week_activities || '').filter(Boolean).join('\n');
+            else if (typeof obj === 'object') actText = obj.week_activities || '';
+          } catch (e) {}
+        }
+        lines.push(`  • Activities: ${actText}`);
+      }
+
+      sessionBlocks.push(`${headerLine}\n${lines.join('\n')}`);
+    });
+
+    if (sessionBlocks.length > 0) {
+      if (sessions.length > 1) {
+        resultBlocks.push(`Week ${wNum}\n${sessionBlocks.join('\n\n')}`);
+      } else {
+        resultBlocks.push(sessionBlocks.join('\n\n'));
+      }
+    }
+  });
+
+  return resultBlocks.join('\n\n');
+};
+
 // ─── Unit Planner PDF ────────────────────────────────────────────────────────
 
 /**
@@ -332,19 +441,16 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
 
     const availableWidth = pageWidth - (margin * 2);
 
-    // Helper for rendering empty field notices in bold red font with step reference
-    const formatEmptyField = (val, stepNum, colSpan = 1, forceBold = false) => {
+    // Helper for rendering empty field notices in bold red font
+    const formatEmptyField = (val, _stepNum, colSpan = 1, forceBold = false) => {
       const hasVal = val && String(val).trim() !== '' && String(val).trim() !== 'N/A';
       if (hasVal) {
         const text = cleanPdfText(val);
         const styles = forceBold ? { fontStyle: 'bold' } : {};
         return colSpan > 1 ? { content: text, colSpan, styles } : (forceBold ? { content: text, styles } : text);
       }
-      const notice = (typeof stepNum === 'string' && !stepNum.startsWith('Step'))
-        ? `Not filled yet - You can fill this in ${stepNum}`
-        : `Not filled yet - You can fill this in Step ${stepNum}`;
       const cellObj = {
-        content: notice,
+        content: 'Not filled yet',
         styles: { fontStyle: 'bold', textColor: [220, 38, 38] }
       };
       if (colSpan > 1) cellObj.colSpan = colSpan;
@@ -519,7 +625,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
     }
     const connGcCellContent = connGcText 
       ? `Connections with the Global Context:\n\n${connGcText}` 
-      : 'Connections with the Global Context:\n\nNot filled yet - You can fill this in Step 3';
+      : 'Connections with the Global Context:\n\nNot filled yet';
 
     autoTable(pdf, {
       startY: yPos,
@@ -597,7 +703,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
             docPdf.setFont(activeFont, 'bold');
             docPdf.setFontSize(9.5);
             docPdf.setTextColor(220, 38, 38);
-            docPdf.text('Not filled yet - You can fill this in Step 3', cell.x + 3, currentY);
+            docPdf.text('Not filled yet', cell.x + 3, currentY);
           }
         }
       },
@@ -658,62 +764,16 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
       });
     }
 
-    const formatDateDisplay = (dateStr) => {
-      if (!dateStr) return '';
-      const parts = String(dateStr).split('-');
-      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      return dateStr;
-    };
-
-    let learningProcessContent = '';
-    const sortedWeekNumbers = Object.keys(plansByWeek).map(Number).sort((a, b) => a - b);
-    let globalMeetingNumber = 1;
-
-    if (sortedWeekNumbers.length > 0) {
-      learningProcessContent = sortedWeekNumbers.map(wNum => {
-        const sessions = plansByWeek[wNum];
-        let weekHeader = `Week ${wNum}`;
-
-        const sessionBlocks = sessions.map((sess) => {
-          const meetingLabel = `Meeting ${globalMeetingNumber++}`;
-          const dateStr = sess.week_date ? ` (${formatDateDisplay(sess.week_date)})` : '';
-          const headerLine = `${meetingLabel}${dateStr}`;
-
-          // Only display the clean Learning Objectives (or activities fallback)
-          let contentText = sess.week_objectives || sess.week_activities || '';
-
-          // Fallback parsing if contentText itself is JSON string
-          if (typeof contentText === 'string' && (contentText.trim().startsWith('{') || contentText.trim().startsWith('['))) {
-            try {
-              const obj = JSON.parse(contentText);
-              if (Array.isArray(obj)) {
-                contentText = obj.map(o => o.week_objectives || o.week_activities || '').filter(Boolean).join('\n');
-              } else if (typeof obj === 'object') {
-                contentText = obj.week_objectives || obj.week_activities || '';
-              }
-            } catch (e) {}
-          }
-
-          if (contentText && String(contentText).trim()) {
-            const rawLines = String(contentText).trim().split('\n').map(l => l.trim()).filter(Boolean);
-            const formattedBullets = rawLines.map(l => (l.startsWith('•') || l.startsWith('-') || l.startsWith('*')) ? `  ${l}` : `  - ${l}`).join('\n');
-            return `${headerLine}\n${formattedBullets}`;
-          }
-
-          return headerLine;
-        }).join('\n\n');
-
-        return `${weekHeader}\n${sessionBlocks}`;
-      }).join('\n\n');
-    }
+    // Learning process: prioritize custom text from topic_learning_process, fallback to weekly plans
+    let learningProcessContent = topicData.topic_learning_process?.trim() || formatWeeklyPlansToLearningProcess(weeklyPlans);
 
     const formativeContent = topicData.topic_formative_assessment 
       ? `Formative Assessment\n${topicData.topic_formative_assessment}`
-      : 'Formative Assessment\nNot filled yet - You can fill this in Step 6';
+      : 'Formative Assessment\nNot filled yet';
 
     const differentiationContent = topicData.topic_differentiation
       ? `Differentiation\n${topicData.topic_differentiation}`
-      : 'Differentiation\nNot filled yet - You can fill this in Step 6';
+      : 'Differentiation\nNot filled yet';
 
     const initialPageNum = pdf.getNumberOfPages();
 
@@ -791,7 +851,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
             } else {
               pdf.setFont(activeFont, 'bold');
               pdf.setTextColor(220, 38, 38);
-              pdf.text('Not filled yet - You can fill this in Step 6', cell.x + 3, currentY);
+              pdf.text('Not filled yet', cell.x + 3, currentY);
             }
           } else if (data.row.index === 3) { // Differentiation
             pdf.setFillColor(255, 255, 255);
@@ -812,7 +872,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
             } else {
               pdf.setFont(activeFont, 'bold');
               pdf.setTextColor(220, 38, 38);
-              pdf.text('Not filled yet - You can fill this in Step 6', cell.x + 3, currentY);
+              pdf.text('Not filled yet', cell.x + 3, currentY);
             }
           }
         }

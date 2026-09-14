@@ -1055,8 +1055,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/pdfGenerators.js": {
-    "mtime": 1786525723.213689,
-    "ast_hash": "e2c09f2c7b826d5f5f7da6adaa48d769",
+    "mtime": 1789117078.6114388,
+    "ast_hash": "42fb83a158aee2b50962314432b3cfb8",
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/useAiHelp.js": {
@@ -1065,8 +1065,8 @@
     "semantic_hash": "ed62be15a684e4722d48de789ed2e4ba"
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1789026355.0747328,
-    "ast_hash": "9819829a8ce1e0bbce3f868e8e6afaa2",
+    "mtime": 1789357150.4202514,
+    "ast_hash": "186127fce2652dcf08dc1f2e094f455d",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -2075,8 +2075,8 @@
     "semantic_hash": ""
   },
   "src/app/data/topic-new/components/UnitPlannerDocumentEditor.jsx": {
-    "mtime": 1789030843.0029995,
-    "ast_hash": "ce23edc65655f50f13894e7aa487bf21",
+    "mtime": 1789357552.1705742,
+    "ast_hash": "9c6cf01231c9efd5ce86112b0ab2aeb6",
     "semantic_hash": ""
   },
   "migrations/add-kelas-user-id-2.sql": {

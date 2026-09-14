@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faTimes,
@@ -80,7 +81,6 @@ export default function UnitPlannerDocumentEditor({
   // Document Mode: 'planner' (Landscape A4) | 'assessment' (Portrait A4)
   const [activeDoc, setActiveDoc] = useState('planner')
   const [activeTab, setActiveTab] = useState('all') // 'all' | 'p1' | 'p2' | 'p3'
-  const [inquiryMode, setInquiryMode] = useState('categorized') // 'categorized' | 'raw'
   const [keyConceptDropdownOpen, setKeyConceptDropdownOpen] = useState(false)
   const [validationErrors, setValidationErrors] = useState([])
 
@@ -107,6 +107,66 @@ export default function UnitPlannerDocumentEditor({
     }
   }, [wizardAssessment?.selected_criteria, selectedTopic?.topic_year])
 
+  // Relational Teacher Name resolver according to DATABASE_SCHEMA:
+  // Priority 1: detail_kelas.teacher_user_id (Real Teacher teaching this specific class & subject)
+  // Priority 2: subject.subject_user_id (Subject Coordinator / Default Teacher)
+  // Never fallback to logged in user / admin
+  const [teacherName, setTeacherName] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+    const resolveTeacher = async () => {
+      const subjectId = selectedTopic?.topic_subject_id
+      const kelasId = selectedTopic?.topic_kelas_id
+
+      if (!subjectId) {
+        if (isMounted) setTeacherName('–')
+        return
+      }
+
+      try {
+        let resolved = ''
+
+        // Priority 1: detail_kelas (Specific teacher for this class & subject)
+        if (kelasId) {
+          const { data: dkData } = await supabase
+            .from('detail_kelas')
+            .select('teacher_user_id, users:teacher_user_id(user_nama_depan, user_nama_belakang)')
+            .eq('detail_kelas_subject_id', subjectId)
+            .eq('detail_kelas_kelas_id', kelasId)
+            .maybeSingle()
+
+          if (dkData?.users) {
+            resolved = `${dkData.users.user_nama_depan || ''} ${dkData.users.user_nama_belakang || ''}`.trim()
+          }
+        }
+
+        // Priority 2: subject.subject_user_id (Subject Coordinator / Default Teacher)
+        if (!resolved) {
+          const { data: subjData } = await supabase
+            .from('subject')
+            .select('subject_user_id, users:subject_user_id(user_nama_depan, user_nama_belakang)')
+            .eq('subject_id', subjectId)
+            .maybeSingle()
+
+          if (subjData?.users) {
+            resolved = `${subjData.users.user_nama_depan || ''} ${subjData.users.user_nama_belakang || ''}`.trim()
+          }
+        }
+
+        if (isMounted) {
+          setTeacherName(resolved || '–')
+        }
+      } catch (err) {
+        console.error('Error resolving teacher for unit planner:', err)
+        if (isMounted) setTeacherName('–')
+      }
+    }
+
+    resolveTeacher()
+    return () => { isMounted = false }
+  }, [selectedTopic?.topic_subject_id, selectedTopic?.topic_kelas_id])
+
   // Jump to specific page
   const scrollToPage = (tab) => {
     setActiveTab(tab)
@@ -119,53 +179,6 @@ export default function UnitPlannerDocumentEditor({
   const handleAutoResize = (e) => {
     e.target.style.height = 'auto'
     e.target.style.height = `${Math.max(45, e.target.scrollHeight)}px`
-  }
-
-  // Parse inquiry questions into Factual, Conceptual, Debatable
-  const parseInquiryQuestions = (text = '') => {
-    let factual = ''
-    let conceptual = ''
-    let debatable = ''
-
-    if (!text) return { factual, conceptual, debatable }
-
-    const factualMatch = text.match(/Factual:\s*([\s\S]*?)(?=(?:\r?\n\r?\n)?(?:Conceptual:|Debatable:|$))/i)
-    const conceptualMatch = text.match(/Conceptual:\s*([\s\S]*?)(?=(?:\r?\n\r?\n)?(?:Factual:|Debatable:|$))/i)
-    const debatableMatch = text.match(/Debatable:\s*([\s\S]*?)(?=(?:\r?\n\r?\n)?(?:Factual:|Conceptual:|$))/i)
-
-    if (factualMatch || conceptualMatch || debatableMatch) {
-      factual = factualMatch ? factualMatch[1].trim() : ''
-      conceptual = conceptualMatch ? conceptualMatch[1].trim() : ''
-      debatable = debatableMatch ? debatableMatch[1].trim() : ''
-    } else {
-      factual = text
-    }
-
-    return { factual, conceptual, debatable }
-  }
-
-  // Local state for smooth multi-line typing without regex trim mangling newlines
-  const [inquiryParts, setInquiryParts] = useState(() => parseInquiryQuestions(selectedTopic?.topic_inquiry_question || ''))
-  const lastTopicInquiryRef = useRef(selectedTopic?.topic_inquiry_question)
-
-  useEffect(() => {
-    if (selectedTopic?.topic_inquiry_question !== lastTopicInquiryRef.current) {
-      lastTopicInquiryRef.current = selectedTopic?.topic_inquiry_question
-      setInquiryParts(parseInquiryQuestions(selectedTopic?.topic_inquiry_question || ''))
-    }
-  }, [selectedTopic?.topic_inquiry_question])
-
-  const handleInquiryPartChange = (part, value) => {
-    const nextParts = { ...inquiryParts, [part]: value }
-    setInquiryParts(nextParts)
-
-    const parts = []
-    if (nextParts.factual) parts.push(`Factual:\n${nextParts.factual}`)
-    if (nextParts.conceptual) parts.push(`Conceptual:\n${nextParts.conceptual}`)
-    if (nextParts.debatable) parts.push(`Debatable:\n${nextParts.debatable}`)
-    const combined = parts.join('\n\n')
-    lastTopicInquiryRef.current = combined
-    setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: combined }))
   }
 
   // Single Key Concept helper (Strictly 1 Key Concept per IB MYP unit)
@@ -214,9 +227,8 @@ export default function UnitPlannerDocumentEditor({
   // Current Subject and Class objects
   const currentSubject = subjects.find(s => String(s.subject_id) === String(selectedTopic?.topic_subject_id))
   const currentKelas = (allKelasRaw || []).find(k => String(k.kelas_id) === String(selectedTopic?.topic_kelas_id))
-  const teacherName = currentKelas?.teacher_name || (typeof window !== 'undefined' ? localStorage.getItem('user_nama') : '') || 'Hans Kristian Wijaya'
-  const subjectName = currentSubject?.subject_name || 'Design'
-  const kelasName = currentKelas?.kelas_nama || 'MYP 1'
+  const subjectName = currentSubject?.subject_name || '–'
+  const kelasName = currentKelas?.kelas_nama || '–'
   const unitName = selectedTopic?.topic_urutan ? `Unit ${selectedTopic.topic_urutan}` : (selectedTopic?.topic_nama || 'Unit 1')
 
   if (!isOpen || !selectedTopic) return null
@@ -426,6 +438,81 @@ export default function UnitPlannerDocumentEditor({
               {/* TABLE 1: HEADER TABLE */}
               <table className="w-full border-collapse border border-black text-[12px] mb-4">
                 <tbody>
+                  {/* Row 0: Class & Academic Year */}
+                  <tr>
+                    <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
+                      Class <span className="text-red-500">*</span>
+                    </td>
+                    <td className="w-[40%] border border-black px-2.5 py-1.5 align-middle">
+                      <select
+                        disabled={!isAddMode}
+                        value={selectedTopic.topic_kelas_id || ''}
+                        onChange={(e) => {
+                          const kid = e.target.value
+                          if (onKelasChange) {
+                            onKelasChange(kid)
+                          } else {
+                            setSelectedTopic(prev => ({ ...prev, topic_kelas_id: kid }))
+                          }
+                          // Auto-suggest MYP year if not set
+                          if (kid && !selectedTopic.topic_year) {
+                            const foundK = (allKelas || []).find(k => String(k.kelas_id) === String(kid))
+                            const kname = foundK?.kelas_nama || ''
+                            let suggestedYear = ''
+                            if (kname.includes('7')) suggestedYear = '1'
+                            else if (kname.includes('8')) suggestedYear = '2'
+                            else if (kname.includes('9')) suggestedYear = '3'
+                            else if (kname.includes('10')) suggestedYear = '5'
+                            if (suggestedYear) {
+                              setSelectedTopic(prev => ({ ...prev, topic_year: suggestedYear }))
+                            }
+                          }
+                        }}
+                        className={`w-full bg-transparent font-semibold outline-none ${
+                          !isAddMode 
+                            ? 'cursor-not-allowed opacity-80 text-gray-800' 
+                            : !selectedTopic.topic_kelas_id 
+                              ? 'text-gray-500 font-normal italic cursor-pointer hover:bg-yellow-50 focus:bg-white' 
+                              : 'text-black cursor-pointer hover:bg-yellow-50 focus:bg-white'
+                        }`}
+                        title={!isAddMode ? 'Class cannot be changed on existing units to maintain assessment & grading integrity' : ''}
+                      >
+                        <option value="">
+                          {wizardYear
+                            ? (allKelas && allKelas.length > 0 ? '-- Select Class --' : '-- No classes assigned in this year --')
+                            : '-- Select Academic Year First --'}
+                        </option>
+                        {(allKelas || []).map(k => (
+                          <option key={k.kelas_id} value={k.kelas_id}>{k.kelas_nama}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
+                      Academic Year
+                    </td>
+                    <td className="w-[30%] border border-black px-2.5 py-1.5 align-middle" colSpan={3}>
+                      <select
+                        disabled={!isAddMode}
+                        value={wizardYear || ''}
+                        onChange={(e) => {
+                          const yid = e.target.value
+                          if (onWizardYearChange) onWizardYearChange(yid)
+                        }}
+                        className={`w-full bg-transparent font-semibold outline-none ${
+                          !isAddMode 
+                            ? 'cursor-not-allowed opacity-80 text-gray-800' 
+                            : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
+                        }`}
+                        title={!isAddMode ? 'Academic Year cannot be changed on existing units' : ''}
+                      >
+                        <option value="">-- Select Academic Year --</option>
+                        {(yearOptions || []).map(y => (
+                          <option key={y.year_id} value={y.year_id}>{y.year_name}</option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+
                   {/* Row 1: Teacher(s) & Subject groups */}
                   <tr>
                     <td className="w-[15%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
@@ -439,18 +526,34 @@ export default function UnitPlannerDocumentEditor({
                     </td>
                     <td className="w-[30%] border border-black px-2.5 py-1.5 align-middle" colSpan={3}>
                       <select
+                        disabled={!isAddMode}
                         value={selectedTopic.topic_subject_id || ''}
                         onChange={(e) => {
                           const sid = e.target.value
                           setSelectedTopic(prev => ({ ...prev, topic_subject_id: sid }))
                           if (sid && fetchCriteriaForSubject) fetchCriteriaForSubject(sid)
                         }}
-                        className="w-full bg-transparent font-semibold text-black outline-none cursor-pointer hover:bg-yellow-50 focus:bg-white"
+                        className={`w-full bg-transparent font-semibold outline-none ${
+                          !isAddMode 
+                            ? 'cursor-not-allowed opacity-80 text-gray-800' 
+                            : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
+                        }`}
+                        title={!isAddMode ? 'Subject cannot be changed on existing units to maintain criteria & assessment integrity' : ''}
                       >
-                        <option value="">-- Select Subject Group --</option>
-                        {(subjectsForSelectedKelas.length > 0 ? subjectsForSelectedKelas : subjects).map(s => (
-                          <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
-                        ))}
+                        {subjectsForSelectedKelas && subjectsForSelectedKelas.length > 0 ? (
+                          <>
+                            <option value="">-- Select Subject Group --</option>
+                            {subjectsForSelectedKelas.map(s => (
+                              <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
+                            ))}
+                          </>
+                        ) : (
+                          <option value="">
+                            {!selectedTopic.topic_kelas_id 
+                              ? '-- Select Class First --' 
+                              : '-- No subjects assigned in this class --'}
+                          </option>
+                        )}
                       </select>
                     </td>
                   </tr>
@@ -474,6 +577,7 @@ export default function UnitPlannerDocumentEditor({
                     </td>
                     <td className="w-[12%] border border-black px-2.5 py-1.5 align-middle">
                       <select
+                        disabled={!isAddMode}
                         value={selectedTopic.topic_year || ''}
                         onChange={(e) => {
                           const yr = e.target.value
@@ -482,7 +586,12 @@ export default function UnitPlannerDocumentEditor({
                             fetchStrandsForCriteria(wizardAssessment.selected_criteria, yr)
                           }
                         }}
-                        className="w-full bg-transparent font-semibold text-black outline-none cursor-pointer hover:bg-yellow-50 focus:bg-white"
+                        className={`w-full bg-transparent font-semibold outline-none ${
+                          !isAddMode 
+                            ? 'cursor-not-allowed opacity-80 text-gray-800' 
+                            : 'cursor-pointer hover:bg-yellow-50 focus:bg-white text-black'
+                        }`}
+                        title={!isAddMode ? 'MYP Year cannot be changed on existing units' : ''}
                       >
                         <option value="">Year</option>
                         <option value="1">1</option>
@@ -677,35 +786,7 @@ export default function UnitPlannerDocumentEditor({
                   <tr>
                     <th colSpan={3} className="bg-[#E8E8E8] font-bold text-left border border-black px-2.5 py-1.5">
                       <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-3">
-                          <span>Inquiry questions</span>
-                          {/* Mode Switcher: Categorized vs Raw Document */}
-                          <div className="flex items-center text-[10px] font-normal gap-0.5 bg-white border border-gray-400 rounded p-0.5 shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => setInquiryMode('categorized')}
-                              className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                                inquiryMode === 'categorized'
-                                  ? 'bg-black text-white font-bold'
-                                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                              }`}
-                            >
-                              Categorized
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setInquiryMode('raw')}
-                              className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                                inquiryMode === 'raw'
-                                  ? 'bg-black text-white font-bold'
-                                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                              }`}
-                            >
-                              Raw Document
-                            </button>
-                          </div>
-                        </div>
-
+                        <span>Inquiry questions</span>
                         {requestAiHelp && (
                           <button
                             type="button"
@@ -721,67 +802,17 @@ export default function UnitPlannerDocumentEditor({
                     </th>
                   </tr>
 
-                  {/* Row 6: Inquiry questions Content */}
+                  {/* Row 6: Inquiry questions Content (Single Clean Textarea matching DATABASE_SCHEMA topic_inquiry_question) */}
                   <tr>
-                    <td colSpan={3} className="border border-black p-3 align-top">
-                      {inquiryMode === 'raw' ? (
-                        <div>
-                          <textarea
-                            value={selectedTopic.topic_inquiry_question || ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              lastTopicInquiryRef.current = val
-                              setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: val }))
-                              setInquiryParts(parseInquiryQuestions(val))
-                            }}
-                            onInput={handleAutoResize}
-                            rows={Math.max(6, (selectedTopic.topic_inquiry_question || '').split('\n').length)}
-                            placeholder="Factual:\nWhat is the third teacher?\nWhat posters exist in our current learning environment?\n\nConceptual:\nHow might the appearance of the space we learn in change the way we learn?\n\nDebatable:\nDoes an effective learning environment need effective displays?"
-                            className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px] min-h-[140px] font-sans"
-                          />
-                          <span className="text-[10px] text-gray-500 block pt-1 border-t border-gray-200">
-                            Type freely using <strong>Factual:</strong>, <strong>Conceptual:</strong>, and <strong>Debatable:</strong> headers.
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div>
-                            <div className="font-bold text-black mb-0.5">Factual:</div>
-                            <textarea
-                              value={inquiryParts.factual || ''}
-                              onChange={(e) => handleInquiryPartChange('factual', e.target.value)}
-                              onInput={handleAutoResize}
-                              placeholder="What is the third teacher?\nWhat posters exist in our current learning environment? How do we use our classroom posters?"
-                              rows={Math.max(2, (inquiryParts.factual || '').split('\n').length)}
-                              className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px] min-h-[45px]"
-                            />
-                          </div>
-
-                          <div>
-                            <div className="font-bold text-black mb-0.5">Conceptual:</div>
-                            <textarea
-                              value={inquiryParts.conceptual || ''}
-                              onChange={(e) => handleInquiryPartChange('conceptual', e.target.value)}
-                              onInput={handleAutoResize}
-                              placeholder="How might the appearance of the space we learn in change the way we learn?\nHow do visuals help us learn?"
-                              rows={Math.max(2, (inquiryParts.conceptual || '').split('\n').length)}
-                              className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px] min-h-[45px]"
-                            />
-                          </div>
-
-                          <div>
-                            <div className="font-bold text-black mb-0.5">Debatable:</div>
-                            <textarea
-                              value={inquiryParts.debatable || ''}
-                              onChange={(e) => handleInquiryPartChange('debatable', e.target.value)}
-                              onInput={handleAutoResize}
-                              placeholder="Does an effective learning environment need effective displays?"
-                              rows={Math.max(2, (inquiryParts.debatable || '').split('\n').length)}
-                              className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px] min-h-[45px]"
-                            />
-                          </div>
-                        </div>
-                      )}
+                    <td colSpan={3} className="border border-black p-2.5 align-top">
+                      <textarea
+                        value={selectedTopic.topic_inquiry_question || ''}
+                        onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_inquiry_question: e.target.value }))}
+                        onInput={handleAutoResize}
+                        rows={Math.max(6, (selectedTopic.topic_inquiry_question || '').split('\n').length)}
+                        placeholder={"Factual:\n- What is a ratio?\n- What is a proportion?\n\nConceptual:\n- Why are proportional relationships useful in everyday life?\n\nDebatable:\n- Is using proportions always the best way to compare situations?"}
+                        className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px] min-h-[130px] font-sans"
+                      />
                     </td>
                   </tr>
                 </tbody>
@@ -917,12 +948,6 @@ export default function UnitPlannerDocumentEditor({
                         rows={10}
                         className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white text-[12px]"
                       />
-
-                      {(!selectedTopic.topic_connections_global_context || !selectedTopic.topic_connections_global_context.trim()) && (
-                        <div className="font-bold text-red-600 text-[11px] pt-2">
-                          Not filled yet - You can fill this here or in Step 3
-                        </div>
-                      )}
                     </td>
                   </tr>
                 </tbody>
@@ -995,23 +1020,36 @@ export default function UnitPlannerDocumentEditor({
                     <td rowSpan={3} className="w-[33%] border border-black p-2.5 align-top">
                       <textarea
                         value={selectedTopic.topic_content || ''}
-                        onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_content: e.target.value }))}
+                        onChange={(e) => {
+                          setSelectedTopic(prev => ({ ...prev, topic_content: e.target.value }))
+                          handleAutoResize(e)
+                        }}
                         onInput={handleAutoResize}
                         placeholder="Topics, subject knowledge, essential skills, and disciplinary syllabus content..."
-                        rows={12}
-                        className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white"
+                        rows={16}
+                        className="w-full min-h-[380px] bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white"
                       />
                     </td>
 
-                    <td className="w-[67%] border border-black p-2.5 align-top">
-                      <textarea
-                        value={selectedTopic.topic_learning_process || selectedTopic.topic_keterangan || ''}
-                        onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_learning_process: e.target.value, topic_keterangan: e.target.value }))}
-                        onInput={handleAutoResize}
-                        placeholder="Learning activities, inquiries, pedagogical strategies, teaching methodologies..."
-                        rows={5}
-                        className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white"
-                      />
+                    <td className="w-[67%] border border-black p-2.5 align-top bg-[#fafafa]">
+                      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-gray-300">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faBookOpen} className="text-[10px] text-gray-400" />
+                          Weekly Plan Summary
+                        </span>
+                        <span className="text-[9px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
+                          Read-only (Managed in Weekly Planner)
+                        </span>
+                      </div>
+                      {selectedTopic.topic_learning_process ? (
+                        <div className="whitespace-pre-wrap leading-relaxed text-black select-text">
+                          {selectedTopic.topic_learning_process}
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 italic py-6 text-center">
+                          Not filled yet - Record weekly meetings and objectives in the Weekly Planner modal.
+                        </div>
+                      )}
                     </td>
                   </tr>
 
@@ -1027,11 +1065,6 @@ export default function UnitPlannerDocumentEditor({
                         rows={3}
                         className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white"
                       />
-                      {(!selectedTopic.topic_formative_assessment || !selectedTopic.topic_formative_assessment.trim()) && (
-                        <div className="font-bold text-red-600 text-[11px]">
-                          Not filled yet - You can fill this in Step 6
-                        </div>
-                      )}
                     </td>
                   </tr>
 
@@ -1047,11 +1080,6 @@ export default function UnitPlannerDocumentEditor({
                         rows={3}
                         className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white"
                       />
-                      {(!selectedTopic.topic_differentiation || !selectedTopic.topic_differentiation.trim()) && (
-                        <div className="font-bold text-red-600 text-[11px]">
-                          Not filled yet - You can fill this in Step 6
-                        </div>
-                      )}
                     </td>
                   </tr>
                 </tbody>
