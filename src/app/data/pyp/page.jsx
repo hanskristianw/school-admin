@@ -3435,7 +3435,7 @@ export default function PypPage() {
                       ) : (
                         pypClasses.map(cls => (
                           <option key={cls.kelas_id} value={cls.kelas_id.toString()}>
-                            {cls.kelas_nama} {cls.is_nursery ? '🌱 (Nursery)' : ''}
+                            {cls.kelas_nama}
                           </option>
                         ))
                       )}
