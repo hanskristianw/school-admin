@@ -203,15 +203,17 @@ function ExcuseModal({ record, excuse, userId, leaveTypes, onClose, onSuccess })
   const [quotaInfo, setQuotaInfo]     = useState(null)
   const [quotaLoading, setQuotaLoading] = useState(false)
 
-  const issueType = record.issues?.includes('late')
-    ? 'late'
-    : record.issues?.includes('leave_early')
-      ? 'leave_early'
-      : record.issues?.includes('absent')
-        ? 'absent'
-        : record.issues?.includes('no_checkin')
-          ? 'no_checkin'
-          : 'no_checkout'
+  const issueType = excuse?.excuse_type || record.issueType || (
+    record.issues?.includes('late')
+      ? 'late'
+      : record.issues?.includes('leave_early')
+        ? 'leave_early'
+        : record.issues?.includes('absent')
+          ? 'absent'
+          : record.issues?.includes('no_checkin')
+            ? 'no_checkin'
+            : 'no_checkout'
+  )
 
   const categories = getCategoriesForType(issueType, leaveTypes)
   const selectedCat = categories.find(c => c.value === category)
@@ -892,21 +894,35 @@ export default function AttendanceFormPage() {
       setSubmittedList(submitted)
 
       for (const ex of submitted) {
-        em[ex.attendance_date] = ex
+        em[`${ex.attendance_date}_${ex.excuse_type}`] = ex
+        if (!em[ex.attendance_date]) {
+          em[ex.attendance_date] = ex
+        }
       }
       setExcuseMap(em)
 
+      const VALID_ISSUES = ['late', 'leave_early', 'absent', 'no_checkin', 'no_checkout']
       const rows = []
       if (reportJson.success) {
         for (const user of (reportJson.data || [])) {
           for (const day of (user.daily || [])) {
             if (day.status === 'holiday' || day.status === 'dayoff' || day.status === 'off') continue
-            const hasIssue = day.issues?.some(i => ['late', 'leave_early', 'absent', 'no_checkin', 'no_checkout'].includes(i))
-            if (hasIssue) rows.push(day)
+            const dayIssues = (day.issues || []).filter(i => VALID_ISSUES.includes(i))
+            for (const issue of dayIssues) {
+              rows.push({
+                ...day,
+                issueType: issue,
+                rowKey: `${day.date}_${issue}`,
+              })
+            }
           }
         }
       }
-      rows.sort((a, b) => b.date.localeCompare(a.date))
+      rows.sort((a, b) => {
+        const d = b.date.localeCompare(a.date)
+        if (d !== 0) return d
+        return a.issueType.localeCompare(b.issueType)
+      })
       setIssueRows(rows)
     } finally { setLoading(false) }
   }, [])
@@ -923,7 +939,7 @@ export default function AttendanceFormPage() {
   }
 
   const handleDeleteSuccess = () => { setDeleteExcuse(null); loadData(userId, month) }
-  const noExcuseCount = issueRows.filter(r => !excuseMap[r.date]).length
+  const noExcuseCount = issueRows.filter(r => !excuseMap[`${r.date}_${r.issueType}`]).length
 
   return (
     <div style={{ background: pageBg, minHeight: '100vh', padding: '24px 32px', color: textPrimary, fontFamily: "'Geist Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif" }}>
@@ -1050,9 +1066,9 @@ export default function AttendanceFormPage() {
 
               <div className="space-y-2">
                 {issueRows.map(day => {
-                  const excuse = excuseMap[day.date]
+                  const excuse = excuseMap[`${day.date}_${day.issueType}`] || (day.issues?.length === 1 ? excuseMap[day.date] : null)
                   const st     = excuse ? STATUS_CONFIG[excuse.status] : null
-                  const primaryIssue = ['late', 'leave_early', 'absent', 'no_checkout', 'no_checkin'].find(i => day.issues?.includes(i))
+                  const primaryIssue = day.issueType || ['late', 'leave_early', 'absent', 'no_checkout', 'no_checkin'].find(i => day.issues?.includes(i))
                   const ic = ISSUE_CONFIG[primaryIssue] || ISSUE_CONFIG.absent
                   const duration = primaryIssue === 'late' ? day.late_minutes : primaryIssue === 'leave_early' ? day.leave_early_minutes : null
                   const rejectedBy = excuse?.approver1_action === 'rejected' ? excuse.approver1_note || 'Approver 1' : excuse?.approver2_note || 'Approver 2'
@@ -1060,7 +1076,7 @@ export default function AttendanceFormPage() {
 
                   return (
                     <div
-                      key={day.date}
+                      key={day.rowKey || `${day.date}_${day.issueType}`}
                       className="p-3.5 rounded-lg border flex items-center justify-between gap-4 flex-wrap transition-all hover:shadow-2xs"
                       style={{
                         background: cardBg,
@@ -1104,7 +1120,7 @@ export default function AttendanceFormPage() {
                             {canEditDelete && (
                               <div className="flex items-center gap-1.5">
                                 <button
-                                  onClick={() => setModalRecord({ record: { ...day, issues: [primaryIssue] }, excuse })}
+                                  onClick={() => setModalRecord({ record: { ...day, issueType: primaryIssue, issues: [primaryIssue] }, excuse })}
                                   className="px-2.5 py-1 rounded text-xs font-medium cursor-pointer border flex items-center gap-1.5 transition-all"
                                   style={{
                                     background: subtleBg,
@@ -1131,7 +1147,7 @@ export default function AttendanceFormPage() {
                           </>
                         ) : (
                           <button
-                            onClick={() => setModalRecord({ record: day })}
+                            onClick={() => setModalRecord({ record: { ...day, issueType: primaryIssue, issues: [primaryIssue] } })}
                             className="px-3 py-1 rounded text-xs font-semibold cursor-pointer border transition-all"
                             style={{
                               background: isDark ? '#F4F4F5' : '#111111',

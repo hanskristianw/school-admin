@@ -329,12 +329,19 @@ export default function AttendanceReportPage() {
         if (dow === 6) return 'Day Off (Sabtu)'
         return 'Day Off'
       }
-      if (d.excuse || d.excused || d.excuse_pending) {
-        const detail = formatExcuseDetail(d.excuse)
-        if (d.excuse?.status === 'rejected' && d.excuse?.rejected_note) {
-          return detail ? `${detail} (Ditolak: ${d.excuse.rejected_note})` : `Ditolak: ${d.excuse.rejected_note}`
+      const excuses = (d.excuses && d.excuses.length > 0) ? d.excuses : (d.excuse ? [d.excuse] : [])
+      if (excuses.length > 0 || d.excused || d.excuse_pending) {
+        if (excuses.length > 0) {
+          const formatted = excuses.map(ex => {
+            const detail = formatExcuseDetail(ex)
+            if (ex.status === 'rejected' && ex.rejected_note) {
+              return detail ? `${detail} (Ditolak: ${ex.rejected_note})` : `Ditolak: ${ex.rejected_note}`
+            }
+            return detail || 'Izin'
+          })
+          return formatted.join('; ')
         }
-        return detail || 'Izin'
+        return 'Izin'
       }
       if (d.issues?.length > 0) {
         const map = { absent:'Tidak Masuk', late:'Terlambat', leave_early:'Pulang Awal', no_checkin:'Tidak Check-In', no_checkout:'Tidak Check-Out' }
@@ -532,14 +539,17 @@ export default function AttendanceReportPage() {
       const categoryMap = {}
 
       for (const d of (u.daily || [])) {
-        const isApproved = d.excuse?.status === 'approved' || d.excused || d.excuse?.status === 'approved_1' || d.excuse_pending
-        if (isApproved && d.excuse) {
-          const rawCat = (d.excuse.category || '').toLowerCase()
-          if (rawCat === 'annual_leave') {
-            annualLeaveCount++
-          } else {
-            const catName = formatExcuseDetail(d.excuse) || EXCUSE_CATEGORY_MAP[rawCat] || 'Izin'
-            categoryMap[catName] = (categoryMap[catName] || 0) + 1
+        const excuses = (d.excuses && d.excuses.length > 0) ? d.excuses : (d.excuse ? [d.excuse] : [])
+        for (const ex of excuses) {
+          const isApproved = ex.status === 'approved' || ex.status === 'approved_1' || d.excused || d.excuse_pending
+          if (isApproved) {
+            const rawCat = (ex.category || '').toLowerCase()
+            if (rawCat === 'annual_leave') {
+              annualLeaveCount++
+            } else {
+              const catName = formatExcuseDetail(ex) || EXCUSE_CATEGORY_MAP[rawCat] || 'Izin'
+              categoryMap[catName] = (categoryMap[catName] || 0) + 1
+            }
           }
         }
       }
@@ -1190,12 +1200,22 @@ export default function AttendanceReportPage() {
                                 </thead>
                                 <tbody className="divide-y" style={{ divideColor: borderColor, background: cardBg }}>
                                   {row.daily.map((d) => {
-                                    const excDetail = formatExcuseDetail(d.excuse)
-                                    const excLabel = !d.excuse && !d.excused && !d.excuse_pending ? null
-                                      : d.excuse?.status === 'approved' || d.excused ? { text: excDetail || 'Disetujui', bg: isDark ? '#1E2E1E' : '#EDF3EC', border: isDark ? '#2B422B' : '#D5E6D3', color: isDark ? '#7BAF7B' : '#346538' }
-                                      : d.excuse_pending ? { text: excDetail || 'Diproses', bg: isDark ? '#2A2618' : '#FBF3DB', border: isDark ? '#3D361F' : '#F2E3B6', color: isDark ? '#C4A24A' : '#956400' }
-                                      : d.excuse?.status === 'rejected' ? { text: d.excuse.rejected_note ? `${excDetail || 'Izin'} (Ditolak: ${d.excuse.rejected_note})` : (excDetail || 'Ditolak'), bg: isDark ? '#3A1E1E' : '#FDEBEC', border: isDark ? '#542626' : '#F8C9CC', color: isDark ? '#DC8585' : '#9F2F2D' }
-                                      : null
+                                    const excuses = (d.excuses && d.excuses.length > 0) ? d.excuses : (d.excuse ? [d.excuse] : [])
+                                    const excLabels = excuses.map(ex => {
+                                      const excDetail = formatExcuseDetail(ex)
+                                      return ex.status === 'approved'
+                                        ? { text: excDetail || 'Disetujui', bg: isDark ? '#1E2E1E' : '#EDF3EC', border: isDark ? '#2B422B' : '#D5E6D3', color: isDark ? '#7BAF7B' : '#346538' }
+                                        : ex.status === 'pending' || ex.status === 'approved_1'
+                                        ? { text: excDetail || 'Diproses', bg: isDark ? '#2A2618' : '#FBF3DB', border: isDark ? '#3D361F' : '#F2E3B6', color: isDark ? '#C4A24A' : '#956400' }
+                                        : ex.status === 'rejected'
+                                        ? { text: ex.rejected_note ? `${excDetail || 'Izin'} (Ditolak: ${ex.rejected_note})` : (excDetail || 'Ditolak'), bg: isDark ? '#3A1E1E' : '#FDEBEC', border: isDark ? '#542626' : '#F8C9CC', color: isDark ? '#DC8585' : '#9F2F2D' }
+                                        : null
+                                    }).filter(Boolean)
+
+                                    if (excLabels.length === 0 && (d.excused || d.excuse_pending)) {
+                                      if (d.excused) excLabels.push({ text: 'Disetujui', bg: isDark ? '#1E2E1E' : '#EDF3EC', border: isDark ? '#2B422B' : '#D5E6D3', color: isDark ? '#7BAF7B' : '#346538' })
+                                      else if (d.excuse_pending) excLabels.push({ text: 'Diproses', bg: isDark ? '#2A2618' : '#FBF3DB', border: isDark ? '#3D361F' : '#F2E3B6', color: isDark ? '#C4A24A' : '#956400' })
+                                    }
 
                                     return (
                                       <tr key={d.date} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30">
@@ -1256,11 +1276,11 @@ export default function AttendanceReportPage() {
                                               </div>
                                             )}
 
-                                            {excLabel && (
-                                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: excLabel.bg, borderColor: excLabel.border, color: excLabel.color }}>
-                                                {excLabel.text}
+                                            {excLabels.map((lbl, idx) => (
+                                              <span key={idx} className="px-2 py-0.5 rounded text-[10px] font-semibold border" style={{ background: lbl.bg, borderColor: lbl.border, color: lbl.color }}>
+                                                {lbl.text}
                                               </span>
-                                            )}
+                                            ))}
                                           </div>
                                         </td>
                                       </tr>

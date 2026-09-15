@@ -260,7 +260,7 @@ export async function GET(request) {
 
     // ── 4b. Excuse Map ────────────────────────────────────────────────────────
     // Fetch approved/rejected excuses for this date range to overlay on report
-    let excuseMap = {} // excuseMap[user_id][dateStr] = excuse row
+    let excuseMap = {} // excuseMap[user_id][dateStr] = array of excuse rows
     try {
       const { data: excuses } = await supabaseAdmin
         .from('attendance_excuses')
@@ -270,7 +270,8 @@ export async function GET(request) {
         .lte('attendance_date', end)
       for (const ex of (excuses || [])) {
         if (!excuseMap[ex.user_id]) excuseMap[ex.user_id] = {}
-        excuseMap[ex.user_id][ex.attendance_date] = ex
+        if (!excuseMap[ex.user_id][ex.attendance_date]) excuseMap[ex.user_id][ex.attendance_date] = []
+        excuseMap[ex.user_id][ex.attendance_date].push(ex)
       }
     } catch (_) {}
 
@@ -581,63 +582,74 @@ export async function GET(request) {
         }
 
         // ── Overlay: Excuse (Surat Keterangan) ───────────────────────────────
-        const excuse = excuseMap[user.user_id]?.[dateStr]
-        if (excuse) {
-          dayRecord.excuse = {
-            status:         excuse.status,
-            excuse_type:    excuse.excuse_type,
-            exit_time:      excuse.exit_time,
-            return_time:    excuse.return_time,
-            category:       excuse.category,
-            category_label: leaveTypeMap[excuse.category] || null,
-            other_reason:   excuse.other_reason || null,
-          }
+        const dayExcuses = excuseMap[user.user_id]?.[dateStr] || []
+        if (dayExcuses.length > 0) {
+          dayRecord.excuses = dayExcuses.map(ex => {
+            const rejectedBy = ex.approver1_action === 'rejected'
+              ? ex.approver1_note || 'Approver 1'
+              : ex.approver2_note || 'Approver 2'
+            return {
+              status:         ex.status,
+              excuse_type:    ex.excuse_type,
+              exit_time:      ex.exit_time,
+              return_time:    ex.return_time,
+              category:       ex.category,
+              category_label: leaveTypeMap[ex.category] || null,
+              other_reason:   ex.other_reason || null,
+              rejected_note:  ex.status === 'rejected' ? rejectedBy : null,
+            }
+          })
 
-          if (excuse.status === 'approved') {
-            // Disetujui: tandai sebagai excused
-            dayRecord.excused = true
+          dayRecord.excuse = dayRecord.excuses[0] || null
 
-            // Jika kategori adalah annual_leave, tambahkan ke annual_leave_count dan kurangi absent_count
-            if (excuse.category === 'annual_leave') {
-              summary.annual_leave_count = (summary.annual_leave_count || 0) + 1
-              if (dayRecord.issues.includes('absent')) {
-                summary.absent_count = Math.max(0, summary.absent_count - 1)
+          for (const ex of dayExcuses) {
+            if (ex.status === 'approved') {
+              // Disetujui: tandai sebagai excused
+              dayRecord.excused = true
+
+              // Jika kategori adalah annual_leave, tambahkan ke annual_leave_count dan kurangi absent_count
+              if (ex.category === 'annual_leave') {
+                summary.annual_leave_count = (summary.annual_leave_count || 0) + 1
+                if (dayRecord.issues.includes('absent')) {
+                  summary.absent_count = Math.max(0, summary.absent_count - 1)
+                }
+              }
+
+            } else if (ex.status === 'approved_1' || ex.status === 'pending') {
+              // Dalam proses / disetujui tahap 1
+              dayRecord.excuse_pending = true
+              if (ex.category === 'annual_leave') {
+                summary.annual_leave_count = (summary.annual_leave_count || 0) + 1
+                if (dayRecord.issues.includes('absent')) {
+                  summary.absent_count = Math.max(0, summary.absent_count - 1)
+                }
+              }
+
+            } else if (ex.status === 'rejected') {
+              const rejectedBy = ex.approver1_action === 'rejected'
+                ? ex.approver1_note || 'Approver 1'
+                : ex.approver2_note || 'Approver 2'
+
+              // Batalkan counter sebelumnya jika sudah dihitung late/leave_early
+              if (dayRecord.issues.includes('late')) {
+                summary.late_count = Math.max(0, summary.late_count - 1)
+                summary.late_minutes_total = Math.max(0, summary.late_minutes_total - (dayRecord.late_minutes || 0))
+              }
+              if (dayRecord.issues.includes('leave_early')) {
+                summary.leave_early_count = Math.max(0, summary.leave_early_count - 1)
+                summary.leave_early_minutes_total = Math.max(0, summary.leave_early_minutes_total - (dayRecord.leave_early_minutes || 0))
+              }
+              // Tambahkan ke absent counter jika belum absent
+              if (!dayRecord.issues.includes('absent')) {
+                summary.absent_count++
+              }
+
+              dayRecord.status  = 'absent'
+              dayRecord.issues  = ['absent']
+              if (dayRecord.excuse) {
+                dayRecord.excuse.rejected_note = rejectedBy
               }
             }
-
-          } else if (excuse.status === 'approved_1' || excuse.status === 'pending') {
-            // Dalam proses / disetujui tahap 1
-            dayRecord.excuse_pending = true
-            if (excuse.category === 'annual_leave') {
-              summary.annual_leave_count = (summary.annual_leave_count || 0) + 1
-              if (dayRecord.issues.includes('absent')) {
-                summary.absent_count = Math.max(0, summary.absent_count - 1)
-              }
-            }
-
-          } else if (excuse.status === 'rejected') {
-            // Ditolak: override jadi absent dengan catatan
-            const rejectedBy = excuse.approver1_action === 'rejected'
-              ? excuse.approver1_note || 'Approver 1'
-              : excuse.approver2_note || 'Approver 2'
-
-            // Batalkan counter sebelumnya jika sudah dihitung late/leave_early
-            if (dayRecord.issues.includes('late')) {
-              summary.late_count = Math.max(0, summary.late_count - 1)
-              summary.late_minutes_total = Math.max(0, summary.late_minutes_total - (dayRecord.late_minutes || 0))
-            }
-            if (dayRecord.issues.includes('leave_early')) {
-              summary.leave_early_count = Math.max(0, summary.leave_early_count - 1)
-              summary.leave_early_minutes_total = Math.max(0, summary.leave_early_minutes_total - (dayRecord.leave_early_minutes || 0))
-            }
-            // Tambahkan ke absent counter jika belum absent
-            if (!dayRecord.issues.includes('absent')) {
-              summary.absent_count++
-            }
-
-            dayRecord.status  = 'absent'
-            dayRecord.issues  = ['absent']
-            dayRecord.excuse.rejected_note = rejectedBy
           }
         }
 
