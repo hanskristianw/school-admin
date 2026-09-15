@@ -7,7 +7,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faBookOpen } from '@fortawesome/free-solid-svg-icons'
 
 export default function WizardStepContent({
   currentStep,
@@ -1337,6 +1337,19 @@ export default function WizardStepContent({
               rows={4}
               placeholder="Reflect on your planning, expectations, and anticipated challenges..."
             />
+          </div>
+
+          <div className="mb-4 bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-600">
+            <div className="font-semibold text-gray-700 mb-0.5 flex items-center gap-1.5">
+              <FontAwesomeIcon icon={faBookOpen} className="text-[10px] text-gray-500" />
+              <span>During Teaching Reflection</span>
+              <span className="text-[9px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-bold uppercase">
+                Managed in Weekly Planner
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 m-0">
+              Reflections during the teaching process are recorded week-by-week in the <strong>Weekly Planner</strong> tab.
+            </p>
           </div>
 
           <div className="mb-4">

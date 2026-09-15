@@ -20,6 +20,7 @@ import {
   generateClassReportZIP,
   generateClassRecapPDFReport,
   formatWeeklyPlansToLearningProcess,
+  formatWeeklyPlansToDuringReflection,
 } from './lib/pdfGenerators'
 import useAiHelp from './lib/useAiHelp'
 import WizardStepContent from './components/WizardStepContent'
@@ -1872,7 +1873,7 @@ export default function TopicNewPage() {
       console.log('🔍 Fetching topics for subjects:', subjectIds)
       
       // Fetch topics only for user's subjects
-      const { data: topicsData, error: topicsError } = await supabase
+      let { data: topicsData, error: topicsError } = await supabase
         .from('topic')
         .select(`
           topic_id,
@@ -4706,6 +4707,7 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       topic_summative_assessment: '',
       topic_relationship_summative_assessment_statement_of_inquiry: '',
       topic_reflection_prior: '',
+      topic_weekly_reflections: '',
       topic_reflection_after: ''
     })
     // Reset wizard assessment data for new unit
@@ -5014,8 +5016,10 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         topic_relationship_summative_assessment_statement_of_inquiry: wizardAssessment.assessment_relationship || null
       }
       delete topicData.topic_keterangan
+      delete topicData.topic_reflection_during
+      delete topicData.topic_weekly_reflections
       
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('topic')
         .insert([topicData])
         .select()
@@ -5147,10 +5151,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         topic_relationship_summative_assessment_statement_of_inquiry: wizardAssessment.assessment_relationship || null
       }
       delete topicData.topic_keterangan
+      delete topicData.topic_reflection_during
+      delete topicData.topic_weekly_reflections
       
       console.log('🔍 [TOPIC UPDATE] Updating topic with data:', topicData)
       
-      const { error } = await supabase
+      let { error } = await supabase
         .from('topic')
         .update(topicData)
         .eq('topic_id', selectedTopic.topic_id)
@@ -5818,7 +5824,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     setSelectedTopic({
       ...topic,
       topic_atl: topic.topic_atl || '',
-      topic_learning_process: topic.topic_learning_process || ''
+      topic_learning_process: topic.topic_learning_process || '',
+      topic_weekly_reflections: ''
     })
     setModalOpen(true)
     setIsAddMode(false)
@@ -5838,8 +5845,8 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
       setSubjectsForSelectedKelas([])
     }
 
-    // Auto-populate learning process from topic_weekly_plan if empty
-    if (!topic.topic_learning_process?.trim() && topic.topic_id) {
+    // Auto-populate learning process & weekly reflections from topic_weekly_plan
+    if (topic.topic_id) {
       supabase
         .from('topic_weekly_plan')
         .select('*')
@@ -5848,18 +5855,22 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
         .order('id', { ascending: true })
         .then(({ data: wpData, error: wpErr }) => {
           if (!wpErr && wpData && wpData.length > 0) {
-            const formatted = formatWeeklyPlansToLearningProcess(wpData)
-            if (formatted && formatted.trim()) {
-              setSelectedTopic(prev => {
-                if (!prev?.topic_learning_process?.trim()) {
-                  return { ...prev, topic_learning_process: formatted }
-                }
-                return prev
-              })
-            }
+            const formattedLearning = formatWeeklyPlansToLearningProcess(wpData)
+            const formattedReflections = formatWeeklyPlansToDuringReflection(wpData)
+            setSelectedTopic(prev => {
+              if (!prev) return prev
+              const updates = {}
+              if (formattedReflections) {
+                updates.topic_weekly_reflections = formattedReflections
+              }
+              if (!prev.topic_learning_process?.trim() && formattedLearning) {
+                updates.topic_learning_process = formattedLearning
+              }
+              return { ...prev, ...updates }
+            })
           }
         })
-        .catch(err => console.error('Error auto-populating learning process from weekly plans:', err))
+        .catch(err => console.error('Error auto-populating from weekly plans:', err))
     }
     await fetchTopicAssessment(topic.topic_id, topic.topic_subject_id)
     const { data: assessmentData, error: assessmentLoadError } = await supabase

@@ -309,6 +309,68 @@ export const formatWeeklyPlansToLearningProcess = (rows) => {
   return resultBlocks.join('\n\n');
 };
 
+export const formatWeeklyPlansToDuringReflection = (rows) => {
+  if (!rows || rows.length === 0) return '';
+
+  const unpacked = [];
+  (rows || []).forEach(row => {
+    if (row.week_objectives && String(row.week_objectives).trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(row.week_objectives);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed.forEach((item, idx) => {
+            unpacked.push({
+              id: row.id,
+              topic_id: row.topic_id,
+              week_number: row.week_number,
+              _sessionIndex: idx,
+              week_date: item.week_date !== undefined ? item.week_date : (idx === 0 ? (row.week_date || '') : ''),
+              week_reflection: item.week_reflection || item.week_reflections || '',
+            });
+          });
+          return;
+        }
+      } catch (e) {}
+    }
+    unpacked.push(row);
+  });
+
+  const plansByWeek = {};
+  unpacked.forEach(plan => {
+    const wNum = plan.week_number || 1;
+    if (!plansByWeek[wNum]) plansByWeek[wNum] = [];
+    plansByWeek[wNum].push(plan);
+  });
+
+  const sortedWNums = Object.keys(plansByWeek).map(Number).sort((a, b) => a - b);
+  let refMeetingNum = 1;
+  const resultBlocks = [];
+
+  sortedWNums.forEach(wNum => {
+    const sessions = plansByWeek[wNum];
+    const meetingBlocks = [];
+
+    sessions.forEach(sess => {
+      const mNum = refMeetingNum++;
+      const refStr = (sess.week_reflection || sess.week_reflections || '').trim();
+      if (refStr) {
+        const dateStr = sess.week_date ? ` (${formatDateDisplay(sess.week_date)})` : '';
+        meetingBlocks.push(`Meeting ${mNum}${dateStr}\n${refStr}`);
+      }
+    });
+
+    if (meetingBlocks.length > 0) {
+      if (sessions.length > 1) {
+        resultBlocks.push(`Week ${wNum}\n${meetingBlocks.join('\n\n')}`);
+      } else {
+        resultBlocks.push(meetingBlocks.join('\n\n'));
+      }
+    }
+  });
+
+  return resultBlocks.join('\n\n');
+};
+
 // ─── Unit Planner PDF ────────────────────────────────────────────────────────
 
 /**
@@ -892,7 +954,7 @@ export const generateUnitPlannerPDF = async (topic, { currentUserId, onSuccess, 
 
     const duringTeachingContent = (plansByWeek && Object.keys(plansByWeek).length > 0 && weeklyReflectionsText.trim())
       ? weeklyReflectionsText
-      : (topicData.topic_reflection_during || weeklyReflectionsText || '');
+      : (topicData.topic_weekly_reflections || topicData.topic_reflection_during || weeklyReflectionsText || '');
 
     const initialRefPage = pdf.getNumberOfPages();
 

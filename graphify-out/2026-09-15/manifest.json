@@ -735,8 +735,8 @@
     "semantic_hash": "ee2db9404a462cd52d527b1df97e6681"
   },
   "src/app/api/attendance/report/route.js": {
-    "mtime": 1787817880.2770782,
-    "ast_hash": "601a9488bf56160eb3f5029493a171e0",
+    "mtime": 1789438642.9056418,
+    "ast_hash": "c119201861551aae5d98fc6b4f1515e7",
     "semantic_hash": ""
   },
   "src/app/api/attendance/role-approvers/route.js": {
@@ -945,8 +945,8 @@
     "semantic_hash": "fee042896577f2bc15a31be6e82b849c"
   },
   "src/app/data/attendance-report/page.jsx": {
-    "mtime": 1787818840.7645295,
-    "ast_hash": "bd684f735c57f7fc16058d81efc84ba6",
+    "mtime": 1789438791.988797,
+    "ast_hash": "1cc7c151b08fe919ebb1c69eac09d26f",
     "semantic_hash": ""
   },
   "src/app/data/attendance-settings/page.jsx": {
@@ -1050,8 +1050,8 @@
     "semantic_hash": "9dd72ae7ed1ea3476de6b324728de633"
   },
   "src/app/data/topic-new/components/WizardStepContent.jsx": {
-    "mtime": 1786694215.3179579,
-    "ast_hash": "afd564a0b64a353776dfbf83606cbd9d",
+    "mtime": 1789439847.4119546,
+    "ast_hash": "709861711c760f35ffe2d28bb74d2b9d",
     "semantic_hash": ""
   },
   "src/app/data/topic-new/lib/pdfGenerators.js": {
@@ -1065,8 +1065,8 @@
     "semantic_hash": "ed62be15a684e4722d48de789ed2e4ba"
   },
   "src/app/data/topic-new/page.jsx": {
-    "mtime": 1789358902.5146363,
-    "ast_hash": "ba7f3a06f80ffca65a1046e3cd019f24",
+    "mtime": 1789439840.3102043,
+    "ast_hash": "dfe036ac33274764d2bb68de70a4583d",
     "semantic_hash": ""
   },
   "src/app/data/topic/page.jsx": {
@@ -1600,8 +1600,8 @@
     "semantic_hash": "e4f44af4b70866175ca607c514d02b9d"
   },
   "src/app/data/attendance-form/page.jsx": {
-    "mtime": 1789011528.1763453,
-    "ast_hash": "f4bc03a150947fbdda5e463d8180d679",
+    "mtime": 1789438754.0960798,
+    "ast_hash": "947699c96143cc61d003feb766d77906",
     "semantic_hash": ""
   },
   "src/app/api/class/list/route.js": {
@@ -1645,8 +1645,8 @@
     "semantic_hash": ""
   },
   "DATABASE_SCHEMA.md": {
-    "mtime": 1789094418.4292164,
-    "ast_hash": "cd81409fd1589547f9fb143a29664b8b",
+    "mtime": 1789439781.3687644,
+    "ast_hash": "198c3e47b020c5e938f3dd9e3059e9fd",
     "semantic_hash": ""
   },
   "banner-220.png": {
@@ -2082,6 +2082,11 @@
   "migrations/add-kelas-user-id-2.sql": {
     "mtime": 1789094408.0971992,
     "ast_hash": "20e1b4550135815465cbec7e27f62041",
+    "semantic_hash": ""
+  },
+  "migrations/add-topic-reflection-during.sql": {
+    "mtime": 1789439769.1734502,
+    "ast_hash": "df63f12bb68bed0fa87e6c6ba6c6fba4",
     "semantic_hash": ""
   }
 }

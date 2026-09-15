@@ -1197,15 +1197,25 @@ export default function UnitPlannerDocumentEditor({
                       />
                     </td>
 
-                    <td className="w-[33%] border border-black p-2.5 align-top">
-                      <textarea
-                        value={selectedTopic.topic_reflection_during || ''}
-                        onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_reflection_during: e.target.value }))}
-                        onInput={handleAutoResize}
-                        placeholder="Observations during unit execution, student responses, adjustments made..."
-                        rows={6}
-                        className="w-full bg-transparent text-black outline-none resize-y leading-relaxed hover:bg-yellow-50 focus:bg-white"
-                      />
+                    <td className="w-[33%] border border-black p-2.5 align-top bg-[#F2F2F2] cursor-not-allowed" title="During teaching reflection is managed via Weekly Planner">
+                      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-gray-300">
+                        <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faBookOpen} className="text-[10px] text-gray-500" />
+                          Weekly Reflection
+                        </span>
+                        <span className="text-[9px] bg-gray-300 text-gray-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                          Read-only (Managed in Weekly Planner)
+                        </span>
+                      </div>
+                      {selectedTopic.topic_weekly_reflections ? (
+                        <div className="whitespace-pre-wrap leading-relaxed text-gray-700 select-text font-normal text-[11px]">
+                          {selectedTopic.topic_weekly_reflections}
+                        </div>
+                      ) : (
+                        <div className="text-gray-500 italic py-6 text-center text-xs">
+                          Not filled yet — Record weekly reflections in the Weekly Planner tab.
+                        </div>
+                      )}
                     </td>
 
                     <td className="w-[34%] border border-black p-2.5 align-top">
