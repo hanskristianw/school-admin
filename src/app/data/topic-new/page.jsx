@@ -9425,43 +9425,47 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
 
       {/* AI Input & Result modals are now embedded beside the main modal (handled inside modalOpen block) */}
 
-      {/* Floating Action Button (FAB) - Only Add Unit */}
-      <div className="fixed bottom-8 right-8 z-40">
-        {/* Secondary Buttons (shown when FAB is open) */}
-        <div className={`absolute bottom-20 right-0 flex flex-col items-end gap-3 transition-all duration-300 ${fabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-          {/* Add Unit Button */}
-          <button
-            onClick={() => {
-              openAddModal()
-              setFabOpen(false)
-            }}
-            className="group flex items-center gap-3 transition-all duration-200"
-          >
-            <span className="px-3 py-1.5 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '20px', color: theme.textBody, boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
-              Add Unit
-            </span>
-            <div className="w-12 h-12 flex items-center justify-center" style={{ borderRadius: '50%', background: theme.textPrimary, color: theme.cardBg, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
-              <FontAwesomeIcon icon={faBook} className="text-base" />
+      {/* Floating Action Button (FAB) - Only Add Unit - Only shown in Planning -> Overview */}
+      {activeTab === 'planning' && activeSubMenu === 'overview' && !modalOpen && (
+        <>
+          <div className="fixed bottom-8 right-8 z-40">
+            {/* Secondary Buttons (shown when FAB is open) */}
+            <div className={`absolute bottom-20 right-0 flex flex-col items-end gap-3 transition-all duration-300 ${fabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+              {/* Add Unit Button */}
+              <button
+                onClick={() => {
+                  openAddModal()
+                  setFabOpen(false)
+                }}
+                className="group flex items-center gap-3 transition-all duration-200"
+              >
+                <span className="px-3 py-1.5 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap" style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '20px', color: theme.textBody, boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
+                  Add Unit
+                </span>
+                <div className="w-12 h-12 flex items-center justify-center" style={{ borderRadius: '50%', background: theme.textPrimary, color: theme.cardBg, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                  <FontAwesomeIcon icon={faBook} className="text-base" />
+                </div>
+              </button>
             </div>
-          </button>
-        </div>
-        
-        {/* Main FAB Button */}
-        <button
-          onClick={() => setFabOpen(!fabOpen)}
-          className="w-14 h-14 flex items-center justify-center transition-all duration-300"
-          style={{ borderRadius: '50%', background: theme.textPrimary, color: theme.cardBg, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}
-        >
-          <FontAwesomeIcon icon={faPlus} className="text-xl" />
-        </button>
-      </div>
-      
-      {/* Click outside to close FAB menu */}
-      {fabOpen && (
-        <div
-          className="fixed inset-0 z-30"
-          onClick={() => setFabOpen(false)}
-        />
+            
+            {/* Main FAB Button */}
+            <button
+              onClick={() => setFabOpen(!fabOpen)}
+              className="w-14 h-14 flex items-center justify-center transition-all duration-300"
+              style={{ borderRadius: '50%', background: theme.textPrimary, color: theme.cardBg, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}
+            >
+              <FontAwesomeIcon icon={faPlus} className="text-xl" />
+            </button>
+          </div>
+          
+          {/* Click outside to close FAB menu */}
+          {fabOpen && (
+            <div
+              className="fixed inset-0 z-30"
+              onClick={() => setFabOpen(false)}
+            />
+          )}
+        </>
       )}
 
       {/* Assessment Form Modal */}
