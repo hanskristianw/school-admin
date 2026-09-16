@@ -225,7 +225,7 @@ export default function UnitPlannerDocumentEditor({
   // Jump to specific page
   const scrollToPage = (tab) => {
     setActiveTab(tab)
-    if (tab === 'p1' && page1Ref.current) page1Ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if ((tab === 'p1' || tab === 'all') && page1Ref.current) page1Ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     if (tab === 'p2' && page2Ref.current) page2Ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     if (tab === 'p3' && page3Ref.current) page3Ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -275,7 +275,8 @@ export default function UnitPlannerDocumentEditor({
     if (errors.length > 0 && !isDraft) {
       setValidationErrors(errors)
       setActiveDoc('planner')
-      scrollToPage('p1')
+      setActiveTab('all')
+      if (page1Ref.current) page1Ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
       return
     }
 
@@ -486,7 +487,6 @@ export default function UnitPlannerDocumentEditor({
             {/* ────── PAGE 1: OVERVIEW & INQUIRY (IMAGE 1) ────── */}
             <section
               ref={page1Ref}
-              style={{ display: activeTab === 'all' || activeTab === 'p1' ? 'block' : 'none' }}
               className="bg-white text-black shadow-2xl border border-gray-400 p-8 sm:p-12 max-w-[1100px] w-full mx-auto font-[Arial,Helvetica,sans-serif]"
             >
               <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono mb-4 border-b pb-1">
@@ -885,7 +885,6 @@ export default function UnitPlannerDocumentEditor({
             {/* ────── PAGE 2: ASSESSMENT OVERVIEW (IMAGE 2) ────── */}
             <section
               ref={page2Ref}
-              style={{ display: activeTab === 'all' || activeTab === 'p2' ? 'block' : 'none' }}
               className="bg-white text-black shadow-2xl border border-gray-400 p-8 sm:p-12 max-w-[1100px] w-full mx-auto font-[Arial,Helvetica,sans-serif]"
             >
               <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono mb-4 border-b pb-1">
@@ -1020,7 +1019,6 @@ export default function UnitPlannerDocumentEditor({
             {/* ────── PAGE 3: ACTION & REFLECTION ────── */}
             <section
               ref={page3Ref}
-              style={{ display: activeTab === 'all' || activeTab === 'p3' ? 'block' : 'none' }}
               className="bg-white text-black shadow-2xl border border-gray-400 p-8 sm:p-12 max-w-[1100px] w-full mx-auto font-[Arial,Helvetica,sans-serif]"
             >
               <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono mb-4 border-b pb-1">

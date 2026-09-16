@@ -1341,8 +1341,17 @@ export default function ClassManagement() {
             return (
               <div
                 key={kelas.kelas_id}
-                className="p-5 rounded-xl border transition-all duration-200 space-y-4 hover:border-neutral-400 dark:hover:border-neutral-500"
-                style={{ background: theme.cardBg, borderColor: theme.border }}
+                className={`p-5 rounded-xl border transition-all duration-200 space-y-4 hover:border-neutral-400 dark:hover:border-neutral-500 ${
+                  kelas.is_nursery ? 'ring-1 ring-amber-300/60 dark:ring-amber-500/30' : ''
+                }`}
+                style={{
+                  background: kelas.is_nursery
+                    ? (isDark ? 'rgba(254, 243, 199, 0.05)' : '#FFFBEB')
+                    : theme.cardBg,
+                  borderColor: kelas.is_nursery
+                    ? (isDark ? 'rgba(251, 191, 36, 0.4)' : '#FCD34D')
+                    : theme.border
+                }}
               >
                 {/* Header Tag & Class Name */}
                 <div className="flex items-start justify-between gap-2">
@@ -1354,7 +1363,7 @@ export default function ClassManagement() {
                       </span>
                       {kelas.is_nursery && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                          🌱 Nursery
+                          🌱 Learning Progression
                         </span>
                       )}
                     </div>
@@ -1488,7 +1497,10 @@ export default function ClassManagement() {
               </thead>
               <tbody className="divide-y" style={{ borderColor: theme.border }}>
                 {filteredClasses.map((kelas) => (
-                  <tr key={kelas.kelas_id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                  <tr 
+                    key={kelas.kelas_id} 
+                    className={`hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${kelas.is_nursery ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''}`}
+                  >
                     <td className="p-3 font-mono font-bold text-[11px]" style={{ color: theme.textSecondary }}>
                       #{kelas.kelas_id}
                     </td>
@@ -1497,7 +1509,7 @@ export default function ClassManagement() {
                         <span>{kelas.kelas_nama}</span>
                         {kelas.is_nursery && (
                           <span className="inline-flex items-center text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                            🌱 Nursery
+                            🌱 Learning Progression
                           </span>
                         )}
                       </div>
@@ -1727,10 +1739,10 @@ export default function ClassManagement() {
                     <div className="p-3 rounded-lg border flex items-center justify-between transition-all" style={{ background: theme.subtleBg, borderColor: theme.border }}>
                       <div>
                         <Label htmlFor="is_nursery" className="block font-bold text-xs cursor-pointer select-none" style={{ color: theme.textPrimary }}>
-                          {t('classManagement.nurseryClassLabel') || '🌱 Nursery Class'}
+                          {t('classManagement.nurseryClassLabel') || '🌱 Learning Progression Class'}
                         </Label>
                         <p className="text-[11px] select-none" style={{ color: theme.textSecondary }}>
-                          {t('classManagement.nurseryClassDesc') || 'Check this option if this class is a Nursery level (PYP unit only).'}
+                          {t('classManagement.nurseryClassDesc') || 'Check this option if this class uses Learning Progression developmental assessment (PYP unit only).'}
                         </p>
                       </div>
                       <input
@@ -2189,7 +2201,7 @@ export default function ClassManagement() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                  🌱 Nursery
+                  🌱 Learning Progression
                 </span>
                 <h2 className="text-base font-bold" style={{ color: theme.textPrimary }}>
                   Setting Area of Development
