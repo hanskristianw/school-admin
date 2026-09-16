@@ -4957,6 +4957,12 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     }
     
     if (!isDraft) {
+      const dur = Number(selectedTopic.topic_duration)
+      if (!selectedTopic.topic_duration || isNaN(dur) || dur <= 0) {
+        alert('Please enter Unit Duration (weeks)')
+        return
+      }
+
       // Validate ATL field
       if (!selectedTopic.topic_atl?.trim()) {
         alert('Please fill in ATL Skills (Approaches to Learning)')
@@ -5132,6 +5138,13 @@ Do not include any markdown formatting, code blocks, or explanations. Return onl
     if (!selectedTopic.topic_subject_id) {
       alert('Please select Subject before saving')
       return
+    }
+    if (!isDraft) {
+      const dur = Number(selectedTopic.topic_duration)
+      if (!selectedTopic.topic_duration || isNaN(dur) || dur <= 0) {
+        alert('Please enter Unit Duration (weeks)')
+        return
+      }
     }
 
     setSaving(true)

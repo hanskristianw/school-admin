@@ -267,6 +267,10 @@ export default function UnitPlannerDocumentEditor({
     if (!selectedTopic?.topic_kelas_id) errors.push('Class is required')
     if (!selectedTopic?.topic_subject_id) errors.push('Subject is required')
     if (!selectedTopic?.topic_year) errors.push('MYP Year is required')
+    const dur = Number(selectedTopic?.topic_duration)
+    if (!selectedTopic?.topic_duration || isNaN(dur) || dur <= 0) {
+      errors.push('Unit Duration (weeks) is required and must be at least 1 week')
+    }
 
     if (errors.length > 0 && !isDraft) {
       setValidationErrors(errors)
@@ -659,13 +663,17 @@ export default function UnitPlannerDocumentEditor({
                     <td className="w-[11%] bg-[#E8E8E8] font-bold border border-black px-2.5 py-1.5 align-middle">
                       Unit duration
                     </td>
-                    <td className="w-[7%] border border-black px-2.5 py-1.5 align-middle">
+                    <td className={`w-[7%] border border-black px-2.5 py-1.5 align-middle ${
+                      validationErrors.some(e => e.toLowerCase().includes('duration')) ? 'bg-red-50' : ''
+                    }`}>
                       <input
-                        type="text"
+                        type="number"
+                        min="1"
+                        max="52"
                         value={selectedTopic.topic_duration || ''}
                         onChange={(e) => setSelectedTopic(prev => ({ ...prev, topic_duration: e.target.value }))}
-                        placeholder="14"
-                        className="w-full bg-transparent text-center font-semibold text-black outline-none hover:bg-yellow-50 focus:bg-white"
+                        placeholder="e.g. 6"
+                        className="w-full bg-transparent text-center font-semibold text-black outline-none hover:bg-yellow-50 focus:bg-white placeholder:text-gray-400 placeholder:font-normal"
                       />
                     </td>
                   </tr>

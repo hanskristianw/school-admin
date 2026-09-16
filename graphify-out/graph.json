@@ -3010,8 +3010,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3021,8 +3021,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 142,
+      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3076,8 +3076,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "docx"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 142,
-      "community_name": "2026-07-16 \u2014 Timetable Refactor + Weekly Plan Dates + Weekly Overview",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "docx"
     },
     {
@@ -17981,8 +17981,8 @@
       "source_location": "L1019",
       "_origin": "ast",
       "id": "database_schema_6_assessment_grading_domain_data_topic_new_reports",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "6. assessment & grading domain (`/data/topic-new` / reports)"
     },
     {
@@ -17992,8 +17992,8 @@
       "source_location": "L1023",
       "_origin": "ast",
       "id": "database_schema_6_1_tables",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "6.1 tables"
     },
     {
@@ -18003,8 +18003,8 @@
       "source_location": "L1025",
       "_origin": "ast",
       "id": "database_schema_assessment_grades",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "`assessment_grades`"
     },
     {
@@ -18014,8 +18014,8 @@
       "source_location": "L1047",
       "_origin": "ast",
       "id": "database_schema_assessment_grade_strands",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "`assessment_grade_strands`"
     },
     {
@@ -18025,8 +18025,8 @@
       "source_location": "L1058",
       "_origin": "ast",
       "id": "database_schema_6_2_erd_relationships_assessment_grading",
-      "community": 126,
-      "community_name": "Module 126",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "6.2 erd / relationships (assessment & grading)"
     },
     {
@@ -18036,8 +18036,8 @@
       "source_location": "L1088",
       "_origin": "ast",
       "id": "database_schema_7_menu_role_permissions_domain_data_menu_management",
-      "community": 130,
-      "community_name": "bcryptjs",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "7. menu & role permissions domain (`/data/menu_management`)"
     },
     {
@@ -18047,8 +18047,8 @@
       "source_location": "L1092",
       "_origin": "ast",
       "id": "database_schema_7_1_tables",
-      "community": 130,
-      "community_name": "bcryptjs",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "7.1 tables"
     },
     {
@@ -18058,8 +18058,8 @@
       "source_location": "L1094",
       "_origin": "ast",
       "id": "database_schema_menus",
-      "community": 130,
-      "community_name": "bcryptjs",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "`menus`"
     },
     {
@@ -18069,8 +18069,8 @@
       "source_location": "L1107",
       "_origin": "ast",
       "id": "database_schema_menu_permissions",
-      "community": 130,
-      "community_name": "bcryptjs",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "`menu_permissions`"
     },
     {
@@ -18080,8 +18080,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "database_schema_7_2_erd_relationships_menu_domain",
-      "community": 130,
-      "community_name": "bcryptjs",
+      "community": 126,
+      "community_name": "Module 126",
       "norm_label": "7.2 erd / relationships (menu domain)"
     },
     {
@@ -33816,7 +33816,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5858",
+      "source_location": "L5871",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33840,7 +33840,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5859",
+      "source_location": "L5872",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -33864,7 +33864,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5430",
+      "source_location": "L5443",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -34080,7 +34080,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5439",
+      "source_location": "L5452",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -34104,7 +34104,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5453",
+      "source_location": "L5466",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -34128,7 +34128,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5468",
+      "source_location": "L5481",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -34152,7 +34152,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/data/topic-new/page.jsx",
-      "source_location": "L5480",
+      "source_location": "L5493",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_data_topic_new_page_topicnewpage",
@@ -48774,5 +48774,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "9c0c26f4c9c1437e1d671e249aad62d6e6c330f4"
+  "built_at_commit": "b6f791e39c0d7500cbb19e86839faaac9291f9d7"
 }
