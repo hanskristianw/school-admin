@@ -331,6 +331,36 @@ export default function TimetablePage() {
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [exceptions]);
 
+  // ── Target year & MYP classes for Academic Exception ───────────────────────
+  const exceptionTargetYearId = useMemo(() => {
+    if (exForm.exception_date && years.length > 0) {
+      const match = years.find(y => y.start_date && y.end_date && y.start_date <= exForm.exception_date && exForm.exception_date <= y.end_date);
+      if (match) return String(match.year_id);
+    }
+    return filters.year ? String(filters.year) : null;
+  }, [exForm.exception_date, years, filters.year]);
+
+  const exceptionKelasOptions = useMemo(() => {
+    // Only classes whose unit has is_myp === true or unit_name contains 'MYP'
+    const mypClasses = kelasList.filter(k => {
+      const u = unitMap.get(k.kelas_unit_id);
+      return !!(u?.is_myp === true || (u?.unit_name && u.unit_name.toUpperCase().includes('MYP')));
+    });
+
+    // If target academic year is known, filter to that year while keeping any already selected IDs (e.g. edit mode)
+    if (exceptionTargetYearId) {
+      const targetYearClasses = mypClasses.filter(k =>
+        String(k.kelas_year_id) === String(exceptionTargetYearId) ||
+        (exForm.affected_kelas_ids || []).includes(k.kelas_id)
+      );
+      if (targetYearClasses.length > 0) {
+        return targetYearClasses.sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }));
+      }
+    }
+
+    return mypClasses.sort((a, b) => (a.kelas_nama || '').localeCompare(b.kelas_nama || '', undefined, { numeric: true, sensitivity: 'base' }));
+  }, [kelasList, unitMap, exceptionTargetYearId, exForm.affected_kelas_ids]);
+
   // ── Schedule form helpers ─────────────────────────────────────────────────
   const resetForm = () => {
     setFormBlockType('subject'); setFormCustomLabel(''); setFormCustomColor('F3E8FF');
@@ -470,6 +500,9 @@ export default function TimetablePage() {
       if (!exForm.end_time) e.end_time = 'End time is required for event';
       if (exForm.start_time && exForm.end_time && exForm.start_time >= exForm.end_time)
         e.end_time = 'End time must be after start time';
+    }
+    if (!exForm.affects_all_kelas && (!exForm.affected_kelas_ids || exForm.affected_kelas_ids.length === 0)) {
+      e.affected_kelas = 'Please select at least one class';
     }
     setExFormErrors(e);
     return Object.keys(e).length === 0;
@@ -1427,9 +1460,22 @@ export default function TimetablePage() {
                               </div>
 
                               <div style={{ borderTop: cardBorder, paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ fontSize: '11px', color: theme?.textSecondary }}>
-                                  <strong>Scope:</strong> {ex.affects_all_kelas ? 'All Classes (School-wide)' : `Specific Classes (${ex.affected_kelas_ids?.length || 0} classes)`}
-                                </span>
+                                  <span style={{ fontSize: '11px', color: theme?.textSecondary }}>
+                                    <strong>Scope:</strong>{' '}
+                                    {ex.affects_all_kelas ? (
+                                      'All Classes (School-wide)'
+                                    ) : (
+                                      <span>
+                                        Specific Classes ({(ex.affected_kelas_ids || []).length}):{' '}
+                                        <span style={{ fontWeight: 500, color: theme?.textPrimary }}>
+                                          {(ex.affected_kelas_ids || [])
+                                            .map(id => kelasMap.get(id)?.kelas_nama)
+                                            .filter(Boolean)
+                                            .join(', ') || 'None selected'}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </span>
                                 {ex.note && (
                                   <span style={{ fontSize: '11px', color: theme?.textSecondary, fontStyle: 'italic' }}>
                                     &ldquo;{ex.note}&rdquo;
@@ -2019,33 +2065,116 @@ export default function TimetablePage() {
               </div>
 
               {!exForm.affects_all_kelas && (
-                <div style={{
-                  marginTop: '10px',
-                  maxHeight: '140px',
-                  overflowY: 'auto',
-                  border: cardBorder,
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  background: theme?.cardBgAlt
-                }}>
-                  {kelasList.map(k => (
-                    <label key={k.kelas_id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={exForm.affected_kelas_ids.includes(k.kelas_id)}
-                        onChange={e => setExForm(p => ({
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px' }}>
+                    <span style={{ fontSize: '11px', color: theme?.textSecondary, fontWeight: 500 }}>
+                      {exceptionKelasOptions.length} MYP {exceptionKelasOptions.length === 1 ? 'class' : 'classes'} available
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setExForm(p => ({
                           ...p,
-                          affected_kelas_ids: e.target.checked
-                            ? [...p.affected_kelas_ids, k.kelas_id]
-                            : p.affected_kelas_ids.filter(id => id !== k.kelas_id)
+                          affected_kelas_ids: Array.from(new Set([...p.affected_kelas_ids, ...exceptionKelasOptions.map(k => k.kelas_id)]))
                         }))}
-                      />
-                      <span>{k.kelas_nama}</span>
-                    </label>
-                  ))}
+                        style={{ background: 'none', border: 'none', padding: 0, fontSize: '11px', color: '#2563EB', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        Select All
+                      </button>
+                      <span style={{ color: theme?.textSecondary, fontSize: '11px' }}>•</span>
+                      <button
+                        type="button"
+                        onClick={() => setExForm(p => ({
+                          ...p,
+                          affected_kelas_ids: p.affected_kelas_ids.filter(id => !exceptionKelasOptions.some(k => k.kelas_id === id))
+                        }))}
+                        style={{ background: 'none', border: 'none', padding: 0, fontSize: '11px', color: theme?.textSecondary, cursor: 'pointer' }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    maxHeight: '160px',
+                    overflowY: 'auto',
+                    border: exFormErrors.affected_kelas ? '1px solid #EF4444' : cardBorder,
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    background: theme?.cardBgAlt
+                  }}>
+                    {exceptionKelasOptions.length === 0 ? (
+                      <div style={{ padding: '12px', textAlign: 'center', color: theme?.textSecondary, fontSize: '12px' }}>
+                        No MYP classes found for this academic year.
+                      </div>
+                    ) : (
+                      exceptionKelasOptions.map(k => {
+                        const isChecked = exForm.affected_kelas_ids.includes(k.kelas_id);
+                        const yr = years.find(y => String(y.year_id) === String(k.kelas_year_id));
+                        return (
+                          <label
+                            key={k.kelas_id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              padding: '5px 8px',
+                              borderRadius: '5px',
+                              background: isChecked ? (isDark ? 'rgba(37,99,235,0.12)' : '#EFF6FF') : 'transparent',
+                              border: isChecked ? '1px solid rgba(37,99,235,0.25)' : '1px solid transparent',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={e => {
+                                  setExForm(p => ({
+                                    ...p,
+                                    affected_kelas_ids: e.target.checked
+                                      ? [...p.affected_kelas_ids, k.kelas_id]
+                                      : p.affected_kelas_ids.filter(id => id !== k.kelas_id)
+                                  }));
+                                  if (exFormErrors.affected_kelas) {
+                                    setExFormErrors(errs => {
+                                      const next = { ...errs };
+                                      delete next.affected_kelas;
+                                      return next;
+                                    });
+                                  }
+                                }}
+                              />
+                              <span style={{ fontWeight: isChecked ? 600 : 400, color: isChecked ? (isDark ? '#93C5FD' : '#1D4ED8') : theme?.textPrimary }}>
+                                {k.kelas_nama}
+                              </span>
+                            </div>
+                            <span style={{
+                              fontSize: '10px',
+                              fontFamily: 'ui-monospace, monospace',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              background: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
+                              color: theme?.textSecondary
+                            }}>
+                              MYP{yr ? ` • ${yr.year_name}` : ''}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  {exFormErrors.affected_kelas && (
+                    <p style={{ color: '#EF4444', fontSize: '12px', margin: '2px 0 0 0' }}>
+                      {exFormErrors.affected_kelas}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

@@ -2138,7 +2138,7 @@ export default function ClassManagement() {
       <Modal
         isOpen={devAreaModalOpen}
         onClose={() => setDevAreaModalOpen(false)}
-        maxWidth="max-w-2xl"
+        maxWidth="max-w-3xl"
       >
         <div className="space-y-4 text-xs">
           <div className="border-b pb-3 flex items-start justify-between" style={{ borderColor: theme.border }}>
@@ -2230,11 +2230,14 @@ export default function ClassManagement() {
                     style={{ background: theme.cardBg, borderColor: theme.border }}
                   >
                     {/* Level 1: Area of Development Header & Input */}
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+                          Area of Development #{aIdx + 1}
+                        </label>
                         <Input
                           type="text"
-                          placeholder="Area of Development"
+                          placeholder="Area of Development (e.g. Physical Development, Personal, Social and Emotional)"
                           value={area.area_name}
                           onChange={(e) => updateAreaName(aIdx, e.target.value)}
                           style={inputStyle}
@@ -2245,7 +2248,7 @@ export default function ClassManagement() {
                         type="button"
                         onClick={() => removeArea(aIdx)}
                         title="Delete Area of Development"
-                        className="w-8 h-8 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
+                        className="mt-4 w-8 h-8 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
                       >
                         <FontAwesomeIcon icon={faTrash} className="text-xs" />
                       </button>
@@ -2254,36 +2257,64 @@ export default function ClassManagement() {
                     {/* Level 2: Indented Criteria Items */}
                     <div className="pl-6 space-y-3 border-l-2 ml-3" style={{ borderColor: 'rgba(99, 102, 241, 0.2)' }}>
                       {(area.criteria || []).map((crit, cIdx) => (
-                        <div key={cIdx} className="space-y-1.5 p-2.5 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                        <div key={cIdx} className="space-y-2 p-3 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
                           {/* Criteria English Input with trash button */}
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="text"
-                              placeholder="Criteria"
-                              value={crit.criteria_text}
-                              onChange={(e) => updateCriterion(aIdx, cIdx, 'criteria_text', e.target.value)}
-                              style={inputStyle}
-                              className="w-full text-xs"
-                            />
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                                Criteria #{cIdx + 1} (English)
+                              </label>
+                              <textarea
+                                rows={2}
+                                placeholder="Criteria in English..."
+                                value={crit.criteria_text}
+                                onChange={(e) => updateCriterion(aIdx, cIdx, 'criteria_text', e.target.value)}
+                                onInput={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = Math.max(52, e.target.scrollHeight) + 'px';
+                                }}
+                                style={{
+                                  ...inputStyle,
+                                  resize: 'vertical',
+                                  minHeight: '52px',
+                                  lineHeight: '1.45',
+                                  padding: '8px 10px',
+                                }}
+                                className="w-full text-xs transition-all focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
                             <button
                               type="button"
                               onClick={() => removeCriterion(aIdx, cIdx)}
                               title="Delete Criteria"
-                              className="w-7 h-7 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
+                              className="mt-5 w-7 h-7 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
                             >
                               <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
                             </button>
                           </div>
 
                           {/* translate in Bahasa Input */}
-                          <div>
-                            <Input
-                              type="text"
-                              placeholder="translate in Bahasa"
+                          <div className="space-y-1 pr-9">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                              Terjemahan Bahasa Indonesia
+                            </label>
+                            <textarea
+                              rows={2}
+                              placeholder="Terjemahan dalam Bahasa Indonesia..."
                               value={crit.criteria_translation}
                               onChange={(e) => updateCriterion(aIdx, cIdx, 'criteria_translation', e.target.value)}
-                              style={inputStyle}
-                              className="w-full text-xs"
+                              onInput={(e) => {
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.max(52, e.target.scrollHeight) + 'px';
+                              }}
+                              style={{
+                                ...inputStyle,
+                                resize: 'vertical',
+                                minHeight: '52px',
+                                lineHeight: '1.45',
+                                padding: '8px 10px',
+                              }}
+                              className="w-full text-xs transition-all focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
                           </div>
                         </div>

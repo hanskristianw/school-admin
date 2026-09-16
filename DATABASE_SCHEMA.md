@@ -80,6 +80,9 @@ Represents the school level, department or division the user belongs to.
 | `unit_id` | `SERIAL` | Primary Key |
 | `unit_name` | `VARCHAR(100)`| Name (e.g. Primary, Secondary, Management) |
 | `is_school` | `BOOLEAN` | `true` for school unit, `false` for management |
+| `is_pyp` | `BOOLEAN` | Default `false`, flag for Primary Years Programme (PYP) unit |
+| `is_myp` | `BOOLEAN` | Default `false`, flag for Middle Years Programme (MYP) unit |
+| `is_dp` | `BOOLEAN` | Default `false`, flag for Diploma Programme (DP) unit |
 
 #### `report_settings`
 Configures per-unit and per-academic-year report card metadata (principal details, signatures, stamps, semester greetings, and report dates) managed via `/settings/unit` and consumed by student report card PDF generation.
@@ -1269,7 +1272,7 @@ Stores per-date schedule overrides such as school holidays or special events (e.
 | `start_time` | `TIME` | Optional start time (for `'event'` type) |
 | `end_time` | `TIME` | Optional end time (for `'event'` type) |
 | `affects_all_kelas` | `BOOLEAN` | Default `true`. If `false`, applies only to specified `affected_kelas_ids` |
-| `affected_kelas_ids` | `INT[]` | Array of `kelas_id` affected when `affects_all_kelas` is `false` |
+| `affected_kelas_ids` | `INT[]` | Array of `kelas_id` affected when `affects_all_kelas` is `false` (restricted to MYP classes where `unit.is_myp = true`) |
 | `note` | `TEXT` | Optional notes |
 | `created_at` | `TIMESTAMPTZ` | Default `now()` |
 
