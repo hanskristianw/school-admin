@@ -3395,22 +3395,6 @@ export default function PypPage() {
                     <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: textPrimary }}>
                       PYP School Classes
                     </h3>
-                    {currentSelectedClassObj?.is_nursery && (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '9999px',
-                        background: '#FEF3C7',
-                        color: '#92400E',
-                        border: '1px solid #FDE68A'
-                      }}>
-                        🌱 Nursery
-                      </span>
-                    )}
                   </div>
                   <p style={{ fontSize: '13px', color: textSecondary, margin: '4px 0 0 0' }}>
                     Select a PYP Class to manage its Units of Inquiry{currentSelectedClassObj?.is_nursery ? ' and Learning Progression' : ''}.

@@ -33,7 +33,9 @@ import {
   faUserCheck,
   faTimes,
   faSeedling,
-  faCopy
+  faCopy,
+  faArrowUp,
+  faArrowDown
 } from '@fortawesome/free-solid-svg-icons';
 
 export default function ClassManagement() {
@@ -803,6 +805,48 @@ export default function ClassManagement() {
       const crits = [...area.criteria];
       crits[critIndex] = { ...crits[critIndex], [field]: value };
       copy[areaIndex] = { ...area, criteria: crits };
+      return copy;
+    });
+  };
+
+  const insertCriterion = (areaIndex, afterCritIndex) => {
+    setDevAreas(prev => {
+      const copy = [...prev];
+      const area = copy[areaIndex];
+      const crits = [...(area.criteria || [])];
+      crits.splice(afterCritIndex + 1, 0, {
+        criteria_id: null,
+        criteria_text: '',
+        criteria_translation: ''
+      });
+      copy[areaIndex] = { ...area, criteria: crits };
+      return copy;
+    });
+  };
+
+  const moveCriterion = (areaIndex, critIndex, direction) => {
+    setDevAreas(prev => {
+      const copy = [...prev];
+      const area = copy[areaIndex];
+      const crits = [...(area.criteria || [])];
+      const targetIndex = critIndex + direction;
+      if (targetIndex < 0 || targetIndex >= crits.length) return prev;
+      const temp = crits[critIndex];
+      crits[critIndex] = crits[targetIndex];
+      crits[targetIndex] = temp;
+      copy[areaIndex] = { ...area, criteria: crits };
+      return copy;
+    });
+  };
+
+  const moveArea = (areaIndex, direction) => {
+    setDevAreas(prev => {
+      const targetIndex = areaIndex + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const copy = [...prev];
+      const temp = copy[areaIndex];
+      copy[areaIndex] = copy[targetIndex];
+      copy[targetIndex] = temp;
       return copy;
     });
   };
@@ -2244,57 +2288,107 @@ export default function ClassManagement() {
                           className="w-full text-xs font-semibold"
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeArea(aIdx)}
-                        title="Delete Area of Development"
-                        className="mt-4 w-8 h-8 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
-                      >
-                        <FontAwesomeIcon icon={faTrash} className="text-xs" />
-                      </button>
+                      <div className="mt-4 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => moveArea(aIdx, -1)}
+                          disabled={aIdx === 0}
+                          title="Move Area Up"
+                          className="w-8 h-8 rounded-md border flex items-center justify-center cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/5"
+                          style={{ borderColor: theme.border, color: theme.textSecondary }}
+                        >
+                          <FontAwesomeIcon icon={faArrowUp} className="text-xs" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveArea(aIdx, 1)}
+                          disabled={aIdx === devAreas.length - 1}
+                          title="Move Area Down"
+                          className="w-8 h-8 rounded-md border flex items-center justify-center cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/5"
+                          style={{ borderColor: theme.border, color: theme.textSecondary }}
+                        >
+                          <FontAwesomeIcon icon={faArrowDown} className="text-xs" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeArea(aIdx)}
+                          title="Delete Area of Development"
+                          className="w-8 h-8 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0 ml-1"
+                        >
+                          <FontAwesomeIcon icon={faTrash} className="text-xs" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Level 2: Indented Criteria Items */}
                     <div className="pl-6 space-y-3 border-l-2 ml-3" style={{ borderColor: 'rgba(99, 102, 241, 0.2)' }}>
                       {(area.criteria || []).map((crit, cIdx) => (
-                        <div key={cIdx} className="space-y-2 p-3 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
-                          {/* Criteria English Input with trash button */}
-                          <div className="flex items-start gap-2">
-                            <div className="flex-1 space-y-1">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
-                                Criteria #{cIdx + 1} (English)
-                              </label>
-                              <textarea
-                                rows={2}
-                                placeholder="Criteria in English..."
-                                value={crit.criteria_text}
-                                onChange={(e) => updateCriterion(aIdx, cIdx, 'criteria_text', e.target.value)}
-                                onInput={(e) => {
-                                  e.target.style.height = 'auto';
-                                  e.target.style.height = Math.max(52, e.target.scrollHeight) + 'px';
-                                }}
-                                style={{
-                                  ...inputStyle,
-                                  resize: 'vertical',
-                                  minHeight: '52px',
-                                  lineHeight: '1.45',
-                                  padding: '8px 10px',
-                                }}
-                                className="w-full text-xs transition-all focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              />
+                        <div key={cIdx} className="space-y-2.5 p-3 rounded-lg border" style={{ background: theme.subtleBg, borderColor: theme.border }}>
+                          {/* Criteria Top Bar with Order, Move Up/Down, Delete */}
+                          <div className="flex items-center justify-between gap-2 pb-1 border-b" style={{ borderColor: theme.border }}>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 inline-flex items-center justify-center text-[10px] font-mono">
+                                {cIdx + 1}
+                              </span>
+                              <span>Criteria #{cIdx + 1} (English)</span>
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => moveCriterion(aIdx, cIdx, -1)}
+                                disabled={cIdx === 0}
+                                title="Pindahkan Kriteria ke Atas"
+                                className="w-6 h-6 rounded border flex items-center justify-center cursor-pointer transition-all disabled:opacity-25 disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/5"
+                                style={{ borderColor: theme.border, color: theme.textSecondary }}
+                              >
+                                <FontAwesomeIcon icon={faArrowUp} className="text-[9px]" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveCriterion(aIdx, cIdx, 1)}
+                                disabled={cIdx === (area.criteria.length - 1)}
+                                title="Pindahkan Kriteria ke Bawah"
+                                className="w-6 h-6 rounded border flex items-center justify-center cursor-pointer transition-all disabled:opacity-25 disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/5"
+                                style={{ borderColor: theme.border, color: theme.textSecondary }}
+                              >
+                                <FontAwesomeIcon icon={faArrowDown} className="text-[9px]" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeCriterion(aIdx, cIdx)}
+                                title="Hapus Kriteria"
+                                className="w-6 h-6 rounded border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer ml-1"
+                              >
+                                <FontAwesomeIcon icon={faTrash} className="text-[9px]" />
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => removeCriterion(aIdx, cIdx)}
-                              title="Delete Criteria"
-                              className="mt-5 w-7 h-7 rounded-md border border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
-                            >
-                              <FontAwesomeIcon icon={faTrash} className="text-[10px]" />
-                            </button>
+                          </div>
+
+                          {/* Criteria English Input */}
+                          <div className="space-y-1">
+                            <textarea
+                              rows={2}
+                              placeholder="Criteria in English..."
+                              value={crit.criteria_text}
+                              onChange={(e) => updateCriterion(aIdx, cIdx, 'criteria_text', e.target.value)}
+                              onInput={(e) => {
+                                e.target.style.height = 'auto';
+                                e.target.style.height = Math.max(52, e.target.scrollHeight) + 'px';
+                              }}
+                              style={{
+                                ...inputStyle,
+                                resize: 'vertical',
+                                minHeight: '52px',
+                                lineHeight: '1.45',
+                                padding: '8px 10px',
+                              }}
+                              className="w-full text-xs transition-all focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
                           </div>
 
                           {/* translate in Bahasa Input */}
-                          <div className="space-y-1 pr-9">
+                          <div className="space-y-1">
                             <label className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
                               Terjemahan Bahasa Indonesia
                             </label>
@@ -2316,6 +2410,20 @@ export default function ClassManagement() {
                               }}
                               className="w-full text-xs transition-all focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
+                          </div>
+
+                          {/* Quick Action: Insert Below */}
+                          <div className="pt-1 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => insertCriterion(aIdx, cIdx)}
+                              title={`Sisipkan kriteria baru tepat di bawah Kriteria #${cIdx + 1}`}
+                              className="px-2.5 py-1 text-[11px] font-semibold rounded border transition-all cursor-pointer inline-flex items-center gap-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                              style={{ background: isDark ? 'rgba(37,99,235,0.08)' : '#F0F7FF' }}
+                            >
+                              <FontAwesomeIcon icon={faPlus} className="text-[9px]" />
+                              <span>+ Sisipkan Kriteria di Bawah (#{cIdx + 2})</span>
+                            </button>
                           </div>
                         </div>
                       ))}
