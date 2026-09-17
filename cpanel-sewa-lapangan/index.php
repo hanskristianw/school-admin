@@ -249,6 +249,8 @@ $i18n = [
 $L = $i18n[$currLang] ?? $i18n['id'];
 
 // ─── 1. KONFIGURASI SISTEM ───────────────────────────────────────────
+define('CCS_PORTAL_LOADED', true);
+
 // Muat konfigurasi rahasia jika file config.php tersedia (file ini di-ignore oleh Git)
 if (file_exists(__DIR__ . '/config.php')) {
     require_once __DIR__ . '/config.php';
@@ -268,7 +270,7 @@ if (!defined('ADMIN_PASS')) define('ADMIN_PASS', 'adminccs2026');
 // Konfigurasi Integrasi Next.js Admin & Keamanan Bukti Transfer
 // Nilai rahasia diatur di config.php (atau environment variable) sehingga TIDAK tersimpan di Git
 if (!defined('API_SECRET_TOKEN')) define('API_SECRET_TOKEN', getenv('COURT_RENTAL_SECRET_KEY') ?: '');
-if (!defined('NEXTJS_API_URL')) define('NEXTJS_API_URL', 'https://manageccs.online/api/public/court-rental');
+if (!defined('NEXTJS_API_URL')) define('NEXTJS_API_URL', 'https://www.manageccs.online/api/public/court-rental');
 
 // Folder penyimpanan internal
 define('DATA_DIR', __DIR__ . '/data');
@@ -429,6 +431,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, 2);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             $remoteData = @curl_exec($ch);
             @curl_close($ch);
         } else {
@@ -646,8 +649,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         ]);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 5);
                         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                        @curl_exec($ch);
+                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                        $syncResp = @curl_exec($ch);
+                        $syncCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                         @curl_close($ch);
+                        @file_put_contents(DATA_DIR . '/sync.log', date('Y-m-d H:i:s') . " | HTTP: $syncCode | Token: " . (API_SECRET_TOKEN ? 'Present' : 'EMPTY') . " | Resp: " . substr((string)$syncResp, 0, 150) . "\n", FILE_APPEND);
                     } else {
                         $opts = [
                             'http' => [
