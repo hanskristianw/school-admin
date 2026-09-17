@@ -2,7 +2,7 @@
 /**
  * ==============================================================================
  * SISTEM PERSEWAAN SPORT HALL CCS — CHUNG CHUNG CHRISTIAN SCHOOL
- * Yayasan Pendidikan Mayapada
+ * Yayasan Pendidikan Mayapada School
  * ==============================================================================
  * Standalone PHP 7.4 - 8.3 Application
  * Template & Styling: Authentic Chung Chung Christian School (ccs.sch.id)
@@ -51,6 +51,7 @@ $i18n = [
         'step1_title' => 'Pilihan Paket Sewa',
         'step2_title' => 'Pilih Tanggal & Sesi Jam Bermain',
         'lbl_date' => 'Tanggal Sewa',
+        'hint_date_min' => 'Pemesanan minimal 2 hari setelahnya (H+2).',
         'lbl_slots' => 'Pilihan Sesi Jam (Durasi 2 Jam Penuh)',
         'notice_select_date' => 'Pilih tanggal terlebih dahulu untuk melihat ketersediaan jadwal.',
         'notice_loading' => 'Memeriksa ketersediaan jadwal lapangan...',
@@ -89,7 +90,7 @@ $i18n = [
             'Pengunaan AC atau lampu dan atau keduanya dinyalakan sesuai dengan jam sewa.',
             'Dilarang merokok di area lapangan dan sekolah.',
             'Segala bentuk kerusakan yang terjadi selama durasi sewa, maka penyewa wajib mengganti rugi sesuai dengan biaya perbaikan kerusakan.',
-            'Pembayaran sewa wajib dilakukan sebelum lapangan digunakan. Biaya sewa dapat ditransfer ke rekening berikut : Yayasan Pendidikan Mayapada, Nomor Rekening : 100-3000-3853. Mohon mencantumkan keterangan transfer : KodeBooking_NamaPenyewa.',
+            'Pembayaran sewa wajib dilakukan sebelum lapangan digunakan. Biaya sewa dapat ditransfer ke rekening berikut : Yayasan Pendidikan Mayapada School, Nomor Rekening : 100-3000-3853. Mohon mencantumkan keterangan transfer : KodeBooking_NamaPenyewa.',
             'Status booking lapangan akan berubah menjadi sukses, ketika penyewa sudah upload bukti pembayaran dan mendapat email konfirmasi penyewaan lapangan.',
             'Harap mengisi alamat email dengan benar karena segala bentuk konfirmasi akan dilakukan by email. Apabila tidak terdapat konfirmasi melalui email, maka reservasi dianggap belum disetujui, sehingga penyewa tidak diizinkan memasuki area lapangan.',
             'Khusus untuk penyewaan lapangan dalam rangka event atau kegiatan dengan durasi sewa yang lebih lama, silakan menghubungi Contact Person: +62 859-5986-0430.',
@@ -124,6 +125,7 @@ $i18n = [
         'step1_title' => 'Rental Package Option',
         'step2_title' => 'Select Date & Playing Time Slot',
         'lbl_date' => 'Rental Date',
+        'hint_date_min' => 'Reservations must be made at least 2 days in advance (D+2).',
         'lbl_slots' => 'Time Slot (Full 2-Hour Duration)',
         'notice_select_date' => 'Please select a date first to view schedule availability.',
         'notice_loading' => 'Checking court schedule availability...',
@@ -162,7 +164,7 @@ $i18n = [
             'The use of AC and/or lights will only be turned on according to the rental hours.',
             'Smoking is prohibited in the court and school area.',
             'For any damage that occurs during the rental duration, the renter is obliged to compensate according to the repair cost.',
-            'Rental payment must be made before the court is used. Rental fees can be transferred to: Yayasan Pendidikan Mayapada, Account Number: 100-3000-3853. Please include transfer remarks: BookingCode_RenterName.',
+            'Rental payment must be made before the court is used. Rental fees can be transferred to: Yayasan Pendidikan Mayapada School, Account Number: 100-3000-3853. Please include transfer remarks: BookingCode_RenterName.',
             'The court booking status will change to successful once the renter has uploaded proof of payment and received a rental confirmation email.',
             'Please enter your email address correctly as all confirmations will be sent by email. If there is no email confirmation, the reservation is considered unapproved, and the renter will not be permitted to enter the court area.',
             'For court rentals for events or activities with longer durations, please contact: +62 859-5986-0430.',
@@ -197,6 +199,7 @@ $i18n = [
         'step1_title' => '选择租赁套餐',
         'step2_title' => '选择预约日期与时段',
         'lbl_date' => '租赁日期',
+        'hint_date_min' => '预约须至少提前 2 天（预约日+2天）。',
         'lbl_slots' => '选择时段 (整2小时)',
         'notice_select_date' => '请先选择日期以查看可用时段。',
         'notice_loading' => '正在查询场地可用状态...',
@@ -235,7 +238,7 @@ $i18n = [
             '空调和/或照明设备仅在预约租赁时间内开启。',
             '球场及校园区域内严禁吸烟。',
             '租赁期间若发生任何设施损坏，承租方须按维修费用全额赔偿。',
-            '场地使用前须付清租金。租金请转账至：Yayasan Pendidikan Mayapada，账号：100-3000-3853。转账附言请注明：预约代码_承租人姓名。',
+            '场地使用前须付清租金。租金请转账至：Yayasan Pendidikan Mayapada School，账号：100-3000-3853。转账附言请注明：预约代码_承租人姓名。',
             '承租方上传付款凭证并收到确认邮件后，场地预约状态方转为成功。',
             '请务必准确填写电子邮箱地址，所有确认函均通过邮件发送。若未收到确认邮件，则预约视为未获批准，承租方不得进入球场区域。',
             '如需举办活动或更长时段的场地租赁，请联系专员：+62 859-5986-0430。',
@@ -258,10 +261,10 @@ if (file_exists(__DIR__ . '/config.php')) {
 
 if (!defined('APP_NAME')) define('APP_NAME', 'Sport Hall CCS');
 if (!defined('SCHOOL_NAME')) define('SCHOOL_NAME', 'Chung Chung Christian School');
-if (!defined('ORG_NAME')) define('ORG_NAME', 'Yayasan Pendidikan Mayapada');
+if (!defined('ORG_NAME')) define('ORG_NAME', 'Yayasan Pendidikan Mayapada School');
 if (!defined('BANK_NAME')) define('BANK_NAME', 'Bank Mayapada');
 if (!defined('BANK_REK')) define('BANK_REK', '100-3000-3853');
-if (!defined('BANK_AN')) define('BANK_AN', 'Yayasan Pendidikan Mayapada');
+if (!defined('BANK_AN')) define('BANK_AN', 'Yayasan Pendidikan Mayapada School');
 if (!defined('CONTACT_PHONE')) define('CONTACT_PHONE', '031 8788 4800');
 if (!defined('CONTACT_WA')) define('CONTACT_WA', '+62 859-5986-0430');
 if (!defined('SCHOOL_ADDRESS')) define('SCHOOL_ADDRESS', 'Gunung Anyar Sawah No. 18, Surabaya Timur');
@@ -407,9 +410,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
     }
 
     $ts = strtotime($date);
-    $today = strtotime(date('Y-m-d'));
-    if ($ts < $today) {
-        echo json_encode(['status' => 'error', 'message' => 'Tanggal sudah lewat']);
+    $minAllowedDate = strtotime(date('Y-m-d', strtotime('+2 days')));
+    if ($ts < $minAllowedDate) {
+        $msg = ($ajaxLang === 'en')
+            ? 'Court reservations must be made at least 2 days in advance (D+2). You cannot book for today or tomorrow.'
+            : (($ajaxLang === 'cn')
+                ? '场地预约须至少提前 2 天（预约日+2天），不可预约今天或明天。'
+                : 'Pemesanan lapangan minimal 2 hari setelah tanggal pemesanan (H+2). Tidak dapat memesan untuk hari ini atau besok.');
+        echo json_encode(['status' => 'error', 'message' => $msg]);
         exit;
     }
 
@@ -539,12 +547,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'paket_2' => ['name' => 'Price List - 2 Persewaan Lapangan CCS', 'price' => 350000, 'formatted_price' => 'Rp 350.000,-']
     ];
 
+    $validPurposes = ['Basket', 'Futsal', 'Badminton', 'Voli'];
+    $tsBooking = strtotime($bookingDate);
+    $minAllowedDate = strtotime(date('Y-m-d', strtotime('+2 days')));
+
     if (!$agreeRules) {
         $errorMessage = ($currLang === 'en') ? 'You must agree to the Court Rental Terms.' : (($currLang === 'cn') ? '您必须同意场地租赁规章制度。' : 'Anda wajib menyetujui Ketentuan Sewa Lapangan.');
     } elseif (!isset($validPkgs[$pkgKey])) {
         $errorMessage = 'Paket sewa yang dipilih tidak valid.';
-    } elseif (empty($bookingDate) || empty($timeSlot) || empty($renterName) || empty($renterPhone) || empty($renterEmail)) {
-        $errorMessage = ($currLang === 'en') ? 'Please complete all required fields (Package, Date, Time Slot, Name, WhatsApp, and Email).' : (($currLang === 'cn') ? '请完整填写所有必填信息（套餐、日期、时段、姓名、WhatsApp 及电子邮箱）。' : 'Mohon lengkapi semua data wajib (Paket, Tanggal, Jam, Nama, No. WhatsApp, dan Alamat Email).');
+    } elseif (empty($bookingDate) || empty($timeSlot) || empty($renterName) || empty($renterPhone) || empty($renterEmail) || empty($renterPurpose) || !in_array($renterPurpose, $validPurposes)) {
+        $errorMessage = ($currLang === 'en') ? 'Please complete all required fields (Package, Date, Time Slot, Name, WhatsApp, Email, and Purpose).' : (($currLang === 'cn') ? '请完整填写所有必填信息（套餐、日期、时段、姓名、WhatsApp、电子邮箱及使用目的）。' : 'Mohon lengkapi semua data wajib (Paket, Tanggal, Jam, Nama, No. WhatsApp, Alamat Email, dan Tujuan Penggunaan Lapangan).');
+    } elseif ($tsBooking < $minAllowedDate) {
+        $errorMessage = ($currLang === 'en') ? 'Court reservations must be made at least 2 days in advance (D+2). You cannot book for today or tomorrow.' : (($currLang === 'cn') ? '场地预约须至少提前 2 天（预约日+2天），不可预约今天或明天。' : 'Pemesanan lapangan minimal 2 hari setelah tanggal pemesanan (H+2). Anda tidak dapat memesan untuk hari ini atau besok.');
     } elseif (!filter_var($renterEmail, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = ($currLang === 'en') ? 'Please enter a valid email address.' : (($currLang === 'cn') ? '请输入有效的电子邮箱地址。' : 'Format alamat email tidak valid. Pastikan penulisan email benar.');
     } elseif (!isset($_FILES['payment_proof']) || $_FILES['payment_proof']['error'] === UPLOAD_ERR_NO_FILE) {
@@ -901,6 +915,19 @@ if (!empty($searchQuery)) {
     .package-radio:checked + .package-box .pkg-dot {
       background-color: #f16101;
       border-color: #f16101;
+    }
+
+    /* ─── Radio Selector Tujuan Penggunaan Lapangan ─── */
+    .purpose-radio:checked + .purpose-box {
+      border-color: #f16101;
+      background-color: #fff9f5;
+      box-shadow: 0 4px 16px rgba(241, 97, 1, 0.12);
+    }
+    .purpose-radio:checked + .purpose-box .purpose-title {
+      color: #f16101;
+    }
+    .purpose-radio:checked + .purpose-box .purpose-icon {
+      transform: scale(1.15);
     }
 
     /* ─── Footer Sesuai Website CCS Asli ─── */
@@ -1444,15 +1471,16 @@ if (!empty($searchQuery)) {
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
               <div class="space-y-1.5">
-                <label class="text-sm text-gray-700 font-medium"><?= htmlspecialchars($L['lbl_date']) ?></label>
+                <label class="text-sm text-gray-700 font-medium"><?= htmlspecialchars($L['lbl_date']) ?> <span class="text-rose-500 font-bold">*</span></label>
                 <input
                   type="date"
                   name="booking_date"
                   id="bookingDateInput"
                   required
-                  min="<?= date('Y-m-d') ?>"
+                  min="<?= date('Y-m-d', strtotime('+2 days')) ?>"
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-ccsOrange focus:border-ccsOrange outline-none"
                 />
+                <span class="text-[11px] text-gray-400 block"><?= htmlspecialchars($L['hint_date_min']) ?></span>
               </div>
 
               <div class="sm:col-span-2 space-y-1.5">
@@ -1500,9 +1528,54 @@ if (!empty($searchQuery)) {
                 <input type="text" name="renter_org" placeholder="Contoh: Alumni CCS / Tim Basket Mayapada" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl outline-none focus:border-ccsOrange text-sm" />
               </div>
 
-              <div class="sm:col-span-2 space-y-1">
-                <label class="font-medium text-gray-700"><?= htmlspecialchars($L['lbl_purpose']) ?></label>
-                <input type="text" name="renter_purpose" placeholder="Contoh: Latihan Rutin Basket / Sparring Futsal" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl outline-none focus:border-ccsOrange text-sm" />
+              <div class="sm:col-span-2 space-y-2" id="purposeContainer">
+                <div class="flex items-center justify-between">
+                  <label class="font-medium text-gray-700 block">
+                    <?= htmlspecialchars($L['lbl_purpose']) ?> <span class="text-rose-500 font-bold">*</span>
+                  </label>
+                  <span class="text-xs text-gray-400 font-normal"><?= ($currLang === 'en') ? '(Choose one)' : (($currLang === 'cn') ? '(单选一项)' : '(Pilih salah satu)') ?></span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <!-- Basket -->
+                  <label class="block relative cursor-pointer select-none">
+                    <input type="radio" name="renter_purpose" value="Basket" class="sr-only purpose-radio" id="purpose_basket" required />
+                    <div class="purpose-box p-3.5 rounded-xl border-2 border-gray-200 bg-white transition-all text-center flex flex-col items-center justify-center hover:border-gray-300">
+                      <div class="text-2xl mb-1 purpose-icon transition-transform">🏀</div>
+                      <div class="font-bold text-gray-900 text-sm purpose-title">Basket</div>
+                      <div class="text-[11px] text-gray-400 mt-0.5">Basketball</div>
+                    </div>
+                  </label>
+
+                  <!-- Futsal -->
+                  <label class="block relative cursor-pointer select-none">
+                    <input type="radio" name="renter_purpose" value="Futsal" class="sr-only purpose-radio" id="purpose_futsal" required />
+                    <div class="purpose-box p-3.5 rounded-xl border-2 border-gray-200 bg-white transition-all text-center flex flex-col items-center justify-center hover:border-gray-300">
+                      <div class="text-2xl mb-1 purpose-icon transition-transform">⚽</div>
+                      <div class="font-bold text-gray-900 text-sm purpose-title">Futsal</div>
+                      <div class="text-[11px] text-gray-400 mt-0.5">Indoor Soccer</div>
+                    </div>
+                  </label>
+
+                  <!-- Badminton -->
+                  <label class="block relative cursor-pointer select-none">
+                    <input type="radio" name="renter_purpose" value="Badminton" class="sr-only purpose-radio" id="purpose_badminton" required />
+                    <div class="purpose-box p-3.5 rounded-xl border-2 border-gray-200 bg-white transition-all text-center flex flex-col items-center justify-center hover:border-gray-300">
+                      <div class="text-2xl mb-1 purpose-icon transition-transform">🏸</div>
+                      <div class="font-bold text-gray-900 text-sm purpose-title">Badminton</div>
+                      <div class="text-[11px] text-gray-400 mt-0.5">Bulu Tangkis</div>
+                    </div>
+                  </label>
+
+                  <!-- Voli -->
+                  <label class="block relative cursor-pointer select-none">
+                    <input type="radio" name="renter_purpose" value="Voli" class="sr-only purpose-radio" id="purpose_voli" required />
+                    <div class="purpose-box p-3.5 rounded-xl border-2 border-gray-200 bg-white transition-all text-center flex flex-col items-center justify-center hover:border-gray-300">
+                      <div class="text-2xl mb-1 purpose-icon transition-transform">🏐</div>
+                      <div class="font-bold text-gray-900 text-sm purpose-title">Voli</div>
+                      <div class="text-[11px] text-gray-400 mt-0.5">Volleyball</div>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -2051,10 +2124,17 @@ if (!empty($searchQuery)) {
 
         // 2. Validasi Tanggal Sewa
         const dateEl = document.getElementById('bookingDateInput');
+        const minAllowedDate = dateEl ? dateEl.getAttribute('min') : '';
         if (!dateEl || !dateEl.value) {
           errors.push({
             label: currentLang === 'en' ? 'Rental Date' : (currentLang === 'cn' ? '租赁日期' : 'Tanggal Sewa Lapangan'),
             msg: currentLang === 'en' ? 'Please select the date you wish to rent the sport hall.' : (currentLang === 'cn' ? '请选择预约日期。' : 'Silakan tentukan tanggal pemakaian lapangan.'),
+            el: dateEl
+          });
+        } else if (minAllowedDate && dateEl.value < minAllowedDate) {
+          errors.push({
+            label: currentLang === 'en' ? 'Rental Date' : (currentLang === 'cn' ? '租赁日期' : 'Tanggal Sewa Lapangan'),
+            msg: currentLang === 'en' ? 'Reservations must be made at least 2 days in advance (D+2). You cannot book for today or tomorrow.' : (currentLang === 'cn' ? '场地预约须至少提前 2 天（预约日+2天），不可预约今天或明天。' : 'Pemesanan lapangan minimal 2 hari setelah tanggal pemesanan (H+2). Anda tidak dapat memesan untuk hari ini atau besok.'),
             el: dateEl
           });
         }
@@ -2100,6 +2180,17 @@ if (!empty($searchQuery)) {
             label: currentLang === 'en' ? 'Email Address' : (currentLang === 'cn' ? '电子邮箱地址' : 'Alamat Email Pemesan'),
             msg: currentLang === 'en' ? 'Valid email address is mandatory for confirmation dispatch.' : (currentLang === 'cn' ? '电子邮箱为必填项，用于接收官方确认函。' : 'Alamat email wajib diisi dengan format yang benar (contoh: nama@domain.com) untuk pengiriman konfirmasi booking.'),
             el: emailEl
+          });
+        }
+
+        // 6.5 Validasi Tujuan Penggunaan Lapangan (PILIH SALAH SATU)
+        const purposeSelected = document.querySelector('input[name="renter_purpose"]:checked');
+        if (!purposeSelected) {
+          const purposeContainer = document.getElementById('purposeContainer');
+          errors.push({
+            label: currentLang === 'en' ? 'Court Usage Purpose' : (currentLang === 'cn' ? '场地使用目的' : 'Tujuan Penggunaan Lapangan'),
+            msg: currentLang === 'en' ? 'Please select one court usage purpose (Basket, Futsal, Badminton, or Voli).' : (currentLang === 'cn' ? '请选择一项场地使用目的（篮球、室内足球、羽毛球或排球）。' : 'Silakan pilih salah satu tujuan penggunaan lapangan (Basket, Futsal, Badminton, atau Voli).'),
+            el: purposeContainer
           });
         }
 

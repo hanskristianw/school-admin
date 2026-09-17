@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-09-17)
 
 ## Corpus Check
-- 382 files · ~629,859 words
+- 383 files · ~630,216 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2198 nodes · 2274 edges · 367 communities (257 shown, 110 thin omitted)
+- 2199 nodes · 2274 edges · 368 communities (258 shown, 110 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `954d2c87`
+- Built from commit: `bd4b755f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -302,7 +302,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (367 total, 110 thin omitted)
+## Communities (368 total, 110 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.06
@@ -911,7 +911,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `pg`, `zod`, `class-variance-authority`, `docx`, `SKILL.md`, `google-auth-library`, `@google-cloud/vertexai`, `docx`, `pngjs`, `dotenv`?**
   _High betweenness centrality (0.007) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
-  _High betweenness centrality (0.004) - this node is a cross-community bridge._
+  _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **Why does `Database Schema & Relationships` connect `Module 126` to `bcryptjs`, `5.1 Tables`, `3.1 Tables`, `4.1 Tables`, `1.1 Tables`, `2.1 Tables`, `Module 143`, `9.1 Tables`, `8.1 Tables`, `**3. Assessment System**`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**

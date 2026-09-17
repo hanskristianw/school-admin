@@ -235,6 +235,17 @@
       "norm_label": "iconlibrary"
     },
     {
+      "label": "config.sample.php",
+      "file_type": "code",
+      "source_file": "cpanel-sewa-lapangan/config.sample.php",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "cpanel_sewa_lapangan_config_sample",
+      "community": 367,
+      "community_name": "config.sample.php",
+      "norm_label": "config.sample.php"
+    },
+    {
       "label": "index.php",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
@@ -249,7 +260,7 @@
       "label": "getDb()",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L290",
+      "source_location": "L294",
       "_origin": "ast",
       "id": "cpanel_sewa_lapangan_index_getdb",
       "community": 360,
@@ -260,7 +271,7 @@
       "label": "getSlotsForDay()",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L331",
+      "source_location": "L335",
       "_origin": "ast",
       "id": "cpanel_sewa_lapangan_index_getslotsforday",
       "community": 360,
@@ -24420,7 +24431,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L290",
+      "source_location": "L294",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_sewa_lapangan_index",
@@ -24431,7 +24442,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L331",
+      "source_location": "L335",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_sewa_lapangan_index",
@@ -49544,5 +49555,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "954d2c8745cbd426cc7d113dd8c3f5d1586489bf"
+  "built_at_commit": "bd4b755fc65ace24517a29394c53b306a5c21b66"
 }

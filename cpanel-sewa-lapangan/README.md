@@ -65,10 +65,10 @@ Jika Anda ingin mengubah password admin, nomor rekening, atau kontak person, buk
 
 ```php
 define('APP_NAME', 'Persewaan Lapangan CCS');
-define('ORG_NAME', 'Yayasan Pendidikan Mayapada');
+define('ORG_NAME', 'Yayasan Pendidikan Mayapada School');
 define('BANK_NAME', 'Bank Mayapada');
 define('BANK_REK', '100-3000-3853');
-define('BANK_AN', 'Yayasan Pendidikan Mayapada');
+define('BANK_AN', 'Yayasan Pendidikan Mayapada School');
 define('CONTACT_PERSON', '+62 859-5986-0430');
 define('ADMIN_PASS', 'adminccs2026'); // Ganti password admin di sini
 ```

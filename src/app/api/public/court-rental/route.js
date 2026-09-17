@@ -49,6 +49,20 @@ export async function POST(request) {
       )
     }
 
+    // Validasi tanggal sewa minimal 2 hari setelah tanggal pemesanan (H+2)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const minAllowedDate = new Date(today)
+    minAllowedDate.setDate(minAllowedDate.getDate() + 2)
+    const requestedDate = new Date(booking_date + 'T00:00:00')
+
+    if (requestedDate < minAllowedDate) {
+      return NextResponse.json(
+        { success: false, message: 'Pemesanan lapangan minimal dilakukan 2 hari setelah tanggal pemesanan (H+2). Tidak dapat memesan untuk hari ini atau besok.' },
+        { status: 400 }
+      )
+    }
+
     // Cek apakah tabel court_rentals sudah ada di Supabase
     const { data: existingBookings, error: checkErr } = await supabaseAdmin
       .from('court_rentals')

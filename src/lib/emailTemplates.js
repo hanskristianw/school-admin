@@ -497,7 +497,7 @@ export const emailTemplates = {
           </p>
         </div>
         <div class="footer">
-          Yayasan Pendidikan Mayapada — Chung Chung Christian School (CCS)
+          Yayasan Pendidikan Mayapada School — Chung Chung Christian School (CCS)
         </div>
       </div>
     `)
@@ -537,7 +537,7 @@ export const emailTemplates = {
           </p>
         </div>
         <div class="footer">
-          Yayasan Pendidikan Mayapada — Chung Chung Christian School (CCS)
+          Yayasan Pendidikan Mayapada School — Chung Chung Christian School (CCS)
         </div>
       </div>
     `)

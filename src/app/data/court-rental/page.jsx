@@ -591,8 +591,26 @@ export default function CourtRentalPage() {
                             <FontAwesomeIcon icon={faUser} className="text-[11px]" style={{ color: textSecondary }} />
                             {b.renter_name}
                           </div>
+                          {b.renter_purpose && (
+                            <div className="mt-1">
+                              <span
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded"
+                                style={{
+                                  background: isDark ? 'rgba(241,97,1,0.15)' : '#FFF7ED',
+                                  color: '#C2410C',
+                                  border: '1px solid rgba(241,97,1,0.25)'
+                                }}
+                              >
+                                {b.renter_purpose === 'Basket' && '🏀 Basket'}
+                                {b.renter_purpose === 'Futsal' && '⚽ Futsal'}
+                                {b.renter_purpose === 'Badminton' && '🏸 Badminton'}
+                                {b.renter_purpose === 'Voli' && '🏐 Voli'}
+                                {!['Basket', 'Futsal', 'Badminton', 'Voli'].includes(b.renter_purpose) && b.renter_purpose}
+                              </span>
+                            </div>
+                          )}
                           {b.renter_org && (
-                            <div className="text-[11px] flex items-center gap-1 mt-0.5" style={{ color: textSecondary }}>
+                            <div className="text-[11px] flex items-center gap-1 mt-1" style={{ color: textSecondary }}>
                               <FontAwesomeIcon icon={faBuilding} className="text-[10px]" />
                               {b.renter_org}
                             </div>
