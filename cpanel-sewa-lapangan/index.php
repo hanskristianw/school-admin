@@ -51,7 +51,6 @@ $i18n = [
         'step1_title' => 'Pilihan Paket Sewa',
         'step2_title' => 'Pilih Tanggal & Sesi Jam Bermain',
         'lbl_date' => 'Tanggal Sewa',
-        'hint_date' => 'Dapat dipesan hingga 60 hari ke depan.',
         'lbl_slots' => 'Pilihan Sesi Jam (Durasi 2 Jam Penuh)',
         'notice_select_date' => 'Pilih tanggal terlebih dahulu untuk melihat ketersediaan jadwal.',
         'notice_loading' => 'Memeriksa ketersediaan jadwal lapangan...',
@@ -62,37 +61,41 @@ $i18n = [
         'lbl_name' => 'Nama Lengkap Pemesan',
         'lbl_phone' => 'No. WhatsApp Aktif',
         'hint_phone' => 'Konfirmasi dan bukti booking dikirim ke nomor ini.',
-        'lbl_email' => 'Alamat Email (Opsional)',
+        'lbl_email' => 'Alamat Email',
+        'hint_email' => 'Harap mengisi alamat email dengan benar karena segala bentuk konfirmasi akan dilakukan by email.',
         'lbl_org' => 'Nama Klub / Komunitas / Instansi',
         'lbl_purpose' => 'Tujuan Penggunaan Lapangan',
         'step4_title' => 'Ketentuan & Tata Tertib Sewa Lapangan',
-        'rules_header' => 'Peraturan Resmi Penggunaan Fasilitas Sport Hall CCS:',
-        'agree_rules' => 'Saya telah membaca dan menyetujui seluruh <strong>Ketentuan Sewa Lapangan CCS</strong> di atas, termasuk kewajiban menjaga kebersihan (denda Rp 50.000 jika kotor) dan larangan merokok/vape di area sekolah.',
+        'rules_header' => 'Ketentuan Sewa Lapangan:',
+        'agree_rules' => 'Saya telah membaca dan menyetujui seluruh <strong>Ketentuan Sewa Lapangan</strong> di atas, termasuk kewajiban menjaga kebersihan (denda Rp 50.000 jika kotor) dan larangan merokok di area lapangan dan sekolah.',
         'step5_title' => 'Informasi Pembayaran Bank Mayapada',
         'lbl_copy_rek' => 'Salin No. Rekening',
-        'lbl_proof' => 'Upload Bukti Transfer:',
-        'hint_proof' => 'Format file: JPG, PNG, WEBP, atau PDF (maksimal 5 MB).',
+        'lbl_proof' => 'Upload Bukti Transfer (Wajib):',
+        'hint_proof' => 'Bukti transfer wajib diunggah. Format file: JPG, PNG, WEBP, atau PDF (maksimal 5 MB).',
+        'modal_error_title' => 'Periksa Kembali Formulir Anda',
+        'modal_error_desc' => 'Terdapat beberapa data wajib yang belum diisi atau belum sesuai. Mohon lengkapi bagian berikut:',
+        'modal_error_btn' => 'Lengkapi Formulir Sekarang',
         'btn_submit' => 'Ajukan Permohonan Sewa Lapangan',
         'status_section_title' => 'Cek Status Pemesanan Lapangan',
         'status_input_ph' => 'Contoh: CCS-2609-ABC123',
         'btn_check' => 'Cek Status',
         'lbl_code' => 'Kode Reservasi',
         'rules' => [
-            'Area lapangan hanya bisa disewa di luar jam sekolah dan di luar kegiatan resmi sekolah.',
-            'Jika ada kegiatan sekolah secara mendadak maka opsi pilihan hari/jam tidak akan muncul pada sistem booking.',
-            'Penyewa menyetujui untuk tidak meninggalkan barang apapun di area lapangan maupun area sekolah.',
-            'Pihak Sekolah tidak bertanggung jawab atas segala bentuk kehilangan atau kerusakan barang bawaan penyewa.',
-            'Penyewa diminta meninggalkan area lapangan dan sekolah dalam kondisi bersih seperti semula. Jika tidak bersih, akan dikenakan denda sebesar Rp 50.000,- sebelum penyewa meninggalkan area sekolah.',
-            'Penggunaan AC atau lampu dan/atau keduanya hanya dinyalakan tepat sesuai dengan jam sewa yang terdaftar.',
-            'Dilarang keras merokok, membawa rokok elektrik (vape), serta minuman beralkohol di seluruh area lapangan dan lingkungan sekolah.',
-            'Segala bentuk kerusakan sarana dan prasarana yang terjadi selama masa persewaan menjadi tanggung jawab penuh penyewa dan wajib diganti rugi.',
-            'Dilarang membawa makanan dan minuman selain air mineral putih ke dalam area arena lapangan olahraga.',
-            'Penyewa wajib mengenakan sepatu olahraga non-marking yang sesuai untuk lapangan indoor guna menjaga permukaan lantai.',
-            'Kapasitas maksimum peserta dan pendukung wajib ditaati demi kenyamanan dan keselamatan bersama.',
-            'Pembayaran sewa lapangan wajib diselesaikan dan bukti transfer diunggah sebelum jadwal penggunaan disetujui.',
-            'Pembatalan sewa maksimal H-2 sebelum tanggal bermain; pembatalan sepihak setelahnya tidak dapat di-refund.',
-            'Penyewa wajib menunjukkan Kode Booking resmi dari website ini kepada petugas keamanan/lapangan saat kedatangan.',
-            'Pihak sekolah berhak menghentikan kegiatan sewa sewaktu-waktu jika ditemukan pelanggaran terhadap tata tertib di atas.'
+            'Area lapangan hanya bisa disewa diluar jam sekolah dan diluar kegiatan sekolah.',
+            'Jika ada kegiatan sekolah secara mendadak maka opsi pilihan hari tidak akan muncul pada website booking.',
+            'Penyewa menyetujui untuk tidak meninggalkan barang apapun di area lapangan/area sekolah.',
+            'Pihak Sekolah tidak akan bertanggung jawab atas kehilangan barang apapun.',
+            'Penyewa diminta untuk meninggalkan area lapangan dan sekolah dalam kondisi bersih seperti semula, jika tidak maka akan ada denda sebesar Rp 50.000 sebelum penyewa meninggalkan area sekolah.',
+            'Pengunaan AC atau lampu dan atau keduanya dinyalakan sesuai dengan jam sewa.',
+            'Dilarang merokok di area lapangan dan sekolah.',
+            'Segala bentuk kerusakan yang terjadi selama durasi sewa, maka penyewa wajib mengganti rugi sesuai dengan biaya perbaikan kerusakan.',
+            'Pembayaran sewa wajib dilakukan sebelum lapangan digunakan. Biaya sewa dapat ditransfer ke rekening berikut : Yayasan Pendidikan Mayapada, Nomor Rekening : 100-3000-3853. Mohon mencantumkan keterangan transfer : KodeBooking_NamaPenyewa.',
+            'Status booking lapangan akan berubah menjadi sukses, ketika penyewa sudah upload bukti pembayaran dan mendapat email konfirmasi penyewaan lapangan.',
+            'Harap mengisi alamat email dengan benar karena segala bentuk konfirmasi akan dilakukan by email. Apabila tidak terdapat konfirmasi melalui email, maka reservasi dianggap belum disetujui, sehingga penyewa tidak diizinkan memasuki area lapangan.',
+            'Khusus untuk penyewaan lapangan dalam rangka event atau kegiatan dengan durasi sewa yang lebih lama, silakan menghubungi Contact Person: +62 859-5986-0430.',
+            'Proses booking lapangan hanya dapat dilakukan pada hari kerja, Senin-Jumat pukul 08.00-16.00. Pesanan yang masuk di luar jam operasional akan diproses pada hari kerja berikutnya. Khusus pesanan yang masuk pada hari Jumat di luar jam operasional, proses akan dilakukan pada hari Senin.',
+            'Perubahan atau penjadwalan ulang sewa tidak diperkenankan. Penyewa wajib memastikan dan memeriksa kembali jadwal yang dipilih sebelum melakukan pembayaran.',
+            'Dengan hormat kami informasikan bahwa mulai Juli 2026 telah dilakukan penyesuaian tarif sewa lapangan.'
         ]
     ],
     'en' => [
@@ -121,7 +124,6 @@ $i18n = [
         'step1_title' => 'Rental Package Option',
         'step2_title' => 'Select Date & Playing Time Slot',
         'lbl_date' => 'Rental Date',
-        'hint_date' => 'Reservations available up to 60 days ahead.',
         'lbl_slots' => 'Time Slot (Full 2-Hour Duration)',
         'notice_select_date' => 'Please select a date first to view schedule availability.',
         'notice_loading' => 'Checking court schedule availability...',
@@ -132,37 +134,41 @@ $i18n = [
         'lbl_name' => 'Full Name',
         'lbl_phone' => 'Active WhatsApp Number',
         'hint_phone' => 'Confirmation and booking vouchers will be sent to this number.',
-        'lbl_email' => 'Email Address (Optional)',
+        'lbl_email' => 'Email Address',
+        'hint_email' => 'Please enter your email address correctly as all confirmations will be sent by email.',
         'lbl_org' => 'Club / Community / Organization Name',
         'lbl_purpose' => 'Purpose of Rental',
         'step4_title' => 'Court Rental Terms & Regulations',
-        'rules_header' => 'Official Sport Hall CCS Regulations:',
-        'agree_rules' => 'I have read and agree to all the <strong>CCS Court Rental Terms</strong> above, including the cleanliness obligation (Rp 50,000 fine if left unclean) and the strict no-smoking/vaping policy on school premises.',
+        'rules_header' => 'Court Rental Terms:',
+        'agree_rules' => 'I have read and agree to all the <strong>Court Rental Terms</strong> above, including the cleanliness obligation (Rp 50,000 fine if left unclean) and the strict no-smoking policy in court and school area.',
         'step5_title' => 'Bank Mayapada Payment Information',
         'lbl_copy_rek' => 'Copy Account Number',
-        'lbl_proof' => 'Upload Payment Proof:',
-        'hint_proof' => 'Accepted formats: JPG, PNG, WEBP, or PDF (max 5 MB).',
+        'lbl_proof' => 'Upload Payment Proof (Mandatory):',
+        'hint_proof' => 'Payment proof is required. Format: JPG, PNG, WEBP, or PDF (max 5 MB).',
+        'modal_error_title' => 'Please Complete Your Form',
+        'modal_error_desc' => 'Some required fields are missing or invalid. Please correct the following items:',
+        'modal_error_btn' => 'Complete Form Now',
         'btn_submit' => 'Submit Court Rental Booking',
         'status_section_title' => 'Check Booking Status',
         'status_input_ph' => 'Example: CCS-2609-ABC123',
         'btn_check' => 'Check Status',
         'lbl_code' => 'Booking Code',
         'rules' => [
-            'The court area can only be rented outside school hours and official school events.',
-            'If there is a sudden school activity, the date/time option will not appear on the booking system.',
-            'Renters agree not to leave any belongings in the court or anywhere on school grounds.',
-            'The School is not responsible for any lost or damaged personal belongings.',
-            'Renters must leave the court and school area clean as found. Failure to do so incurs a Rp 50,000 fine before leaving.',
-            'AC and/or lights will strictly be turned on only during the registered rental hours.',
-            'Smoking, vaping, and alcoholic beverages are strictly prohibited anywhere on campus.',
-            'Any damage to facilities occurring during the rental period is the sole responsibility of the renter and must be compensated.',
-            'No food or drinks other than plain mineral water are allowed on the playing surface.',
-            'Renters must wear non-marking sports shoes suitable for indoor courts to preserve the floor.',
-            'Maximum player and spectator capacity limits must be strictly respected.',
-            'Rental fees must be settled and transfer proof uploaded before the booking is confirmed.',
-            'Cancellations must be made at least 2 days prior (D-2); subsequent cancellations are non-refundable.',
-            'Renters must show the official Booking Code from this website to security/court staff upon arrival.',
-            'The school reserves the right to terminate court usage at any time if rules are violated.'
+            'The court area can only be rented outside school hours and outside school activities.',
+            'If there is a sudden school activity, the date option will not appear on the booking website.',
+            'Renters agree not to leave any belongings in the court area or school area.',
+            'The School will not be responsible for any loss of personal belongings.',
+            'Renters are required to leave the court and school area in a clean condition as originally found; otherwise, a fine of Rp 50,000 will be charged before leaving the school area.',
+            'The use of AC and/or lights will only be turned on according to the rental hours.',
+            'Smoking is prohibited in the court and school area.',
+            'For any damage that occurs during the rental duration, the renter is obliged to compensate according to the repair cost.',
+            'Rental payment must be made before the court is used. Rental fees can be transferred to: Yayasan Pendidikan Mayapada, Account Number: 100-3000-3853. Please include transfer remarks: BookingCode_RenterName.',
+            'The court booking status will change to successful once the renter has uploaded proof of payment and received a rental confirmation email.',
+            'Please enter your email address correctly as all confirmations will be sent by email. If there is no email confirmation, the reservation is considered unapproved, and the renter will not be permitted to enter the court area.',
+            'For court rentals for events or activities with longer durations, please contact: +62 859-5986-0430.',
+            'The court booking process is only conducted on working days, Monday-Friday 08:00-16:00. Bookings received outside operational hours will be processed on the next working day. Bookings placed on Friday outside operational hours will be processed on Monday.',
+            'Changes or rescheduling of rental bookings are not permitted. Renters must ensure and recheck the selected schedule before making payment.',
+            'Please be respectfully informed that effective July 2026, a court rental tariff adjustment has been implemented.'
         ]
     ],
     'cn' => [
@@ -191,7 +197,6 @@ $i18n = [
         'step1_title' => '选择租赁套餐',
         'step2_title' => '选择预约日期与时段',
         'lbl_date' => '租赁日期',
-        'hint_date' => '最长可提前60天预约。',
         'lbl_slots' => '选择时段 (整2小时)',
         'notice_select_date' => '请先选择日期以查看可用时段。',
         'notice_loading' => '正在查询场地可用状态...',
@@ -202,37 +207,41 @@ $i18n = [
         'lbl_name' => '负责人全名',
         'lbl_phone' => 'WhatsApp 手机号码',
         'hint_phone' => '预约凭证及确认信息将发送至此号码。',
-        'lbl_email' => '电子邮箱 (选填)',
+        'lbl_email' => '电子邮箱地址',
+        'hint_email' => '请务必准确填写电子邮箱地址，所有确认函均通过邮件发送。',
         'lbl_org' => '俱乐部 / 社区 / 机构名称',
         'lbl_purpose' => '场地使用目的',
         'step4_title' => '场地租赁规章制度',
-        'rules_header' => 'Sport Hall CCS 官方使用守则：',
-        'agree_rules' => '我已阅读并同意上述所有 <strong>CCS 场地租赁规章制度</strong>，包括保持清洁义务（未清理罚款 Rp 50,000）及严禁在校内吸烟/电子烟的规定。',
+        'rules_header' => '场地租赁须知：',
+        'agree_rules' => '我已阅读并同意上述所有<strong>场地租赁规章制度</strong>，包括保持清洁义务（未清理罚款 Rp 50,000）及严禁在球场与校园区域内吸烟的规定。',
         'step5_title' => 'Bank Mayapada 银行转账信息',
         'lbl_copy_rek' => '复制银行账号',
-        'lbl_proof' => '上传转账凭证：',
-        'hint_proof' => '支持文件格式：JPG, PNG, WEBP 或 PDF（最大 5 MB）。',
+        'lbl_proof' => '上传转账凭证（必填）：',
+        'hint_proof' => '必须上传转账凭证。格式：JPG, PNG, WEBP 或 PDF（最大 5 MB）。',
+        'modal_error_title' => '请检查并完善表单内容',
+        'modal_error_desc' => '有几项必填信息尚未填写或不符合要求，请补充完善：',
+        'modal_error_btn' => '立即完善表单',
         'btn_submit' => '提交场地租赁预约',
         'status_section_title' => '查询预约状态',
         'status_input_ph' => '例如：CCS-2609-ABC123',
         'btn_check' => '查询状态',
         'lbl_code' => '预约代码',
         'rules' => [
-            '场地仅在非上课时间及学校官方活动之外开放出租。',
-            '若遇学校突发官方活动，预约系统将自动不显示该日期或时段。',
-            '承租方同意不在球场及校园内遗留任何个人物品。',
-            '校方对承租方物品的任何遗失或损坏概不承担责任。',
-            '承租方须保持场地清洁如初，离校前若未清理将处以 Rp 50,000 罚款。',
-            '空调及照明设备仅严格按照预约登记的时段开启使用。',
-            '全校区域内严禁吸烟、吸食电子烟及携带任何酒精饮料。',
-            '租用期间若发生设施损坏，由承租方负全责并照价赔偿。',
-            '严禁携带除纯净矿泉水之外的任何食品和饮料进入球场内。',
-            '承租方必须穿着适合室内场地的无痕运动鞋（non-marking），以保护地面。',
-            '入场运动及观赛人员上限必须严格遵守，以确保安全。',
-            '租金必须付清并上传转账凭证，预约方可生效。',
-            '取消预约须至少提前2天（H-2）通知，逾期单方面取消概不退款。',
-            '到达时须向保安或球场管理人员出示官方预约码。',
-            '若发现违反上述规章，校方有权随时终止租赁活动。'
+            '场地仅限在非上课时间及学校活动之外租用。',
+            '若学校有突发活动，预约网站上将不显示该日期选项。',
+            '承租方同意不在场地或校园区域内遗留任何物品。',
+            '学校对任何个人物品的遗失概不负责。',
+            '承租方须将球场及校园区域恢复原状并保持清洁，否则须在离校前缴纳 Rp 50,000 罚款。',
+            '空调和/或照明设备仅在预约租赁时间内开启。',
+            '球场及校园区域内严禁吸烟。',
+            '租赁期间若发生任何设施损坏，承租方须按维修费用全额赔偿。',
+            '场地使用前须付清租金。租金请转账至：Yayasan Pendidikan Mayapada，账号：100-3000-3853。转账附言请注明：预约代码_承租人姓名。',
+            '承租方上传付款凭证并收到确认邮件后，场地预约状态方转为成功。',
+            '请务必准确填写电子邮箱地址，所有确认函均通过邮件发送。若未收到确认邮件，则预约视为未获批准，承租方不得进入球场区域。',
+            '如需举办活动或更长时段的场地租赁，请联系专员：+62 859-5986-0430。',
+            '场地预约审核仅在工作日（周一至周五 08:00-16:00）进行。工作时间外提交的预约将在下一个工作日处理；周五工作时间外提交的预约将在周一处理。',
+            '场地租赁不可更改或改期。承租方在付款前须仔细核对确认所选时间。',
+            '谨此通知，自2026年7月起已对场地租赁费用进行相应调整。'
         ]
     ]
 ];
@@ -251,6 +260,10 @@ define('CONTACT_WA', '+62 859-5986-0430');
 define('SCHOOL_ADDRESS', 'Gunung Anyar Sawah No. 18, Surabaya Timur');
 define('ADMIN_PASS', 'adminccs2026');
 
+// Konfigurasi Integrasi Next.js Admin & Keamanan Bukti Transfer
+define('API_SECRET_TOKEN', 'ccs_sewa_lapangan_secret_2026_9f8e7d6c');
+define('NEXTJS_API_URL', 'https://manageccs.online/api/public/court-rental'); // Endpoint API Next.js CCS (aktif saat sudah dideploy ke production)
+
 // Folder penyimpanan internal
 define('DATA_DIR', __DIR__ . '/data');
 define('UPLOAD_DIR', __DIR__ . '/uploads');
@@ -263,8 +276,11 @@ if (!file_exists(DATA_DIR)) {
 }
 if (!file_exists(UPLOAD_DIR)) {
     @mkdir(UPLOAD_DIR, 0755, true);
-    @file_put_contents(UPLOAD_DIR . '/.htaccess', "<FilesMatch \"\\.(php|phtml|php5|pl|py|cgi|sh)$\">\nOrder Allow,Deny\nDeny from all\n</FilesMatch>\n");
 }
+// Pilihan Keamanan A: Kunci total folder uploads/ dari akses web publik (Deny from all)
+@file_put_contents(UPLOAD_DIR . '/.htaccess', "Options -Indexes\nOrder Deny,Allow\nDeny from all\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<FilesMatch \"\\.(php|phtml|php5|pl|py|cgi|sh)$\">\nRequire all denied\n</FilesMatch>\n");
+@file_put_contents(UPLOAD_DIR . '/index.html', '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><h1>Directory access is forbidden.</h1></body></html>');
+
 
 // ─── 2. KONEKSI DATABASE (SQLite) ────────────────────────────────────
 function getDb() {
@@ -328,6 +344,44 @@ function getSlotsForDay($dayOfWeek) {
     }
 }
 
+// ─── 2.5 PROTECTED STREAMING BUKTI TRANSFER (KEAMANAN OPSI A) ────────
+if (isset($_GET['action']) && $_GET['action'] === 'view_proof') {
+    $token = $_GET['token'] ?? '';
+    if ($token !== API_SECRET_TOKEN) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Forbidden: Invalid security token']);
+        exit;
+    }
+
+    $file = basename($_GET['file'] ?? '');
+    $filePath = UPLOAD_DIR . '/' . $file;
+
+    if (!$file || !file_exists($filePath) || !is_file($filePath)) {
+        http_response_code(404);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'File not found']);
+        exit;
+    }
+
+    $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+    $mimeTypes = [
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'pdf' => 'application/pdf'
+    ];
+    $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
+
+    header('Content-Type: ' . $contentType);
+    header('Content-Length: ' . filesize($filePath));
+    header('Cache-Control: private, max-age=86400');
+    header('Content-Disposition: inline; filename="' . $file . '"');
+    readfile($filePath);
+    exit;
+}
+
 // ─── 3. API AJAX SLOT AVAILABILITY ────────────────────────────────────
 if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
     header('Content-Type: application/json');
@@ -355,13 +409,52 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
     $dayOfWeek = (int)date('w', $ts);
     $availableSlots = getSlotsForDay($dayOfWeek);
 
-    $stmt = $db->prepare("SELECT time_slot, reason FROM blackout_dates WHERE date = ?");
-    $stmt->execute([$date]);
-    $blackouts = $stmt->fetchAll();
-    
     $blackoutSlots = [];
     $isWholeDayBlocked = false;
     $blockReason = '';
+    $bookedSlots = [];
+
+    // Coba ambil sinkronisasi dari Next.js API terlebih dahulu
+    if (defined('NEXTJS_API_URL') && !empty(NEXTJS_API_URL)) {
+        $apiCheckUrl = NEXTJS_API_URL . '?date=' . urlencode($date);
+        $remoteData = null;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($apiCheckUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $remoteData = @curl_exec($ch);
+            @curl_close($ch);
+        } else {
+            $ctx = stream_context_create(['http' => ['timeout' => 2]]);
+            $remoteData = @file_get_contents($apiCheckUrl, false, $ctx);
+        }
+
+        if ($remoteData) {
+            $json = json_decode($remoteData, true);
+            if (isset($json['success']) && $json['success']) {
+                if (!empty($json['blackouts'])) {
+                    foreach ($json['blackouts'] as $b) {
+                        if (empty($b['time_slot'])) {
+                            $isWholeDayBlocked = true;
+                            $blockReason = $b['reason'] ?: 'Kegiatan Khusus Sekolah';
+                            break;
+                        } else {
+                            $blackoutSlots[$b['time_slot']] = $b['reason'] ?: 'Kegiatan Sekolah';
+                        }
+                    }
+                }
+                if (!empty($json['bookedSlots'])) {
+                    $bookedSlots = $json['bookedSlots'];
+                }
+            }
+        }
+    }
+
+    // Gabungkan dengan SQLite lokal
+    $stmt = $db->prepare("SELECT time_slot, reason FROM blackout_dates WHERE date = ?");
+    $stmt->execute([$date]);
+    $blackouts = $stmt->fetchAll();
     
     foreach ($blackouts as $b) {
         if (empty($b['time_slot'])) {
@@ -386,7 +479,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_slots') {
     $stmt = $db->prepare("SELECT time_slot FROM bookings WHERE booking_date = ? AND status IN ('pending_payment', 'payment_uploaded', 'approved')");
     $stmt->execute([$date]);
     $bookedRows = $stmt->fetchAll();
-    $bookedSlots = array_column($bookedRows, 'time_slot');
+    $localBooked = array_column($bookedRows, 'time_slot');
+    $bookedSlots = array_unique(array_merge($bookedSlots, $localBooked));
 
     $resultSlots = [];
     foreach ($availableSlots as $slot) {
@@ -437,42 +531,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     ];
 
     if (!$agreeRules) {
-        $errorMessage = ($currLang === 'en') ? 'You must agree to the CCS Court Rental Terms.' : (($currLang === 'cn') ? '您必须同意 CCS 场地租赁规章制度。' : 'Anda wajib menyetujui Ketentuan Tata Tertib Sewa Lapangan CCS.');
+        $errorMessage = ($currLang === 'en') ? 'You must agree to the Court Rental Terms.' : (($currLang === 'cn') ? '您必须同意场地租赁规章制度。' : 'Anda wajib menyetujui Ketentuan Sewa Lapangan.');
     } elseif (!isset($validPkgs[$pkgKey])) {
         $errorMessage = 'Paket sewa yang dipilih tidak valid.';
-    } elseif (empty($bookingDate) || empty($timeSlot) || empty($renterName) || empty($renterPhone)) {
-        $errorMessage = ($currLang === 'en') ? 'Please complete all required fields (Package, Date, Time Slot, Name, and WhatsApp).' : (($currLang === 'cn') ? '请完整填写所有必填信息（套餐、日期、时段、姓名及 WhatsApp）。' : 'Mohon lengkapi semua data wajib (Paket, Tanggal, Jam, Nama, dan No. WhatsApp).');
+    } elseif (empty($bookingDate) || empty($timeSlot) || empty($renterName) || empty($renterPhone) || empty($renterEmail)) {
+        $errorMessage = ($currLang === 'en') ? 'Please complete all required fields (Package, Date, Time Slot, Name, WhatsApp, and Email).' : (($currLang === 'cn') ? '请完整填写所有必填信息（套餐、日期、时段、姓名、WhatsApp 及电子邮箱）。' : 'Mohon lengkapi semua data wajib (Paket, Tanggal, Jam, Nama, No. WhatsApp, dan Alamat Email).');
+    } elseif (!filter_var($renterEmail, FILTER_VALIDATE_EMAIL)) {
+        $errorMessage = ($currLang === 'en') ? 'Please enter a valid email address.' : (($currLang === 'cn') ? '请输入有效的电子邮箱地址。' : 'Format alamat email tidak valid. Pastikan penulisan email benar.');
+    } elseif (!isset($_FILES['payment_proof']) || $_FILES['payment_proof']['error'] === UPLOAD_ERR_NO_FILE) {
+        $errorMessage = ($currLang === 'en') ? 'Proof of payment transfer is mandatory. Please upload your transfer receipt.' : (($currLang === 'cn') ? '付款转账凭证为必填项。请上传您的银行转账凭证。' : 'Bukti transfer pembayaran Bank Mayapada wajib diunggah.');
+    } elseif ($_FILES['payment_proof']['error'] !== UPLOAD_ERR_OK) {
+        $errorMessage = ($currLang === 'en') ? 'Failed to upload payment proof. Please try again.' : 'Terjadi kesalahan saat mengunggah bukti transfer. Silakan coba lagi.';
     } else {
-        $db = getDb();
+        $fileTmp = $_FILES['payment_proof']['tmp_name'];
+        $fileName = $_FILES['payment_proof']['name'];
+        $fileSize = $_FILES['payment_proof']['size'];
+        $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
 
-        $stmt = $db->prepare("SELECT COUNT(*) FROM bookings WHERE booking_date = ? AND time_slot = ? AND status IN ('pending_payment', 'payment_uploaded', 'approved')");
-        $stmt->execute([$bookingDate, $timeSlot]);
-        if ($stmt->fetchColumn() > 0) {
-            $errorMessage = ($currLang === 'en') ? 'Sorry, this time slot has just been booked. Please choose another.' : 'Maaf, sesi jam tersebut baru saja dipesan orang lain. Silakan pilih sesi lain.';
+        if (!in_array($fileExt, $allowedExts)) {
+            $errorMessage = ($currLang === 'en') ? 'Invalid file format for payment proof. Allowed formats: JPG, PNG, WEBP, PDF.' : 'Format berkas bukti transfer tidak didukung. Harap gunakan file JPG, PNG, WEBP, atau PDF.';
+        } elseif ($fileSize > 5 * 1024 * 1024) {
+            $errorMessage = ($currLang === 'en') ? 'Payment proof file exceeds maximum limit of 5 MB.' : 'Ukuran berkas bukti transfer melebihi batas maksimal 5 MB.';
         } else {
-            $stmt = $db->prepare("SELECT COUNT(*) FROM blackout_dates WHERE date = ? AND (time_slot = ? OR time_slot = '' OR time_slot IS NULL)");
+            $db = getDb();
+
+            $stmt = $db->prepare("SELECT COUNT(*) FROM bookings WHERE booking_date = ? AND time_slot = ? AND status IN ('pending_payment', 'payment_uploaded', 'approved')");
             $stmt->execute([$bookingDate, $timeSlot]);
             if ($stmt->fetchColumn() > 0) {
-                $errorMessage = ($currLang === 'en') ? 'Sorry, this time slot is reserved for a school event.' : 'Maaf, sesi jam tersebut sedang digunakan untuk kegiatan sekolah mendadak.';
+                $errorMessage = ($currLang === 'en') ? 'Sorry, this time slot has just been booked. Please choose another.' : 'Maaf, sesi jam tersebut baru saja dipesan orang lain. Silakan pilih sesi lain.';
             } else {
-                $paymentProofFile = '';
-                $initialStatus = 'pending_payment';
-
-                if (isset($_FILES['payment_proof']) && $_FILES['payment_proof']['error'] === UPLOAD_ERR_OK) {
-                    $fileTmp = $_FILES['payment_proof']['tmp_name'];
-                    $fileName = $_FILES['payment_proof']['name'];
-                    $fileSize = $_FILES['payment_proof']['size'];
-                    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-                    $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
-                    if (in_array($fileExt, $allowedExts) && $fileSize <= 5 * 1024 * 1024) {
-                        $newFileName = 'bukti_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $fileExt;
-                        if (move_uploaded_file($fileTmp, UPLOAD_DIR . '/' . $newFileName)) {
-                            $paymentProofFile = $newFileName;
-                            $initialStatus = 'payment_uploaded';
-                        }
-                    }
-                }
+                $stmt = $db->prepare("SELECT COUNT(*) FROM blackout_dates WHERE date = ? AND (time_slot = ? OR time_slot = '' OR time_slot IS NULL)");
+                $stmt->execute([$bookingDate, $timeSlot]);
+                if ($stmt->fetchColumn() > 0) {
+                    $errorMessage = ($currLang === 'en') ? 'Sorry, this time slot is reserved for a school event.' : 'Maaf, sesi jam tersebut sedang digunakan untuk kegiatan sekolah mendadak.';
+                } else {
+                    $newFileName = 'bukti_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $fileExt;
+                    if (!move_uploaded_file($fileTmp, UPLOAD_DIR . '/' . $newFileName)) {
+                        $errorMessage = ($currLang === 'en') ? 'Failed to save payment proof file to server.' : 'Gagal menyimpan berkas bukti transfer ke server hosting.';
+                    } else {
+                        $paymentProofFile = $newFileName;
+                        $initialStatus = 'payment_uploaded';
 
                 $bookingCode = 'CCS-' . date('ym') . '-' . strtoupper(bin2hex(random_bytes(3)));
                 $selectedPkg = $validPkgs[$pkgKey];
@@ -505,6 +604,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $now
                 ]);
 
+                // Sinkronisasi otomatis ke Next.js Admin API (Supabase)
+                $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $scriptPath = dirname($_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? '');
+                $hostingUrl = rtrim($scheme . '://' . $host . $scriptPath, '/');
+
+                $payload = json_encode([
+                    'booking_code' => $bookingCode,
+                    'package_type' => $pkgKey,
+                    'package_name' => $selectedPkg['name'],
+                    'price' => $selectedPkg['price'],
+                    'booking_date' => $bookingDate,
+                    'time_slot' => $timeSlot,
+                    'renter_name' => $renterName,
+                    'renter_phone' => $renterPhone,
+                    'renter_email' => $renterEmail,
+                    'renter_org' => $renterOrg,
+                    'renter_purpose' => $renterPurpose,
+                    'payment_proof_file' => $paymentProofFile,
+                    'hosting_url' => $hostingUrl,
+                    'status' => $initialStatus
+                ]);
+
+                // Sinkronisasi otomatis ke Next.js API (dengan API_SECRET_TOKEN aman)
+                if (defined('NEXTJS_API_URL') && !empty(NEXTJS_API_URL)) {
+                    if (function_exists('curl_init')) {
+                        $ch = curl_init(NEXTJS_API_URL);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_POST, true);
+                        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                            'Content-Type: application/json',
+                            'Authorization: Bearer ' . API_SECRET_TOKEN
+                        ]);
+                        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        @curl_exec($ch);
+                        @curl_close($ch);
+                    } else {
+                        $opts = [
+                            'http' => [
+                                'method'  => 'POST',
+                                'header'  => "Content-Type: application/json\r\n" .
+                                             "Authorization: Bearer " . API_SECRET_TOKEN . "\r\n",
+                                'content' => $payload,
+                                'timeout' => 5
+                            ]
+                        ];
+                        $context = stream_context_create($opts);
+                        @file_get_contents(NEXTJS_API_URL, false, $context);
+                    }
+                }
+
+
                 $_SESSION['last_booking'] = [
                     'code' => $bookingCode,
                     'package' => $selectedPkg['name'],
@@ -519,6 +672,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
                 header('Location: ?success=1' . ($currLang !== 'id' ? '&lang=' . $currLang : ''));
                 exit;
+                    }
+                }
             }
         }
     }
@@ -1219,7 +1374,7 @@ if (!empty($searchQuery)) {
           </div>
         <?php endif; ?>
 
-        <form method="POST" enctype="multipart/form-data" class="space-y-8" id="bookingForm">
+        <form method="POST" enctype="multipart/form-data" class="space-y-8" id="bookingForm" novalidate>
           <input type="hidden" name="action" value="submit_booking" />
 
           <!-- LANGKAH 1: PILIH PAKET -->
@@ -1284,10 +1439,8 @@ if (!empty($searchQuery)) {
                   id="bookingDateInput"
                   required
                   min="<?= date('Y-m-d') ?>"
-                  max="<?= date('Y-m-d', strtotime('+60 days')) ?>"
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-ccsOrange focus:border-ccsOrange outline-none"
                 />
-                <span class="text-xs text-gray-400 block"><?= htmlspecialchars($L['hint_date']) ?></span>
               </div>
 
               <div class="sm:col-span-2 space-y-1.5">
@@ -1325,8 +1478,9 @@ if (!empty($searchQuery)) {
               </div>
 
               <div class="space-y-1">
-                <label class="font-medium text-gray-700"><?= htmlspecialchars($L['lbl_email']) ?></label>
-                <input type="email" name="renter_email" placeholder="Contoh: hendra@gmail.com" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl outline-none focus:border-ccsOrange text-sm" />
+                <label class="font-medium text-gray-700"><?= htmlspecialchars($L['lbl_email']) ?> <span class="text-red-500">*</span></label>
+                <input type="email" name="renter_email" required placeholder="Contoh: hendra@gmail.com" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl outline-none focus:border-ccsOrange text-sm" />
+                <span class="text-xs text-gray-400 block"><?= htmlspecialchars($L['hint_email']) ?></span>
               </div>
 
               <div class="space-y-1">
@@ -1388,20 +1542,45 @@ if (!empty($searchQuery)) {
                   id="copyBtn"
                   class="px-5 py-2.5 rounded-xl bg-white border border-blue-300 text-ccsHeading font-semibold text-xs hover:bg-blue-100 transition shadow-sm flex items-center gap-2"
                 >
-                  <i class="far fa-copy"></i> <?= htmlspecialchars($L['lbl_copy_rek']) ?>
+                  <i class="far fa-copy"></i> <?= htmlspecialchars($L['lbl_copy_rek'] ?? 'Salin No. Rekening') ?>
                 </button>
               </div>
 
-              <div class="border-t border-blue-200 pt-4 space-y-2">
-                <label class="block text-sm font-semibold text-gray-800">
-                  <?= htmlspecialchars($L['lbl_proof']) ?>
-                </label>
+              <div class="border-t border-blue-200 pt-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm font-semibold text-gray-800">
+                    <?= htmlspecialchars($L['lbl_proof']) ?> <span class="text-rose-600 font-bold">*</span>
+                  </label>
+                  <span class="text-[11px] font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+                    <?= $currLang === 'en' ? 'Required' : ($currLang === 'cn' ? '必填' : 'Wajib Diunggah') ?>
+                  </span>
+                </div>
+                
                 <input
                   type="file"
                   name="payment_proof"
+                  id="paymentProofInput"
+                  required
                   accept="image/jpeg,image/png,image/webp,application/pdf"
                   class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-ccsOrange file:text-white hover:file:bg-ccsNavy file:cursor-pointer cursor-pointer"
                 />
+
+                <!-- Preview file terpilih -->
+                <div id="filePreviewContainer" class="hidden items-center justify-between p-3 bg-white border border-blue-200 rounded-xl shadow-xs">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-9 rounded-lg bg-orange-50 text-ccsOrange flex items-center justify-center text-base shrink-0">
+                      <i class="fas fa-file-invoice" id="filePreviewIcon"></i>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="text-xs font-semibold text-gray-800 truncate" id="filePreviewName"></div>
+                      <div class="text-[11px] text-gray-500" id="filePreviewSize"></div>
+                    </div>
+                  </div>
+                  <button type="button" onclick="clearProofFile()" class="text-xs text-rose-500 hover:text-rose-700 font-medium px-2.5 py-1 rounded-lg hover:bg-rose-50 flex items-center gap-1">
+                    <i class="fas fa-times"></i> <?= $currLang === 'en' ? 'Remove' : ($currLang === 'cn' ? '清除' : 'Hapus') ?>
+                  </button>
+                </div>
+
                 <span class="text-xs text-gray-500 block"><?= htmlspecialchars($L['hint_proof']) ?></span>
               </div>
             </div>
@@ -1544,7 +1723,67 @@ if (!empty($searchQuery)) {
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 7. LOGIKA JAVASCRIPT: DYNAMIC SLOTS, COPY REKENING                     -->
+  <!-- MODAL POPUP VALIDASI FORMULIR (PESAN ERROR JELAS & TEGAS)             -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div 
+    id="validationErrorModal" 
+    class="fixed inset-0 z-[9999] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-200"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="validationModalTitle"
+    onclick="handleModalBackdropClick(event)"
+  >
+    <div 
+      class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-100 transform transition-all scale-95 opacity-0 duration-200 relative overflow-hidden text-center" 
+      id="validationModalCard"
+    >
+      <!-- Tombol Tutup Silang di Kanan Atas -->
+      <button 
+        type="button" 
+        onclick="closeValidationErrorModal()" 
+        class="absolute top-5 right-5 text-gray-400 hover:text-gray-700 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
+        aria-label="Tutup"
+      >
+        <i class="fas fa-times text-sm"></i>
+      </button>
+
+      <!-- Ikon Peringatan & Judul -->
+      <div class="space-y-2.5">
+        <div class="w-16 h-16 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-600 flex items-center justify-center text-2xl mx-auto shadow-xs">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-ccsHeading" id="validationModalTitle">
+            <?= htmlspecialchars($L['modal_error_title']) ?>
+          </h3>
+          <p class="text-xs text-gray-500 mt-1" id="validationModalDesc">
+            <?= htmlspecialchars($L['modal_error_desc']) ?>
+          </p>
+        </div>
+      </div>
+
+      <!-- Wadah Daftar Field yang Belum Lengkap -->
+      <div class="my-5 max-h-64 overflow-y-auto space-y-2.5 pr-1 text-left" id="validationErrorList">
+        <!-- Disuntikkan secara dinamis oleh JavaScript -->
+      </div>
+
+      <!-- Tombol Tindakan -->
+      <div class="pt-2">
+        <button
+          type="button"
+          id="btnDismissErrorModal"
+          onclick="closeValidationErrorModal()"
+          class="w-full thm-btn py-3.5 text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition"
+        >
+          <span><?= htmlspecialchars($L['modal_error_btn']) ?></span>
+          <i class="fas fa-arrow-right text-xs"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 7. LOGIKA JAVASCRIPT: DYNAMIC SLOTS, PREVIEW, VALIDASI MODAL            -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script>
     const currentLang = "<?= $currLang ?>";
@@ -1573,7 +1812,139 @@ if (!empty($searchQuery)) {
       }
     }
 
-    // Ajax Pemilihan Sesi Jam Berdasarkan Tanggal
+    // ─── FILE PROOF PREVIEW & CLEAR ──────────────────────────────────────
+    const proofInput = document.getElementById('paymentProofInput');
+    const previewBox = document.getElementById('filePreviewContainer');
+    const previewName = document.getElementById('filePreviewName');
+    const previewSize = document.getElementById('filePreviewSize');
+    const previewIcon = document.getElementById('filePreviewIcon');
+
+    if (proofInput) {
+      proofInput.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+          const file = this.files[0];
+          const ext = file.name.split('.').pop().toLowerCase();
+          const sizeKb = Math.round(file.size / 1024);
+          const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+          const formattedSize = file.size > 1024 * 1024 ? `${sizeMb} MB` : `${sizeKb} KB`;
+
+          previewName.textContent = file.name;
+          previewSize.textContent = formattedSize;
+
+          if (ext === 'pdf') {
+            previewIcon.className = 'fas fa-file-pdf text-red-500';
+          } else {
+            previewIcon.className = 'fas fa-file-image text-ccsOrange';
+          }
+
+          previewBox.classList.remove('hidden');
+          previewBox.classList.add('flex');
+        } else {
+          clearProofFile();
+        }
+      });
+    }
+
+    function clearProofFile() {
+      if (proofInput) {
+        proofInput.value = '';
+      }
+      if (previewBox) {
+        previewBox.classList.add('hidden');
+        previewBox.classList.remove('flex');
+      }
+    }
+
+    // ─── MODAL POPUP VALIDASI ERROR ─────────────────────────────────────
+    let firstErrorElement = null;
+
+    function showValidationErrorModal(errors) {
+      const modal = document.getElementById('validationErrorModal');
+      const card = document.getElementById('validationModalCard');
+      const list = document.getElementById('validationErrorList');
+      if (!modal || !card || !list) return;
+
+      list.innerHTML = '';
+      firstErrorElement = null;
+
+      if (errors && errors.length > 0) {
+        firstErrorElement = errors[0].el || null;
+
+        errors.forEach(err => {
+          const item = document.createElement('div');
+          item.className = 'p-3.5 bg-rose-50/90 border border-rose-200 rounded-2xl flex items-start gap-3 text-xs text-gray-800';
+          item.innerHTML = `
+            <div class="w-6 h-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-[11px] shrink-0 mt-0.5 font-bold shadow-xs">
+              <i class="fas fa-exclamation"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <strong class="font-bold text-rose-950 block text-[13px] leading-snug">${err.label}</strong>
+              <span class="text-rose-800 leading-relaxed block mt-0.5">${err.msg}</span>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => {
+        card.classList.remove('scale-95', 'opacity-0');
+        card.classList.add('scale-100', 'opacity-100');
+      }, 10);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function showSingleErrorModal(title, message) {
+      showValidationErrorModal([{
+        label: title || (currentLang === 'en' ? 'Notice' : (currentLang === 'cn' ? '提示' : 'Perhatian')),
+        msg: message,
+        el: null
+      }]);
+    }
+
+    function closeValidationErrorModal() {
+      const modal = document.getElementById('validationErrorModal');
+      const card = document.getElementById('validationModalCard');
+      if (!modal || !card) return;
+
+      card.classList.remove('scale-100', 'opacity-100');
+      card.classList.add('scale-95', 'opacity-0');
+      setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+
+        if (firstErrorElement) {
+          firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (typeof firstErrorElement.focus === 'function') {
+            firstErrorElement.focus();
+          }
+          // Highlight visual sementara pada input terkait
+          firstErrorElement.classList.add('ring-4', 'ring-rose-200', 'border-rose-500');
+          setTimeout(() => {
+            firstErrorElement.classList.remove('ring-4', 'ring-rose-200', 'border-rose-500');
+          }, 2500);
+        }
+      }, 150);
+    }
+
+    function handleModalBackdropClick(e) {
+      if (e.target.id === 'validationErrorModal') {
+        closeValidationErrorModal();
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('validationErrorModal');
+        if (modal && !modal.classList.contains('hidden')) {
+          closeValidationErrorModal();
+        }
+      }
+    });
+
+    // ─── AJAX PEMILIHAN SESI JAM BERDASARKAN TANGGAL ─────────────────────
     const dateInput = document.getElementById('bookingDateInput');
     const slotContainer = document.getElementById('slotContainer');
     const slotNotice = document.getElementById('slotNotice');
@@ -1650,18 +2021,130 @@ if (!empty($searchQuery)) {
       });
     }
 
-    // Validasi form sebelum submit
-    const form = document.getElementById('bookingForm');
-    if (form) {
-      form.addEventListener('submit', function(e) {
-        if (!selectedSlotInput.value) {
+    // ─── VALIDASI FORM SEBELUM SUBMIT (MODAL POPUP TEGAS & LENGKAP) ─────
+    const bookingForm = document.getElementById('bookingForm');
+    if (bookingForm) {
+      bookingForm.addEventListener('submit', function(e) {
+        const errors = [];
+
+        // 1. Validasi Paket Sewa
+        const pkgInput = document.querySelector('input[name="package_type"]:checked');
+        if (!pkgInput) {
+          errors.push({
+            label: currentLang === 'en' ? 'Rental Package' : (currentLang === 'cn' ? '租赁套餐' : 'Paket Sewa Lapangan'),
+            msg: currentLang === 'en' ? 'Please select a rental package option.' : (currentLang === 'cn' ? '请选择一个租赁套餐。' : 'Silakan pilih salah satu paket sewa lapangan.'),
+            el: document.getElementById('radio_paket_1')
+          });
+        }
+
+        // 2. Validasi Tanggal Sewa
+        const dateEl = document.getElementById('bookingDateInput');
+        if (!dateEl || !dateEl.value) {
+          errors.push({
+            label: currentLang === 'en' ? 'Rental Date' : (currentLang === 'cn' ? '租赁日期' : 'Tanggal Sewa Lapangan'),
+            msg: currentLang === 'en' ? 'Please select the date you wish to rent the sport hall.' : (currentLang === 'cn' ? '请选择预约日期。' : 'Silakan tentukan tanggal pemakaian lapangan.'),
+            el: dateEl
+          });
+        }
+
+        // 3. Validasi Sesi Jam Bermain
+        const slotEl = document.getElementById('selectedTimeSlot');
+        if (!slotEl || !slotEl.value) {
+          const targetSlotEl = document.getElementById('slotContainer');
+          errors.push({
+            label: currentLang === 'en' ? 'Playing Time Slot' : (currentLang === 'cn' ? '预约时段' : 'Sesi Jam Bermain'),
+            msg: currentLang === 'en' ? 'Please choose an available 2-hour playing slot from the list.' : (currentLang === 'cn' ? '请在列表中选择一个可用的 2 小时时段。' : 'Silakan klik salah satu sesi jam bermain yang masih tersedia.'),
+            el: (targetSlotEl && !targetSlotEl.classList.contains('hidden')) ? targetSlotEl : dateEl
+          });
+        }
+
+        // 4. Validasi Nama Lengkap Pemesan
+        const nameEl = document.querySelector('input[name="renter_name"]');
+        if (!nameEl || !nameEl.value.trim()) {
+          errors.push({
+            label: currentLang === 'en' ? 'Full Name' : (currentLang === 'cn' ? '负责人全名' : 'Nama Lengkap Pemesan'),
+            msg: currentLang === 'en' ? 'Full name of the person in charge is mandatory.' : (currentLang === 'cn' ? '负责人全名为必填项。' : 'Nama lengkap penanggung jawab pemesanan wajib diisi.'),
+            el: nameEl
+          });
+        }
+
+        // 5. Validasi No. WhatsApp Aktif
+        const phoneEl = document.querySelector('input[name="renter_phone"]');
+        const phoneVal = phoneEl ? phoneEl.value.replace(/[^0-9]/g, '') : '';
+        if (!phoneEl || !phoneEl.value.trim() || phoneVal.length < 8) {
+          errors.push({
+            label: currentLang === 'en' ? 'WhatsApp Number' : (currentLang === 'cn' ? 'WhatsApp 手机号码' : 'No. WhatsApp Aktif'),
+            msg: currentLang === 'en' ? 'Active WhatsApp number is mandatory (min. 8 digits).' : (currentLang === 'cn' ? '请输入有效的 WhatsApp 手机号码（至少8位数字）。' : 'Nomor WhatsApp aktif wajib diisi dengan benar (minimal 8 digit angka).'),
+            el: phoneEl
+          });
+        }
+
+        // 6. Validasi Alamat Email
+        const emailEl = document.querySelector('input[name="renter_email"]');
+        const emailVal = emailEl ? emailEl.value.trim() : '';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailEl || !emailVal || !emailRegex.test(emailVal)) {
+          errors.push({
+            label: currentLang === 'en' ? 'Email Address' : (currentLang === 'cn' ? '电子邮箱地址' : 'Alamat Email Pemesan'),
+            msg: currentLang === 'en' ? 'Valid email address is mandatory for confirmation dispatch.' : (currentLang === 'cn' ? '电子邮箱为必填项，用于接收官方确认函。' : 'Alamat email wajib diisi dengan format yang benar (contoh: nama@domain.com) untuk pengiriman konfirmasi booking.'),
+            el: emailEl
+          });
+        }
+
+        // 7. Validasi Persetujuan Ketentuan Sewa
+        const agreeEl = document.querySelector('input[name="agree_rules"]');
+        if (!agreeEl || !agreeEl.checked) {
+          errors.push({
+            label: currentLang === 'en' ? 'Court Rental Terms' : (currentLang === 'cn' ? '场地租赁规章制度' : 'Ketentuan & Tata Tertib Sewa'),
+            msg: currentLang === 'en' ? 'You must read and agree to all Court Rental Terms.' : (currentLang === 'cn' ? '您必须阅读并勾选同意场地租赁须知及规章制度。' : 'Anda wajib mencentang persetujuan Ketentuan & Tata Tertib Sewa Lapangan.'),
+            el: agreeEl
+          });
+        }
+
+        // 8. Validasi Upload Bukti Transfer (WAJIB)
+        const proofEl = document.getElementById('paymentProofInput');
+        if (!proofEl || !proofEl.files || proofEl.files.length === 0) {
+          errors.push({
+            label: currentLang === 'en' ? 'Proof of Payment' : (currentLang === 'cn' ? '付款转账凭证' : 'Upload Bukti Transfer Bank Mayapada'),
+            msg: currentLang === 'en' ? 'Proof of payment transfer is mandatory. Please upload your transfer receipt.' : (currentLang === 'cn' ? '付款转账凭证为必填项。请上传您的银行转账凭证。' : 'Bukti transfer pembayaran Bank Mayapada wajib diunggah. Silakan lampirkan foto/struk transfer.'),
+            el: proofEl
+          });
+        } else {
+          const file = proofEl.files[0];
+          const ext = file.name.split('.').pop().toLowerCase();
+          const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+          if (!allowedExts.includes(ext)) {
+            errors.push({
+              label: currentLang === 'en' ? 'Proof File Format' : (currentLang === 'cn' ? '文件格式错误' : 'Format Berkas Bukti Transfer'),
+              msg: currentLang === 'en' ? 'Invalid file format. Allowed formats: JPG, PNG, WEBP, or PDF.' : (currentLang === 'cn' ? '文件格式不支持。仅支持 JPG、PNG、WEBP 或 PDF。' : 'Format berkas bukti transfer tidak didukung. Harap gunakan file JPG, PNG, WEBP, atau PDF.'),
+              el: proofEl
+            });
+          } else if (file.size > 5 * 1024 * 1024) {
+            errors.push({
+              label: currentLang === 'en' ? 'Proof File Size' : (currentLang === 'cn' ? '文件大小超限' : 'Ukuran Berkas Bukti Transfer'),
+              msg: currentLang === 'en' ? 'File exceeds maximum limit of 5 MB.' : (currentLang === 'cn' ? '文件大小超过 5 MB 限制。' : 'Ukuran berkas bukti transfer melebihi batas maksimal 5 MB.'),
+              el: proofEl
+            });
+          }
+        }
+
+        // Jika terdapat field yang belum lengkap / tidak valid, tampilkan MODAL POPUP
+        if (errors.length > 0) {
           e.preventDefault();
-          const alertMsg = currentLang === 'en' ? 'Please select an available time slot.' : (currentLang === 'cn' ? '请选择一个可用的时段。' : 'Mohon pilih salah satu sesi jam yang masih tersedia.');
-          alert(alertMsg);
-          window.location.hash = '#bookingDateInput';
+          showValidationErrorModal(errors);
         }
       });
     }
+
+    // Jika ada pesan error dari server PHP, munculkan otomatis via modal popup
+    <?php if (!empty($errorMessage)): ?>
+    document.addEventListener('DOMContentLoaded', function() {
+      showSingleErrorModal(
+        '<?= $currLang === 'en' ? 'Booking Submission Error' : ($currLang === 'cn' ? '提交预约失败' : 'Formulir Belum Lengkap') ?>',
+        <?= json_encode($errorMessage) ?>
+      );
+    });
+    <?php endif; ?>
   </script>
 
 </body>

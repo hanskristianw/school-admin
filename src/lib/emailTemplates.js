@@ -455,4 +455,92 @@ export const emailTemplates = {
     `)
     return { subject, html }
   },
+
+  /**
+   * Email to renter: their court booking has been approved
+   * params: { renterName, bookingCode, packageName, price, bookingDate, timeSlot }
+   */
+  courtRentalApproved: ({ renterName, bookingCode, packageName, price, bookingDate, timeSlot }) => {
+    const formattedPrice = typeof price === 'number' ? `Rp ${price.toLocaleString('id-ID')},-` : (price || '—')
+    const subject = `🎉 Konfirmasi Resmi Sewa Lapangan CCS — ${bookingCode}`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #1e3a8a, #ea580c);">
+          <h1>✓ Reservasi Lapangan Disetujui!</h1>
+          <p>Sport Hall — Chung Chung Christian School</p>
+        </div>
+        <div class="body">
+          <p>Yth. <strong>${renterName}</strong>,</p>
+          <p>Terima kasih telah melakukan pembayaran. Permohonan sewa lapangan olahraga CCS Anda telah diverifikasi dan <span class="badge badge-success">DISETUJUI</span>.</p>
+          
+          <div class="detail-box">
+            <div class="detail-row"><span class="detail-label">Kode Booking</span><span class="detail-value" style="font-family: monospace; font-size: 15px; color: #ea580c;">${bookingCode}</span></div>
+            <div class="detail-row"><span class="detail-label">Paket Sewa</span><span class="detail-value">${packageName}</span></div>
+            <div class="detail-row"><span class="detail-label">Total Biaya</span><span class="detail-value">${formattedPrice}</span></div>
+            <div class="detail-row"><span class="detail-label">Tanggal Bermain</span><span class="detail-value">${bookingDate}</span></div>
+            <div class="detail-row"><span class="detail-label">Sesi Jam</span><span class="detail-value">${timeSlot}</span></div>
+            <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge badge-success">Sukses / Disetujui</span></span></div>
+          </div>
+
+          <div style="margin-top:16px;padding:14px 18px;background:#f8fafc;border-left:4px solid #1e3a8a;border-radius:8px;font-size:13px;color:#334155;line-height:1.6;">
+            <strong>Ketentuan Penting Memasuki Area Lapangan:</strong>
+            <ul style="margin:6px 0 0 0;padding-left:18px;">
+              <li>Tunjukkan email konfirmasi resmi ini beserta Kode Booking kepada petugas keamanan/lapangan saat tiba di sekolah.</li>
+              <li>Penyewa diminta meninggalkan area lapangan dan sekolah dalam kondisi bersih seperti semula (denda Rp 50.000 jika kotor).</li>
+              <li>Dilarang keras merokok di seluruh area lapangan dan lingkungan sekolah.</li>
+              <li>Penggunaan AC dan/atau lampu dinyalakan tepat sesuai dengan jam sewa yang terdaftar.</li>
+            </ul>
+          </div>
+
+          <p style="margin-top:20px;font-size:13px;color:#64748b;">
+            Jika ada pertanyaan atau kendala mengenai reservasi ini, silakan hubungi Contact Person resmi: <strong>+62 859-5986-0430</strong>.
+          </p>
+        </div>
+        <div class="footer">
+          Yayasan Pendidikan Mayapada — Chung Chung Christian School (CCS)
+        </div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
+  /**
+   * Email to renter: their court booking has been rejected
+   * params: { renterName, bookingCode, packageName, bookingDate, timeSlot, reason }
+   */
+  courtRentalRejected: ({ renterName, bookingCode, packageName, bookingDate, timeSlot, reason }) => {
+    const subject = `Pemberitahuan Permohonan Sewa Lapangan CCS — ${bookingCode}`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #dc2626, #991b1b);">
+          <h1>✕ Reservasi Belum Dapat Disetujui</h1>
+          <p>Sport Hall — Chung Chung Christian School</p>
+        </div>
+        <div class="body">
+          <p>Yth. <strong>${renterName}</strong>,</p>
+          <p>Mohon maaf, permohonan sewa lapangan Anda dengan kode <strong>${bookingCode}</strong> belum dapat disetujui oleh pihak pengelola.</p>
+          
+          <div class="detail-box rejected">
+            <div class="detail-row"><span class="detail-label">Kode Booking</span><span class="detail-value" style="font-family: monospace;">${bookingCode}</span></div>
+            <div class="detail-row"><span class="detail-label">Paket</span><span class="detail-value">${packageName}</span></div>
+            <div class="detail-row"><span class="detail-label">Jadwal</span><span class="detail-value">${bookingDate} (${timeSlot})</span></div>
+            <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge badge-danger">Ditolak</span></span></div>
+          </div>
+
+          ${reason ? `
+          <div style="margin-top:14px;padding:12px 16px;background:#fef2f2;border-left:4px solid #dc2626;border-radius:6px;font-size:13px;color:#991b1b;">
+            <strong>Catatan Petugas:</strong><br>${reason}
+          </div>` : ''}
+
+          <p style="margin-top:20px;font-size:13px;color:#64748b;">
+            Untuk informasi lebih lanjut atau pengembalian dana jika pembayaran telah terpotong, silakan menghubungi Contact Person: <strong>+62 859-5986-0430</strong>.
+          </p>
+        </div>
+        <div class="footer">
+          Yayasan Pendidikan Mayapada — Chung Chung Christian School (CCS)
+        </div>
+      </div>
+    `)
+    return { subject, html }
+  }
 }

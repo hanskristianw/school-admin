@@ -106,11 +106,15 @@ import {
   faCartPlus,
   faWandMagicSparkles,
   faBoxesStacked,
-  faBoxOpen
+  faBoxOpen,
+  faFutbol
 } from "@fortawesome/free-solid-svg-icons"
 
 // Complete icon mapping dictionary with all naming variations
 const iconMap = {
+  'fas fa-futbol': faFutbol,
+  'faFutbol': faFutbol,
+  'futbol': faFutbol,
   // Operational & Maintenance
   'fas fa-screwdriver-wrench': faScrewdriverWrench,
   'faScrewdriverWrench': faScrewdriverWrench,
