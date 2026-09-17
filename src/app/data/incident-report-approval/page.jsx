@@ -284,21 +284,56 @@ export default function IncidentHandlingApprovalPage() {
     if (!selectedFile) return null
     try {
       setUploadingFile(true)
+
+      // 1. Primary: Use dedicated server route with service role key (bypasses RLS, handles incident_attachments)
+      try {
+        const formData = new FormData()
+        formData.append('file', selectedFile)
+        formData.append('incidentId', selectedReport?.incident_number || selectedReport?.id || 'general')
+
+        const res = await fetch('/api/incident-reports/upload', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.url) {
+            return data.url
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API upload fallback triggered:', apiErr)
+      }
+
+      // 2. Secondary fallback: Direct Supabase client upload
       const fileExt = selectedFile.name.split('.').pop()
       const fileName = `followup_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`
       const filePath = `followups/${fileName}`
 
-      const { error: uploadError } = await supabase.storage
+      let uploadResult = await supabase.storage
         .from('incident_attachments')
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
-          upsert: false
+          upsert: true
         })
 
-      if (uploadError) throw uploadError
+      let targetBucket = 'incident_attachments'
+      if (uploadResult.error) {
+        console.warn('incident_attachments direct upload failed, trying report-assets:', uploadResult.error.message)
+        targetBucket = 'report-assets'
+        uploadResult = await supabase.storage
+          .from('report-assets')
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: true
+          })
+      }
+
+      if (uploadResult.error) throw uploadResult.error
 
       const { data: publicUrlData } = supabase.storage
-        .from('incident_attachments')
+        .from(targetBucket)
         .getPublicUrl(filePath)
 
       return publicUrlData?.publicUrl || null
