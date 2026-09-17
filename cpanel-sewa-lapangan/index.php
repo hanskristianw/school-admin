@@ -249,20 +249,26 @@ $i18n = [
 $L = $i18n[$currLang] ?? $i18n['id'];
 
 // ─── 1. KONFIGURASI SISTEM ───────────────────────────────────────────
-define('APP_NAME', 'Sport Hall CCS');
-define('SCHOOL_NAME', 'Chung Chung Christian School');
-define('ORG_NAME', 'Yayasan Pendidikan Mayapada');
-define('BANK_NAME', 'Bank Mayapada');
-define('BANK_REK', '100-3000-3853');
-define('BANK_AN', 'Yayasan Pendidikan Mayapada');
-define('CONTACT_PHONE', '031 8788 4800');
-define('CONTACT_WA', '+62 859-5986-0430');
-define('SCHOOL_ADDRESS', 'Gunung Anyar Sawah No. 18, Surabaya Timur');
-define('ADMIN_PASS', 'adminccs2026');
+// Muat konfigurasi rahasia jika file config.php tersedia (file ini di-ignore oleh Git)
+if (file_exists(__DIR__ . '/config.php')) {
+    require_once __DIR__ . '/config.php';
+}
+
+if (!defined('APP_NAME')) define('APP_NAME', 'Sport Hall CCS');
+if (!defined('SCHOOL_NAME')) define('SCHOOL_NAME', 'Chung Chung Christian School');
+if (!defined('ORG_NAME')) define('ORG_NAME', 'Yayasan Pendidikan Mayapada');
+if (!defined('BANK_NAME')) define('BANK_NAME', 'Bank Mayapada');
+if (!defined('BANK_REK')) define('BANK_REK', '100-3000-3853');
+if (!defined('BANK_AN')) define('BANK_AN', 'Yayasan Pendidikan Mayapada');
+if (!defined('CONTACT_PHONE')) define('CONTACT_PHONE', '031 8788 4800');
+if (!defined('CONTACT_WA')) define('CONTACT_WA', '+62 859-5986-0430');
+if (!defined('SCHOOL_ADDRESS')) define('SCHOOL_ADDRESS', 'Gunung Anyar Sawah No. 18, Surabaya Timur');
+if (!defined('ADMIN_PASS')) define('ADMIN_PASS', 'adminccs2026');
 
 // Konfigurasi Integrasi Next.js Admin & Keamanan Bukti Transfer
-define('API_SECRET_TOKEN', 'ccs_sewa_lapangan_secret_2026_9f8e7d6c');
-define('NEXTJS_API_URL', 'https://manageccs.online/api/public/court-rental'); // Endpoint API Next.js CCS (aktif saat sudah dideploy ke production)
+// Nilai rahasia diatur di config.php (atau environment variable) sehingga TIDAK tersimpan di Git
+if (!defined('API_SECRET_TOKEN')) define('API_SECRET_TOKEN', getenv('COURT_RENTAL_SECRET_KEY') ?: '');
+if (!defined('NEXTJS_API_URL')) define('NEXTJS_API_URL', 'https://manageccs.online/api/public/court-rental');
 
 // Folder penyimpanan internal
 define('DATA_DIR', __DIR__ . '/data');

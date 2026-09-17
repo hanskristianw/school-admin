@@ -1,7 +1,7 @@
 # Graph Report - school-admin  (2026-09-17)
 
 ## Corpus Check
-- 382 files · ~629,616 words
+- 382 files · ~629,859 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -370,7 +370,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, clsx, googleapis, dependencies, bcryptjs, clsx, googleapis, pdf-lib (+3 more)
+Nodes (11): bcryptjs, browser-image-compression, googleapis, dependencies, bcryptjs, browser-image-compression, googleapis, pdf-lib (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38

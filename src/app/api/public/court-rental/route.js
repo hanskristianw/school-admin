@@ -6,7 +6,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const EXPECTED_SECRET = process.env.COURT_RENTAL_SECRET_KEY || 'ccs_sewa_lapangan_secret_2026_9f8e7d6c'
+const EXPECTED_SECRET = process.env.COURT_RENTAL_SECRET_KEY
 
 function verifyAuth(request) {
   const authHeader = request.headers.get('authorization') || ''

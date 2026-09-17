@@ -235,6 +235,17 @@
       "norm_label": "iconlibrary"
     },
     {
+      "label": "config.sample.php",
+      "file_type": "code",
+      "source_file": "cpanel-sewa-lapangan/config.sample.php",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "cpanel_sewa_lapangan_config_sample",
+      "community": 367,
+      "community_name": "config.sample.php",
+      "norm_label": "config.sample.php"
+    },
+    {
       "label": "index.php",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
@@ -249,7 +260,7 @@
       "label": "getDb()",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L290",
+      "source_location": "L292",
       "_origin": "ast",
       "id": "cpanel_sewa_lapangan_index_getdb",
       "community": 360,
@@ -260,7 +271,7 @@
       "label": "getSlotsForDay()",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L331",
+      "source_location": "L333",
       "_origin": "ast",
       "id": "cpanel_sewa_lapangan_index_getslotsforday",
       "community": 360,
@@ -3043,8 +3054,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 135,
+      "community_name": "Module 135",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3054,8 +3065,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 135,
+      "community_name": "Module 135",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3109,8 +3120,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 135,
-      "community_name": "Module 135",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "docx"
     },
     {
@@ -3120,8 +3131,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 135,
-      "community_name": "Module 135",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "docx"
     },
     {
@@ -24420,7 +24431,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L290",
+      "source_location": "L292",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_sewa_lapangan_index",
@@ -24431,7 +24442,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L331",
+      "source_location": "L333",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_sewa_lapangan_index",
@@ -49544,5 +49555,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "954d2c8745cbd426cc7d113dd8c3f5d1586489bf"
+  "built_at_commit": "7f4712d774920ad9949cf9fbd915c6b46cad2e22"
 }

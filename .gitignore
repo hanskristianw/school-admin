@@ -47,4 +47,10 @@ project-c16c7efe-fd40-417e-8ee-a95d10636d04.json
 scratch*
 *.mjs
 !next.config.mjs
-!postcss.config.mjs
+!postcss.config.mjs
+
+# cPanel standalone app sensitive files
+cpanel-sewa-lapangan/config.php
+cpanel-sewa-lapangan/data/
+cpanel-sewa-lapangan/uploads/
+

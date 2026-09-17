@@ -249,7 +249,7 @@
       "label": "getDb()",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L286",
+      "source_location": "L290",
       "_origin": "ast",
       "id": "cpanel_sewa_lapangan_index_getdb",
       "community": 360,
@@ -260,7 +260,7 @@
       "label": "getSlotsForDay()",
       "file_type": "code",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L327",
+      "source_location": "L331",
       "_origin": "ast",
       "id": "cpanel_sewa_lapangan_index_getslotsforday",
       "community": 360,
@@ -3043,8 +3043,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_dependencies_browser_image_compression",
-      "community": 331,
-      "community_name": "docx",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3054,8 +3054,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "browser_image_compression",
-      "community": 331,
-      "community_name": "docx",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "browser-image-compression"
     },
     {
@@ -3087,8 +3087,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "package_dependencies_clsx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 331,
+      "community_name": "docx",
       "norm_label": "clsx"
     },
     {
@@ -3098,8 +3098,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "clsx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 331,
+      "community_name": "docx",
       "norm_label": "clsx"
     },
     {
@@ -24420,7 +24420,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L286",
+      "source_location": "L290",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_sewa_lapangan_index",
@@ -24431,7 +24431,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "cpanel-sewa-lapangan/index.php",
-      "source_location": "L327",
+      "source_location": "L331",
       "weight": 1.0,
       "_origin": "ast",
       "source": "cpanel_sewa_lapangan_index",

@@ -365,5 +365,6 @@
   "363": "route.js",
   "364": "route.js",
   "365": "dotenv",
-  "366": "page.jsx"
+  "366": "page.jsx",
+  "367": "config.sample.php"
 }
