@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-09-17)
 
 ## Corpus Check
-- 373 files · ~620,888 words
+- 374 files · ~621,281 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2170 nodes · 2254 edges · 361 communities (257 shown, 104 thin omitted)
+- 2174 nodes · 2256 edges · 360 communities (255 shown, 105 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
@@ -266,7 +266,6 @@
 - 37. EXAMPLE INTERPRETATIONS
 - 15. DEFAULT SITE PACKS
 - 20. EXAMPLE INTERPRETATIONS
-- page.jsx
 - docx
 - pngjs
 
@@ -287,21 +286,21 @@
   src/Documentation PMB/SKILL.md → MAIN_DOCUMENTATION.md
 - `AdmissionManagement()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/admission/page.jsx → package.json
-- `FeeSimulationPage()` --references--> `jspdf`  [EXTRACTED]
-  src/app/data/admission/simulation/page.jsx → package.json
 - `drawPrincipalSignature()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/pyp/lib/pypPdfGenerator.js → package.json
 - `TopicPage()` --references--> `jspdf`  [EXTRACTED]
   src/app/data/topic/page.jsx → package.json
+- `FeeSimulationPage()` --references--> `jspdf`  [EXTRACTED]
+  src/app/data/admission/simulation/page.jsx → package.json
 
 ## Import Cycles
 - None detected.
 
-## Communities (361 total, 104 thin omitted)
+## Communities (360 total, 105 thin omitted)
 
 ### Community 0 - "Admission Management"
-Cohesion: 0.07
-Nodes (63): jspdf, jszip, jspdf, jszip, AdmissionManagement(), statusConfig, drawIbPypLogo(), drawMiniSubjectDocIcon() (+55 more)
+Cohesion: 0.06
+Nodes (67): jspdf, jszip, jspdf, jszip, AdmissionManagement(), statusConfig, FeeSimulationPage(), formatCurrency() (+59 more)
 
 ### Community 1 - "Package Dependencies & Config"
 Cohesion: 0.09
@@ -365,7 +364,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.18
-Nodes (11): bcryptjs, docx, googleapis, dependencies, bcryptjs, docx, googleapis, pdf-lib (+3 more)
+Nodes (11): bcryptjs, @google-cloud/vertexai, googleapis, dependencies, bcryptjs, @google-cloud/vertexai, googleapis, pdf-lib (+3 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -440,7 +439,7 @@ Cohesion: 0.80
 Nodes (4): buildHtml(), buildRepeatingHeaderTemplate(), escapeHtml(), POST()
 
 ### Community 42 - "Module 42"
-Cohesion: 0.60
+Cohesion: 0.50
 Nodes (4): ALLOWED_EXTS, ALLOWED_TYPES, POST(), supabaseAdmin
 
 ### Community 45 - "Module 45"
@@ -548,8 +547,8 @@ Cohesion: 0.05
 Nodes (43): 1. Logo Cover, 1. Monogram + Meaning, 2 × 3 REFERENCE-STYLE LAYOUT, 2. Logo Construction, 2. Product Action, 3. Digital Application, 3. Metaphor Fusion, 4. Brand Essence (+35 more)
 
 ### Community 130 - "bcryptjs"
-Cohesion: 0.40
-Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
+Cohesion: 0.18
+Nodes (10): 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands` (+2 more)
 
 ### Community 131 - "docx"
 Cohesion: 0.50
@@ -640,8 +639,8 @@ Cohesion: 0.20
 Nodes (10): 3.1 Tables, 3.2 ERD / Relationships (Curriculum Domain), 3. Curriculum & Topics Domain (`/data/topic-new`, `/data/subject`, `/data/subject-group`), `criteria`, `criterion_descriptors`, `rubrics`, `strands`, `subject` (+2 more)
 
 ### Community 264 - "4.1 Tables"
-Cohesion: 0.17
-Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
+Cohesion: 0.20
+Nodes (10): 4.1 Tables, `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items`, `fpb_revisions`, `fpb_role_approvers` (+2 more)
 
 ### Community 265 - "School Admin System - Complete Documentation"
 Cohesion: 0.18
@@ -672,8 +671,8 @@ Cohesion: 0.29
 Nodes (7): 9.1 Tables, 9.2 ERD / Relationships (Timetable & Schedule Domain), 9. Timetable & Schedule Management Domain (`/data/timetable`, `/data/weekly-overview`), `timetable`, `timetable_exception`, `topic_weekly_plan`, `weekly_overview_draft`
 
 ### Community 272 - "Database Schema & Relationships"
-Cohesion: 0.14
-Nodes (14): 11.1 Tables, `uniform`, `uniform_po_settings`, `uniform_purchase`, `uniform_purchase_item`, `uniform_purchase_receipt`, `uniform_purchase_receipt_item`, `uniform_sale` (+6 more)
+Cohesion: 0.11
+Nodes (18): 11.1 Tables, 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), `uniform`, `uniform_po_settings`, `uniform_purchase` (+10 more)
 
 ### Community 273 - "8.1 Tables"
 Cohesion: 0.33
@@ -726,10 +725,6 @@ Nodes (3): **Important Files:**, **Key Directories:**, 📁 **Project Structure*
 ### Community 290 - "Panduan Pemasangan: Sistem Persewaan Lapangan CCS di cPanel / Hostinger"
 Cohesion: 0.22
 Nodes (8): ⚙️ Apa yang Terjadi Saat File Pertama Kali Dibuka?, 🔐 Cara Mengakses Panel Admin Petugas Lapangan, 🚀 Cara Pemasangan di cPanel / Hostinger (Sangat Mudah), ✨ Fitur-fitur Lengkap yang Tersedia di Halaman Ini, Opsi A: Menggunakan Folder Khusus (Direkomendasikan), Opsi B: Sebagai File Tunggal, Panduan Pemasangan: Sistem Persewaan Lapangan CCS di cPanel / Hostinger, 🛠️ Pengaturan & Kustomisasi (Opsional)
-
-### Community 291 - "Database Schema & Relationships"
-Cohesion: 0.25
-Nodes (7): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), Database Schema & Relationships
 
 ### Community 302 - "🔧 **Technical Implementation**"
 Cohesion: 0.50
@@ -895,28 +890,24 @@ Nodes (4): 12-section pack, 15. DEFAULT SITE PACKS, 4-section pack, 8-section pa
 Cohesion: 0.50
 Nodes (4): 20. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 
-### Community 356 - "page.jsx"
-Cohesion: 0.60
-Nodes (4): FeeSimulationPage(), formatCurrency(), formatDateID(), monthNames
-
 ## Knowledge Gaps
-- **1123 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1118 more)
+- **1126 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1121 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **104 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 133`, `Module 134`, `Module 135`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Module 144`, `Module 145`, `Module 147`, `Module 148`, `SKILL.md`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `Module 155`, `bcryptjs`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `browser-image-compression`, `dotenv`, `driver.js`, `pg`, `zod`, `class-variance-authority`, `docx`, `SKILL.md`, `google-auth-library`, `docx`, `pngjs`?**
-  _High betweenness centrality (0.007) - this node is a cross-community bridge._
-- **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`, `page.jsx`?**
+  _High betweenness centrality (0.008) - this node is a cross-community bridge._
+- **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._
-- **Why does `tasteskill: Anti-Slop Frontend Skill` connect `tasteskill: Anti-Slop Frontend Skill` to `4. DESIGN ENGINEERING DIRECTIVES (Bias Correction)`, `10. REFERENCE VOCABULARY (Pattern Names the Agent Should Know)`, `docx`, `8. DARK MODE PROTOCOL`, `9. AI TELLS (Forbidden Patterns)`, `11. REDESIGN PROTOCOL`, `3. DEFAULT ARCHITECTURE & CONVENTIONS`, `6. PERFORMANCE & ACCESSIBILITY GUARDRAILS`, `0. BRIEF INFERENCE (Read the Room Before Anything Else)`, `12. THE BLOCK LIBRARY (Contract - Implementations Land Here Iteratively)`, `5. CONTEXT-AWARE PROACTIVITY`, `Appendix B - Canonical Sources (read these before reinventing)`?**
-  _High betweenness centrality (0.002) - this node is a cross-community bridge._
+- **Why does `react` connect `React UI Components` to `Third-party Libraries`?**
+  _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **What connects `extends`, `next/core-web-vitals`, `$schema` to the rest of the system?**
-  _1123 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1126 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Admission Management` be split into smaller, more focused modules?**
-  _Cohesion score 0.0712280701754386 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06481481481481481 - nodes in this community are weakly interconnected._
 - **Should `Package Dependencies & Config` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Should `RLS & Migration Scripts` be split into smaller, more focused modules?**

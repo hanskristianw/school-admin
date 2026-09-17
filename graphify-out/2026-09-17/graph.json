@@ -2845,8 +2845,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "package_dependencies_google_cloud_vertexai",
-      "community": 301,
-      "community_name": "driver.js",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "@google-cloud/vertexai"
     },
     {
@@ -2856,8 +2856,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "google_cloud_vertexai",
-      "community": 301,
-      "community_name": "driver.js",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "@google-cloud/vertexai"
     },
     {
@@ -3109,8 +3109,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "package_dependencies_docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 301,
+      "community_name": "driver.js",
       "norm_label": "docx"
     },
     {
@@ -3120,8 +3120,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "docx",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 301,
+      "community_name": "driver.js",
       "norm_label": "docx"
     },
     {
@@ -5338,6 +5338,50 @@
     {
       "label": "route.js",
       "file_type": "code",
+      "source_file": "src/app/api/incident-reports/upload/route.js",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_api_incident_reports_upload_route",
+      "community": 291,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "route.js"
+    },
+    {
+      "label": "supabaseAdmin",
+      "file_type": "code",
+      "source_file": "src/app/api/incident-reports/upload/route.js",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "src_app_api_incident_reports_upload_route_supabaseadmin",
+      "community": 291,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "supabaseadmin"
+    },
+    {
+      "label": "ALLOWED_TYPES",
+      "file_type": "code",
+      "source_file": "src/app/api/incident-reports/upload/route.js",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "src_app_api_incident_reports_upload_route_allowed_types",
+      "community": 291,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "allowed_types"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "src/app/api/incident-reports/upload/route.js",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "src_app_api_incident_reports_upload_route_post",
+      "community": 291,
+      "community_name": "Database Schema & Relationships",
+      "norm_label": "post()"
+    },
+    {
+      "label": "route.js",
+      "file_type": "code",
       "source_file": "src/app/api/kelas-attendance/route.js",
       "source_location": "L1",
       "_origin": "ast",
@@ -5947,8 +5991,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page",
-      "community": 356,
-      "community_name": "page.jsx",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "page.jsx"
     },
     {
@@ -5958,8 +6002,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_formatcurrency",
-      "community": 356,
-      "community_name": "page.jsx",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "formatcurrency()"
     },
     {
@@ -5969,8 +6013,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_monthnames",
-      "community": 356,
-      "community_name": "page.jsx",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "monthnames"
     },
     {
@@ -5980,8 +6024,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_formatdateid",
-      "community": 356,
-      "community_name": "page.jsx",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "formatdateid()"
     },
     {
@@ -5991,8 +6035,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_app_data_admission_simulation_page_feesimulationpage",
-      "community": 356,
-      "community_name": "page.jsx",
+      "community": 0,
+      "community_name": "Admission Management",
       "norm_label": "feesimulationpage()"
     },
     {
@@ -17354,8 +17398,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema",
-      "community": 291,
-      "community_name": "Database Schema & Relationships",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "database_schema.md"
     },
     {
@@ -17365,8 +17409,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "database_schema_database_schema_relationships",
-      "community": 291,
-      "community_name": "Database Schema & Relationships",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "database schema & relationships"
     },
     {
@@ -17717,8 +17761,8 @@
       "source_location": "L580",
       "_origin": "ast",
       "id": "database_schema_4_purchasing_budgeting_domain_data_fpb",
-      "community": 264,
-      "community_name": "4.1 Tables",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "4. purchasing & budgeting domain (/data/fpb)"
     },
     {
@@ -17838,8 +17882,8 @@
       "source_location": "L698",
       "_origin": "ast",
       "id": "database_schema_4_2_erd_relationships_purchasing_domain",
-      "community": 264,
-      "community_name": "4.1 Tables",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "4.2 erd / relationships (purchasing domain)"
     },
     {
@@ -17849,8 +17893,8 @@
       "source_location": "L751",
       "_origin": "ast",
       "id": "database_schema_5_attendance_leave_management_domain_data_attendance_settings_data_attendance_leave_data_attendance_form",
-      "community": 291,
-      "community_name": "Database Schema & Relationships",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "5. attendance & leave management domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`)"
     },
     {
@@ -18003,8 +18047,8 @@
       "source_location": "L922",
       "_origin": "ast",
       "id": "database_schema_5_2_erd_relationships_attendance_domain",
-      "community": 291,
-      "community_name": "Database Schema & Relationships",
+      "community": 130,
+      "community_name": "bcryptjs",
       "norm_label": "5.2 erd / relationships (attendance domain)"
     },
     {
@@ -18322,7 +18366,7 @@
       "source_location": "L1451",
       "_origin": "ast",
       "id": "database_schema_11_uniform_stock_management_domain_sales_uniform_stock_uniform_add_stock_uniform_initial_stock_uniform_po_settings_data_uniform_data_uniform_size",
-      "community": 291,
+      "community": 272,
       "community_name": "Database Schema & Relationships",
       "norm_label": "11. uniform & stock management domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`)"
     },
@@ -18487,7 +18531,7 @@
       "source_location": "L1660",
       "_origin": "ast",
       "id": "database_schema_11_2_erd_relationships_uniform_stock_domain",
-      "community": 291,
+      "community": 272,
       "community_name": "Database Schema & Relationships",
       "norm_label": "11.2 erd / relationships (uniform & stock domain)"
     },
@@ -18498,7 +18542,7 @@
       "source_location": "L1742",
       "_origin": "ast",
       "id": "database_schema_11_3_initial_stock_inventory_ledger_workflows_stock_uniform_initial",
-      "community": 291,
+      "community": 272,
       "community_name": "Database Schema & Relationships",
       "norm_label": "11.3 initial stock & inventory ledger workflows (`/stock/uniform/initial`)"
     },
@@ -18509,7 +18553,7 @@
       "source_location": "L1765",
       "_origin": "ast",
       "id": "database_schema_11_4_pos_uniform_sales_workflows_sales_uniform",
-      "community": 291,
+      "community": 272,
       "community_name": "Database Schema & Relationships",
       "norm_label": "11.4 pos uniform sales workflows (`/sales/uniform`)"
     },
@@ -28364,18 +28408,6 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/app/api/attendance/excuses/upload/route.js",
-      "source_location": "L25",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_api_attendance_excuses_upload_route_post",
-      "target": "src_app_api_attendance_excuses_upload_route_allowed_types"
-    },
-    {
-      "relation": "references",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/app/api/attendance/excuses/upload/route.js",
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
@@ -29440,6 +29472,39 @@
       "_origin": "ast",
       "source": "src_app_api_gemini_route",
       "target": "src_app_api_gemini_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/incident-reports/upload/route.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_incident_reports_upload_route",
+      "target": "src_app_api_incident_reports_upload_route_allowed_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/incident-reports/upload/route.js",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_incident_reports_upload_route",
+      "target": "src_app_api_incident_reports_upload_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/api/incident-reports/upload/route.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_api_incident_reports_upload_route",
+      "target": "src_app_api_incident_reports_upload_route_supabaseadmin",
       "confidence_score": 1.0
     },
     {

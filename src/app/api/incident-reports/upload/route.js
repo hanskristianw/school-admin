@@ -8,8 +8,7 @@ const supabaseAdmin = createClient(
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
-const PRIMARY_BUCKET = 'incident_attachments'
-const FALLBACK_BUCKET = 'report-assets'
+const BUCKET = 'report-assets'
 
 export async function POST(request) {
   try {
@@ -40,34 +39,18 @@ export async function POST(request) {
 
     const fileExt = file.name.split('.').pop().toLowerCase()
     const fileName = `followup_${incidentId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`
-    const filePath = `followups/${fileName}`
+    const filePath = `incidents/${fileName}`
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Attempt upload to PRIMARY_BUCKET first
-    let bucketUsed = PRIMARY_BUCKET
-    let { error: uploadError } = await supabaseAdmin.storage
-      .from(PRIMARY_BUCKET)
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(BUCKET)
       .upload(filePath, buffer, {
         contentType: file.type,
         cacheControl: '3600',
         upsert: true
       })
-
-    // Fallback to FALLBACK_BUCKET if PRIMARY_BUCKET fails
-    if (uploadError) {
-      console.warn(`[IncidentUpload] Primary bucket ${PRIMARY_BUCKET} error:`, uploadError.message, '- trying fallback')
-      bucketUsed = FALLBACK_BUCKET
-      const fallbackResult = await supabaseAdmin.storage
-        .from(FALLBACK_BUCKET)
-        .upload(filePath, buffer, {
-          contentType: file.type,
-          cacheControl: '3600',
-          upsert: true
-        })
-      uploadError = fallbackResult.error
-    }
 
     if (uploadError) {
       console.error('[IncidentUpload] Upload failed:', uploadError)
@@ -78,13 +61,13 @@ export async function POST(request) {
     }
 
     const { data: { publicUrl } } = supabaseAdmin.storage
-      .from(bucketUsed)
+      .from(BUCKET)
       .getPublicUrl(filePath)
 
     return NextResponse.json({
       success: true,
       url: publicUrl,
-      bucket: bucketUsed,
+      bucket: BUCKET,
       path: filePath
     })
   } catch (err) {

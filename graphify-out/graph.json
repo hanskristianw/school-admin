@@ -2845,8 +2845,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "package_dependencies_google_cloud_vertexai",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 356,
+      "community_name": "@google-cloud/vertexai",
       "norm_label": "@google-cloud/vertexai"
     },
     {
@@ -2856,8 +2856,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "google_cloud_vertexai",
-      "community": 16,
-      "community_name": "Third-party Libraries",
+      "community": 356,
+      "community_name": "@google-cloud/vertexai",
       "norm_label": "@google-cloud/vertexai"
     },
     {
@@ -3131,8 +3131,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "package_dependencies_dotenv",
-      "community": 299,
-      "community_name": "browser-image-compression",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "dotenv"
     },
     {
@@ -3142,8 +3142,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "dotenv",
-      "community": 299,
-      "community_name": "browser-image-compression",
+      "community": 16,
+      "community_name": "Third-party Libraries",
       "norm_label": "dotenv"
     },
     {
@@ -5372,7 +5372,7 @@
       "label": "POST()",
       "file_type": "code",
       "source_file": "src/app/api/incident-reports/upload/route.js",
-      "source_location": "L14",
+      "source_location": "L13",
       "_origin": "ast",
       "id": "src_app_api_incident_reports_upload_route_post",
       "community": 291,
@@ -15187,8 +15187,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 299,
+      "community_name": "browser-image-compression",
       "norm_label": "skill.md"
     },
     {
@@ -15198,8 +15198,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hard_output_rule_read_first",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 299,
+      "community_name": "browser-image-compression",
       "norm_label": "hard output rule \u2014 read first"
     },
     {
@@ -15209,8 +15209,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "agents_skills_imagegen_frontend_web_skill_hero_composition_bias_read_first",
-      "community": 316,
-      "community_name": "CORE DIRECTIVE: AWWWARDS-LEVEL IMAGE ART DIRECTION",
+      "community": 299,
+      "community_name": "browser-image-compression",
       "norm_label": "hero composition bias \u2014 read first"
     },
     {
@@ -29489,7 +29489,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/app/api/incident-reports/upload/route.js",
-      "source_location": "L14",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_api_incident_reports_upload_route",
@@ -49081,5 +49081,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "1b8dad810f5f3e70aef36a93ddb005938ce417f6"
+  "built_at_commit": "e572d004681c0c49f0262e455ea4621eda1cf364"
 }

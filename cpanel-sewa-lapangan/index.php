@@ -683,6 +683,13 @@ if (!empty($searchQuery)) {
       font-weight: 700;
     }
 
+    /* Logo Resmi CCS — Persis Sesuai custom.css ccs.sch.id */
+    .main-logo {
+      width: 128px !important;
+      height: auto !important;
+      display: block;
+    }
+
     /* ─── Tombol Khas CCS (.thm-btn) ─── */
     .thm-btn {
       display: inline-flex;
@@ -794,13 +801,13 @@ if (!empty($searchQuery)) {
   <!-- 2. NAVBAR: HANYA 2 MENU (HOME & SEWA LAPANGAN) DENGAN LOGO RESMI CCS  -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <header class="bg-white sticky top-0 z-50 shadow-sm">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-[88px] flex items-center justify-between">
-      <!-- Logo Resmi CCS -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-[84px] flex items-center justify-between">
+      <!-- Logo Resmi CCS (Persis 1:1 sesuai ccs.sch.id) -->
       <a href="https://ccs.sch.id/" class="flex items-center">
         <img 
           src="https://ccs.sch.id/assets/images/logo-cccs.png" 
           alt="Chung Chung Christian School" 
-          class="h-[62px] w-auto object-contain"
+          class="main-logo"
           onerror="this.src='assets/images/logo-cccs.png';"
         />
       </a>

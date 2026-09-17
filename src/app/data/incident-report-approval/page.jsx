@@ -285,58 +285,45 @@ export default function IncidentHandlingApprovalPage() {
     try {
       setUploadingFile(true)
 
-      // 1. Primary: Use dedicated server route with service role key (bypasses RLS, handles incident_attachments)
-      try {
-        const formData = new FormData()
-        formData.append('file', selectedFile)
-        formData.append('incidentId', selectedReport?.incident_number || selectedReport?.id || 'general')
-
-        const res = await fetch('/api/incident-reports/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (res.ok) {
-          const data = await res.json()
-          if (data.success && data.url) {
-            return data.url
-          }
-        }
-      } catch (apiErr) {
-        console.warn('API upload fallback triggered:', apiErr)
-      }
-
-      // 2. Secondary fallback: Direct Supabase client upload
       const fileExt = selectedFile.name.split('.').pop()
       const fileName = `followup_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`
-      const filePath = `followups/${fileName}`
+      const filePath = `incidents/${fileName}`
 
-      let uploadResult = await supabase.storage
-        .from('incident_attachments')
+      // 1. Direct Supabase Storage upload to canonical 'report-assets' bucket (per DATABASE_SCHEMA.md)
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('report-assets')
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
           upsert: true
         })
 
-      let targetBucket = 'incident_attachments'
-      if (uploadResult.error) {
-        console.warn('incident_attachments direct upload failed, trying report-assets:', uploadResult.error.message)
-        targetBucket = 'report-assets'
-        uploadResult = await supabase.storage
+      if (!uploadError) {
+        const { data: publicUrlData } = supabase.storage
           .from('report-assets')
-          .upload(filePath, selectedFile, {
-            cacheControl: '3600',
-            upsert: true
-          })
+          .getPublicUrl(filePath)
+        return publicUrlData?.publicUrl || null
       }
 
-      if (uploadResult.error) throw uploadResult.error
+      console.warn('Direct upload to report-assets failed, attempting server API fallback:', uploadError.message)
 
-      const { data: publicUrlData } = supabase.storage
-        .from(targetBucket)
-        .getPublicUrl(filePath)
+      // 2. Server API fallback using service role key (bypasses any client network / RLS issues)
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('incidentId', selectedReport?.incident_number || selectedReport?.id || 'general')
 
-      return publicUrlData?.publicUrl || null
+      const res = await fetch('/api/incident-reports/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.url) {
+          return data.url
+        }
+      }
+
+      throw uploadError
     } catch (err) {
       console.error('Failed to upload attachment:', err)
       throw err
