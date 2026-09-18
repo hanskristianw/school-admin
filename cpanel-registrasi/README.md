@@ -3,10 +3,10 @@
 Aplikasi PHP di dalam folder ini adalah antarmuka web (*Frontend Client*) yang **100% terhubung langsung ke database Supabase sekolah** melalui API Next.js (persis seperti sistem sewa lapangan).
 
 Aplikasi ini **TIDAK menggunakan database terpisah / SQLite lokal**. Seluruh data pendaftar baru, tarif formulir, dan status verifikasi pembayaran tersimpan terpusat di **Supabase**:
-1. **Tahap 1 - Registrasi Super Ringkas**: Orang tua cukup mengisi 4 kolom penting (Email, No WhatsApp, Nama Siswa, Jenjang). Tidak dibebani formulir panjang di awal.
-2. **Tahap 2 - Instruksi Bayar & Portal Login**: Orang tua menerima rincian rekening Bank Mayapada dan nominal formulir sesuai gelombang aktif (dari tabel `admission_form_fee`). Untuk login ke portal, cukup menggunakan kombinasi **Email + Nomor WhatsApp**.
-3. **Tahap 3 - Upload Bukti & Approval Admin**: Orang tua mengunggah bukti transfer di portal. Bukti disimpan di hosting `uploads/` dan status terupdate ke Supabase. Admin sekolah memverifikasi dan menyetujui bukti pembayaran secara terpusat di dashboard aplikasi sekolah (`/data/admission`).
-4. **Tahap 4 - Pembukaan Formulir Lengkap**: HANYA SETELAH pembayaran formulir disetujui (Approved), formulir biodata lengkap dibuka untuk diisi oleh orang tua. Data tidak terbuang sia-sia bagi yang belum melunasi formulir.
+1. **Tahap 1 - Registrasi Ringkas Tanpa Tampilan Harga**: Orang tua cukup mengisi 4 kolom penting (Jenjang, Nama Siswa, Email, No. WhatsApp). Formulir web **tidak menampilkan nominal harga formulir**.
+2. **Tahap 2 - Penentuan Biaya Berdasarkan Tanggal & Email Instruksi**: Backend API otomatis menentukan harga formulir sesuai tanggal hari ini dari tabel `admission_form_fee` (100% *date-driven*, tanpa toggle aktif manual). Rincian biaya dan nomor rekening resmi Bank Mayapada (`100-3000-3853` a/n `Yayasan Pendidikan Mayapada School`) dikirimkan langsung ke email orang tua bersama tautan unggah bukti transfer.
+3. **Tahap 3 - Upload Bukti & Approval Admin**: Orang tua mengunggah bukti transfer melalui web. Berkas bukti disimpan di direktori hosting `uploads/` (terproteksi) dan status terupdate di Supabase (`form_fee_status = 'proof_uploaded'`). Admin sekolah memverifikasi dan menyetujui bukti pembayaran secara terpusat di dashboard aplikasi sekolah (`/data/admission`).
+4. **Tahap 4 - Pembukaan Formulir Lengkap**: HANYA SETELAH pembayaran formulir disetujui (Status `verified`), formulir biodata lengkap siswa dibuka untuk diisi oleh orang tua (`is_form_completed = true`). Data tidak terbuang sia-sia bagi pendaftar yang belum melunasi biaya formulir.
 
 ---
 

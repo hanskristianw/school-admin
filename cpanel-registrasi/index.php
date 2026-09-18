@@ -72,6 +72,7 @@ $i18n = [
         'lbl_student' => 'Calon Siswa',
         'lbl_level_selected' => 'Jenjang',
         'lbl_form_fee' => 'Total Biaya Formulir',
+        'success_reg_email_note' => 'Rincian biaya formulir & instruksi transfer Bank Mayapada telah dikirimkan ke email Anda.',
         'btn_check_this' => 'Cek Status & Unggah Bukti Bayar',
 
         // Cek Status Section (1:1 Mirip Sewa Lapangan)
@@ -183,6 +184,7 @@ $i18n = [
         'lbl_student' => 'Student Candidate',
         'lbl_level_selected' => 'Target Program',
         'lbl_form_fee' => 'Total Form Fee',
+        'success_reg_email_note' => 'Form fee details and Bank Mayapada transfer instructions have been sent to your email.',
         'btn_check_this' => 'Check Status & Upload Payment Proof',
 
         // Cek Status Section (1:1 Mirip Sewa Lapangan)
@@ -294,6 +296,7 @@ $i18n = [
         'lbl_student' => '报名学生',
         'lbl_level_selected' => '报读学段',
         'lbl_form_fee' => '报名表费用金额',
+        'success_reg_email_note' => '报名费明细及 Bank Mayapada 银行转账指引已发送至您的电子邮箱。',
         'btn_check_this' => '查询状态并上传付款凭证',
 
         // Cek Status Section (1:1 Mirip Sewa Lapangan)
@@ -491,16 +494,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_proof') {
     exit;
 }
 
-// ─── 5. AMBIL MASTER GELOMBANG & JENJANG DARI SUPABASE ──────────────────────
-$feeResponse = callNextJsApi('GET', ['action' => 'get_active_fee']);
-$activeWave = (!empty($feeResponse['success']) && !empty($feeResponse['data']))
-    ? $feeResponse['data']
-    : [
-        'wave_name' => 'Gelombang 1 (Early Bird)',
-        'amount' => DEFAULT_FORM_FEE,
-        'effective_until' => date('Y-m-d', strtotime('+30 days'))
-    ];
-
+// ─── 5. AMBIL MASTER JENJANG PENDIDIKAN DARI SUPABASE ────────────────────────
 $levelsResponse = callNextJsApi('GET', ['action' => 'get_levels']);
 $serverLevels = (!empty($levelsResponse['success']) && !empty($levelsResponse['levels']))
     ? $levelsResponse['levels']
@@ -990,11 +984,9 @@ if (!empty($searchQuery)) {
             <span class="text-gray-500 text-xs block"><?= htmlspecialchars($L['lbl_level_selected']) ?></span>
             <strong class="text-gray-900"><?= htmlspecialchars($successReg['level_name'] ?? '-') ?></strong>
           </div>
-          <div class="sm:col-span-2 pt-3 border-t border-slate-200 flex items-center justify-between">
-            <span class="text-gray-600 text-xs font-medium"><?= htmlspecialchars($L['lbl_form_fee']) ?></span>
-            <strong class="text-ccsOrange font-mono font-bold text-lg">
-              Rp <?= number_format($successReg['form_fee_amount'] ?? DEFAULT_FORM_FEE, 0, ',', '.') ?>
-            </strong>
+          <div class="sm:col-span-2 pt-3 border-t border-slate-200 flex items-center gap-2 text-xs text-slate-700">
+            <i class="fas fa-envelope text-ccsOrange shrink-0"></i>
+            <span><?= htmlspecialchars($L['success_reg_email_note']) ?></span>
           </div>
         </div>
 

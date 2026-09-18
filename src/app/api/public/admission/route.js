@@ -16,6 +16,57 @@ function verifyAuth(request) {
   return token && (token === EXPECTED_SECRET)
 }
 
+// Helper: Ambil tarif gelombang pendaftaran murni berdasarkan tanggal hari ini
+async function resolveCurrentFormFee(targetDateStr = null) {
+  const dateStr = targetDateStr || new Date().toISOString().split('T')[0]
+
+  // 1. Cek gelombang yang tepat mencakup tanggal hari ini
+  const { data: currentWave } = await supabaseAdmin
+    .from('admission_form_fee')
+    .select('*')
+    .lte('effective_from', dateStr)
+    .gte('effective_until', dateStr)
+    .order('amount', { ascending: true })
+    .limit(1)
+
+  if (currentWave && currentWave.length > 0) {
+    return currentWave[0]
+  }
+
+  // 2. Jika belum ada gelombang yang mulai (semua terjadwal di masa depan), ambil gelombang terdekat pertama
+  const { data: upcomingWave } = await supabaseAdmin
+    .from('admission_form_fee')
+    .select('*')
+    .gt('effective_from', dateStr)
+    .order('effective_from', { ascending: true })
+    .limit(1)
+
+  if (upcomingWave && upcomingWave.length > 0) {
+    return upcomingWave[0]
+  }
+
+  // 3. Jika semua gelombang sudah lewat di masa lalu, ambil gelombang terakhir
+  const { data: pastWave } = await supabaseAdmin
+    .from('admission_form_fee')
+    .select('*')
+    .lt('effective_until', dateStr)
+    .order('effective_until', { ascending: false })
+    .limit(1)
+
+  if (pastWave && pastWave.length > 0) {
+    return pastWave[0]
+  }
+
+  // 4. Default fallback jika tabel admission_form_fee belum memiliki data
+  return {
+    wave_name: 'Gelombang Reguler',
+    amount: 250000,
+    effective_from: dateStr,
+    effective_until: dateStr,
+    notes: 'Tarif pendaftaran reguler'
+  }
+}
+
 // GET:
 // 1. Ambil tarif gelombang aktif & jenjang untuk form awal
 // 2. Login / Cek Status pendaftar menggunakan kombinasi Email & Nomor HP (?action=check_status&email=...&phone=...)
@@ -159,33 +210,15 @@ export async function GET(request) {
       return NextResponse.json({ success: true, data: formatted })
     }
 
-    // ─── DEFAULT: AMBIL TARIF GELOMBANG AKTIF & JENJANG ────────
+    // ─── DEFAULT: AMBIL TARIF GELOMBANG AKTIF & JENJANG (DATE-DRIVEN) ───
     const today = new Date().toISOString().split('T')[0]
-
-    const { data: formFees } = await supabaseAdmin
-      .from('admission_form_fee')
-      .select('*')
-      .eq('is_active', true)
-      .lte('effective_from', today)
-      .gte('effective_until', today)
-      .order('amount', { ascending: true })
-      .limit(1)
+    const activeFee = await resolveCurrentFormFee(today)
 
     const { data: levels } = await supabaseAdmin
       .from('admission_level')
       .select('level_id, unit_id, level_name, level_order')
       .eq('is_active', true)
       .order('level_order', { ascending: true })
-
-    const activeFee = (formFees && formFees.length > 0)
-      ? formFees[0]
-      : {
-          wave_name: 'Gelombang Reguler',
-          amount: 250000,
-          effective_from: today,
-          effective_until: today,
-          notes: 'Tarif pendaftaran reguler'
-        }
 
     return NextResponse.json({
       success: true,
@@ -279,22 +312,9 @@ export async function POST(request) {
       let resolvedFeeAmount = Number(form_fee_amount) || 0
       let resolvedWaveName = wave_name
       if (!resolvedFeeAmount) {
-        const today = new Date().toISOString().split('T')[0]
-        const { data: activeFeeData } = await supabaseAdmin
-          .from('admission_form_fee')
-          .select('wave_name, amount')
-          .eq('is_active', true)
-          .lte('effective_from', today)
-          .gte('effective_until', today)
-          .order('amount', { ascending: true })
-          .limit(1)
-        if (activeFeeData && activeFeeData.length > 0) {
-          resolvedFeeAmount = activeFeeData[0].amount
-          resolvedWaveName = resolvedWaveName || activeFeeData[0].wave_name
-        } else {
-          resolvedFeeAmount = 250000
-          resolvedWaveName = resolvedWaveName || 'Gelombang 1 (Reguler)'
-        }
+        const resolvedFee = await resolveCurrentFormFee()
+        resolvedFeeAmount = Number(resolvedFee.amount) || 250000
+        resolvedWaveName = resolvedWaveName || resolvedFee.wave_name
       }
 
       const cleanEmail = parent_email.trim().toLowerCase()

@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-09-18)
 
 ## Corpus Check
-- 389 files · ~644,074 words
+- 389 files · ~648,148 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2230 nodes · 2302 edges · 369 communities (261 shown, 108 thin omitted)
+- 2231 nodes · 2305 edges · 369 communities (261 shown, 108 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ea6c1cc2`
+- Built from commit: `4b39018b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -158,6 +158,7 @@
 - Module 146
 - �🏗️ **Database Structure**
 - Module 148
+- bcryptjs
 - Module 150
 - Module 151
 - Module 152
@@ -257,6 +258,7 @@
 - 8. DARK MODE PROTOCOL
 - 21. MOBILE ANTI-AI-TELLS RULE
 - SKILL.md
+- browser-image-compression
 - 33. DEFAULT SECTION PACKS
 - 14. HERO MINIMALISM RULES
 - 37. EXAMPLE INTERPRETATIONS
@@ -264,8 +266,6 @@
 - 37. EXAMPLE INTERPRETATIONS
 - 15. DEFAULT SITE PACKS
 - 20. EXAMPLE INTERPRETATIONS
-- @google-cloud/vertexai
-- docx
 - pngjs
 - route.js
 - route.js
@@ -369,7 +369,7 @@ Nodes (8): DAY_ID, DAYS, extractHM(), formatWeekLabel(), getMonday(), parseRange
 
 ### Community 16 - "Third-party Libraries"
 Cohesion: 0.12
-Nodes (17): bcryptjs, dotenv, driver.js, @fortawesome/free-solid-svg-icons, @hookform/resolvers, dependencies, bcryptjs, dotenv (+9 more)
+Nodes (17): dotenv, driver.js, @fortawesome/free-solid-svg-icons, @google-cloud/vertexai, @hookform/resolvers, dependencies, dotenv, driver.js (+9 more)
 
 ### Community 17 - "Attendance Report API"
 Cohesion: 0.38
@@ -551,9 +551,13 @@ Nodes (13): 15.1 Tables, 15.2 ERD / Relationships (Admissions Domain), 15.3 Admi
 Cohesion: 0.05
 Nodes (43): 1. Logo Cover, 1. Monogram + Meaning, 2 × 3 REFERENCE-STYLE LAYOUT, 2. Logo Construction, 2. Product Action, 3. Digital Application, 3. Metaphor Fusion, 4. Brand Essence (+35 more)
 
+### Community 129 - "Module 129"
+Cohesion: 0.40
+Nodes (5): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), `duty_schedules`, `duty_settings`
+
 ### Community 130 - "bcryptjs"
-Cohesion: 0.18
-Nodes (10): 10.1 Tables, 10.2 ERD / Relationships (Duty & Devotion Schedule Domain), 10. Duty, Greeter & Devotion Schedule Domain (`/data/door_greeter`), 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), Database Schema & Relationships (+2 more)
+Cohesion: 0.15
+Nodes (12): 11.2 ERD / Relationships (Uniform & Stock Domain), 11.3 Initial Stock & Inventory Ledger Workflows (`/stock/uniform/initial`), 11.4 POS Uniform Sales Workflows (`/sales/uniform`), 11. Uniform & Stock Management Domain (`/sales/uniform`, `/stock/uniform/add`, `/stock/uniform/initial`, `/stock/uniform/po-settings`, `/data/uniform`, `/data/uniform-size`), 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading) (+4 more)
 
 ### Community 131 - "docx"
 Cohesion: 0.25
@@ -562,10 +566,6 @@ Nodes (8): 2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overvi
 ### Community 132 - "Module 132"
 Cohesion: 0.06
 Nodes (34): 10. IMAGE-FIRST CODEX WEBSITE WORKFLOW, 11. WHEN TO TRIGGER IMAGE GENERATION FIRST, 13. WEBSITE REFERENCE RULE, 15. RESPONSIVE FIRST-VIEW RULE, 16. ANTI-NESTED-BOX RULE, 17. REDUCE MICRO-UI CLUTTER RULE, 18. SECTION IMAGE GENERATION RULE, 19. WEBSITE IMAGE SYSTEM RULE (+26 more)
-
-### Community 133 - "Module 133"
-Cohesion: 0.40
-Nodes (5): 6.1 Tables, 6.2 ERD / Relationships (Assessment & Grading), 6. Assessment & Grading Domain (`/data/topic-new` / Reports), `assessment_grade_strands`, `assessment_grades`
 
 ### Community 135 - "Module 135"
 Cohesion: 0.40
@@ -636,8 +636,8 @@ Cohesion: 0.14
 Nodes (13): Active/Current Migrations, Core Attendance System, Database Migrations, 🚀 How to Run Migrations, ⚠️ Important Notes, 📋 Migration Checklist, Other Systems (Unrelated to Attendance), 🔄 Recent Changes (October 2025) (+5 more)
 
 ### Community 261 - "5.1 Tables"
-Cohesion: 0.13
-Nodes (15): 5.1 Tables, 5.2 ERD / Relationships (Attendance Domain), 5. Attendance & Leave Management Domain (`/data/attendance-settings`, `/data/attendance-leave`, `/data/attendance-form`), `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance` (+7 more)
+Cohesion: 0.15
+Nodes (13): 5.1 Tables, `attendance_excuses`, `attendance_notification_log`, `attendance_notify_run_log`, `attendances`, `kelas_attendance`, `leave_quotas`, `leave_types` (+5 more)
 
 ### Community 262 - "sendGoogleChatMessage"
 Cohesion: 0.80
@@ -901,7 +901,7 @@ Nodes (4): 20. EXAMPLE INTERPRETATIONS, Example 1, Example 2, Example 3
 
 ### Community 368 - "route.js"
 Cohesion: 0.60
-Nodes (4): GET(), POST(), supabaseAdmin, verifyAuth()
+Nodes (5): GET(), POST(), resolveCurrentFormFee(), supabaseAdmin, verifyAuth()
 
 ## Knowledge Gaps
 - **1149 isolated node(s):** `extends`, `next/core-web-vitals`, `$schema`, `style`, `rsc` (+1144 more)
@@ -911,9 +911,9 @@ Nodes (4): GET(), POST(), supabaseAdmin, verifyAuth()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 129`, `Module 134`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Module 144`, `Module 145`, `�🏗️ **Database Structure**`, `Module 148`, `docx`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `**3. Assessment System**`, `Module 155`, `bcryptjs`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `pg`, `zod`, `bcryptjs`, `@sparticuz/chromium-min`, `SKILL.md`, `@google-cloud/vertexai`, `docx`, `pngjs`?**
+- **Why does `dependencies` connect `Third-party Libraries` to `Admission Management`, `Package Dependencies & Config`, `Module 133`, `Module 134`, `Module 136`, `Module 138`, `Module 139`, `Module 140`, `React UI Components`, `2026-07-16 — Timetable Refactor + Weekly Plan Dates + Weekly Overview`, `Module 144`, `Module 145`, `�🏗️ **Database Structure**`, `Module 148`, `bcryptjs`, `docx`, `Module 151`, `Module 152`, `🔧 **Technical Implementation**`, `Module 153`, `Module 154`, `**3. Assessment System**`, `Module 155`, `bcryptjs`, `googleapis`, `@googleapis/chat`, `react-hook-form`, `dotenv`, `pg`, `zod`, `bcryptjs`, `@sparticuz/chromium-min`, `SKILL.md`, `browser-image-compression`, `pngjs`?**
   _High betweenness centrality (0.005) - this node is a cross-community bridge._
-- **Why does `Database Schema & Relationships` connect `bcryptjs` to `5.1 Tables`, `Module 133`, `3.1 Tables`, `4.1 Tables`, `1.1 Tables`, `2.1 Tables`, `Module 143`, `9.1 Tables`, `8.1 Tables`, `Module 126`, `bcryptjs`?**
+- **Why does `Database Schema & Relationships` connect `bcryptjs` to `Module 129`, `3.1 Tables`, `4.1 Tables`, `1.1 Tables`, `2.1 Tables`, `Module 143`, `9.1 Tables`, `8.1 Tables`, `Module 126`, `bcryptjs`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._
 - **Why does `jspdf` connect `Admission Management` to `Third-party Libraries`?**
   _High betweenness centrality (0.002) - this node is a cross-community bridge._

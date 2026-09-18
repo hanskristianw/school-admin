@@ -2122,7 +2122,7 @@ Subdivides academic units (`unit`) into specific enrollment levels and grade tie
 | `CONSTRAINT` | `UNIQUE` | `(unit_id, level_name)` |
 
 #### `admission_form_fee`
-Master table defining periodic/wave-based registration form fees (e.g. Early Bird vs Reguler).
+Master table defining periodic/wave-based registration form fees (e.g. Early Bird vs Reguler). Managed via `/data/school-fee` (Tab 3: "Biaya Formulir Pendaftaran").
 
 | Column Name | Type | Description / Constraint |
 | --- | --- | --- |
@@ -2134,11 +2134,27 @@ Master table defining periodic/wave-based registration form fees (e.g. Early Bir
 | `amount` | `NUMERIC(12,2)` | Application form fee price (Must be $\ge 0$) |
 | `effective_from` | `DATE` | Wave start date |
 | `effective_until` | `DATE` | Wave expiration date |
-| `is_active` | `BOOLEAN` | Default `true` |
+| `is_active` | `BOOLEAN` | Default `true` *(Legacy column; wave selection is now 100% automated by calendar dates)* |
 | `notes` | `TEXT` | Wave promotional notes / discounts |
 | `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
 | `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
 | `CONSTRAINT` | `UNIQUE` | `(wave_name, effective_from)` |
+
+> [!IMPORTANT]
+> **100% Date-Driven Wave Resolution Policy (No Manual Toggle):**
+> To prevent human oversight (e.g. forgetting to toggle an active switch when a scheduled date arrives), wave selection is **purely automated based on calendar dates** (`effective_from` to `effective_until`). Manual toggle switches have been retired from both `/data/school-fee` and `/api/public/admission`.
+>
+> **Lookup Fallback Algorithm (`resolveCurrentFormFee`):**
+> 1. **Active Wave:** Matches `effective_from <= targetDate <= effective_until`.
+> 2. **Earliest Upcoming (Pre-Wave Intake):** If the current date is before any scheduled wave has begun (`effective_from > targetDate`), the system automatically adopts the **earliest upcoming wave** (`ORDER BY effective_from ASC LIMIT 1`) so prospective parents submitting early inquiries receive valid fee invoices rather than an error or empty amount.
+> 3. **Latest Historical:** If all scheduled waves have expired (`effective_until < targetDate`), the system falls back to the **latest expired wave** (`ORDER BY effective_until DESC LIMIT 1`).
+> 4. **Hard Fallback:** If `admission_form_fee` table is completely empty, defaults to IDR 250,000.
+>
+> **Admin Display (`/data/school-fee` Tab 3):**
+> The table computes wave status on the fly without relying on `is_active`:
+> - **Sedang Berjalan (Green badge):** `effective_from <= today <= effective_until`
+> - **Akan Datang (Yellow badge):** `today < effective_from`
+> - **Selesai (Gray badge):** `today > effective_until`
 
 #### `student_applications`
 Primary record for each prospective student's application form submission.
@@ -2178,6 +2194,7 @@ Primary record for each prospective student's application form submission.
 | `access_token` | `VARCHAR(64)` | Secret PIN / Access code for applicant self-service login and receipt upload on `ccs.sch.id` |
 | `wave_name` | `VARCHAR(100)` | Name of active pricing wave during registration |
 | `hosting_url` | `TEXT` | Origin cPanel hosting URL (e.g. `https://ccs.sch.id/registrasi`) |
+| `is_form_completed` | `BOOLEAN` | Default `false` (Flag indicating whether parent has completed the full student biographical form after payment verification) |
 | `paid_at` | `TIMESTAMPTZ` | Timestamp when payment proof was uploaded |
 | `verified_by` | `INTEGER` | FK to `users(user_id)` (Staff who verified payment) |
 | `verified_at` | `TIMESTAMPTZ` | Timestamp when payment was approved |
@@ -2194,6 +2211,18 @@ Primary record for each prospective student's application form submission.
 > - `public_insert_applications`: Unauthenticated public visitors can insert new applications from `/admission`.
 > - `public_read_own_application`: Filtered in application logic by `application_number` + `parent_phone` / `parent_email` for `/admission/status`.
 > - `admin_read_all_applications` & `admin_update_applications`: Authenticated backoffice staff have full management access.
+>
+> **Two-Stage Progressive Intake & Email-Driven Payment Architecture:**
+> - **Primary Public Portal:** Hosted on cPanel hosting at `https://ccs.sch.id/registrasi` (`cpanel-registrasi/index.php`). Communicates with Next.js API `/api/public/admission` via Bearer token (`API_SECRET_TOKEN`).
+> - **Stage 1 (Lightweight Intake):** Prospective parents submit only 4 core fields: `level_name`, `student_name`, `parent_email`, and `parent_phone`. **No form fee price is displayed on the web form or the confirmation screen.**
+> - **Email-Only Invoice Delivery:** Upon submission, `/api/public/admission` resolves the current date's wave from `admission_form_fee`, locks `form_fee_amount` and `wave_name` onto `student_applications`, sets `form_fee_status = 'pending_payment'`, and dispatches an official transactional email containing:
+>   - Registration code (`application_number`)
+>   - Snapshot form fee amount (e.g. `Rp 250.000`)
+>   - Official school bank account: **Bank Mayapada** `100-3000-3853` a/n **Yayasan Pendidikan Mayapada School**
+>   - Direct link to upload payment proof
+> - **Stage 2 (Proof Upload):** Parents transfer and submit transfer receipt through the portal (`action_upload_proof`). The image/PDF is stored in cPanel `uploads/` (restricted via `.htaccess`) and updates `form_fee_status = 'proof_uploaded'`.
+> - **Stage 3 (Backoffice Verification):** Admissions staff review and approve the payment in `/data/admission`, updating `form_fee_status = 'verified'`.
+> - **Stage 4 (Full Biodata Form Unlock):** When the parent accesses the portal again, the system detects `form_fee_status === 'verified'` and unlocks the comprehensive background form (NIK, birth details, religion, nationality, previous school, domicile). Submitting updates `is_form_completed = true`.
 
 #### `udp_definition`
 Master definition of Uang Dana Pembangunan (UDP) / Uang Pangkal / DPP per grade level and academic year.
@@ -2331,17 +2360,21 @@ erDiagram
     unit ||--o{ udp_definition : "scoped_to"
     unit ||--o{ school_fee_definition : "scoped_to"
     unit ||--o{ fee_discount : "defines_discounts"
+    unit ||--o{ admission_form_fee : "scoped_to"
     
     admission_level ||--o{ student_applications : "targets_level"
     admission_level ||--o{ udp_definition : "configures_udp"
     admission_level ||--o{ school_fee_definition : "configures_spp"
     admission_level ||--o{ fee_discount : "restricts_discount"
+    admission_level ||--o{ admission_form_fee : "scoped_to"
     
     year ||--o{ student_applications : "enrolls_in_year"
     year ||--o{ udp_definition : "valid_for_year"
     year ||--o{ school_fee_definition : "valid_for_year"
     year ||--o{ fee_discount : "valid_for_year"
+    year ||--o{ admission_form_fee : "valid_for_year"
     
+    admission_form_fee ||--o{ student_applications : "snapshots_fee_at_registration"
     udp_definition ||--o{ udp_installment_plan : "schedules_terms"
     
     student_applications ||--o{ application_discount : "receives_discounts"
@@ -2351,6 +2384,18 @@ erDiagram
     users ||--o{ student_applications : "reviewed_by"
     users ||--o{ application_installment : "created_by"
     users ||--o{ application_discount : "created_by"
+
+    admission_form_fee {
+        int fee_id PK
+        int year_id FK
+        int unit_id FK
+        int level_id FK
+        string wave_name
+        numeric amount
+        date effective_from
+        date effective_until
+        boolean is_active
+    }
 
     student_applications {
         bigint application_id PK
@@ -2362,6 +2407,10 @@ erDiagram
         int level_id FK
         int year_id FK
         string status
+        numeric form_fee_amount
+        string form_fee_status
+        string wave_name
+        boolean is_form_completed
         int reviewed_by FK
     }
 
@@ -2400,55 +2449,72 @@ erDiagram
 ### 15.3 Admissions Lifecycle & Operational Integration
 
 ```
-[ /login ] ("Pendaftaran Siswa Baru")
-     │
-     ▼
-[ /admission ] ──(Insert)──> [ student_applications ] (Status: 'pending', REG-YYYY-NNNNNN)
-                                      │
-                                      ▼
-                             [ /data/admission ]
-                        (Staff Review & Verification)
-                                      │
-           ┌──────────────────────────┼──────────────────────────┐
-           ▼                          ▼                          ▼
- [ Configure Discounts ]    [ Setup Installments ]       [ Decision ]
- (application_discount)     (application_installment)        │
-                                                   ┌─────────┴─────────┐
-                                                   ▼                   ▼
-                                              'approved'          'rejected'
-                                                   │                   │
-                                            (WhatsApp/Email     (WhatsApp/Email
-                                             Notifications)      Notifications)
-                                                   │
-                                                   ▼ (Current Manual Step)
-                                        [ users ] & [ detail_siswa ]
-                                      (Active Student Class Enrollment)
+[ Public Intake Client ] (https://ccs.sch.id/registrasi - cPanel PHP)
+   │
+   │ 1. POST /api/public/admission (4 fields: Name, Level, Email, Phone)
+   ▼
+[ Next.js API: resolveCurrentFormFee() ] ──(Date-Driven Lookup)──> [ admission_form_fee ]
+   │
+   ├─► [ Insert student_applications ] (Status: 'pending', form_fee_status: 'pending_payment')
+   │
+   └─► [ Send Transactional Email ] (Bank Mayapada 100-3000-3853 + Form Fee + Tracking Link)
+                                       │
+                                       ▼ (Parent Transfers & Uploads Proof)
+                              [ Upload Transfer Proof ] 
+                       (cPanel uploads/ + form_fee_status: 'proof_uploaded')
+                                       │
+                                       ▼
+                              [ /data/admission ]
+                         (Staff Review & Verification)
+                                       │
+                                       ▼ (Admin Marks: 'verified')
+                       [ Full Biodata Form Unlocked ]
+            (Parent fills NIK, Parents, Address -> is_form_completed = true)
+                                       │
+                                       ▼
+            ┌──────────────────────────┼──────────────────────────┐
+            ▼                          ▼                          ▼
+  [ Configure Discounts ]    [ Setup Installments ]       [ Final Decision ]
+  (application_discount)     (application_installment)        │
+                                                    ┌─────────┴─────────┐
+                                                    ▼                   ▼
+                                               'approved'          'rejected'
+                                                    │                   │
+                                             (WhatsApp/Email     (WhatsApp/Email
+                                              Notifications)      Notifications)
+                                                    │
+                                                    ▼ (Current Manual Step)
+                                         [ users ] & [ detail_siswa ]
+                                       (Active Student Class Enrollment)
 ```
 
-1. **Public Discovery via `/login`:**
-   The school login screen exposes a dedicated collapsible section labeled *"Pendaftaran Siswa Baru"* containing:
-   - **"Daftar Siswa Baru":** Navigates to `/admission` (public intake form).
-   - **"Cek Status":** Navigates to `/admission/status` (self-service lookup by application number + phone/email).
-   - *Note:* Submitting this form does **not** create a login credential in `users`. Prospective families interact purely through the public status page and WhatsApp/Email channels until official acceptance and school onboarding.
+1. **Public Intake via `ccs.sch.id/registrasi` & `/login`:**
+   - **Main Parent Portal:** Prospective families access `https://ccs.sch.id/registrasi` (cPanel PHP client).
+   - **Direct Next.js Portal (`/login`):** An accordion section on the school portal provides direct routing to `/admission` and `/admission/status`.
+   - **Progressive Disclosure:** Parents do **not** choose or view form fee prices during stage 1. The backend automatically determines the active wave fee based on the submission date.
+   - **Credential Separation:** Submitting this form does **not** create a login credential in `users`. Prospective families interact purely through the public status page, WhatsApp, and Email channels until official acceptance and school onboarding.
 
-2. **Automated Quotation & Installment Stacking:**
+2. **Automated Wave Pricing & Transactional Email:**
+   - On submission, `/api/public/admission` calls `resolveCurrentFormFee()` to match `effective_from <= today <= effective_until`.
+   - The fee is locked into `student_applications.form_fee_amount` and `wave_name`.
+   - An official email invoice is automatically dispatched via `emailTemplates.admissionRegistrationPayment` containing the registration code, exact form fee amount, and official Bank Mayapada account details (`100-3000-3853` a/n `Yayasan Pendidikan Mayapada School`).
+
+3. **Payment Verification & Progressive Form Unlock:**
+   - Parents upload transfer receipts via the self-service portal (`form_fee_status = 'proof_uploaded'`).
+   - Admissions committee verifies payment in `/data/admission` (`form_fee_status = 'verified'`).
+   - Upon verification, the portal unlocks the complete candidate biographical form. Once submitted, `is_form_completed = true`.
+
+4. **Automated Quotation & Installment Stacking:**
    - Base fees are pulled from `udp_definition` (matching the applicant's category: `internal` vs `eksternal`, and current date vs `effective_from` / `effective_until`) and `school_fee_definition`.
    - Discounts from `fee_discount` can be stacked sequentially (`seq = 1, 2, \dots`). Each sequential line recomputes `subtotal_after` based on the previous line's `base_before`.
    - The financing scheme in `application_installment` locks the down payment (UTJ 30%) and calculates an even 11-month payment distribution starting in July.
 
-3. **Status Progression & External Notifications:**
+5. **Status Progression & External Notifications:**
    - When administrators transition status to `'approved'` or `'rejected'`, API routes `/api/whatsapp/send` and `/api/email/admission` fire automated transactional notifications to the registered parent contact.
 
-4. **Integration Gap & Transition to Active Students:**
+6. **Integration Gap & Transition to Active Students:**
    - In the current implementation, an `'approved'` application in `student_applications` does not automatically spawn a row in `users` and `detail_siswa`.
    - Staf Tata Usaha manually copies accepted candidate records into `/data/user` (assigning `role.is_student = true`) and enrolls them into `/data/class` (`detail_siswa`).
-   - A direct transational migration action ("Enroll to School") is recommended to automatically bridge approved `student_applications` into `users` and `detail_siswa`.
-
-
-
-
-
-
 
 
 
