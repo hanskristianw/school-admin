@@ -61,6 +61,87 @@ export const emailTemplates = {
     return { subject, html }
   },
 
+  admissionRegistrationPayment: ({
+    parentName,
+    studentName,
+    applicationNumber,
+    levelName,
+    feeAmount = 250000,
+    hostingUrl = 'https://ccs.sch.id/registrasi'
+  }) => {
+    const formattedAmount = `Rp ${Number(feeAmount || 250000).toLocaleString('id-ID')}`
+    const checkUrl = `${String(hostingUrl || 'https://ccs.sch.id/registrasi').replace(/\/$/, '')}/?cek=${encodeURIComponent(applicationNumber)}#cek-status`
+    const subject = `Instruksi Pembayaran Pendaftaran Siswa Baru CCS — ${applicationNumber}`
+    const html = wrapHtml(`
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #1e3a8a, #0369a1); color: #fff; padding: 28px 24px; text-align: center;">
+          <h1 style="margin:0; font-size: 20px; font-weight: 700; color: #ffffff;">Chung Chung Christian School</h1>
+          <p style="margin:6px 0 0; opacity: 0.9; font-size: 13px; color: #e0f2fe;">Pendaftaran Siswa Baru (PPDB / SPMB)</p>
+        </div>
+        <div class="body" style="padding: 24px; color: #334155; line-height: 1.6;">
+          <p>Yth. Bapak/Ibu <strong>${parentName || 'Orang Tua / Wali Calon Siswa'}</strong>,</p>
+          <p>Terima kasih telah mengajukan pendaftaran siswa baru di <strong>Chung Chung Christian School</strong>. Pendaftaran awal Anda telah tercatat dengan rincian sebagai berikut:</p>
+          
+          <div class="detail-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Nomor Registrasi:</span>
+              <span class="detail-value" style="font-weight:700; font-family:monospace; color:#0f172a; font-size: 15px;">${applicationNumber}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Nama Calon Siswa:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${studentName}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Jenjang Pilihan:</span>
+              <span class="detail-value" style="font-weight:600; color:#0f172a;">${levelName || '-'}</span>
+            </div>
+            <div class="detail-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size: 14px;">
+              <span class="detail-label" style="color:#64748b;">Biaya Pembelian Formulir:</span>
+              <span class="detail-value" style="font-weight:700; color:#ea580c; font-size: 15px;">${formattedAmount}</span>
+            </div>
+          </div>
+
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 18px; margin: 20px 0;">
+            <div style="font-size: 12px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+              🏦 Rekening Resmi Pembayaran Sekolah
+            </div>
+            <div style="font-size: 16px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">Bank Mayapada</div>
+            <div style="font-size: 20px; font-weight: 700; font-family: monospace; color: #0284c7; letter-spacing: 1px; margin-bottom: 6px;">
+              100-3000-3853
+            </div>
+            <div style="font-size: 13px; color: #334155;">
+              Atas Nama: <strong>Yayasan Pendidikan Mayapada School</strong>
+            </div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+              Berita Transfer: <code style="background:#dbeafe; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${applicationNumber} ${studentName}</code>
+            </div>
+          </div>
+
+          <div style="margin: 24px 0 16px; text-align: center;">
+            <a href="${checkUrl}" style="background-color: #f37021; color: #ffffff; text-decoration: none; padding: 13px 26px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;">
+              📤 Unggah Bukti Pembayaran
+            </a>
+          </div>
+
+          <p style="font-size: 13px; color: #64748b; margin-top: 16px; line-height: 1.5;">
+            <strong>Langkah Selanjutnya:</strong><br/>
+            1. Silakan lakukan transfer sejumlah <strong>${formattedAmount}</strong> ke rekening Bank Mayapada di atas.<br/>
+            2. Klik tombol di atas untuk membuka status registrasi Anda dan mengunggah foto / file bukti transfer.<br/>
+            3. Tim admisi sekolah akan memverifikasi pembayaran Anda, setelah itu Anda dapat melanjutkan pengisian biodata lengkap siswa.
+          </p>
+
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 16px;">
+            Tautan Cek Status: <a href="${checkUrl}" style="color: #0284c7; word-break: break-all;">${checkUrl}</a>
+          </p>
+        </div>
+        <div class="footer" style="padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9;">
+          Chung Chung Christian School &bull; Yayasan Pendidikan Mayapada School &bull; Hotline: +62 859-5986-0430
+        </div>
+      </div>
+    `)
+    return { subject, html }
+  },
+
   admissionApproved: ({ parentName, studentName, applicationNumber }) => {
     const subject = `🎉 Application Approved — ${applicationNumber}`
     const html = wrapHtml(`

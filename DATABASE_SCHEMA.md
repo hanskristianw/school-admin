@@ -114,6 +114,7 @@ erDiagram
     role ||--o{ users : "assigns"
     unit ||--o{ users : "belongs_to"
     unit ||--o{ report_settings : "has_report_settings"
+    unit ||--o{ admission_level : "subdivides_into"
     year ||--o{ report_settings : "applies_to_year"
     
     dashboard_type {
@@ -184,6 +185,7 @@ Many tables in the system reference `users` for ownership, assignment or action 
 - **Attendance:** `attendance`, `attendance_scan_log`
 - **Leave/Quota:** `leave_quotas` (`user_id`), `leave_requests` (`user_id`)
 - **Purchasing:** `unit_approvers` (`user_id`), `role_approvers` (`user_id`)
+- **Admissions & Fees:** `student_applications` (`reviewed_by`), `application_discount` (`created_by`), `application_installment` (`created_by`), `udp_definition` (`created_by`, `updated_by`), `school_fee_definition` (`created_by`, `updated_by`)
 - **Logs/Tracking:** Countless tables via `created_by_user_id`
 
 ---
@@ -236,6 +238,9 @@ Assigns a student to a specific class.
 | `detail_siswa_id` | `SERIAL` | Primary Key |
 | `detail_siswa_kelas_id` | `INTEGER` | FK to `kelas(kelas_id)` |
 | `detail_siswa_user_id` | `INTEGER` | FK to `users(user_id)` (The Student) |
+
+> [!NOTE]
+> **Admissions Pipeline Integration:** Prospective students originate from the admissions domain (`student_applications`). Once approved/enrolled, their account is established in `users` (`role.is_student = true`), and they are placed into their designated academic class roster via `detail_siswa`. See **Domain 15: Student Admission & Enrollment Domain** for full details.
 
 #### `class_development_areas`
 Parent table storing configured Areas of Development per class (specifically for Nursery classes).
@@ -2087,6 +2092,358 @@ erDiagram
    - `rating`: `VARCHAR(50) NOT NULL DEFAULT 'N/A'` (`'N/A'`, `'Beginning'`, `'Developing'`, `'Achieving'`, `'Exceeding'`)
    - `created_at`, `created_by`, `updated_at`, `updated_by`
    - `UNIQUE(unit_id, atl_id, student_id)`
+
+---
+
+## 15. Student Admission & Enrollment Domain (`/login`, `/admission`, `/admission/status`, `/data/admission`, `/data/admission-level`, `/data/school-fee`)
+
+This domain manages the full admissions lifecycle for prospective students (PPDB / SPMB). It bridges public prospective applicants with the school backoffice:
+- **Public Portal Access (`/login`):** An accordion section on the login screen ("Pendaftaran Siswa Baru") provides direct routing to `/admission` (application form) and `/admission/status` (application tracking).
+- **Online Registration Form (`/admission`):** Prospective parents submit student biodata, parents/guardian contact info, select academic unit, specific enrollment level (`admission_level`), and target academic year.
+- **Status & Tracking (`/admission/status`):** Public self-service tracking using application number and parent phone/email.
+- **Backoffice Processing (`/data/admission`):** Administrators review applicant submissions, manage fee quotations, apply stackable discounts, configure installment plans (UTJ / DP and monthly splits), approve/reject applications, generate PDF quotation slips, and dispatch automated WhatsApp and Email notifications.
+- **Admission Level Management (`/data/admission-level`):** Subdivides organizational units (`unit`) into granular enrollment grades (e.g. Nursery 1-2, K1-K2, Elementary 1-6, JHS, SHS).
+- **Tuition & Discount Management (`/data/school-fee`):** Configures baseline development funds (`udp_definition`), monthly tuition (`school_fee_definition`), and discount master catalogs (`fee_discount`).
+
+### 15.1 Tables
+
+#### `admission_level`
+Subdivides academic units (`unit`) into specific enrollment levels and grade tiers.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `level_id` | `SERIAL` | Primary Key |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` ON DELETE CASCADE |
+| `level_name` | `VARCHAR(100)` | Name of the level (e.g., "Nursery 1", "Kindergarten 1", "Elementary 1-6", "Junior High School", "Senior High School") |
+| `level_order` | `INTEGER` | Sort order for display (Default `0`) |
+| `is_active` | `BOOLEAN` | Default `true` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `CONSTRAINT` | `UNIQUE` | `(unit_id, level_name)` |
+
+#### `admission_form_fee`
+Master table defining periodic/wave-based registration form fees (e.g. Early Bird vs Reguler).
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `fee_id` | `SERIAL` | Primary Key |
+| `year_id` | `INTEGER` | FK to `year(year_id)` ON DELETE CASCADE |
+| `unit_id` | `INTEGER` | Nullable FK to `unit(unit_id)` ON DELETE SET NULL |
+| `level_id` | `INTEGER` | Nullable FK to `admission_level(level_id)` ON DELETE SET NULL |
+| `wave_name` | `VARCHAR(100)` | Name of the wave (e.g. "Gelombang 1 - Early Bird", "Gelombang 2 - Reguler") |
+| `amount` | `NUMERIC(12,2)` | Application form fee price (Must be $\ge 0$) |
+| `effective_from` | `DATE` | Wave start date |
+| `effective_until` | `DATE` | Wave expiration date |
+| `is_active` | `BOOLEAN` | Default `true` |
+| `notes` | `TEXT` | Wave promotional notes / discounts |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `CONSTRAINT` | `UNIQUE` | `(wave_name, effective_from)` |
+
+#### `student_applications`
+Primary record for each prospective student's application form submission.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `application_id` | `BIGSERIAL` | Primary Key |
+| `application_number` | `VARCHAR(20)` | Unique registration code auto-generated via trigger (e.g., `REG-2026-000001`) |
+| `student_name` | `VARCHAR(255)` | Full name of prospective student |
+| `student_nickname` | `VARCHAR(100)` | Nickname / panggilan |
+| `student_gender` | `VARCHAR(10)` | Gender: `'male'` or `'female'` |
+| `student_birth_date` | `DATE` | Date of birth |
+| `student_birth_place` | `VARCHAR(100)` | Place of birth |
+| `student_religion` | `VARCHAR(30)` | Religion: `'Islam'`, `'Kristen'`, `'Katolik'`, `'Hindu'`, `'Buddha'`, `'Konghucu'`, or `'Lainnya'` |
+| `student_nationality` | `VARCHAR(10)` | Nationality: `'WNI'` (Default) or `'WNA'` |
+| `student_address` | `TEXT` | Address as listed on KTP / ID card |
+| `student_domicile_address` | `TEXT` | Domicile address (if different from ID) |
+| `student_city` | `VARCHAR(100)` | Domicile city |
+| `student_province` | `VARCHAR(100)` | Domicile province |
+| `student_postal_code` | `VARCHAR(10)` | Postal code |
+| `student_previous_school` | `VARCHAR(255)`| Previous school attended |
+| `parent_name` | `VARCHAR(255)` | Parent / guardian full name |
+| `parent_phone` | `VARCHAR(20)` | Parent mobile / WhatsApp contact phone number |
+| `parent_email` | `VARCHAR(255)` | Parent email address |
+| `parent_occupation` | `VARCHAR(100)`| Parent occupation / profession |
+| `parent_address` | `TEXT` | Parent address |
+| `parent_nik` | `VARCHAR(20)` | Parent National Identification Number (NIK) |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` (Selected school unit) |
+| `level_id` | `INTEGER` | FK to `admission_level(level_id)` (Selected grade level) |
+| `year_id` | `INTEGER` | FK to `year(year_id)` (Target academic year) |
+| `preferred_grade` | `VARCHAR(50)` | Legacy optional free-text grade (superseded by `level_id`) |
+| `additional_notes` | `TEXT` | Special notes from applicant |
+| `status` | `VARCHAR(20)` | Application lifecycle status: `'pending'`, `'under_review'`, `'approved'`, `'rejected'`, `'waitlist'` (Default `'pending'`) |
+| `form_fee_amount` | `NUMERIC(12,2)`| Form fee price snapshot charged at registration date |
+| `form_fee_status` | `VARCHAR(30)` | Payment verification status: `'pending_payment'`, `'proof_uploaded'`, `'verified'`, `'rejected'` (Default `'pending_payment'`) |
+| `payment_proof_file` | `TEXT` | Uploaded transfer receipt filename / URL |
+| `access_token` | `VARCHAR(64)` | Secret PIN / Access code for applicant self-service login and receipt upload on `ccs.sch.id` |
+| `wave_name` | `VARCHAR(100)` | Name of active pricing wave during registration |
+| `hosting_url` | `TEXT` | Origin cPanel hosting URL (e.g. `https://ccs.sch.id/registrasi`) |
+| `paid_at` | `TIMESTAMPTZ` | Timestamp when payment proof was uploaded |
+| `verified_by` | `INTEGER` | FK to `users(user_id)` (Staff who verified payment) |
+| `verified_at` | `TIMESTAMPTZ` | Timestamp when payment was approved |
+| `admin_notes` | `TEXT` | Internal remarks from school admission committee |
+| `reviewed_by` | `INTEGER` | FK to `users(user_id)` (Staff reviewer) |
+| `reviewed_at` | `TIMESTAMP` | Timestamp of administrative review |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+> [!NOTE]
+> **Application Number Generation:** A PostgreSQL function `generate_application_number()` and trigger `trigger_generate_application_number` automatically formats numbers as `REG-YYYY-NNNNNN` on insert, resetting sequence numbering per calendar year.
+>
+> **Access & RLS Policies:**
+> - `public_insert_applications`: Unauthenticated public visitors can insert new applications from `/admission`.
+> - `public_read_own_application`: Filtered in application logic by `application_number` + `parent_phone` / `parent_email` for `/admission/status`.
+> - `admin_read_all_applications` & `admin_update_applications`: Authenticated backoffice staff have full management access.
+
+#### `udp_definition`
+Master definition of Uang Dana Pembangunan (UDP) / Uang Pangkal / DPP per grade level and academic year.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `udp_def_id` | `BIGSERIAL` | Primary Key |
+| `unit_id` | `BIGINT` | FK to `unit(unit_id)` ON DELETE CASCADE |
+| `level_id` | `INTEGER` | FK to `admission_level(level_id)` |
+| `year_id` | `BIGINT` | FK to `year(year_id)` ON DELETE CASCADE |
+| `total_amount` | `NUMERIC(12,2)` | Base gross development fee amount (Must be $\ge 0$) |
+| `student_category` | `VARCHAR(20)` | Target applicant category: `'eksternal'` (Default) or `'internal'` (graduating from internal unit) |
+| `default_installments` | `INTEGER` | Suggested standard number of installments |
+| `effective_from` | `DATE` | Start date of pricing period (e.g. Early Bird wave) |
+| `effective_until` | `DATE` | End date of pricing period |
+| `notes` | `TEXT` | Pricing remarks / wave name |
+| `is_active` | `BOOLEAN` | Default `true` |
+| `created_by` | `INTEGER` | FK to `users(user_id)` |
+| `updated_by` | `INTEGER` | FK to `users(user_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `CONSTRAINT` | `UNIQUE` | `(level_id, year_id, student_category, effective_from)` |
+
+#### `udp_installment_plan`
+Pre-defined monthly breakdown schedules for a given UDP definition.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `plan_id` | `BIGSERIAL` | Primary Key |
+| `udp_def_id` | `BIGINT` | FK to `udp_definition(udp_def_id)` ON DELETE CASCADE |
+| `seq` | `INTEGER` | Term sequence number ($1, 2, \dots$) |
+| `month` | `INTEGER` | Target calendar month ($1 \dots 12$) |
+| `amount` | `NUMERIC(12,2)` | Scheduled installment amount |
+| `due_date` | `DATE` | Payment due date |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `CONSTRAINT` | `UNIQUE` | `(udp_def_id, seq)` and `(udp_def_id, month)` |
+
+#### `school_fee_definition`
+Master definition of recurring monthly tuition (SPP / USEK) per grade level and academic year.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `fee_def_id` | `BIGSERIAL` | Primary Key |
+| `unit_id` | `BIGINT` | FK to `unit(unit_id)` ON DELETE CASCADE |
+| `level_id` | `INTEGER` | FK to `admission_level(level_id)` |
+| `year_id` | `BIGINT` | FK to `year(year_id)` ON DELETE CASCADE |
+| `monthly_amount` | `NUMERIC(12,2)` | Base monthly SPP tuition (Must be $\ge 0$) |
+| `notes` | `TEXT` | Tuition notes |
+| `is_active` | `BOOLEAN` | Default `true` |
+| `created_by` | `INTEGER` | FK to `users(user_id)` |
+| `updated_by` | `INTEGER` | FK to `users(user_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `CONSTRAINT` | `UNIQUE` | `(level_id, year_id)` |
+
+#### `fee_discount`
+Master catalog of available fee discounts and bursaries.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `discount_id` | `BIGSERIAL` | Primary Key |
+| `unit_id` | `INTEGER` | FK to `unit(unit_id)` ON DELETE CASCADE |
+| `level_id` | `INTEGER` | Nullable FK to `admission_level(level_id)` (NULL = applies to all levels within unit) |
+| `year_id` | `INTEGER` | FK to `year(year_id)` ON DELETE CASCADE |
+| `discount_code` | `VARCHAR(50)` | Short promotional code (e.g. `SIBLING-5`, `EARLY-BIRD-1M`) |
+| `discount_name` | `VARCHAR(255)` | Human-readable discount title |
+| `discount_description`| `TEXT` | Eligibility details |
+| `discount_type` | `VARCHAR(20)` | Calculation formula: `'percentage'` or `'fixed'` |
+| `discount_value` | `NUMERIC(12,2)`| Value (e.g. `5.00` for 5% or `1000000.00` for IDR 1,000,000) |
+| `applies_to` | `VARCHAR(20)` | Target fee: `'udp'`, `'usek'`, or `'both'` |
+| `valid_from` | `DATE` | Promo validity start date |
+| `valid_until` | `DATE` | Promo validity expiration date |
+| `is_active` | `BOOLEAN` | Default `true` |
+| `max_usage` | `INTEGER` | Maximum allowed redemptions (Nullable) |
+| `current_usage` | `INTEGER` | Current times redeemed (Default `0`) |
+| `conditions` | `JSONB` | Flexible structured eligibility rules |
+| `created_by` | `INTEGER` | FK to `users(user_id)` |
+| `updated_by` | `INTEGER` | FK to `users(user_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `CONSTRAINT` | `UNIQUE` | `(unit_id, year_id, discount_code)` |
+
+#### `application_discount`
+Stackable discounts applied to a specific student's application.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `app_discount_id` | `BIGSERIAL` | Primary Key |
+| `application_id` | `BIGINT` | FK to `student_applications(application_id)` ON DELETE CASCADE |
+| `discount_id` | `BIGINT` | FK to `fee_discount(discount_id)` |
+| `fee_target` | `VARCHAR(10)` | Target category: `'udp'` or `'usek'` |
+| `seq` | `INTEGER` | Application calculation sequence ($1, 2, \dots$) |
+| `value_type` | `VARCHAR(20)` | `'percentage'` or `'fixed'` (Can be overridden from master) |
+| `value` | `NUMERIC(12,2)`| Applied percentage or fixed deduction value |
+| `base_before` | `NUMERIC(12,2)`| Subtotal amount prior to applying this discount line |
+| `calculated_amount` | `NUMERIC(12,2)`| Net deduction amount |
+| `subtotal_after` | `NUMERIC(12,2)`| Resulting balance after deduction |
+| `notes` | `TEXT` | Auditor notes / justification |
+| `created_by` | `INTEGER` | FK to `users(user_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+| `CONSTRAINT` | `UNIQUE` | `(application_id, fee_target, discount_id)` and `(application_id, fee_target, seq)` |
+
+#### `application_installment`
+Custom entry cost financing and installment schedule configured for an applicant.
+
+| Column Name | Type | Description / Constraint |
+| --- | --- | --- |
+| `installment_id` | `BIGSERIAL` | Primary Key |
+| `application_id` | `BIGINT` | FK to `student_applications(application_id)` ON DELETE CASCADE (Unique 1:1) |
+| `udp_amount` | `NUMERIC(12,2)`| Final net UDP development fee (after applied discounts) |
+| `spp_first_amount` | `NUMERIC(12,2)`| Final net first-month SPP tuition (after applied discounts) |
+| `total_entry_cost` | `NUMERIC(12,2)`| Total initial entry obligation: $\text{UDP} + \text{First Month SPP}$ |
+| `utj_percentage` | `NUMERIC(5,2)` | Down payment percentage (Uang Tanda Jadi, default `30.00%`, $0 \dots 100$) |
+| `utj_amount` | `NUMERIC(12,2)`| Calculated initial booking down payment: $\text{Total Entry Cost} \times \text{UTJ\%}$ |
+| `remaining_amount` | `NUMERIC(12,2)`| Balance to finance: $\text{Total Entry Cost} - \text{UTJ Amount}$ |
+| `num_installments` | `INTEGER` | Number of monthly installments (Default `11`, must be $\ge 1$) |
+| `monthly_installment`| `NUMERIC(12,2)`| Monthly installment amount: $\lfloor \text{remaining\_amount} / \text{num\_installments} \rfloor$ |
+| `start_month` | `INTEGER` | Installment start month (Default `7` = July, range $1 \dots 12$) |
+| `start_year` | `INTEGER` | Installment start calendar year (e.g. `2026`) |
+| `notes` | `TEXT` | Special financial arrangement notes |
+| `created_by` | `INTEGER` | FK to `users(user_id)` |
+| `created_at` | `TIMESTAMPTZ` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Record update timestamp |
+
+---
+
+### 15.2 ERD / Relationships (Admissions Domain)
+
+```mermaid
+erDiagram
+    unit ||--o{ admission_level : "subdivides_into"
+    unit ||--o{ student_applications : "applies_to_unit"
+    unit ||--o{ udp_definition : "scoped_to"
+    unit ||--o{ school_fee_definition : "scoped_to"
+    unit ||--o{ fee_discount : "defines_discounts"
+    
+    admission_level ||--o{ student_applications : "targets_level"
+    admission_level ||--o{ udp_definition : "configures_udp"
+    admission_level ||--o{ school_fee_definition : "configures_spp"
+    admission_level ||--o{ fee_discount : "restricts_discount"
+    
+    year ||--o{ student_applications : "enrolls_in_year"
+    year ||--o{ udp_definition : "valid_for_year"
+    year ||--o{ school_fee_definition : "valid_for_year"
+    year ||--o{ fee_discount : "valid_for_year"
+    
+    udp_definition ||--o{ udp_installment_plan : "schedules_terms"
+    
+    student_applications ||--o{ application_discount : "receives_discounts"
+    student_applications ||--o| application_installment : "has_installment_plan"
+    fee_discount ||--o{ application_discount : "applied_as"
+    
+    users ||--o{ student_applications : "reviewed_by"
+    users ||--o{ application_installment : "created_by"
+    users ||--o{ application_discount : "created_by"
+
+    student_applications {
+        bigint application_id PK
+        string application_number UK
+        string student_name
+        string student_gender
+        date student_birth_date
+        int unit_id FK
+        int level_id FK
+        int year_id FK
+        string status
+        int reviewed_by FK
+    }
+
+    admission_level {
+        int level_id PK
+        int unit_id FK
+        string level_name
+        int level_order
+        boolean is_active
+    }
+
+    application_installment {
+        bigint installment_id PK
+        bigint application_id FK
+        numeric total_entry_cost
+        numeric utj_percentage
+        numeric utj_amount
+        numeric remaining_amount
+        int num_installments
+        numeric monthly_installment
+    }
+
+    application_discount {
+        bigint app_discount_id PK
+        bigint application_id FK
+        bigint discount_id FK
+        string fee_target
+        int seq
+        numeric calculated_amount
+        numeric subtotal_after
+    }
+```
+
+---
+
+### 15.3 Admissions Lifecycle & Operational Integration
+
+```
+[ /login ] ("Pendaftaran Siswa Baru")
+     │
+     ▼
+[ /admission ] ──(Insert)──> [ student_applications ] (Status: 'pending', REG-YYYY-NNNNNN)
+                                      │
+                                      ▼
+                             [ /data/admission ]
+                        (Staff Review & Verification)
+                                      │
+           ┌──────────────────────────┼──────────────────────────┐
+           ▼                          ▼                          ▼
+ [ Configure Discounts ]    [ Setup Installments ]       [ Decision ]
+ (application_discount)     (application_installment)        │
+                                                   ┌─────────┴─────────┐
+                                                   ▼                   ▼
+                                              'approved'          'rejected'
+                                                   │                   │
+                                            (WhatsApp/Email     (WhatsApp/Email
+                                             Notifications)      Notifications)
+                                                   │
+                                                   ▼ (Current Manual Step)
+                                        [ users ] & [ detail_siswa ]
+                                      (Active Student Class Enrollment)
+```
+
+1. **Public Discovery via `/login`:**
+   The school login screen exposes a dedicated collapsible section labeled *"Pendaftaran Siswa Baru"* containing:
+   - **"Daftar Siswa Baru":** Navigates to `/admission` (public intake form).
+   - **"Cek Status":** Navigates to `/admission/status` (self-service lookup by application number + phone/email).
+   - *Note:* Submitting this form does **not** create a login credential in `users`. Prospective families interact purely through the public status page and WhatsApp/Email channels until official acceptance and school onboarding.
+
+2. **Automated Quotation & Installment Stacking:**
+   - Base fees are pulled from `udp_definition` (matching the applicant's category: `internal` vs `eksternal`, and current date vs `effective_from` / `effective_until`) and `school_fee_definition`.
+   - Discounts from `fee_discount` can be stacked sequentially (`seq = 1, 2, \dots`). Each sequential line recomputes `subtotal_after` based on the previous line's `base_before`.
+   - The financing scheme in `application_installment` locks the down payment (UTJ 30%) and calculates an even 11-month payment distribution starting in July.
+
+3. **Status Progression & External Notifications:**
+   - When administrators transition status to `'approved'` or `'rejected'`, API routes `/api/whatsapp/send` and `/api/email/admission` fire automated transactional notifications to the registered parent contact.
+
+4. **Integration Gap & Transition to Active Students:**
+   - In the current implementation, an `'approved'` application in `student_applications` does not automatically spawn a row in `users` and `detail_siswa`.
+   - Staf Tata Usaha manually copies accepted candidate records into `/data/user` (assigning `role.is_student = true`) and enrolls them into `/data/class` (`detail_siswa`).
+   - A direct transational migration action ("Enroll to School") is recommended to automatically bridge approved `student_applications` into `users` and `detail_siswa`.
+
 
 
 

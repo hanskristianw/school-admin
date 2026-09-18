@@ -91,6 +91,11 @@ export default function AdmissionPage() {
     type: 'success'
   })
 
+  // Redirect to official web registration on ccs.sch.id
+  useEffect(() => {
+    window.location.href = 'https://ccs.sch.id/registrasi';
+  }, []);
+
   // Fetch units and years on mount
   useEffect(() => {
     const fetchData = async () => {

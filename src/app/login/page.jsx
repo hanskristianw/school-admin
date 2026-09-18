@@ -450,26 +450,26 @@ function LoginContent() {
                 <div className="space-y-2 pt-1 animate-fadeIn">
                   <Button 
                     type="button"
-                    onClick={() => router.push('/admission')}
+                    onClick={() => window.open('https://ccs.sch.id/registrasi', '_blank')}
                     variant="outline"
                     className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-95 text-sm"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                     </svg>
-                    {t('login.registerNewStudent') || 'Daftar Siswa Baru'}
+                    {t('login.registerNewStudent') || 'Daftar Siswa Baru (ccs.sch.id)'}
                   </Button>
 
                   <Button 
                     type="button"
-                    onClick={() => router.push('/admission/status')}
+                    onClick={() => window.open('https://ccs.sch.id/registrasi/?page=portal', '_blank')}
                     variant="outline"
                     className="w-full h-11 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 font-semibold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-95 text-sm"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    {t('login.checkStatus') || 'Cek Status'}
+                    {t('login.checkStatus') || 'Portal Pendaftar / Cek Status'}
                   </Button>
 
                   {/* Footer text */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
@@ -87,6 +87,11 @@ const statusConfig = {
 }
 
 export default function AdmissionStatusPage() {
+  // Redirect to official web registration portal on ccs.sch.id
+  useEffect(() => {
+    window.location.href = 'https://ccs.sch.id/registrasi/?page=portal';
+  }, []);
+
   const [searching, setSearching] = useState(false)
   const [application, setApplication] = useState(null)
   const [notFound, setNotFound] = useState(false)

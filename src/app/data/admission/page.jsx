@@ -688,6 +688,32 @@ export default function AdmissionManagement() {
     }
   };
 
+  const handleVerifyFormFee = async (applicationId, newStatus) => {
+    try {
+      setProcessing(true);
+      const updateData = {
+        form_fee_status: newStatus,
+        verified_at: newStatus === 'verified' ? new Date().toISOString() : null,
+      };
+      const { error } = await supabase
+        .from('student_applications')
+        .update(updateData)
+        .eq('application_id', applicationId);
+      if (error) throw error;
+
+      if (selectedApplication && selectedApplication.application_id === applicationId) {
+        setSelectedApplication({ ...selectedApplication, ...updateData });
+      }
+      setApplications(prev => prev.map(a => a.application_id === applicationId ? { ...a, ...updateData } : a));
+      showNotification('Berhasil', `Status pembayaran formulir berhasil diubah menjadi ${newStatus === 'verified' ? 'Disetujui (Approved)' : 'Ditolak'}`, 'success');
+    } catch (err) {
+      console.error('Error verifying form fee:', err);
+      showNotification('Error', 'Gagal memverifikasi formulir: ' + err.message, 'error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('id-ID', {
@@ -1366,6 +1392,36 @@ export default function AdmissionManagement() {
         ))}
       </div>
 
+      {/* Pending Form Fee Proofs Alert */}
+      {applications.filter(a => a.form_fee_status === 'proof_uploaded').length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+              <FontAwesomeIcon icon={faClock} className="text-lg" />
+            </div>
+            <div>
+              <p className="font-semibold text-amber-900 text-sm">
+                Ada {applications.filter(a => a.form_fee_status === 'proof_uploaded').length} bukti transfer formulir baru yang perlu diverifikasi!
+              </p>
+              <p className="text-xs text-amber-700">
+                Pendaftar dari portal ccs.sch.id telah mengunggah bukti pembayaran formulir. Silakan verifikasi untuk membuka formulir biodata lengkap bagi orang tua.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-400 text-amber-900 hover:bg-amber-100 text-xs font-medium"
+            onClick={() => {
+              const pendingApp = applications.find(a => a.form_fee_status === 'proof_uploaded');
+              if (pendingApp) handleViewDetail(pendingApp);
+            }}
+          >
+            Lihat Sekarang
+          </Button>
+        </div>
+      )}
+
       {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
@@ -1593,10 +1649,32 @@ export default function AdmissionManagement() {
                         );
                       })()}
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[app.status]?.bgColor} ${statusConfig[app.status]?.color}`}>
-                          <FontAwesomeIcon icon={statusConfig[app.status]?.icon} className="text-xs" />
-                          {statusLabels[app.status]}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig[app.status]?.bgColor} ${statusConfig[app.status]?.color}`}>
+                            <FontAwesomeIcon icon={statusConfig[app.status]?.icon} className="text-xs" />
+                            {statusLabels[app.status]}
+                          </span>
+                          {app.form_fee_amount ? (
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              app.form_fee_status === 'verified'
+                                ? 'bg-green-100 text-green-800 border border-green-200'
+                                : app.form_fee_status === 'proof_uploaded'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300 font-semibold'
+                                : app.form_fee_status === 'rejected'
+                                ? 'bg-red-100 text-red-700 border border-red-200'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              <FontAwesomeIcon icon={app.form_fee_status === 'verified' ? faCheck : (app.form_fee_status === 'rejected' ? faTimes : faClock)} className="text-[9px]" />
+                              {app.form_fee_status === 'verified'
+                                ? 'Form Lunas'
+                                : app.form_fee_status === 'proof_uploaded'
+                                ? 'Verif Bukti Form'
+                                : app.form_fee_status === 'rejected'
+                                ? 'Bukti Ditolak'
+                                : 'Form Belum Bayar'}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -1708,6 +1786,111 @@ export default function AdmissionManagement() {
                 </div>
               )}
             </div>
+
+            {/* PPDB Portal Payment & Verification Card */}
+            {(selectedApplication.form_fee_amount || selectedApplication.form_fee_status || selectedApplication.payment_proof_file) && (
+              <div className="p-4 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 to-blue-50/70 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-indigo-100">
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faFileInvoice} className="text-indigo-600 text-lg" />
+                    <div>
+                      <h4 className="font-semibold text-gray-900 text-sm">Pembayaran Formulir PPDB (Portal ccs.sch.id)</h4>
+                      <p className="text-xs text-gray-500">
+                        {selectedApplication.wave_name || 'Gelombang Pendaftaran'} &bull; Tagihan: <span className="font-semibold text-indigo-700">{formatCurrency(selectedApplication.form_fee_amount || 0)}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    {selectedApplication.form_fee_status === 'verified' && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300">
+                        <FontAwesomeIcon icon={faCheck} className="text-xs" />
+                        Formulir Terverifikasi (Lunas)
+                      </span>
+                    )}
+                    {selectedApplication.form_fee_status === 'proof_uploaded' && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                        <FontAwesomeIcon icon={faClock} className="text-xs" />
+                        Bukti Diunggah (Perlu Verifikasi)
+                      </span>
+                    )}
+                    {selectedApplication.form_fee_status === 'pending_payment' && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-300">
+                        <FontAwesomeIcon icon={faClock} className="text-xs" />
+                        Menunggu Pembayaran Orang Tua
+                      </span>
+                    )}
+                    {selectedApplication.form_fee_status === 'rejected' && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-300">
+                        <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                        Bukti Transfer Ditolak
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-gray-500">Status Form Lengkap Siswa:</span>{' '}
+                    {selectedApplication.is_form_completed ? (
+                      <span className="font-semibold text-green-700">Sudah Dilengkapi oleh Orang Tua</span>
+                    ) : (
+                      <span className="font-semibold text-amber-700">Belum Lengkap (Hanya data awal)</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Waktu Verifikasi:</span>{' '}
+                    <span className="font-medium text-gray-800">
+                      {selectedApplication.verified_at ? formatDate(selectedApplication.verified_at) : '-'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bukti Transfer Action / Preview */}
+                <div className="pt-2 flex items-center justify-between flex-wrap gap-2 border-t border-indigo-100">
+                  <div className="flex items-center gap-2">
+                    {selectedApplication.payment_proof_file ? (
+                      <a
+                        href={`/api/admission/${selectedApplication.application_id}/proof`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-xs font-medium text-indigo-700 hover:bg-indigo-50 shadow-sm"
+                      >
+                        <FontAwesomeIcon icon={faEye} />
+                        Lihat Bukti Transfer
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">Belum ada file bukti transfer</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {selectedApplication.form_fee_status !== 'verified' && (
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs h-8"
+                        onClick={() => handleVerifyFormFee(selectedApplication.application_id, 'verified')}
+                        disabled={processing}
+                      >
+                        <FontAwesomeIcon icon={faCheck} className="mr-1" />
+                        Approve Pembayaran Formulir
+                      </Button>
+                    )}
+                    {selectedApplication.form_fee_status !== 'rejected' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50 text-xs h-8"
+                        onClick={() => handleVerifyFormFee(selectedApplication.application_id, 'rejected')}
+                        disabled={processing}
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="mr-1" />
+                        Tolak Bukti
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Student Info */}
             <div>

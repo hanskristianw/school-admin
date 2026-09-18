@@ -11,7 +11,7 @@ import { emailTemplates } from '@/lib/emailTemplates'
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { type, parentName, studentName, applicationNumber, schoolName, email } = body
+    const { type, parentName, studentName, applicationNumber, schoolName, email, levelName, feeAmount, hostingUrl } = body
 
     if (!email || !type) {
       return NextResponse.json(
@@ -47,7 +47,15 @@ export async function POST(request) {
       )
     }
 
-    const { subject, html } = templateFn({ parentName, studentName, applicationNumber, schoolName })
+    const { subject, html } = templateFn({
+      parentName,
+      studentName,
+      applicationNumber,
+      schoolName,
+      levelName,
+      feeAmount,
+      hostingUrl
+    })
 
     const result = await sendEmail({
       to: email,
