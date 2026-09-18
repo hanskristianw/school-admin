@@ -1,16 +1,16 @@
 # Graph Report - school-admin  (2026-09-18)
 
 ## Corpus Check
-- 389 files · ~644,063 words
+- 389 files · ~644,074 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2230 nodes · 2302 edges · 370 communities (262 shown, 108 thin omitted)
+- 2230 nodes · 2302 edges · 369 communities (261 shown, 108 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `37ff8400`
+- Built from commit: `ea6c1cc2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -158,7 +158,6 @@
 - Module 146
 - �🏗️ **Database Structure**
 - Module 148
-- SKILL.md
 - Module 150
 - Module 151
 - Module 152
@@ -302,7 +301,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (370 total, 108 thin omitted)
+## Communities (369 total, 108 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.06
@@ -584,10 +583,6 @@ Nodes (10): 12.0 Dedicated Pages & Access Roles, 12.1 Tables, 12.2 ERD / Relatio
 Cohesion: 0.06
 Nodes (33): 1. Bulk Import, 1. `criteria`, 1. Data Entry, 1. Looping Through Strands, 2. Copy from Previous Year, 2. Curriculum Alignment, 2. Rubric Lookup Logic, 2. `strands` (+25 more)
 
-### Community 149 - "SKILL.md"
-Cohesion: 0.50
-Nodes (4): Attendance (QR) Tables, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table
-
 ### Community 150 - "Module 150"
 Cohesion: 0.06
 Nodes (33): 1. Purchase Receipt - Auto Track Supplier (/stock/uniform/add), 1. Stock Available per Item per Supplier, 1. uniform_stock_txn - Tambah kolom supplier_id, 2. Index untuk Performance, 2. Initial Stock Input (/stock/uniform/initial), 2. Stock Movement by Supplier, 3. Stock Out - Manual Supplier Selection (/sales/uniform/stock-out), 3. Total Stock per Supplier (All Items) (+25 more)
@@ -657,8 +652,8 @@ Cohesion: 0.17
 Nodes (12): 4.1 Tables, 4.2 ERD / Relationships (Purchasing Domain), 4. Purchasing & Budgeting Domain (/data/fpb), `fpb`, `fpb_approval_steps`, `fpb_approvals`, `fpb_budget_roles`, `fpb_items` (+4 more)
 
 ### Community 265 - "School Admin System - Complete Documentation"
-Cohesion: 0.22
-Nodes (8): **Completed Features:**, **Important Files:**, **Key Business Rules:**, **Key Directories:**, 📁 **Project Structure**, 📝 Recent Changes (Aug 2025), School Admin System - Complete Documentation, ✅ **System Status**
+Cohesion: 0.15
+Nodes (12): Attendance (QR) Tables, **Completed Features:**, **Core Tables:**, �🏗️ **Database Structure**, Grades (Nilai) Table, **Important Files:**, **Key Business Rules:**, **Key Directories:** (+4 more)
 
 ### Community 266 - "Protocol: Premium Utilitarian Minimalism UI Architect"
 Cohesion: 0.20

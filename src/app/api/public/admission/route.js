@@ -190,7 +190,8 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       active_wave: activeFee,
-      levels: levels || []
+      levels: levels || [],
+      data: levels || []
     })
   } catch (err) {
     console.error('Error in GET /api/public/admission:', err)

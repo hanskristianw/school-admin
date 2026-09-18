@@ -502,11 +502,11 @@ $activeWave = (!empty($feeResponse['success']) && !empty($feeResponse['data']))
     ];
 
 $levelsResponse = callNextJsApi('GET', ['action' => 'get_levels']);
-$serverLevels = (!empty($levelsResponse['success']) && !empty($levelsResponse['data']))
-    ? $levelsResponse['data']
-    : [];
+$serverLevels = (!empty($levelsResponse['success']) && !empty($levelsResponse['levels']))
+    ? $levelsResponse['levels']
+    : ((!empty($levelsResponse['success']) && !empty($levelsResponse['data'])) ? $levelsResponse['data'] : []);
 
-$standardLevels = ['Early Years (Nursery & Kindergarten)', 'Elementary (IB PYP SD)', 'Middle School (SMP)', 'High School (SMA)'];
+$standardLevels = ['Nursery 1', 'Nursery 2', 'Kindergarten 1', 'Kindergarten 2', 'Elementary 1-6', 'Junior High School', 'Senior High School'];
 
 $flashMsg = '';
 $flashType = '';

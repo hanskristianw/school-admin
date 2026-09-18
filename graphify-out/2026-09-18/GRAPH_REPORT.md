@@ -1,11 +1,11 @@
 # Graph Report - school-admin  (2026-09-18)
 
 ## Corpus Check
-- 390 files · ~644,117 words
+- 389 files · ~644,063 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2231 nodes · 2302 edges · 371 communities (263 shown, 108 thin omitted)
+- 2230 nodes · 2302 edges · 370 communities (262 shown, 108 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.65)
 - Token cost: 0 input · 0 output
 
@@ -302,7 +302,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (371 total, 108 thin omitted)
+## Communities (370 total, 108 thin omitted)
 
 ### Community 0 - "Admission Management"
 Cohesion: 0.06

@@ -235,17 +235,6 @@
       "norm_label": "iconlibrary"
     },
     {
-      "label": "config.php",
-      "file_type": "code",
-      "source_file": "cpanel-registrasi/config.php",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "cpanel_registrasi_config",
-      "community": 372,
-      "community_name": "config.php",
-      "norm_label": "config.php"
-    },
-    {
       "label": "config.sample.php",
       "file_type": "code",
       "source_file": "cpanel-registrasi/config.sample.php",
